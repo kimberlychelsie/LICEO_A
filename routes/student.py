@@ -4,12 +4,11 @@ import os
 import uuid
 import psycopg2.extras
 from db import get_db_connection, is_branch_active
+from cloudinary_helper import upload_enrollment_document
 
 student_bp = Blueprint("student", __name__)
 
-UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
 ALLOWED_EXTENSIONS = {"pdf", "jpg", "jpeg", "png"}
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # =======================
 # GRADE RANGE MAPPINGS
@@ -124,16 +123,25 @@ def enroll(branch_id):
             guardian_contact = request.form.get("guardian_contact", "").strip()
             previous_school = request.form.get("previous_school", "").strip()
 
+            # Calculate per-branch enrollment number
+            cursor.execute("""
+                SELECT COALESCE(MAX(branch_enrollment_no), 0) + 1 AS next_no
+                FROM enrollments
+                WHERE branch_id = %s
+            """, (branch_id,))
+            next_no = cursor.fetchone()["next_no"]
+
             cursor.execute("""
                 INSERT INTO enrollments
                   (student_name, grade_level, gender, dob, address, contact_number,
-                   guardian_name, guardian_contact, previous_school, branch_id, status)
+                   guardian_name, guardian_contact, previous_school, branch_id, status,
+                   branch_enrollment_no)
                 VALUES
-                  (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending')
+                  (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s)
                 RETURNING enrollment_id
             """, (
                 student_name, grade_level, gender, dob, address, contact_number,
-                guardian_name, guardian_contact, previous_school, branch_id
+                guardian_name, guardian_contact, previous_school, branch_id, next_no
             ))
 
             enrollment_id = cursor.fetchone()["enrollment_id"]
@@ -143,13 +151,9 @@ def enroll(branch_id):
             for file in files:
                 if file and file.filename and allowed_file(file.filename):
                     original = secure_filename(file.filename)
-                    ext = original.rsplit(".", 1)[1].lower()
-                    unique_name = f"{uuid.uuid4().hex}.{ext}"
 
-                    file_path = os.path.join(UPLOAD_FOLDER, unique_name)
-                    file.save(file_path)
-
-                    url_path = f"/uploads/{unique_name}"
+                    # Upload to Cloudinary (prod) or local (dev)
+                    url_path = upload_enrollment_document(file)
 
                     cursor.execute("""
                         INSERT INTO enrollment_documents (enrollment_id, file_name, file_path)
@@ -157,7 +161,8 @@ def enroll(branch_id):
                     """, (enrollment_id, original, url_path))
 
             db.commit()
-            return redirect(url_for("student.enroll_books", branch_id=branch_id, enrollment_id=enrollment_id))
+            # Submit agad: redirect to success page so process can be tracked (no books/uniform steps)
+            return redirect(url_for("student.enrollment_success", branch_id=branch_id, enrollment_id=enrollment_id))
 
         return render_template("student_enroll.html", branch=branch, message=None)
 
@@ -166,7 +171,32 @@ def enroll(branch_id):
         db.close()
 
 
-# ---------------- Step 2: Book Reservation ----------------
+# ---------------- Enrollment success (direct after form submit; no books/uniform) ----------------
+@student_bp.route("/branch/<int:branch_id>/enroll/success/<int:enrollment_id>", methods=["GET"])
+def enrollment_success(branch_id, enrollment_id):
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute(
+            "SELECT branch_enrollment_no, student_name FROM enrollments WHERE enrollment_id=%s",
+            (enrollment_id,),
+        )
+        row = cursor.fetchone()
+        if not row:
+            return "Enrollment not found", 404
+        display_no = row.get("branch_enrollment_no") or enrollment_id
+        student_name = (row.get("student_name") or "").strip()
+        return render_template(
+            "enrollment_success.html",
+            enrollment_id=display_no,
+            student_name=student_name,
+        )
+    finally:
+        cursor.close()
+        db.close()
+
+
+# ---------------- Step 2: Book Reservation (legacy; not used in main flow) ----------------
 @student_bp.route("/branch/<int:branch_id>/enroll/books/<int:enrollment_id>", methods=["GET", "POST"])
 def enroll_books(branch_id, enrollment_id):
     db = get_db_connection()
@@ -251,9 +281,12 @@ def enroll_summary(branch_id, enrollment_id):
             cursor.execute("UPDATE enrollments SET status='pending' WHERE enrollment_id=%s", (enrollment_id,))
             db.commit()
 
+            # Use branch_enrollment_no (per-branch #1, #2...) for display
+            display_no = enrollment["branch_enrollment_no"] if enrollment and enrollment.get("branch_enrollment_no") else enrollment_id
+
             return render_template(
                 "enrollment_success.html",
-                enrollment_id=enrollment_id,
+                enrollment_id=display_no,
                 student_name=enrollment["student_name"] if enrollment else ""
             )
 
