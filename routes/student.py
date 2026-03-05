@@ -152,16 +152,20 @@ def enroll(branch_id):
             for file in files:
                 if file and file.filename and allowed_file(file.filename):
                     original = secure_filename(file.filename)
-
-                    # Upload to Cloudinary (prod) or local (dev)
-                    url_path = upload_enrollment_document(file)
-
-                    cursor.execute("""
-                        INSERT INTO enrollment_documents (enrollment_id, file_name, file_path)
-                        VALUES (%s, %s, %s)
-                    """, (enrollment_id, original, url_path))
+                    try:
+                        # Upload to Cloudinary (prod) or local (dev)
+                        url_path = upload_enrollment_document(file)
+                        cursor.execute("""
+                            INSERT INTO enrollment_documents (enrollment_id, file_name, file_path)
+                            VALUES (%s, %s, %s)
+                        """, (enrollment_id, original, url_path))
+                    except Exception as upload_err:
+                        import logging
+                        logging.getLogger(__name__).error(f"File upload failed for {original}: {upload_err}")
+                        # Continue enrollment even if upload fails
 
             db.commit()
+
             # Submit agad: redirect to success page so process can be tracked (no books/uniform steps)
             return redirect(url_for("student.enrollment_success", branch_id=branch_id, enrollment_id=enrollment_id))
 
