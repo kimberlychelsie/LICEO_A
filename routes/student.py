@@ -116,12 +116,13 @@ def enroll(branch_id):
             student_name = request.form.get("student_name", "").strip()
             grade_level = request.form.get("grade_level", "").strip()
             gender = request.form.get("gender", "").strip()
-            dob = request.form.get("dob", "").strip()
+            dob = request.form.get("dob", "").strip() or None   # None if blank
             address = request.form.get("address", "").strip()
             contact_number = request.form.get("contact_number", "").strip()
             guardian_name = request.form.get("guardian_name", "").strip()
             guardian_contact = request.form.get("guardian_contact", "").strip()
-            previous_school = request.form.get("previous_school", "").strip()
+            previous_school = request.form.get("previous_school", "").strip() or None
+
 
             # Calculate per-branch enrollment number
             cursor.execute("""
