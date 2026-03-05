@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+{% block title %}Grade Levels{% endblock %}
+{% block content %}
+<style>
+    .gl-container {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .gl-card {
+        background: #fff;
+        border: 1px solid #eee;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .06);
+        margin-bottom: 18px;
+    }
+
+    .gl-card h2 {
+        margin: 0 0 14px 0;
+        font-size: 18px;
+    }
+
+    .field {
+        width: 100%;
+        padding: 9px 11px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+
+    .btn {
+        display: inline-block;
+        padding: 8px 14px;
+        border-radius: 8px;
+        border: 1px solid #ddd;
+        background: #f8f8f8;
+        text-decoration: none;
+        color: #222;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 13px;
+    }
+
+    .btn:hover {
+        background: #efefef;
+    }
+
+    .btn-primary {
+        background: #007bff;
+        color: #fff;
+        border-color: #007bff;
+    }
+
+    .btn-primary:hover {
+        background: #0056b3;
+    }
+
+    .btn-success {
+        background: #198754;
+        color: #fff;
+        border-color: #198754;
+    }
+
+    .btn-success:hover {
+        background: #157347;
+    }
+
+    .btn-danger {
+        background: #dc3545;
+        color: #fff;
+        border-color: #dc3545;
+    }
+
+    .btn-danger:hover {
+        background: #c82333;
+    }
+
+    .muted {
+        color: #666;
+        font-size: 12px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    th {
+        background: #f4f6f9;
+        text-align: left;
+        padding: 9px 12px;
+        font-size: 13px;
+        color: #555;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    td {
+        padding: 8px 10px;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: middle;
+    }
+
+    tr:last-child td {
+        border-bottom: none;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #007bff;
+        text-decoration: none;
+        font-size: 14px;
+        margin-bottom: 14px;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+
+    input[type=number] {
+        width: 70px;
+    }
+</style>
+
+<div class="gl-container">
+    <a class="back-link" href="{{ url_for('branch_admin.dashboard') }}">← Back to Dashboard</a>
+    <h1 style="margin:0 0 18px 0;">📚 Grade Levels</h1>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+    <div style="padding:10px 14px; border-radius:9px; margin-bottom:12px;
+        background:{{ '#d1e7dd' if cat=='success' else '#f8d7da' }};
+        color:{{ '#0f5132' if cat=='success' else '#842029' }};
+        border:1px solid {{ '#badbcc' if cat=='success' else '#f5c2c7' }};">
+        {{ msg }}
+    </div>
+    {% endfor %}
+    {% endwith %}
+
+    <!-- Add Form -->
+    <div class="gl-card">
+        <h2>➕ Add Grade Level</h2>
+        <form method="post" action="{{ url_for('branch_admin.branch_admin_grade_levels') }}">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+                <div style="flex:2; min-width:180px;">
+                    <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Name *</label>
+                    <input class="field" name="name" placeholder="e.g. Grade 1" required>
+                </div>
+                <div style="min-width:80px;">
+                    <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Order *</label>
+                    <input class="field" name="display_order" type="number" min="1" placeholder="1" required
+                        style="width:80px;">
+                </div>
+                <div style="flex:3; min-width:200px;">
+                    <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Description</label>
+                    <input class="field" name="description" placeholder="Optional description">
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-primary">Add</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Table -->
+    <div class="gl-card">
+        <h2>Existing Grade Levels</h2>
+        {% if grades %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Order</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th style="min-width:140px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for g in grades %}
+                <tr>
+                    <form action="{{ url_for('branch_admin.branch_admin_grade_level_edit', grade_id=g[0]) }}"
+                        method="post">
+                        <td><input type="number" name="edit_display_order" value="{{ g[2] }}" min="1" required
+                                class="field" style="width:70px;"></td>
+                        <td><input name="edit_name" value="{{ g[1] }}" required class="field"></td>
+                        <td><input name="edit_description" value="{{ g[3] or '' }}" class="field"></td>
+                        <td style="white-space:nowrap;">
+                            <button class="btn btn-success" type="submit">Save</button>
+                    </form>
+                    &nbsp;
+                    <form action="{{ url_for('branch_admin.branch_admin_grade_level_delete', grade_id=g[0]) }}"
+                        method="post" style="display:inline;"
+                        onsubmit="return confirm('Delete grade level {{ g[1] }}?');">
+                        <button class="btn btn-danger" type="submit">Delete</button>
+                    </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="muted">No grade levels found. Add one above.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

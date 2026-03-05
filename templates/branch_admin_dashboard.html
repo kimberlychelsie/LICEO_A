@@ -123,6 +123,62 @@
     </div>
   </div>
 
+  <!-- SUMMARY CARDS -->
+  <div class="grid" style="margin-bottom: 24px;">
+    <!-- Card 1 -->
+    <div class="card"
+      style="margin-bottom:0; display:flex; flex-direction:column; justify-content:center; text-align:center; padding:24px;">
+      <div style="font-size: 32px; font-weight: 800; color: #007bff; line-height: 1;">{{ metrics.total_enrolled }}</div>
+      <div class="muted"
+        style="margin-top: 8px; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;">🎓
+        Enrolled Students</div>
+    </div>
+
+    <!-- Card 2 -->
+    <div class="card"
+      style="margin-bottom:0; display:flex; flex-direction:column; justify-content:center; text-align:center; padding:24px;">
+      <div style="font-size: 32px; font-weight: 800; color: #f59e0b; line-height: 1;">{{ metrics.pending_reservations }}
+      </div>
+      <div class="muted"
+        style="margin-top: 8px; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;">⏳
+        Pending Resv.</div>
+    </div>
+
+    <!-- Card 3 -->
+    <div class="card"
+      style="margin-bottom:0; display:flex; flex-direction:column; justify-content:center; text-align:center; padding:24px;">
+      <div style="font-size: 32px; font-weight: 800; color: #10b981; line-height: 1;">{{ metrics.total_teachers }}</div>
+      <div class="muted"
+        style="margin-top: 8px; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;">
+        👩‍🏫 Active Teachers</div>
+    </div>
+
+    <!-- Card 4 -->
+    <div class="card"
+      style="margin-bottom:0; display:flex; flex-direction:column; justify-content:center; text-align:center; padding:24px;">
+      <div style="font-size: 32px; font-weight: 800; color: #8b5cf6; line-height: 1;">{{ metrics.total_staff }}</div>
+      <div class="muted"
+        style="margin-top: 8px; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.5px;">👥
+        Branch Staff</div>
+    </div>
+  </div>
+
+  <!-- CHARTS SECTION -->
+  <div class="row" style="margin-bottom: 24px; align-items: stretch;">
+    <div class="card" style="flex: 2; min-width: 300px; margin-bottom: 0;">
+      <h3 style="margin: 0 0 16px 0; font-size: 16px; color: #333;">📊 Enrollment by Grade Level</h3>
+      <div style="height: 250px; position:relative;">
+        <canvas id="gradeChart"></canvas>
+      </div>
+    </div>
+    <div class="card" style="flex: 1; min-width: 250px; margin-bottom: 0;">
+      <h3 style="margin: 0 0 16px 0; font-size: 16px; color: #333;">🍩 Status Breakdown</h3>
+      <div style="height: 250px; position:relative;">
+        <canvas id="statusChart"></canvas>
+      </div>
+    </div>
+  </div>
+
   <!-- HOMEPAGE ANNOUNCEMENTS (visible to all branches) -->
   <div class="card">
     <h2 style="margin:0 0 6px 0;">📢 Homepage Announcements</h2>
@@ -219,64 +275,95 @@
     }
   </script>
 
-  <!-- QUICK LINKS -->
-  <div class="card">
-    <h2 style="margin:0 0 10px 0;">Quick Actions</h2>
-    <div class="grid">
-      <a class="btn btn-primary" href="{{ url_for('branch_admin.branch_admin_faqs') }}">🤖 Manage Branch FAQs</a>
-      <a class="btn btn-primary" href="{{ url_for('branch_admin.branch_admin_inventory') }}">📦 Inventory List</a>
-      <a class="btn" href="{{ url_for('branch_admin.branch_admin_inventory_add') }}">➕ Add Inventory Item</a>
 
-      <div class="card" style="margin:0; padding:12px; border-style:dashed;">
-        <div style="font-weight:700;">💡 Restock / Update Price</div>
-        <div class="muted" style="margin-top:6px;">
-          Open Inventory List, then click <b>Restock</b> or <b>Update Price</b> on an item.
-        </div>
-        <a class="btn" style="margin-top:10px;" href="{{ url_for('branch_admin.branch_admin_inventory') }}">Go to
-          Inventory</a>
-      </div>
-    </div>
-  </div>
 
-  <!-- CREATE USERS -->
-  <div class="card">
-    <h2 style="margin:0 0 6px 0;">Create Registrar / Cashier</h2>
-    <div class="muted" style="margin-bottom:12px;">
-      Creates a user under your branch.
-    </div>
-
-    <form method="post" action="{{ url_for('branch_admin.dashboard') }}">
-      <div class="row">
-        <div style="flex:1; min-width:260px;">
-          <label style="font-weight:700; font-size:13px;">Base Username</label>
-          <input class="field" name="username" placeholder="e.g., juan" required>
-          <div class="muted" style="margin-top:6px;">Tip: use a short base username.</div>
-        </div>
-
-        <div style="flex:1; min-width:220px;">
-          <label style="font-weight:700; font-size:13px;">Role</label>
-          <select class="field" name="role" required>
-            <option value="registrar">Registrar</option>
-            <option value="cashier">Cashier</option>
-            <option value="librarian">Librarian</option>
-
-          </select>
-        </div>
-
-        <div style="display:flex; align-items:flex-end;">
-          <button class="btn btn-primary" type="submit">Create User</button>
-        </div>
-      </div>
-    </form>
-
-    {% if created_user %}
-    <div style="margin-top:14px;" class="success">
-      <div style="font-weight:800; margin-bottom:6px;">User Created Successfully ✅</div>
-      <div><span class="badge">{{ created_user.role }}</span></div>
-      <div style="margin-top:8px;"><b>Username:</b> {{ created_user.username }}</div>
-      <div><b>Temporary Password:</b> {{ created_user.password }}</div>
-    </div>
-    {% endif %}
-  </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  function previewPhoto(input) {
+    const wrap = document.getElementById('photoPreviewWrap');
+    const img = document.getElementById('photoPreview');
+    if (input.files && input.files[0]) {
+      img.src = URL.createObjectURL(input.files[0]);
+      wrap.style.display = 'inline';
+    } else {
+      wrap.style.display = 'none';
+    }
+  }
+
+  // Inject metrics from Python backend
+  const gradeStats = {{ metrics.grade_stats | tojson | safe }};
+  const statusStats = {{ metrics.status_stats | tojson | safe }};
+
+  // Grade Level Chart Initializer
+  if (gradeStats && gradeStats.length > 0) {
+    const ctxGrade = document.getElementById('gradeChart').getContext('2d');
+    const gradeLabels = gradeStats.map(item => item.grade_level || 'Setup Needed');
+    const gradeCounts = gradeStats.map(item => item.count);
+
+    new Chart(ctxGrade, {
+      type: 'bar',
+      data: {
+        labels: gradeLabels,
+        datasets: [{
+          label: 'Enrolled Students',
+          data: gradeCounts,
+          backgroundColor: '#007bff',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false }
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { precision: 0 } }
+        }
+      }
+    });
+  } else {
+    document.getElementById('gradeChart').innerHTML = '<div style="color:#999; text-align:center; padding-top:100px;">No approved enrollments yet</div>';
+  }
+
+  // Status Breakdown Chart Initializer
+  if (statusStats && statusStats.length > 0) {
+    const ctxStatus = document.getElementById('statusChart').getContext('2d');
+    const statusLabels = statusStats.map(item => String(item.status).toUpperCase() || 'N/A');
+    const statusCounts = statusStats.map(item => item.count);
+
+    // Nice colored theme
+    const bgColors = statusLabels.map(st => {
+      if (st === 'APPROVED') return '#10b981';
+      if (st === 'PENDING') return '#f59e0b';
+      if (st === 'REJECTED') return '#ef4444';
+      return '#6b7280';
+    });
+
+    new Chart(ctxStatus, {
+      type: 'doughnut',
+      data: {
+        labels: statusLabels,
+        datasets: [{
+          data: statusCounts,
+          backgroundColor: bgColors,
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '70%',
+        plugins: {
+          legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+        }
+      }
+    });
+  } else {
+    document.getElementById('statusChart').innerHTML = '<div style="color:#999; text-align:center; padding-top:100px;">No data</div>';
+  }
+
+</script>
 {% endblock %}

@@ -3,7 +3,6 @@
 
 <head>
     <title>Account Created - Registrar</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
         .credentials-modal {
             position: fixed;
@@ -103,6 +102,26 @@
             text-align: center;
             margin-top: 30px;
         }
+
+        .btn {
+            display: inline-block;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: bold;
+            font-size: 16px;
+            transition: background 0.2s;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: #ffffff;
+            border: 1px solid #0056b3;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
     </style>
 </head>
 
@@ -152,7 +171,8 @@
             </div>
 
             <div class="action-buttons">
-                <a href="/registrar" class="btn btn-primary">⬅ Back</a>
+                <a href="/registrar" class="btn btn-primary" onclick="window.onbeforeunload=null;">⬅ Back to
+                    Registrar</a>
             </div>
         </div>
     </div>
@@ -177,7 +197,13 @@
             });
         }
 
-        // Prevent accidental page close
+        // Warning removed from standard nav
+        document.querySelectorAll('a').forEach(link => {
+            link.addEventListener('click', function () {
+                window.onbeforeunload = null;
+            });
+        });
+
         window.onbeforeunload = function () {
             return "Have you saved the credentials? They won't be shown again.";
         };

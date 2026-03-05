@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+{% block title %}Manage Accounts{% endblock %}
+{% block content %}
+<style>
+    .card {
+        background: #fff;
+        border: 1px solid #eee;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, .03);
+        margin-bottom: 24px;
+    }
+
+    .row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .field {
+        width: 100%;
+        padding: 10px 14px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+        box-sizing: border-box;
+        transition: border-color 0.2s;
+    }
+
+    .field:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+    }
+
+    .btn {
+        display: inline-block;
+        padding: 10px 18px;
+        border-radius: 8px;
+        background: #f8f8f8;
+        color: #222;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 14px;
+        cursor: pointer;
+        border: 1px solid #ddd;
+        transition: background 0.2s;
+    }
+
+    .btn:hover {
+        background: #efefef;
+    }
+
+    .btn-primary {
+        background: #007bff;
+        color: #fff;
+        border-color: #007bff;
+    }
+
+    .btn-primary:hover {
+        background: #0056b3;
+    }
+
+    .btn-danger {
+        background: #fee2e2;
+        color: #b91c1c;
+        border-color: #fca5a5;
+    }
+
+    .btn-danger:hover {
+        background: #fecaca;
+    }
+
+    .btn-sm {
+        padding: 5px 12px;
+        font-size: 12px;
+    }
+
+    .muted {
+        color: #666;
+        font-size: 12px;
+    }
+
+    .success {
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        color: #065f46;
+        padding: 16px;
+        border-radius: 8px;
+    }
+
+    .badge {
+        background: #f1f5f9;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 700;
+        border: 1px solid #e2e8f0;
+    }
+
+    .filter-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+
+    .filter-tab {
+        padding: 8px 16px;
+        border-radius: 999px;
+        background: #f4f4f5;
+        color: #52525b;
+        text-decoration: none;
+        font-size: 14px;
+        font-weight: 600;
+        transition: all 0.2s;
+    }
+
+    .filter-tab:hover {
+        background: #e4e4e7;
+    }
+
+    .filter-tab.active {
+        background: #007bff;
+        color: white;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 10px;
+    }
+
+    th {
+        background: #f8f9fa;
+        padding: 12px;
+        text-align: left;
+        font-size: 13px;
+        color: #555;
+        border-bottom: 2px solid #eee;
+    }
+
+    td {
+        padding: 12px;
+        border-bottom: 1px solid #f0f0f0;
+        font-size: 14px;
+        vertical-align: middle;
+    }
+
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .status-active {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-inactive {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+</style>
+
+<div style="max-width: 1000px; margin: 0 auto;">
+    <h1 style="margin: 0 0 6px 0;">👥 Manage Accounts</h1>
+    <p class="muted" style="margin-bottom: 24px; font-size:14px;">
+        Create and manage users for your branch.
+    </p>
+
+    <!-- CREATE USERS CARD -->
+    <div class="card">
+        <h2 style="margin:0 0 6px 0;">Create New User</h2>
+        <div class="muted" style="margin-bottom:12px;">
+            Usernames and default passwords are auto-generated from your branch code.
+        </div>
+
+        <form method="post" action="{{ url_for('branch_admin.branch_admin_manage_accounts') }}">
+            <div class="row">
+                <div style="flex:1; min-width:220px;">
+                    <label style="font-weight:700; font-size:13px;">Role</label>
+                    <select class="field" name="role" required id="roleSelect"
+                        onchange="toggleTeacherFields(this.value)">
+                        <option value="registrar" {% if role_filter=='registrar' %}selected{% endif %}>Registrar
+                        </option>
+                        <option value="cashier" {% if role_filter=='cashier' %}selected{% endif %}>Cashier</option>
+                        <option value="librarian" {% if role_filter=='librarian' %}selected{% endif %}>Librarian
+                        </option>
+                        <option value="teacher" {% if role_filter=='teacher' %}selected{% endif %}>Teacher</option>
+                    </select>
+                </div>
+
+                <div style="display:flex; align-items:flex-end;">
+                    <button class="btn btn-primary" type="submit">Create User</button>
+                </div>
+
+                <!-- Teacher-only fields -->
+                <div id="teacherFields" style="display:{% if role_filter == 'teacher' %}block{% else %}none{% endif %}; margin-top:14px;
+           background:#f0f9ff; border:1px solid #bae6fd; border-radius:12px; padding:14px; width: 100%;">
+                    <div style="font-weight:700; font-size:13px; margin-bottom:10px; color:#0369a1;">
+                        👩‍🏫 Teacher Details
+                    </div>
+                    <div class="row" style="gap:12px; flex-wrap:wrap;">
+                        <!-- Full Name -->
+                        <div style="flex:2; min-width:220px;">
+                            <label style="font-weight:700; font-size:13px;">Full Name *</label>
+                            <input class="field" name="full_name" id="fullNameInput" placeholder="e.g., Joy Cruz"
+                                style="margin-top:4px;" {% if role_filter=='teacher' %}required{% endif %}>
+                            <div class="muted" style="font-size:12px; margin-top:3px;">
+                                Shows on class announcements (e.g., Ms. Joy Cruz).
+                            </div>
+                        </div>
+
+                        <!-- Gender -->
+                        <div style="flex:1; min-width:160px;">
+                            <label style="font-weight:700; font-size:13px;">Gender *</label>
+                            <select class="field" name="gender" id="genderSelect" style="margin-top:4px;" {% if
+                                role_filter=='teacher' %}required{% endif %}>
+                                <option value="">— Select —</option>
+                                <option value="female">Female (Ms.)</option>
+                                <option value="male">Male (Mr.)</option>
+                            </select>
+                        </div>
+
+                        <!-- Grade Level -->
+                        <div style="flex:1; min-width:180px;">
+                            <label style="font-weight:700; font-size:13px;">Assigned Grade Level</label>
+                            <select class="field" name="grade_level" style="margin-top:4px;">
+                                <option value="">— Select Grade —</option>
+                                {% for g in grades %}
+                                <option value="{{ g.name }}">{{ g.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        {% if created_user %}
+        <div style="margin-top:14px;" class="success">
+            <div style="font-weight:800; margin-bottom:6px;">User Created Successfully ✅</div>
+            <div><span class="badge">{{ created_user.role|title }}</span></div>
+            <div style="margin-top:8px;"><b>Username:</b> {{ created_user.username }}</div>
+            <div><b>Temporary Password:</b> {{ created_user.password }}</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ACCOUNTS LIST CARD -->
+    <div class="card">
+        <div class="filter-tabs">
+            <a href="?role=registrar"
+                class="filter-tab {% if role_filter == 'registrar' %}active{% endif %}">Registrar</a>
+            <a href="?role=cashier" class="filter-tab {% if role_filter == 'cashier' %}active{% endif %}">Cashier</a>
+            <a href="?role=librarian"
+                class="filter-tab {% if role_filter == 'librarian' %}active{% endif %}">Librarian</a>
+            <a href="?role=teacher" class="filter-tab {% if role_filter == 'teacher' %}active{% endif %}">Teacher</a>
+        </div>
+
+        {% if not accounts %}
+        <div class="muted" style="text-align: center; padding: 40px 20px;">
+            <div style="font-size: 32px; margin-bottom: 8px;">📭</div>
+            No accounts found for the role <b>{{ role_filter|title }}</b>.
+        </div>
+        {% else %}
+        <div style="overflow-x:auto;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name / Info</th>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th style="text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in accounts %}
+                    <tr>
+                        <td>
+                            <div style="font-weight: 600;">
+                                {% if a.role == 'teacher' and a.gender %}
+                                {% if a.gender == 'female' %}Ms.{% else %}Mr.{% endif %}
+                                {% endif %}
+                                {{ a.full_name or "—" }}
+                            </div>
+                            {% if a.role == 'teacher' and a.grade_level %}
+                            <div class="muted" style="margin-top:3px;">Grade: {{ a.grade_level }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <b>{{ a.username }}</b>
+                        </td>
+                        <td>
+                            <span class="badge" style="text-transform: capitalize;">{{ a.role }}</span>
+                        </td>
+                        <td>
+                            {% if a.status != 'inactive' %}
+                            <span class="status-badge status-active">Active</span>
+                            {% else %}
+                            <span class="status-badge status-inactive">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:right;">
+                            <form method="post"
+                                action="{{ url_for('branch_admin.branch_admin_toggle_account', user_id=a.user_id) }}"
+                                style="display:inline;">
+                                <button type="submit" class="btn btn-sm"
+                                    onclick="return confirm('Toggle status for this account?');">
+                                    {% if a.status != 'inactive' %}Deactivate{% else %}Activate{% endif %}
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<script>
+    function toggleTeacherFields(role) {
+        const show = role === 'teacher';
+        document.getElementById('teacherFields').style.display = show ? 'block' : 'none';
+        document.getElementById('fullNameInput').required = show;
+        document.getElementById('genderSelect').required = show;
+    }
+</script>
+{% endblock %}

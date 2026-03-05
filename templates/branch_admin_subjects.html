@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+{% block title %}Subjects Management{% endblock %}
+{% block content %}
+<style>
+    .subj-container {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+
+    .subj-card {
+        background: #fff;
+        border: 1px solid #eee;
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .06);
+        margin-bottom: 18px;
+    }
+
+    .subj-card h2 {
+        margin: 0 0 14px 0;
+        font-size: 18px;
+    }
+
+    .field {
+        width: 100%;
+        padding: 9px 11px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+
+    .btn {
+        display: inline-block;
+        padding: 8px 14px;
+        border-radius: 8px;
+        border: 1px solid #ddd;
+        background: #f8f8f8;
+        text-decoration: none;
+        color: #222;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 13px;
+    }
+
+    .btn:hover {
+        background: #efefef;
+    }
+
+    .btn-success {
+        background: #198754;
+        color: #fff;
+        border-color: #198754;
+    }
+
+    .btn-success:hover {
+        background: #157347;
+    }
+
+    .btn-danger {
+        background: #dc3545;
+        color: #fff;
+        border-color: #dc3545;
+    }
+
+    .btn-danger:hover {
+        background: #c82333;
+    }
+
+    .muted {
+        color: #666;
+        font-size: 12px;
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 14px;
+    }
+
+    th {
+        background: #f4f6f9;
+        text-align: left;
+        padding: 9px 12px;
+        font-size: 13px;
+        color: #555;
+        border-bottom: 2px solid #e5e7eb;
+    }
+
+    td {
+        padding: 8px 12px;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: middle;
+    }
+
+    tr:last-child td {
+        border-bottom: none;
+    }
+
+    .back-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #007bff;
+        text-decoration: none;
+        font-size: 14px;
+        margin-bottom: 14px;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+</style>
+
+<div class="subj-container">
+    <a class="back-link" href="{{ url_for('branch_admin.dashboard') }}">← Back to Dashboard</a>
+    <h1 style="margin:0 0 18px 0;">📖 Subjects</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+    <div style="padding:10px 14px; border-radius:9px; margin-bottom:12px;
+        background:{{ '#d1e7dd' if cat=='success' else '#f8d7da' }};
+        color:{{ '#0f5132' if cat=='success' else '#842029' }};
+        border:1px solid {{ '#badbcc' if cat=='success' else '#f5c2c7' }};">
+        {{ msg }}
+    </div>
+    {% endfor %}
+    {% endwith %}
+
+    <!-- Add Form -->
+    <div class="subj-card">
+        <h2>➕ Add Subject</h2>
+        <form method="post" action="{{ url_for('branch_admin.branch_admin_subjects') }}">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
+                <div style="flex:2; min-width:200px;">
+                    <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Subject Name
+                        *</label>
+                    <input type="text" name="name" class="field" placeholder="e.g. Mathematics" required>
+                </div>
+                <div style="flex:2; min-width:200px;">
+                    <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Grade Level &
+                        Section *</label>
+                    <select name="section_id" class="field" required>
+                        <option value="">Select Grade Level and Section</option>
+                        {% for sec in section_options %}
+                        <option value="{{ sec.section_id }}">{{ sec.grade_level_name }} – {{ sec.section_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-success">Add Subject</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Existing Subjects -->
+    <div class="subj-card">
+        <h2>Existing Subjects</h2>
+        {% if subjects %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Subject Name</th>
+                    <th>Assigned To</th>
+                    <th style="min-width:80px;">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for subj in subjects %}
+                <tr>
+                    <td><strong>{{ subj.name }}</strong></td>
+                    <td>
+                        {% if subject_to_sections.get(subj.subject_id) %}
+                        {% for item in subject_to_sections[subj.subject_id] %}
+                        <div style="font-size:13px; color:#444;">{{ item }}</div>
+                        {% endfor %}
+                        {% else %}
+                        <span class="muted">Not assigned</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <form method="post"
+                            action="{{ url_for('branch_admin.branch_admin_subject_delete', subject_id=subj.subject_id) }}"
+                            onsubmit="return confirm('Delete subject {{ subj.name }}?');" style="display:inline;">
+                            <button class="btn btn-danger" type="submit">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="muted">No subjects yet. Add one above.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -114,26 +114,67 @@
 
   .item-top {
     display: flex;
-    gap: 12px;
+    gap: 16px;
     align-items: flex-start;
     margin-bottom: 12px;
     flex: 1;
   }
 
-  .thumb {
-    width: 90px;
-    height: 110px;
-    border-radius: 8px;
-    border: 1px solid #eee;
-    object-fit: contain;
-    background: #fafafa;
-    flex-shrink: 0;
-  }
+
 
   .item-info {
     flex: 1;
     display: flex;
     flex-direction: column;
+  }
+
+  /* NEW PRODUCT CARD STYLE FOR UNIFORMS */
+  .uniform-card .item-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+  }
+
+  .uniform-card .image-wrap {
+    width: 100%;
+    height: 180px;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
+  }
+
+  .uniform-card .image-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    /* Contain to show the whole uniform, or cover if preferred */
+    background: #f8fafc;
+  }
+
+  .uniform-placeholder {
+    width: 100%;
+    height: 100%;
+    background: #f1f5f9;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    color: #cbd5e1;
+  }
+
+  .uniform-placeholder i {
+    font-size: 48px;
+  }
+
+  .uniform-placeholder span {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
   }
 
   .title {
@@ -329,22 +370,23 @@
         </div>
         {% else %}
         {% for it in items %}
-        <div class="item-card item-card-js {% if it.available <= 0 %}out-of-stock{% endif %}"
+        <div
+          class="item-card item-card-js {% if it.category == 'UNIFORM' %}uniform-card{% endif %} {% if it.available <= 0 %}out-of-stock{% endif %}"
           data-category="{{ it.category }}" data-item-id="{{ it.item_id }}">
-          <div class="item-top">
-            {% set imgpath = it.image_url %}
-            {% if not imgpath %}
-            {% set imgpath = '/static/img/placeholder.jpg' %}
-            {% elif imgpath.startswith('http') %}
-            {# keep as is #}
-            {% elif imgpath.startswith('/') %}
-            {# keep as is #}
-            {% else %}
-            {% set imgpath = '/' ~ imgpath %}
-            {% endif %}
 
-            <img class="thumb" src="{{ imgpath }}" alt="{{ it.item_name }}"
-              onerror="this.src='/static/img/placeholder.jpg'">
+          <div class="item-top">
+            {% if it.category == 'UNIFORM' %}
+            <div class="image-wrap">
+              {% if it.image_url %}
+              <img src="{{ it.image_url }}" alt="{{ it.item_name }}">
+              {% else %}
+              <div class="uniform-placeholder">
+                <i>👕</i>
+                <span>Uniform Image</span>
+              </div>
+              {% endif %}
+            </div>
+            {% endif %}
 
             <div class="item-info">
               <div class="title">{{ it.item_name }}</div>

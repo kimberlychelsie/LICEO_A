@@ -619,7 +619,7 @@ def cashier_reservation_view(reservation_id):
             cur.execute("""
                 SELECT ii.item_name, ri.qty,
                        COALESCE(NULLIF(TRIM(ri.size_label), ''), ii.publisher, ii.size_label) AS display_label,
-                       ri.unit_price, ri.line_total, ii.category
+                       ri.unit_price, ri.line_total, ii.category, ii.image_url
                 FROM reservation_items ri
                 JOIN inventory_items ii ON ii.item_id = ri.item_id
                 WHERE ri.reservation_id = %s
@@ -631,7 +631,7 @@ def cashier_reservation_view(reservation_id):
             cur.execute("""
                 SELECT ii.item_name, ri.qty,
                        COALESCE(NULLIF(TRIM(ri.size_label), ''), ii.publisher, ii.size_label) AS display_label,
-                       ri.unit_price, ri.line_total, ii.category
+                       ri.unit_price, ri.line_total, ii.category, ii.image_url
                 FROM reservation_items ri
                 JOIN inventory_items ii ON ii.item_id = ri.item_id
                 WHERE ri.reservation_id = %s
