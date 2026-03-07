@@ -6,12 +6,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>
         {% block full_title %}
-            {% block title %}Liceo LMS{% endblock %}
-            {% if session.get('branch_name') %}
-                — {{ session.get('branch_name') }}
-            {% else %}
-                — Liceo de Majayjay
-            {% endif %}
+        {% block title %}Liceo LMS{% endblock %}
+        {% if session.get('branch_name') %}
+        — {{ session.get('branch_name') }}
+        {% else %}
+        — Liceo de Majayjay
+        {% endif %}
         {% endblock %}
     </title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -288,8 +288,9 @@
 
         <div class="pub-nav-links">
             <a class="pub-link {% if request.path == '/' %}active{% endif %}" href="/">Home</a>
-            <a class="pub-link" href="/#faq">FAQ</a>
-            <a class="pub-link" href="/track">🔍 Track</a>
+            <a class="pub-link" href="/#branches" onclick="smoothTo(event,'branches')">Enroll</a>
+            <a class="pub-link" href="/track">Track Status</a>
+            <a class="pub-link" href="/#faq" onclick="smoothTo(event,'faq')">FAQ</a>
         </div>
 
         <div class="pub-nav-right">
@@ -339,6 +340,17 @@
     {% endif %}
 
     {% block scripts %}{% endblock %}
+
+    <script>
+        /* Smooth-scroll to any section id on the homepage */
+        function smoothTo(e, id) {
+            var el = document.getElementById(id);
+            if (el) {
+                e.preventDefault();
+                el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+    </script>
 </body>
 
 </html>

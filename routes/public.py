@@ -64,7 +64,14 @@ def branch_page(branch_id):
     if not branch:
         return "Branch not found", 404
 
-    return render_template("branch_page.html", branch=branch)
+    # Check if re-enrollment is open for this branch
+    reenrollment_open = bool(query_one("""
+        SELECT 1 FROM enrollments
+        WHERE branch_id = %s AND status = 'open_for_enrollment'
+        LIMIT 1
+    """, (branch_id,)))
+
+    return render_template("branch_page.html", branch=branch, reenrollment_open=reenrollment_open)
 
 
 # =========================

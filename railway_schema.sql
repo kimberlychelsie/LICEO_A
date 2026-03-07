@@ -70,6 +70,9 @@ CREATE TABLE IF NOT EXISTS public.enrollments (
     previous_school    character varying(150),
     branch_enrollment_no integer,
     section_id         integer,
+    email              character varying(255),
+    guardian_email     character varying(255),
+    lrn                character varying(12),
     CONSTRAINT enrollments_pkey PRIMARY KEY (enrollment_id),
     CONSTRAINT enrollments_branch_id_fkey FOREIGN KEY (branch_id)
         REFERENCES public.branches (branch_id),

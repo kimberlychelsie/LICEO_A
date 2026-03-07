@@ -32,10 +32,10 @@ def registrar_dashboard():
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
-        # Handle Approve/Reject actions
+        # Handle Approve/Reject actions for NEW enrollments
         if request.method == "POST":
             enrollment_id = request.form.get("enrollment_id")
-            action = request.form.get("action")  # expected: 'approved' or 'rejected'
+            action = request.form.get("action")  # 'approved' or 'rejected'
 
             if not enrollment_id:
                 flash("Missing enrollment ID", "error")
@@ -58,7 +58,6 @@ def registrar_dashboard():
 
             db.commit()
 
-            # Fetch branch_enrollment_no for user-friendly message
             cursor.execute("""
                 SELECT COALESCE(branch_enrollment_no, %s) AS display_no
                 FROM enrollments WHERE enrollment_id=%s
@@ -71,40 +70,26 @@ def registrar_dashboard():
             else:
                 flash(f"Enrollment #{display_no} rejected", "warning")
 
-        # Fetch enrollments for this branch ordered by per-branch number
+        # ── NEW enrollments (pending / approved / rejected — not yet fully enrolled)
         cursor.execute("""
             SELECT *,
                    COALESCE(branch_enrollment_no, enrollment_id) AS display_no
             FROM enrollments
-            WHERE branch_id=%s
+            WHERE branch_id=%s AND status IN ('pending', 'approved', 'rejected')
             ORDER BY branch_enrollment_no ASC NULLS LAST, created_at DESC
         """, (branch_id,))
-        enrollments = cursor.fetchall()
+        new_enrollments = cursor.fetchall()
 
-        # Attach documents + flags
-        for enrollment in enrollments:
+        for enrollment in new_enrollments:
             eid = enrollment["enrollment_id"]
-
-            # Documents (NO ORDER BY - safe)
-            cursor.execute("""
-                SELECT *
-                FROM enrollment_documents
-                WHERE enrollment_id=%s
-            """, (eid,))
+            cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id=%s", (eid,))
             enrollment["documents"] = cursor.fetchall()
 
-            # Student account exists?
-            cursor.execute("""
-                SELECT 1
-                FROM student_accounts
-                WHERE enrollment_id=%s
-            """, (eid,))
+            cursor.execute("SELECT 1 FROM student_accounts WHERE enrollment_id=%s", (eid,))
             enrollment["has_student_account"] = cursor.fetchone() is not None
 
-            # Parent link exists? (student_id refers to enrollment_id in your current schema)
             cursor.execute("""
-                SELECT ps.*, u.username
-                FROM parent_student ps
+                SELECT ps.*, u.username FROM parent_student ps
                 JOIN users u ON ps.parent_id = u.user_id
                 WHERE ps.student_id = %s
             """, (eid,))
@@ -112,7 +97,33 @@ def registrar_dashboard():
             enrollment["has_parent_account"] = parent_link is not None
             enrollment["parent_username"] = parent_link["username"] if parent_link else None
 
-        return render_template("registrar_dashboard.html", enrollments=enrollments)
+        # ── ENROLLED students (enrolled + open_for_enrollment)
+        cursor.execute("""
+            SELECT *,
+                   COALESCE(branch_enrollment_no, enrollment_id) AS display_no
+            FROM enrollments
+            WHERE branch_id=%s AND status IN ('enrolled', 'open_for_enrollment')
+            ORDER BY grade_level ASC, student_name ASC
+        """, (branch_id,))
+        enrolled_students = cursor.fetchall()
+
+        # Grade list for filter dropdown
+        grade_levels = sorted(set(
+            e["grade_level"] for e in enrolled_students if e.get("grade_level")
+        ))
+
+        # Is re-enrollment currently open? (True if ANY enrolled student is open_for_enrollment)
+        reenrollment_open = any(
+            e["status"] == "open_for_enrollment" for e in enrolled_students
+        )
+
+        return render_template(
+            "registrar_dashboard.html",
+            new_enrollments=new_enrollments,
+            enrolled_students=enrolled_students,
+            grade_levels=grade_levels,
+            reenrollment_open=reenrollment_open,
+        )
 
     except Exception as e:
         db.rollback()
@@ -123,6 +134,53 @@ def registrar_dashboard():
     finally:
         cursor.close()
         db.close()
+
+
+@registrar_bp.route("/registrar/toggle-reenrollment", methods=["POST"])
+def toggle_reenrollment():
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("Missing branch in session.", "error")
+        return redirect("/logout")
+
+    action = request.form.get("action")  # 'open' or 'close'
+    if action not in ("open", "close"):
+        flash("Invalid action.", "error")
+        return redirect("/registrar")
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        if action == "open":
+            cursor.execute("""
+                UPDATE enrollments
+                SET status = 'open_for_enrollment'
+                WHERE branch_id = %s AND status = 'enrolled'
+            """, (branch_id,))
+            count = cursor.rowcount
+            db.commit()
+            flash(f"Re-enrollment opened for {count} student(s). They can now re-enroll online.", "success")
+        else:
+            cursor.execute("""
+                UPDATE enrollments
+                SET status = 'enrolled'
+                WHERE branch_id = %s AND status = 'open_for_enrollment'
+            """, (branch_id,))
+            count = cursor.rowcount
+            db.commit()
+            flash(f"Re-enrollment closed for {count} student(s).", "warning")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Toggle re-enrollment error: {str(e)}")
+        flash("Something went wrong. Please try again.", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect("/registrar#enrolled")
 
 
 @registrar_bp.route("/registrar/create-student-account/<int:enrollment_id>", methods=["POST"])

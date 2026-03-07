@@ -1095,7 +1095,6 @@ def branch_admin_subject_delete(subject_id):
 
     return redirect("/branch-admin/subjects")
 
-
 # =======================
 # TEACHER → SECTION + SUBJECT ASSIGNMENT (branch-scoped)
 # =======================
@@ -1214,10 +1213,23 @@ def branch_admin_assign_teachers():
         cursor.execute(base_query, tuple(params))
         assignments = cursor.fetchall() or []
 
+        # ── GET: Load section dropdown options for this branch ──
+        cursor.execute("""
+            SELECT
+                s.section_id,
+                CONCAT(g.name, ' - ', s.section_name) AS section_display,
+                g.id AS grade_level_id
+            FROM sections s
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            WHERE s.branch_id = %s
+            ORDER BY g.display_order, s.section_name
+        """, (branch_id,))
+        section_options = cursor.fetchall() or []
+
     except Exception as e:
         db.rollback()
         flash(f"Error loading data: {str(e)}", "error")
-        teachers, assignments, grade_options = [], [], []
+        teachers, assignments, grade_options, section_options = [], [], [], []
     finally:
         cursor.close()
         db.close()
@@ -1228,7 +1240,202 @@ def branch_admin_assign_teachers():
         assignments=assignments,
         grade_options=grade_options,
         grade_filter=grade_filter,
+        section_options=section_options,
     )
+
+@branch_admin_bp.route("/branch-admin/api/get-all-subjects/<int:teacher_id>", methods=["GET"])
+def api_get_all_subjects(teacher_id):
+    """Get ALL subjects available for a teacher with assignment status"""
+    if session.get("role") != "branch_admin":
+        return {"error": "Unauthorized"}, 403
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        return {"error": "No branch assigned"}, 400
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        # Verify teacher belongs to this branch
+        cursor.execute(
+            "SELECT user_id, full_name FROM users WHERE user_id=%s AND branch_id=%s AND role='teacher'",
+            (teacher_id, branch_id)
+        )
+        teacher = cursor.fetchone()
+        if not teacher:
+            return {"error": "Teacher not found"}, 404
+
+        # Get all subjects in all sections for this branch
+        # IMPORTANT: Check if ANYONE (not just this teacher) is assigned
+        cursor.execute("""
+            SELECT
+                st.subject_id,
+                st.section_id,
+                st.teacher_id,
+                sub.name AS subject_name,
+                s.section_name,
+                g.name AS grade_level_name,
+                g.id AS grade_level_id,
+                u.full_name AS current_teacher_name,
+                u.user_id AS current_teacher_id,
+                (st.teacher_id IS NOT NULL) AS is_currently_assigned,
+                (st.teacher_id = %s) AS is_assigned_to_this_teacher
+            FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            JOIN subjects sub ON st.subject_id = sub.subject_id
+            LEFT JOIN users u ON st.teacher_id = u.user_id
+            WHERE s.branch_id = %s
+            ORDER BY g.display_order, s.section_name, sub.name
+        """, (teacher_id, branch_id))
+        
+        subjects = cursor.fetchall() or []
+
+        print(f"✅ DEBUG: Found {len(subjects)} total subjects for teacher {teacher_id}")
+        for subj in subjects:
+            print(f"   - {subj['subject_name']}: currently_assigned={subj['is_currently_assigned']}, assigned_to_this_teacher={subj['is_assigned_to_this_teacher']}, current_teacher={subj['current_teacher_name']}")
+
+        return {
+            "success": True,
+            "teacher_name": teacher['full_name'],
+            "teacher_id": teacher_id,
+            "subjects": [dict(row) for row in subjects]
+        }
+
+    except Exception as e:
+        print(f"❌ ERROR in api_get_all_subjects: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}, 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@branch_admin_bp.route("/branch-admin/assign-teachers-bulk", methods=["POST"])
+def assign_teachers_bulk():
+    """Bulk assign a teacher to multiple subjects"""
+    if session.get("role") != "branch_admin":
+        return {"error": "Unauthorized"}, 403
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        return {"error": "No branch assigned"}, 400
+
+    data = request.get_json()
+    teacher_id = data.get("teacher_id")
+    subject_ids = data.get("subject_ids", [])
+
+    if not teacher_id or not subject_ids:
+        return {"success": False, "message": "Missing teacher or subjects"}, 400
+
+    db = get_db_connection()
+    cursor = db.cursor()
+
+    try:
+        # Verify teacher belongs to this branch
+        cursor.execute(
+            "SELECT 1 FROM users WHERE user_id=%s AND branch_id=%s AND role='teacher'",
+            (teacher_id, branch_id)
+        )
+        if not cursor.fetchone():
+            return {"success": False, "message": "Teacher not found"}, 404
+
+        count = 0
+        for subject_id in subject_ids:
+            try:
+                # Verify the subject exists in a section of this branch
+                cursor.execute("""
+                    SELECT st.section_id FROM section_teachers st
+                    JOIN sections s ON st.section_id = s.section_id
+                    WHERE st.subject_id = %s AND s.branch_id = %s
+                    LIMIT 1
+                """, (subject_id, branch_id))
+                
+                if cursor.fetchone():
+                    # Update the assignment
+                    cursor.execute("""
+                        UPDATE section_teachers
+                        SET teacher_id = %s
+                        WHERE subject_id = %s
+                        AND section_id IN (
+                            SELECT section_id FROM sections WHERE branch_id = %s
+                        )
+                    """, (teacher_id, subject_id, branch_id))
+                    count += cursor.rowcount
+
+            except Exception as e:
+                print(f"Error assigning subject {subject_id}: {str(e)}")
+                continue
+
+        db.commit()
+        print(f"✅ Bulk assigned {count} subjects to teacher {teacher_id}")
+
+        return {
+            "success": True,
+            "count": count,
+            "message": f"Successfully assigned {count} subjects"
+        }
+
+    except Exception as e:
+        db.rollback()
+        print(f"ERROR in bulk assignment: {str(e)}")
+        return {"success": False, "message": str(e)}, 500
+    finally:
+        cursor.close()
+        db.close()
+    # =======================
+# API: Get subjects for a section (AJAX)
+# =======================
+@branch_admin_bp.route("/branch-admin/api/get-subjects/<int:section_id>", methods=["GET"])
+def api_get_section_subjects(section_id):
+    """Returns JSON list of subjects for a given section"""
+    if session.get("role") != "branch_admin":
+        return {"error": "Unauthorized"}, 403
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        return {"error": "No branch assigned"}, 400
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        # Verify section belongs to this branch
+        cursor.execute(
+            "SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s",
+            (section_id, branch_id)
+        )
+        if not cursor.fetchone():
+            return {"error": "Section not found in this branch"}, 404
+
+        # Get all subjects for this section
+        cursor.execute("""
+            SELECT
+                st.subject_id,
+                sub.name AS subject_name,
+                st.teacher_id,
+                u.full_name AS teacher_full_name,
+                u.username AS teacher_username
+            FROM section_teachers st
+            JOIN subjects sub ON st.subject_id = sub.subject_id
+            LEFT JOIN users u ON st.teacher_id = u.user_id
+            WHERE st.section_id = %s
+            ORDER BY sub.name
+        """, (section_id,))
+        subjects = cursor.fetchall() or []
+
+        return {
+            "success": True,
+            "subjects": [dict(row) for row in subjects]
+        }
+
+    except Exception as e:
+        return {"error": str(e)}, 500
+    finally:
+        cursor.close()
+        db.close()
 
 
 # =======================

@@ -573,7 +573,24 @@
             <div class="flash error">{{ message }}</div>
             {% endif %}
 
-            <form method="post" enctype="multipart/form-data">
+            {% if duplicate_blocked %}
+            <div class="flash error"
+                style="margin:16px 24px 0; display:flex; align-items:flex-start; gap:12px; background:#fef2f2; border:2px solid #fca5a5; border-radius:12px; padding:16px 18px;">
+                <span style="font-size:1.6rem; line-height:1;">🚫</span>
+                <div>
+                    <strong style="display:block; margin-bottom:4px; font-size:0.95rem;">We found an existing student
+                        record with similar information</strong>
+                    <span style="font-size:0.85rem; color:#7f1d1d;">Matched because: {{ duplicate_reason }}.</span>
+                    <br><br>
+                    <span style="font-size:0.85rem;">If you are a <strong>returning student</strong>, please use the <a
+                            href="/branch/{{ branch.branch_id }}" style="color:#1d4ed8; font-weight:700;">Continuing
+                            Student</a> option instead. If you believe this is an error, please visit the school office
+                        directly.</span>
+                </div>
+            </div>
+            {% endif %}
+
+            <form method="post" enctype="multipart/form-data" id="enrollForm" data-branch-id="{{ branch.branch_id }}">
 
                 <!-- ══ ENROLLMENT TYPE ══ -->
                 <div class="section" style="margin-top:20px">
@@ -624,14 +641,15 @@
                             <div class="c7">
                                 <div class="field">
                                     <label>Full Name <span class="req">*</span></label>
-                                    <input type="text" name="student_name" placeholder="Last Name, First Name, M.I."
-                                        required />
+                                    <input type="text" id="field_name" name="student_name"
+                                        placeholder="Last Name, First Name, M.I." required />
                                 </div>
                             </div>
                             <div class="c5">
                                 <div class="field">
                                     <label>Learner Reference Number (LRN)</label>
-                                    <input type="text" name="lrn" placeholder="12-digit LRN" />
+                                    <input type="text" id="field_lrn" name="lrn" placeholder="12-digit LRN"
+                                        maxlength="12" />
                                 </div>
                             </div>
 
@@ -666,7 +684,7 @@
                             <div class="c4">
                                 <div class="field">
                                     <label>Birthday <span class="req">*</span></label>
-                                    <input type="date" name="dob" required />
+                                    <input type="date" id="field_dob" name="dob" required />
                                 </div>
                             </div>
                             <div class="c4">
@@ -900,17 +918,104 @@
 
                 <!-- ══ SUBMIT FOOTER ══ -->
                 <div class="form-footer">
+                    <!-- Duplicate warning banner (shown by AJAX) -->
+                    <div id="dupWarning"
+                        style="display:none; width:100%; background:#fef2f2; border:2px solid #fca5a5; border-radius:12px; padding:14px 18px; margin-bottom:12px; display:none;">
+                        <div style="display:flex; align-items:flex-start; gap:12px;">
+                            <span style="font-size:1.5rem;">🚫</span>
+                            <div>
+                                <strong style="display:block; margin-bottom:3px;">Existing student record
+                                    detected</strong>
+                                <span id="dupDetail" style="font-size:0.82rem; color:#7f1d1d;"></span><br><br>
+                                <span style="font-size:0.82rem;">If you are a <strong>returning student</strong>, please
+                                    use the <a href="/branch/{{ branch.branch_id }}"
+                                        style="color:#1d4ed8; font-weight:700;">Continuing Student</a> option
+                                    instead.</span>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="footer-note">
                         By clicking <strong>Submit Enrollment</strong>, you confirm that all information provided
                         is true and correct, and that you have read and agreed to the Data Privacy statement above.
                         You can track your enrollment status after submission.
                     </div>
-                    <button class="btn-submit" type="submit">Submit Enrollment</button>
+                    <button class="btn-submit" id="submitBtn" type="submit">Submit Enrollment</button>
                 </div>
 
             </form>
         </div>
     </div>
+
+    <script>
+        (function () {
+            var branchId = parseInt(document.getElementById('enrollForm').getAttribute('data-branch-id'), 10);
+            var nameEl = document.getElementById('field_name');
+            var dobEl = document.getElementById('field_dob');
+            var lrnEl = document.getElementById('field_lrn');
+            var submitBtn = document.getElementById('submitBtn');
+            var dupWarn = document.getElementById('dupWarning');
+            var dupDetail = document.getElementById('dupDetail');
+
+            var blocked = false;
+
+            function setBlocked(val, detail) {
+                blocked = val;
+                if (val) {
+                    dupWarn.style.display = 'block';
+                    dupDetail.textContent = detail || '';
+                    submitBtn.disabled = true;
+                    submitBtn.style.opacity = '0.45';
+                    submitBtn.style.cursor = 'not-allowed';
+                    submitBtn.title = 'Cannot submit — existing record found';
+                } else {
+                    dupWarn.style.display = 'none';
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '';
+                    submitBtn.style.cursor = '';
+                    submitBtn.title = '';
+                }
+            }
+
+            function runCheck() {
+                var name = nameEl ? nameEl.value.trim() : '';
+                var dob = dobEl ? dobEl.value.trim() : '';
+                var lrn = lrnEl ? lrnEl.value.trim() : '';
+
+                // Need at least name or LRN to bother checking
+                if (!name && !lrn) { setBlocked(false); return; }
+
+                fetch('/api/check-duplicate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: name, dob: dob, lrn: lrn, branch_id: branchId })
+                })
+                    .then(function (r) { return r.json(); })
+                    .then(function (res) {
+                        if (res.status === 'blocked') {
+                            var reasons = (res.reasons || []).join(', ');
+                            var detail = 'Matched because: ' + reasons + '.';
+                            if (res.match_grade) detail += ' Existing grade: ' + res.match_grade + '.';
+                            setBlocked(true, detail);
+                        } else {
+                            setBlocked(false);
+                        }
+                    })
+                    .catch(function () { /* network error — fail open */ });
+            }
+
+            // Trigger on blur of key fields
+            if (lrnEl) lrnEl.addEventListener('blur', runCheck);
+            if (dobEl) dobEl.addEventListener('change', runCheck);
+            if (nameEl) nameEl.addEventListener('blur', runCheck);
+
+            // Final guard on submit (in case JS was slow)
+            document.getElementById('enrollForm').addEventListener('submit', function (e) {
+                if (blocked) { e.preventDefault(); return false; }
+            });
+        })();
+    </script>
+
 </body>
 
 </html>

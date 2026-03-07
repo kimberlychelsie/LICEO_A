@@ -1,10 +1,14 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, flash
+from flask import Blueprint, render_template, request, redirect, url_for, session, flash, jsonify
 from werkzeug.utils import secure_filename
 import os
 import uuid
 import psycopg2.extras
 from db import get_db_connection, is_branch_active
 from cloudinary_helper import upload_enrollment_document
+from rapidfuzz import fuzz
+import logging
+
+logger = logging.getLogger(__name__)
 
 student_bp = Blueprint("student", __name__)
 
@@ -93,6 +97,98 @@ def render_template_safe(template_name, **context):
     else:
         return render_template("template_missing.html", missing=template_name, **context)
 
+# =======================
+# DUPLICATE CHECK HELPER
+# =======================
+def compute_duplicate_score(new_name, new_dob, new_lrn, existing):
+    """
+    Returns (score, reasons) for a single existing enrollment row.
+    Score thresholds: >= 50 → block, 30-49 → (not used currently, reserved)
+    """
+    score = 0
+    reasons = []
+
+    # LRN exact match — strongest signal
+    if new_lrn and existing.get("lrn") and new_lrn.strip() == existing["lrn"].strip():
+        score += 60
+        reasons.append("LRN matches")
+
+    # Birthday exact match
+    dob_match = False
+    if new_dob and existing.get("dob"):
+        existing_dob = str(existing["dob"]).split(" ")[0]  # strip time if any
+        if new_dob.strip() == existing_dob.strip():
+            dob_match = True
+            score += 20
+            reasons.append("birthday matches")
+
+    # Fuzzy name match
+    if new_name and existing.get("student_name"):
+        similarity = fuzz.token_sort_ratio(new_name.lower(), existing["student_name"].lower())
+        if similarity >= 90:
+            score += 25
+            reasons.append(f"name is {similarity}% similar")
+        elif similarity >= 75:
+            score += 15
+            reasons.append(f"name is {similarity}% similar")
+
+    return score, reasons
+
+
+# =======================
+# DUPLICATE CHECK API
+# =======================
+@student_bp.route("/api/check-duplicate", methods=["POST"])
+def check_duplicate():
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    dob  = (data.get("dob") or "").strip()
+    lrn  = (data.get("lrn") or "").strip()
+    branch_id = data.get("branch_id")
+
+    if not name and not lrn:
+        return jsonify({"status": "ok"})
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Fetch existing enrollments from the DB (exclude rejected ones)
+        cursor.execute("""
+            SELECT student_name, dob, lrn, enrollment_id, grade_level
+            FROM enrollments
+            WHERE status NOT IN ('rejected')
+        """)
+        existing_records = cursor.fetchall()
+
+        best_score = 0
+        best_reasons = []
+        best_match = None
+
+        for rec in existing_records:
+            score, reasons = compute_duplicate_score(name, dob, lrn, rec)
+            if score > best_score:
+                best_score = score
+                best_reasons = reasons
+                best_match = rec
+
+        if best_score >= 50:
+            return jsonify({
+                "status": "blocked",
+                "score": best_score,
+                "reasons": best_reasons,
+                "match_name": best_match["student_name"] if best_match else None,
+                "match_grade": best_match["grade_level"] if best_match else None,
+            })
+
+        return jsonify({"status": "ok", "score": best_score})
+
+    except Exception as e:
+        logger.error(f"Duplicate check error: {e}")
+        return jsonify({"status": "ok"})  # fail open — don't block on error
+    finally:
+        cursor.close()
+        db.close()
+
 
 # ---------------- Step 1: Student Enrollment ----------------
 @student_bp.route("/branch/<int:branch_id>/enroll", methods=["GET", "POST"])
@@ -116,13 +212,38 @@ def enroll(branch_id):
             student_name = request.form.get("student_name", "").strip()
             grade_level = request.form.get("grade_level", "").strip()
             gender = request.form.get("gender", "").strip()
-            dob = request.form.get("dob", "").strip() or None   # None if blank
+            dob = request.form.get("dob", "").strip() or None
+            lrn = request.form.get("lrn", "").strip() or None
             address = request.form.get("address", "").strip()
             contact_number = request.form.get("contact_number", "").strip()
             guardian_name = request.form.get("guardian_name", "").strip()
             guardian_contact = request.form.get("guardian_contact", "").strip()
             previous_school = request.form.get("previous_school", "").strip() or None
 
+            # ── SERVER-SIDE DUPLICATE CHECK (final gate) ──
+            cursor.execute("""
+                SELECT student_name, dob, lrn, grade_level
+                FROM enrollments
+                WHERE status NOT IN ('rejected')
+            """)
+            existing_records = cursor.fetchall()
+            best_score = 0
+            best_reasons = []
+            for rec in existing_records:
+                score, reasons = compute_duplicate_score(student_name, dob or "", lrn or "", rec)
+                if score > best_score:
+                    best_score = score
+                    best_reasons = reasons
+
+            if best_score >= 50:
+                reason_text = ", ".join(best_reasons)
+                return render_template(
+                    "student_enroll.html",
+                    branch=branch,
+                    message=None,
+                    duplicate_blocked=True,
+                    duplicate_reason=reason_text,
+                )
 
             # Calculate per-branch enrollment number
             cursor.execute("""
@@ -136,13 +257,13 @@ def enroll(branch_id):
                 INSERT INTO enrollments
                   (student_name, grade_level, gender, dob, address, contact_number,
                    guardian_name, guardian_contact, previous_school, branch_id, status,
-                   branch_enrollment_no)
+                   branch_enrollment_no, lrn)
                 VALUES
-                  (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s)
+                  (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s)
                 RETURNING enrollment_id
             """, (
                 student_name, grade_level, gender, dob, address, contact_number,
-                guardian_name, guardian_contact, previous_school, branch_id, next_no
+                guardian_name, guardian_contact, previous_school, branch_id, next_no, lrn
             ))
 
             enrollment_id = cursor.fetchone()["enrollment_id"]
@@ -169,7 +290,7 @@ def enroll(branch_id):
             # Submit agad: redirect to success page so process can be tracked (no books/uniform steps)
             return redirect(url_for("student.enrollment_success", branch_id=branch_id, enrollment_id=enrollment_id))
 
-        return render_template("student_enroll.html", branch=branch, message=None)
+        return render_template("student_enroll.html", branch=branch, message=None, duplicate_blocked=False, duplicate_reason=None)
 
     finally:
         cursor.close()
@@ -196,6 +317,234 @@ def enrollment_success(branch_id, enrollment_id):
             enrollment_id=display_no,
             student_name=student_name,
         )
+    finally:
+        cursor.close()
+        db.close()
+
+def compute_next_grade(current_grade):
+    cg = str(current_grade).strip()
+    if cg == "Nursery": return "Kinder"
+    if cg == "Kinder": return "Grade 1"
+    
+    if cg.startswith("Grade "):
+        parts = cg.split(" ")
+        try:
+            num = int(parts[1])
+            if num < 10:
+                return f"Grade {num + 1}"
+            elif num == 10:
+                return "Grade 11" 
+            elif num == 11:
+                if "–" in cg:
+                    return f"Grade 12 – {cg.split('–')[1].strip()}"
+                elif "-" in cg:
+                    return f"Grade 12 – {cg.split('-')[1].strip()}"
+                return "Grade 12"
+            elif num == 12:
+                return "Graduated"
+        except:
+            return None
+    return None
+
+@student_bp.route("/branch/<int:branch_id>/continuing/login")
+def continuing_login(branch_id):
+    if session.get("role") == "student":
+        if session.get("branch_id") != branch_id:
+            flash("You are logged into a different branch. Please login again.", "error")
+            session.clear()
+        else:
+            return redirect(url_for("student.continuing_enrollment", branch_id=branch_id))
+    session["next_url"] = url_for("student.continuing_enrollment", branch_id=branch_id)
+    flash("Please login with your student account to continue your enrollment.", "info")
+    return redirect(url_for("auth.login"))
+
+@student_bp.route("/branch/<int:branch_id>/continuing/enroll", methods=["GET", "POST"])
+def continuing_enrollment(branch_id):
+    if session.get("role") != "student" or session.get("branch_id") != branch_id:
+        session["next_url"] = url_for("student.continuing_enrollment", branch_id=branch_id)
+        return redirect(url_for("auth.login"))
+        
+    enrollment_id = session.get("enrollment_id")
+    if not enrollment_id:
+        flash("Enrollment record not found.", "error")
+        return redirect(url_for("public.homepage"))
+        
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("SELECT * FROM enrollments WHERE enrollment_id=%s AND branch_id=%s", (enrollment_id, branch_id))
+        enrollment = cursor.fetchone()
+        
+        if not enrollment:
+            flash("Enrollment record not found for this branch.", "error")
+            return redirect(url_for("public.homepage"))
+
+        if enrollment.get("status") != "open_for_enrollment":
+            flash("Continuing enrollment is currently not open for your account. Please wait for the registrar to open it.", "error")
+            return redirect("/student/dashboard")
+            
+        current_grade = enrollment.get("grade_level", "")
+        next_grade = compute_next_grade(current_grade)
+        
+        if not next_grade or next_grade == "Graduated":
+            flash("Congratulations! You have completed your studies here.", "info")
+            return redirect("/student/dashboard")
+
+        needs_strand = (next_grade == "Grade 11")
+
+        if request.method == "POST":
+            chosen_grade = request.form.get("grade_level") or next_grade
+            section_id_raw = request.form.get("section_id")
+            section_id = int(section_id_raw) if section_id_raw and section_id_raw.isdigit() else None
+
+            cursor.execute("""
+                UPDATE enrollments 
+                SET grade_level = %s, section_id = %s, status = 'enrolled'
+                WHERE enrollment_id = %s
+            """, (chosen_grade, section_id, enrollment_id))
+            db.commit()
+
+            session["student_grade_level"] = chosen_grade
+            # Redirect to confirmation/subjects preview page
+            return redirect(url_for("student.continuing_enrolled_confirmation",
+                                    branch_id=branch_id, section_id=section_id or 0,
+                                    grade=chosen_grade))
+
+        cursor.execute("""
+            SELECT s.section_id, s.section_name, g.name as grade_name
+            FROM sections s
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            WHERE s.branch_id = %s 
+            ORDER BY s.section_name
+        """, (branch_id,))
+        # fetch all sections, filter in JS based on chosen grade
+        raw_sections = cursor.fetchall() or []
+        sections = [dict(s) for s in raw_sections]
+
+        return render_template(
+            "student_continuing_enroll.html", 
+            branch_id=branch_id, 
+            current_grade=current_grade, 
+            next_grade=next_grade,
+            needs_strand=needs_strand,
+            sections=sections,
+            student_name=enrollment.get("student_name")
+        )
+    finally:
+        cursor.close()
+        db.close()
+
+
+# ---------------- Continuing Enrollment: Confirmation + Subjects Preview ----------------
+@student_bp.route("/branch/<int:branch_id>/continuing/confirmed", methods=["GET"])
+def continuing_enrolled_confirmation(branch_id):
+    """Show the student their new grade, section, and assigned subjects after continuing enrollment."""
+    if session.get("role") != "student" or session.get("branch_id") != branch_id:
+        return redirect(url_for("auth.login"))
+
+    section_id = request.args.get("section_id", type=int)
+    grade = request.args.get("grade", "")
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Fetch section name
+        section_name = None
+        grade_level_name = None
+        if section_id:
+            cursor.execute("""
+                SELECT s.section_name, g.name AS grade_level_name
+                FROM sections s
+                JOIN grade_levels g ON s.grade_level_id = g.id
+                WHERE s.section_id = %s AND s.branch_id = %s
+                LIMIT 1
+            """, (section_id, branch_id))
+            row = cursor.fetchone()
+            if row:
+                section_name = row["section_name"]
+                grade_level_name = row["grade_level_name"]
+
+        # Fetch subjects assigned to this section
+        subjects = []
+        if section_id:
+            cursor.execute("""
+                SELECT
+                    sub.name        AS subject_name,
+                    u.full_name     AS teacher_full_name,
+                    u.username      AS teacher_username,
+                    u.gender        AS teacher_gender
+                FROM section_teachers st
+                JOIN subjects sub   ON st.subject_id  = sub.subject_id
+                LEFT JOIN users u   ON st.teacher_id  = u.user_id
+                WHERE st.section_id = %s
+                ORDER BY sub.name
+            """, (section_id,))
+            subjects = cursor.fetchall() or []
+
+        enrollment_id = session.get("enrollment_id")
+        student_name = ""
+        if enrollment_id:
+            cursor.execute("SELECT student_name FROM enrollments WHERE enrollment_id=%s", (enrollment_id,))
+            row = cursor.fetchone()
+            if row:
+                student_name = row["student_name"]
+
+        return render_template(
+            "student_continuing_enrolled.html",
+            branch_id=branch_id,
+            grade=grade,
+            section_id=section_id,
+            section_name=section_name,
+            grade_level_name=grade_level_name,
+            subjects=subjects,
+            student_name=student_name,
+        )
+    finally:
+        cursor.close()
+        db.close()
+
+
+# ---------------- API: Section Subjects (student-accessible, for live preview) ----------------
+@student_bp.route("/api/student/section/<int:section_id>/subjects", methods=["GET"])
+def api_section_subjects_student(section_id):
+    """Return subjects for a given section as JSON. Requires student session."""
+    if session.get("role") != "student":
+        return {"error": "Unauthorized"}, 403
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        return {"error": "No branch in session"}, 400
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Ensure the section belongs to this branch
+        cursor.execute(
+            "SELECT section_name FROM sections WHERE section_id=%s AND branch_id=%s",
+            (section_id, branch_id)
+        )
+        sec = cursor.fetchone()
+        if not sec:
+            return {"error": "Section not found"}, 404
+
+        cursor.execute("""
+            SELECT
+                sub.name        AS subject_name,
+                u.full_name     AS teacher_full_name,
+                u.username      AS teacher_username,
+                u.gender        AS teacher_gender
+            FROM section_teachers st
+            JOIN subjects sub   ON st.subject_id  = sub.subject_id
+            LEFT JOIN users u   ON st.teacher_id  = u.user_id
+            WHERE st.section_id = %s
+            ORDER BY sub.name
+        """, (section_id,))
+        rows = cursor.fetchall() or []
+
+        return {
+            "section_name": sec["section_name"],
+            "subjects": [dict(r) for r in rows]
+        }
     finally:
         cursor.close()
         db.close()
@@ -312,8 +661,6 @@ def enroll_summary(branch_id, enrollment_id):
 def track_enrollment():
     enrollment = None
     documents = []
-    books = []
-    uniforms = []
 
     if request.method == "POST":
         enrollment_id = request.form.get("enrollment_id", "").strip()
@@ -336,13 +683,6 @@ def track_enrollment():
                 if enrollment:
                     cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id=%s", (enrollment_id_int,))
                     documents = cursor.fetchall()
-
-                    cursor.execute("SELECT * FROM enrollment_books WHERE enrollment_id=%s", (enrollment_id_int,))
-                    books = cursor.fetchall()
-
-                    cursor.execute("SELECT * FROM enrollment_uniforms WHERE enrollment_id=%s", (enrollment_id_int,))
-                    uniforms = cursor.fetchall()
-
             finally:
                 cursor.close()
                 db.close()
@@ -350,9 +690,7 @@ def track_enrollment():
     return render_template(
         "track_enrollment.html",
         enrollment=enrollment,
-        documents=documents,
-        books=books,
-        uniforms=uniforms
+        documents=documents
     )
 
 

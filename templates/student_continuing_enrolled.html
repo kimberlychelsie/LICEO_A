@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Enrollment Confirmed – Liceo LMS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f4c75 0%, #1b6ca8 50%, #2563eb 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px 60px;
+            color: #1e293b;
+        }
+
+        .page-card {
+            background: white;
+            border-radius: 22px;
+            width: 100%;
+            max-width: 620px;
+            box-shadow: 0 28px 56px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+
+        /* ---- Hero ---- */
+        .hero {
+            background: linear-gradient(135deg, #1d4ed8, #2563eb, #3b82f6);
+            padding: 40px 36px 36px;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 32px;
+            background: white;
+            border-radius: 50% 50% 0 0 / 32px 32px 0 0;
+        }
+
+        .hero-icon {
+            font-size: 3.5rem;
+            display: block;
+            margin-bottom: 12px;
+            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.2));
+            animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0.4);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .hero h1 {
+            color: white;
+            font-size: 1.7rem;
+            font-weight: 800;
+            margin: 0 0 6px;
+        }
+
+        .hero p {
+            color: rgba(255, 255, 255, 0.82);
+            font-size: 0.95rem;
+            margin: 0;
+        }
+
+        /* ---- Body ---- */
+        .card-body {
+            padding: 32px 36px 40px;
+        }
+
+        /* ---- Info pills ---- */
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 30px;
+        }
+
+        .info-pill {
+            background: linear-gradient(135deg, #f0f7ff, #e8f0fe);
+            border: 1.5px solid #bfdbfe;
+            border-radius: 14px;
+            padding: 16px 18px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .info-pill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(180deg, #1d4ed8, #60a5fa);
+            border-radius: 4px 0 0 4px;
+        }
+
+        .info-pill .pill-label {
+            font-size: 0.72rem;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+            margin-bottom: 5px;
+        }
+
+        .info-pill .pill-value {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #1e40af;
+            line-height: 1.25;
+        }
+
+        .info-pill .pill-icon {
+            font-size: 1.4rem;
+            float: right;
+            margin-top: -2px;
+        }
+
+        /* ---- Subjects Section ---- */
+        .section-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1e40af;
+            margin: 0 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title .count-badge {
+            background: #2563eb;
+            color: white;
+            border-radius: 20px;
+            padding: 3px 12px;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        .subject-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .subject-item {
+            background: #fafbff;
+            border: 1.5px solid #e0eaff;
+            border-radius: 12px;
+            padding: 13px 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: box-shadow 0.2s, border-color 0.2s;
+            animation: fadeUp 0.4s ease both;
+        }
+
+        .subject-item:hover {
+            border-color: #93c5fd;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+        }
+
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .subject-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #2563eb, #60a5fa);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
+        }
+
+        .subject-info {
+            flex: 1;
+        }
+
+        .subject-name {
+            font-weight: 700;
+            font-size: 0.95rem;
+            color: #0f172a;
+        }
+
+        .teacher-name {
+            font-size: 0.82rem;
+            color: #64748b;
+            margin-top: 3px;
+        }
+
+        .no-subjects {
+            text-align: center;
+            padding: 28px 20px;
+            border: 2px dashed #bfdbfe;
+            border-radius: 14px;
+            color: #94a3b8;
+        }
+
+        .no-subjects .no-sub-icon {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+        }
+
+        .no-subjects p {
+            margin: 0;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+
+        /* ---- Actions ---- */
+        .actions {
+            margin-top: 28px;
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn-primary {
+            flex: 1;
+            background: linear-gradient(135deg, #1d4ed8, #2563eb);
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(29, 78, 216, 0.35);
+        }
+
+        .btn-secondary {
+            background: #f1f5f9;
+            color: #475569;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+            transition: background 0.15s;
+        }
+
+        .btn-secondary:hover {
+            background: #e2e8f0;
+        }
+
+        /* ---- Notice banner ---- */
+        .notice-banner {
+            background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+            border: 1.5px solid #86efac;
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin-bottom: 24px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .notice-banner .notice-icon {
+            font-size: 1.4rem;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .notice-banner p {
+            margin: 0;
+            font-size: 0.88rem;
+            color: #166534;
+            line-height: 1.5;
+        }
+
+        .notice-banner strong {
+            font-weight: 700;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page-card">
+
+        <!-- Hero -->
+        <div class="hero">
+            <span class="hero-icon">🎉</span>
+            <h1>You're All Set!</h1>
+            <p>Enrollment confirmed for the upcoming school year</p>
+        </div>
+
+        <!-- Body -->
+        <div class="card-body">
+
+            <!-- Success Notice -->
+            <div class="notice-banner">
+                <span class="notice-icon">✅</span>
+                <p>
+                    <strong>{{ student_name }}</strong> — your enrollment has been successfully processed.
+                    Your grade level and section have been updated in the system.
+                </p>
+            </div>
+
+            <!-- Grade + Section Info -->
+            <div class="info-grid">
+                <div class="info-pill">
+                    <span class="pill-icon">🎓</span>
+                    <div class="pill-label">Grade Level</div>
+                    <div class="pill-value">
+                        {% if grade_level_name %}{{ grade_level_name }}{% else %}{{ grade }}{% endif %}
+                    </div>
+                </div>
+                <div class="info-pill">
+                    <span class="pill-icon">🏫</span>
+                    <div class="pill-label">Section</div>
+                    <div class="pill-value">
+                        {% if section_name %}{{ section_name }}{% else %}Not assigned{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Subjects -->
+            <p class="section-title">
+                📖 Your Subjects This Year
+                <span class="count-badge">{{ subjects | length }}</span>
+            </p>
+
+            {% if subjects %}
+            <ul class="subject-list">
+                {% set icons = ["📘","📗","📙","📕","📓","📔","📒","📃","📄","📑"] %}
+                {% for row in subjects %}
+                <li class="subject-item" style="animation-delay: {{ loop.index0 * 0.06 }}s;">
+                    <div class="subject-icon">{{ icons[(loop.index0) % (icons|length)] }}</div>
+                    <div class="subject-info">
+                        <div class="subject-name">{{ row.subject_name }}</div>
+                        <div class="teacher-name">
+                            {% if row.teacher_full_name %}
+                            👨‍🏫
+                            {% if row.teacher_gender == 'female' %}Ms. {% elif row.teacher_gender == 'male' %}Mr. {%
+                            endif %}
+                            {{ row.teacher_full_name }}
+                            {% else %}
+                            <span style="color:#cbd5e1;">Teacher TBA</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+
+            {% else %}
+            <div class="no-subjects">
+                <div class="no-sub-icon">📭</div>
+                <p>No subjects have been assigned to this section yet.<br>
+                    They will appear in your dashboard once the admin configures the schedule.</p>
+            </div>
+            {% endif %}
+
+            <!-- Action Buttons -->
+            <div class="actions">
+                <a href="/student/dashboard" class="btn-primary">🏠 Go to My Dashboard</a>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+
+</html>

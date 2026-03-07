@@ -37,6 +37,7 @@ def login():
                     password_valid = (stored == password)
 
                 if password_valid:
+                    next_url = session.get("next_url")
                     session.clear()
 
                     session["user_id"]   = user["user_id"]
@@ -117,6 +118,8 @@ def login():
                     elif role == "parent":
                         return redirect("/parent/dashboard")
                     elif role == "student":
+                        if next_url:
+                            return redirect(next_url)
                         return redirect("/student/dashboard")
                     else:
                         return redirect("/")
@@ -181,6 +184,7 @@ def login():
 
                     db.commit()
 
+                    next_url = session.get("next_url")
                     # ✅ set sessions properly + enrollment-based references
                     session.clear()
                     session["user_id"] = student_user_id
@@ -206,6 +210,9 @@ def login():
 
                     if check_password_change_required(student, is_student=True):
                         return redirect(url_for("auth.change_password"))
+
+                    if next_url:
+                        return redirect(next_url)
 
                     return redirect("/student/dashboard")
 

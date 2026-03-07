@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Continuing Enrollment - Liceo LMS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 60%, #3b82f6 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 40px 20px;
+            color: #1e293b;
+        }
+
+        .ce-card {
+            background: white;
+            border-radius: 20px;
+            padding: 44px 40px;
+            width: 100%;
+            max-width: 580px;
+            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.28);
+        }
+
+        .ce-header {
+            text-align: center;
+            color: #1d4ed8;
+            font-weight: 800;
+            font-size: 1.55rem;
+            margin-bottom: 8px;
+        }
+
+        .ce-icon {
+            font-size: 2.8rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .ce-subtitle {
+            text-align: center;
+            color: #64748b;
+            font-size: 0.9rem;
+            margin-bottom: 28px;
+        }
+
+        .ce-welcome {
+            background: linear-gradient(135deg, #eff6ff, #dbeafe);
+            border-radius: 12px;
+            padding: 18px 20px;
+            margin-bottom: 28px;
+            border-left: 4px solid #2563eb;
+        }
+
+        .ce-welcome strong {
+            color: #1e40af;
+            font-size: 1.05rem;
+        }
+
+        .ce-welcome p {
+            margin: 6px 0 0 0;
+            font-size: 0.9rem;
+            color: #475569;
+            line-height: 1.55;
+        }
+
+        .ce-form-group {
+            margin-bottom: 22px;
+        }
+
+        .ce-label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: #334155;
+        }
+
+        .ce-label.primary {
+            color: #2563eb;
+        }
+
+        .ce-input,
+        .ce-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 1rem;
+            transition: all 0.2s;
+            background: #fff;
+            color: #0f172a;
+        }
+
+        .ce-input:disabled {
+            background: #f1f5f9;
+            color: #64748b;
+            border-color: #cbd5e1;
+            font-weight: 500;
+        }
+
+        .ce-input[readonly] {
+            font-weight: 700;
+            border-color: #2563eb;
+            background: #eff6ff;
+            color: #1e40af;
+        }
+
+        .ce-select {
+            border-color: #2563eb;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        .ce-input:focus,
+        .ce-select:focus {
+            outline: none;
+            border-color: #1d4ed8;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+        }
+
+        .ce-hint {
+            color: #94a3b8;
+            font-size: 0.82rem;
+            margin-top: 7px;
+            display: block;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid #e2e8f0;
+            margin: 24px 0;
+        }
+
+        /* Grade pills */
+        .grade-pills {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            align-items: center;
+        }
+
+        .grade-pill {
+            flex: 1;
+            background: #f8faff;
+            border: 1.5px solid #dbeafe;
+            border-radius: 12px;
+            padding: 12px 14px;
+            text-align: center;
+        }
+
+        .grade-pill .pill-label {
+            font-size: 0.75rem;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-bottom: 4px;
+        }
+
+        .grade-pill .pill-value {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #1e40af;
+        }
+
+        .grade-pill.next .pill-value {
+            color: #16a34a;
+        }
+
+        .arrow-mid {
+            font-size: 1.4rem;
+            color: #94a3b8;
+            flex-shrink: 0;
+        }
+
+        /* Subject preview */
+        #subjectPreview {
+            display: none;
+            background: #f8faff;
+            border: 2px solid #bfdbfe;
+            border-radius: 14px;
+            padding: 20px 22px;
+            margin-top: 18px;
+            animation: fadeSlideIn 0.3s ease;
+        }
+
+        @keyframes fadeSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .preview-title {
+            font-weight: 700;
+            color: #1d4ed8;
+            font-size: 0.95rem;
+            margin: 0 0 14px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .preview-title .badge {
+            background: #2563eb;
+            color: white;
+            border-radius: 20px;
+            padding: 2px 10px;
+            font-size: 0.75rem;
+            font-weight: 700;
+        }
+
+        .subject-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .subject-item {
+            background: white;
+            border: 1px solid #dbeafe;
+            border-radius: 10px;
+            padding: 11px 14px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: box-shadow 0.18s;
+        }
+
+        .subject-item:hover {
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.12);
+        }
+
+        .subject-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #2563eb, #60a5fa);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            flex-shrink: 0;
+        }
+
+        .subject-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .subject-name {
+            font-weight: 600;
+            font-size: 0.92rem;
+            color: #0f172a;
+        }
+
+        .teacher-name {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin-top: 2px;
+        }
+
+        .no-subjects-msg {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            padding: 12px 0 4px;
+        }
+
+        .preview-loading {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.9rem;
+            padding: 8px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid #dbeafe;
+            border-top-color: #2563eb;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            display: inline-block;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Button */
+        .ce-btn {
+            background: linear-gradient(135deg, #1d4ed8, #2563eb);
+            color: #fff;
+            border: none;
+            padding: 15px 24px;
+            font-size: 1.05rem;
+            font-weight: 700;
+            border-radius: 12px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+            transition: transform 0.15s, box-shadow 0.15s;
+            letter-spacing: 0.02em;
+        }
+
+        .ce-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(29, 78, 216, 0.38);
+        }
+
+        .ce-btn:active {
+            transform: translateY(0);
+        }
+
+        .ce-btn:disabled {
+            opacity: 0.55;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Flash */
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+
+        .flash {
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .flash.error {
+            border-left: 4px solid #dc2626;
+            background: #fef2f2;
+            color: #991b1b;
+        }
+
+        .flash.success {
+            border-left: 4px solid #16a34a;
+            background: #f0fdf4;
+            color: #166534;
+        }
+
+        .flash.info {
+            border-left: 4px solid #2563eb;
+            background: #eff6ff;
+            color: #1e40af;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="ce-card">
+        <div class="ce-header">
+            <span class="ce-icon">&#127891;</span>
+            Continuing Enrollment
+        </div>
+        <p class="ce-subtitle">School Year Re-Enrollment Portal</p>
+
+        <div class="flash-messages">
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+            {% for category, msg in messages %}
+            <div class="flash {{ category }}">{{ msg }}</div>
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
+        </div>
+
+        <div class="ce-welcome">
+            <strong>&#128075; Welcome back, {{ student_name }}!</strong>
+            <p>Choose your section for the upcoming school year. Your grade level will be automatically updated and
+                you'll be able to see your subjects right away.</p>
+        </div>
+
+        <!-- Grade Progress Pills -->
+        <div class="grade-pills">
+            <div class="grade-pill">
+                <div class="pill-label">Current Grade</div>
+                <div class="pill-value">{{ current_grade }}</div>
+            </div>
+            <div class="arrow-mid">&#8594;</div>
+            <div class="grade-pill next">
+                <div class="pill-label">Next Grade</div>
+                <div class="pill-value">{% if needs_strand %}Grade 11 (SHS){% else %}{{ next_grade }}{% endif %}</div>
+            </div>
+        </div>
+
+        <form method="POST">
+            {% if needs_strand %}
+            <div class="ce-form-group">
+                <label class="ce-label primary">&#127919; Select Your SHS Strand (Grade 11)</label>
+                <select class="ce-select" name="grade_level" id="gradeSelect" required>
+                    <option value="" disabled selected>Select a strand...</option>
+                    <option value="Grade 11 - STEM">Grade 11 - STEM</option>
+                    <option value="Grade 11 - ABM">Grade 11 - ABM</option>
+                    <option value="Grade 11 - HUMSS">Grade 11 - HUMSS</option>
+                    <option value="Grade 11 - GAS">Grade 11 - GAS</option>
+                </select>
+            </div>
+            {% else %}
+            <input type="hidden" name="grade_level" value="{{ next_grade }}">
+            {% endif %}
+
+            <!-- Section Selection -->
+            <div class="ce-form-group">
+                <label class="ce-label primary">&#128218; Select Your Section</label>
+                <select class="ce-select" name="section_id" id="sectionSelect" required>
+                    <option value="" disabled selected>Select a section...</option>
+                </select>
+                <span class="ce-hint">Only sections for {{ next_grade }} are shown.</span>
+            </div>
+
+            <!-- Subject Preview Panel -->
+            <div id="subjectPreview">
+                <p class="preview-title">
+                    &#128214; Subjects for this Section
+                    <span class="badge" id="subjectCount">0</span>
+                </p>
+                <div id="subjectListContainer">
+                    <div class="preview-loading">
+                        <span class="spinner"></span> Loading subjects...
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="ce-btn" id="submitBtn" disabled>
+                &#9989; Confirm Enrollment
+            </button>
+        </form>
+    </div>
+
+    <!-- Inline JSON of sections -->
+    <script id="sectionsData" type="application/json">{{ sections | tojson | safe }}</script>
+    <script id="needsStrandData" type="application/json">{{ needs_strand | tojson }}</script>
+    <script id="nextGradeData" type="application/json">{{ next_grade | tojson }}</script>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            var sectionsData = JSON.parse(document.getElementById("sectionsData").textContent);
+            var needsStrand = JSON.parse(document.getElementById("needsStrandData").textContent);
+            var nextGrade = JSON.parse(document.getElementById("nextGradeData").textContent);
+
+            var gradeSelect = document.getElementById("gradeSelect");
+            var sectionSelect = document.getElementById("sectionSelect");
+            var subjectPreview = document.getElementById("subjectPreview");
+            var subjectListContainer = document.getElementById("subjectListContainer");
+            var subjectCountBadge = document.getElementById("subjectCount");
+            var submitBtn = document.getElementById("submitBtn");
+
+            function updateSections() {
+                var selectedGrade = (gradeSelect ? gradeSelect.value : null) || nextGrade;
+                sectionSelect.innerHTML = '<option value="" disabled selected>Select a section...</option>';
+                subjectPreview.style.display = "none";
+                submitBtn.disabled = true;
+
+                if (!selectedGrade) return;
+
+                var hasSections = false;
+                sectionsData.forEach(function (section) {
+                    var gradeName = (section.grade_name || "").toLowerCase();
+                    var grade = selectedGrade.toLowerCase();
+                    if (gradeName === grade || grade.startsWith(gradeName) || gradeName.startsWith(grade)) {
+                        var opt = document.createElement("option");
+                        opt.value = section.section_id;
+                        opt.textContent = section.section_name;
+                        sectionSelect.appendChild(opt);
+                        hasSections = true;
+                    }
+                });
+
+                if (!hasSections) {
+                    var opt = document.createElement("option");
+                    opt.value = "";
+                    opt.textContent = "No sections available for this grade yet";
+                    opt.disabled = true;
+                    opt.selected = true;
+                    sectionSelect.appendChild(opt);
+                }
+            }
+
+            function loadSubjects(sectionId) {
+                subjectPreview.style.display = "block";
+                subjectListContainer.innerHTML = '<div class="preview-loading"><span class="spinner"></span> Loading subjects...</div>';
+                subjectCountBadge.textContent = "...";
+                submitBtn.disabled = true;
+
+                fetch("/api/student/section/" + sectionId + "/subjects")
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        if (data.error) {
+                            subjectListContainer.innerHTML = '<p class="no-subjects-msg">&#9888; ' + data.error + '</p>';
+                            subjectCountBadge.textContent = "0";
+                            submitBtn.disabled = false;
+                            return;
+                        }
+                        var subjects = data.subjects || [];
+                        subjectCountBadge.textContent = subjects.length;
+
+                        if (subjects.length === 0) {
+                            subjectListContainer.innerHTML = '<p class="no-subjects-msg">&#128219; No subjects assigned to this section yet.<br><small>Check back after the admin configures the schedule.</small></p>';
+                        } else {
+                            var icons = ["&#128216;", "&#128215;", "&#128217;", "&#128213;", "&#128211;", "&#128212;", "&#128210;", "&#128195;", "&#128196;", "&#128209;"];
+                            var ul = document.createElement("ul");
+                            ul.className = "subject-list";
+                            subjects.forEach(function (subj, idx) {
+                                var icon = icons[idx % icons.length];
+                                var teacherLine = "";
+                                if (subj.teacher_full_name) {
+                                    var prefix = subj.teacher_gender === "female" ? "Ms. " : (subj.teacher_gender === "male" ? "Mr. " : "");
+                                    teacherLine = '<div class="teacher-name">&#128104;&#8205;&#127979; ' + prefix + subj.teacher_full_name + '</div>';
+                                } else {
+                                    teacherLine = '<div class="teacher-name" style="color:#cbd5e1;">Teacher TBA</div>';
+                                }
+                                var li = document.createElement("li");
+                                li.className = "subject-item";
+                                li.innerHTML = '<div class="subject-icon">' + icon + '</div><div class="subject-info"><div class="subject-name">' + subj.subject_name + '</div>' + teacherLine + '</div>';
+                                ul.appendChild(li);
+                            });
+                            subjectListContainer.innerHTML = "";
+                            subjectListContainer.appendChild(ul);
+                        }
+                        submitBtn.disabled = false;
+                    })
+                    .catch(function () {
+                        subjectListContainer.innerHTML = '<p class="no-subjects-msg">&#9888; Could not load subjects. You may still continue.</p>';
+                        subjectCountBadge.textContent = "?";
+                        submitBtn.disabled = false;
+                    });
+            }
+
+            // Strand dropdown change re-populates sections (SHS only)
+            if (needsStrand && gradeSelect && gradeSelect.tagName === "SELECT") {
+                gradeSelect.addEventListener("change", updateSections);
+            }
+
+            // Section change triggers subject load
+            sectionSelect.addEventListener("change", function () {
+                var val = this.value;
+                if (val && !isNaN(parseInt(val, 10))) {
+                    loadSubjects(parseInt(val, 10));
+                } else {
+                    subjectPreview.style.display = "none";
+                    submitBtn.disabled = true;
+                }
+            });
+
+            // Auto-populate sections on load for non-SHS
+            if (!needsStrand) {
+                updateSections();
+            }
+        });
+    </script>
+</body>
+
+</html>

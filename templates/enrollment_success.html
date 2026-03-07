@@ -1,169 +1,385 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enrollment Successful</title>
+    <title>Enrollment Submitted – Liceo LMS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f6f9;
-            padding: 40px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(160deg, #0f2d6b 0%, #1a4da0 50%, #1d6fa8 100%);
             min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 40px 20px 60px;
         }
-        .success-container {
-            background-color: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            max-width: 600px;
+
+        .page-card {
+            background: white;
+            border-radius: 24px;
             width: 100%;
+            max-width: 580px;
+            box-shadow: 0 28px 60px rgba(0, 0, 0, 0.28);
+            overflow: hidden;
+        }
+
+        /* ─── HERO ─── */
+        .hero {
+            background: linear-gradient(135deg, #15803d, #16a34a, #22c55e);
+            padding: 40px 36px 44px;
             text-align: center;
+            position: relative;
         }
-        .success-icon {
-            font-size: 64px;
-            color: #10b981;
-            margin-bottom: 20px;
+
+        .hero::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 36px;
+            background: white;
+            border-radius: 50% 50% 0 0 / 36px 36px 0 0;
         }
-        h1 {
-            color: #2c3e50;
-            margin-bottom: 10px;
+
+        .check-circle {
+            width: 72px;
+            height: 72px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 3px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 2rem;
+            animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+            box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.1);
         }
-        .enrollment-id-box {
-            background-color: #fef3c7;
-            border: 3px solid #f59e0b;
-            padding: 30px;
-            border-radius: 8px;
-            margin: 30px 0;
+
+        @keyframes popIn {
+            from {
+                transform: scale(0.3);
+                opacity: 0;
+            }
+
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
         }
-        .enrollment-id-label {
-            font-size: 16px;
+
+        .hero h1 {
+            color: white;
+            font-size: 1.6rem;
+            font-weight: 900;
+            margin-bottom: 6px;
+        }
+
+        .hero p {
+            color: rgba(255, 255, 255, 0.82);
+            font-size: 0.92rem;
+        }
+
+        /* ─── BODY ─── */
+        .card-body {
+            padding: 32px 36px 40px;
+        }
+
+        /* ─── ID BOX ─── */
+        .id-box {
+            background: linear-gradient(135deg, #fffbeb, #fef3c7);
+            border: 2.5px solid #fbbf24;
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .id-box::before {
+            content: '&#128273;';
+            position: absolute;
+            top: -8px;
+            right: -4px;
+            font-size: 4rem;
+            opacity: 0.06;
+        }
+
+        .id-label {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
             color: #92400e;
-            font-weight: bold;
             margin-bottom: 10px;
         }
-        .enrollment-id {
-            font-size: 48px;
-            font-weight: bold;
+
+        .id-number {
+            font-size: 3rem;
+            font-weight: 900;
             color: #b45309;
             font-family: 'Courier New', monospace;
-            letter-spacing: 2px;
+            letter-spacing: 4px;
+            line-height: 1;
+            margin-bottom: 12px;
         }
-        .warning-box {
-            background-color: #fee2e2;
-            border: 2px solid #ef4444;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-            text-align: left;
+
+        .id-name {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #78350f;
         }
-        .warning-title {
-            font-weight: bold;
-            color: #991b1b;
-            font-size: 18px;
-            margin-bottom: 10px;
+
+        .copy-btn {
+            margin-top: 12px;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 99px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.15s;
+            font-family: inherit;
         }
-        .warning-list {
+
+        .copy-btn:hover {
+            background: #d97706;
+            transform: translateY(-1px);
+        }
+
+        .copy-btn:active {
+            transform: translateY(0);
+        }
+
+        /* ─── SAVE WARNING ─── */
+        .save-warning {
+            background: #fef2f2;
+            border: 1.5px solid #fca5a5;
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .save-warning .warn-icon {
+            font-size: 1.3rem;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .save-warning p {
+            font-size: 0.83rem;
             color: #7f1d1d;
-            line-height: 1.8;
-            padding-left: 20px;
+            line-height: 1.5;
+            margin: 0;
         }
-        .info-box {
-            background-color: #dbeafe;
-            border: 2px solid #3b82f6;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-            text-align: left;
+
+        .save-warning strong {
+            font-weight: 700;
         }
-        .info-title {
-            font-weight: bold;
-            color: #1e40af;
-            font-size: 16px;
-            margin-bottom: 10px;
+
+        /* ─── NEXT STEPS ─── */
+        .next-steps-title {
+            font-size: 0.78rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: #64748b;
+            margin-bottom: 14px;
         }
-        .info-text {
-            color: #1e3a8a;
-            line-height: 1.8;
+
+        .steps-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 28px;
         }
+
+        .step-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            background: #f8faff;
+            border: 1px solid #e0eaff;
+            border-radius: 12px;
+            padding: 13px 16px;
+        }
+
+        .step-num {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+            color: white;
+            font-size: 0.78rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .step-content strong {
+            font-size: 0.88rem;
+            font-weight: 700;
+            color: #0f172a;
+            display: block;
+            margin-bottom: 2px;
+        }
+
+        .step-content p {
+            font-size: 0.8rem;
+            color: #64748b;
+            margin: 0;
+            line-height: 1.4;
+        }
+
+        /* ─── ACTIONS ─── */
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
         .btn-primary {
-            background-color: #2563eb;
+            flex: 1;
+            background: linear-gradient(135deg, #1d4ed8, #2563eb);
             color: white;
-            padding: 14px 28px;
             border: none;
-            border-radius: 6px;
+            padding: 13px 20px;
+            border-radius: 12px;
+            font-size: 0.95rem;
+            font-weight: 700;
             cursor: pointer;
-            font-size: 16px;
-            margin: 10px;
             text-decoration: none;
-            display: inline-block;
+            text-align: center;
+            transition: transform 0.15s, box-shadow 0.15s;
+            font-family: inherit;
         }
+
         .btn-primary:hover {
-            background-color: #1e4ed8;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(29, 78, 216, 0.32);
         }
+
         .btn-secondary {
-            background-color: #64748b;
-            color: white;
-            padding: 14px 28px;
+            background: #f1f5f9;
+            color: #475569;
             border: none;
-            border-radius: 6px;
+            padding: 13px 20px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
             cursor: pointer;
-            font-size: 16px;
-            margin: 10px;
             text-decoration: none;
-            display: inline-block;
+            text-align: center;
+            transition: background 0.15s;
+            font-family: inherit;
         }
+
         .btn-secondary:hover {
-            background-color: #475569;
-        }
-        .student-name {
-            color: #6b7280;
-            font-size: 18px;
-            margin-bottom: 30px;
+            background: #e2e8f0;
         }
     </style>
 </head>
+
 <body>
 
-<div class="success-container">
-    <div class="success-icon">✓</div>
-    <h1>Enrollment Submitted Successfully!</h1>
-    <div class="student-name">{{ student_name }}</div>
-    
-    <div class="enrollment-id-box">
-        <div class="enrollment-id-label">YOUR ENROLLMENT ID</div>
-        <div class="enrollment-id">{{ enrollment_id }}</div>
-    </div>
-    
-    <div class="warning-box">
-        <div class="warning-title">⚠️ IMPORTANT - SAVE THIS ID!</div>
-        <ul class="warning-list">
-            <li><strong>Write down or screenshot this Enrollment ID immediately</strong></li>
-            <li>You will need this ID to track your enrollment status</li>
-            <li>Registrar will create student and parent accounts after approval</li>
-            <li>You can also create your own student account after approval using this ID</li>
-            <li>This ID cannot be recovered if lost - keep it safe!</li>
-        </ul>
-    </div>
-    
-    <div class="info-box">
-        <div class="info-title">📋 Next Steps</div>
-        <div class="info-text">
-            <strong>1.</strong> Your enrollment is now pending review by the registrar<br>
-            <strong>2.</strong> You can track your enrollment status using the ID above<br>
-            <strong>3.</strong> Once approved, you can create a student account to access your portal<br>
-            <strong>4.</strong> Parents can register and link their account using this enrollment ID
+    <div class="page-card">
+
+        <!-- Hero -->
+        <div class="hero">
+            <div class="check-circle">&#10003;</div>
+            <h1>Enrollment Submitted!</h1>
+            <p>Your application has been received and is now pending review.</p>
+        </div>
+
+        <!-- Body -->
+        <div class="card-body">
+
+            <!-- Enrollment ID Box -->
+            <div class="id-box">
+                <div class="id-label">&#128203; Your Enrollment ID</div>
+                <div class="id-number" id="enrollId">{{ enrollment_id }}</div>
+                <div class="id-name">{{ student_name }}</div>
+                <button class="copy-btn" onclick="copyId()">&#128203; Copy ID</button>
+            </div>
+
+            <!-- Save Warning -->
+            <div class="save-warning">
+                <span class="warn-icon">&#9888;</span>
+                <p><strong>Important: Save this ID!</strong> You will need it to track your enrollment status.
+                    Screenshot or write it down now — this cannot be recovered if lost.</p>
+            </div>
+
+            <!-- Next Steps -->
+            <p class="next-steps-title">&#128260; What happens next?</p>
+            <div class="steps-list">
+                <div class="step-row">
+                    <div class="step-num">1</div>
+                    <div class="step-content">
+                        <strong>Registrar reviews your application</strong>
+                        <p>Your enrollment is now pending review. This usually takes 1–3 school days.</p>
+                    </div>
+                </div>
+                <div class="step-row">
+                    <div class="step-num">2</div>
+                    <div class="step-content">
+                        <strong>Track your status anytime</strong>
+                        <p>Use your Enrollment ID to check your status using the Track button below.</p>
+                    </div>
+                </div>
+                <div class="step-row">
+                    <div class="step-num">3</div>
+                    <div class="step-content">
+                        <strong>Get your student account</strong>
+                        <p>Once approved, the registrar will create your student account credentials.</p>
+                    </div>
+                </div>
+                <div class="step-row">
+                    <div class="step-num">4</div>
+                    <div class="step-content">
+                        <strong>Access your student portal</strong>
+                        <p>Log in to see your section, subjects, billing info, and more.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="actions">
+                <a href="/track" class="btn-primary">&#128269; Track Enrollment</a>
+                <a href="/" class="btn-secondary">&#8592; Homepage</a>
+            </div>
+
         </div>
     </div>
-    
-    <div style="margin-top: 30px;">
-        <a href="/track" class="btn-primary">Track Enrollment Status</a>
-        <a href="/" class="btn-secondary">Return to Homepage</a>
-    </div>
-</div>
+
+    <script>
+        function copyId() {
+            var id = document.getElementById('enrollId').textContent.trim();
+            navigator.clipboard.writeText(id).then(function () {
+                var btn = document.querySelector('.copy-btn');
+                btn.textContent = 'Copied!';
+                setTimeout(function () { btn.innerHTML = '&#128203; Copy ID'; }, 2000);
+            });
+        }
+    </script>
 
 </body>
+
 </html>

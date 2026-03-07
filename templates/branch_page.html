@@ -1,23 +1,713 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Enrollment – {{ branch.branch_name }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <style>
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #f0f4f9;
+            color: #0f172a;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ─── TOP NAV BAR ─── */
+        .top-nav {
+            background: linear-gradient(135deg, #0c2461 0%, #1a2e5a 100%);
+            padding: 0 32px;
+            height: 64px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 3px solid #c9a227;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 2px 16px rgba(12, 36, 97, 0.18);
+        }
+
+        .nav-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .nav-logos {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-logo-img {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            object-fit: contain;
+            border: 2px solid rgba(255, 255, 255, 0.25);
+        }
+
+        .nav-brand-text {
+            line-height: 1.25;
+        }
+
+        .nav-brand-upper {
+            font-size: 0.6rem;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.55);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+        }
+
+        .nav-brand-name {
+            font-size: 0.92rem;
+            font-weight: 800;
+            color: #fff;
+            white-space: nowrap;
+        }
+
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-link {
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.75);
+            text-decoration: none;
+            padding: 6px 14px;
+            border-radius: 8px;
+            transition: background 0.15s, color 0.15s;
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .nav-btn {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #0c2461;
+            background: linear-gradient(135deg, #a07c10, #c9a227);
+            padding: 8px 18px;
+            border-radius: 99px;
+            text-decoration: none;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .nav-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(201, 162, 39, 0.4);
+        }
+
+        /* ─── PAGE HERO BANNER ─── */
+        .page-hero {
+            background: linear-gradient(145deg, #0c2461 0%, #1a4da0 60%, #1d6fa8 100%);
+            padding: 44px 24px 56px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .page-hero::before {
+            content: '';
+            position: absolute;
+            top: -40px;
+            right: -60px;
+            width: 200px;
+            height: 200px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 50%;
+        }
+
+        .page-hero::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 32px;
+            background: #f0f4f9;
+            border-radius: 50% 50% 0 0 / 32px 32px 0 0;
+        }
+
+        .branch-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(201, 162, 39, 0.18);
+            border: 1px solid rgba(201, 162, 39, 0.4);
+            border-radius: 99px;
+            padding: 6px 18px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: #f0d060;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 16px;
+        }
+
+        .page-hero h1 {
+            font-size: clamp(1.5rem, 4vw, 2.2rem);
+            font-weight: 900;
+            color: #fff;
+            line-height: 1.2;
+            margin-bottom: 8px;
+        }
+
+        .page-hero p {
+            color: rgba(255, 255, 255, 0.72);
+            font-size: 0.95rem;
+            max-width: 420px;
+            margin: 0 auto;
+        }
+
+        /* ─── MAIN ─── */
+        .main {
+            flex: 1;
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 40px 20px 60px;
+            width: 100%;
+        }
+
+        /* ─── STEP QUESTION ─── */
+        .question-head {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+
+        .question-head h2 {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #0c2461;
+            margin-bottom: 5px;
+        }
+
+        .question-head p {
+            font-size: 0.87rem;
+            color: #64748b;
+        }
+
+        /* ─── ENROLLMENT TYPE CARDS ─── */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        @media (max-width: 580px) {
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ─── DISABLED CARD (re-enrollment closed) ─── */
+        .enroll-card.disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            pointer-events: none;
+            position: relative;
+        }
+
+        .closed-overlay {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #f1f5f9;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #64748b;
+            margin-top: auto;
+        }
+
+        .enroll-card {
+            background: #fff;
+            border-radius: 20px;
+            overflow: hidden;
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            border: 2px solid transparent;
+            box-shadow: 0 4px 20px rgba(12, 36, 97, 0.08);
+            transition: transform 0.22s, box-shadow 0.22s, border-color 0.22s;
+        }
+
+        .enroll-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 16px 40px rgba(12, 36, 97, 0.14);
+        }
+
+        .card-new:hover {
+            border-color: #3b82f6;
+        }
+
+        .card-cont:hover {
+            border-color: #22c55e;
+        }
+
+        /* Colored top accent */
+        .card-accent {
+            height: 6px;
+        }
+
+        .card-new .card-accent {
+            background: linear-gradient(90deg, #1d4ed8, #60a5fa);
+        }
+
+        .card-cont .card-accent {
+            background: linear-gradient(90deg, #15803d, #4ade80);
+        }
+
+        .card-body {
+            padding: 26px 24px 22px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 16px;
+        }
+
+        .card-new .card-icon {
+            background: linear-gradient(135deg, #dbeafe, #eff6ff);
+        }
+
+        .card-cont .card-icon {
+            background: linear-gradient(135deg, #dcfce7, #f0fdf4);
+        }
+
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: #0c2461;
+            margin-bottom: 6px;
+        }
+
+        .card-desc {
+            font-size: 0.84rem;
+            color: #64748b;
+            line-height: 1.6;
+            margin-bottom: 18px;
+        }
+
+        /* Steps inside card */
+        .card-steps {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex: 1;
+        }
+
+        .card-step {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.81rem;
+            color: #334155;
+            font-weight: 500;
+        }
+
+        .step-num {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            font-size: 0.68rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .card-new .step-num {
+            background: #2563eb;
+        }
+
+        .card-cont .step-num {
+            background: #16a34a;
+        }
+
+        /* CTA button at bottom of card */
+        .card-cta {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 18px;
+            border-radius: 12px;
+            font-size: 0.87rem;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .card-new .card-cta {
+            background: linear-gradient(135deg, #1d4ed8, #2563eb);
+        }
+
+        .card-cont .card-cta {
+            background: linear-gradient(135deg, #15803d, #16a34a);
+        }
+
+        /* ─── ACCOUNT HINT ─── */
+        .account-hint {
+            background: #fffbeb;
+            border: 1.5px solid #fcd34d;
+            border-radius: 14px;
+            padding: 14px 18px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .hint-icon {
+            font-size: 1.3rem;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .hint-body strong {
+            display: block;
+            font-size: 0.84rem;
+            font-weight: 700;
+            color: #92400e;
+            margin-bottom: 3px;
+        }
+
+        .hint-body p {
+            font-size: 0.8rem;
+            color: #a16207;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        /* ─── REQUIREMENTS SECTION ─── */
+        .req-section {
+            background: #fff;
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(12, 36, 97, 0.06);
+            margin-bottom: 24px;
+        }
+
+        .req-title {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            color: #64748b;
+            margin-bottom: 16px;
+        }
+
+        .req-cols {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        @media (max-width: 500px) {
+            .req-cols {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .req-col-title {
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #1e40af;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .req-col-title.green {
+            color: #16a34a;
+        }
+
+        .req-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .req-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 0.81rem;
+            color: #475569;
+            line-height: 1.4;
+        }
+
+        .req-list li .ck {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            font-size: 0.62rem;
+            font-weight: 900;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .ck-blue {
+            background: #dbeafe;
+            color: #2563eb;
+        }
+
+        .ck-green {
+            background: #dcfce7;
+            color: #16a34a;
+        }
+
+        /* ─── BOTTOM ACTIONS ─── */
+        .bottom-actions {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .btn-action {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 11px 22px;
+            border-radius: 99px;
+            font-size: 0.86rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: transform 0.15s, box-shadow 0.15s;
+            border: 1.5px solid #cbd5e1;
+            background: #fff;
+            color: #475569;
+        }
+
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+            border-color: #94a3b8;
+        }
+    </style>
 </head>
+
 <body>
-    <h2>{{ branch.branch_name }}</h2>
-    <p>{{ branch.location }}</p>
 
-    <a href="/branch/{{ branch.branch_id }}/enroll">
-    Enroll in this Branch
-    </a>
+    <!-- ─── NAV ─── -->
+    <nav class="top-nav">
+        <a class="nav-brand" href="/">
+            <div class="nav-logos">
+                <img class="nav-logo-img" src="{{ url_for('static', filename='img/spdcss_logo.webp') }}" alt="SPDCSS">
+                <img class="nav-logo-img" src="{{ url_for('static', filename='img/LiceodeMajayjayLogo.webp') }}"
+                    alt="Liceo">
+            </div>
+            <div class="nav-brand-text">
+                <div class="nav-brand-upper">San Pablo Diocesan Catholic Schools</div>
+                <div class="nav-brand-name">{{ branch.branch_name }}</div>
+            </div>
+        </a>
+        <div class="nav-right">
+            <a class="nav-link" href="/">&#8592; Home</a>
+            <a class="nav-btn" href="/track">&#128269; Track Enrollment</a>
+        </div>
+    </nav>
 
-<hr>
+    <!-- ─── HERO BANNER ─── -->
+    <div class="page-hero">
+        <div class="branch-badge">&#127979; {{ branch.location or 'Enrollment Portal' }}</div>
+        <h1>{{ branch.branch_name }}</h1>
+        <p>Online Enrollment Portal — Choose how you want to enroll below.</p>
+    </div>
 
-<p>
-    <a href="/track">Track Enrollment Status</a>
-</p>
+    <!-- ─── MAIN ─── -->
+    <main class="main">
+
+        <!-- Question -->
+        <div class="question-head">
+            <h2>Are you a new student or a returning student?</h2>
+            <p>Select the option that best describes you to get started.</p>
+        </div>
+
+        <!-- Enrollment Cards -->
+        <div class="cards-grid">
+
+            <!-- NEW / TRANSFEREE -->
+            <a href="/branch/{{ branch.branch_id }}/enroll" class="enroll-card card-new">
+                <div class="card-accent"></div>
+                <div class="card-body">
+                    <div class="card-icon">&#128221;</div>
+                    <div class="card-title">New Student / Transferee</div>
+                    <p class="card-desc">
+                        First time enrolling here, or transferring from another school.
+                    </p>
+                    <div class="card-steps">
+                        <div class="card-step">
+                            <span class="step-num">1</span>Fill out the enrollment form
+                        </div>
+                        <div class="card-step">
+                            <span class="step-num">2</span>Upload your requirements
+                        </div>
+                        <div class="card-step">
+                            <span class="step-num">3</span>Wait for registrar approval
+                        </div>
+                        <div class="card-step">
+                            <span class="step-num">4</span>Receive your student account
+                        </div>
+                    </div>
+                    <div class="card-cta">
+                        Start Enrollment <span>&#8594;</span>
+                    </div>
+                </div>
+            </a>
+
+            <!-- CONTINUING -->
+            {% if reenrollment_open %}
+            <a href="/branch/{{ branch.branch_id }}/continuing/login" class="enroll-card card-cont">
+                <div class="card-accent"></div>
+                <div class="card-body">
+                    <div class="card-icon">&#127891;</div>
+                    <div class="card-title">Continuing Student</div>
+                    <p class="card-desc">
+                        Already enrolled here last school year. Re-enroll in just a few clicks — no paperwork needed.
+                    </p>
+                    <div class="card-steps">
+                        <div class="card-step">
+                            <span class="step-num">1</span>Log in with your student account
+                        </div>
+                        <div class="card-step">
+                            <span class="step-num">2</span>Your next grade is auto-computed
+                        </div>
+                        <div class="card-step">
+                            <span class="step-num">3</span>Choose your preferred section
+                        </div>
+                        <div class="card-step">
+                            <span class="step-num">4</span>See your subjects immediately
+                        </div>
+                    </div>
+                    <div class="card-cta">
+                        Login &amp; Re-Enroll <span>&#8594;</span>
+                    </div>
+                </div>
+            </a>
+            {% else %}
+            <div class="enroll-card card-cont disabled">
+                <div class="card-accent"></div>
+                <div class="card-body">
+                    <div class="card-icon">&#127891;</div>
+                    <div class="card-title">Continuing Student</div>
+                    <p class="card-desc">
+                        Already enrolled here last school year. Re-enroll in just a few clicks — no paperwork needed.
+                    </p>
+                    <div class="card-steps">
+                        <div class="card-step">
+                            <span class="step-num">1</span>Log in with your student account
+                        </div>
+                        <div class="card-step">
+                            <span class="step-num">2</span>Your next grade is auto-computed
+                        </div>
+                        <div class="card-step">
+                            <span class="step-num">3</span>Choose your preferred section
+                        </div>
+                        <div class="card-step">
+                            <span class="step-num">4</span>See your subjects immediately
+                        </div>
+                    </div>
+                    <div class="closed-overlay">
+                        &#128274; Re-enrollment is not yet open. Please check back later or contact the registrar.
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+        </div>
+
+        <!-- Account Hint -->
+        <div class="account-hint">
+            <span class="hint-icon">&#128275;</span>
+            <div class="hint-body">
+                <strong>For Continuing Students: You will need your student account credentials</strong>
+                {% if reenrollment_open %}
+                <p>Your username and password were given to you by the school registrar. If you forgot your credentials,
+                    please visit the school office and present a valid ID.</p>
+                {% else %}
+                <p>Re-enrollment is currently <strong>closed</strong>. The registrar will open it when the enrollment
+                    period begins. You can still visit the school to check on your status.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Requirements -->
+        <div class="req-section">
+            <p class="req-title">&#128203; Enrollment Requirements</p>
+            <div class="req-cols">
+                <div>
+                    <div class="req-col-title">&#128221; New / Transferee</div>
+                    <ul class="req-list">
+                        <li><span class="ck ck-blue">&#10003;</span>Report Card / Form 138 (original)</li>
+                        <li><span class="ck ck-blue">&#10003;</span>PSA Birth Certificate (photocopy)</li>
+                        <li><span class="ck ck-blue">&#10003;</span>Certificate of Good Moral</li>
+                        <li><span class="ck ck-blue">&#10003;</span>2×2 ID Photo (2 copies)</li>
+                        <li><span class="ck ck-blue">&#10003;</span>For SHS: JHS Diploma or equivalent</li>
+                    </ul>
+                </div>
+                <div>
+                    <div class="req-col-title green">&#127891; Continuing Students</div>
+                    <ul class="req-list">
+                        <li><span class="ck ck-green">&#10003;</span>Student account username &amp; password</li>
+                        <li><span class="ck ck-green">&#10003;</span>No additional documents required</li>
+                        <li><span class="ck ck-green">&#10003;</span>Grade level is auto-upgraded</li>
+                        <li><span class="ck ck-green">&#10003;</span>View subjects immediately after</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom actions -->
+        <div class="bottom-actions">
+            <a href="/" class="btn-action">&#8592; Back to Homepage</a>
+            <a href="/track" class="btn-action">&#128269; Track Enrollment Status</a>
+        </div>
+
+    </main>
 
 </body>
+
 </html>

@@ -1,51 +1,301 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Track Enrollment</title>
-</head>
-<body>
+{% extends "base_public.html" %}
 
-<h2>Track Your Enrollment</h2>
+{% block full_title %}Track Enrollment – Liceo LMS{% endblock %}
 
-<form method="post">
-    <input type="number" name="enrollment_id" placeholder="Enter Enrollment ID" required>
-    <button type="submit">Check Status</button>
-</form>
+{% block styles %}
+<style>
+    .track-wrapper {
+        max-width: 600px;
+        margin: 40px auto 80px;
+        padding: 0 20px;
+    }
 
-<hr>
+    .track-header {
+        text-align: center;
+        margin-bottom: 32px;
+    }
 
-{% if enrollment %}
-<h3>Enrollment Details</h3>
+    .track-header h1 {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #0c2461;
+        margin-bottom: 8px;
+    }
 
-<p><b>Name:</b> {{ enrollment.student_name }}</p>
-<p><b>Branch:</b> {{ enrollment.branch_name }}</p>
-<p><b>Grade:</b> {{ enrollment.grade_level }}</p>
-<p><b>Status:</b>
-    {% if enrollment.status == 'pending' %}
-        ⏳ Pending
-    {% elif enrollment.status == 'approved' %}
-        ✅ Approved
-    {% else %}
-        ❌ Rejected
+    .track-header p {
+        color: #64748b;
+        font-size: 0.95rem;
+    }
+
+    .track-form-card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 32px;
+        box-shadow: 0 4px 20px rgba(12, 36, 97, 0.08);
+        border: 1px solid #e2e8f0;
+        margin-bottom: 32px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 8px;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 14px 16px;
+        font-size: 1rem;
+        border: 2px solid #cbd5e1;
+        border-radius: 10px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        outline: none;
+    }
+
+    .form-input:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+    }
+
+    .btn-submit {
+        width: 100%;
+        padding: 14px;
+        background: linear-gradient(135deg, #1d4ed8, #2563eb);
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 700;
+        border: none;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .btn-submit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(37, 99, 235, 0.25);
+    }
+
+    /* ─── RESULT CARD ─── */
+    .result-card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 32px;
+        box-shadow: 0 8px 30px rgba(12, 36, 97, 0.12);
+        border: 1px solid #e2e8f0;
+        animation: slideUp 0.4s ease-out;
+    }
+
+    @keyframes slideUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .result-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 24px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .student-name {
+        font-size: 1.4rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin-bottom: 4px;
+    }
+
+    .student-meta {
+        font-size: 0.85rem;
+        color: #64748b;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .badge-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 99px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .status-pending {
+        background: #fffbeb;
+        color: #b45309;
+        border: 1px solid #fde68a;
+    }
+
+    .status-approved {
+        background: #f0fdf4;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+    }
+
+    .status-rejected {
+        background: #fef2f2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    .result-section {
+        margin-bottom: 24px;
+    }
+
+    .result-section h3 {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #475569;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 12px;
+    }
+
+    .doc-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .doc-item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        background: #f8fafc;
+        border-radius: 10px;
+        text-decoration: none;
+        color: #1e293b;
+        font-size: 0.9rem;
+        font-weight: 500;
+        border: 1px solid #f1f5f9;
+        transition: background 0.15s, border-color 0.15s;
+    }
+
+    .doc-item:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+
+    .doc-icon {
+        font-size: 1.2rem;
+    }
+
+    .empty-msg {
+        color: #94a3b8;
+        font-size: 0.9rem;
+        font-style: italic;
+    }
+
+    .error-card {
+        background: #fef2f2;
+        border-left: 4px solid #ef4444;
+        padding: 16px 20px;
+        border-radius: 8px;
+        color: #991b1b;
+        font-size: 0.95rem;
+        font-weight: 500;
+        animation: slideUp 0.3s ease-out;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="track-wrapper">
+    <div class="track-header">
+        <h1>Track Your Enrollment</h1>
+        <p>Enter your Enrollment ID to check your current application status.</p>
+    </div>
+
+    <!-- Search Form -->
+    <div class="track-form-card">
+        <form method="post">
+            <div class="form-group">
+                <label class="form-label" for="enrollment_id">Enrollment ID</label>
+                <input class="form-input" type="number" id="enrollment_id" name="enrollment_id" placeholder="e.g. 10042"
+                    required autofocus>
+            </div>
+            <button type="submit" class="btn-submit">&#128269; Check Status</button>
+        </form>
+    </div>
+
+    <!-- Result -->
+    {% if enrollment %}
+    <div class="result-card">
+        <div class="result-head">
+            <div>
+                <div class="student-name">{{ enrollment.student_name }}</div>
+                <div class="student-meta">
+                    <span>&#127979; Branch: <b>{{ enrollment.branch_name }}</b></span>
+                    <span>&#127891; Grade: <b>{{ enrollment.grade_level }}</b></span>
+                </div>
+            </div>
+
+            {% if enrollment.status == 'pending' %}
+            <div class="badge-status status-pending">⏳ Pending Review</div>
+            {% elif enrollment.status == 'approved' %}
+            <div class="badge-status status-approved">✅ Approved</div>
+            {% elif enrollment.status == 'enrolled' %}
+            <div class="badge-status status-approved"
+                style="background: #ecfeff; border-color: #a5f3fc; color: #0891b2;">🎓 Enrolled</div>
+            {% elif enrollment.status == 'open_for_enrollment' %}
+            <div class="badge-status" style="background: #fefce8; border-color: #fef08a; color: #ca8a04;">🔓
+                Re-Enrollment Open</div>
+            {% else %}
+            <div class="badge-status status-rejected">❌ {{ enrollment.status | capitalize }}</div>
+            {% endif %}
+        </div>
+
+        <div class="result-section">
+            <h3>&#128193; Submitted Documents</h3>
+            {% if documents %}
+            <div class="doc-list">
+                {% for doc in documents %}
+                <a class="doc-item" href="{{ doc.file_path }}" target="_blank">
+                    <span class="doc-icon">&#128196;</span>
+                    <span>{{ doc.file_name }}</span>
+                </a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="empty-msg">No documents were uploaded for this enrollment.</p>
+            {% endif %}
+        </div>
+
+        {% if enrollment.status == 'approved' %}
+        <div class="result-section" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid #e2e8f0;">
+            <h3>&#128275; Student Account</h3>
+            <p style="font-size: 0.9rem; color: #475569; line-height: 1.5;">
+                Your enrollment is approved. Please proceed to the registrar's office to claim your official student
+                account credentials if you haven't received them yet.
+            </p>
+        </div>
+        {% endif %}
+    </div>
+    {% elif request.method == 'POST' %}
+    <div class="error-card">
+        &#9888; We couldn't find an enrollment with that ID. Please check the number and try again.
+    </div>
     {% endif %}
-</p>
 
-<h4>Documents</h4>
-{% for doc in documents %}
-    <a href="{{ doc.file_path }}" target="_blank">{{ doc.file_name }}</a><br>
-{% endfor %}
-
-<h4>Books Reserved</h4>
-{% for book in books %}
-    {{ book.book_name }} ({{ book.quantity }})<br>
-{% endfor %}
-
-<h4>Uniforms Reserved</h4>
-{% for u in uniforms %}
-    {{ u.uniform_type }} - {{ u.size }} ({{ u.quantity }})<br>
-{% endfor %}
-
-{% endif %}
-
-</body>
-</html>
+</div>
+{% endblock %}
