@@ -1,61 +1,56 @@
 """
-migrate.py - Run SQL migrations on Railway PostgreSQL
-=====================================================
-Usage:
-    python migrate.py migrations/your_migration.sql
-
-This script will run the specified SQL file against
-the Railway (or local) PostgreSQL database.
+One-time migration script.
+Run: python migrate.py
+Uses your existing .env DATABASE_URL to connect to Railway Postgres.
 """
-
 import sys
 import os
-from dotenv import load_dotenv
-import psycopg2
+sys.path.insert(0, os.path.dirname(__file__))
 
-load_dotenv()
+from db import get_db_connection
 
-def run_migration(sql_file: str):
-    if not os.path.exists(sql_file):
-        print(f"ERROR: File not found: {sql_file}")
-        sys.exit(1)
+MIGRATIONS = [
+    # Add lrn column if not exists
+    """
+    ALTER TABLE public.enrollments
+        ADD COLUMN IF NOT EXISTS lrn character varying(12);
+    """,
+    # Add email column if not exists
+    """
+    ALTER TABLE public.enrollments
+        ADD COLUMN IF NOT EXISTS email character varying(255);
+    """,
+    # Add guardian_email column if not exists
+    """
+    ALTER TABLE public.enrollments
+        ADD COLUMN IF NOT EXISTS guardian_email character varying(255);
+    """,
+    # Add branch_code to branches if not exists
+    """
+    ALTER TABLE public.branches
+        ADD COLUMN IF NOT EXISTS branch_code character varying(20);
+    """,
+]
 
-    # Build connection from environment variables (same as app)
-    host     = os.getenv("DB_HOST", "127.0.0.1")
-    port     = int(os.getenv("DB_PORT", "5432"))
-    dbname   = os.getenv("DB_NAME", "liceo_db")
-    user     = os.getenv("DB_USER", "liceo_db")
-    password = os.getenv("DB_PASSWORD", "liceo123")
+def run():
+    db = get_db_connection()
+    cursor = db.cursor()
+    success = 0
+    for i, sql in enumerate(MIGRATIONS, 1):
+        try:
+            cursor.execute(sql)
+            db.commit()
+            label = sql.strip().split('\n')[0][:70]
+            print(f"  [{i}/{len(MIGRATIONS)}] OK  — {label}")
+            success += 1
+        except Exception as e:
+            db.rollback()
+            print(f"  [{i}/{len(MIGRATIONS)}] SKIP — {str(e).strip()}")
 
-    print(f"Connecting to: {host}:{port}/{dbname}")
-
-    try:
-        conn = psycopg2.connect(
-            host=host, port=port,
-            dbname=dbname, user=user, password=password
-        )
-        conn.autocommit = False
-
-        with open(sql_file, encoding="utf-8") as f:
-            sql = f.read()
-
-        cur = conn.cursor()
-        cur.execute(sql)
-        conn.commit()
-        cur.close()
-        conn.close()
-
-        print(f"✅ Migration SUCCESS: {sql_file}")
-
-    except Exception as e:
-        print(f"❌ Migration FAILED: {e}")
-        sys.exit(1)
-
+    cursor.close()
+    db.close()
+    print(f"\nDone. {success}/{len(MIGRATIONS)} migrations applied.")
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python migrate.py <sql_file>")
-        print("Example: python migrate.py migrations/add_column.sql")
-        sys.exit(1)
-
-    run_migration(sys.argv[1])
+    print("Running migrations on Railway DB...\n")
+    run()
