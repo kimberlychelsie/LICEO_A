@@ -815,8 +815,18 @@
   <!-- ══ SIDEBAR ══ -->
   <aside class="sidebar" id="sidebar">
 
-    <!-- Brand -->
-    <a class="sb-brand" href="/">
+    <!-- Brand — links to role-specific dashboard -->
+    {% set dashboard_url = '/' %}
+    {% if session.get('role') == 'super_admin' %}{% set dashboard_url = '/super-admin' %}
+    {% elif session.get('role') == 'branch_admin' %}{% set dashboard_url = '/branch-admin' %}
+    {% elif session.get('role') == 'registrar' %}{% set dashboard_url = '/registrar' %}
+    {% elif session.get('role') == 'cashier' %}{% set dashboard_url = '/cashier' %}
+    {% elif session.get('role') == 'librarian' %}{% set dashboard_url = '/librarian' %}
+    {% elif session.get('role') == 'student' %}{% set dashboard_url = '/student/dashboard' %}
+    {% elif session.get('role') == 'parent' %}{% set dashboard_url = '/parent/dashboard' %}
+    {% elif session.get('role') == 'teacher' %}{% set dashboard_url = '/teacher' %}
+    {% endif %}
+    <a class="sb-brand" href="{{ dashboard_url }}">
       <span class="sb-brand-icon">🎓</span>
       <span class="sb-brand-text">
         <span class="sb-brand-name">Liceo LMS</span>
@@ -994,7 +1004,19 @@
 
       <!-- Common -->
       <div class="sb-section-label">General</div>
-      <a class="sb-link" href="/#faq"><span class="sb-icon">❓</span> FAQ</a>
+      {% if session.get('role') == 'super_admin' %}
+      <a class="sb-link {% if '/super-admin/faqs' in request.path %}active{% endif %}" href="/super-admin/faqs">
+        <span class="sb-icon">❓</span> Manage FAQs
+      </a>
+      {% elif session.get('role') == 'branch_admin' %}
+      <a class="sb-link {% if '/branch-admin/faqs' in request.path %}active{% endif %}" href="/branch-admin/faqs">
+        <span class="sb-icon">❓</span> Manage FAQs
+      </a>
+      {% elif session.get('role') %}
+      <a class="sb-link" href="/#faq">
+        <span class="sb-icon">❓</span> FAQ
+      </a>
+      {% endif %}
       {% if session.get('role') %}
       <a class="sb-link" href="/change-password">
         <span class="sb-icon">🔑</span> Change Password
