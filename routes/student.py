@@ -14,6 +14,23 @@ student_bp = Blueprint("student", __name__)
 
 ALLOWED_EXTENSIONS = {"pdf", "jpg", "jpeg", "png"}
 
+UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
+ALLOWED_EXTENSIONS = {"pdf", "jpg", "jpeg", "png"}
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def save_doc_file(cursor, enrollment_id, fileobj, doc_type):
+    if fileobj and fileobj.filename and allowed_file(fileobj.filename):
+        original = secure_filename(fileobj.filename)
+        ext = original.rsplit(".", 1)[1].lower()
+        unique_name = f"{uuid.uuid4().hex}.{ext}"
+        file_path = os.path.join(UPLOAD_FOLDER, unique_name)
+        fileobj.save(file_path)
+        url_path = f"/uploads/{unique_name}"
+        cursor.execute("""
+            INSERT INTO enrollment_documents (enrollment_id, file_name, file_path, doc_type)
+            VALUES (%s, %s, %s, %s)
+        """, (enrollment_id, original, url_path, doc_type))
+
 # =======================
 # GRADE RANGE MAPPINGS
 # =======================
@@ -209,16 +226,19 @@ def enroll(branch_id):
             if not is_branch_active(branch_id):
                 flash("This branch is currently deactivated. New enrollments are not allowed.", "error")
                 return redirect(url_for("public.homepage"))
-            student_name = request.form.get("student_name", "").strip()
-            grade_level = request.form.get("grade_level", "").strip()
-            gender = request.form.get("gender", "").strip()
-            dob = request.form.get("dob", "").strip() or None
-            lrn = request.form.get("lrn", "").strip() or None
-            address = request.form.get("address", "").strip()
-            contact_number = request.form.get("contact_number", "").strip()
-            guardian_name = request.form.get("guardian_name", "").strip()
+
+            student_name     = request.form.get("student_name", "").strip()
+            grade_level      = request.form.get("grade_level", "").strip()
+            gender           = request.form.get("gender", "").strip()
+            dob              = request.form.get("dob", "").strip() or None
+            lrn              = request.form.get("lrn", "").strip() or None
+            address          = request.form.get("address", "").strip()
+            contact_number   = request.form.get("contact_number", "").strip()
+            guardian_name    = request.form.get("guardian_name", "").strip()
             guardian_contact = request.form.get("guardian_contact", "").strip()
-            previous_school = request.form.get("previous_school", "").strip() or None
+            previous_school  = request.form.get("previous_school", "").strip() or None
+            email            = request.form.get("email", "").strip() or None
+            guardian_email   = request.form.get("guardian_email", "").strip() or None
 
             # ── SERVER-SIDE DUPLICATE CHECK (final gate) ──
             cursor.execute("""
@@ -257,37 +277,33 @@ def enroll(branch_id):
                 INSERT INTO enrollments
                   (student_name, grade_level, gender, dob, address, contact_number,
                    guardian_name, guardian_contact, previous_school, branch_id, status,
-                   branch_enrollment_no, lrn)
+                   branch_enrollment_no, lrn, email, guardian_email)
                 VALUES
-                  (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s)
+                  (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s,%s,%s)
                 RETURNING enrollment_id
             """, (
                 student_name, grade_level, gender, dob, address, contact_number,
-                guardian_name, guardian_contact, previous_school, branch_id, next_no, lrn
+                guardian_name, guardian_contact, previous_school, branch_id,
+                next_no, lrn, email, guardian_email
             ))
 
             enrollment_id = cursor.fetchone()["enrollment_id"]
             db.commit()
 
-            files = request.files.getlist("documents")
-            for file in files:
-                if file and file.filename and allowed_file(file.filename):
-                    original = secure_filename(file.filename)
-                    try:
-                        # Upload to Cloudinary (prod) or local (dev)
-                        url_path = upload_enrollment_document(file)
-                        cursor.execute("""
-                            INSERT INTO enrollment_documents (enrollment_id, file_name, file_path)
-                            VALUES (%s, %s, %s)
-                        """, (enrollment_id, original, url_path))
-                    except Exception as upload_err:
-                        import logging
-                        logging.getLogger(__name__).error(f"File upload failed for {original}: {upload_err}")
-                        # Continue enrollment even if upload fails
+            # --- Handle Requirements File Uploads ---
+            psa_file        = request.files.get("psa_birth_cert")
+            baptismal_file  = request.files.get("baptismal_cert")
+            form138_file    = request.files.get("form_138")
+            good_moral_file = request.files.get("good_moral")
+            form137_file    = request.files.get("form_137")
 
+            save_doc_file(cursor, enrollment_id, psa_file,        'PSA Birth Certificate')
+            save_doc_file(cursor, enrollment_id, baptismal_file,  'Baptismal Certificate')
+            save_doc_file(cursor, enrollment_id, form138_file,    'Form 138')
+            save_doc_file(cursor, enrollment_id, good_moral_file, 'Good Moral Certificate')
+            save_doc_file(cursor, enrollment_id, form137_file,    'Form 137')
             db.commit()
 
-            # Submit agad: redirect to success page so process can be tracked (no books/uniform steps)
             return redirect(url_for("student.enrollment_success", branch_id=branch_id, enrollment_id=enrollment_id))
 
         return render_template("student_enroll.html", branch=branch, message=None, duplicate_blocked=False, duplicate_reason=None)
@@ -415,6 +431,7 @@ def continuing_enrollment(branch_id):
             FROM sections s
             JOIN grade_levels g ON s.grade_level_id = g.id
             WHERE s.branch_id = %s 
+                        AND g.name ILIKE %s         -- ✅ only sections for the next grade
             ORDER BY s.section_name
         """, (branch_id,))
         # fetch all sections, filter in JS based on chosen grade

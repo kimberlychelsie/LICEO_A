@@ -99,11 +99,13 @@ def registrar_dashboard():
 
         # ── ENROLLED students (enrolled + open_for_enrollment)
         cursor.execute("""
-            SELECT *,
-                   COALESCE(branch_enrollment_no, enrollment_id) AS display_no
-            FROM enrollments
-            WHERE branch_id=%s AND status IN ('enrolled', 'open_for_enrollment')
-            ORDER BY grade_level ASC, student_name ASC
+            SELECT e.*,
+                   COALESCE(e.branch_enrollment_no, e.enrollment_id) AS display_no,
+                   s.section_name
+            FROM enrollments e
+            LEFT JOIN sections s ON s.section_id = e.section_id
+            WHERE e.branch_id=%s AND e.status IN ('enrolled', 'open_for_enrollment')
+            ORDER BY e.grade_level ASC, e.student_name ASC
         """, (branch_id,))
         enrolled_students = cursor.fetchall()
 
@@ -112,10 +114,23 @@ def registrar_dashboard():
             e["grade_level"] for e in enrolled_students if e.get("grade_level")
         ))
 
-        # Is re-enrollment currently open? (True if ANY enrolled student is open_for_enrollment)
+        # Is re-enrollment currently open?
         reenrollment_open = any(
             e["status"] == "open_for_enrollment" for e in enrolled_students
         )
+
+        # ── Sections for the assign-section modal
+        cursor.execute("""
+            SELECT s.section_id,
+           s.section_name,
+           g.name AS grade_level_name,
+           CONCAT(g.name, ' — ', s.section_name) AS section_display
+    FROM sections s
+    JOIN grade_levels g ON g.id = s.grade_level_id
+    WHERE s.branch_id = %s
+    ORDER BY g.name, s.section_name
+        """, (branch_id,))
+        section_options = cursor.fetchall()
 
         return render_template(
             "registrar_dashboard.html",
@@ -123,6 +138,7 @@ def registrar_dashboard():
             enrolled_students=enrolled_students,
             grade_levels=grade_levels,
             reenrollment_open=reenrollment_open,
+            section_options=section_options,
         )
 
     except Exception as e:
@@ -197,7 +213,6 @@ def create_student_account(enrollment_id):
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
-        # Verify enrollment exists, approved, and belongs to this branch
         cursor.execute("""
             SELECT *
             FROM enrollments
@@ -209,7 +224,6 @@ def create_student_account(enrollment_id):
             flash("Enrollment not found or not approved", "error")
             return redirect("/registrar")
 
-        # Student account already exists?
         cursor.execute("""
             SELECT 1 FROM student_accounts WHERE enrollment_id=%s
         """, (enrollment_id,))
@@ -217,7 +231,6 @@ def create_student_account(enrollment_id):
             flash("Student account already exists for this enrollment", "warning")
             return redirect("/registrar")
 
-        # Use branch_code + per-branch enrollment no for username, e.g. LDMAJ_0001
         cursor.execute("SELECT branch_code FROM branches WHERE branch_id=%s", (branch_id,))
         brow = cursor.fetchone()
         branch_code = (brow["branch_code"] if brow and brow.get("branch_code") else "").strip().upper()
@@ -232,7 +245,6 @@ def create_student_account(enrollment_id):
             branch_no_str = str(branch_no)
 
         username = f"{branch_code}_{branch_no_str}"
-        # Default password: secure random, stored hashed; student will be forced to change on first login
         temp_password = generate_password()
         hashed_password = generate_password_hash(temp_password)
 
@@ -245,6 +257,19 @@ def create_student_account(enrollment_id):
             """, (enrollment_id, enrollment["branch_id"], username, hashed_password))
 
             db.commit()
+
+            # ── Optional: assign section if registrar selected one ──
+            section_id = request.form.get("section_id", "").strip()
+            if section_id and section_id.isdigit():
+                try:
+                    cursor.execute("""
+                        UPDATE enrollments
+                        SET section_id = %s
+                        WHERE enrollment_id = %s
+                    """, (int(section_id), enrollment_id))
+                    db.commit()
+                except Exception:
+                    db.rollback()  # Section assign failure is non-fatal
 
             return render_template(
                 "account_created.html",
@@ -286,7 +311,6 @@ def create_parent_account(enrollment_id):
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
-        # Verify enrollment exists, approved, and belongs to this branch
         cursor.execute("""
             SELECT *
             FROM enrollments
@@ -298,7 +322,6 @@ def create_parent_account(enrollment_id):
             flash("Enrollment not found or not approved", "error")
             return redirect("/registrar")
 
-        # Parent link already exists?
         cursor.execute("""
             SELECT ps.*, u.username
             FROM parent_student ps
@@ -314,7 +337,6 @@ def create_parent_account(enrollment_id):
             )
             return redirect("/registrar")
 
-        # Use branch_code + running parent number per branch, e.g. LDMAJ_Parent1
         cursor.execute("SELECT branch_code FROM branches WHERE branch_id=%s", (branch_id,))
         brow = cursor.fetchone()
         branch_code = (brow["branch_code"] if brow and brow.get("branch_code") else "").strip().upper()
@@ -330,12 +352,10 @@ def create_parent_account(enrollment_id):
         next_no = (prow.get("cnt") or 0) + 1
 
         username = f"{branch_code}_Parent{next_no}"
-        # Default password: secure random, stored hashed
         temp_password = generate_password()
         hashed_password = generate_password_hash(temp_password)
 
         try:
-            # Create parent user account, get user_id
             cursor.execute("""
                 INSERT INTO users
                   (username, password, role, branch_id, require_password_change)
@@ -346,7 +366,6 @@ def create_parent_account(enrollment_id):
 
             parent_id = cursor.fetchone()["user_id"]
 
-            # Link parent to student (your current schema uses enrollment_id as student_id)
             cursor.execute("""
                 INSERT INTO parent_student (parent_id, student_id, relationship)
                 VALUES (%s, %s, 'guardian')

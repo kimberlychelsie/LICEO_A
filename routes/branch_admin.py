@@ -758,14 +758,12 @@ def branch_admin_inventory_toggle(item_id):
 
     return redirect(request.referrer or "/branch-admin/inventory?category=UNIFORM")
 
-# =======================
-# GRADE LEVELS (global reference)
-# =======================
 @branch_admin_bp.route("/branch-admin/grade-levels", methods=["GET", "POST"])
 def branch_admin_grade_levels():
     if session.get("role") != "branch_admin":
-        return redirect("/")
+        return redirect("")
 
+    branch_id = session.get("branch_id")
     db = get_db_connection()
     cursor = db.cursor()
 
@@ -781,35 +779,45 @@ def branch_admin_grade_levels():
         if not name or order is None or order_int < 1:
             flash("Name and order (must be 1 or greater) are required.", "error")
         else:
-            cursor.execute(
-                "INSERT INTO grade_levels (name, display_order, description) VALUES (%s, %s, %s)",
-                (name, order_int, description if description else None)
-            )
-            db.commit()
-            flash("Grade level added!", "success")
+            try:                                          # ← try wraps the INSERT
+                cursor.execute(
+                    "INSERT INTO grade_levels (name, display_order, description, branch_id) VALUES (%s, %s, %s, %s)",
+                    (name, order_int, description if description else None, branch_id)
+                )
+                db.commit()
+                flash("Grade level added!", "success")
+            except Exception as e:                        # ← except at same level as try
+                db.rollback()
+                if "duplicate key" in str(e).lower():
+                    flash(f"Grade level '{name}' already exists for this branch.", "error")
+                else:
+                    flash(f"Could not add grade level: {str(e)}", "error")
 
-    cursor.execute("SELECT id, name, display_order, description FROM grade_levels ORDER BY display_order")
+    cursor.execute(
+        "SELECT id, name, display_order, description FROM grade_levels WHERE branch_id = %s ORDER BY display_order",
+        (branch_id,)
+    )
     grades = cursor.fetchall()
-    cursor.close(); db.close()
+    cursor.close()
+    db.close()
     return render_template("branch_admin_grade_levels.html", grades=grades)
 
 @branch_admin_bp.route("/branch-admin/grade-levels/<int:grade_id>/edit", methods=["POST"])
 def branch_admin_grade_level_edit(grade_id):
     if session.get("role") != "branch_admin":
-        return redirect("/")
-
+        return redirect("")
+    branch_id = session.get("branch_id")
     name = (request.form.get("edit_name") or "").strip()
     order = request.form.get("edit_display_order") or None
     description = (request.form.get("edit_description") or "").strip()
     if not name or order is None:
         flash("All fields required.", "error")
         return redirect(url_for("branch_admin.branch_admin_grade_levels"))
-
     db = get_db_connection()
     cursor = db.cursor()
     cursor.execute(
-        "UPDATE grade_levels SET name=%s, display_order=%s, description=%s WHERE id=%s",
-        (name, int(order), description if description else None, grade_id)
+        "UPDATE grade_levels SET name=%s, display_order=%s, description=%s WHERE id=%s AND branch_id=%s",
+        (name, int(order), description if description else None, grade_id, branch_id)
     )
     db.commit()
     cursor.close(); db.close()
@@ -819,19 +827,19 @@ def branch_admin_grade_level_edit(grade_id):
 @branch_admin_bp.route("/branch-admin/grade-levels/<int:grade_id>/delete", methods=["POST"])
 def branch_admin_grade_level_delete(grade_id):
     if session.get("role") != "branch_admin":
-        return redirect("/")
-
+        return redirect("")
+    branch_id = session.get("branch_id")
     db = get_db_connection()
     cursor = db.cursor()
-    cursor.execute("DELETE FROM grade_levels WHERE id=%s", (grade_id,))
+    cursor.execute("DELETE FROM grade_levels WHERE id=%s AND branch_id=%s", (grade_id, branch_id))
     db.commit()
     cursor.close(); db.close()
     flash("Grade level deleted.", "success")
     return redirect(url_for("branch_admin.branch_admin_grade_levels"))
 
+
 # =======================
 # SECTIONS (branch-scoped)
-# =======================
 @branch_admin_bp.route("/branch-admin/sections", methods=["GET", "POST"])
 def branch_admin_sections():
     if session.get("role") != "branch_admin":
@@ -845,7 +853,8 @@ def branch_admin_sections():
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    cursor.execute("SELECT COUNT(*) FROM grade_levels")
+    # ✅ Check only THIS branch's grade levels, not all branches
+    cursor.execute("SELECT COUNT(*) FROM grade_levels WHERE branch_id = %s", (branch_id,))
     if cursor.fetchone()['count'] == 0:
         default_grades = [
             ("Nursery", 1), ("Kinder", 2), ("Grade 1", 3), ("Grade 2", 4), ("Grade 3", 5),
@@ -853,10 +862,17 @@ def branch_admin_sections():
             ("Grade 9", 11), ("Grade 10", 12), ("Grade 11", 13), ("Grade 12", 14)
         ]
         for g_name, g_order in default_grades:
-            cursor.execute("INSERT INTO grade_levels (name, display_order) VALUES (%s, %s)", (g_name, g_order))
+            cursor.execute(
+                "INSERT INTO grade_levels (name, display_order, branch_id) VALUES (%s, %s, %s)",
+                (g_name, g_order, branch_id)  # ✅ include branch_id
+            )
         db.commit()
 
-    cursor.execute("SELECT id, name FROM grade_levels ORDER BY display_order")
+    # ✅ Only fetch THIS branch's grade levels for the dropdown
+    cursor.execute(
+        "SELECT id, name FROM grade_levels WHERE branch_id = %s ORDER BY display_order",
+        (branch_id,)
+    )
     grades = cursor.fetchall() or []
 
     if request.method == "POST":
@@ -870,12 +886,27 @@ def branch_admin_sections():
             grade_level_id = None
 
         if section_name and grade_level_id:
-            cursor.execute("""
-                INSERT INTO sections (branch_id, school_year, section_name, grade_level_id)
-                VALUES (%s, %s, %s, %s)
-            """, (branch_id, school_year, section_name, grade_level_id))
-            db.commit()
-            flash("Section added.", "success")
+            # ✅ Verify the grade_level_id belongs to this branch before inserting
+            cursor.execute(
+                "SELECT 1 FROM grade_levels WHERE id = %s AND branch_id = %s",
+                (grade_level_id, branch_id)
+            )
+            if not cursor.fetchone():
+                flash("Invalid grade level for this branch.", "error")
+                cursor.close()
+                db.close()
+                return redirect("/branch-admin/sections")
+
+            try:
+                cursor.execute("""
+                    INSERT INTO sections (branch_id, school_year, section_name, grade_level_id)
+                    VALUES (%s, %s, %s, %s)
+                """, (branch_id, school_year, section_name, grade_level_id))
+                db.commit()
+                flash("Section added.", "success")
+            except Exception as e:
+                db.rollback()
+                flash(f"Could not add section: {str(e)}", "error")
         else:
             flash("Section name and grade level are required.", "error")
 
@@ -915,7 +946,7 @@ def branch_admin_section_delete(section_id):
     cursor = db.cursor()
     try:
         cursor.execute(
-            "DELETE FROM sections WHERE section_id=%s AND branch_id=%s",
+            "DELETE FROM sections WHERE section_id = %s AND branch_id = %s",
             (section_id, branch_id)
         )
         db.commit()
@@ -1175,7 +1206,7 @@ def branch_admin_assign_teachers():
 
         # ── GET: load teachers for this branch ──
         cursor.execute("""
-            SELECT user_id, username, full_name, gender, grade_level
+            SELECT user_id, username, full_name, gender, grade_level_id
             FROM users
             WHERE branch_id = %s AND role = 'teacher'
             ORDER BY full_name NULLS LAST, username
@@ -1439,7 +1470,7 @@ def api_get_section_subjects(section_id):
 
 
 # =======================
-# STUDENT → SECTION ASSIGNMENT (branch-scoped)
+# STUDENT → SECTION ASSIGNMENT
 # =======================
 @branch_admin_bp.route("/branch-admin/assign-students", methods=["GET", "POST"])
 def branch_admin_assign_students():
@@ -1457,11 +1488,13 @@ def branch_admin_assign_students():
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
-        # Load all grade levels for the filter dropdown
-        cursor.execute("SELECT id, name, display_order FROM grade_levels ORDER BY display_order")
+        # ✅ Only load THIS branch's grade levels
+        cursor.execute(
+            "SELECT id, name, display_order FROM grade_levels WHERE branch_id = %s ORDER BY display_order",
+            (branch_id,)
+        )
         grade_options = cursor.fetchall() or []
         
-        # Default to the first grade if no filter is set
         if not grade_filter and grade_options:
             grade_filter = str(grade_options[0]['id'])
 
@@ -1476,13 +1509,11 @@ def branch_admin_assign_students():
                 flash("Invalid input.", "error")
                 return redirect(url_for("branch_admin.branch_admin_assign_students", grade=grade_filter))
 
-            # Verify enrollment belongs to this branch
             cursor.execute("SELECT 1 FROM enrollments WHERE enrollment_id=%s AND branch_id=%s", (enrollment_id, branch_id))
             if not cursor.fetchone():
                 flash("Enrollment not found.", "error")
                 return redirect(url_for("branch_admin.branch_admin_assign_students", grade=grade_filter))
 
-            # Verify section belongs to this branch (if assigning)
             if section_id:
                 cursor.execute("SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s", (section_id, branch_id))
                 if not cursor.fetchone():
@@ -1495,8 +1526,6 @@ def branch_admin_assign_students():
             return redirect(url_for("branch_admin.branch_admin_assign_students", grade=grade_filter))
 
         # ── Load data for GET ──
-        
-        # 1. Sections for this branch
         cursor.execute("""
             SELECT s.section_id, s.section_name, g.name AS grade_level_name, g.id AS grade_level_id
             FROM sections s
@@ -1506,11 +1535,13 @@ def branch_admin_assign_students():
         """, (branch_id,))
         all_sections = cursor.fetchall() or []
 
-        # Filter sections to only show those matching the selected grade level
         filtered_sections = [s for s in all_sections if str(s['grade_level_id']) == grade_filter]
 
-        # 2. Approved students for this branch & grade
-        cursor.execute("SELECT name FROM grade_levels WHERE id=%s", (grade_filter,))
+        # ✅ Also filter grade_levels lookup by branch_id
+        cursor.execute(
+            "SELECT name FROM grade_levels WHERE id = %s AND branch_id = %s",
+            (grade_filter, branch_id)
+        )
         grade_row = cursor.fetchone()
         grade_name = grade_row['name'] if grade_row else ""
 
@@ -1543,7 +1574,7 @@ def branch_admin_assign_students():
 
 
 # =======================
-# MANAGE ACCOUNTS (Registrar / Cashier / Librarian / Teacher)
+# MANAGE ACCOUNTS
 # =======================
 @branch_admin_bp.route("/branch-admin/manage-accounts", methods=["GET", "POST"])
 def branch_admin_manage_accounts():
@@ -1555,7 +1586,6 @@ def branch_admin_manage_accounts():
         flash("No branch assigned.", "error")
         return redirect(url_for("auth.login"))
 
-    # Default to registrar
     role_filter = (request.args.get("role") or "registrar").strip().lower()
     created_user = None
 
@@ -1563,14 +1593,14 @@ def branch_admin_manage_accounts():
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
-        # Load grades for teacher dropdown
-        cursor.execute("SELECT id, name FROM grade_levels ORDER BY display_order")
+        # ✅ Only load THIS branch's grade levels for teacher dropdown
+        cursor.execute(
+            "SELECT id, name FROM grade_levels WHERE branch_id = %s ORDER BY display_order",
+            (branch_id,)
+        )
         grades = cursor.fetchall() or []
 
         if request.method == "POST":
-            # -----------------------
-            # Create User
-            # -----------------------
             role         = (request.form.get("role")         or "").strip().lower()
             grade_level  = (request.form.get("grade_level")  or "").strip()
             full_name    = (request.form.get("full_name")    or "").strip()
@@ -1581,7 +1611,6 @@ def branch_admin_manage_accounts():
                 flash("Invalid role selected.", "error")
                 return redirect("/branch-admin/manage-accounts")
 
-            # Validate teacher-specific required fields
             if role == "teacher":
                 if not full_name:
                     flash("Full name is required for teacher accounts.", "error")
@@ -1590,7 +1619,6 @@ def branch_admin_manage_accounts():
                     flash("Please select a gender for the teacher account.", "error")
                     return redirect("/branch-admin/manage-accounts")
 
-            # Validate custom username if provided
             if custom_uname and not re.match(r'^[A-Za-z0-9_]+$', custom_uname):
                 flash("Username can only contain letters, numbers, and underscores.", "error")
                 return redirect("/branch-admin/manage-accounts")
@@ -1602,7 +1630,6 @@ def branch_admin_manage_accounts():
                 flash("Branch code not configured for this branch.", "error")
                 return redirect("/branch-admin/manage-accounts")
 
-            # ── Build base username ──
             if custom_uname:
                 base_username = custom_uname
             elif role in ("registrar", "cashier", "librarian"):
@@ -1621,7 +1648,6 @@ def branch_admin_manage_accounts():
             else:
                 base_username = f"{branch_code}_{role.capitalize()}"
 
-            # ── Resolve username collision ──
             username = base_username
             suffix_counter = 2
             while True:
@@ -1634,8 +1660,8 @@ def branch_admin_manage_accounts():
                 username = f"{base_username}_{suffix_counter}"
                 suffix_counter += 1
 
-            temp_password    = generate_password()
-            hashed_password  = generate_password_hash(temp_password)
+            temp_password   = generate_password()
+            hashed_password = generate_password_hash(temp_password)
 
             if role == "teacher":
                 cursor.execute("""
@@ -1655,16 +1681,17 @@ def branch_admin_manage_accounts():
             db.commit()
             created_user = {"username": username, "password": temp_password, "role": role}
             flash("User created successfully!", "success")
-            
-            # Switch view to the newly created user's role list
             role_filter = role
 
-        # Get accounts for the selected role in this branch
+        # ✅ Already correctly scoped by branch_id
         cursor.execute("""
-            SELECT user_id, username, role, full_name, gender, grade_level, status
-            FROM users
-            WHERE branch_id = %s AND role = %s
-            ORDER BY user_id DESC
+            SELECT
+                u.user_id, u.username, u.role, u.full_name, u.gender,
+                g.name AS grade_level, u.status
+            FROM users u
+            LEFT JOIN grade_levels g ON u.grade_level_id = g.id
+            WHERE u.branch_id = %s AND u.role = %s
+            ORDER BY u.user_id DESC
         """, (branch_id, role_filter))
         accounts = cursor.fetchall() or []
 
@@ -1684,6 +1711,7 @@ def branch_admin_manage_accounts():
         created_user=created_user
     )
 
+
 @branch_admin_bp.route("/branch-admin/manage-accounts/<int:user_id>/toggle", methods=["POST"])
 def branch_admin_toggle_account(user_id):
     if session.get("role") != "branch_admin":
@@ -1692,7 +1720,6 @@ def branch_admin_toggle_account(user_id):
     db = get_db_connection()
     cursor = db.cursor()
     try:
-        # Toggle status (ensure it only affects the same branch)
         cursor.execute("""
             UPDATE users 
             SET status = CASE WHEN COALESCE(status, 'active') = 'active' THEN 'inactive' ELSE 'active' END

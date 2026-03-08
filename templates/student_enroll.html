@@ -24,7 +24,7 @@
         * {
             box-sizing: border-box;
             margin: 0;
-            padding: 0
+            padding: 0;
         }
 
         body {
@@ -72,7 +72,6 @@
             background: linear-gradient(90deg, var(--gold-light), var(--gold), var(--gold-light));
         }
 
-        /* circular logo – no white bg */
         .logo-circle {
             width: 74px;
             height: 74px;
@@ -92,7 +91,6 @@
             object-fit: contain;
         }
 
-        /* school info center */
         .header-center {
             flex: 1;
             text-align: center;
@@ -206,42 +204,41 @@
         }
 
         .c12 {
-            grid-column: span 12
+            grid-column: span 12;
         }
 
         .c8 {
-            grid-column: span 8
-        }
-
-        .c6 {
-            grid-column: span 6
-        }
-
-        .c5 {
-            grid-column: span 5
-        }
-
-        .c4 {
-            grid-column: span 4
-        }
-
-        .c3 {
-            grid-column: span 3
+            grid-column: span 8;
         }
 
         .c7 {
-            grid-column: span 7
+            grid-column: span 7;
+        }
+
+        .c6 {
+            grid-column: span 6;
+        }
+
+        .c5 {
+            grid-column: span 5;
+        }
+
+        .c4 {
+            grid-column: span 4;
+        }
+
+        .c3 {
+            grid-column: span 3;
         }
 
         @media(max-width:860px) {
-
             .c8,
             .c7,
             .c6,
             .c5,
             .c4,
             .c3 {
-                grid-column: span 12
+                grid-column: span 12;
             }
         }
 
@@ -263,6 +260,12 @@
         .field label .req {
             color: #e53e3e;
             margin-left: 2px;
+        }
+
+        .field small {
+            font-size: 10.5px;
+            color: var(--muted);
+            margin-top: 2px;
         }
 
         input[type="text"],
@@ -299,6 +302,24 @@
             cursor: pointer;
         }
 
+        /* ── FILE INPUT ── */
+        input[type="file"] {
+            width: 100%;
+            padding: 7px 10px;
+            border: 1.5px solid var(--line);
+            border-radius: 9px;
+            font-size: 12.5px;
+            background: #fafbff;
+            cursor: pointer;
+            font-family: inherit;
+            transition: border-color .15s;
+        }
+
+        input[type="file"]:focus {
+            border-color: var(--primary-light);
+            outline: none;
+        }
+
         /* ── PILLS ── */
         .pill-row {
             display: flex;
@@ -331,70 +352,6 @@
         .pill input {
             accent-color: var(--primary);
             margin: 0;
-        }
-
-        /* ── REQUIREMENTS GRID ── */
-        .req-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 8px;
-        }
-
-        @media(max-width:680px) {
-            .req-grid {
-                grid-template-columns: repeat(2, 1fr)
-            }
-        }
-
-        .req-card {
-            border: 1.5px solid var(--line);
-            border-radius: 10px;
-            padding: 10px 10px 8px;
-            background: #fff;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .req-card .req-name {
-            font-size: 11.5px;
-            font-weight: 800;
-            color: var(--primary);
-        }
-
-        .req-card small {
-            font-size: 10px;
-            color: var(--muted);
-        }
-
-        /* ── UPLOAD AREA ── */
-        .upload-area {
-            border: 1.5px dashed rgba(43, 108, 176, .4);
-            border-radius: 10px;
-            padding: 13px;
-            background: rgba(43, 108, 176, .04);
-            margin-top: 10px;
-        }
-
-        .upload-area label {
-            font-size: 11px;
-            font-weight: 700;
-            color: var(--primary);
-            text-transform: uppercase;
-            letter-spacing: .4px;
-            margin-bottom: 6px;
-        }
-
-        .upload-area input[type="file"] {
-            font-size: 12.5px;
-            width: 100%;
-        }
-
-        .upload-area small {
-            display: block;
-            margin-top: 5px;
-            font-size: 10.5px;
-            color: var(--muted);
         }
 
         /* ── DATA PRIVACY ── */
@@ -453,7 +410,7 @@
             margin: 18px 0;
         }
 
-        /* ── TWO-COL INLINE (label: value style) ── */
+        /* ── TWO-COL INLINE ── */
         .inline-row {
             display: flex;
             align-items: center;
@@ -578,14 +535,17 @@
                 style="margin:16px 24px 0; display:flex; align-items:flex-start; gap:12px; background:#fef2f2; border:2px solid #fca5a5; border-radius:12px; padding:16px 18px;">
                 <span style="font-size:1.6rem; line-height:1;">🚫</span>
                 <div>
-                    <strong style="display:block; margin-bottom:4px; font-size:0.95rem;">We found an existing student
-                        record with similar information</strong>
+                    <strong style="display:block; margin-bottom:4px; font-size:0.95rem;">
+                        We found an existing student record with similar information
+                    </strong>
                     <span style="font-size:0.85rem; color:#7f1d1d;">Matched because: {{ duplicate_reason }}.</span>
                     <br><br>
-                    <span style="font-size:0.85rem;">If you are a <strong>returning student</strong>, please use the <a
-                            href="/branch/{{ branch.branch_id }}" style="color:#1d4ed8; font-weight:700;">Continuing
-                            Student</a> option instead. If you believe this is an error, please visit the school office
-                        directly.</span>
+                    <span style="font-size:0.85rem;">
+                        If you are a <strong>returning student</strong>, please use the
+                        <a href="/branch/{{ branch.branch_id }}" style="color:#1d4ed8; font-weight:700;">
+                            Continuing Student
+                        </a> option instead. If you believe this is an error, please visit the school office directly.
+                    </span>
                 </div>
             </div>
             {% endif %}
@@ -602,15 +562,21 @@
                         <div class="grid">
                             <div class="c12">
                                 <div class="pill-row">
-                                    <label class="pill"><input type="radio" name="enroll_type" value="Old" required>
-                                        Old</label>
-                                    <label class="pill"><input type="radio" name="enroll_type" value="New"> New</label>
-                                    <label class="pill"><input type="radio" name="enroll_type" value="Transferee">
-                                        Transferee</label>
-                                    <label class="pill"><input type="radio" name="enroll_type" value="First Semester">
-                                        First Semester</label>
-                                    <label class="pill"><input type="radio" name="enroll_type" value="Second Semester">
-                                        Second Semester</label>
+                                    <label class="pill">
+                                        <input type="radio" name="enroll_type" value="Old" required> Old
+                                    </label>
+                                    <label class="pill">
+                                        <input type="radio" name="enroll_type" value="New"> New
+                                    </label>
+                                    <label class="pill">
+                                        <input type="radio" name="enroll_type" value="Transferee"> Transferee
+                                    </label>
+                                    <label class="pill">
+                                        <input type="radio" name="enroll_type" value="First Semester"> First Semester
+                                    </label>
+                                    <label class="pill">
+                                        <input type="radio" name="enroll_type" value="Second Semester"> Second Semester
+                                    </label>
                                 </div>
                             </div>
                             <div class="c4">
@@ -648,8 +614,8 @@
                             <div class="c5">
                                 <div class="field">
                                     <label>Learner Reference Number (LRN)</label>
-                                    <input type="text" id="field_lrn" name="lrn" placeholder="12-digit LRN"
-                                        maxlength="12" />
+                                    <input type="text" id="field_lrn" name="lrn"
+                                        placeholder="12-digit LRN" maxlength="12" />
                                 </div>
                             </div>
 
@@ -674,7 +640,7 @@
                                         <option>Grade 11 – ABM</option>
                                         <option>Grade 11 – HUMSS</option>
                                         <option>Grade 11 – GAS</option>
-                                        <option>Grade 12 – STEM</option>
+                                        <option>Grade 12 �� STEM</option>
                                         <option>Grade 12 – ABM</option>
                                         <option>Grade 12 – HUMSS</option>
                                         <option>Grade 12 – GAS</option>
@@ -720,6 +686,14 @@
                                 </div>
                             </div>
 
+                            <!-- ✅ NEW: Student Email -->
+                            <div class="c8">
+                                <div class="field">
+                                    <label>Email Address</label>
+                                    <input type="email" name="email" placeholder="student@domain.com" />
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -735,7 +709,8 @@
                             <div class="c6">
                                 <div class="field">
                                     <label>Father's Name</label>
-                                    <input type="text" name="father_name" placeholder="Last Name, First Name, M.I." />
+                                    <input type="text" name="father_name"
+                                        placeholder="Last Name, First Name, M.I." />
                                 </div>
                             </div>
                             <div class="c3">
@@ -754,7 +729,8 @@
                             <div class="c6">
                                 <div class="field">
                                     <label>Mother's Name</label>
-                                    <input type="text" name="mother_name" placeholder="Last Name, First Name, M.I." />
+                                    <input type="text" name="mother_name"
+                                        placeholder="Last Name, First Name, M.I." />
                                 </div>
                             </div>
                             <div class="c3">
@@ -770,17 +746,27 @@
                                 </div>
                             </div>
 
-                            <div class="c8">
+                            <div class="c6">
                                 <div class="field">
                                     <label>Guardian Name <span class="req">*</span></label>
-                                    <input type="text" name="guardian_name" placeholder="Name / Relationship"
-                                        required />
+                                    <input type="text" name="guardian_name"
+                                        placeholder="Name / Relationship" required />
                                 </div>
                             </div>
-                            <div class="c4">
+                            <div class="c3">
                                 <div class="field">
                                     <label>Guardian Contact <span class="req">*</span></label>
-                                    <input type="tel" name="guardian_contact" placeholder="09xxxxxxxxx" required />
+                                    <input type="tel" name="guardian_contact"
+                                        placeholder="09xxxxxxxxx" required />
+                                </div>
+                            </div>
+
+                            <!-- ✅ NEW: Guardian Email -->
+                            <div class="c3">
+                                <div class="field">
+                                    <label>Guardian Email</label>
+                                    <input type="email" name="guardian_email"
+                                        placeholder="guardian@domain.com" />
                                 </div>
                             </div>
 
@@ -812,53 +798,60 @@
                 </div>
 
                 <!-- ══ REQUIREMENTS ══ -->
+                <!-- ✅ UPDATED: individual named file inputs per document -->
                 <div class="section">
                     <div class="section-head">
                         <h3>Requirement/s Submitted</h3>
+                        <small>PDF, JPG, PNG accepted</small>
                     </div>
                     <div class="section-body">
-                        <div class="req-grid">
-                            <div class="req-card">
-                                <div class="req-name">PSA Birth Cert</div>
-                                <label class="pill" style="border-radius:8px; border-color:#bfdbfe">
-                                    <input type="checkbox" name="req_psa" value="1"> Submitted
-                                </label>
-                                <small>Photocopy / Original</small>
-                            </div>
-                            <div class="req-card">
-                                <div class="req-name">Baptismal</div>
-                                <label class="pill" style="border-radius:8px; border-color:#bfdbfe">
-                                    <input type="checkbox" name="req_baptismal" value="1"> Submitted
-                                </label>
-                                <small>If applicable</small>
-                            </div>
-                            <div class="req-card">
-                                <div class="req-name">Card / Form 138</div>
-                                <label class="pill" style="border-radius:8px; border-color:#bfdbfe">
-                                    <input type="checkbox" name="req_form138" value="1"> Submitted
-                                </label>
-                                <small>Latest</small>
-                            </div>
-                            <div class="req-card">
-                                <div class="req-name">Good Moral</div>
-                                <label class="pill" style="border-radius:8px; border-color:#bfdbfe">
-                                    <input type="checkbox" name="req_goodmoral" value="1"> Submitted
-                                </label>
-                                <small>Certificate</small>
-                            </div>
-                            <div class="req-card">
-                                <div class="req-name">Form 137</div>
-                                <label class="pill" style="border-radius:8px; border-color:#bfdbfe">
-                                    <input type="checkbox" name="req_form137" value="1"> Submitted
-                                </label>
-                                <small>As required</small>
-                            </div>
-                        </div>
+                        <div class="grid">
 
-                        <div class="upload-area">
-                            <label for="documents">Upload Scanned Documents</label>
-                            <input id="documents" name="documents" type="file" multiple accept=".pdf,.jpg,.jpeg,.png" />
-                            <small>PDF, JPG, PNG accepted &nbsp;•&nbsp; You may select multiple files</small>
+                            <div class="c6">
+                                <div class="field">
+                                    <label>PSA Birth Certificate <span class="req">*</span></label>
+                                    <input type="file" name="psa_birth_cert"
+                                        accept=".pdf,.jpg,.jpeg,.png" required />
+                                    <small>Photocopy / Original</small>
+                                </div>
+                            </div>
+
+                            <div class="c6">
+                                <div class="field">
+                                    <label>Baptismal Certificate</label>
+                                    <input type="file" name="baptismal_cert"
+                                        accept=".pdf,.jpg,.jpeg,.png" />
+                                    <small>Optional — if applicable</small>
+                                </div>
+                            </div>
+
+                            <div class="c6">
+                                <div class="field">
+                                    <label>Card / Form 138 <span class="req">*</span></label>
+                                    <input type="file" name="form_138"
+                                        accept=".pdf,.jpg,.jpeg,.png" required />
+                                    <small>Latest report card</small>
+                                </div>
+                            </div>
+
+                            <div class="c6">
+                                <div class="field">
+                                    <label>Good Moral Certificate</label>
+                                    <input type="file" name="good_moral"
+                                        accept=".pdf,.jpg,.jpeg,.png" />
+                                    <small>Certificate</small>
+                                </div>
+                            </div>
+
+                            <div class="c6">
+                                <div class="field">
+                                    <label>Form 137</label>
+                                    <input type="file" name="form_137"
+                                        accept=".pdf,.jpg,.jpeg,.png" />
+                                    <small>As required</small>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -873,8 +866,8 @@
                         <div class="privacy-box">
                             <div class="priv-title">🔒 Data Privacy Act of 2012 – RA 10173</div>
                             <p>
-                                I hereby certify that the information provided in this form is <strong>true and
-                                    correct</strong>.
+                                I hereby certify that the information provided in this form is
+                                <strong>true and correct</strong>.
                             </p>
                             <p>
                                 I give consent to the processing of my personal and sensitive personal data for
@@ -885,12 +878,12 @@
                                 by law or authorized by the National Privacy Commission.
                             </p>
                             <div class="privacy-check-row">
-                                <input type="checkbox" name="privacy_consent" id="privacyConsent" value="1" required />
+                                <input type="checkbox" name="privacy_consent"
+                                    id="privacyConsent" value="1" required />
                                 <label for="privacyConsent">
                                     I have read and understood the above Data Privacy statement, and I freely give my
-                                    consent
-                                    to the collection and processing of my personal data. <span
-                                        style="color:#e53e3e">*</span>
+                                    consent to the collection and processing of my personal data.
+                                    <span style="color:#e53e3e">*</span>
                                 </label>
                             </div>
                         </div>
@@ -899,16 +892,16 @@
                             <div class="c6">
                                 <div class="field">
                                     <label>Student's Signature (type full name) <span class="req">*</span></label>
-                                    <input type="text" name="student_signature" placeholder="Full Name as Signature"
-                                        required />
+                                    <input type="text" name="student_signature"
+                                        placeholder="Full Name as Signature" required />
                                 </div>
                             </div>
                             <div class="c6">
                                 <div class="field">
-                                    <label>Parent / Guardian's Signature (type full name) <span
-                                            class="req">*</span></label>
-                                    <input type="text" name="parent_signature" placeholder="Full Name as Signature"
-                                        required />
+                                    <label>Parent / Guardian's Signature (type full name)
+                                        <span class="req">*</span></label>
+                                    <input type="text" name="parent_signature"
+                                        placeholder="Full Name as Signature" required />
                                 </div>
                             </div>
                         </div>
@@ -918,19 +911,24 @@
 
                 <!-- ══ SUBMIT FOOTER ══ -->
                 <div class="form-footer">
+
                     <!-- Duplicate warning banner (shown by AJAX) -->
                     <div id="dupWarning"
-                        style="display:none; width:100%; background:#fef2f2; border:2px solid #fca5a5; border-radius:12px; padding:14px 18px; margin-bottom:12px; display:none;">
+                        style="display:none; width:100%; background:#fef2f2; border:2px solid #fca5a5;
+                               border-radius:12px; padding:14px 18px; margin-bottom:12px;">
                         <div style="display:flex; align-items:flex-start; gap:12px;">
                             <span style="font-size:1.5rem;">🚫</span>
                             <div>
-                                <strong style="display:block; margin-bottom:3px;">Existing student record
-                                    detected</strong>
-                                <span id="dupDetail" style="font-size:0.82rem; color:#7f1d1d;"></span><br><br>
-                                <span style="font-size:0.82rem;">If you are a <strong>returning student</strong>, please
-                                    use the <a href="/branch/{{ branch.branch_id }}"
-                                        style="color:#1d4ed8; font-weight:700;">Continuing Student</a> option
-                                    instead.</span>
+                                <strong style="display:block; margin-bottom:3px;">
+                                    Existing student record detected
+                                </strong>
+                                <span id="dupDetail" style="font-size:0.82rem; color:#7f1d1d;"></span>
+                                <br><br>
+                                <span style="font-size:0.82rem;">
+                                    If you are a <strong>returning student</strong>, please use the
+                                    <a href="/branch/{{ branch.branch_id }}"
+                                        style="color:#1d4ed8; font-weight:700;">Continuing Student</a> option instead.
+                                </span>
                             </div>
                         </div>
                     </div>
@@ -949,15 +947,14 @@
 
     <script>
         (function () {
-            var branchId = parseInt(document.getElementById('enrollForm').getAttribute('data-branch-id'), 10);
-            var nameEl = document.getElementById('field_name');
-            var dobEl = document.getElementById('field_dob');
-            var lrnEl = document.getElementById('field_lrn');
+            var branchId  = parseInt(document.getElementById('enrollForm').getAttribute('data-branch-id'), 10);
+            var nameEl    = document.getElementById('field_name');
+            var dobEl     = document.getElementById('field_dob');
+            var lrnEl     = document.getElementById('field_lrn');
             var submitBtn = document.getElementById('submitBtn');
-            var dupWarn = document.getElementById('dupWarning');
+            var dupWarn   = document.getElementById('dupWarning');
             var dupDetail = document.getElementById('dupDetail');
-
-            var blocked = false;
+            var blocked   = false;
 
             function setBlocked(val, detail) {
                 blocked = val;
@@ -979,8 +976,8 @@
 
             function runCheck() {
                 var name = nameEl ? nameEl.value.trim() : '';
-                var dob = dobEl ? dobEl.value.trim() : '';
-                var lrn = lrnEl ? lrnEl.value.trim() : '';
+                var dob  = dobEl  ? dobEl.value.trim()  : '';
+                var lrn  = lrnEl  ? lrnEl.value.trim()  : '';
 
                 // Need at least name or LRN to bother checking
                 if (!name && !lrn) { setBlocked(false); return; }
@@ -994,7 +991,7 @@
                     .then(function (res) {
                         if (res.status === 'blocked') {
                             var reasons = (res.reasons || []).join(', ');
-                            var detail = 'Matched because: ' + reasons + '.';
+                            var detail  = 'Matched because: ' + reasons + '.';
                             if (res.match_grade) detail += ' Existing grade: ' + res.match_grade + '.';
                             setBlocked(true, detail);
                         } else {
@@ -1005,8 +1002,8 @@
             }
 
             // Trigger on blur of key fields
-            if (lrnEl) lrnEl.addEventListener('blur', runCheck);
-            if (dobEl) dobEl.addEventListener('change', runCheck);
+            if (lrnEl)  lrnEl.addEventListener('blur', runCheck);
+            if (dobEl)  dobEl.addEventListener('change', runCheck);
             if (nameEl) nameEl.addEventListener('blur', runCheck);
 
             // Final guard on submit (in case JS was slow)
