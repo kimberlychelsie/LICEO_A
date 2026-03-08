@@ -16,6 +16,7 @@ MIGRATIONS = [
     ("email column", "ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS email character varying(255);"),
     ("guardian_email column", "ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS guardian_email character varying(255);"),
     ("branch_code column", "ALTER TABLE public.branches ADD COLUMN IF NOT EXISTS branch_code character varying(20);"),
+    ("doc_type column", "ALTER TABLE public.enrollment_documents ADD COLUMN IF NOT EXISTS doc_type character varying(255);"),
 ]
 
 print(f"Connecting to Railway...\n")
