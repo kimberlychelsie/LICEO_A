@@ -63,9 +63,14 @@ def teacher_dashboard():
     db = get_db_connection()
     cur = db.cursor()
     try:
-        cur.execute("SELECT grade_level FROM users WHERE user_id = %s", (user_id,))
+        cur.execute("""
+    SELECT g.name
+    FROM users u
+    LEFT JOIN grade_levels g ON u.grade_level_id = g.id
+    WHERE u.user_id = %s
+""", (user_id,))
         row = cur.fetchone()
-        teacher_grade = (row[0] or "").strip() if row else ""
+        teacher_grade = row[0] if row else None
     finally:
         cur.close()
         db.close()
@@ -228,16 +233,33 @@ def teacher_set_grade():
     cur = db.cursor()
     try:
         # Check if branch admin already assigned a grade — if so, block the change
-        cur.execute("SELECT grade_level FROM users WHERE user_id = %s", (user_id,))
+        cur.execute("""
+    SELECT g.name
+    FROM users u
+    LEFT JOIN grade_levels g ON u.grade_level_id = g.id
+    WHERE u.user_id = %s
+""", (user_id,))
         row = cur.fetchone()
-        existing_grade = (row[0] or "").strip() if row else ""
+        existing_grade = row[0] if row else None
 
         if existing_grade:
             flash(f"Your grade level ({existing_grade}) is assigned by the Branch Admin and cannot be changed.", "warning")
             return redirect(url_for("teacher.teacher_dashboard") + f"?grade={existing_grade}")
 
-        cur.execute("UPDATE users SET grade_level = %s WHERE user_id = %s",
-                    (grade, user_id))
+        # convert grade name → grade ID
+        cur.execute("SELECT id FROM grade_levels WHERE name = %s", (grade,))
+        grade_row = cur.fetchone()
+
+        if not grade_row:
+            flash("Invalid grade level.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        grade_id = grade_row[0]
+
+        cur.execute(
+            "UPDATE users SET grade_level_id = %s WHERE user_id = %s",
+            (grade_id, user_id)
+        )
         db.commit()
         flash(f"Grade level set to {grade}.", "success")
 
