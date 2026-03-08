@@ -21,15 +21,14 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 def save_doc_file(cursor, enrollment_id, fileobj, doc_type):
     if fileobj and fileobj.filename and allowed_file(fileobj.filename):
         original = secure_filename(fileobj.filename)
-        ext = original.rsplit(".", 1)[1].lower()
-        unique_name = f"{uuid.uuid4().hex}.{ext}"
-        file_path = os.path.join(UPLOAD_FOLDER, unique_name)
-        fileobj.save(file_path)
-        url_path = f"/uploads/{unique_name}"
-        cursor.execute("""
-            INSERT INTO enrollment_documents (enrollment_id, file_name, file_path, doc_type)
-            VALUES (%s, %s, %s, %s)
-        """, (enrollment_id, original, url_path, doc_type))
+        try:
+            url_path = upload_enrollment_document(fileobj)
+            cursor.execute("""
+                INSERT INTO enrollment_documents (enrollment_id, file_name, file_path, doc_type)
+                VALUES (%s, %s, %s, %s)
+            """, (enrollment_id, original, url_path, doc_type))
+        except Exception as e:
+            logger.error(f"Failed to upload document {original}: {e}")
 
 # =======================
 # GRADE RANGE MAPPINGS
