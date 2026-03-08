@@ -186,6 +186,7 @@
       These show on the main homepage. Everyone (all branches) can see them.
     </div>
 
+    {% if is_branch_active_status %}
     <form method="post" action="{{ url_for('branch_admin.dashboard') }}" enctype="multipart/form-data">
       <input type="hidden" name="add_announcement" value="1">
       <div class="row" style="flex-wrap:wrap; gap:10px;">
@@ -221,6 +222,7 @@
         </div>
       </div>
     </form>
+    {% endif %}
 
     {% if announcements_list %}
     <div style="margin-top:16px;">
@@ -249,7 +251,7 @@
               {% if not a.is_active %}<span style="color:#dc3545;"> · hidden</span>{% endif %}
             </div>
           </div>
-          {% if a.is_active %}
+          {% if is_branch_active_status and a.is_active %}
           <form method="post" action="{{ url_for('branch_admin.announcement_hide', announcement_id=a.id) }}"
             style="flex-shrink:0;">
             <button type="submit" class="btn" style="padding:5px 10px; font-size:12px;">Hide</button>

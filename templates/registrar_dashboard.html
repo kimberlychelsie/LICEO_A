@@ -501,8 +501,7 @@
         📋 New Enrollments
         <span class="tab-count">{{ new_enrollments | length }}</span>
     </a>
-    <a class="tab-btn" href="#enrolled" id="tab-enrolled-btn"
-        onclick="switchTab('enrolled',this); return false;">
+    <a class="tab-btn" href="#enrolled" id="tab-enrolled-btn" onclick="switchTab('enrolled',this); return false;">
         🎓 Enrolled Students
         <span class="tab-count">{{ enrolled_students | length }}</span>
     </a>
@@ -542,12 +541,10 @@
                     <!-- ✅ Documents column with View button -->
                     <td>
                         {% if enrollment.documents and enrollment.documents | length > 0 %}
-                        <button
-    class="btn btn-info btn-sm view-docs-btn"
-    data-student="{{ enrollment.student_name }}"
-    data-docs='{{ enrollment.documents | tojson | safe }}'>
-    📂 View ({{ enrollment.documents | length }})
-</button>
+                        <button class="btn btn-info btn-sm view-docs-btn" data-student="{{ enrollment.student_name }}"
+                            data-docs='{{ enrollment.documents | tojson | safe }}'>
+                            📂 View ({{ enrollment.documents | length }})
+                        </button>
                         {% else %}
                         <span class="muted-note">No documents</span>
                         {% endif %}
@@ -565,41 +562,43 @@
 
                     <td>
                         {% if enrollment.status == 'pending' %}
+                        {% if is_branch_active_status %}
                         <form method="post" style="display:inline;">
-                            <input type="hidden" name="enrollment_id"
-                                value="{{ enrollment.enrollment_id }}">
-                            <button name="action" value="approved"
-                                class="btn btn-success btn-sm">✅ Approve</button>
+                            <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
+                            <button name="action" value="approved" class="btn btn-success btn-sm">✅ Approve</button>
                         </form>
                         <form method="post" style="display:inline;">
-                            <input type="hidden" name="enrollment_id"
-                                value="{{ enrollment.enrollment_id }}">
+                            <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
                             <button name="action" value="rejected" class="btn btn-danger btn-sm"
                                 onclick="return confirm('Reject this enrollment?')">❌ Reject</button>
                         </form>
+                        {% else %}
+                        <span class="muted-note">Actions disabled (Archive Mode)</span>
+                        {% endif %}
 
                         {% elif enrollment.status == 'approved' %}
                         {% if not enrollment.has_student_account %}
-                        <button
-                            class="btn btn-primary btn-sm"
-                            onclick="openCreateModal(
+                        {% if is_branch_active_status %}
+                        <button class="btn btn-primary btn-sm" onclick="openCreateModal(
                                 {{ enrollment.enrollment_id }},
                                 '{{ enrollment.student_name | replace("'", "\\'") }}',
                                 '{{ enrollment.grade_level | replace("'", "\\'") }}'
                             )">
                             👤 Create Student Account
                         </button>
+                        {% endif %}
                         {% else %}
                         <span class="acct-ok">✓ Student Account Created</span>
                         {% endif %}
                         <br><br>
                         {% if not enrollment.has_parent_account %}
-                        <form method="post"
-                            action="/registrar/create-parent-account/{{ enrollment.enrollment_id }}"
+                        {% if is_branch_active_status %}
+                        <form method="post" action="/registrar/create-parent-account/{{ enrollment.enrollment_id }}"
                             style="display:inline;">
-                            <button type="submit"
-                                class="btn btn-secondary btn-sm">👨‍👩‍👧 Create Parent Account</button>
+                            <button type="submit" class="btn btn-secondary btn-sm">👨‍👩‍👧 Create Parent
+                                Account</button>
                         </form>
+                        {% endif %}
                         {% else %}
                         <span class="acct-ok">✓ Parent Account Created</span>
                         {% endif %}
@@ -623,6 +622,7 @@
 <div class="tab-panel" id="tab-enrolled">
 
     <!-- Toggle Banner -->
+    {% if is_branch_active_status %}
     {% if reenrollment_open %}
     <div class="toggle-banner open-state">
         <div class="tg-left">
@@ -653,6 +653,7 @@
         </form>
     </div>
     {% endif %}
+    {% endif %}
 
     <!-- Filter Bar -->
     <div class="filter-bar">
@@ -663,8 +664,8 @@
             <option value="{{ g }}">{{ g }}</option>
             {% endfor %}
         </select>
-        <input class="search-input" type="text" id="enrolledSearch"
-            placeholder="Search student name..." oninput="filterEnrolled()">
+        <input class="search-input" type="text" id="enrolledSearch" placeholder="Search student name..."
+            oninput="filterEnrolled()">
     </div>
 
     <div class="card">
@@ -745,13 +746,12 @@
                 </span>
             </label>
             <select id="modalSectionSelect" name="section_id">
-              <option value="">— Skip for now —</option>
-              <!-- ✅ Options are built dynamically by JS based on student's grade level -->
-          </select>
+                <option value="">— Skip for now —</option>
+                <!-- ✅ Options are built dynamically by JS based on student's grade level -->
+            </select>
 
             <div class="modal-actions">
-                <button type="button" class="btn btn-secondary btn-sm"
-                    onclick="closeCreateModal()">Cancel</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeCreateModal()">Cancel</button>
                 <button type="submit" class="btn btn-success btn-sm">✅ Create Account</button>
             </div>
         </form>
@@ -762,13 +762,13 @@
 
 {% block scripts %}
 <script>
-  document.querySelectorAll('.view-docs-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
-        const studentName = this.dataset.student;
-        const docs = JSON.parse(this.dataset.docs || '[]');
-        openDocsModal(studentName, docs);
+    document.querySelectorAll('.view-docs-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const studentName = this.dataset.student;
+            const docs = JSON.parse(this.dataset.docs || '[]');
+            openDocsModal(studentName, docs);
+        });
     });
-});
     // ── Tab switching ──
     function switchTab(tab, btn) {
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -876,12 +876,12 @@
     });
     const ALL_SECTIONS = [
         {% for section in section_options %}
-        {
-            section_id: {{ section.section_id }},
-            section_name: "{{ section.section_name | replace('"', '\\"') }}",
+    {
+        section_id: { { section.section_id } },
+        section_name: "{{ section.section_name | replace('"', '\\"') }}",
             grade_level_name: "{{ section.grade_level_name | lower | replace('"', '\\"') }}"
-        }{% if not loop.last %},{% endif %}
-        {% endfor %}
+    } {% if not loop.last %}, {% endif %}
+    {% endfor %}
     ];
 
     function openCreateModal(enrollmentId, studentName, gradeLevel) {
@@ -895,14 +895,14 @@
         select.innerHTML = '<option value="">— Skip for now —</option>';
 
         var gradeLower = gradeLevel.trim().toLowerCase();
-        var filtered = ALL_SECTIONS.filter(function(s) {
+        var filtered = ALL_SECTIONS.filter(function (s) {
             return s.grade_level_name === gradeLower;
         });
 
         if (filtered.length === 0) {
             select.innerHTML += '<option disabled>No sections found for ' + gradeLevel + '</option>';
         } else {
-            filtered.forEach(function(s) {
+            filtered.forEach(function (s) {
                 select.innerHTML += '<option value="' + s.section_id + '">'
                     + gradeLevel + ' - ' + s.section_name + '</option>';
             });
@@ -915,7 +915,7 @@
         document.getElementById('createStudentModal').classList.remove('open');
     }
 
-    document.getElementById('createStudentModal').addEventListener('click', function(e) {
+    document.getElementById('createStudentModal').addEventListener('click', function (e) {
         if (e.target === this) closeCreateModal();
     });
 </script>

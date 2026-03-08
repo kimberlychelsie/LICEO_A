@@ -15,6 +15,7 @@
     <hr class="mb-4">
 
     <!-- STEP CARD -->
+    {% if is_branch_active_status %}
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-primary text-white">
             <h5 class="mb-0">📋 Teacher Assignment</h5>
@@ -44,7 +45,8 @@
             <!-- STEP 2: Filter + Search (disabled until teacher selected) -->
             <div id="step2" class="mb-3" style="opacity:0.4; pointer-events:none;">
                 <label class="form-label fw-bold">
-                    <span class="badge bg-primary me-2">Step 2</span> Filter Subjects <small class="text-muted fw-normal">(optional)</small>
+                    <span class="badge bg-primary me-2">Step 2</span> Filter Subjects <small
+                        class="text-muted fw-normal">(optional)</small>
                 </label>
                 <div class="row g-2">
                     <div class="col-md-4">
@@ -70,8 +72,10 @@
 
                 <!-- Select All / Deselect toolbar -->
                 <div class="d-flex align-items-center gap-2 mb-2" id="selectToolbar" style="display:none !important;">
-                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAll()">✓ Select All Unassigned</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAll()">✗ Deselect All</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAll()">✓ Select All
+                        Unassigned</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAll()">✗ Deselect
+                        All</button>
                     <span class="ms-auto badge bg-primary fs-6" id="selectedCount">0 selected</span>
                 </div>
 
@@ -93,6 +97,7 @@
             </div>
         </div>
     </div>
+    {% endif %}
 
     <!-- Current Assignments Table -->
     <div class="card shadow-sm mt-4">
@@ -369,23 +374,23 @@
                 subject_ids: subjectIds
             })
         })
-        .then(r => r.json())
-        .then(data => {
-            if (data.success) {
-                status.innerHTML = `<span class="text-success">✅ ${data.count} subject(s) assigned!</span>`;
-                btn.innerHTML = '✅ Save Assignments';
-                setTimeout(() => location.reload(), 1000);
-            } else {
-                status.innerHTML = `<span class="text-danger">❌ ${data.message}</span>`;
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    status.innerHTML = `<span class="text-success">✅ ${data.count} subject(s) assigned!</span>`;
+                    btn.innerHTML = '✅ Save Assignments';
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    status.innerHTML = `<span class="text-danger">❌ ${data.message}</span>`;
+                    btn.disabled = false;
+                    btn.innerHTML = '✅ Save Assignments';
+                }
+            })
+            .catch(() => {
+                status.innerHTML = '<span class="text-danger">❌ Network error. Please try again.</span>';
                 btn.disabled = false;
                 btn.innerHTML = '✅ Save Assignments';
-            }
-        })
-        .catch(() => {
-            status.innerHTML = '<span class="text-danger">❌ Network error. Please try again.</span>';
-            btn.disabled = false;
-            btn.innerHTML = '✅ Save Assignments';
-        });
+            });
     }
 
     // ─── Filter assignments table by grade ──────────────────────────────────
@@ -401,10 +406,13 @@
     label[for^="subj_"] {
         transition: box-shadow 0.15s ease;
     }
+
     label[for^="subj_"]:hover {
         box-shadow: 0 0 0 2px #0d6efd44;
     }
-    #step2, #step3 {
+
+    #step2,
+    #step3 {
         transition: opacity 0.3s ease;
     }
 </style>

@@ -528,7 +528,12 @@
         {% if selected_grade and selected_grade != teacher_grade %}
         <form method="post" action="/teacher/set-grade">
             <input type="hidden" name="grade_level" value="{{ selected_grade }}">
+            {% if is_branch_active_status %}
             <button type="submit" class="btn-apply">📌 Save as my grade</button>
+            {% else %}
+            <button type="button" class="btn-apply" disabled style="opacity:0.6; cursor:not-allowed;">📌 Save as my
+                grade (View Only)</button>
+            {% endif %}
         </form>
         {% endif %}
         {% endif %}
@@ -550,7 +555,12 @@
                 <option value="{{ g }}">{{ g }}</option>
                 {% endfor %}
             </select>
+            {% if is_branch_active_status %}
             <button type="submit" class="btn-apply">📌 Set &amp; View Class</button>
+            {% else %}
+            <button type="button" class="btn-apply" disabled style="opacity:0.6; cursor:not-allowed;">📌 Set &amp; View
+                Class (View Only)</button>
+            {% endif %}
         </form>
     </div>
     {% endif %}
@@ -603,7 +613,11 @@
                     {% set label = a.grade_level_name ~ ' — ' ~ a.section_name %}
                     {% if label != ns.last_section %}
                     {% if ns.last_section %}
-                    <tr><td colspan="2"><hr style="border:none;border-top:1px dashed #e5e7eb;margin:4px 0;"></td></tr>
+                    <tr>
+                        <td colspan="2">
+                            <hr style="border:none;border-top:1px dashed #e5e7eb;margin:4px 0;">
+                        </td>
+                    </tr>
                     {% endif %}
                     {% set ns.last_section = label %}
                     <tr>
@@ -628,6 +642,7 @@
         <p class="ann-section-title">📢 Class Announcements — {{ selected_grade }}</p>
 
         <!-- Post form -->
+        {% if is_branch_active_status %}
         <form method="post" action="/teacher/announce" class="ann-form">
             <input type="hidden" name="grade_level" value="{{ selected_grade }}">
             <input type="text" name="title" class="ann-input" placeholder="📌  Title (e.g. Quiz Tomorrow — Chapter 3)"
@@ -637,6 +652,7 @@
                 maxlength="2000"></textarea>
             <button type="submit" class="btn-post">📤 Post Announcement</button>
         </form>
+        {% endif %}
 
         <hr class="ann-divider">
 
@@ -657,6 +673,7 @@
                             </div>
                         </div>
                         <!-- Edit & Delete buttons -->
+                        {% if is_branch_active_status %}
                         <div style="display:flex; gap:4px; flex-shrink:0;">
                             <button type="button" class="btn-edit-ann" data-id="{{ a.announcement_id }}"
                                 data-title="{{ a.title | e }}" data-body="{{ (a.body or '') | e }}"
@@ -667,6 +684,7 @@
                                 <button type="submit" class="btn-del-ann" title="Delete">🗑</button>
                             </form>
                         </div>
+                        {% endif %}
                     </div>
                     {% if a.body %}
                     <div class="ann-card-body">{{ a.body }}</div>

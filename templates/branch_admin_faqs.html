@@ -224,6 +224,7 @@
   </header>
 
   <!-- Add New FAQ -->
+  {% if is_branch_active_status %}
   <div class="card">
     <h2>➕ Add New Branch FAQ</h2>
     <div class="info-box">
@@ -244,6 +245,7 @@
       <button type="submit" class="btn btn-primary">✅ Add Branch FAQ</button>
     </form>
   </div>
+  {% endif %}
 
   <!-- General FAQs (Read-Only) -->
   <div class="card">
@@ -279,6 +281,7 @@
       <div class="faq-item branch">
         <div class="faq-question">{{ faq[1] }}</div>
         <div class="faq-answer">{{ faq[2] }}</div>
+        {% if is_branch_active_status %}
         <div class="faq-actions">
           <button class="btn btn-secondary" onclick="toggleEdit({{ faq[0] }})">✏️ Edit</button>
           <form method="POST" action="{{ url_for('branch_admin.branch_admin_faq_delete', faq_id=faq[0]) }}"
@@ -303,6 +306,7 @@
             <button type="button" class="btn" onclick="toggleEdit({{ faq[0] }})">Cancel</button>
           </form>
         </div>
+        {% endif %}
       </div>
       {% endfor %}
     </div>

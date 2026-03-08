@@ -129,6 +129,7 @@
     {% endwith %}
 
     <!-- Add Form -->
+    {% if is_branch_active_status %}
     <div class="sec-card">
         <h2>➕ Add New Section</h2>
         <form method="post" action="{{ url_for('branch_admin.branch_admin_sections') }}">
@@ -154,6 +155,7 @@
             </div>
         </form>
     </div>
+    {% endif %}
 
     <!-- Existing Sections -->
     <div class="sec-card">
@@ -173,11 +175,13 @@
                     <td>{{ sec.section_name }}</td>
                     <td>{{ sec.grade_level_name }}</td>
                     <td>
+                        {% if is_branch_active_status %}
                         <form method="post"
                             action="{{ url_for('branch_admin.branch_admin_section_delete', section_id=sec.section_id) }}"
                             onsubmit="return confirm('Delete section {{ sec.section_name }}?');">
                             <button class="btn btn-danger" type="submit">Delete</button>
                         </form>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

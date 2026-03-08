@@ -144,6 +144,7 @@
     {% endwith %}
 
     <!-- Add Form -->
+    {% if is_branch_active_status %}
     <div class="gl-card">
         <h2>➕ Add Grade Level</h2>
         <form method="post" action="{{ url_for('branch_admin.branch_admin_grade_levels') }}">
@@ -167,6 +168,7 @@
             </div>
         </form>
     </div>
+    {% endif %}
 
     <!-- Table -->
     <div class="gl-card">
@@ -187,18 +189,25 @@
                     <form action="{{ url_for('branch_admin.branch_admin_grade_level_edit', grade_id=g[0]) }}"
                         method="post">
                         <td><input type="number" name="edit_display_order" value="{{ g[2] }}" min="1" required
-                                class="field" style="width:70px;"></td>
-                        <td><input name="edit_name" value="{{ g[1] }}" required class="field"></td>
-                        <td><input name="edit_description" value="{{ g[3] or '' }}" class="field"></td>
+                                class="field" style="width:70px;" {% if not is_branch_active_status %}readonly{% endif
+                                %}></td>
+                        <td><input name="edit_name" value="{{ g[1] }}" required class="field" {% if not
+                                is_branch_active_status %}readonly{% endif %}></td>
+                        <td><input name="edit_description" value="{{ g[3] or '' }}" class="field" {% if not
+                                is_branch_active_status %}readonly{% endif %}></td>
                         <td style="white-space:nowrap;">
+                            {% if is_branch_active_status %}
                             <button class="btn btn-success" type="submit">Save</button>
+                            {% endif %}
                     </form>
                     &nbsp;
+                    {% if is_branch_active_status %}
                     <form action="{{ url_for('branch_admin.branch_admin_grade_level_delete', grade_id=g[0]) }}"
                         method="post" style="display:inline;"
                         onsubmit="return confirm('Delete grade level {{ g[1] }}?');">
                         <button class="btn btn-danger" type="submit">Delete</button>
                     </form>
+                    {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

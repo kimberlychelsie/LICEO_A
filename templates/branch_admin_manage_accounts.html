@@ -172,6 +172,7 @@
     </p>
 
     <!-- CREATE USERS CARD -->
+    {% if is_branch_active_status %}
     <div class="card">
         <h2 style="margin:0 0 6px 0;">Create New User</h2>
         <div class="muted" style="margin-bottom:12px;">
@@ -249,6 +250,7 @@
         </div>
         {% endif %}
     </div>
+    {% endif %}
 
     <!-- ACCOUNTS LIST CARD -->
     <div class="card">
@@ -306,6 +308,7 @@
                             {% endif %}
                         </td>
                         <td style="text-align:right;">
+                            {% if is_branch_active_status %}
                             <form method="post"
                                 action="{{ url_for('branch_admin.branch_admin_toggle_account', user_id=a.user_id) }}"
                                 style="display:inline;">
@@ -314,6 +317,7 @@
                                     {% if a.status != 'inactive' %}Deactivate{% else %}Activate{% endif %}
                                 </button>
                             </form>
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

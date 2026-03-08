@@ -257,6 +257,7 @@
                     <th>Admin Username</th>
                     <th>Status</th>
                     <th>Created</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -280,6 +281,21 @@
                         {% endif %}
                     </td>
                     <td>{{ branch.created_at.strftime('%Y-%m-%d') if branch.created_at else 'N/A' }}</td>
+                    <td>
+                        <form method="POST" action="/super-admin/branch/{{ branch.branch_id }}/toggle-status"
+                            style="display:inline;"
+                            onsubmit="return confirm('Are you sure you want to {% if branch.is_active %}deactivate{% else %}reactivate{% endif %} {{ branch.branch_name }}? {% if branch.is_active %}Users will only have view access and cannot make new transactions. This action can be undone anytime.{% endif %}');">
+                            <button type="submit"
+                                class="btn {% if branch.is_active %}btn-secondary{% else %}btn-primary{% endif %}"
+                                style="padding: 6px 12px; font-size: 12px;">
+                                {% if branch.is_active %}
+                                🛑 Deactivate
+                                {% else %}
+                                ♻️ Reactivate
+                                {% endif %}
+                            </button>
+                        </form>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>

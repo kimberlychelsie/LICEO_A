@@ -124,11 +124,13 @@
                         <td>
                             <div style="display:flex; gap:6px; flex-wrap:wrap;">
                                 {% if not e.bill_id %}
+                                {% if is_branch_active_status %}
                                 <a href="/cashier/create-bill/{{ e.enrollment_id }}" class="btn btn-primary btn-sm">📝
                                     Create Bill</a>
+                                {% endif %}
                                 {% else %}
                                 <a href="/cashier/bill/{{ e.bill_id }}" class="btn btn-secondary btn-sm">👁 View</a>
-                                {% if e.bill_status != 'paid' %}
+                                {% if e.bill_status != 'paid' and is_branch_active_status %}
                                 <a href="/cashier/process-payment/{{ e.bill_id }}" class="btn btn-primary btn-sm">💵
                                     Pay</a>
                                 {% endif %}

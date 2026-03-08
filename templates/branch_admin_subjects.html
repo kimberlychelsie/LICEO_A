@@ -129,6 +129,7 @@
     {% endwith %}
 
     <!-- Add Form -->
+    {% if is_branch_active_status %}
     <div class="subj-card">
         <h2>➕ Add Subject</h2>
         <form method="post" action="{{ url_for('branch_admin.branch_admin_subjects') }}">
@@ -155,6 +156,7 @@
             </div>
         </form>
     </div>
+    {% endif %}
 
     <!-- Existing Subjects -->
     <div class="subj-card">
@@ -182,11 +184,13 @@
                         {% endif %}
                     </td>
                     <td>
+                        {% if is_branch_active_status %}
                         <form method="post"
                             action="{{ url_for('branch_admin.branch_admin_subject_delete', subject_id=subj.subject_id) }}"
                             onsubmit="return confirm('Delete subject {{ subj.name }}?');" style="display:inline;">
                             <button class="btn btn-danger" type="submit">Delete</button>
                         </form>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

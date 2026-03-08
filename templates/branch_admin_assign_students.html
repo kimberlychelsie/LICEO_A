@@ -149,11 +149,12 @@
     </p>
 
     <!-- Filter by Grade Level -->
-    <div style="margin-bottom: 16px; background: #fff; padding: 12px 16px; border-radius: 9px; border: 1px solid #eee; display: flex; align-items: center; gap: 12px;">
+    <div
+        style="margin-bottom: 16px; background: #fff; padding: 12px 16px; border-radius: 9px; border: 1px solid #eee; display: flex; align-items: center; gap: 12px;">
         <span style="font-weight: 600; font-size: 14px;">Filter by Grade:</span>
         <select class="field" style="max-width: 250px;" onchange="window.location.href='?grade=' + this.value;">
             {% for g in grade_options %}
-            <option value="{{ g.id }}" {% if grade_filter == g.id|string %}selected{% endif %}>{{ g.name }}</option>
+            <option value="{{ g.id }}" {% if grade_filter==g.id|string %}selected{% endif %}>{{ g.name }}</option>
             {% endfor %}
         </select>
     </div>
@@ -185,7 +186,7 @@
                 <tr>
                     <th>Enrollment #</th>
                     <th>Student Name</th>
-                    <th>Grade Level</th>  <!-- ← NEW column -->
+                    <th>Grade Level</th> <!-- ← NEW column -->
                     <th>Current Section</th>
                     <th style="min-width: 220px;">Assign Section</th>
                 </tr>
@@ -211,6 +212,7 @@
                         {% endif %}
                     </td>
                     <td>
+                        {% if is_branch_active_status %}
                         <form method="post"
                             action="{{ url_for('branch_admin.branch_admin_assign_students', grade=grade_filter) }}"
                             style="display: flex; gap: 6px; align-items: center;">
@@ -218,13 +220,15 @@
                             <select name="section_id" class="field" style="flex: 1;">
                                 <option value="">— Select Section —</option>
                                 {% for sec in sections %}
-                                <option value="{{ sec.section_id }}" {{ 'selected' if sec.section_id == s.section_id else '' }}>
+                                <option value="{{ sec.section_id }}" {{ 'selected' if sec.section_id==s.section_id
+                                    else '' }}>
                                     {{ sec.section_name }}
                                 </option>
                                 {% endfor %}
                             </select>
                             <button type="submit" class="btn btn-primary btn-sm">Save</button>
                         </form>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

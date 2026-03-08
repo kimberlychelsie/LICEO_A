@@ -314,7 +314,9 @@
   <header>
     <h1>📦 Inventory Management</h1>
     <div class="header-actions">
+      {% if is_branch_active_status %}
       <a href="{{ url_for('branch_admin.branch_admin_inventory_add') }}" class="btn btn-primary">+ Add New Item</a>
+      {% endif %}
       <a href="{{ url_for('branch_admin.dashboard') }}" class="btn">⬅ Back</a>
     </div>
   </header>
@@ -439,6 +441,7 @@
             {% endif %}
           </td>
           <td>
+            {% if is_branch_active_status %}
             <div class="action-buttons">
               <a href="{{ url_for('branch_admin.branch_admin_inventory_restock', item_id=item[0]) }}"
                 class="btn btn-sm btn-primary" title="Restock">📦 Restock</a>
@@ -452,6 +455,7 @@
                 </button>
               </form>
             </div>
+            {% endif %}
           </td>
         </tr>
         {% else %}

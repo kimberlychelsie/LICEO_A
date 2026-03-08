@@ -565,6 +565,7 @@
     <div class="alert alert-info">
       ℹ️ Reservation is pending payment. Collect payment then mark as PAID.
     </div>
+    {% if is_branch_active_status %}
     <div class="actions">
       <form method="post" action="{{ url_for('cashier.cashier_mark_paid', reservation_id=header[0]) }}">
         <button class="btn btn-success" type="submit">✅ Mark as PAID</button>
@@ -574,11 +575,13 @@
           Reservation</button>
       </form>
     </div>
+    {% endif %}
 
     {% elif header[7] == 'PAID' %}
     <div class="alert alert-info">
       ℹ️ Payment received. Student/Parent can now claim the items.
     </div>
+    {% if is_branch_active_status %}
     <div class="actions">
       <form method="post" action="{{ url_for('cashier.cashier_mark_claimed', reservation_id=header[0]) }}">
         <button class="btn btn-success" type="submit">🎉 Mark as CLAIMED</button>
@@ -588,6 +591,7 @@
           Reservation</button>
       </form>
     </div>
+    {% endif %}
 
     {% elif header[7] == 'CLAIMED' %}
     <div class="alert alert-success">

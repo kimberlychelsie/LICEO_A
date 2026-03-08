@@ -115,9 +115,59 @@ def super_admin_dashboard():
 
         return render_template("super_admin_dashboard.html", branches=branches)
 
+    except Exception as e:
+        logger.error(f"Error fetching branches: {str(e)}")
+        flash("Error fetching branches.", "error")
+        return redirect(url_for("auth.login"))
+
     finally:
         cursor.close()
         db.close()
+
+
+@super_admin_bp.route("/super-admin/branch/<int:branch_id>/toggle-status", methods=["POST"])
+def superadmin_branch_toggle_status(branch_id):
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cur = db.cursor()
+
+    try:
+        cur.execute("BEGIN;")
+        cur.execute("SELECT is_active, branch_name FROM branches WHERE branch_id = %s", (branch_id,))
+        row = cur.fetchone()
+        if not row:
+            db.rollback()
+            flash("Branch not found.", "error")
+            return redirect(url_for("super_admin.super_admin_dashboard"))
+        
+        current_status = row[0]
+        branch_name = row[1]
+        new_status = not current_status
+        new_status_str = 'active' if new_status else 'inactive'
+
+        cur.execute(
+            "UPDATE branches SET is_active = %s, status = %s WHERE branch_id = %s",
+            (new_status, new_status_str, branch_id)
+        )
+        db.commit()
+
+        action = "reactivated" if new_status else "deactivated"
+        flash(f"Branch '{branch_name}' has been {action} successfully.", "success")
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to toggle branch status: {str(e)}")
+        flash("Failed to update branch status. Please try again.", "error")
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        db.close()
+
+    return redirect(url_for("super_admin.super_admin_dashboard"))
 
 
 # =======================
