@@ -1538,12 +1538,14 @@ def branch_admin_assign_students():
         filtered_sections = [s for s in all_sections if str(s['grade_level_id']) == grade_filter]
 
         # ✅ Also filter grade_levels lookup by branch_id
-        cursor.execute(
-            "SELECT name FROM grade_levels WHERE id = %s AND branch_id = %s",
-            (grade_filter, branch_id)
-        )
-        grade_row = cursor.fetchone()
-        grade_name = grade_row['name'] if grade_row else ""
+        grade_name = ""
+        if grade_filter:
+            cursor.execute(
+                "SELECT name FROM grade_levels WHERE id = %s AND branch_id = %s",
+                (grade_filter, branch_id)
+            )
+            grade_row = cursor.fetchone()
+            grade_name = grade_row['name'] if grade_row else ""
 
         cursor.execute("""
             SELECT e.enrollment_id, e.student_name, e.grade_level, e.branch_enrollment_no, e.section_id,
