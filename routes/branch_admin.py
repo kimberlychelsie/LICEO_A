@@ -1206,7 +1206,7 @@ def branch_admin_assign_teachers():
 
         # ── GET: load teachers for this branch ──
         cursor.execute("""
-            SELECT user_id, username, full_name, gender, grade_level_id
+            SELECT user_id, username, full_name, gender, grade_level
             FROM users
             WHERE branch_id = %s AND role = 'teacher'
             ORDER BY full_name NULLS LAST, username
@@ -1688,12 +1688,11 @@ def branch_admin_manage_accounts():
         # ✅ Already correctly scoped by branch_id
         cursor.execute("""
             SELECT
-                u.user_id, u.username, u.role, u.full_name, u.gender,
-                g.name AS grade_level, u.status
-            FROM users u
-            LEFT JOIN grade_levels g ON u.grade_level_id = g.id
-            WHERE u.branch_id = %s AND u.role = %s
-            ORDER BY u.user_id DESC
+                user_id, username, role, full_name, gender,
+                grade_level, status
+            FROM users
+            WHERE branch_id = %s AND role = %s
+            ORDER BY user_id DESC
         """, (branch_id, role_filter))
         accounts = cursor.fetchall() or []
 
