@@ -222,6 +222,14 @@ def enroll(branch_id):
         if not branch:
             return "Branch not found", 404
 
+        # ✅ Load grade levels for this branch from DB
+        cursor.execute("""
+            SELECT id, name FROM grade_levels
+            WHERE branch_id = %s
+            ORDER BY display_order
+        """, (branch_id,))
+        grade_levels = cursor.fetchall() or []
+
         if request.method == "POST":
             if not is_branch_active(branch_id):
                 flash("This branch is currently deactivated. New enrollments are not allowed.", "error")
@@ -229,6 +237,7 @@ def enroll(branch_id):
 
             student_name     = request.form.get("student_name", "").strip()
             grade_level      = request.form.get("grade_level", "").strip()
+            grade_level      = normalize_grade_level(grade_level)  # ✅ normalize before saving
             gender           = request.form.get("gender", "").strip()
             dob              = request.form.get("dob", "").strip() or None
             lrn              = request.form.get("lrn", "").strip() or None
@@ -240,7 +249,7 @@ def enroll(branch_id):
             email            = request.form.get("email", "").strip() or None
             guardian_email   = request.form.get("guardian_email", "").strip() or None
 
-            # ── SERVER-SIDE DUPLICATE CHECK (final gate) ──
+            # ── SERVER-SIDE DUPLICATE CHECK ──
             cursor.execute("""
                 SELECT student_name, dob, lrn, grade_level
                 FROM enrollments
@@ -260,16 +269,15 @@ def enroll(branch_id):
                 return render_template(
                     "student_enroll.html",
                     branch=branch,
+                    grade_levels=grade_levels,   # ✅ pass back
                     message=None,
                     duplicate_blocked=True,
                     duplicate_reason=reason_text,
                 )
 
-            # Calculate per-branch enrollment number
             cursor.execute("""
                 SELECT COALESCE(MAX(branch_enrollment_no), 0) + 1 AS next_no
-                FROM enrollments
-                WHERE branch_id = %s
+                FROM enrollments WHERE branch_id = %s
             """, (branch_id,))
             next_no = cursor.fetchone()["next_no"]
 
@@ -278,19 +286,16 @@ def enroll(branch_id):
                   (student_name, grade_level, gender, dob, address, contact_number,
                    guardian_name, guardian_contact, previous_school, branch_id, status,
                    branch_enrollment_no, lrn, email, guardian_email)
-                VALUES
-                  (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s,%s,%s)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s,%s,%s)
                 RETURNING enrollment_id
             """, (
                 student_name, grade_level, gender, dob, address, contact_number,
                 guardian_name, guardian_contact, previous_school, branch_id,
                 next_no, lrn, email, guardian_email
             ))
-
             enrollment_id = cursor.fetchone()["enrollment_id"]
             db.commit()
 
-            # --- Handle Requirements File Uploads ---
             psa_file        = request.files.get("psa_birth_cert")
             baptismal_file  = request.files.get("baptismal_cert")
             form138_file    = request.files.get("form_138")
@@ -306,7 +311,14 @@ def enroll(branch_id):
 
             return redirect(url_for("student.enrollment_success", branch_id=branch_id, enrollment_id=enrollment_id))
 
-        return render_template("student_enroll.html", branch=branch, message=None, duplicate_blocked=False, duplicate_reason=None)
+        return render_template(
+            "student_enroll.html",
+            branch=branch,
+            grade_levels=grade_levels,   # ✅ pass to template
+            message=None,
+            duplicate_blocked=False,
+            duplicate_reason=None
+        )
 
     finally:
         cursor.close()

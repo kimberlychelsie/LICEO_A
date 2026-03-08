@@ -745,14 +745,9 @@
                 </span>
             </label>
             <select id="modalSectionSelect" name="section_id">
-                <option value="">— Skip for now —</option>
-                {% for section in section_options %}
-                <option value="{{ section.section_id }}"
-                    data-grade="{{ section.grade_level_name | lower }}">
-                    {{ section.section_display }}
-                </option>
-                {% endfor %}
-            </select>
+              <option value="">— Skip for now —</option>
+              <!-- ✅ Options are built dynamically by JS based on student's grade level -->
+          </select>
 
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary btn-sm"
@@ -877,6 +872,50 @@
     }
 
     document.getElementById('createStudentModal').addEventListener('click', function (e) {
+        if (e.target === this) closeCreateModal();
+    });
+    const ALL_SECTIONS = [
+        {% for section in section_options %}
+        {
+            section_id: {{ section.section_id }},
+            section_name: "{{ section.section_name | replace('"', '\\"') }}",
+            grade_level_name: "{{ section.grade_level_name | lower | replace('"', '\\"') }}"
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    function openCreateModal(enrollmentId, studentName, gradeLevel) {
+        document.getElementById('modalStudentName').textContent = studentName;
+        document.getElementById('modalGradeLevel').textContent = '📚 Grade Level: ' + gradeLevel;
+        document.getElementById('createStudentForm').action =
+            '/registrar/create-student-account/' + enrollmentId;
+
+        // ✅ Rebuild dropdown with ONLY matching grade sections
+        var select = document.getElementById('modalSectionSelect');
+        select.innerHTML = '<option value="">— Skip for now —</option>';
+
+        var gradeLower = gradeLevel.trim().toLowerCase();
+        var filtered = ALL_SECTIONS.filter(function(s) {
+            return s.grade_level_name === gradeLower;
+        });
+
+        if (filtered.length === 0) {
+            select.innerHTML += '<option disabled>No sections found for ' + gradeLevel + '</option>';
+        } else {
+            filtered.forEach(function(s) {
+                select.innerHTML += '<option value="' + s.section_id + '">'
+                    + gradeLevel + ' - ' + s.section_name + '</option>';
+            });
+        }
+
+        document.getElementById('createStudentModal').classList.add('open');
+    }
+
+    function closeCreateModal() {
+        document.getElementById('createStudentModal').classList.remove('open');
+    }
+
+    document.getElementById('createStudentModal').addEventListener('click', function(e) {
         if (e.target === this) closeCreateModal();
     });
 </script>

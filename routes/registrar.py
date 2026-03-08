@@ -198,7 +198,6 @@ def toggle_reenrollment():
 
     return redirect("/registrar#enrolled")
 
-
 @registrar_bp.route("/registrar/create-student-account/<int:enrollment_id>", methods=["POST"])
 def create_student_account(enrollment_id):
     if session.get("role") != "registrar":
@@ -255,21 +254,36 @@ def create_student_account(enrollment_id):
                 VALUES
                   (%s, %s, %s, %s, TRUE, TRUE)
             """, (enrollment_id, enrollment["branch_id"], username, hashed_password))
-
             db.commit()
 
             # ── Optional: assign section if registrar selected one ──
             section_id = request.form.get("section_id", "").strip()
             if section_id and section_id.isdigit():
                 try:
+                    # ✅ Verify section belongs to this branch AND matches student's grade level
                     cursor.execute("""
-                        UPDATE enrollments
-                        SET section_id = %s
-                        WHERE enrollment_id = %s
-                    """, (int(section_id), enrollment_id))
-                    db.commit()
-                except Exception:
-                    db.rollback()  # Section assign failure is non-fatal
+                        SELECT s.section_id
+                        FROM sections s
+                        JOIN grade_levels g ON s.grade_level_id = g.id
+                        WHERE s.section_id = %s
+                          AND s.branch_id = %s
+                          AND g.name ILIKE %s
+                    """, (int(section_id), branch_id, enrollment.get("grade_level", "")))
+
+                    if cursor.fetchone():
+                        cursor.execute("""
+                            UPDATE enrollments SET section_id = %s
+                            WHERE enrollment_id = %s AND branch_id = %s
+                        """, (int(section_id), enrollment_id, branch_id))
+                        db.commit()
+                    else:
+                        logger.warning(
+                            f"Section {section_id} does not match grade level "
+                            f"'{enrollment.get('grade_level')}' — section not assigned."
+                        )
+                except Exception as e:
+                    db.rollback()
+                    logger.warning(f"Section assign failed (non-fatal): {str(e)}")
 
             return render_template(
                 "account_created.html",
