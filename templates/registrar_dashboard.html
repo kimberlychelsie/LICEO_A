@@ -848,25 +848,6 @@
     });
 
     // ── Create Student Account modal ──
-    function openCreateModal(enrollmentId, studentName, gradeLevel) {
-        document.getElementById('modalStudentName').textContent = studentName;
-        document.getElementById('modalGradeLevel').textContent = '📚 Grade Level: ' + gradeLevel;
-        document.getElementById('createStudentForm').action =
-            '/registrar/create-student-account/' + enrollmentId;
-
-        // Filter section options by grade level
-        var gradeLower = gradeLevel.trim().toLowerCase();
-        var options = document.querySelectorAll('#modalSectionSelect option');
-        options.forEach(function (opt) {
-            if (!opt.value) return;
-            var optGrade = (opt.dataset.grade || '').trim().toLowerCase();
-            opt.style.display = (!optGrade || optGrade === gradeLower) ? '' : 'none';
-        });
-
-        document.getElementById('modalSectionSelect').value = '';
-        document.getElementById('createStudentModal').classList.add('open');
-    }
-
     function closeCreateModal() {
         document.getElementById('createStudentModal').classList.remove('open');
     }
@@ -874,6 +855,7 @@
     document.getElementById('createStudentModal').addEventListener('click', function (e) {
         if (e.target === this) closeCreateModal();
     });
+
     const ALL_SECTIONS = [
         {% for section in section_options %}
     {
