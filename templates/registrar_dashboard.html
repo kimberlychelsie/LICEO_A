@@ -858,12 +858,12 @@
 
     const ALL_SECTIONS = [
         {% for section in section_options %}
-    {
-        section_id: { { section.section_id } },
-        section_name: "{{ section.section_name | replace('"', '\\"') }}",
+        {
+            section_id: {{ section.section_id }},
+            section_name: "{{ section.section_name | replace('"', '\\"') }}",
             grade_level_name: "{{ section.grade_level_name | lower | replace('"', '\\"') }}"
-    } {% if not loop.last %}, {% endif %}
-    {% endfor %}
+        }{% if not loop.last %}, {% endif %}
+        {% endfor %}
     ];
 
     function openCreateModal(enrollmentId, studentName, gradeLevel) {
