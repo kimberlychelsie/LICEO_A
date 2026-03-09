@@ -435,8 +435,8 @@ def payment_history():
     if not _require_cashier():
         return redirect("/")
 
-    date_from = request.args.get("date_from", date.today().replace(day=1).strftime("%Y-%m-%d"))
-    date_to = request.args.get("date_to", date.today().strftime("%Y-%m-%d"))
+    date_from = request.args.get("date_from", "").strip() or date.today().replace(day=1).strftime("%Y-%m-%d")
+    date_to = request.args.get("date_to", "").strip() or date.today().strftime("%Y-%m-%d")
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -478,6 +478,9 @@ def payment_history():
             date_from=date_from,
             date_to=date_to
         )
+    except Exception as e:
+        flash(f"Error loading payment history: {str(e)}", "error")
+        return redirect(url_for("cashier.dashboard"))
     finally:
         cursor.close()
         db.close()
