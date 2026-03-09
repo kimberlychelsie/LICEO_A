@@ -332,7 +332,7 @@ def enrollment_success(branch_id, enrollment_id):
     try:
         cursor.execute(
             "SELECT branch_enrollment_no, student_name FROM enrollments WHERE enrollment_id=%s",
-            (enrollment_id,),
+            (enrollment_id, branch_id),
         )
         row = cursor.fetchone()
         if not row:
@@ -444,7 +444,7 @@ def continuing_enrollment(branch_id):
             WHERE s.branch_id = %s 
                         AND g.name ILIKE %s         -- ✅ only sections for the next grade
             ORDER BY s.section_name
-        """, (branch_id,))
+        """, (branch_id, next_grade))
         # fetch all sections, filter in JS based on chosen grade
         raw_sections = cursor.fetchall() or []
         sections = [dict(s) for s in raw_sections]
