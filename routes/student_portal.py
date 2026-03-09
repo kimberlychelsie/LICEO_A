@@ -266,7 +266,7 @@ def billing():
 
     try:
         cursor.execute("""
-            SELECT sa.*, e.student_name, e.grade_level, e.branch_enrollment_id
+            SELECT sa.*, e.student_name, e.grade_level, e.branch_enrollment_no
             FROM student_accounts sa
             JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
             WHERE sa.account_id = %s
