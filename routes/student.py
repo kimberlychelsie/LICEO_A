@@ -704,12 +704,14 @@ def track_enrollment():
                     SELECT e.*, b.branch_name
                     FROM enrollments e
                     JOIN branches b ON e.branch_id = b.branch_id
-                    WHERE e.enrollment_id = %s
-                """, (enrollment_id_int,))
+                    WHERE e.enrollment_id = %s OR e.branch_enrollment_no = %s
+                    ORDER BY e.created_at DESC
+                    LIMIT 1
+                """, (enrollment_id_int, enrollment_id_int))
                 enrollment = cursor.fetchone()
 
                 if enrollment:
-                    cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id=%s", (enrollment_id_int,))
+                    cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id=%s", (enrollment["enrollment_id"],))
                     documents = cursor.fetchall()
             finally:
                 cursor.close()

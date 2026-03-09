@@ -111,11 +111,55 @@ def create_bill(enrollment_id):
             flash("Bill already exists for this enrollment", "warning")
             return redirect(url_for("cashier.view_bill", bill_id=existing_bill["bill_id"]))
 
+        # Fetching reservations (both student and parent initiated)
+        cursor.execute("""
+            SELECT
+                ii.category, ii.item_name, ri.qty,
+                COALESCE(NULLIF(TRIM(ri.size_label), ''), ii.size_label) as size_label,
+                ri.line_total
+            FROM reservation_items ri
+            JOIN reservations r ON r.reservation_id = ri.reservation_id
+            JOIN inventory_items ii ON ri.item_id = ii.item_id
+            WHERE r.branch_id = %s AND r.status != 'CANCELLED'
+              AND (
+                r.student_user_id IN (
+                    SELECT u.user_id
+                    FROM users u
+                    JOIN student_accounts sa ON u.username = sa.username
+                    WHERE sa.enrollment_id = %s
+                )
+                OR
+                r.reserved_by_user_id IN (
+                    SELECT parent_id
+                    FROM parent_student
+                    WHERE student_id = %s
+                )
+              )
+        """, (session.get("branch_id"), enrollment_id, enrollment_id))
+        reservation_items = cursor.fetchall()
+        
+        books = []
+        uniforms = []
+        books_total = Decimal("0")
+        uniform_total = Decimal("0")
+
+        for item in reservation_items:
+            cat = (item["category"] or "").upper()
+            if cat == "BOOK":
+                books.append({"book_name": item["item_name"], "quantity": item["qty"]})
+                books_total += Decimal(str(item["line_total"] or "0"))
+            elif cat == "UNIFORM":
+                uniforms.append({"uniform_type": item["item_name"], "size": item["size_label"] or "N/A", "quantity": item["qty"]})
+                uniform_total += Decimal(str(item["line_total"] or "0"))
+
+        # Legacy items (no price info directly attached, keeping for display)
         cursor.execute("SELECT * FROM enrollment_books WHERE enrollment_id = %s", (enrollment_id,))
-        books = cursor.fetchall()
+        for b in cursor.fetchall():
+            books.append({"book_name": b["book_name"] + " (Legacy)", "quantity": b["quantity"]})
 
         cursor.execute("SELECT * FROM enrollment_uniforms WHERE enrollment_id = %s", (enrollment_id,))
-        uniforms = cursor.fetchall()
+        for u in cursor.fetchall():
+            uniforms.append({"uniform_type": u["uniform_type"] + " (Legacy)", "size": u["size"], "quantity": u["quantity"]})
 
         if request.method == "POST":
             tuition_fee = Decimal(request.form.get("tuition_fee", "0") or "0")
@@ -157,7 +201,9 @@ def create_bill(enrollment_id):
             "cashier_create_bill.html",
             enrollment=enrollment,
             books=books,
-            uniforms=uniforms
+            uniforms=uniforms,
+            books_total=books_total,
+            uniform_total=uniform_total
         )
     finally:
         cursor.close()
@@ -174,7 +220,7 @@ def view_bill(bill_id):
 
     try:
         cursor.execute("""
-            SELECT b.*, e.student_name, e.grade_level, e.guardian_name,
+            SELECT b.*, e.student_name, e.grade_level, e.guardian_name, e.branch_enrollment_no,
                    br.branch_name, u.username AS created_by_name
             FROM billing b
             JOIN enrollments e ON b.enrollment_id = e.enrollment_id
