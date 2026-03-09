@@ -74,6 +74,7 @@ CREATE TABLE IF NOT EXISTS public.enrollments (
     guardian_email     character varying(255),
     lrn                character varying(12),
     CONSTRAINT enrollments_pkey PRIMARY KEY (enrollment_id),
+    CONSTRAINT uq_enrollments_branch_no UNIQUE (branch_id, branch_enrollment_no),
     CONSTRAINT enrollments_branch_id_fkey FOREIGN KEY (branch_id)
         REFERENCES public.branches (branch_id),
     CONSTRAINT enrollments_user_id_fkey FOREIGN KEY (user_id)

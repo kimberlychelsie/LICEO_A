@@ -528,7 +528,7 @@
                 <tr>
                     <td>
                         <span style="font-weight:800;">#{{ enrollment.display_no }}</span>
-                        <div class="muted-note">ID: {{ enrollment.enrollment_id }}</div>
+                        <div class="muted-note">ID: {{ enrollment.display_no }}</div>
                     </td>
                     <td>
                         <strong>{{ enrollment.student_name }}</strong>
@@ -858,12 +858,12 @@
 
     const ALL_SECTIONS = [
         {% for section in section_options %}
-        {
-            section_id: {{ section.section_id }},
-            section_name: "{{ section.section_name | replace('"', '\\"') }}",
-            grade_level_name: "{{ section.grade_level_name | lower | replace('"', '\\"') }}"
-        }{% if not loop.last %}, {% endif %}
-        {% endfor %}
+    {
+        section_id: { { section.section_id } },
+        section_name: "{{ section.section_name | replace('\"', '\\\"') }}",
+            grade_level_name: "{{ section.grade_level_name | lower | replace('\"', '\\\"') }}"
+    } {% if not loop.last %}, {% endif %}
+    {% endfor %}
     ];
 
     function openCreateModal(enrollmentId, studentName, gradeLevel) {

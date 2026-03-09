@@ -410,13 +410,14 @@ def search():
                     LEFT JOIN billing b ON e.enrollment_id = b.enrollment_id
                     WHERE e.branch_id = %s
                       AND (
-                        (%s AND e.enrollment_id = %s)
+                        (%s AND (e.branch_enrollment_no = %s OR e.enrollment_id = %s))
                         OR (e.student_name ILIKE %s)
                       )
                     ORDER BY e.created_at DESC
                 """, (
                     session.get("branch_id"),
                     is_numeric,
+                    int(search_query) if is_numeric else 0,
                     int(search_query) if is_numeric else 0,
                     f"%{search_query}%"
                 ))
