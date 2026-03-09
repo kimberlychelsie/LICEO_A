@@ -993,7 +993,7 @@ def student_reservations_list():
             FROM reservations r
             LEFT JOIN reservation_items ri ON ri.reservation_id = r.reservation_id
             LEFT JOIN inventory_items ii ON ii.item_id = ri.item_id
-            WHERE r.student_user_id = %s AND r.branch_id = %s
+            WHERE r.student_user_id = %s AND r.branch_id = %s AND r.status != 'CANCELLED'
             GROUP BY r.reservation_id, r.status, r.created_at
             ORDER BY r.created_at DESC
         """, (student_user_id, branch_id))

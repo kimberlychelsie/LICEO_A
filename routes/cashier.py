@@ -925,6 +925,57 @@ def cashier_cancel_reservation(reservation_id):
             WHERE reservation_id = %s AND branch_id = %s
         """, (reservation_id, branch_id))
 
+        # --- UPDATE BILLING IF EXISTS ---
+        # 1. Calculate removal totals and find enrollment_id
+        cur.execute("""
+            SELECT
+                COALESCE(sa.enrollment_id, u.enrollment_id) as enrollment_id,
+                COALESCE(SUM(CASE WHEN UPPER(ii.category) = 'BOOK' THEN ri.line_total ELSE 0 END), 0) as book_total,
+                COALESCE(SUM(CASE WHEN UPPER(ii.category) = 'UNIFORM' THEN ri.line_total ELSE 0 END), 0) as uniform_total,
+                COALESCE(SUM(ri.line_total), 0) as grand_total
+            FROM reservations r
+            JOIN reservation_items ri ON r.reservation_id = ri.reservation_id
+            JOIN inventory_items ii ON ri.item_id = ii.item_id
+            LEFT JOIN users u ON r.student_user_id = u.user_id
+            LEFT JOIN student_accounts sa ON u.username = sa.username
+            WHERE r.reservation_id = %s
+            GROUP BY COALESCE(sa.enrollment_id, u.enrollment_id)
+        """, (reservation_id,))
+        res_data = cur.fetchone()
+
+        if res_data and res_data['enrollment_id']:
+            e_id = res_data['enrollment_id']
+            b_rem = res_data['book_total']
+            u_rem = res_data['uniform_total']
+            g_rem = res_data['grand_total']
+
+            # Update fees and total
+            cur.execute("""
+                UPDATE billing
+                SET
+                    books_fee = GREATEST(books_fee - %s, 0),
+                    uniform_fee = GREATEST(uniform_fee - %s, 0),
+                    total_amount = GREATEST(total_amount - %s, 0)
+                WHERE enrollment_id = %s AND branch_id = %s
+                RETURNING total_amount, amount_paid
+            """, (b_rem, u_rem, g_rem, e_id, branch_id))
+            bill_update = cur.fetchone()
+
+            if bill_update:
+                new_total = bill_update['total_amount']
+                paid = bill_update['amount_paid']
+                new_balance = max(new_total - paid, 0)
+                # Recalculate status
+                new_status = 'paid' if new_balance == 0 and new_total > 0 else ('pending' if paid == 0 else 'partial')
+                if new_total == 0 and paid == 0:
+                    new_status = 'pending'
+
+                cur.execute("""
+                    UPDATE billing
+                    SET balance = %s, status = %s
+                    WHERE enrollment_id = %s AND branch_id = %s
+                """, (new_balance, new_status, e_id, branch_id))
+
         conn.commit()
 
     except Exception:
