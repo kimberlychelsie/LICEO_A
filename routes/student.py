@@ -869,7 +869,7 @@ def student_reservation():
                 if qty > 0:
                     size_key = f"size_{it['item_id']}"
                     size_val = (request.form.get(size_key) or "").strip()
-                    selected.append({"item_id": it["item_id"], "qty": qty, "size": size_val or None})
+                    selected.append({"item_id": it["item_id"], "qty": qty, "size": size_val or None, "category": it["category"]})
 
             if not selected:
                 error = "No items selected."
@@ -887,50 +887,64 @@ def student_reservation():
             db_tx = get_db_connection()
             cursor_tx = db_tx.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
             try:
-                # parent submit -> student_user_id stays NULL
-                cursor_tx.execute("""
-                    INSERT INTO reservations (student_user_id, branch_id, student_grade_level, status, reserved_by_user_id)
-                    VALUES (%s, %s, %s, 'RESERVED', %s)
-                    RETURNING reservation_id
-                """, (student_user_id, branch_id, student_grade, reserved_by_user_id))
-                reservation_id = cursor_tx.fetchone()['reservation_id']
-
+                # Group items by category to ensure Books and Uniforms are split
+                grouped_items = {}
                 for sel in selected:
-                    item_id = sel["item_id"]
-                    qty = sel["qty"]
-                    size = sel["size"]
+                    cat = str(sel.get("category", "OTHER")).upper()
+                    if cat not in grouped_items:
+                        grouped_items[cat] = []
+                    grouped_items[cat].append(sel)
 
+                last_reservation_id = None
+
+                for cat, items_in_cat in grouped_items.items():
+                    # parent submit -> student_user_id stays NULL
                     cursor_tx.execute("""
-                        SELECT stock_total, reserved_qty, price, size_label, item_name
-                        FROM inventory_items
-                        WHERE item_id = %s AND branch_id = %s AND is_active = TRUE
-                        FOR UPDATE
-                    """, (item_id, branch_id))
-                    r = cursor_tx.fetchone()
-                    if not r:
-                        raise Exception("Item not found.")
+                        INSERT INTO reservations (student_user_id, branch_id, student_grade_level, status, reserved_by_user_id)
+                        VALUES (%s, %s, %s, 'RESERVED', %s)
+                        RETURNING reservation_id
+                    """, (student_user_id, branch_id, student_grade, reserved_by_user_id))
+                    reservation_id = cursor_tx.fetchone()['reservation_id']
+                    last_reservation_id = reservation_id
 
-                    available = int(r['stock_total'] or 0) - int(r['reserved_qty'] or 0)
-                    if qty > available:
-                        raise Exception(f"Not enough stock for: {r['item_name']}")
+                    for sel in items_in_cat:
+                        item_id = sel["item_id"]
+                        qty = sel["qty"]
+                        size = sel["size"]
 
-                    cursor_tx.execute("""
-                        UPDATE inventory_items
-                        SET reserved_qty = reserved_qty + %s
-                        WHERE item_id = %s AND branch_id = %s
-                    """, (qty, item_id, branch_id))
+                        cursor_tx.execute("""
+                            SELECT stock_total, reserved_qty, price, size_label, item_name
+                            FROM inventory_items
+                            WHERE item_id = %s AND branch_id = %s AND is_active = TRUE
+                            FOR UPDATE
+                        """, (item_id, branch_id))
+                        r = cursor_tx.fetchone()
+                        if not r:
+                            raise Exception("Item not found.")
 
-                    unit_price = float(r['price'] or 0)
-                    line_total = unit_price * qty
-                    stored_size = size if size else r['size_label']
+                        available = int(r['stock_total'] or 0) - int(r['reserved_qty'] or 0)
+                        if qty > available:
+                            raise Exception(f"Not enough stock for: {r['item_name']}")
 
-                    cursor_tx.execute("""
-                        INSERT INTO reservation_items (reservation_id, item_id, qty, size_label, unit_price, line_total)
-                        VALUES (%s, %s, %s, %s, %s, %s)
-                    """, (reservation_id, item_id, qty, stored_size, unit_price, line_total))
+                        cursor_tx.execute("""
+                            UPDATE inventory_items
+                            SET reserved_qty = reserved_qty + %s
+                            WHERE item_id = %s AND branch_id = %s
+                        """, (qty, item_id, branch_id))
+
+                        unit_price = float(r['price'] or 0)
+                        line_total = unit_price * qty
+                        stored_size = size if size else r['size_label']
+
+                        cursor_tx.execute("""
+                            INSERT INTO reservation_items (reservation_id, item_id, qty, size_label, unit_price, line_total)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                        """, (reservation_id, item_id, qty, stored_size, unit_price, line_total))
 
                 db_tx.commit()
-                return redirect(url_for("student.student_reservation_success", reservation_id=reservation_id))
+                if len(grouped_items) > 1:
+                    flash("Your items have been separated into multiple reservations by category (e.g. Books, Uniforms).", "info")
+                return redirect(url_for("student.student_reservation_success", reservation_id=last_reservation_id))
 
             except Exception as e:
                 db_tx.rollback()
