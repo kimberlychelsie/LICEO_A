@@ -2,6 +2,9 @@ from flask import Blueprint, render_template, request, redirect, session, flash,
 from db import get_db_connection
 from werkzeug.security import check_password_hash, generate_password_hash
 import psycopg2.extras
+import re
+
+from extensions import limiter
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -10,7 +13,19 @@ def check_password_change_required(user_data, is_student=False):
     return user_data.get("require_password_change", 0) == 1
 
 
+def validate_password_policy(password):
+    """Enforce policy: min 8 chars, at least one letter and one number. Returns (ok, error_message)."""
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters."
+    if not re.search(r"[a-zA-Z]", password):
+        return False, "Password must contain at least one letter."
+    if not re.search(r"\d", password):
+        return False, "Password must contain at least one number."
+    return True, None
+
+
 @auth_bp.route("/login", methods=["GET", "POST"])
+@limiter.limit("8 per minute", exempt_when=lambda: request.method != "POST")
 def login():
     if request.method == "POST":
         username = request.form["username"].strip()
@@ -297,8 +312,9 @@ def change_password():
                     flash("Current password is incorrect", "error")
                     return redirect(url_for("auth.change_password"))
 
-            if len(new_password) < 6:
-                flash("New password must be at least 6 characters", "error")
+            ok, err = validate_password_policy(new_password)
+            if not ok:
+                flash(err, "error")
                 return redirect(url_for("auth.change_password"))
 
             if new_password != confirm_password:

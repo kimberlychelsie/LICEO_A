@@ -1013,7 +1013,7 @@
         <span class="sb-icon">❓</span> Manage FAQs
       </a>
       {% elif session.get('role') %}
-      <a class="sb-link" href="/#faq">
+      <a class="sb-link {% if request.path == '/faq' %}active{% endif %}" href="/faq">
         <span class="sb-icon">❓</span> FAQ
       </a>
       {% endif %}
@@ -1138,6 +1138,22 @@
     });
 
     applyState();
+
+    // Restrict date inputs to not allow future dates
+    document.addEventListener("DOMContentLoaded", function () {
+      const d = new Date();
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const todayLocal = `${year}-${month}-${day}`;
+
+      const dateInputs = document.querySelectorAll('input[type="date"]');
+      dateInputs.forEach(function (input) {
+        if (!input.hasAttribute('max')) {
+          input.setAttribute('max', todayLocal);
+        }
+      });
+    });
   </script>
 
 </body>

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, jsonify, session
+from flask import Blueprint, render_template, jsonify, session, redirect, url_for
 from db import get_db_connection
 import psycopg2.extras
 
@@ -72,6 +72,43 @@ def branch_page(branch_id):
     """, (branch_id,)))
 
     return render_template("branch_page.html", branch=branch, reenrollment_open=reenrollment_open)
+
+
+# =========================
+# IN-APP FAQ VIEW (logged-in users: registrar, cashier, teacher, etc.)
+# =========================
+@public_bp.route("/faq")
+def faq_view():
+    if not session.get("role"):
+        return redirect(url_for("auth.login"))
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            SELECT question, answer
+            FROM chatbot_faqs
+            WHERE branch_id IS NULL
+            ORDER BY id ASC
+        """)
+        general_faqs = cur.fetchall() or []
+        branch_faqs = []
+        if branch_id:
+            cur.execute("""
+                SELECT question, answer
+                FROM chatbot_faqs
+                WHERE branch_id = %s
+                ORDER BY id ASC
+            """, (branch_id,))
+            branch_faqs = cur.fetchall() or []
+    finally:
+        cur.close()
+        db.close()
+    return render_template(
+        "faq_view.html",
+        general_faqs=general_faqs,
+        branch_faqs=branch_faqs,
+    )
 
 
 # =========================

@@ -1,10 +1,12 @@
-import psycopg2
 import os
-
-URL = "postgresql://postgres:puixywJTqFOFSPxiXAgSZRYiyyUqaXvH@switchyard.proxy.rlwy.net:25993/railway"
+import sys
+import psycopg2
 
 def fix_null_branch_ids():
     # Fix on Railway
+    URL = os.environ.get("DATABASE_URL") or (sys.argv[1] if len(sys.argv) > 1 else "").strip() or input("Paste DATABASE_URL: ").strip()
+    if not URL:
+        sys.exit("DATABASE_URL required for Railway (env, argv, or prompt).")
     print("Fixing Railway DB...")
     try:
         conn = psycopg2.connect(URL, sslmode="require")

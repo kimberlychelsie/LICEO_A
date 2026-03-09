@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}{{ title | default('Error') }}{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 480px; margin: 2rem auto; padding: 2rem; text-align: center;">
+  <h2 style="margin: 0 0 0.5rem;">{{ title | default('Error') }}</h2>
+  <p style="color: var(--muted); margin-bottom: 1.5rem;">{{ message | default('An error occurred. Please try again.') }}</p>
+  {% if session.get('user_id') %}
+    {% if session.get('role') == 'cashier' %}<a href="{{ url_for('cashier.dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
+    {% elif session.get('role') == 'registrar' %}<a href="{{ url_for('registrar.registrar_dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
+    {% elif session.get('role') == 'branch_admin' %}<a href="{{ url_for('branch_admin.dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
+    {% elif session.get('role') == 'teacher' %}<a href="{{ url_for('teacher.teacher_dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
+    {% elif session.get('role') == 'student' %}<a href="{{ url_for('student_portal.dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
+    {% elif session.get('role') == 'parent' %}<a href="{{ url_for('parent.dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
+    {% elif session.get('role') == 'librarian' %}<a href="{{ url_for('librarian.dashboard') }}" class="btn btn-primary">Back to Dashboard</a>
+    {% else %}<a href="/" class="btn btn-primary">Go to Home</a>{% endif %}
+  {% else %}
+  <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Go to Login</a>
+  {% endif %}
+</div>
+{% endblock %}

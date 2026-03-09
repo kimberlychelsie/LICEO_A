@@ -429,6 +429,59 @@ def search():
     return render_template("cashier_search.html", results=results, search_query=search_query)
 
 
+@cashier_bp.route("/cashier/payment-history", methods=["GET"])
+def payment_history():
+    if not _require_cashier():
+        return redirect("/")
+
+    date_from = request.args.get("date_from", date.today().replace(day=1).strftime("%Y-%m-%d"))
+    date_to = request.args.get("date_to", date.today().strftime("%Y-%m-%d"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        cursor.execute("""
+            SELECT
+              p.payment_id,
+              p.receipt_number as reference_number,
+              p.amount,
+              p.payment_method,
+              p.payment_date,
+              e.student_name,
+              e.grade_level,
+              u.username AS received_by_name
+            FROM payments p
+            JOIN enrollments e ON p.enrollment_id = e.enrollment_id
+            JOIN users u ON p.received_by = u.user_id
+            WHERE p.payment_date::date >= %s AND p.payment_date::date <= %s
+              AND e.branch_id = %s
+            ORDER BY p.payment_date DESC
+        """, (date_from, date_to, session.get("branch_id")))
+        payments = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT
+              COALESCE(SUM(p.amount), 0) AS total_collected
+            FROM payments p
+            JOIN enrollments e ON p.enrollment_id = e.enrollment_id
+            WHERE p.payment_date::date >= %s AND p.payment_date::date <= %s
+              AND e.branch_id = %s
+        """, (date_from, date_to, session.get("branch_id")))
+        summary = cursor.fetchone() or {"total_collected": 0}
+
+        return render_template(
+            "payment_history.html",
+            payments=payments,
+            total_collected=summary["total_collected"],
+            date_from=date_from,
+            date_to=date_to
+        )
+    finally:
+        cursor.close()
+        db.close()
+
+
 # =======================
 # CASHIER RESERVATIONS (NO students TABLE)
 # =======================

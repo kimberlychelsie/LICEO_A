@@ -350,6 +350,22 @@
                 el.scrollIntoView({ behavior: 'smooth', block: 'start' });
             }
         }
+
+        // Restrict date inputs to not allow future dates
+        document.addEventListener("DOMContentLoaded", function () {
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const todayLocal = `${year}-${month}-${day}`;
+
+            const dateInputs = document.querySelectorAll('input[type="date"]');
+            dateInputs.forEach(function (input) {
+                if (!input.hasAttribute('max')) {
+                    input.setAttribute('max', todayLocal);
+                }
+            });
+        });
     </script>
 </body>
 

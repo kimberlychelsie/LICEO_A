@@ -1,8 +1,11 @@
+import os
+import sys
 import psycopg2
 
-URL = "postgresql://postgres:puixywJTqFOFSPxiXAgSZRYiyyUqaXvH@switchyard.proxy.rlwy.net:25993/railway"
-
 def update_railway():
+    URL = os.environ.get("DATABASE_URL") or (sys.argv[1] if len(sys.argv) > 1 else "").strip() or input("Paste DATABASE_URL: ").strip()
+    if not URL:
+        sys.exit("DATABASE_URL required (env, argv, or prompt).")
     print("Connecting to Railway database...")
     try:
         conn = psycopg2.connect(URL, sslmode="require")

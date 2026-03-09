@@ -2,12 +2,19 @@ import os
 from dotenv import load_dotenv
 load_dotenv()  # loads .env file locally; no effect in Railway (env vars set directly)
 
-from flask import Flask, request, session, flash, redirect, url_for
+from flask import Flask, request, session, flash, redirect, url_for, render_template
 from routes import init_routes
 from db import is_branch_active
+from extensions import limiter
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "liceo_secret_key_dev")
+limiter.init_app(app)
+# Session cookie security (panel / security scan)
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+if os.getenv("FLASK_ENV") == "production" or os.getenv("RAILWAY_ENVIRONMENT"):
+    app.config["SESSION_COOKIE_SECURE"] = True
 
 @app.before_request
 def check_branch_active_status():
@@ -34,7 +41,11 @@ def check_branch_active_status():
                     fallback = url_for('teacher.teacher_dashboard')
                 elif role == 'student':
                     fallback = url_for('student_portal.dashboard')
-                
+                elif role == 'librarian':
+                    fallback = url_for('librarian.dashboard')
+                elif role == 'parent':
+                    fallback = url_for('parent.dashboard')
+
                 return redirect(request.referrer or fallback)
 
 @app.context_processor
@@ -45,8 +56,68 @@ def inject_is_branch_active():
         is_active = is_branch_active(branch_id)
     return dict(is_branch_active_status=is_active)
 
+
+@app.after_request
+def add_security_headers(response):
+    """Add security headers for browser protection and security scans."""
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+
 # initialize all routes (register blueprints + uploads route)
 init_routes(app)
+
+
+# ── Global error pages (no internal paths/stack trace for security) ──
+@app.errorhandler(404)
+def not_found(e):
+    return (
+        render_template(
+            "error_page.html",
+            title="Page not found",
+            message="The page you are looking for does not exist.",
+        ),
+        404,
+    )
+
+
+@app.errorhandler(403)
+def forbidden(e):
+    return (
+        render_template(
+            "error_page.html",
+            title="Access denied",
+            message="You do not have permission to view this page.",
+        ),
+        403,
+    )
+
+
+@app.errorhandler(500)
+def server_error(e):
+    return (
+        render_template(
+            "error_page.html",
+            title="Something went wrong",
+            message="An error occurred. Please try again later.",
+        ),
+        500,
+    )
+
+
+@app.errorhandler(429)
+def rate_limit_exceeded(e):
+    return (
+        render_template(
+            "error_page.html",
+            title="Too many attempts",
+            message="Too many login attempts from your IP. Please wait a minute and try again.",
+        ),
+        429,
+    )
+
 
 if __name__ == "__main__":
     app.run(debug=True)
