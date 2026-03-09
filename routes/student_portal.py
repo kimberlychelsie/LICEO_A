@@ -195,6 +195,22 @@ def dashboard():
         """, (session.get("user_id"),))
         reservations = cursor.fetchall()
 
+        # Sync billing totals to handle any discrepancies from cancelled reservations
+        if bill:
+            active_res_total = sum(float(r['total_amount'] or 0) for r in reservations)
+            tuition = float(bill['tuition_fee'] or 0)
+            other = float(bill['other_fees'] or 0)
+            expected_total = tuition + other + active_res_total
+            
+            if abs(float(bill['total_amount'] or 0) - expected_total) > 0.01:
+                new_balance = max(expected_total - float(bill['amount_paid'] or 0), 0)
+                new_status = 'paid' if new_balance == 0 and expected_total > 0 else ('pending' if float(bill['amount_paid'] or 0) == 0 else 'partial')
+                cursor.execute("UPDATE billing SET total_amount=%s, balance=%s, status=%s WHERE bill_id=%s",
+                             (expected_total, new_balance, new_status, bill['bill_id']))
+                db.commit()
+                cursor.execute("SELECT * FROM billing WHERE bill_id=%s", (bill['bill_id'],))
+                bill = cursor.fetchone()
+
         return render_template(
             "student_dashboard.html",
             student=student,
@@ -306,6 +322,22 @@ def billing():
             ORDER BY r.created_at DESC
         """, (session.get("user_id"),))
         reservations = cursor.fetchall()
+
+        # Sync billing totals to handle any discrepancies from cancelled reservations
+        if bill:
+            active_res_total = sum(float(r['total_amount'] or 0) for r in reservations)
+            tuition = float(bill['tuition_fee'] or 0)
+            other = float(bill['other_fees'] or 0)
+            expected_total = tuition + other + active_res_total
+            
+            if abs(float(bill['total_amount'] or 0) - expected_total) > 0.01:
+                new_balance = max(expected_total - float(bill['amount_paid'] or 0), 0)
+                new_status = 'paid' if new_balance == 0 and expected_total > 0 else ('pending' if float(bill['amount_paid'] or 0) == 0 else 'partial')
+                cursor.execute("UPDATE billing SET total_amount=%s, balance=%s, status=%s WHERE bill_id=%s",
+                             (expected_total, new_balance, new_status, bill['bill_id']))
+                db.commit()
+                cursor.execute("SELECT * FROM billing WHERE bill_id=%s", (bill['bill_id'],))
+                bill = cursor.fetchone()
 
         return render_template(
             "student_billing_view.html",

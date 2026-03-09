@@ -896,12 +896,15 @@ def student_reservation():
             db_tx = get_db_connection()
             cursor_tx = db_tx.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
             try:
+                # Resolve enrollment_id for the reservation
+                target_enrollment_id = enrollment_id if role == "parent" else session.get("enrollment_id")
+
                 # Create one reservation ID per transaction
                 cursor_tx.execute("""
-                    INSERT INTO reservations (student_user_id, branch_id, student_grade_level, status, reserved_by_user_id)
-                    VALUES (%s, %s, %s, 'RESERVED', %s)
+                    INSERT INTO reservations (student_user_id, branch_id, student_grade_level, status, reserved_by_user_id, enrollment_id)
+                    VALUES (%s, %s, %s, 'RESERVED', %s, %s)
                     RETURNING reservation_id
-                """, (student_user_id, branch_id, student_grade, reserved_by_user_id))
+                """, (student_user_id, branch_id, student_grade, reserved_by_user_id, target_enrollment_id))
                 reservation_id = cursor_tx.fetchone()['reservation_id']
 
                 for sel in selected:

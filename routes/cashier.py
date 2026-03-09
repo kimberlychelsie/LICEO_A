@@ -929,25 +929,27 @@ def cashier_cancel_reservation(reservation_id):
         # 1. Calculate removal totals and find enrollment_id
         cur.execute("""
             SELECT
-                COALESCE(sa.enrollment_id, u.enrollment_id) as enrollment_id,
+                COALESCE(r.enrollment_id, sa.enrollment_id, u_link.enrollment_id) as enrollment_id,
                 COALESCE(SUM(CASE WHEN UPPER(ii.category) = 'BOOK' THEN ri.line_total ELSE 0 END), 0) as book_total,
                 COALESCE(SUM(CASE WHEN UPPER(ii.category) = 'UNIFORM' THEN ri.line_total ELSE 0 END), 0) as uniform_total,
                 COALESCE(SUM(ri.line_total), 0) as grand_total
             FROM reservations r
             JOIN reservation_items ri ON r.reservation_id = ri.reservation_id
             JOIN inventory_items ii ON ri.item_id = ii.item_id
+            -- Try to find the enrollment ID through multiple paths
             LEFT JOIN users u ON r.student_user_id = u.user_id
             LEFT JOIN student_accounts sa ON u.username = sa.username
+            LEFT JOIN enrollments u_link ON u_link.user_id = r.student_user_id
             WHERE r.reservation_id = %s
-            GROUP BY COALESCE(sa.enrollment_id, u.enrollment_id)
+            GROUP BY COALESCE(r.enrollment_id, sa.enrollment_id, u_link.enrollment_id)
         """, (reservation_id,))
         res_data = cur.fetchone()
 
         if res_data and res_data['enrollment_id']:
             e_id = res_data['enrollment_id']
-            b_rem = res_data['book_total']
-            u_rem = res_data['uniform_total']
-            g_rem = res_data['grand_total']
+            b_rem = Decimal(str(res_data['book_total']))
+            u_rem = Decimal(str(res_data['uniform_total']))
+            g_rem = Decimal(str(res_data['grand_total']))
 
             # Update fees and total
             cur.execute("""
