@@ -100,43 +100,6 @@
     <p style="color: #6b7280;">No payments recorded yet</p>
     {% endif %}
 
-    <!-- Reserved Items / Reservations -->
-    <h3 style="margin-top: 2rem; margin-bottom: 1rem;">Reserved Books & Uniforms</h3>
-    {% if reservations %}
-    <table>
-        <thead>
-            <tr>
-                <th>Reservation ID</th>
-                <th>Items Reserved</th>
-                <th>Status</th>
-                <th>Total Price</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for res in reservations %}
-            <tr>
-                <td><strong>RES-{{ "%04d"|format(res.reservation_id) }}</strong></td>
-                <td>{{ res.items or '-' }}</td>
-                <td>
-                    {% if res.status == 'CLAIMED' %}
-                    <span style="color: #059669; font-weight: 600;">CLAIMED</span>
-                    {% elif res.status == 'PAID' %}
-                    <span style="color: #2563eb; font-weight: 600;">PAID</span>
-                    {% elif res.status == 'RESERVED' %}
-                    <span style="color: #d97706; font-weight: 600;">RESERVED</span>
-                    {% else %}
-                    <span style="color: #dc2626; font-weight: 600;">{{ res.status }}</span>
-                    {% endif %}
-                </td>
-                <td>₱{{ "%.2f"|format(res.total_amount) }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p style="color: #6b7280;">No items reserved</p>
-    {% endif %}
-
     {% if bill.balance > 0 %}
     <div style="margin-top: 2rem; padding: 1rem; background: #fef3c7; border-radius: 6px;">
         <p style="color: #92400e; font-weight: 500;">

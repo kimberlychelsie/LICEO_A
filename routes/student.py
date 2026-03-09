@@ -956,7 +956,50 @@ def student_reservation():
         error=error
     )
 
+@student_bp.route("/student/reservations", methods=["GET"])
+def student_reservations_list():
+    if session.get("role") != "student":
+        return redirect(url_for("auth.login"))
 
+    branch_id = session.get("branch_id")
+    student_user_id = session.get("user_id")
+
+    if not branch_id or not student_user_id:
+        session.clear()
+        return redirect(url_for("auth.login"))
+
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        cur.execute("""
+            SELECT
+                r.reservation_id,
+                r.status,
+                r.created_at,
+                COALESCE(SUM(ri.line_total), 0) AS total_amount,
+                COALESCE(SUM(ri.qty), 0) AS total_qty,
+                STRING_AGG(DISTINCT ii.item_name, ', ' ORDER BY ii.item_name) AS items
+            FROM reservations r
+            LEFT JOIN reservation_items ri ON ri.reservation_id = r.reservation_id
+            LEFT JOIN inventory_items ii ON ii.item_id = ri.item_id
+            WHERE r.student_user_id = %s AND r.branch_id = %s
+            GROUP BY r.reservation_id, r.status, r.created_at
+            ORDER BY r.created_at DESC
+        """, (student_user_id, branch_id))
+
+        rows = cur.fetchall() or []
+
+    finally:
+        if cur:
+            try:
+                cur.close()
+            except Exception:
+                pass
+        conn.close()
+
+    return render_template("student_reservations_list.html", rows=rows)
 
 @student_bp.route("/reservation/success/<int:reservation_id>")
 def student_reservation_success(reservation_id):
