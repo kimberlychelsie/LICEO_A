@@ -27,6 +27,26 @@ def validate_password_policy(password):
 @auth_bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("8 per minute", exempt_when=lambda: request.method != "POST")
 def login():
+    # If the user is already logged in, redirect them directly to their portal
+    if "role" in session:
+        role = session["role"]
+        if role == "super_admin":
+            return redirect("/super-admin")
+        elif role == "branch_admin":
+            return redirect(url_for("branch_admin.dashboard"))
+        elif role == "registrar":
+            return redirect(url_for("registrar.registrar_dashboard"))
+        elif role == "cashier":
+            return redirect(url_for("cashier.dashboard"))
+        elif role == "teacher":
+            return redirect(url_for("teacher.teacher_dashboard"))
+        elif role == "student":
+            return redirect(url_for("student_portal.dashboard"))
+        elif role == "parent":
+            return redirect(url_for("parent.dashboard"))
+        elif role == "librarian":
+            return redirect(url_for("librarian.dashboard"))
+
     if request.method == "POST":
         username = request.form["username"].strip()
         password = request.form["password"]

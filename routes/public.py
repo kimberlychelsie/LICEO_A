@@ -32,6 +32,26 @@ def query_one(sql, params=None):
 # =========================
 @public_bp.route("/")
 def homepage():
+    # If the user is already logged in, redirect them directly to their portal
+    if "role" in session:
+        role = session["role"]
+        if role == "super_admin":
+            return redirect("/super-admin")
+        elif role == "branch_admin":
+            return redirect(url_for("branch_admin.dashboard"))
+        elif role == "registrar":
+            return redirect(url_for("registrar.registrar_dashboard"))
+        elif role == "cashier":
+            return redirect(url_for("cashier.dashboard"))
+        elif role == "teacher":
+            return redirect(url_for("teacher.teacher_dashboard"))
+        elif role == "student":
+            return redirect(url_for("student_portal.dashboard"))
+        elif role == "parent":
+            return redirect(url_for("parent.dashboard"))
+        elif role == "librarian":
+            return redirect(url_for("librarian.dashboard"))
+
     announcements = query_all("""
         SELECT announcement_id AS id, title, message, created_at, image_url
         FROM announcements
