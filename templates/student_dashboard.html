@@ -588,16 +588,19 @@
                     <td style="padding: 6px 0; text-align: right; font-weight: 600; color: #0f172a;">₱{{
                         "%.2f"|format(bill.tuition_fee) }}</td>
                 </tr>
+                {% if reservations and reservations|length > 0 %}
+                {% for r in reservations %}
                 <tr>
-                    <td style="padding: 6px 0; color: #334155;">Book Fee</td>
+                    <td style="padding: 6px 0; color: #334155;">
+                        <span style="color: #64748b; font-size: 0.8rem; margin-right: 4px;">[RES-{{
+                            "%04d"|format(r.reservation_id) }}]</span>
+                        {{ r.get('items', '') }}
+                    </td>
                     <td style="padding: 6px 0; text-align: right; font-weight: 600; color: #0f172a;">₱{{
-                        "%.2f"|format(bill.books_fee) }}</td>
+                        "%.2f"|format(r.total_amount) }}</td>
                 </tr>
-                <tr>
-                    <td style="padding: 6px 0; color: #334155;">Uniform Fee</td>
-                    <td style="padding: 6px 0; text-align: right; font-weight: 600; color: #0f172a;">₱{{
-                        "%.2f"|format(bill.uniform_fee) }}</td>
-                </tr>
+                {% endfor %}
+                {% endif %}
                 {% if bill.other_fees > 0 %}
                 <tr>
                     <td style="padding: 6px 0; color: #334155;">Other Fees</td>
