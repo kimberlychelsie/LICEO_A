@@ -291,11 +291,28 @@ def billing():
             """, (bill["bill_id"],))
             payments = cursor.fetchall()
 
+        cursor.execute("""
+            SELECT
+                r.reservation_id,
+                r.status,
+                r.created_at,
+                COALESCE(SUM(ri.line_total), 0) AS total_amount,
+                STRING_AGG(DISTINCT ii.item_name, ', ' ORDER BY ii.item_name) AS items
+            FROM reservations r
+            LEFT JOIN reservation_items ri ON ri.reservation_id = r.reservation_id
+            LEFT JOIN inventory_items ii ON ii.item_id = ri.item_id
+            WHERE r.student_user_id = %s
+            GROUP BY r.reservation_id, r.status, r.created_at
+            ORDER BY r.created_at DESC
+        """, (session.get("user_id"),))
+        reservations = cursor.fetchall()
+
         return render_template(
             "student_billing_view.html",
             student=student,
             bill=bill,
-            payments=payments
+            payments=payments,
+            reservations=reservations
         )
 
     finally:
