@@ -211,6 +211,27 @@
     white-space: nowrap;
   }
 
+  .badge-cat {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    background: #e2e8f0;
+    color: #475569;
+    margin-top: 4px;
+  }
+
+  .badge-cat.b-book {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .badge-cat.b-uniform {
+    background: #e0e7ff;
+    color: #3730a3;
+  }
+
   .action-link {
     color: #2563eb;
     text-decoration: none;
@@ -291,6 +312,14 @@
       </select>
     </div>
     <div class="filter-group">
+      <label>📦 Item Type</label>
+      <select id="fItemType" onchange="applyFilters()">
+        <option value="">All Types</option>
+        <option value="BOOK">📕 Books</option>
+        <option value="UNIFORM">👕 Uniforms</option>
+      </select>
+    </div>
+    <div class="filter-group">
       <label>📊 Status</label>
       <select id="fStatus" onchange="applyFilters()">
         <option value="">All statuses</option>
@@ -338,14 +367,26 @@
         r[3]=student_grade r[4]=full_name r[5]=grade_level
         r[6]=strand r[7]=status r[8]=created_at
         r[9]=reserved_by_role r[10]=parent_name r[11]=relationship
+        r[12]=item_categories
         #}
         {% set role = (r[9] if r|length > 9 else 'student') or 'student' %}
         {% set grade = (r[5] or r[3] or '') %}
         {% set status = (r[7] or '') %}
         {% set fullname = (r[4] or r[1] or '') %}
+        {% set categories = (r[12] if r|length > 12 else '') or '' %}
+
         <tr class="{{ 'parent-row' if role == 'parent' else 'student-row' }}" data-role="{{ role }}"
-          data-status="{{ status|upper }}" data-grade="{{ grade }}" data-name="{{ fullname|lower }}">
-          <td><strong>#{{ r[0] }}</strong></td>
+          data-status="{{ status|upper }}" data-grade="{{ grade }}" data-name="{{ fullname|lower }}"
+          data-categories="{{ categories|upper }}">
+          <td>
+            <strong>#{{ r[0] }}</strong><br>
+            {% if 'BOOK' in categories|upper %}
+            <span class="badge-cat b-book">📕 BOOK</span>
+            {% endif %}
+            {% if 'UNIFORM' in categories|upper %}
+            <span class="badge-cat b-uniform">👕 UNIFORM</span>
+            {% endif %}
+          </td>
           <td>
             <div><strong>{{ fullname or '-' }}</strong></div>
             <div class="student-sub">{{ r[1] or '' }}</div>
@@ -399,6 +440,7 @@
     const fStatus = (document.getElementById('fStatus')?.value || '').toUpperCase();
     const fGrade = (document.getElementById('fGrade')?.value || '').toLowerCase().trim();
     const fSearch = (document.getElementById('fSearch')?.value || '').toLowerCase().trim();
+    const fItemType = (document.getElementById('fItemType')?.value || '').toUpperCase().trim();
 
     const rows = document.querySelectorAll('#resBody tr');
     let visible = 0;
@@ -408,13 +450,15 @@
       const status = (row.dataset.status || '').toUpperCase();
       const grade = (row.dataset.grade || '').toLowerCase().trim();
       const name = (row.dataset.name || '').toLowerCase();
+      const categories = (row.dataset.categories || '').toUpperCase();
 
       const okRole = !fRole || role === fRole;
       const okStatus = !fStatus || status === fStatus;
       const okGrade = !fGrade || grade === fGrade;
       const okSearch = !fSearch || name.includes(fSearch);
+      const okItemType = !fItemType || categories.includes(fItemType);
 
-      if (okRole && okStatus && okGrade && okSearch) {
+      if (okRole && okStatus && okGrade && okSearch && okItemType) {
         row.classList.remove('hidden');
         visible++;
       } else {

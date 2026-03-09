@@ -588,7 +588,13 @@ def cashier_reservations():
                   )
                   ELSE NULL
                 END AS parent_name,        -- 10
-                svp.relationship           -- 11
+                svp.relationship,          -- 11
+                (
+                    SELECT STRING_AGG(DISTINCT UPPER(ii.category), ',')
+                    FROM reservation_items ri
+                    JOIN inventory_items ii ON ri.item_id = ii.item_id
+                    WHERE ri.reservation_id = r.reservation_id
+                ) AS item_categories       -- 12
             FROM reservations r
             LEFT JOIN users u ON u.user_id = r.student_user_id
             LEFT JOIN student_accounts sa ON sa.username = u.username
