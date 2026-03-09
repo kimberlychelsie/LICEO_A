@@ -612,7 +612,7 @@ def cashier_reservations():
                 ORDER BY ps2.student_id
                 LIMIT 1
             ) svp ON (reserved_by.role = 'parent')
-            WHERE r.branch_id = %s AND r.status != 'CANCELLED'
+            WHERE r.branch_id = %s
             ORDER BY r.created_at DESC
         """, (branch_id,))
         rows = cur.fetchall() or []
