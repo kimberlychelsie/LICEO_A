@@ -356,7 +356,7 @@ def print_receipt(payment_id):
     try:
         cursor.execute("""
             SELECT p.*,
-                   e.student_name, e.grade_level, e.guardian_name,
+                   e.student_name, e.grade_level, e.guardian_name, e.branch_enrollment_no,
                    b.total_amount, b.amount_paid, b.balance,
                    br.branch_name, br.location,
                    u.username AS received_by_name
@@ -399,6 +399,7 @@ def reports():
               p.payment_date,
               e.student_name,
               e.grade_level,
+              e.branch_enrollment_no,
               u.username AS received_by_name
             FROM payments p
             JOIN enrollments e ON p.enrollment_id = e.enrollment_id
@@ -456,14 +457,13 @@ def search():
                     LEFT JOIN billing b ON e.enrollment_id = b.enrollment_id
                     WHERE e.branch_id = %s
                       AND (
-                        (%s AND (e.branch_enrollment_no = %s OR e.enrollment_id = %s))
+                        (%s AND (e.branch_enrollment_no = %s))
                         OR (e.student_name ILIKE %s)
                       )
                     ORDER BY e.created_at DESC
                 """, (
                     session.get("branch_id"),
                     is_numeric,
-                    int(search_query) if is_numeric else 0,
                     int(search_query) if is_numeric else 0,
                     f"%{search_query}%"
                 ))

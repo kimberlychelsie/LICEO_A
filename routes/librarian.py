@@ -340,9 +340,9 @@ def api_student_grade():
         cur.execute("""
             SELECT enrollment_id, student_name, branch_id, grade_level
             FROM enrollments
-            WHERE enrollment_id=%s
+            WHERE branch_enrollment_no=%s AND branch_id=%s
             LIMIT 1
-        """, (int(enrollment_id),))
+        """, (int(enrollment_id), int(branch_id)))
         row = cur.fetchone()
 
         if not row:
@@ -446,9 +446,9 @@ def releases():
                 cur.execute("""
                     SELECT enrollment_id, student_name, branch_id, grade_level
                     FROM enrollments
-                    WHERE enrollment_id=%s
+                    WHERE branch_enrollment_no=%s AND branch_id=%s
                     LIMIT 1
-                """, (int(enrollment_id),))
+                """, (int(enrollment_id), int(branch_id)))
                 enrollment_row = cur.fetchone()
 
                 if not enrollment_row:
@@ -519,7 +519,7 @@ def releases():
             SELECT
                 br.release_id,
                 br.created_at,
-                br.enrollment_id,
+                e.branch_enrollment_no,
                 br.student_name,
                 e.grade_level AS student_grade,
                 bri.qty,

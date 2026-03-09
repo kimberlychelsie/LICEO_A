@@ -337,7 +337,7 @@ def enrollment_success(branch_id, enrollment_id):
         row = cursor.fetchone()
         if not row:
             return "Enrollment not found", 404
-        display_no = row.get("branch_enrollment_no") or enrollment_id
+        display_no = row.get("branch_enrollment_no") or "???"
         student_name = (row.get("student_name") or "").strip()
         return render_template(
             "enrollment_success.html",
@@ -664,7 +664,7 @@ def enroll_summary(branch_id, enrollment_id):
             db.commit()
 
             # Use branch_enrollment_no (per-branch #1, #2...) for display
-            display_no = enrollment["branch_enrollment_no"] if enrollment and enrollment.get("branch_enrollment_no") else enrollment_id
+            display_no = enrollment["branch_enrollment_no"] if enrollment else "???"
 
             return render_template(
                 "enrollment_success.html",
@@ -689,38 +689,47 @@ def enroll_summary(branch_id, enrollment_id):
 def track_enrollment():
     enrollment = None
     documents = []
+    branches = []
 
-    if request.method == "POST":
-        enrollment_id = request.form.get("enrollment_id", "").strip()
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        if enrollment_id.isdigit():
-            enrollment_id_int = int(enrollment_id)
+    try:
+        cursor.execute("SELECT branch_id, branch_name FROM branches WHERE is_active = TRUE ORDER BY branch_name")
+        branches = cursor.fetchall()
 
-            db = get_db_connection()
-            cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        if request.method == "POST":
+            enrollment_id = request.form.get("enrollment_id", "").strip()
+            branch_id = request.form.get("branch_id")
 
-            try:
+            if enrollment_id.isdigit() and branch_id:
+                enrollment_no_int = int(enrollment_id)
+                branch_id_int = int(branch_id)
+
                 cursor.execute("""
                     SELECT e.*, b.branch_name
                     FROM enrollments e
                     JOIN branches b ON e.branch_id = b.branch_id
-                    WHERE e.enrollment_id = %s OR e.branch_enrollment_no = %s
+                    WHERE e.branch_enrollment_no = %s AND e.branch_id = %s
                     ORDER BY e.created_at DESC
                     LIMIT 1
-                """, (enrollment_id_int, enrollment_id_int))
+                """, (enrollment_no_int, branch_id_int))
                 enrollment = cursor.fetchone()
 
                 if enrollment:
                     cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id=%s", (enrollment["enrollment_id"],))
                     documents = cursor.fetchall()
-            finally:
-                cursor.close()
-                db.close()
+                else:
+                    flash("No enrollment found with that ID in the selected branch.", "error")
+    finally:
+        cursor.close()
+        db.close()
 
     return render_template(
         "track_enrollment.html",
         enrollment=enrollment,
-        documents=documents
+        documents=documents,
+        branches=branches
     )
 
 

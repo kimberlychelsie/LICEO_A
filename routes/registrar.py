@@ -59,11 +59,11 @@ def registrar_dashboard():
             db.commit()
 
             cursor.execute("""
-                SELECT COALESCE(branch_enrollment_no, %s) AS display_no
+                SELECT branch_enrollment_no AS display_no
                 FROM enrollments WHERE enrollment_id=%s
-            """, (enrollment_id, enrollment_id))
+            """, (enrollment_id,))
             disp_row = cursor.fetchone()
-            display_no = disp_row["display_no"] if disp_row else enrollment_id
+            display_no = disp_row["display_no"] if disp_row else "???"
 
             if action == "approved":
                 flash(f"Enrollment #{display_no} approved successfully", "success")
@@ -73,7 +73,7 @@ def registrar_dashboard():
         # ── NEW enrollments (pending / approved / rejected — not yet fully enrolled)
         cursor.execute("""
             SELECT *,
-                   COALESCE(branch_enrollment_no, enrollment_id) AS display_no
+                   branch_enrollment_no AS display_no
             FROM enrollments
             WHERE branch_id=%s AND status IN ('pending', 'approved', 'rejected')
             ORDER BY branch_enrollment_no ASC NULLS LAST, created_at DESC
@@ -100,7 +100,7 @@ def registrar_dashboard():
         # ── ENROLLED students (enrolled + open_for_enrollment)
         cursor.execute("""
             SELECT e.*,
-                   COALESCE(e.branch_enrollment_no, e.enrollment_id) AS display_no,
+                   e.branch_enrollment_no AS display_no,
                    s.section_name
             FROM enrollments e
             LEFT JOIN sections s ON s.section_id = e.section_id

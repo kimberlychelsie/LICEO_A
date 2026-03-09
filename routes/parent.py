@@ -108,31 +108,41 @@ def link_child():
     if not _require_parent():
         return redirect("/")
 
-    if request.method == "POST":
-        enrollment_id = request.form.get("enrollment_id", "").strip()
-        relationship = request.form.get("relationship", "").strip()
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-        if not enrollment_id.isdigit():
-            flash("Invalid enrollment ID", "error")
-            return redirect(url_for("parent.link_child"))
+    try:
+        cursor.execute("SELECT branch_id, branch_name FROM branches WHERE is_active = TRUE ORDER BY branch_name")
+        branches = cursor.fetchall()
 
-        enrollment_id_int = int(enrollment_id)
+        if request.method == "POST":
+            branch_id = request.form.get("branch_id")
+            enrollment_no = request.form.get("enrollment_id", "").strip() # the input name in template is enrollment_id
+            relationship = request.form.get("relationship", "").strip()
 
-        db = get_db_connection()
-        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            if not branch_id or not enrollment_no.isdigit():
+                flash("Branch and valid Enrollment ID are required", "error")
+                return redirect(url_for("parent.link_child"))
 
-        try:
-            cursor.execute("SELECT * FROM enrollments WHERE enrollment_id=%s", (enrollment_id_int,))
+            enrollment_no_int = int(enrollment_no)
+            branch_id_int = int(branch_id)
+
+            cursor.execute("""
+                SELECT * FROM enrollments 
+                WHERE branch_enrollment_no=%s AND branch_id=%s
+            """, (enrollment_no_int, branch_id_int))
             enrollment = cursor.fetchone()
 
             if not enrollment:
-                flash("Invalid enrollment ID", "error")
+                flash("No student found with that ID in the selected branch.", "error")
                 return redirect(url_for("parent.link_child"))
+
+            enrollment_id = enrollment["enrollment_id"] # Internal global ID
 
             cursor.execute("""
                 SELECT 1 FROM parent_student
                 WHERE parent_id=%s AND student_id=%s
-            """, (session.get("user_id"), enrollment_id_int))
+            """, (session.get("user_id"), enrollment_id))
 
             if cursor.fetchone():
                 flash("This child is already linked to your account", "warning")
@@ -141,23 +151,23 @@ def link_child():
             cursor.execute("""
                 INSERT INTO parent_student (parent_id, student_id, relationship)
                 VALUES (%s, %s, %s)
-            """, (session.get("user_id"), enrollment_id_int, relationship))
+            """, (session.get("user_id"), enrollment_id, relationship))
 
             db.commit()
             flash(f"Successfully linked {enrollment.get('student_name', 'child')} to your account", "success")
             return redirect(url_for("parent.dashboard"))
 
-        except Exception as e:
-            db.rollback()
-            logger.error(f"Failed to link child: {str(e)}")
-            flash("Failed to link child. Please try again.", "error")
-            return redirect(url_for("parent.link_child"))
+        return render_template("parent_link_child.html", branches=branches)
 
-        finally:
-            cursor.close()
-            db.close()
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to link child: {str(e)}")
+        flash("Failed to link child. Please try again.", "error")
+        return redirect(url_for("parent.link_child"))
 
-    return render_template("parent_link_child.html")
+    finally:
+        cursor.close()
+        db.close()
 
 
 @parent_bp.route("/parent/child/<int:enrollment_id>")
@@ -214,7 +224,7 @@ def child_bills(enrollment_id):
 
     try:
         cursor.execute("""
-            SELECT ps.*, e.student_name, e.grade_level, e.enrollment_id
+            SELECT ps.*, e.student_name, e.grade_level, e.enrollment_id, e.branch_enrollment_no
             FROM parent_student ps
             JOIN enrollments e ON ps.student_id = e.enrollment_id
             WHERE ps.parent_id=%s AND ps.student_id=%s

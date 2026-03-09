@@ -370,7 +370,7 @@
   <header>
     <div class="header-left">
       <h1>🧾 Book Release</h1>
-      <div class="header-subtitle">Release books to a student (by Enrollment ID or Student Name)</div>
+      <div class="header-subtitle">Release books to a student (by Branch Enrollment ID or Student Name)</div>
     </div>
 
     <div class="header-actions">
@@ -424,7 +424,7 @@
           <thead>
             <tr>
               <th>Date</th>
-              <th>Enrollment ID</th>
+              <th>Branch Enrollment ID</th>
               <th>Student Name</th>
               <th>Student Grade</th>
               <th>Book Details</th>
@@ -434,9 +434,9 @@
           <tbody id="recentReleasesBody">
             {% for r in releases %}
             <tr data-student-grade="{{ r.student_grade|default('') }}"
-              data-search="{{ (r.enrollment_id ~ ' ' ~ r.student_name ~ ' ' ~ r.book_display)|lower }}">
+              data-search="{{ (r.branch_enrollment_no ~ ' ' ~ r.student_name ~ ' ' ~ r.book_display)|lower }}">
               <td>{{ r.created_at }}</td>
-              <td><strong>{{ r.enrollment_id }}</strong></td>
+              <td><strong>#{{ r.branch_enrollment_no }}</strong></td>
               <td>{{ r.student_name }}</td>
               <td><strong>{{ r.student_grade|default('—') }}</strong></td>
               <td>{{ r.book_display }}</td>
@@ -461,9 +461,9 @@
       <form method="post" id="releaseForm">
         <div class="form-row">
           <div class="form-group">
-            <label for="enrollment_id">🆔 Enrollment ID (Recommended)</label>
-            <input type="text" id="enrollment_id" name="enrollment_id" placeholder="e.g., 123" value="">
-            <div class="help-text">Enter student enrollment ID</div>
+            <label for="enrollment_id">🆔 Branch Enrollment ID</label>
+            <input type="text" id="enrollment_id" name="enrollment_id" placeholder="e.g., 1" value="">
+            <div class="help-text">Enter student branch enrollment ID</div>
           </div>
 
           <div class="form-group">
