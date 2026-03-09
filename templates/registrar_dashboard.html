@@ -856,15 +856,12 @@
         if (e.target === this) closeCreateModal();
     });
 
-    const ALL_SECTIONS = [
-        {% for section in section_options %}
-    {
-        section_id: { { section.section_id } },
-        section_name: "{{ section.section_name | replace('\"', '\\\"') }}",
-            grade_level_name: "{{ section.grade_level_name | lower | replace('\"', '\\\"') }}"
-    } {% if not loop.last %}, {% endif %}
-    {% endfor %}
-    ];
+    const __rawSections = {{ section_options | tojson | safe }};
+    const ALL_SECTIONS = __rawSections.map(s => ({
+        section_id: s.section_id,
+        section_name: s.section_name,
+        grade_level_name: (s.grade_level_name || "").toLowerCase()
+    }));
 
     function openCreateModal(enrollmentId, studentName, gradeLevel) {
         document.getElementById('modalStudentName').textContent = studentName;
