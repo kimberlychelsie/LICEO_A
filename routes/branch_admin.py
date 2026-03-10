@@ -1627,11 +1627,11 @@ def branch_admin_manage_accounts():
 
             cursor.execute("SELECT branch_code FROM branches WHERE branch_id=%s", (branch_id,))
             row = cursor.fetchone()
-            branch_code = (row['branch_code'] if row else "").strip().upper()
+# ✅ guard against both missing row AND NULL column value
+            branch_code = (row['branch_code'] or "" if row else "").strip().upper()
             if not branch_code:
-                flash("Branch code not configured for this branch.", "error")
+                flash("Branch code not configured for this branch. Please ask the admin to set one.", "error")
                 return redirect("/branch-admin/manage-accounts")
-
             if custom_uname:
                 base_username = custom_uname
             elif role in ("registrar", "cashier", "librarian"):

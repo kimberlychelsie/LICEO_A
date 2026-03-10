@@ -105,6 +105,7 @@ def super_admin_dashboard():
                 b.location,
                 b.is_active,
                 b.created_at,
+                b.branch_code,       
                 u.username as admin_username,
                 u.user_id as admin_id
             FROM branches b
@@ -123,6 +124,54 @@ def super_admin_dashboard():
     finally:
         cursor.close()
         db.close()
+        
+ # =======================
+# EDIT BRANCH (super admin)
+# =======================
+@super_admin_bp.route("/super-admin/branches/<int:branch_id>/edit", methods=["POST"])
+def super_admin_edit_branch(branch_id):
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    branch_name = (request.form.get("branch_name") or "").strip()
+    branch_code = (request.form.get("branch_code") or "").strip().upper()
+    location    = (request.form.get("location") or "").strip()
+
+    if not branch_name or not branch_code or not location:
+        flash("All fields (branch name, code, location) are required.", "error")
+        return redirect(url_for("super_admin.super_admin_dashboard"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Check duplicate code on a DIFFERENT branch
+        cursor.execute(
+            "SELECT branch_id FROM branches WHERE branch_code = %s AND branch_id != %s",
+            (branch_code, branch_id)
+        )
+        if cursor.fetchone():
+            flash(f"Branch code '{branch_code}' is already used by another branch.", "error")
+            return redirect(url_for("super_admin.super_admin_dashboard"))
+
+        cursor.execute("""
+            UPDATE branches
+            SET branch_name = %s,
+                branch_code = %s,
+                location    = %s
+            WHERE branch_id = %s
+        """, (branch_name, branch_code, location, branch_id))
+        db.commit()
+        flash(f"Branch updated! Code set to: {branch_code}", "success")
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to edit branch: {str(e)}")
+        flash(f"Could not update branch: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(url_for("super_admin.super_admin_dashboard"))       
 
 
 @super_admin_bp.route("/super-admin/branch/<int:branch_id>/toggle-status", methods=["POST"])

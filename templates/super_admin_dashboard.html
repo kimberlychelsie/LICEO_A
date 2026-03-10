@@ -50,7 +50,8 @@
         color: #333;
     }
 
-    .form-group input {
+    .form-group input,
+    .form-group select {
         width: 100%;
         padding: 10px;
         border: 1px solid #ddd;
@@ -94,6 +95,16 @@
         transform: translateY(-1px);
     }
 
+    .btn-warning {
+        background: #ffc107;
+        color: #212529;
+    }
+
+    .btn-warning:hover {
+        background: #e0a800;
+        transform: translateY(-1px);
+    }
+
     .branches-table {
         width: 100%;
         border-collapse: collapse;
@@ -112,7 +123,7 @@
     .branches-table td {
         padding: 12px;
         border-bottom: 1px solid #dee2e6;
-        vertical-align: top;
+        vertical-align: middle;
     }
 
     .branches-table tr:hover {
@@ -149,18 +160,66 @@
         font-size: 14px;
         margin-top: -10px;
     }
+
+    /* Modal overlay */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.45);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+    }
+
+    .modal-box {
+        background: #fff;
+        border-radius: 12px;
+        padding: 28px 32px;
+        width: 100%;
+        max-width: 460px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-box h2 {
+        margin: 0 0 18px 0;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 10px;
+        color: #2c3e50;
+    }
+
+    .modal-footer {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 8px;
+    }
 </style>
 
 <div class="dashboard-container">
 
     <div class="header-row">
         <h1>🔐 Super Admin</h1>
-
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <a href="/super-admin/faqs" class="btn btn-secondary">💬 Manage FAQs</a>
             <a href="/change-password" class="btn btn-secondary">🔑 Change Password</a>
         </div>
     </div>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for cat, msg in messages %}
+    <div style="padding:12px 16px; border-radius:8px; margin-bottom:14px;
+        background:{{ '#d1e7dd' if cat=='success' else '#f8d7da' }};
+        color:{{ '#0f5132' if cat=='success' else '#842029' }};
+        border:1px solid {{ '#badbcc' if cat=='success' else '#f5c2c7' }};">
+        {{ msg }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
 
     <!-- Create New Branch -->
     <div class="card">
@@ -227,14 +286,13 @@
 
                 if (select && codeInput) {
                     select.addEventListener('change', syncBranchCode);
-                    // initialize on page load
                     syncBranchCode();
                 }
             })();
         </script>
     </div>
 
-    <!-- FAQs shortcut card (optional, but visible in page too) -->
+    <!-- FAQs shortcut card -->
     <div class="card">
         <h2>💬 FAQ Chatbot Manager</h2>
         <p class="muted">
@@ -254,6 +312,7 @@
                     <th>ID</th>
                     <th>Branch Name</th>
                     <th>Location</th>
+                    <th>Code</th>
                     <th>Admin Username</th>
                     <th>Status</th>
                     <th>Created</th>
@@ -266,6 +325,15 @@
                     <td><strong>{{ branch.branch_id }}</strong></td>
                     <td>{{ branch.branch_name }}</td>
                     <td>📍 {{ branch.location or 'N/A' }}</td>
+                    <td>
+                        {% if branch.branch_code %}
+                        <code style="background:#f1f5f9; padding:2px 7px; border-radius:4px; font-size:13px;">
+                            {{ branch.branch_code }}
+                        </code>
+                        {% else %}
+                        <span class="badge badge-warning">⚠️ NOT SET</span>
+                        {% endif %}
+                    </td>
                     <td>
                         {% if branch.admin_username %}
                         <span class="badge badge-success">👤 {{ branch.admin_username }}</span>
@@ -281,20 +349,30 @@
                         {% endif %}
                     </td>
                     <td>{{ branch.created_at.strftime('%Y-%m-%d') if branch.created_at else 'N/A' }}</td>
-                    <td>
-                        <form method="POST" action="/super-admin/branch/{{ branch.branch_id }}/toggle-status"
+                    <td style="white-space:nowrap;">
+                        <!-- Toggle status -->
+                        <form method="POST"
+                            action="/super-admin/branch/{{ branch.branch_id }}/toggle-status"
                             style="display:inline;"
-                            onsubmit="return confirm('Are you sure you want to {% if branch.is_active %}deactivate{% else %}reactivate{% endif %} {{ branch.branch_name }}? {% if branch.is_active %}Users will only have view access and cannot make new transactions. This action can be undone anytime.{% endif %}');">
+                            onsubmit="return confirm('Are you sure you want to {% if branch.is_active %}deactivate{% else %}reactivate{% endif %} {{ branch.branch_name }}?');">
                             <button type="submit"
                                 class="btn {% if branch.is_active %}btn-secondary{% else %}btn-primary{% endif %}"
-                                style="padding: 6px 12px; font-size: 12px;">
-                                {% if branch.is_active %}
-                                🛑 Deactivate
-                                {% else %}
-                                ♻️ Reactivate
-                                {% endif %}
+                                style="padding:6px 12px; font-size:12px;">
+                                {% if branch.is_active %}🛑 Deactivate{% else %}♻️ Reactivate{% endif %}
                             </button>
                         </form>
+                        <!-- Edit branch -->
+                        <!-- Update the Edit button to use data attributes instead of inline onclick -->
+<!-- Change the button data attributes — use plain values, NO tojson -->
+<button type="button"
+    class="btn btn-warning edit-branch-btn"
+    style="padding:6px 12px; font-size:12px; margin-left:4px;"
+    data-id="{{ branch.branch_id }}"
+    data-name="{{ branch.branch_name | e }}"
+    data-code="{{ branch.branch_code or '' }}"
+    data-location="{{ branch.location | e }}">
+    ✏️ Edit
+</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -308,4 +386,80 @@
     </div>
 
 </div>
+
+<!-- ══ EDIT BRANCH MODAL ══ -->
+<div id="editBranchModal" class="modal-overlay">
+    <div class="modal-box">
+        <h2>✏️ Edit Branch</h2>
+        <form id="editBranchForm" method="post">
+            <div class="form-group">
+                <label>Branch Name</label>
+                <input type="text" name="branch_name" id="editBranchName" required />
+            </div>
+            <div class="form-group">
+                <label>
+                    Branch Code <span style="color:#e53e3e;">*</span>
+                    <span style="font-weight:400; color:#888; font-size:12px;">
+                        — used for auto-generating usernames (e.g. LDMAJ)
+                    </span>
+                </label>
+                <input type="text" name="branch_code" id="editBranchCode"
+                    required maxlength="20" placeholder="e.g., LDMAJ"
+                    style="text-transform:uppercase;" />
+            </div>
+            <div class="form-group">
+                <label>Location</label>
+                <input type="text" name="location" id="editBranchLocation" required />
+            </div>
+            <div class="modal-footer">
+                <button type="button" onclick="closeEditBranch()"
+                    class="btn btn-secondary" style="padding:9px 18px;">
+                    Cancel
+                </button>
+                <button type="submit" class="btn btn-primary" style="padding:9px 18px;">
+                    💾 Save Changes
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Replace the entire <script> block at the bottom -->
+    <script>
+        function openEditBranch(id, name, code, location) {
+            document.getElementById('editBranchName').value     = name;
+            document.getElementById('editBranchCode').value     = code;
+            document.getElementById('editBranchLocation').value = location;
+            document.getElementById('editBranchForm').action    =
+                '/super-admin/branches/' + id + '/edit';
+            const modal = document.getElementById('editBranchModal');
+            modal.style.display = 'flex';
+            modal.style.pointerEvents = 'auto'; // ← re-enable pointer events
+        }
+    
+        function closeEditBranch() {
+            const modal = document.getElementById('editBranchModal');
+            modal.style.display = 'none';
+            modal.style.pointerEvents = 'none'; // ← disable pointer events again
+        }
+    
+        // Close on backdrop click
+        document.getElementById('editBranchModal').addEventListener('click', function (e) {
+            if (e.target === this) closeEditBranch();
+        });
+    
+        // Use event delegation — attach to document, not inline onclick
+        document.addEventListener('click', function (e) {
+    const btn = e.target.closest('.edit-branch-btn');
+    if (!btn) return;
+
+    const id       = btn.dataset.id;
+    const name     = btn.dataset.name;      // ← plain string, no JSON.parse
+    const code     = btn.dataset.code;      // ← plain string, no JSON.parse
+    const location = btn.dataset.location;  // ← plain string, no JSON.parse
+
+    openEditBranch(id, name, code, location);
+});
+    </script>
+
 {% endblock %}

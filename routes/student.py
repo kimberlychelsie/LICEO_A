@@ -332,7 +332,7 @@ def enrollment_success(branch_id, enrollment_id):
     try:
         cursor.execute(
             "SELECT branch_enrollment_no, student_name FROM enrollments WHERE enrollment_id=%s",
-            (enrollment_id, branch_id),
+            (enrollment_id,),
         )
         row = cursor.fetchone()
         if not row:
