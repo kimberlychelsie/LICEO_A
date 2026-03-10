@@ -70,12 +70,12 @@ def registrar_dashboard():
             else:
                 flash(f"Enrollment #{display_no} rejected", "warning")
 
-        # ── NEW enrollments (pending / approved / rejected — not yet fully enrolled)
+        # ── NEW enrollments (pending / rejected)
         cursor.execute("""
             SELECT *,
                    branch_enrollment_no AS display_no
             FROM enrollments
-            WHERE branch_id=%s AND status IN ('pending', 'approved', 'rejected')
+            WHERE branch_id=%s AND status IN ('pending', 'rejected')
             ORDER BY branch_enrollment_no ASC NULLS LAST, created_at DESC
         """, (branch_id,))
         new_enrollments = cursor.fetchall()
@@ -84,9 +84,25 @@ def registrar_dashboard():
             eid = enrollment["enrollment_id"]
             cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id=%s", (eid,))
             enrollment["documents"] = cursor.fetchall()
+            enrollment["has_student_account"] = False
+            enrollment["has_parent_account"] = False
 
+        # ── ENROLLED students (approved + enrolled + open_for_enrollment)
+        cursor.execute("""
+            SELECT e.*,
+                   e.branch_enrollment_no AS display_no,
+                   s.section_name
+            FROM enrollments e
+            LEFT JOIN sections s ON s.section_id = e.section_id
+            WHERE e.branch_id=%s AND e.status IN ('enrolled', 'open_for_enrollment', 'approved')
+            ORDER BY e.grade_level ASC, e.student_name ASC
+        """, (branch_id,))
+        enrolled_students = cursor.fetchall()
+        
+        for e in enrolled_students:
+            eid = e["enrollment_id"]
             cursor.execute("SELECT 1 FROM student_accounts WHERE enrollment_id=%s", (eid,))
-            enrollment["has_student_account"] = cursor.fetchone() is not None
+            e["has_student_account"] = cursor.fetchone() is not None
 
             cursor.execute("""
                 SELECT ps.*, u.username FROM parent_student ps
@@ -94,20 +110,8 @@ def registrar_dashboard():
                 WHERE ps.student_id = %s
             """, (eid,))
             parent_link = cursor.fetchone()
-            enrollment["has_parent_account"] = parent_link is not None
-            enrollment["parent_username"] = parent_link["username"] if parent_link else None
-
-        # ── ENROLLED students (enrolled + open_for_enrollment)
-        cursor.execute("""
-            SELECT e.*,
-                   e.branch_enrollment_no AS display_no,
-                   s.section_name
-            FROM enrollments e
-            LEFT JOIN sections s ON s.section_id = e.section_id
-            WHERE e.branch_id=%s AND e.status IN ('enrolled', 'open_for_enrollment')
-            ORDER BY e.grade_level ASC, e.student_name ASC
-        """, (branch_id,))
-        enrolled_students = cursor.fetchall()
+            e["has_parent_account"] = parent_link is not None
+            e["parent_username"] = parent_link["username"] if parent_link else None
 
         # Grade list for filter dropdown
         grade_levels = sorted(set(
@@ -174,7 +178,7 @@ def toggle_reenrollment():
             cursor.execute("""
                 UPDATE enrollments
                 SET status = 'open_for_enrollment'
-                WHERE branch_id = %s AND status = 'enrolled'
+                WHERE branch_id = %s AND status IN ('enrolled', 'approved')
             """, (branch_id,))
             count = cursor.rowcount
             db.commit()
@@ -215,7 +219,7 @@ def create_student_account(enrollment_id):
         cursor.execute("""
             SELECT *
             FROM enrollments
-            WHERE enrollment_id=%s AND branch_id=%s AND status='approved'
+            WHERE enrollment_id=%s AND branch_id=%s AND status IN ('approved', 'enrolled', 'open_for_enrollment')
         """, (enrollment_id, branch_id))
         enrollment = cursor.fetchone()
 
@@ -328,7 +332,7 @@ def create_parent_account(enrollment_id):
         cursor.execute("""
             SELECT *
             FROM enrollments
-            WHERE enrollment_id=%s AND branch_id=%s AND status='approved'
+            WHERE enrollment_id=%s AND branch_id=%s AND status IN ('approved', 'enrolled', 'open_for_enrollment')
         """, (enrollment_id, branch_id))
         enrollment = cursor.fetchone()
 

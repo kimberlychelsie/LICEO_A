@@ -576,33 +576,6 @@
                         <span class="muted-note">Actions disabled (Archive Mode)</span>
                         {% endif %}
 
-                        {% elif enrollment.status == 'approved' %}
-                        {% if not enrollment.has_student_account %}
-                        {% if is_branch_active_status %}
-                        <button class="btn btn-primary btn-sm" onclick="openCreateModal(
-                                {{ enrollment.enrollment_id }},
-                                '{{ enrollment.student_name | replace("'", "\\'") }}',
-                                '{{ enrollment.grade_level | replace("'", "\\'") }}'
-                            )">
-                            👤 Create Student Account
-                        </button>
-                        {% endif %}
-                        {% else %}
-                        <span class="acct-ok">✓ Student Account Created</span>
-                        {% endif %}
-                        <br><br>
-                        {% if not enrollment.has_parent_account %}
-                        {% if is_branch_active_status %}
-                        <form method="post" action="/registrar/create-parent-account/{{ enrollment.enrollment_id }}"
-                            style="display:inline;">
-                            <button type="submit" class="btn btn-secondary btn-sm">👨‍👩‍👧 Create Parent
-                                Account</button>
-                        </form>
-                        {% endif %}
-                        {% else %}
-                        <span class="acct-ok">✓ Parent Account Created</span>
-                        {% endif %}
-
                         {% else %}
                         <span class="muted-note">—</span>
                         {% endif %}
@@ -681,6 +654,7 @@
                     <th>Grade Level</th>
                     <th>Section</th>
                     <th>Status</th>
+                    <th>Actions</th>
                 </tr>
                 {% for e in enrolled_students %}
                 <tr class="enrolled-row" data-grade="{{ e.grade_level | lower }}"
@@ -704,14 +678,43 @@
                     <td>
                         {% if e.status == 'open_for_enrollment' %}
                         <span class="badge badge-open">🔓 Re-Enrollment Open</span>
+                        {% elif e.status == 'approved' %}
+                        <span class="badge badge-approved">✅ Approved</span>
                         {% else %}
                         <span class="badge badge-enrolled">🎓 Enrolled</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if not e.has_student_account %}
+                        {% if is_branch_active_status %}
+                        <button class="btn btn-primary btn-sm" onclick="openCreateModal(
+                                {{ e.enrollment_id }},
+                                '{{ e.student_name | replace("'", "\\'") }}',
+                                '{{ e.grade_level | replace("'", "\\'") }}'
+                            )">
+                            👤 Create Student Account
+                        </button>
+                        {% endif %}
+                        {% else %}
+                        <span class="acct-ok">✓ Student Account Created</span>
+                        {% endif %}
+                        <br><br>
+                        {% if not e.has_parent_account %}
+                        {% if is_branch_active_status %}
+                        <form method="post" action="/registrar/create-parent-account/{{ e.enrollment_id }}"
+                            style="display:inline;">
+                            <button type="submit" class="btn btn-secondary btn-sm">👨‍👩‍👧 Create Parent
+                                Account</button>
+                        </form>
+                        {% endif %}
+                        {% else %}
+                        <span class="acct-ok">✓ Parent Account Created</span>
                         {% endif %}
                     </td>
                 </tr>
                 {% else %}
                 <tr class="empty-row">
-                    <td colspan="4">No enrolled students yet.</td>
+                    <td colspan="5">No enrolled students yet.</td>
                 </tr>
                 {% endfor %}
             </table>
