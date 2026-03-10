@@ -960,6 +960,49 @@ def branch_admin_section_delete(section_id):
 
     return redirect(url_for("branch_admin.branch_admin_sections"))
 
+@branch_admin_bp.route("/branch-admin/sections/<int:section_id>/edit", methods=["POST"])
+def branch_admin_section_edit(section_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    section_name = (request.form.get("section_name") or "").strip()
+    grade_level_id_raw = request.form.get("grade_level_id")
+    
+    try:
+        grade_level_id = int(grade_level_id_raw)
+    except (TypeError, ValueError):
+        grade_level_id = None
+
+    if not section_name or not grade_level_id:
+        flash("Section name and grade level are required.", "error")
+        return redirect(url_for("branch_admin.branch_admin_sections"))
+
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        # Verify grade level belongs to this branch
+        cursor.execute("SELECT 1 FROM grade_levels WHERE id = %s AND branch_id = %s", (grade_level_id, branch_id))
+        if not cursor.fetchone():
+            flash("Invalid grade level.", "error")
+            return redirect(url_for("branch_admin.branch_admin_sections"))
+
+        cursor.execute("""
+            UPDATE sections 
+            SET section_name = %s, grade_level_id = %s
+            WHERE section_id = %s AND branch_id = %s
+        """, (section_name, grade_level_id, section_id, branch_id))
+        db.commit()
+        flash("Section updated successfully.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Failed to update section: {e}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(url_for("branch_admin.branch_admin_sections"))
+
 # =======================
 # SUBJECTS (branch-scoped via sections)
 # =======================
@@ -1061,6 +1104,7 @@ def branch_admin_subjects():
     cursor.execute("""
         SELECT
             st.subject_id,
+            s.section_id,
             s.section_name,
             g.name AS grade_level_name
         FROM section_teachers st
@@ -1072,11 +1116,14 @@ def branch_admin_subjects():
     assignments = cursor.fetchall() or []
 
     subject_to_sections = {}
+    subject_first_section = {}
     for a in assignments:
         sid = a["subject_id"]
         subject_to_sections.setdefault(sid, []).append(
             f"{a['grade_level_name']} - {a['section_name']}"
         )
+        if sid not in subject_first_section:
+            subject_first_section[sid] = a["section_id"]
 
     cursor.close()
     db.close()
@@ -1085,7 +1132,8 @@ def branch_admin_subjects():
         "branch_admin_subjects.html",
         subjects=subjects,
         section_options=section_options,
-        subject_to_sections=subject_to_sections
+        subject_to_sections=subject_to_sections,
+        subject_first_section=subject_first_section
     )
 
 @branch_admin_bp.route("/branch-admin/subjects/<int:subject_id>/delete", methods=["POST"])
@@ -1120,6 +1168,61 @@ def branch_admin_subject_delete(subject_id):
     except Exception as e:
         db.rollback()
         flash(f"Could not delete subject: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect("/branch-admin/subjects")
+
+@branch_admin_bp.route("/branch-admin/subjects/<int:subject_id>/edit", methods=["POST"])
+def branch_admin_subject_edit(subject_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    new_name = (request.form.get("name") or "").strip()
+    section_id_raw = request.form.get("section_id")
+
+    try:
+        section_id = int(section_id_raw)
+    except (TypeError, ValueError):
+        section_id = None
+
+    if not new_name or not section_id:
+        flash("Subject name and section are required.", "error")
+        return redirect("/branch-admin/subjects")
+
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        # Verify section belongs to this branch
+        cursor.execute("SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s", (section_id, branch_id))
+        if not cursor.fetchone():
+            flash("Invalid section.", "error")
+            return redirect("/branch-admin/subjects")
+
+        # In order to allow redefining the section assignment securely, we can drop the old assignments of this subject for THIS branch, and recreate a new single assignment, or just rename the subject itself locally.
+        # Let's globally update the subject name, and then replace the section assignment for this branch.
+        cursor.execute("UPDATE subjects SET name = %s WHERE subject_id = %s", (new_name, subject_id))
+        
+        cursor.execute("""
+            DELETE FROM section_teachers st
+            USING sections s
+            WHERE st.section_id = s.section_id
+              AND s.branch_id = %s
+              AND st.subject_id = %s
+        """, (branch_id, subject_id))
+        
+        cursor.execute("""
+            INSERT INTO section_teachers (section_id, teacher_id, subject_id)
+            VALUES (%s, NULL, %s)
+        """, (section_id, subject_id))
+
+        db.commit()
+        flash("Subject updated successfully.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not update subject: {str(e)}", "error")
     finally:
         cursor.close()
         db.close()

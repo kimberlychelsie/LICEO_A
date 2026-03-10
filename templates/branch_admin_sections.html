@@ -176,11 +176,15 @@
                     <td>{{ sec.grade_level_name }}</td>
                     <td>
                         {% if is_branch_active_status %}
-                        <form method="post"
-                            action="{{ url_for('branch_admin.branch_admin_section_delete', section_id=sec.section_id) }}"
-                            onsubmit="return confirm('Delete section {{ sec.section_name }}?');">
-                            <button class="btn btn-danger" type="submit">Delete</button>
-                        </form>
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn btn-success" type="button"
+                                onclick='openEditModal({{ sec.section_id }}, {{ sec.section_name | tojson }}, {{ sec.grade_level_id }})'>Edit</button>
+                            <form method="post"
+                                action="{{ url_for('branch_admin.branch_admin_section_delete', section_id=sec.section_id) }}"
+                                onsubmit="return confirm('Delete section {{ sec.section_name }}?');">
+                                <button class="btn btn-danger" type="submit">Delete</button>
+                            </form>
+                        </div>
                         {% endif %}
                     </td>
                 </tr>
@@ -192,4 +196,44 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Edit Modal -->
+<div id="editModal"
+    style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+    <div
+        style="background:#fff; padding:24px; border-radius:12px; width:90%; max-width:400px; box-shadow:0 8px 30px rgba(0,0,0,0.2);">
+        <h2 style="margin:0 0 16px 0; font-size:18px;">✎ Edit Section</h2>
+        <form id="editForm" method="post" action="">
+            <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Section Name *</label>
+            <input class="field" type="text" name="section_name" id="edit_section_name" required
+                style="margin-bottom:12px;">
+
+            <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Grade Level *</label>
+            <select name="grade_level_id" id="edit_grade_level_id" class="field" required style="margin-bottom:20px;">
+                <option value="">Select Grade Level</option>
+                {% for g in grades %}
+                <option value="{{ g.id }}">{{ g.name }}</option>
+                {% endfor %}
+            </select>
+
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button type="button" class="btn" onclick="closeEditModal()">Cancel</button>
+                <button type="submit" class="btn btn-success">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openEditModal(sectionId, sectionName, gradeLevelId) {
+        document.getElementById('editForm').action = '/branch-admin/sections/' + sectionId + '/edit';
+        document.getElementById('edit_section_name').value = sectionName;
+        document.getElementById('edit_grade_level_id').value = gradeLevelId;
+        document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+</script>
 {% endblock %}
