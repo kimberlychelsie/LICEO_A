@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+{% block title %}Manage Branches{% endblock %}
+{% block content %}
+<style>
+    .container { max-width: 1060px; margin: 0 auto; padding: 24px 20px; }
+    .header-row {
+        display:flex; align-items:center; justify-content:space-between;
+        flex-wrap:wrap; gap:12px; margin-bottom:24px;
+    }
+    .header-row h1 { margin:0; font-size:22px; }
+    .card {
+        background:#fff; border-radius:12px; padding:24px;
+        box-shadow:0 2px 8px rgba(0,0,0,.07); margin-bottom:24px;
+    }
+    .card h2 {
+        margin:0 0 16px 0; font-size:16px; font-weight:700;
+        color:#2c3e50; border-bottom:2px solid #007bff; padding-bottom:8px;
+    }
+    .form-group { margin-bottom:14px; }
+    .form-group label { display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#333; }
+    .form-group input, .form-group select {
+        width:100%; padding:10px; border:1px solid #ddd;
+        border-radius:6px; font-size:14px; box-sizing:border-box;
+    }
+    .btn {
+        padding:9px 18px; border:none; border-radius:7px; cursor:pointer;
+        font-size:13px; font-weight:700; text-decoration:none;
+        display:inline-flex; align-items:center; gap:6px; transition:.2s;
+    }
+    .btn-primary   { background:#007bff; color:#fff; }
+    .btn-primary:hover   { background:#0056b3; }
+    .btn-secondary { background:#6c757d; color:#fff; }
+    .btn-secondary:hover { background:#545b62; }
+    .btn-warning   { background:#ffc107; color:#212529; }
+    .btn-warning:hover   { background:#e0a800; }
+    .branches-table { width:100%; border-collapse:collapse; }
+    .branches-table th {
+        background:#f8f9fa; padding:11px 12px; text-align:left;
+        border-bottom:2px solid #dee2e6; color:#495057; font-weight:700; font-size:13px;
+    }
+    .branches-table td { padding:11px 12px; border-bottom:1px solid #f0f0f0; vertical-align:middle; font-size:13px; }
+    .branches-table tr:hover td { background:#f8f9fa; }
+    .badge { display:inline-block; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700; white-space:nowrap; }
+    .badge-success { background:#d4edda; color:#155724; }
+    .badge-warning { background:#fff3cd; color:#856404; }
+    .muted { color:#6c757d; font-size:13px; margin-top:-8px; margin-bottom:16px; }
+    .modal-overlay {
+        display:none; position:fixed; inset:0;
+        background:rgba(0,0,0,.45); z-index:1000;
+        align-items:center; justify-content:center; pointer-events:none;
+    }
+    .modal-box {
+        background:#fff; border-radius:12px; padding:28px 32px;
+        width:100%; max-width:460px; box-shadow:0 20px 60px rgba(0,0,0,.2);
+    }
+    .modal-box h2 { margin:0 0 18px 0; border-bottom:2px solid #007bff; padding-bottom:10px; color:#2c3e50; font-size:18px; }
+    .modal-footer { display:flex; gap:10px; justify-content:flex-end; margin-top:16px; }
+</style>
+
+<div class="container">
+
+    <div class="header-row">
+        <div>
+            <h1>🏢 Manage Branches</h1>
+        </div>
+        <a href="{{ url_for('super_admin.super_admin_dashboard') }}" class="btn btn-secondary">
+            ← Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Flash messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div style="padding:12px 16px; border-radius:8px; margin-bottom:14px;
+        background:{{ '#d1e7dd' if cat=='success' else '#f8d7da' }};
+        color:{{ '#0f5132' if cat=='success' else '#842029' }};
+        border:1px solid {{ '#badbcc' if cat=='success' else '#f5c2c7' }};">
+        {{ msg }}
+    </div>
+    {% endfor %}{% endif %}
+    {% endwith %}
+
+    <!-- Create New Branch -->
+    <div class="card">
+        <h2>➕ Create New Branch</h2>
+        <p class="muted">Creates a new branch and its default admin account.</p>
+
+        <form method="POST" action="{{ url_for('super_admin.super_admin_branches') }}">
+            <div class="form-group">
+                <label for="branch_name_select">Branch:</label>
+                <select id="branch_name_select" name="branch_name" required>
+                    <option value="">— Select Branch —</option>
+                    <option value="Liceo de Bay"         data-code="LDBAY">Liceo de Bay — LDBAY</option>
+                    <option value="Liceo de Cabuyao"     data-code="LDCAB">Liceo de Cabuyao — LDCAB</option>
+                    <option value="Liceo de Calamba"     data-code="LDCAL">Liceo de Calamba — LDCAL</option>
+                    <option value="Liceo de Calauan"     data-code="LDCAU">Liceo de Calauan — LDCAU</option>
+                    <option value="Liceo de Cavinti"     data-code="LDCAV">Liceo de Cavinti — LDCAV</option>
+                    <option value="Liceo de Liliw"       data-code="LDLIW">Liceo de Liliw — LDLIW</option>
+                    <option value="Liceo de Los Baños"   data-code="LDLB">Liceo de Los Baños — LDLB</option>
+                    <option value="Liceo de Luisiana"    data-code="LDLUI">Liceo de Luisiana — LDLUI</option>
+                    <option value="Liceo de Majayjay"    data-code="LDMAJ">Liceo de Majayjay — LDMAJ</option>
+                    <option value="Liceo de Mamatid"     data-code="LDMAM">Liceo de Mamatid — LDMAM</option>
+                    <option value="Liceo de Paete"       data-code="LDPAE">Liceo de Paete — LDPAE</option>
+                    <option value="Liceo de Pagsanjan"   data-code="LDPSJ">Liceo de Pagsanjan — LDPSJ</option>
+                    <option value="Liceo de Pakil"       data-code="LDPKL">Liceo de Pakil — LDPKL</option>
+                    <option value="Liceo de Pila"        data-code="LDPILA">Liceo de Pila — LDPILA</option>
+                    <option value="Liceo de San Antonio" data-code="LDSANT">Liceo de San Antonio — LDSANT</option>
+                    <option value="Liceo de San Pablo"   data-code="LDSPC">Liceo de San Pablo — LDSPC</option>
+                    <option value="Liceo de San Pedro"   data-code="LDSPD">Liceo de San Pedro — LDSPD</option>
+                    <option value="Liceo de Victoria"    data-code="LDVIC">Liceo de Victoria — LDVIC</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="branch_code">Branch Code:</label>
+                <input type="text" id="branch_code" name="branch_code" placeholder="e.g., LDMAJ" readonly required>
+            </div>
+            <div class="form-group">
+                <label for="location">Location:</label>
+                <input type="text" id="location" name="location" placeholder="e.g., Laguna" required>
+            </div>
+            <button type="submit" class="btn btn-primary">➕ Create Branch &amp; Admin Account</button>
+        </form>
+
+        <script>
+        (function () {
+            const select    = document.getElementById('branch_name_select');
+            const codeInput = document.getElementById('branch_code');
+            function syncCode() {
+                const opt = select.options[select.selectedIndex];
+                codeInput.value = (opt && opt.dataset.code) ? opt.dataset.code : '';
+            }
+            if (select && codeInput) { select.addEventListener('change', syncCode); syncCode(); }
+        })();
+        </script>
+    </div>
+
+    <!-- Branch Table -->
+    <div class="card">
+        <h2>🏢 All Branches ({{ branches|length }})</h2>
+        {% if branches %}
+        <table class="branches-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Branch Name</th>
+                    <th>Location</th>
+                    <th>Code</th>
+                    <th>Admin</th>
+                    <th>Status</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for branch in branches %}
+                <tr>
+                    <td><strong>{{ branch.branch_id }}</strong></td>
+                    <td>{{ branch.branch_name }}</td>
+                    <td>📍 {{ branch.location or 'N/A' }}</td>
+                    <td>
+                        {% if branch.branch_code %}
+                        <code style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:12px;">{{ branch.branch_code }}</code>
+                        {% else %}
+                        <span class="badge badge-warning">⚠️ NOT SET</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if branch.admin_username %}
+                        <span class="badge badge-success">👤 {{ branch.admin_username }}</span>
+                        {% else %}
+                        <span class="badge badge-warning">⚠️ No Admin</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if branch.is_active %}
+                        <span class="badge badge-success">✓ Active</span>
+                        {% else %}
+                        <span class="badge badge-warning">✗ Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ branch.created_at.strftime('%Y-%m-%d') if branch.created_at else 'N/A' }}</td>
+                    <td style="white-space:nowrap;">
+                        <form method="POST"
+                            action="/super-admin/branch/{{ branch.branch_id }}/toggle-status"
+                            style="display:inline;"
+                            onsubmit="return confirm('{% if branch.is_active %}Deactivate{% else %}Reactivate{% endif %} {{ branch.branch_name }}?');">
+                            <button type="submit"
+                                class="btn {% if branch.is_active %}btn-secondary{% else %}btn-primary{% endif %}"
+                                style="padding:5px 10px; font-size:12px;">
+                                {% if branch.is_active %}🛑 Deactivate{% else %}♻️ Reactivate{% endif %}
+                            </button>
+                        </form>
+                        <button type="button"
+                            class="btn btn-warning edit-branch-btn"
+                            style="padding:5px 10px; font-size:12px; margin-left:4px;"
+                            data-id="{{ branch.branch_id }}"
+                            data-name="{{ branch.branch_name | e }}"
+                            data-code="{{ branch.branch_code or '' }}"
+                            data-location="{{ branch.location | e }}">
+                            ✏️ Edit
+                        </button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align:center; padding:40px; color:#aaa;">📭 No branches yet.</div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- Edit Modal -->
+<div id="editBranchModal" class="modal-overlay">
+    <div class="modal-box">
+        <h2>✏️ Edit Branch</h2>
+        <form id="editBranchForm" method="post">
+            <div class="form-group">
+                <label>Branch Name</label>
+                <input type="text" name="branch_name" id="editBranchName" required />
+            </div>
+            <div class="form-group">
+                <label>Branch Code <span style="color:#e53e3e;">*</span>
+                    <span style="font-weight:400; color:#888; font-size:12px;">— used for auto-generating usernames</span>
+                </label>
+                <input type="text" name="branch_code" id="editBranchCode"
+                    required maxlength="20" placeholder="e.g., LDMAJ"
+                    style="text-transform:uppercase;" />
+            </div>
+            <div class="form-group">
+                <label>Location</label>
+                <input type="text" name="location" id="editBranchLocation" required />
+            </div>
+            <div class="modal-footer">
+                <button type="button" onclick="closeEditBranch()" class="btn btn-secondary">Cancel</button>
+                <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openEditBranch(id, name, code, location) {
+        document.getElementById('editBranchName').value     = name;
+        document.getElementById('editBranchCode').value     = code;
+        document.getElementById('editBranchLocation').value = location;
+        document.getElementById('editBranchForm').action    = '/super-admin/branches/' + id + '/edit';
+        const m = document.getElementById('editBranchModal');
+        m.style.display      = 'flex';
+        m.style.pointerEvents = 'auto';
+    }
+
+    function closeEditBranch() {
+        const m = document.getElementById('editBranchModal');
+        m.style.display      = 'none';
+        m.style.pointerEvents = 'none';
+    }
+
+    document.getElementById('editBranchModal').addEventListener('click', function (e) {
+        if (e.target === this) closeEditBranch();
+    });
+
+    document.addEventListener('click', function (e) {
+        const btn = e.target.closest('.edit-branch-btn');
+        if (!btn) return;
+        openEditBranch(
+            btn.dataset.id,
+            btn.dataset.name,
+            btn.dataset.code,
+            btn.dataset.location
+        );
+    });
+</script>
+
+{% endblock %}

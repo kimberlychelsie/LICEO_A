@@ -1,465 +1,285 @@
 {% extends "base.html" %}
-
-{% block title %}Super Admin{% endblock %}
-
+{% block title %}Super Admin Dashboard{% endblock %}
 {% block content %}
 <style>
-    .dashboard-container {
-        max-width: 1000px;
-        margin: 0 auto;
-        padding: 20px;
-    }
+    .sa-container { max-width: 1060px; margin: 0 auto; padding: 24px 20px; }
 
     .header-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-bottom: 10px;
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 12px; margin-bottom: 24px;
     }
+    .header-row h1 { margin: 0; font-size: 24px; }
 
-    .header-row h1 {
-        margin: 0;
+    /* ── stat cards ── */
+    .stats-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
+    .stat-card {
+        flex: 1; min-width: 160px;
+        background: #fff; border-radius: 12px;
+        padding: 20px 22px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.07);
+        border-left: 4px solid #007bff;
     }
+    .stat-card.green  { border-left-color: #28a745; }
+    .stat-card.orange { border-left-color: #fd7e14; }
+    .stat-card.purple { border-left-color: #6f42c1; }
+    .stat-card.teal   { border-left-color: #20c997; }
+    .stat-num  { font-size: 32px; font-weight: 800; color: #1a1a2e; line-height: 1; }
+    .stat-sub  { font-size: 12px; color: #888; margin-top: 2px; }
+    .stat-label{ font-size: 13px; font-weight: 700; color: #444; margin-top: 8px; }
 
+    /* ── two-col layout ── */
+    .two-col { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 24px; }
+    .two-col > * { flex: 1; min-width: 280px; }
+
+    /* ── cards ── */
     .card {
-        background: white;
-        padding: 25px;
-        margin-bottom: 25px;
-        border-radius: 10px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        background: #fff; border-radius: 12px;
+        padding: 22px 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.07);
     }
-
     .card h2 {
-        margin-top: 0;
-        color: #2c3e50;
-        border-bottom: 2px solid #007bff;
-        padding-bottom: 10px;
-        margin-bottom: 20px;
+        margin: 0 0 16px 0; font-size: 16px; font-weight: 700;
+        color: #2c3e50; border-bottom: 2px solid #007bff;
+        padding-bottom: 8px;
     }
 
-    .form-group {
-        margin-bottom: 15px;
+    /* ── alerts ── */
+    .alert-item {
+        display: flex; align-items: flex-start; gap: 10px;
+        padding: 10px 12px; border-radius: 8px;
+        margin-bottom: 8px; font-size: 13px;
     }
+    .alert-red    { background: #fff5f5; border: 1px solid #fed7d7; color: #c53030; }
+    .alert-yellow { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+    .alert-green  { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+    .alert-icon   { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
+    .alert-names  { font-size: 12px; color: inherit; opacity: .8; margin-top: 3px; }
 
-    .form-group label {
-        display: block;
-        margin-bottom: 5px;
-        font-weight: bold;
-        color: #333;
+    /* ── quick actions ── */
+    .qa-btn {
+        display: flex; align-items: center; gap: 10px;
+        width: 100%; padding: 12px 16px; margin-bottom: 10px;
+        background: #f8f9fa; border: 1.5px solid #e9ecef;
+        border-radius: 9px; font-size: 14px; font-weight: 600;
+        color: #1a1a2e; text-decoration: none; cursor: pointer;
+        transition: background .15s, border-color .15s;
     }
+    .qa-btn:hover { background: #e9f0ff; border-color: #007bff; color: #007bff; }
+    .qa-btn .qa-icon { font-size: 18px; }
 
-    .form-group input,
-    .form-group select {
-        width: 100%;
-        padding: 10px;
-        border: 1px solid #ddd;
-        border-radius: 5px;
-        font-size: 14px;
-        box-sizing: border-box;
+    /* ── health table ── */
+    .health-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .health-table th {
+        background: #f8f9fa; padding: 10px 12px; text-align: left;
+        border-bottom: 2px solid #dee2e6; color: #555; font-weight: 700;
     }
-
-    .btn {
-        padding: 12px 24px;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: bold;
-        transition: 0.2s;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        text-decoration: none;
-    }
-
-    .btn-primary {
-        background: #007bff;
-        color: white;
-    }
-
-    .btn-primary:hover {
-        background: #0056b3;
-        transform: translateY(-1px);
-    }
-
-    .btn-secondary {
-        background: #6c757d;
-        color: #fff;
-    }
-
-    .btn-secondary:hover {
-        background: #545b62;
-        transform: translateY(-1px);
-    }
-
-    .btn-warning {
-        background: #ffc107;
-        color: #212529;
-    }
-
-    .btn-warning:hover {
-        background: #e0a800;
-        transform: translateY(-1px);
-    }
-
-    .branches-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 15px;
-    }
-
-    .branches-table th {
-        background: #f8f9fa;
-        padding: 12px;
-        text-align: left;
-        border-bottom: 2px solid #dee2e6;
-        color: #495057;
-        font-weight: 600;
-    }
-
-    .branches-table td {
-        padding: 12px;
-        border-bottom: 1px solid #dee2e6;
-        vertical-align: middle;
-    }
-
-    .branches-table tr:hover {
-        background: #f8f9fa;
-    }
+    .health-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
+    .health-table tr:hover td { background: #f8f9fa; }
 
     .badge {
-        display: inline-block;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-weight: bold;
-        white-space: nowrap;
+        display: inline-block; padding: 3px 8px; border-radius: 4px;
+        font-size: 11px; font-weight: 700; white-space: nowrap;
     }
+    .badge-success { background: #d4edda; color: #155724; }
+    .badge-warning { background: #fff3cd; color: #856404; }
+    .badge-danger  { background: #f8d7da; color: #721c24; }
 
-    .badge-success {
-        background: #d4edda;
-        color: #155724;
+    .btn {
+        padding: 9px 18px; border: none; border-radius: 7px; cursor: pointer;
+        font-size: 13px; font-weight: 700; text-decoration: none;
+        display: inline-flex; align-items: center; gap: 6px; transition: .2s;
     }
-
-    .badge-warning {
-        background: #fff3cd;
-        color: #856404;
-    }
-
-    .no-data {
-        text-align: center;
-        padding: 40px;
-        color: #6c757d;
-    }
-
-    .muted {
-        color: #6c757d;
-        font-size: 14px;
-        margin-top: -10px;
-    }
-
-    /* Modal overlay */
-    .modal-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.45);
-        z-index: 1000;
-        align-items: center;
-        justify-content: center;
-        pointer-events: none;
-    }
-
-    .modal-box {
-        background: #fff;
-        border-radius: 12px;
-        padding: 28px 32px;
-        width: 100%;
-        max-width: 460px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
-    }
-
-    .modal-box h2 {
-        margin: 0 0 18px 0;
-        border-bottom: 2px solid #007bff;
-        padding-bottom: 10px;
-        color: #2c3e50;
-    }
-
-    .modal-footer {
-        display: flex;
-        gap: 10px;
-        justify-content: flex-end;
-        margin-top: 8px;
-    }
+    .btn-primary   { background: #007bff; color: #fff; }
+    .btn-primary:hover { background: #0056b3; }
+    .btn-secondary { background: #6c757d; color: #fff; }
+    .btn-secondary:hover { background: #545b62; }
 </style>
 
-<div class="dashboard-container">
+<div class="sa-container">
 
+    <!-- Header -->
     <div class="header-row">
         <h1>🔐 Super Admin</h1>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <a href="/super-admin/faqs" class="btn btn-secondary">💬 Manage FAQs</a>
-            <a href="/change-password" class="btn btn-secondary">🔑 Change Password</a>
+            <a href="/super-admin/faqs"    class="btn btn-secondary">💬 FAQs</a>
+            <a href="/change-password"     class="btn btn-secondary">🔑 Change Password</a>
+            <a href="{{ url_for('auth.logout') }}" class="btn" style="background:#fee2e2; color:#b91c1c;">🚪 Logout</a>
         </div>
     </div>
 
     <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    {% for cat, msg in messages %}
+    {% if messages %}{% for cat, msg in messages %}
     <div style="padding:12px 16px; border-radius:8px; margin-bottom:14px;
         background:{{ '#d1e7dd' if cat=='success' else '#f8d7da' }};
         color:{{ '#0f5132' if cat=='success' else '#842029' }};
         border:1px solid {{ '#badbcc' if cat=='success' else '#f5c2c7' }};">
         {{ msg }}
     </div>
-    {% endfor %}
-    {% endif %}
+    {% endfor %}{% endif %}
     {% endwith %}
 
-    <!-- Create New Branch -->
-    <div class="card">
-        <h2>➕ Create New Branch</h2>
-        <p class="muted">
-            Creates a new branch and its default admin account.
-            Branch name and code are selected from the official list.
-        </p>
-
-        <form method="POST" action="/super-admin">
-            <div class="form-group">
-                <label for="branch_name_select">Branch:</label>
-                <select id="branch_name_select" name="branch_name" required>
-                    <option value="">— Select Branch —</option>
-                    <option value="Liceo de Bay" data-code="LDBAY">Liceo de Bay — LDBAY</option>
-                    <option value="Liceo de Cabuyao" data-code="LDCAB">Liceo de Cabuyao — LDCAB</option>
-                    <option value="Liceo de Calamba" data-code="LDCAL">Liceo de Calamba — LDCAL</option>
-                    <option value="Liceo de Calauan" data-code="LDCAU">Liceo de Calauan — LDCAU</option>
-                    <option value="Liceo de Cavinti" data-code="LDCAV">Liceo de Cavinti — LDCAV</option>
-                    <option value="Liceo de Liliw" data-code="LDLIW">Liceo de Liliw — LDLIW</option>
-                    <option value="Liceo de Los Baños" data-code="LDLB">Liceo de Los Baños — LDLB</option>
-                    <option value="Liceo de Luisiana" data-code="LDLUI">Liceo de Luisiana — LDLUI</option>
-                    <option value="Liceo de Majayjay" data-code="LDMAJ">Liceo de Majayjay — LDMAJ</option>
-                    <option value="Liceo de Mamatid" data-code="LDMAM">Liceo de Mamatid — LDMAM</option>
-                    <option value="Liceo de Paete" data-code="LDPAE">Liceo de Paete — LDPAE</option>
-                    <option value="Liceo de Pagsanjan" data-code="LDPSJ">Liceo de Pagsanjan — LDPSJ</option>
-                    <option value="Liceo de Pakil" data-code="LDPKL">Liceo de Pakil — LDPKL</option>
-                    <option value="Liceo de Pila" data-code="LDPILA">Liceo de Pila — LDPILA</option>
-                    <option value="Liceo de San Antonio" data-code="LDSANT">Liceo de San Antonio — LDSANT</option>
-                    <option value="Liceo de San Pablo" data-code="LDSPC">Liceo de San Pablo — LDSPC</option>
-                    <option value="Liceo de San Pedro" data-code="LDSPD">Liceo de San Pedro — LDSPD</option>
-                    <option value="Liceo de Victoria" data-code="LDVIC">Liceo de Victoria — LDVIC</option>
-                </select>
-            </div>
-
-            <div class="form-group">
-                <label for="branch_code">Branch Code:</label>
-                <input type="text" id="branch_code" name="branch_code" placeholder="e.g., LDMAJ" readonly required>
-            </div>
-
-            <div class="form-group">
-                <label for="location">Location:</label>
-                <input type="text" id="location" name="location" placeholder="e.g., Laguna" required>
-            </div>
-
-            <button type="submit" class="btn btn-primary">
-                ➕ Create Branch & Admin Account
-            </button>
-        </form>
-
-        <script>
-            (function () {
-                const select = document.getElementById('branch_name_select');
-                const codeInput = document.getElementById('branch_code');
-
-                function syncBranchCode() {
-                    const opt = select.options[select.selectedIndex];
-                    if (opt && opt.dataset && opt.dataset.code) {
-                        codeInput.value = opt.dataset.code;
-                    } else {
-                        codeInput.value = '';
-                    }
-                }
-
-                if (select && codeInput) {
-                    select.addEventListener('change', syncBranchCode);
-                    syncBranchCode();
-                }
-            })();
-        </script>
+    <!-- ── Stat Cards ── -->
+    <div class="stats-row">
+        <div class="stat-card">
+            <div class="stat-num">{{ total_branches }}</div>
+            <div class="stat-label">🏢 Branches</div>
+            <div class="stat-sub">{{ active_branches }} active</div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-num">{{ total_students }}</div>
+            <div class="stat-label">👥 Total Enrollments</div>
+            <div class="stat-sub">all branches</div>
+        </div>
+        <div class="stat-card orange">
+            <div class="stat-num">{{ total_pending }}</div>
+            <div class="stat-label">⏳ Pending</div>
+            <div class="stat-sub">awaiting approval</div>
+        </div>
+        <div class="stat-card purple">
+            <div class="stat-num">{{ total_staff }}</div>
+            <div class="stat-label">👤 Active Staff</div>
+            <div class="stat-sub">all roles</div>
+        </div>
     </div>
 
-    <!-- FAQs shortcut card -->
-    <div class="card">
-        <h2>💬 FAQ Chatbot Manager</h2>
-        <p class="muted">
-            Add / edit General FAQs and Branch FAQs (for chatbot).
-        </p>
-        <a href="/super-admin/faqs" class="btn btn-primary">Open FAQ Manager</a>
+    <!-- ── Alerts + Quick Actions ── -->
+    <div class="two-col">
+
+        <!-- Alerts -->
+        <div class="card">
+            <h2>⚠️ Alerts &amp; Issues</h2>
+
+            {% if not missing_code and not missing_admin and not inactive_branches %}
+            <div class="alert-item alert-green">
+                <span class="alert-icon">✅</span>
+                <div>All systems look good. No issues detected.</div>
+            </div>
+            {% endif %}
+
+            {% if missing_code %}
+            <div class="alert-item alert-red">
+                <span class="alert-icon">🔴</span>
+                <div>
+                    <strong>{{ missing_code|length }} branch{{ 'es' if missing_code|length > 1 else '' }} missing branch code</strong>
+                    <div class="alert-names">
+                        {% for b in missing_code %}· {{ b.branch_name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if missing_admin %}
+            <div class="alert-item alert-yellow">
+                <span class="alert-icon">🟡</span>
+                <div>
+                    <strong>{{ missing_admin|length }} branch{{ 'es' if missing_admin|length > 1 else '' }} with no admin account</strong>
+                    <div class="alert-names">
+                        {% for b in missing_admin %}· {{ b.branch_name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if inactive_branches %}
+            <div class="alert-item alert-yellow">
+                <span class="alert-icon">🟡</span>
+                <div>
+                    <strong>{{ inactive_branches|length }} inactive branch{{ 'es' if inactive_branches|length > 1 else '' }}</strong>
+                    <div class="alert-names">
+                        {% for b in inactive_branches %}· {{ b.branch_name }}{% if not loop.last %}, {% endif %}{% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <h2>⚡ Quick Actions</h2>
+            <a href="{{ url_for('super_admin.super_admin_branches') }}" class="qa-btn">
+                <span class="qa-icon">🏢</span>
+                <div>
+                    <div>Manage Branches</div>
+                    <div style="font-size:11px; font-weight:400; color:#888;">Create, edit, activate/deactivate</div>
+                </div>
+            </a>
+            <a href="{{ url_for('super_admin.superadmin_faqs') }}" class="qa-btn">
+                <span class="qa-icon">💬</span>
+                <div>
+                    <div>Manage FAQs</div>
+                    <div style="font-size:11px; font-weight:400; color:#888;">General chatbot FAQ entries</div>
+                </div>
+            </a>
+            <a href="/change-password" class="qa-btn">
+                <span class="qa-icon">🔑</span>
+                <div>
+                    <div>Change Password</div>
+                    <div style="font-size:11px; font-weight:400; color:#888;">Update your super admin password</div>
+                </div>
+            </a>
+        </div>
+
     </div>
 
-    <!-- Existing Branches -->
+    <!-- ── Branch Health Overview ── -->
     <div class="card">
-        <h2>🏢 All Branches ({{ branches|length }})</h2>
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+            <h2 style="margin:0; border:none; padding:0;">🏢 Branch Health Overview</h2>
+            <a href="{{ url_for('super_admin.super_admin_branches') }}" class="btn btn-primary">
+                Manage All Branches →
+            </a>
+        </div>
 
-        {% if branches and branches|length > 0 %}
-        <table class="branches-table">
+        {% if branch_health %}
+        <table class="health-table">
             <thead>
                 <tr>
-                    <th>ID</th>
                     <th>Branch Name</th>
-                    <th>Location</th>
+                    <th>Enrollments</th>
+                    <th>Pending</th>
                     <th>Code</th>
-                    <th>Admin Username</th>
                     <th>Status</th>
-                    <th>Created</th>
-                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-                {% for branch in branches %}
+                {% for b in branch_health %}
                 <tr>
-                    <td><strong>{{ branch.branch_id }}</strong></td>
-                    <td>{{ branch.branch_name }}</td>
-                    <td>📍 {{ branch.location or 'N/A' }}</td>
+                    <td><strong>{{ b.branch_name }}</strong></td>
+                    <td>{{ b.total_students }}</td>
                     <td>
-                        {% if branch.branch_code %}
-                        <code style="background:#f1f5f9; padding:2px 7px; border-radius:4px; font-size:13px;">
-                            {{ branch.branch_code }}
+                        {% if b.pending_count > 0 %}
+                        <span class="badge badge-warning">{{ b.pending_count }} pending</span>
+                        {% else %}
+                        <span style="color:#aaa; font-size:12px;">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if b.branch_code %}
+                        <code style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:12px;">
+                            {{ b.branch_code }}
                         </code>
                         {% else %}
-                        <span class="badge badge-warning">⚠️ NOT SET</span>
+                        <span class="badge badge-danger">⚠️ NOT SET</span>
                         {% endif %}
                     </td>
                     <td>
-                        {% if branch.admin_username %}
-                        <span class="badge badge-success">👤 {{ branch.admin_username }}</span>
-                        {% else %}
-                        <span class="badge badge-warning">⚠️ No Admin</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if branch.is_active %}
+                        {% if b.is_active %}
                         <span class="badge badge-success">✓ Active</span>
                         {% else %}
                         <span class="badge badge-warning">✗ Inactive</span>
                         {% endif %}
-                    </td>
-                    <td>{{ branch.created_at.strftime('%Y-%m-%d') if branch.created_at else 'N/A' }}</td>
-                    <td style="white-space:nowrap;">
-                        <!-- Toggle status -->
-                        <form method="POST"
-                            action="/super-admin/branch/{{ branch.branch_id }}/toggle-status"
-                            style="display:inline;"
-                            onsubmit="return confirm('Are you sure you want to {% if branch.is_active %}deactivate{% else %}reactivate{% endif %} {{ branch.branch_name }}?');">
-                            <button type="submit"
-                                class="btn {% if branch.is_active %}btn-secondary{% else %}btn-primary{% endif %}"
-                                style="padding:6px 12px; font-size:12px;">
-                                {% if branch.is_active %}🛑 Deactivate{% else %}♻️ Reactivate{% endif %}
-                            </button>
-                        </form>
-                        <!-- Edit branch -->
-                        <!-- Update the Edit button to use data attributes instead of inline onclick -->
-<!-- Change the button data attributes — use plain values, NO tojson -->
-<button type="button"
-    class="btn btn-warning edit-branch-btn"
-    style="padding:6px 12px; font-size:12px; margin-left:4px;"
-    data-id="{{ branch.branch_id }}"
-    data-name="{{ branch.branch_name | e }}"
-    data-code="{{ branch.branch_code or '' }}"
-    data-location="{{ branch.location | e }}">
-    ✏️ Edit
-</button>
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
         {% else %}
-        <div class="no-data">
-            <p>📭 No branches created yet.</p>
+        <div style="text-align:center; padding:30px; color:#aaa;">
+            📭 No branches yet.
         </div>
         {% endif %}
     </div>
 
 </div>
-
-<!-- ══ EDIT BRANCH MODAL ══ -->
-<div id="editBranchModal" class="modal-overlay">
-    <div class="modal-box">
-        <h2>✏️ Edit Branch</h2>
-        <form id="editBranchForm" method="post">
-            <div class="form-group">
-                <label>Branch Name</label>
-                <input type="text" name="branch_name" id="editBranchName" required />
-            </div>
-            <div class="form-group">
-                <label>
-                    Branch Code <span style="color:#e53e3e;">*</span>
-                    <span style="font-weight:400; color:#888; font-size:12px;">
-                        — used for auto-generating usernames (e.g. LDMAJ)
-                    </span>
-                </label>
-                <input type="text" name="branch_code" id="editBranchCode"
-                    required maxlength="20" placeholder="e.g., LDMAJ"
-                    style="text-transform:uppercase;" />
-            </div>
-            <div class="form-group">
-                <label>Location</label>
-                <input type="text" name="location" id="editBranchLocation" required />
-            </div>
-            <div class="modal-footer">
-                <button type="button" onclick="closeEditBranch()"
-                    class="btn btn-secondary" style="padding:9px 18px;">
-                    Cancel
-                </button>
-                <button type="submit" class="btn btn-primary" style="padding:9px 18px;">
-                    💾 Save Changes
-                </button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<!-- Replace the entire <script> block at the bottom -->
-    <script>
-        function openEditBranch(id, name, code, location) {
-            document.getElementById('editBranchName').value     = name;
-            document.getElementById('editBranchCode').value     = code;
-            document.getElementById('editBranchLocation').value = location;
-            document.getElementById('editBranchForm').action    =
-                '/super-admin/branches/' + id + '/edit';
-            const modal = document.getElementById('editBranchModal');
-            modal.style.display = 'flex';
-            modal.style.pointerEvents = 'auto'; // ← re-enable pointer events
-        }
-    
-        function closeEditBranch() {
-            const modal = document.getElementById('editBranchModal');
-            modal.style.display = 'none';
-            modal.style.pointerEvents = 'none'; // ← disable pointer events again
-        }
-    
-        // Close on backdrop click
-        document.getElementById('editBranchModal').addEventListener('click', function (e) {
-            if (e.target === this) closeEditBranch();
-        });
-    
-        // Use event delegation — attach to document, not inline onclick
-        document.addEventListener('click', function (e) {
-    const btn = e.target.closest('.edit-branch-btn');
-    if (!btn) return;
-
-    const id       = btn.dataset.id;
-    const name     = btn.dataset.name;      // ← plain string, no JSON.parse
-    const code     = btn.dataset.code;      // ← plain string, no JSON.parse
-    const location = btn.dataset.location;  // ← plain string, no JSON.parse
-
-    openEditBranch(id, name, code, location);
-});
-    </script>
-
 {% endblock %}
