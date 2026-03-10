@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Create Activity{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <h2 class="card-header">📝 Create New Activity</h2>
+    <form action="{{ url_for('teacher.create_activity') }}" method="POST" enctype="multipart/form-data">
+
+        <div class="form-group">
+            <label class="form-label">Activity Title <span style="color:red">*</span></label>
+            <input type="text" name="title" class="form-input" required maxlength="255">
+        </div>
+
+        <div class="grid grid-2">
+            <div class="form-group">
+                <label class="form-label">Section & Subject <span style="color:red">*</span></label>
+                <select name="assignment" class="form-select" required>
+                    <option value="">-- Select Section & Subject --</option>
+                    {% for a in teacher_assignments %}
+                    <option value="{{ a.section_id }}_{{ a.subject_id }}">{{ a.grade_level_name }} - {{ a.section_name
+                        }} ({{ a.subject_name }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <select name="category" class="form-select">
+                    <option value="Assignment">Assignment</option>
+                    <option value="Project">Project</option>
+                    <option value="Activity">Activity</option>
+                    <option value="Performance Task">Performance Task</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Instructions / Description</label>
+            <textarea name="instructions" class="form-textarea" rows="6"></textarea>
+        </div>
+
+        <div class="grid grid-3">
+            <div class="form-group">
+                <label class="form-label">Max Score <span style="color:red">*</span></label>
+                <input type="number" name="max_score" class="form-input" value="100" min="1" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Due Date <span style="color:red">*</span></label>
+                <input type="datetime-local" name="due_date" id="due_date" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Status <span style="color:red">*</span></label>
+                <select name="status" class="form-select" required>
+                    <option value="Published">Published (Visible immediately)</option>
+                    <option value="Draft">Draft (Hidden)</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Allowed File Extensions (comma separated, e.g. pdf, doc, png)</label>
+            <input type="text" name="allowed_file_types" class="form-input" placeholder="pdf, jpg, docx">
+            <small style="color:var(--muted)">Leave empty for any type.</small>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Reference Attachment (Optional)</label>
+            <input type="file" name="attachment" class="form-input" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+        </div>
+
+        <hr style="border:0; border-top:1px solid var(--border); margin: 24px 0;">
+
+        <div style="display:flex; justify-content:flex-end; gap:12px;">
+            <a href="{{ url_for('teacher.activities') }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Create Activity</button>
+        </div>
+    </form>
+</div>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const dueDateInput = document.getElementById("due_date");
+
+        // Set minimum date to now
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const MM = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        dueDateInput.min = `${yyyy}-${MM}-${dd}T${hh}:${mm}`;
+
+        dueDateInput.addEventListener("change", function () {
+            if (!this.value) return;
+            const dateObj = new Date(this.value);
+            const hours = dateObj.getHours();
+            const minutes = dateObj.getMinutes();
+
+            // Check if time is strictly between 00:00 and 05:00 (12:00 AM to 5:00 AM)
+            if ((hours >= 0 && hours < 5) || (hours === 5 && minutes === 0)) {
+                alert("Allowed time is only from 5:01 AM to 11:59 PM. Please select a valid time.");
+                this.setCustomValidity("Time must be between 5:01 AM and 11:59 PM.");
+                this.reportValidity();
+                this.value = ''; // Reset invalid value
+            } else {
+                this.setCustomValidity("");
+            }
+        });
+    });
+</script>
+{% endblock %}

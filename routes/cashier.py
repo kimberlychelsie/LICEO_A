@@ -35,8 +35,7 @@ def dashboard():
             FROM enrollments e
             LEFT JOIN billing b
               ON e.enrollment_id = b.enrollment_id
-             AND b.branch_id = %s
-            WHERE e.branch_id = %s AND e.status = 'approved'
+            WHERE e.branch_id = %s AND e.status IN ('approved', 'enrolled')
             ORDER BY
               CASE
                 WHEN b.bill_id IS NULL THEN 0

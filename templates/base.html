@@ -801,6 +801,187 @@
       border-color: var(--btn);
       box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
     }
+
+    /* Notifications Bell */
+    .notif-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+
+    .notif-btn {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.25rem;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      transition: background 0.2s;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .notif-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .notif-badge {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 5px;
+      border-radius: 10px;
+      min-width: 18px;
+      text-align: center;
+      border: 2px solid var(--topbar-bg);
+      line-height: 1;
+    }
+
+    .notif-dropdown {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      width: 320px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+      z-index: 2000;
+      display: none;
+      margin-top: 10px;
+      overflow: hidden;
+      color: var(--text);
+      text-align: left;
+    }
+
+    .notif-dropdown.show {
+      display: block;
+      animation: slideInNotif 0.2s ease-out;
+    }
+
+    @keyframes slideInNotif {
+      from {
+        opacity: 0;
+        transform: translateY(-10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .notif-header {
+      padding: 12px 16px;
+      background: #f8fafc;
+      border-bottom: 1px solid var(--border);
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .notif-list {
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    .notif-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid #f1f5f9;
+      text-decoration: none;
+      color: inherit !important;
+      display: block;
+      transition: background 0.2s;
+    }
+
+    .notif-item:hover {
+      background: #f0f7ff;
+    }
+
+    .notif-item:last-child {
+      border-bottom: none;
+    }
+
+    .notif-item-title {
+      font-weight: 700;
+      font-size: 0.88rem;
+      margin-bottom: 2px;
+      color: #1e3a8a;
+    }
+
+    .notif-item-msg {
+      font-size: 0.8rem;
+      color: #475569;
+      line-height: 1.4;
+    }
+
+    .notif-item-time {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+
+    .notif-empty {
+      padding: 30px 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    /* Profile Dropdown */
+    .profile-dropdown-wrapper {
+      position: relative;
+    }
+
+    .profile-toggle-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .profile-dropdown {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      width: 180px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+      z-index: 2000;
+      display: none;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .profile-dropdown.show {
+      display: block;
+    }
+
+    .profile-dropdown a {
+      display: block;
+      padding: 10px 16px;
+      text-decoration: none;
+      color: var(--text);
+      font-size: 0.85rem;
+      font-weight: 500;
+      transition: background 0.2s;
+    }
+
+    .profile-dropdown a:hover {
+      background: #f8fafc;
+    }
   </style>
 
   {% block head %}{% endblock %}
@@ -873,6 +1054,23 @@
       <a class="sb-link {% if request.path == '/student/dashboard' %}active{% endif %}" href="/student/dashboard">
         <span class="sb-icon">🏠</span> Dashboard
       </a>
+
+      <button class="sb-dropdown-btn {% if '/student/subject/' in request.path %}open{% endif %}"
+        onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
+        <div class="sb-left">
+          <span class="sb-icon">🎓</span> My Classes
+        </div>
+        <span class="sb-dropdown-arrow">▼</span>
+      </button>
+      <div class="sb-dropdown-content {% if '/student/subject/' in request.path %}show{% endif %}">
+        {% for sub in student_global_subjects %}
+        <a class="sb-link {% if '/student/subject/' ~ sub.subject_id in request.path %}active{% endif %}"
+          href="/student/subject/{{ sub.subject_id }}">
+          {{ sub.subject_name }}
+        </a>
+        {% endfor %}
+      </div>
+
       <a class="sb-link {% if request.path == '/student/billing' %}active{% endif %}" href="/student/billing">
         <span class="sb-icon">💳</span> Billing
       </a>
@@ -880,9 +1078,25 @@
         href="/student/enrollment-status">
         <span class="sb-icon">📋</span> Enrollment
       </a>
-      <a class="sb-link {% if request.path == '/student/reservations' %}active{% endif %}" href="/student/reservations">
-        <span class="sb-icon">📜</span> History of Reservation
-      </a>
+      <button
+        class="sb-dropdown-btn {% if '/student/reservations' in request.path or '/student/reservation' in request.path %}open{% endif %}"
+        onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
+        <div class="sb-left">
+          <span class="sb-icon">🛒</span> Reservations
+        </div>
+        <span class="sb-dropdown-arrow">▼</span>
+      </button>
+      <div
+        class="sb-dropdown-content {% if '/student/reservations' in request.path or '/student/reservation' in request.path %}show{% endif %}">
+        <a class="sb-link {% if request.path == '/student/reservations' %}active{% endif %}"
+          href="/student/reservations">
+          History
+        </a>
+        <a class="sb-link {% if request.path == '/student/reservation' %}active{% endif %}"
+          href="{{ url_for('student.student_reservation') }}">
+          Order Items
+        </a>
+      </div>
 
 
       {% elif session.get('role') == 'parent' %}
@@ -901,6 +1115,9 @@
       <div class="sb-section-label">Teacher</div>
       <a class="sb-link {% if request.path == '/teacher' %}active{% endif %}" href="/teacher">
         <span class="sb-icon">👩‍🏫</span> My Class
+      </a>
+      <a class="sb-link {% if '/teacher/activities' in request.path %}active{% endif %}" href="/teacher/activities">
+        <span class="sb-icon">📝</span> Activities
       </a>
 
       {% elif session.get('role') == 'registrar' %}
@@ -993,7 +1210,8 @@
       <a class="sb-link {% if request.path == '/super-admin' %}active{% endif %}" href="/super-admin">
         <span class="sb-icon">🔐</span> Dashboard
       </a>
-      <a class="sb-link {% if request.path.startswith('/super-admin/branches') %}active{% endif %}" href="/super-admin/branches">
+      <a class="sb-link {% if request.path.startswith('/super-admin/branches') %}active{% endif %}"
+        href="/super-admin/branches">
         <span class="sb-icon">🏢</span> Branches
       </a>
 
@@ -1019,20 +1237,24 @@
       </a>
       {% endif %}
       {% if session.get('role') %}
+      {% if session.get('role') != 'student' %}
       <a class="sb-link" href="/change-password">
         <span class="sb-icon">🔑</span> Change Password
       </a>
+      {% endif %}
       {% endif %}
 
     </nav>
 
     <!-- Logout -->
     {% if session.get('role') %}
+    {% if session.get('role') != 'student' %}
     <div class="sb-footer">
       <a class="sb-logout" href="/logout">
         <span class="sb-icon">↩</span> Logout
       </a>
     </div>
+    {% endif %}
     {% endif %}
 
   </aside>
@@ -1048,6 +1270,56 @@
     <span class="topbar-title">{% block page_title %}Liceo LMS{% endblock %}</span>
 
     <div class="topbar-right">
+      {% if session.get('role') == 'student' %}
+      <div class="notif-wrapper" style="margin-right: 8px;">
+        <button class="notif-btn" id="notifBtn" onclick="toggleNotifs()">
+          🔔
+          {% if student_global_notifs and student_global_notifs | length > 0 %}
+          <span class="notif-badge">{{ student_global_notifs | length }}</span>
+          {% endif %}
+        </button>
+        <div class="notif-dropdown" id="notifDropdown">
+          <div class="notif-header">
+            <span>Notifications</span>
+            {% if student_global_notifs and student_global_notifs | length > 0 %}
+            <span class="badge badge-red" style="font-size: 0.7rem;">{{ student_global_notifs | length }} New</span>
+            {% endif %}
+          </div>
+          <div class="notif-list">
+            {% for n in student_global_notifs %}
+            <a href="{{ n.link or '#' }}" class="notif-item">
+              <div class="notif-item-title">{{ n.title }}</div>
+              <div class="notif-item-msg">{{ n.message }}</div>
+              <div class="notif-item-time">
+                {{ n.created_at.strftime('%b %d, %I:%M %p') if n.created_at else '' }}
+              </div>
+            </a>
+            {% else %}
+            <div class="notif-empty">
+              <div style="font-size: 2rem; margin-bottom: 10px;">✨</div>
+              All caught up!
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-dropdown-wrapper">
+        <button class="profile-toggle-btn" id="profileBtn" onclick="toggleProfileMenu()">
+          <div class="sb-avatar"
+            style="width: 34px; height: 34px; font-size: 0.75rem; border: 2px solid rgba(255,255,255,0.3);">
+            {{ (session.get('full_name') or session.get('student_name') or 'S')[0] | upper }}
+          </div>
+        </button>
+        <div class="profile-dropdown" id="profileDropdown">
+          <div style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; background: #f8fafc;">
+            <div style="font-weight: 700; font-size: 0.8rem; color: #1e3a8f;">Student Profile</div>
+          </div>
+          <a href="/change-password">🔑 Change Password</a>
+          <a href="/logout" style="color: #ef4444; border-top: 1px solid #f1f5f9;">↩ Logout</a>
+        </div>
+      </div>
+      {% endif %}
     </div>
   </header>
 
@@ -1131,6 +1403,51 @@
 
     function toggleSidebar() { isOpen = !isOpen; applyState(); }
     function closeSidebar() { isOpen = false; applyState(); }
+
+    function toggleNotifs() {
+      const dropdown = document.getElementById('notifDropdown');
+      if (!dropdown) return;
+
+      // Close profile menu if open
+      const profDropdown = document.getElementById('profileDropdown');
+      if (profDropdown) profDropdown.classList.remove('show');
+
+      dropdown.classList.toggle('show');
+
+      // Close when clicking outside
+      const closeHandler = function (e) {
+        if (!document.getElementById('notifBtn').contains(e.target) && !dropdown.contains(e.target)) {
+          dropdown.classList.remove('show');
+          document.removeEventListener('click', closeHandler);
+        }
+      };
+
+      if (dropdown.classList.contains('show')) {
+        setTimeout(() => document.addEventListener('click', closeHandler), 1);
+      }
+    }
+
+    function toggleProfileMenu() {
+      const dropdown = document.getElementById('profileDropdown');
+      if (!dropdown) return;
+
+      // Close notifications if open
+      const notifDropdown = document.getElementById('notifDropdown');
+      if (notifDropdown) notifDropdown.classList.remove('show');
+
+      dropdown.classList.toggle('show');
+
+      const closeHandler = function (e) {
+        if (!document.getElementById('profileBtn').contains(e.target) && !dropdown.contains(e.target)) {
+          dropdown.classList.remove('show');
+          document.removeEventListener('click', closeHandler);
+        }
+      };
+
+      if (dropdown.classList.contains('show')) {
+        setTimeout(() => document.addEventListener('click', closeHandler), 1);
+      }
+    }
 
     // On resize, re-evaluate
     window.addEventListener('resize', () => {

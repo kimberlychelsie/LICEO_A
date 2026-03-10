@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+{% block title %}My Activities{% endblock %}
+
+{% block styles %}
+<style>
+    .act-wrap {
+        max-width: 1140px;
+        margin: 0 auto;
+    }
+
+    .act-header {
+        margin-bottom: 24px;
+    }
+
+    .act-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+    }
+
+    .act-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .act-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .act-info h4 {
+        margin: 0 0 6px;
+        font-size: 1.1rem;
+        color: var(--text);
+    }
+
+    .act-meta {
+        font-size: 0.85rem;
+        color: var(--muted);
+        line-height: 1.4;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--muted);
+    }
+
+    .empty-state .big-icon {
+        font-size: 3.5rem;
+        margin-bottom: 12px;
+    }
+
+    .badge-sub {
+        font-size: 0.75rem;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-weight: 700;
+        display: inline-block;
+        margin-top: 6px;
+    }
+
+    .status-new {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .status-submitted {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-graded {
+        background: #e0f2fe;
+        color: #0284c7;
+    }
+
+    .status-late {
+        background: #fef9c3;
+        color: #854d0e;
+    }
+
+    .status-missing {
+        background: #fee2e2;
+        color: #991b1b;
+    }
+
+    .tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .tab-btn {
+        padding: 8px 16px;
+        border: 1px solid var(--border);
+        background: var(--card);
+        color: var(--text);
+        border-radius: 999px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .tab-btn:hover {
+        background: var(--bg);
+    }
+
+    .tab-btn.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="act-wrap">
+    <div class="act-header">
+        <h1 class="act-title">📝 My Activities</h1>
+        <p style="color:var(--muted); margin-top:4px;">View and submit assignments for your enrolled subjects.</p>
+    </div>
+
+    {% if activities %}
+    <div class="tabs">
+        <button class="tab-btn active" onclick="filterActs('all', this)">All Subjects</button>
+        {% for sub in subjects %}
+        <button class="tab-btn" onclick="filterActs('{{ sub | escape }}', this)">{{ sub }}</button>
+        {% endfor %}
+    </div>
+
+    <div id="activities-container">
+        {% for act in activities %}
+        {# Determine Status #}
+        {% set due_past = act.due_date and act.due_date < now %} {% set is_submitted=act.submission_id is not none %} {%
+            set is_graded=act.grade_id is not none %} {% set badge_class='status-new' %} {% set
+            badge_text='Not Submitted' %} {% if is_graded %} {% set badge_class='status-graded' %} {% set
+            badge_text='Graded' %} {% elif is_submitted %} {% set badge_class='status-submitted' %} {% set
+            badge_text='Submitted' %} {% elif due_past %} {% set badge_class='status-missing' %} {% set
+            badge_text='Missing (Late)' %} {% endif %} <div class="act-card"
+            data-subject="{{ act.subject_name | escape }}">
+            <div class="act-info">
+                <h4>{{ act.title }}</h4>
+                <div class="act-meta">
+                    <strong>{{ act.subject_name }}</strong> ({{ act.section_name }})<br>
+                    Teacher: {{ act.teacher_name }}<br>
+                    Due: {{ act.due_date.strftime('%b %d, %Y %I:%M %p') if act.due_date else 'No timeline' }}
+                    <br>
+                    <span class="badge-sub {{ badge_class }}">{{ badge_text }}</span>
+                    {% if is_graded %}
+                    &bull; <strong style="color:var(--success)">Score: {{ act.raw_score | int if act.raw_score ==
+                        (act.raw_score | int) else act.raw_score }} / {{ act.max_score }}</strong>
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <a href="{{ url_for('student_portal.activity_detail', activity_id=act.activity_id) }}"
+                    class="btn btn-primary">View Details</a>
+            </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="empty-state">
+    <div class="big-icon">📚</div>
+    <h3>No activities found</h3>
+    <p>Your teachers haven't posted any activities for your subjects yet.</p>
+</div>
+{% endif %}
+</div>
+
+<script>
+    function filterActs(subject, btn) {
+        // Update active class on tabs
+        document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+        btn.classList.add('active');
+
+        // Filter cards
+        const cards = document.querySelectorAll('.act-card');
+        cards.forEach(card => {
+            if (subject === 'all' || card.getAttribute('data-subject') === subject) {
+                card.style.display = 'flex';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+</script>
+</div>
+{% endblock %}

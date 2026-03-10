@@ -57,6 +57,67 @@ def inject_is_branch_active():
     return dict(is_branch_active_status=is_active)
 
 
+@app.context_processor
+def inject_student_subjects():
+    if session.get('role') == 'student':
+        enrollment_id = session.get('enrollment_id')
+        from db import get_db_connection
+        import psycopg2.extras
+        db = get_db_connection()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            cursor.execute("SELECT section_id FROM enrollments WHERE enrollment_id = %s", (enrollment_id,))
+            enroll_row = cursor.fetchone()
+            if enroll_row and enroll_row['section_id']:
+                cursor.execute("""
+                    SELECT sub.subject_id, sub.name as subject_name
+                    FROM section_teachers st
+                    JOIN subjects sub ON st.subject_id = sub.subject_id
+                    WHERE st.section_id = %s
+                    ORDER BY sub.name
+                """, (enroll_row['section_id'],))
+                subjects = cursor.fetchall()
+                return dict(student_global_subjects=subjects)
+        except:
+            pass
+        finally:
+            cursor.close()
+            db.close()
+    return dict(student_global_subjects=[])
+
+
+@app.context_processor
+def inject_student_notifications():
+    if session.get('role') == 'student':
+        user_id = session.get('user_id')
+        from db import get_db_connection
+        import psycopg2.extras
+        db = get_db_connection()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            cursor.execute('''
+                SELECT n.* FROM student_notifications n
+                WHERE n.student_id = %s 
+                  AND (
+                    n.link NOT LIKE '/student/activities/%'
+                    OR NOT EXISTS (
+                        SELECT 1 FROM activity_submissions subm
+                        WHERE subm.student_id = n.student_id
+                          AND n.link LIKE '%%/student/activities/' || subm.activity_id || '%%'
+                    )
+                  )
+                ORDER BY n.created_at DESC LIMIT 10
+            ''', (user_id,))
+            notifs = cursor.fetchall()
+            return dict(student_global_notifs=notifs)
+        except:
+            return dict(student_global_notifs=[])
+        finally:
+            cursor.close()
+            db.close()
+    return dict(student_global_notifs=[])
+
+
 @app.after_request
 def add_security_headers(response):
     """Add security headers for browser protection and security scans."""
@@ -127,5 +188,5 @@ def rate_limit_exceeded(e):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, port=5001)
 

@@ -1655,7 +1655,7 @@ def branch_admin_assign_students():
                    s.section_name
             FROM enrollments e
             LEFT JOIN sections s ON e.section_id = s.section_id
-            WHERE e.branch_id = %s AND e.status = 'approved'
+            WHERE e.branch_id = %s AND e.status IN ('approved', 'enrolled')
               AND (e.grade_level ILIKE %s OR e.grade_level ILIKE %s)
             ORDER BY e.student_name
         """, (branch_id, grade_name, grade_name.replace("Grade ", "")))

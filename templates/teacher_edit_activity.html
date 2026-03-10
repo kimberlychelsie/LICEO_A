@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Edit Activity{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <h2 class="card-header">✏️ Edit Activity</h2>
+    <form action="{{ url_for('teacher.edit_activity', activity_id=activity.activity_id) }}" method="POST"
+        enctype="multipart/form-data">
+
+        <div class="form-group">
+            <label class="form-label">Activity Title</label>
+            <input type="text" name="title" class="form-input" value="{{ activity.title }}" required maxlength="255">
+        </div>
+
+        <div class="grid grid-2">
+            <div class="form-group">
+                <label class="form-label">Category</label>
+                <select name="category" class="form-select">
+                    <option value="Assignment" {% if activity.category=='Assignment' %}selected{% endif %}>Assignment
+                    </option>
+                    <option value="Project" {% if activity.category=='Project' %}selected{% endif %}>Project</option>
+                    <option value="Activity" {% if activity.category=='Activity' %}selected{% endif %}>Activity</option>
+                    <option value="Performance Task" {% if activity.category=='Performance Task' %}selected{% endif %}>
+                        Performance Task</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select" required>
+                    <option value="Published" {% if activity.status=='Published' %}selected{% endif %}>Published
+                    </option>
+                    <option value="Draft" {% if activity.status=='Draft' %}selected{% endif %}>Draft</option>
+                    <option value="Closed" {% if activity.status=='Closed' %}selected{% endif %}>Closed</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Instructions / Description</label>
+            <textarea name="instructions" class="form-textarea" rows="6">{{ activity.instructions or '' }}</textarea>
+        </div>
+
+        <div class="grid grid-2">
+            <div class="form-group">
+                <label class="form-label">Max Score</label>
+                <input type="number" name="max_score" class="form-input" value="{{ activity.max_score }}" min="1"
+                    required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Due Date</label>
+                <input type="datetime-local" name="due_date" id="due_date" class="form-input"
+                    value="{{ activity.due_date.strftime('%Y-%m-%dT%H:%M') if activity.due_date else '' }}" required>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Allowed File Extensions</label>
+            <input type="text" name="allowed_file_types" class="form-input"
+                value="{{ activity.allowed_file_types or '' }}" placeholder="pdf, jpg, docx">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Reference Attachment</label>
+            {% if activity.attachment_path %}
+            <div style="margin-bottom:8px; font-size:0.9rem;">
+                Current: <a href="{{ activity.attachment_path }}" target="_blank">View File</a>
+            </div>
+            {% endif %}
+            <input type="file" name="attachment" class="form-input">
+            <small style="color:var(--muted)">Uploading a new file will replace the current one.</small>
+        </div>
+
+        <hr style="border:0; border-top:1px solid var(--border); margin: 24px 0;">
+
+        <div style="display:flex; justify-content:flex-end; gap:12px;">
+            <a href="{{ url_for('teacher.activities') }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+    </form>
+</div>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const dueDateInput = document.getElementById("due_date");
+
+        // Set minimum date to now
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const MM = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        dueDateInput.min = `${yyyy}-${MM}-${dd}T${hh}:${mm}`;
+
+        dueDateInput.addEventListener("change", function () {
+            if (!this.value) return;
+            const dateObj = new Date(this.value);
+            const hours = dateObj.getHours();
+            const minutes = dateObj.getMinutes();
+
+            // Check if time is strictly between 00:00 and 05:00 (12:00 AM to 5:00 AM)
+            if ((hours >= 0 && hours < 5) || (hours === 5 && minutes === 0)) {
+                alert("Allowed time is only from 5:01 AM to 11:59 PM. Please select a valid time.");
+                this.setCustomValidity("Time must be between 5:01 AM and 11:59 PM.");
+                this.reportValidity();
+                this.value = ''; // Reset invalid value
+            } else {
+                this.setCustomValidity("");
+            }
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,159 @@
+{% extends "base.html" %}
+{% block title %}Activities Management{% endblock %}
+
+{% block styles %}
+<style>
+    .act-wrap {
+        max-width: 1140px;
+        margin: 0 auto;
+    }
+
+    .act-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .act-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+    }
+
+    .stats-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 20px;
+    }
+
+    .stat-item {
+        text-align: center;
+        flex: 1;
+    }
+
+    .stat-num {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: var(--btn);
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        color: var(--muted);
+        text-transform: uppercase;
+    }
+
+    .act-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    .act-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .act-info h4 {
+        margin: 0 0 4px;
+        font-size: 1.1rem;
+        color: var(--text);
+    }
+
+    .act-meta {
+        font-size: 0.85rem;
+        color: var(--muted);
+    }
+
+    .act-actions {
+        display: flex;
+        gap: 10px;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--muted);
+    }
+
+    .empty-state .big-icon {
+        font-size: 3.5rem;
+        margin-bottom: 12px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="act-wrap">
+    <div class="act-header">
+        <div>
+            <h1 class="act-title">📝 My Activities</h1>
+            <p style="color:var(--muted); margin-top:4px;">Manage your class assignments, quizzes, and tasks.</p>
+        </div>
+        <a href="{{ url_for('teacher.create_activity') }}" class="btn btn-primary">➕ Create New Activity</a>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="stats-card">
+        <div class="stat-item">
+            <div class="stat-num">{{ stats.total }}</div>
+            <div class="stat-label">Total Activities</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num">{{ stats.published }}</div>
+            <div class="stat-label">Published</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num">{{ stats.drafts }}</div>
+            <div class="stat-label">Drafts</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num">{{ stats.closed }}</div>
+            <div class="stat-label">Closed</div>
+        </div>
+    </div>
+
+    {% if activities %}
+    {% for act in activities %}
+    <div class="act-card">
+        <div class="act-info">
+            <h4>{{ act.title }}</h4>
+            <div class="act-meta">
+                <strong>{{ act.subject_name }}</strong> ({{ act.section_name }}) &bull; Due: {{
+                act.due_date.strftime('%b %d, %Y %I:%M %p') if act.due_date else 'No timeline' }}
+                &bull; Max Score: {{ act.max_score }}
+                &bull; Status:
+                {% if act.status == 'Published' %}<span class="badge badge-green">Published</span>
+                {% elif act.status == 'Draft' %}<span class="badge badge-gray">Draft</span>
+                {% else %}<span class="badge badge-red">Closed</span>{% endif %}
+            </div>
+        </div>
+        <div class="act-actions">
+            <a href="{{ url_for('teacher.edit_activity', activity_id=act.activity_id) }}"
+                class="btn btn-secondary btn-sm">Edit</a>
+            <a href="{{ url_for('teacher.activity_submissions', activity_id=act.activity_id) }}"
+                class="btn btn-primary btn-sm">Submissions ({{ act.submission_count }})</a>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="empty-state">
+        <div class="big-icon">📚</div>
+        <h3>No activities found</h3>
+        <p>You haven't created any activities yet. Click "Create New Activity" to start.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

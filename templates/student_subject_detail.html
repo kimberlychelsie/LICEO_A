@@ -1,0 +1,379 @@
+{% extends "base.html" %}
+{% block title %}{{ subject.subject_name }} - {{ subject.section_name }}{% endblock %}
+
+{% block styles %}
+<style>
+    .subj-wrap {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 20px 16px;
+    }
+
+    .subj-header {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px 32px;
+        margin-bottom: 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .subj-title {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #1e3a8a;
+        margin: 0 0 6px;
+    }
+
+    .subj-meta {
+        color: var(--muted);
+        font-weight: 500;
+        font-size: 0.95rem;
+    }
+
+    .teacher-card {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        background: #f8fafc;
+        padding: 10px 16px;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .teacher-avatar {
+        width: 40px;
+        height: 40px;
+        background: #3b82f6;
+        color: #fff;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+    }
+
+    .act-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .act-card {
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 20px;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .act-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .act-header-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 12px;
+    }
+
+    .act-type {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 3px 10px;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        display: inline-block;
+    }
+
+    .type-assignment {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .type-quiz {
+        background: #fef3c7;
+        color: #92400e;
+    }
+
+    .type-material {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .act-name {
+        font-size: 1.15rem;
+        font-weight: 700;
+        color: var(--text);
+        margin: 0;
+    }
+
+    .act-due {
+        font-size: 0.85rem;
+        color: var(--muted);
+        margin-top: 4px;
+    }
+
+    .act-badge {
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 4px 12px;
+        border-radius: 999px;
+    }
+
+    .badge-pending {
+        background: #fef9c3;
+        color: #854d0e;
+    }
+
+    .badge-submitted {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-graded {
+        background: #e0f2fe;
+        color: #0369a1;
+    }
+
+    .materials-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 12px;
+        margin-top: 16px;
+        padding-top: 16px;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .material-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        text-decoration: none;
+        color: #334155;
+        font-size: 0.85rem;
+        font-weight: 600;
+        transition: background 0.2s;
+        cursor: pointer;
+    }
+
+    .material-item:hover {
+        background: #f1f5f9;
+    }
+
+    .mat-icon {
+        font-size: 1.2rem;
+    }
+
+    /* Viewer Modal */
+    .viewer-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        padding: 40px;
+    }
+
+    .viewer-modal.active {
+        display: flex;
+    }
+
+    .viewer-content {
+        max-width: 1000px;
+        width: 100%;
+        height: 100%;
+        background: #000;
+        border-radius: 12px;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .viewer-close {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+        background: #fff;
+        color: #000;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        font-weight: 700;
+        cursor: pointer;
+        z-index: 10;
+        border: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="subj-wrap">
+    <div class="subj-header">
+        <div>
+            <h1 class="subj-title">{{ subject.subject_name }}</h1>
+            <div class="subj-meta">Section: {{ subject.section_name }}</div>
+        </div>
+        <div class="teacher-card">
+            <div class="teacher-avatar">
+                {{ (subject.teacher_name or 'T')[0] | upper }}
+            </div>
+            <div>
+                <div
+                    style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
+                    Instructor</div>
+                <div style="font-weight: 700; color: #1e3a8a;">
+                    {% if subject.teacher_name %}
+                    {{ 'Ms.' if subject.teacher_gender == 'female' else ('Mr.' if subject.teacher_gender == 'male' else
+                    '') }} {{ subject.teacher_name }}
+                    {% else %}
+                    Unassigned
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="act-list">
+        {% for act in activities %}
+        {% set is_submitted = act.submission_status is not none %}
+        <div class="act-card">
+            <div class="act-header-row">
+                <div>
+                    <div class="act-type type-assignment">{{ act.category or 'Activity' }}</div>
+                    <h3 class="act-name">{{ act.title }}</h3>
+                    <div class="act-due">
+                        {% if act.due_date %}
+                        📅 Due: {{ act.due_date.strftime('%b %d, %Y %I:%M %p') }}
+                        {% if act.due_date < now %}<span style="color:#ef4444; margin-left:8px;">(Past Due)</span>{%
+                            endif %}
+                            {% else %}
+                            📅 No due date
+                            {% endif %}
+                    </div>
+                </div>
+                <div>
+                    {% if act.submission_status == 'Graded' %}
+                    <span class="act-badge badge-graded">✅ Graded</span>
+                    {% elif is_submitted %}
+                    <span class="act-badge badge-submitted">✔ Submitted</span>
+                    {% else %}
+                    <span class="act-badge badge-pending">⏳ Pending</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if act.instructions %}
+            <div style="font-size: 0.9rem; color: #475569; margin: 12px 0; line-height: 1.5;">
+                {{ act.instructions }}
+            </div>
+            {% endif %}
+
+            {% if act.attachment_path %}
+            <div class="materials-grid">
+                {% set ext = act.attachment_path.split('.')[-1].lower() %}
+                {% if ext in ['jpg', 'jpeg', 'png', 'gif'] %}
+                <div class="material-item" onclick="viewMedia('image', '{{ act.attachment_path }}')">
+                    <span class="mat-icon">🖼️</span>
+                    <span>View Image</span>
+                </div>
+                {% elif ext in ['mp4', 'webm', 'ogg'] %}
+                <div class="material-item" onclick="viewMedia('video', '{{ act.attachment_path }}')">
+                    <span class="mat-icon">🎥</span>
+                    <span>Play Video</span>
+                </div>
+                {% elif ext == 'pdf' %}
+                <div class="material-item" onclick="viewMedia('pdf', '{{ act.attachment_path }}')">
+                    <span class="mat-icon">📕</span>
+                    <span>View PDF</span>
+                </div>
+                {% else %}
+                <a href="{{ act.attachment_path }}" target="_blank" class="material-item">
+                    <span class="mat-icon">📄</span>
+                    <span>Download Document</span>
+                </a>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            <div style="margin-top: 20px; display: flex; gap: 10px;">
+                <a href="{{ url_for('student_portal.activity_detail', activity_id=act.activity_id) }}"
+                    class="btn btn-primary btn-sm">
+                    {{ 'View My Submission' if is_submitted else 'Open Activity' }}
+                </a>
+            </div>
+        </div>
+        {% else %}
+        <div
+            style="text-align: center; padding: 60px 20px; color: var(--muted); background: #fff; border: 1px solid var(--border); border-radius: 16px;">
+            <div style="font-size: 3rem; margin-bottom: 12px;">✨</div>
+            <h3>No activities yet</h3>
+            <p>Relax! No activities have been posted for this subject yet.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Media Viewer -->
+<div class="viewer-modal" id="mediaViewer">
+    <button class="viewer-close" onclick="closeViewer()">×</button>
+    <div class="viewer-content" id="viewerContent">
+        <!-- Content will be injected here -->
+    </div>
+</div>
+
+<script>
+    function viewMedia(type, path) {
+        const viewer = document.getElementById('mediaViewer');
+        const content = document.getElementById('viewerContent');
+        content.innerHTML = '';
+
+        if (type === 'image') {
+            content.innerHTML = `<img src="${path}" style="width:100%; height:100%; object-fit:contain;">`;
+        } else if (type === 'video') {
+            content.innerHTML = `
+                <video controls controlsList="nodownload" oncontextmenu="return false;" style="width:100%; height:100%;">
+                    <source src="${path}">
+                    Your browser does not support the video tag.
+                </video>`;
+        } else if (type === 'pdf') {
+            content.innerHTML = `<iframe src="${path}" style="width:100%; height:100%; border:none;"></iframe>`;
+        }
+
+        viewer.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeViewer() {
+        const viewer = document.getElementById('mediaViewer');
+        const content = document.getElementById('viewerContent');
+        content.innerHTML = '';
+        viewer.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+
+    // Close on escape
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeViewer();
+    });
+</script>
+{% endblock %}

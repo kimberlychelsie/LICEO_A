@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+{% block title %}{{ activity.title }} - Details{% endblock %}
+
+{% block styles %}
+<style>
+    .act-wrap {
+        max-width: 900px;
+        margin: 0 auto;
+    }
+
+    .tabs {
+        display: flex;
+        border-bottom: 2px solid var(--border);
+        margin-bottom: 24px;
+        gap: 20px;
+    }
+
+    .tab {
+        padding: 12px 16px;
+        cursor: pointer;
+        color: var(--muted);
+        font-weight: 600;
+        border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
+        transition: color 0.15s;
+    }
+
+    .tab:hover {
+        color: var(--text);
+    }
+
+    .tab.active {
+        color: var(--btn);
+        border-bottom-color: var(--btn);
+    }
+
+    .tab-content {
+        display: none;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    .detail-card {
+        background: var(--card);
+        padding: 24px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        margin-bottom: 24px;
+    }
+
+    .info-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .info-label {
+        font-size: 0.8rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        font-weight: 700;
+        margin-bottom: 2px;
+    }
+
+    .info-value {
+        font-size: 1rem;
+        color: var(--text);
+        font-weight: 500;
+    }
+
+    .instructions-box {
+        background: #f8fafc;
+        padding: 16px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        margin-top: 20px;
+        white-space: pre-wrap;
+        font-size: 0.95rem;
+        line-height: 1.6;
+    }
+
+    .upload-area {
+        border: 2px dashed var(--border);
+        border-radius: 12px;
+        padding: 40px;
+        text-align: center;
+        background: #f8fafc;
+        transition: border-color 0.2s;
+        cursor: pointer;
+    }
+
+    .upload-area:hover {
+        border-color: var(--btn);
+        background: #f0f4f9;
+    }
+
+    .grade-box {
+        background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+        border: 1px solid #86efac;
+        border-radius: 12px;
+        padding: 24px;
+        text-align: center;
+        margin-bottom: 24px;
+    }
+
+    .grade-score {
+        font-size: 2.5rem;
+        font-weight: 900;
+        color: #166534;
+        line-height: 1;
+        margin-bottom: 8px;
+    }
+</style>
+<script>
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+        document.getElementById('tab-' + tabId).classList.add('active');
+        document.getElementById('content-' + tabId).classList.add('active');
+    }
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="act-wrap">
+
+    <div style="margin-bottom: 16px;">
+        <a href="{{ url_for('student_portal.activities') }}"
+            style="text-decoration:none; color:var(--muted); font-size:0.9rem;">&larr; Back to Activities</a>
+    </div>
+
+    <h1 style="font-size: 1.8rem; font-weight: 800; margin-bottom: 4px;">{{ activity.title }}</h1>
+    <p style="color:var(--muted); margin-bottom: 24px;">{{ activity.subject_name }} &bull; {{ activity.teacher_name }}
+    </p>
+
+    <!-- Tabs -->
+    <div class="tabs">
+        <div class="tab active" id="tab-details" onclick="switchTab('details')">Details</div>
+        <div class="tab" id="tab-mywork" onclick="switchTab('mywork')">My Work</div>
+    </div>
+
+    <!-- Details Tab -->
+    <div id="content-details" class="tab-content active">
+        <div class="detail-card">
+            <ul class="info-list">
+                <li>
+                    <div class="info-label">Category</div>
+                    <div class="info-value">{{ activity.category or '—' }}</div>
+                </li>
+                <li>
+                    <div class="info-label">Due Date</div>
+                    <div class="info-value">
+                        {% if activity.due_date %}
+                        {{ activity.due_date.strftime('%B %d, %Y at %I:%M %p') }}
+                        {% if activity.due_date < now %} <span
+                            style="color:#dc2626; font-size:0.8rem; font-weight:700; margin-left:8px;">(Past Due)</span>
+                            {% endif %}
+                            {% else %}
+                            No due date
+                            {% endif %}
+                    </div>
+                </li>
+                <li>
+                    <div class="info-label">Max Score</div>
+                    <div class="info-value">{{ activity.max_score }}</div>
+                </li>
+                <li>
+                    <div class="info-label">Attachment</div>
+                    <div class="info-value">
+                        {% if activity.attachment_path %}
+                        {% set ext = activity.attachment_path.split('.')[-1].lower() %}
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px;">
+                            {% if ext in ['jpg', 'jpeg', 'png', 'gif'] %}
+                            <button onclick="viewMedia('image', '{{ activity.attachment_path }}')"
+                                class="btn btn-secondary btn-sm">🖼️ View Image</button>
+                            {% elif ext in ['mp4', 'webm', 'ogg'] %}
+                            <button onclick="viewMedia('video', '{{ activity.attachment_path }}')"
+                                class="btn btn-secondary btn-sm">🎥 Play Video</button>
+                            {% elif ext == 'pdf' %}
+                            <button onclick="viewMedia('pdf', '{{ activity.attachment_path }}')"
+                                class="btn btn-secondary btn-sm">📕 View PDF</button>
+                            {% else %}
+                            <a href="{{ activity.attachment_path }}" target="_blank" class="btn btn-secondary btn-sm">📎
+                                View Document</a>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <span style="color:var(--muted)">None</span>
+                        {% endif %}
+                    </div>
+                </li>
+            </ul>
+
+            {% if activity.instructions %}
+            <div class="instructions-box">
+                <div class="info-label" style="margin-bottom:8px;">Instructions</div>
+                {{ activity.instructions }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Media Viewer Modal -->
+    <div id="mediaViewer"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; padding:40px;">
+        <button onclick="closeViewer()"
+            style="position:absolute; top:20px; right:20px; background:#fff; color:#000; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem; font-weight:700; cursor:pointer; z-index:10; border:none;">×</button>
+        <div id="viewerContent"
+            style="max-width:1000px; width:100%; height:100%; background:#000; border-radius:12px; overflow:hidden; position:relative;">
+        </div>
+    </div>
+
+    <script>
+        function viewMedia(type, path) {
+            const viewer = document.getElementById('mediaViewer');
+            const content = document.getElementById('viewerContent');
+            content.innerHTML = '';
+
+            if (type === 'image') {
+                content.innerHTML = `<img src="${path}" style="width:100%; height:100%; object-fit:contain;">`;
+            } else if (type === 'video') {
+                content.innerHTML = `
+                    <video controls controlsList="nodownload" oncontextmenu="return false;" style="width:100%; height:100%;">
+                        <source src="${path}">
+                        Your browser does not support the video tag.
+                    </video>`;
+            } else if (type === 'pdf') {
+                content.innerHTML = `<iframe src="${path}" style="width:100%; height:100%; border:none;"></iframe>`;
+            }
+
+            viewer.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeViewer() {
+            const viewer = document.getElementById('mediaViewer');
+            const content = document.getElementById('viewerContent');
+            content.innerHTML = '';
+            viewer.style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeViewer(); });
+    </script>
+
+    <!-- My Work Tab -->
+    <div id="content-mywork" class="tab-content">
+        {% if submission and submission.grade_id %}
+        <div class="grade-box">
+            <div
+                style="font-size:0.9rem; font-weight:700; color:#14532d; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">
+                Final Grade</div>
+            <div class="grade-score">{{ submission.raw_score | int if submission.raw_score == (submission.raw_score |
+                int) else submission.raw_score }}<span style="font-size:1.4rem; color:#22c55e;">/{{ activity.max_score
+                    }}</span></div>
+            <div style="font-weight:600; color:#15803d; margin-bottom:12px;">{{ submission.percentage | int if
+                submission.percentage == (submission.percentage | int) else submission.percentage }}%</div>
+
+            {% if submission.remarks %}
+            <div
+                style="background:rgba(255,255,255,0.7); padding:16px; border-radius:8px; text-align:left; color:#14532d; border:1px solid #bbf7d0;">
+                <strong style="display:block; margin-bottom:4px; font-size:0.85rem; text-transform:uppercase;">Teacher
+                    Feedback:</strong>
+                {{ submission.remarks }}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="detail-card">
+            <h3 style="margin-top:0; margin-bottom:16px;">Submission Status</h3>
+
+            {% if submission %}
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; padding:16px; background:#f8fafc; border-radius:8px; border:1px solid var(--border); margin-bottom:16px;">
+                <div>
+                    <div style="font-size:0.85rem; color:var(--muted); margin-bottom:4px;">Submitted On</div>
+                    <div style="font-weight:600;">{{ submission.submitted_at.strftime('%B %d, %Y at %I:%M %p') }}</div>
+                    {% if submission.is_late %}
+                    <span
+                        style="display:inline-block; font-size:0.75rem; background:#fef9c3; color:#854d0e; padding:2px 8px; border-radius:4px; margin-top:4px; font-weight:700;">Late
+                        Submission</span>
+                    {% endif %}
+                </div>
+                {% if submission.file_path %}
+                <a href="{{ submission.file_path }}" target="_blank" class="btn btn-secondary">📎 View My File</a>
+                {% endif %}
+            </div>
+            {% else %}
+            <div
+                style="padding:16px; background:#fef2f2; border-radius:8px; border:1px solid #fecaca; color:#991b1b; margin-bottom:16px; font-weight:500;">
+                {% if activity.due_date and activity.due_date < now %} You haven't submitted this activity. It is now
+                    missing. {% else %} You haven't submitted your work yet. {% endif %} </div>
+                    {% endif %}
+
+                    {% set can_submit = True %}
+                    {% if activity.status == 'Closed' %}
+                    {% set can_submit = False %}
+                    {% elif submission and not submission.allow_resubmit %}
+                    {% set can_submit = False %}
+                    {% endif %}
+
+                    {% if can_submit %}
+                    <div style="margin-top: 24px; border-top: 1px solid var(--border); padding-top: 24px;">
+                        <h4 style="margin-top:0; margin-bottom:12px;">{{ 'Resubmit Work' if submission else 'Upload Your
+                            Work' }}</h4>
+                        <form action="{{ url_for('student_portal.submit_activity', activity_id=activity.activity_id) }}"
+                            method="POST" enctype="multipart/form-data">
+                            <div class="form-group">
+                                <label class="form-label">
+                                    Select File
+                                    {% if activity.allowed_file_types %}
+                                    <span style="color:var(--muted); font-weight:normal;">(Allowed: {{
+                                        activity.allowed_file_types }})</span>
+                                    {% endif %}
+                                </label>
+                                <input type="file" name="submission_file" class="form-input"
+                                    accept="{{ ('.' + activity.allowed_file_types.replace(',', ',.').replace(' ', '')) if activity.allowed_file_types else '' }}"
+                                    required>
+                            </div>
+                            <div style="margin-top:16px;">
+                                <button type="submit" class="btn btn-primary"
+                                    style="width:100%; justify-content:center; padding: 12px;">📤 {{ 'Submit New File'
+                                    if submission else 'Turn in Activity' }}</button>
+                            </div>
+                        </form>
+                    </div>
+                    {% else %}
+                    <div style="margin-top: 24px; text-align:center; color:var(--muted); font-size:0.9rem;">
+                        {% if activity.status == 'Closed' %}
+                        This activity is closed.
+                        {% else %}
+                        You have already submitted this activity. Resubmissions are disabled.
+                        {% endif %}
+                    </div>
+                    {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% endblock %}

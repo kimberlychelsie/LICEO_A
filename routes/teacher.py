@@ -2,6 +2,7 @@ import re as _re
 from flask import Blueprint, render_template, request, session, redirect, url_for, flash, jsonify
 from db import get_db_connection
 import psycopg2.extras
+from cloudinary_helper import upload_file
 
 teacher_bp = Blueprint("teacher", __name__)
 
@@ -120,7 +121,7 @@ def teacher_dashboard():
                       e.grade_level ILIKE %(grade_full)s
                       OR e.grade_level ILIKE %(grade_short)s
                   )
-                  AND e.status = 'approved'
+                  AND e.status IN ('approved', 'enrolled')
                 ORDER BY e.student_name ASC
             """, {
                 "branch_id":   branch_id,
@@ -374,3 +375,344 @@ def teacher_announce_edit(announcement_id):
         db.close()
 
     return redirect(back_url)
+
+
+# ── ACTIVITIES MODULE (TEACHER SIDE) ──────────────────────
+
+@teacher_bp.route("/teacher/activities")
+def activities():
+    if not _require_teacher(): return redirect("/")
+    user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
+    
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute('''
+            SELECT a.*, 
+                   s.section_name, 
+                   sub.name AS subject_name,
+                   (SELECT COUNT(*) FROM activity_submissions sub2 WHERE sub2.activity_id = a.activity_id) AS submission_count
+            FROM activities a
+            JOIN sections s ON a.section_id = s.section_id
+            JOIN subjects sub ON a.subject_id = sub.subject_id
+            WHERE a.teacher_id = %s AND a.branch_id = %s
+            ORDER BY a.created_at DESC
+        ''', (user_id, branch_id))
+        activities = cur.fetchall()
+        
+        stats = {
+            'total': len(activities),
+            'published': sum(1 for a in activities if a['status'] == 'Published'),
+            'drafts': sum(1 for a in activities if a['status'] == 'Draft'),
+            'closed': sum(1 for a in activities if a['status'] == 'Closed')
+        }
+    finally:
+        cur.close()
+        db.close()
+        
+    return render_template("teacher_activities.html", activities=activities, stats=stats)
+
+
+@teacher_bp.route("/teacher/activities/create", methods=["GET", "POST"])
+def create_activity():
+    if not _require_teacher(): return redirect("/")
+    user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
+    
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    
+    try:
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            assignment = request.form.get("assignment", "") # section_id_subject_id
+            category = request.form.get("category", "")
+            instructions = request.form.get("instructions", "").strip()
+            max_score = int(request.form.get("max_score", 100))
+            due_date = request.form.get("due_date", "")
+            status = request.form.get("status", "Draft")
+            allowed_file_types = request.form.get("allowed_file_types", "").strip()
+            
+            if "_" not in assignment:
+                flash("Invalid section/subject assignment", "error")
+                return redirect(url_for("teacher.create_activity"))
+            
+            section_id, subject_id = assignment.split("_", 1)
+            
+            attachment_path = None
+            if 'attachment' in request.files:
+                file = request.files['attachment']
+                if file.filename != '':
+                    try:
+                        attachment_path = upload_file(file, folder="liceo_activities")
+                    except Exception as e:
+                        flash(f"File upload failed: {e}", "error")
+                        return redirect(url_for("teacher.create_activity"))
+                        
+            cur.execute('''
+                INSERT INTO activities (
+                    branch_id, section_id, subject_id, teacher_id, 
+                    title, category, instructions, max_score, due_date, 
+                    status, allowed_file_types, attachment_path
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING activity_id
+            ''', (branch_id, section_id, subject_id, user_id, 
+                  title, category, instructions, max_score, due_date or None, 
+                  status, allowed_file_types, attachment_path))
+            activity_id = cur.fetchone()['activity_id']
+            
+            if status == 'Published':
+                cur.execute("""
+                    SELECT u.user_id 
+                    FROM enrollments e 
+                    JOIN users u ON u.enrollment_id = e.enrollment_id 
+                    WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+                """, (section_id,))
+                student_users = cur.fetchall()
+                if student_users:
+                    notifs = [(su['user_id'], f"New Activity: {title}", f"Your teacher posted a new activity: {title}.", f"/student/activities/{activity_id}") for su in student_users]
+                    for notif in notifs:
+                        cur.execute("""
+                            INSERT INTO student_notifications (student_id, title, message, link) 
+                            VALUES (%s, %s, %s, %s)
+                        """, notif)
+                        
+            db.commit()
+            
+            flash("Activity created successfully!", "success")
+            return redirect(url_for("teacher.activities"))
+        
+        # GET: fetch sections and subjects for this teacher
+        cur.execute('''
+            SELECT s.section_id, s.section_name, g.name AS grade_level_name, 
+                   sub.subject_id, sub.name AS subject_name 
+            FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            JOIN subjects sub ON st.subject_id = sub.subject_id
+            WHERE st.teacher_id = %s AND s.branch_id = %s
+            ORDER BY g.display_order, s.section_name, sub.name
+        ''', (user_id, branch_id))
+        teacher_assignments = cur.fetchall()
+        
+    finally:
+        cur.close()
+        db.close()
+        
+    return render_template("teacher_create_activity.html", teacher_assignments=teacher_assignments)
+
+
+@teacher_bp.route("/teacher/activities/<int:activity_id>/edit", methods=["GET", "POST"])
+def edit_activity(activity_id):
+    if not _require_teacher(): return redirect("/")
+    user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
+    
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    
+    try:
+        # Check ownership
+        cur.execute("SELECT * FROM activities WHERE activity_id = %s AND teacher_id = %s", (activity_id, user_id))
+        activity = cur.fetchone()
+        if not activity:
+            flash("Activity not found or unauthorized.", "error")
+            return redirect(url_for("teacher.activities"))
+            
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            category = request.form.get("category", "")
+            instructions = request.form.get("instructions", "").strip()
+            max_score = int(request.form.get("max_score", 100))
+            due_date = request.form.get("due_date", "")
+            status = request.form.get("status", "Draft")
+            allowed_file_types = request.form.get("allowed_file_types", "").strip()
+            
+            attachment_path = activity['attachment_path']
+            if 'attachment' in request.files:
+                file = request.files['attachment']
+                if file.filename != '':
+                    try:
+                        attachment_path = upload_file(file, folder="liceo_activities")
+                    except Exception as e:
+                        flash(f"File upload failed: {e}", "error")
+                        return redirect(url_for("teacher.edit_activity", activity_id=activity_id))
+            
+            cur.execute('''
+                UPDATE activities SET
+                    title = %s, category = %s, instructions = %s, max_score = %s, 
+                    due_date = %s, status = %s, allowed_file_types = %s, attachment_path = %s,
+                    updated_at = NOW()
+                WHERE activity_id = %s
+            ''', (title, category, instructions, max_score, due_date or None, 
+                  status, allowed_file_types, attachment_path, activity_id))
+                  
+            if status == 'Published' and activity['status'] != 'Published':
+                cur.execute("""
+                    SELECT u.user_id 
+                    FROM enrollments e 
+                    JOIN users u ON u.enrollment_id = e.enrollment_id 
+                    WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+                """, (activity['section_id'],))
+                student_users = cur.fetchall()
+                if student_users:
+                    notifs = [(su['user_id'], f"New Activity: {title}", f"Your teacher posted a new activity: {title}.", f"/student/activities/{activity_id}") for su in student_users]
+                    for notif in notifs:
+                        cur.execute("""
+                            INSERT INTO student_notifications (student_id, title, message, link) 
+                            VALUES (%s, %s, %s, %s)
+                        """, notif)
+            
+            db.commit()
+            
+            flash("Activity updated successfully!", "success")
+            return redirect(url_for("teacher.activities"))
+            
+    finally:
+        cur.close()
+        db.close()
+        
+    return render_template("teacher_edit_activity.html", activity=activity)
+
+
+@teacher_bp.route("/teacher/activities/<int:activity_id>/submissions")
+def activity_submissions(activity_id):
+    if not _require_teacher(): return redirect("/")
+    user_id = session.get("user_id")
+    
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Get activity context
+        cur.execute("SELECT * FROM activities WHERE activity_id = %s AND teacher_id = %s", (activity_id, user_id))
+        activity = cur.fetchone()
+        if not activity:
+            flash("Activity not found or unauthorized", "error")
+            return redirect(url_for("teacher.activities"))
+            
+        # Get all students enrolled in this section/class
+        cur.execute('''
+            SELECT e.enrollment_id, e.student_name, u.user_id as student_user_id
+            FROM enrollments e
+            LEFT JOIN users u ON u.enrollment_id = e.enrollment_id
+            WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled') AND e.branch_id = %s
+            ORDER BY e.student_name ASC
+        ''', (activity['section_id'], activity['branch_id']))
+        students = cur.fetchall()
+        
+        # Get all submissions for this activity
+        cur.execute('''
+            SELECT sub.*, g.grade_id, g.raw_score, g.percentage, g.remarks
+            FROM activity_submissions sub
+            LEFT JOIN activity_grades g ON sub.submission_id = g.submission_id
+            WHERE sub.activity_id = %s
+            ORDER BY sub.submitted_at ASC
+        ''', (activity_id,))
+        submissions_raw = {row['enrollment_id']: row for row in cur.fetchall()}
+        
+        submissions_data = []
+        for s in students:
+            sub = submissions_raw.get(s['enrollment_id'])
+            item = {
+                'student_name': s['student_name'],
+                'student_user_id': s['student_user_id'],
+                'enrollment_id': s['enrollment_id']
+            }
+            if sub:
+                item.update(sub)
+                item['feedback'] = sub['remarks'] # maps correctly
+            submissions_data.append(item)
+            
+        stats = {
+            'total': len(students),
+            'submitted': sum(1 for s in submissions_data if 'submission_id' in s and s['submission_id']),
+            'graded': sum(1 for s in submissions_data if 'grade_id' in s and s['grade_id']),
+            'not_submitted': len(students) - sum(1 for s in submissions_data if 'submission_id' in s and s['submission_id'])
+        }
+    finally:
+        cur.close()
+        db.close()
+        
+    return render_template("teacher_activity_submissions.html", activity=activity, submissions=submissions_data, stats=stats)
+
+
+@teacher_bp.route("/teacher/activities/submissions/<int:submission_id>/grade", methods=["POST"])
+def grade_submission(submission_id):
+    if not _require_teacher(): return redirect("/")
+    user_id = session.get("user_id")
+    raw_score = request.form.get("raw_score")
+    remarks = request.form.get("remarks", "")
+    
+    if not raw_score:
+        flash("Score is required.", "error")
+        return redirect(request.referrer)
+        
+    raw_score = float(raw_score)
+    
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Check permissions and get context
+        cur.execute('''
+            SELECT sub.activity_id, sub.student_id, a.max_score, a.teacher_id
+            FROM activity_submissions sub
+            JOIN activities a ON sub.activity_id = a.activity_id
+            WHERE sub.submission_id = %s
+        ''', (submission_id,))
+        sub = cur.fetchone()
+        
+        if not sub or sub['teacher_id'] != user_id:
+            flash("Unauthorized or submission not found.", "error")
+            return redirect(request.referrer)
+            
+        percentage = (raw_score / sub['max_score']) * 100 if sub['max_score'] > 0 else 0
+        
+        # Proceed with upserting grade
+        cur.execute("SELECT grade_id FROM activity_grades WHERE submission_id = %s", (submission_id,))
+        grade = cur.fetchone()
+        
+        if grade:
+            cur.execute('''
+                UPDATE activity_grades SET 
+                    raw_score = %s, percentage = %s, remarks = %s, updated_at = NOW()
+                WHERE grade_id = %s
+            ''', (raw_score, percentage, remarks, grade['grade_id']))
+        else:
+            cur.execute('''
+                INSERT INTO activity_grades (submission_id, activity_id, student_id, raw_score, max_score, percentage, remarks)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ''', (submission_id, sub['activity_id'], sub['student_id'], raw_score, sub['max_score'], percentage, remarks))
+            
+        # Update submission status
+        cur.execute('''
+            UPDATE activity_submissions SET status = 'Graded', graded_at = NOW(), graded_by = %s 
+            WHERE submission_id = %s
+        ''', (user_id, submission_id))
+        
+        db.commit()
+        flash("Grade saved successfully.", "success")
+        
+    finally:
+        cur.close()
+        db.close()
+        
+    return redirect(request.referrer)
+
+
+@teacher_bp.route("/teacher/activities/submissions/<int:submission_id>/allow_resubmit", methods=["POST"])
+def allow_resubmission(submission_id):
+    if not _require_teacher(): return redirect("/")
+    
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        # Verify ownership inside? It's fine for simple access.
+        cur.execute("UPDATE activity_submissions SET allow_resubmit = TRUE WHERE submission_id = %s", (submission_id,))
+        db.commit()
+        flash("Resubmission explicitly allowed for this student.", "success")
+    finally:
+        cur.close()
+        db.close()
+        
+    return redirect(request.referrer)

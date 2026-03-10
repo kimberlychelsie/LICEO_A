@@ -1,0 +1,285 @@
+{% extends "base.html" %}
+{% block title %}Activity Submissions{% endblock %}
+
+{% block styles %}
+<style>
+    .sub-wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+    }
+
+    .sub-header {
+        margin-bottom: 24px;
+    }
+
+    .title-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .sub-title {
+        font-size: 1.4rem;
+        font-weight: 800;
+        margin: 0;
+    }
+
+    .stats-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 20px;
+        display: flex;
+        gap: 20px;
+    }
+
+    .stat-item {
+        text-align: center;
+        flex: 1;
+        border-right: 1px solid var(--border);
+    }
+
+    .stat-item:last-child {
+        border-right: none;
+    }
+
+    .stat-num {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: var(--btn);
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: var(--muted);
+        text-transform: uppercase;
+    }
+
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 2000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+        background-color: #fff;
+        margin: 10% auto;
+        padding: 24px;
+        border-radius: 12px;
+        max-width: 500px;
+    }
+
+    .modal-header {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 16px;
+        display: flex;
+        justify-content: space-between;
+    }
+
+    .close-btn {
+        cursor: pointer;
+        color: var(--muted);
+        font-size: 1.5rem;
+    }
+
+    .close-btn:hover {
+        color: var(--text);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sub-wrap">
+    <div class="sub-header">
+        <a href="{{ url_for('teacher.activities') }}"
+            style="text-decoration:none; color:var(--muted); font-size:0.9rem;">&larr; Back to Activities</a>
+        <div class="title-row" style="margin-top:10px;">
+            <h1 class="sub-title">Submissions: {{ activity.title }}</h1>
+            <div style="font-size:0.9rem; color:var(--muted)">Max Score: <strong>{{ activity.max_score }}</strong>
+                &bull; Due: {{ activity.due_date.strftime('%b %d, %Y %I:%M %p') }}</div>
+        </div>
+    </div>
+
+    <!-- Quick Stats -->
+    <div class="stats-card">
+        <div class="stat-item">
+            <div class="stat-num">{{ stats.total }}</div>
+            <div class="stat-label">Total Students</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num">{{ stats.submitted }}</div>
+            <div class="stat-label">Submitted</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num">{{ stats.graded }}</div>
+            <div class="stat-label">Graded</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-num" style="color:var(--error)">{{ stats.not_submitted }}</div>
+            <div class="stat-label">Missing</div>
+        </div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Student Name</th>
+                    <th>Status</th>
+                    <th>Submitted At</th>
+                    <th>File</th>
+                    <th>Score / {{ activity.max_score }}</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sub in submissions %}
+                <tr>
+                    <td><strong>{{ sub.student_name }}</strong></td>
+                    <td>
+                        {% if not sub.submission_id %}
+                        <span class="badge badge-gray">Not Submitted</span>
+                        {% elif sub.grade_id %}
+                        <span class="badge badge-green">Graded</span>
+                        {% if sub.is_late %}<span class="badge badge-yellow">Late</span>{% endif %}
+                        {% else %}
+                        <span class="badge badge-blue">Submitted</span>
+                        {% if sub.is_late %}<span class="badge badge-yellow">Late</span>{% endif %}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if sub.submitted_at %}
+                        {{ sub.submitted_at.strftime('%b %d, %I:%M %p') }}
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if sub.file_path %}
+                        <a href="{{ sub.file_path }}" target="_blank" class="btn btn-secondary btn-sm"
+                            title="{{ sub.original_filename }}">View File</a>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if sub.grade_id %}
+                        <strong>{{ sub.raw_score | int if sub.raw_score == (sub.raw_score | int) else sub.raw_score
+                            }}</strong> / {{ activity.max_score }}<br>
+                        <span style="font-size:0.8rem; color:var(--muted)">{{ sub.percentage | int if sub.percentage ==
+                            (sub.percentage | int) else sub.percentage }}%</span>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if sub.submission_id %}
+                        <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-primary btn-sm" data-sub-id="{{ sub.submission_id }}"
+                                data-name="{{ sub.student_name }}"
+                                data-score="{{ sub.raw_score if sub.raw_score is not none else '' }}"
+                                data-feedback="{{ sub.feedback or '' }}" onclick="openGradeModalFromBtn(this)">
+                                {{ 'Edit Grade' if sub.grade_id else 'Grade' }}
+                            </button>
+                            <form action="{{ url_for('teacher.allow_resubmission', submission_id=sub.submission_id) }}"
+                                method="POST" style="margin:0;">
+                                <button type="submit" class="btn btn-secondary btn-sm" {% if sub.allow_resubmit
+                                    %}disabled title="Already allowed" {% endif %}>
+                                    Allow Resubmit
+                                </button>
+                            </form>
+                        </div>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Grading Modal -->
+<div id="gradeModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span id="modalTitle">Grade Submission</span>
+            <span class="close-btn" onclick="closeGradeModal()">&times;</span>
+        </div>
+        <form id="gradeForm" action="" method="POST">
+            <input type="hidden" name="activity_id" value="{{ activity.activity_id }}">
+            <div class="form-group">
+                <label class="form-label">Score (Max: {{ activity.max_score }})</label>
+                <select name="raw_score" id="raw_score" class="form-select" required>
+                    <option value="" disabled selected>-- Select Score --</option>
+                    {% for score in [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100] %}
+                    {% if score <= activity.max_score %} <option value="{{ score }}">{{ score }}</option>
+                        {% endif %}
+                        {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Feedback / Remarks (Optional)</label>
+                <textarea name="remarks" id="remarks" class="form-textarea" rows="4"></textarea>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn btn-secondary" onclick="closeGradeModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Grade</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openGradeModalFromBtn(btn) {
+        const id = btn.getAttribute("data-sub-id");
+        const name = btn.getAttribute("data-name");
+        const score = btn.getAttribute("data-score");
+        const fb = btn.getAttribute("data-feedback");
+        openGradeModal(id, name, score, fb);
+    }
+
+    function openGradeModal(submissionId, studentName, score, feedback) {
+        document.getElementById('modalTitle').textContent = 'Grade: ' + studentName;
+        document.getElementById('gradeForm').action = '/teacher/activities/submissions/' + submissionId + '/grade';
+
+        let select = document.getElementById('raw_score');
+        if (score !== '' && score !== 'None' && score !== null) {
+            let numScore = Math.round(Number(score));
+            // Ensure the value exists in the dropdown, else round it to nearest ten
+            numScore = Math.round(numScore / 10) * 10;
+            select.value = numScore;
+        } else {
+            select.value = '';
+        }
+
+        document.getElementById('remarks').value = feedback || '';
+        document.getElementById('gradeModal').style.display = 'block';
+    }
+
+    function closeGradeModal() {
+        document.getElementById('gradeModal').style.display = 'none';
+        document.getElementById('gradeForm').action = '';
+        document.getElementById('raw_score').value = '';
+        document.getElementById('remarks').value = '';
+    }
+
+    window.onclick = function (event) {
+        var modal = document.getElementById('gradeModal');
+        if (event.target == modal) {
+            closeGradeModal();
+        }
+    }
+</script>
+{% endblock %}

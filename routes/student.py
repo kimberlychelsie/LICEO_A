@@ -425,12 +425,48 @@ def continuing_enrollment(branch_id):
             section_id = int(section_id_raw) if section_id_raw and section_id_raw.isdigit() else None
 
             cursor.execute("""
+                SELECT COALESCE(MAX(branch_enrollment_no), 0) + 1 AS next_no
+                FROM enrollments WHERE branch_id = %s
+            """, (branch_id,))
+            next_no = cursor.fetchone()["next_no"]
+
+            cursor.execute("""
+                INSERT INTO enrollments
+                  (student_name, grade_level, gender, dob, address, contact_number,
+                   guardian_name, guardian_contact, previous_school, branch_id, status,
+                   branch_enrollment_no, lrn, email, guardian_email, user_id, section_id)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'enrolled',%s,%s,%s,%s,%s,%s)
+                RETURNING enrollment_id
+            """, (
+                enrollment["student_name"], chosen_grade, enrollment["gender"], 
+                enrollment["dob"], enrollment["address"], 
+                enrollment["contact_number"], enrollment["guardian_name"], 
+                enrollment["guardian_contact"], enrollment["previous_school"], 
+                branch_id, next_no, enrollment["lrn"], enrollment.get("email"), 
+                enrollment.get("guardian_email"), enrollment.get("user_id"), 
+                section_id
+            ))
+            new_enrollment_id = cursor.fetchone()["enrollment_id"]
+
+            cursor.execute("""
                 UPDATE enrollments 
-                SET grade_level = %s, section_id = %s, status = 'enrolled'
+                SET status = 'completed'
                 WHERE enrollment_id = %s
-            """, (chosen_grade, section_id, enrollment_id))
+            """, (enrollment_id,))
+
+            if enrollment.get("user_id"):
+                cursor.execute("UPDATE users SET enrollment_id = %s, grade_level = %s WHERE user_id = %s", 
+                               (new_enrollment_id, chosen_grade, enrollment["user_id"]))
+                               
+            cursor.execute("UPDATE student_accounts SET enrollment_id = %s WHERE enrollment_id = %s",
+                           (new_enrollment_id, enrollment_id))
+                           
+            cursor.execute("UPDATE parent_student SET student_id = %s WHERE student_id = %s",
+                           (new_enrollment_id, enrollment_id))
+
             db.commit()
 
+            session["enrollment_id"] = new_enrollment_id
             session["student_grade_level"] = chosen_grade
             # Redirect to confirmation/subjects preview page
             return redirect(url_for("student.continuing_enrolled_confirmation",

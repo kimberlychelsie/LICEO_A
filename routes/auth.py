@@ -201,19 +201,20 @@ def login():
                         cursor.execute("""
                             UPDATE users
                             SET role='student', branch_id=%s,
-                                require_password_change=%s
+                                require_password_change=%s, enrollment_id=%s
                             WHERE user_id=%s
-                        """, (branch_id, student.get("require_password_change", False), student_user_id))
+                        """, (branch_id, student.get("require_password_change", False), enrollment_id, student_user_id))
                     else:
                         cursor.execute("""
-                            INSERT INTO users (branch_id, username, password, role, require_password_change, last_password_change)
-                            VALUES (%s, %s, %s, 'student', %s, NOW())
+                            INSERT INTO users (branch_id, username, password, role, require_password_change, enrollment_id, last_password_change)
+                            VALUES (%s, %s, %s, 'student', %s, %s, NOW())
                             RETURNING user_id
                         """, (
                             branch_id,
                             username,
                             stored,
-                            student.get("require_password_change", 0)
+                            student.get("require_password_change", 0),
+                            enrollment_id
                         ))
                         student_user_id = cursor.fetchone()["user_id"]
 
