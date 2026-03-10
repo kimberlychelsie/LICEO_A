@@ -442,7 +442,6 @@ def continuing_enrollment(branch_id):
             FROM sections s
             JOIN grade_levels g ON s.grade_level_id = g.id
             WHERE s.branch_id = %s 
-                        AND g.name ILIKE %s         -- ✅ only sections for the next grade
             ORDER BY s.section_name
         """, (branch_id,))
         # fetch all sections, filter in JS based on chosen grade
