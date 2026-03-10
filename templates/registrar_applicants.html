@@ -1,0 +1,609 @@
+{% extends "base.html" %}
+{% block title %}Applicants{% endblock %}
+
+{% block styles %}
+<style>
+    /* ── Tabs ── */
+    .tab-bar {
+        display: flex;
+        gap: 4px;
+        border-bottom: 2px solid var(--border);
+        margin-bottom: 20px;
+    }
+    .tab-btn {
+        padding: 10px 22px;
+        font-size: 0.88rem;
+        font-weight: 700;
+        border: none;
+        background: none;
+        cursor: pointer;
+        border-radius: 8px 8px 0 0;
+        color: var(--muted);
+        border-bottom: 3px solid transparent;
+        transition: color .15s, border-color .15s;
+        position: relative;
+        bottom: -2px;
+        text-decoration: none;
+        display: inline-block;
+    }
+    .tab-btn.active {
+        color: var(--btn);
+        border-bottom-color: var(--btn);
+        background: #eff6ff;
+    }
+    .tab-btn .tab-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        font-size: 0.7rem;
+        font-weight: 800;
+        margin-left: 6px;
+        background: var(--btn);
+        color: #fff;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Card / Table ── */
+    .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: 0 2px 10px rgba(2,6,23,.06);
+        overflow: hidden;
+        margin-bottom: 20px;
+    }
+    .card-header {
+        padding: 14px 16px;
+        font-weight: 900;
+        border-bottom: 1px solid var(--border);
+        background: #f8fafc;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+        padding: 11px 12px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+        vertical-align: top;
+        font-size: 13.5px;
+    }
+    th {
+        color: var(--muted);
+        font-weight: 900;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        background: #fbfdff;
+    }
+
+    /* ── Badges ── */
+    .badge { display:inline-block; padding:3px 10px; border-radius:999px;
+             font-size:12px; font-weight:700; border:1px solid var(--border); }
+    .badge-pending  { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
+    .badge-approved { background:#f0fdf4; color:#166534; border-color:#bbf7d0; }
+    .badge-rejected { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
+    .badge-enrolled { background:#f0fdfa; color:#0f766e; border-color:#99f6e4; }
+    .badge-open     { background:#fefce8; color:#ca8a04; border-color:#fde68a; }
+
+    /* ── Buttons ── */
+    .btn-sm { padding:7px 12px; border-radius:8px; font-size:12.5px; }
+    .btn-success  { background:#16a34a; color:#fff; border:none; cursor:pointer; }
+    .btn-success:hover { filter:brightness(.93); }
+    .btn-danger   { background:#dc2626; color:#fff; border:none; cursor:pointer; }
+    .btn-danger:hover  { filter:brightness(.93); }
+    .btn-secondary{ background:#475569; color:#fff; border:none; cursor:pointer; }
+    .btn-secondary:hover { filter:brightness(.93); }
+    .btn-warning  { background:#f59e0b; color:#fff; border:none; cursor:pointer; }
+    .btn-warning:hover { filter:brightness(.93); }
+    .btn-info     { background:#0891b2; color:#fff; border:none; cursor:pointer; }
+    .btn-info:hover { filter:brightness(.93); }
+
+    /* ── Toggle banner ── */
+    .toggle-banner {
+        display:flex; align-items:center; justify-content:space-between;
+        flex-wrap:wrap; gap:14px; border-radius:12px; padding:16px 20px;
+        margin-bottom:18px; border:2px solid;
+    }
+    .toggle-banner.open-state   { background:#fefce8; border-color:#fde68a; }
+    .toggle-banner.closed-state { background:#f0fdf4; border-color:#bbf7d0; }
+    .toggle-banner .tg-left strong {
+        display:block; font-size:.95rem; font-weight:800; margin-bottom:2px;
+    }
+    .toggle-banner .tg-left span { font-size:.82rem; color:#64748b; }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+        display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px;
+    }
+    .filter-bar label { font-size:.82rem; font-weight:700; color:var(--muted); }
+    .filter-bar select {
+        padding:7px 12px; border:1.5px solid var(--border); border-radius:8px;
+        font-size:.85rem; font-family:inherit; cursor:pointer; background:#fff;
+    }
+    .filter-bar select:focus { outline:none; border-color:var(--btn); }
+    .search-input {
+        padding:7px 12px; border:1.5px solid var(--border); border-radius:8px;
+        font-size:.85rem; font-family:inherit; flex:1; min-width:180px; max-width:280px;
+    }
+    .search-input:focus { outline:none; border-color:var(--btn); }
+
+    .muted-note { color:var(--muted); font-size:12px; }
+    .acct-ok    { color:#10b981; font-weight:700; font-size:12.5px; }
+    .empty-row td { text-align:center; padding:32px; color:var(--muted); font-size:.88rem; }
+
+    /* ── Modals ── */
+    .modal-backdrop {
+        display:none; position:fixed; inset:0;
+        background:rgba(0,0,0,0.5); z-index:1000;
+        align-items:center; justify-content:center;
+    }
+    .modal-backdrop.open { display:flex; }
+    .modal-box {
+        background:#fff; border-radius:16px; padding:28px 32px;
+        max-width:600px; width:95%; max-height:85vh; overflow-y:auto;
+        box-shadow:0 8px 40px rgba(0,0,0,.2); position:relative;
+    }
+    .modal-box h3  { margin:0 0 4px; font-size:1.1rem; }
+    .modal-sub     { color:#64748b; font-size:.85rem; margin-bottom:20px; }
+    .modal-close-x {
+        position:absolute; top:14px; right:18px;
+        background:none; border:none; font-size:1.3rem; cursor:pointer; color:#94a3b8;
+    }
+    .modal-close-x:hover { color:#1e293b; }
+
+    /* Doc cards */
+    .doc-grid {
+        display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
+        gap:12px; margin-top:12px;
+    }
+    .doc-card {
+        border:1.5px solid #e2e8f0; border-radius:12px; padding:14px;
+        display:flex; flex-direction:column; gap:8px;
+        background:#f8fafc; transition:box-shadow .15s;
+    }
+    .doc-card:hover { box-shadow:0 4px 12px rgba(0,0,0,.08); }
+    .doc-card .doc-icon { font-size:2rem; line-height:1; }
+    .doc-card .doc-name { font-size:12.5px; font-weight:700; color:#1e293b; word-break:break-word; }
+    .doc-card .doc-type { font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:.4px; }
+    .doc-card a {
+        display:inline-flex; align-items:center; gap:5px;
+        background:#1d4ed8; color:#fff; border-radius:8px;
+        padding:6px 12px; font-size:12px; font-weight:700;
+        text-decoration:none; width:fit-content; transition:background .15s;
+    }
+    .doc-card a:hover { background:#1e40af; }
+    .no-docs { text-align:center; color:#94a3b8; padding:24px 0; font-size:.9rem; }
+
+    /* Section modal */
+    .modal-box label {
+        font-weight:700; font-size:.85rem; display:block; margin-bottom:5px; color:#374151;
+    }
+    .modal-box select, .modal-box input {
+        width:100%; padding:9px 12px; border:1.5px solid #e2e8f0;
+        border-radius:8px; font-size:.9rem; font-family:inherit;
+        margin-bottom:16px; box-sizing:border-box;
+    }
+    .modal-box select:focus, .modal-box input:focus { outline:none; border-color:#3b82f6; }
+    .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:4px; }
+    .step-badge {
+        display:inline-flex; align-items:center; gap:6px;
+        background:#eff6ff; color:#1d4ed8; border-radius:8px;
+        padding:4px 10px; font-size:12px; font-weight:700; margin-bottom:16px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; gap:10px;">
+    <h2 style="margin:0;">Applicants &amp; Enrolled</h2>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a href="/change-password" class="btn btn-secondary btn-sm">Change Password</a>
+        <a href="/logout" class="btn btn-dark btn-sm">Logout</a>
+    </div>
+</div>
+
+<!-- ═══ TABS ═══ -->
+<div class="tab-bar">
+    <a class="tab-btn active" href="#" id="tab-new-btn"
+       onclick="switchTab('new',this); return false;">
+        📋 New Enrollments
+        <span class="tab-count">{{ new_enrollments | length }}</span>
+    </a>
+    <a class="tab-btn" href="#enrolled" id="tab-enrolled-btn"
+       onclick="switchTab('enrolled',this); return false;">
+        🎓 Enrolled Students
+        <span class="tab-count">{{ enrolled_students | length }}</span>
+    </a>
+</div>
+
+<!-- ═══ TAB: NEW ENROLLMENTS ═══ -->
+<div class="tab-panel active" id="tab-new">
+
+    <!-- Search + Status Filter -->
+    <form method="get" action="/registrar/applicants" id="filterForm">
+        <div class="filter-bar">
+            <label>Filter:</label>
+            <select name="status" onchange="document.getElementById('filterForm').submit()">
+                <option value="" {% if not status_filter %}selected{% endif %}>All Statuses</option>
+                <option value="pending"  {% if status_filter=='pending' %}selected{% endif %}>⏳ Pending</option>
+                <option value="approved" {% if status_filter=='approved' %}selected{% endif %}>✅ Approved</option>
+                <option value="rejected" {% if status_filter=='rejected' %}selected{% endif %}>❌ Rejected</option>
+            </select>
+            <input class="search-input" type="text" name="search"
+                   value="{{ search }}" placeholder="Search student name..."
+                   onchange="document.getElementById('filterForm').submit()">
+            {% if status_filter or search %}
+            <a href="/registrar/applicants"
+               style="font-size:.82rem; color:var(--muted); text-decoration:none;">✕ Clear</a>
+            {% endif %}
+        </div>
+    </form>
+
+    <div class="card">
+        <div class="card-header">
+            <span>New / Transferee Enrollment Applications</span>
+            <span class="muted-note">{{ new_enrollments | length }} record(s)</span>
+        </div>
+        <div style="overflow:auto;">
+            <table>
+                <tr>
+                    <th>ID</th>
+                    <th>Student Name</th>
+                    <th>Grade Level</th>
+                    <th>Documents</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+                {% for enrollment in new_enrollments %}
+                <tr>
+                    <td>
+                        <span style="font-weight:800;">#{{ enrollment.display_no }}</span>
+                    </td>
+                    <td>
+                        <strong>{{ enrollment.student_name }}</strong>
+                        {% if enrollment.gender %}
+                        <div class="muted-note">{{ enrollment.gender }}</div>
+                        {% endif %}
+                    </td>
+                    <td>{{ enrollment.grade_level }}</td>
+
+                    <td>
+                        {% if enrollment.documents and enrollment.documents | length > 0 %}
+                        <button class="btn btn-info btn-sm view-docs-btn"
+                            data-student="{{ enrollment.student_name }}"
+                            data-docs='{{ enrollment.documents | tojson | safe }}'>
+                            📂 View ({{ enrollment.documents | length }})
+                        </button>
+                        {% else %}
+                        <span class="muted-note">No documents</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if enrollment.status == 'approved' %}
+                        <span class="badge badge-approved">✅ Approved</span>
+                        {% elif enrollment.status == 'rejected' %}
+                        <span class="badge badge-rejected">❌ Rejected</span>
+                        {% else %}
+                        <span class="badge badge-pending">⏳ Pending</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if enrollment.status == 'pending' %}
+                        {% if is_branch_active_status %}
+                        <form method="post" action="/registrar/applicants" style="display:inline;">
+                            <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
+                            <button name="action" value="approved" class="btn btn-success btn-sm">✅ Approve</button>
+                        </form>
+                        <form method="post" action="/registrar/applicants" style="display:inline;">
+                            <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
+                            <button name="action" value="rejected" class="btn btn-danger btn-sm"
+                                onclick="return confirm('Reject this enrollment?')">❌ Reject</button>
+                        </form>
+                        {% else %}
+                        <span class="muted-note">Actions disabled (Archive Mode)</span>
+                        {% endif %}
+
+                        {% elif enrollment.status == 'approved' %}
+                        {% if not enrollment.has_student_account %}
+                        {% if is_branch_active_status %}
+                        <button class="btn btn-primary btn-sm" onclick="openCreateModal(
+                                {{ enrollment.enrollment_id }},
+                                '{{ enrollment.student_name | replace("'", "\\'") }}',
+                                '{{ enrollment.grade_level | replace("'", "\\'") }}'
+                            )">
+                            👤 Create Student Account
+                        </button>
+                        {% endif %}
+                        {% else %}
+                        <span class="acct-ok">✓ Student Account Created</span>
+                        {% endif %}
+                        <br><br>
+                        {% if not enrollment.has_parent_account %}
+                        {% if is_branch_active_status %}
+                        <form method="post"
+                              action="/registrar/create-parent-account/{{ enrollment.enrollment_id }}"
+                              style="display:inline;">
+                            <button type="submit" class="btn btn-secondary btn-sm">
+                                👨‍👩‍👧 Create Parent Account
+                            </button>
+                        </form>
+                        {% endif %}
+                        {% else %}
+                        <span class="acct-ok">✓ Parent Account Created</span>
+                        {% endif %}
+
+                        {% else %}
+                        <span class="muted-note">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr class="empty-row">
+                    <td colspan="6">No enrollment applications found.</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ TAB: ENROLLED STUDENTS ═══ -->
+<div class="tab-panel" id="tab-enrolled">
+
+    <!-- Toggle Banner -->
+    {% if is_branch_active_status %}
+    {% if reenrollment_open %}
+    <div class="toggle-banner open-state">
+        <div class="tg-left">
+            <strong>🔓 Re-Enrollment is OPEN</strong>
+            <span>Students can currently log in and re-enroll for the next school year.</span>
+        </div>
+        <form method="post" action="/registrar/toggle-reenrollment">
+            <input type="hidden" name="action" value="close">
+            <button type="submit" class="btn btn-danger btn-sm"
+                onclick="return confirm('Close re-enrollment for ALL students?')">
+                🔒 Close Re-Enrollment
+            </button>
+        </form>
+    </div>
+    {% else %}
+    <div class="toggle-banner closed-state">
+        <div class="tg-left">
+            <strong>🔒 Re-Enrollment is CLOSED</strong>
+            <span>Students cannot re-enroll yet. Click Open to allow all enrolled students to re-enroll.</span>
+        </div>
+        <form method="post" action="/registrar/toggle-reenrollment">
+            <input type="hidden" name="action" value="open">
+            <button type="submit" class="btn btn-warning btn-sm"
+                onclick="return confirm('Open re-enrollment for ALL enrolled students?')">
+                🔓 Open Re-Enrollment for All
+            </button>
+        </form>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <label>Filter by Grade:</label>
+        <select id="gradeFilter" onchange="filterEnrolled()">
+            <option value="">All Grades</option>
+            {% for g in grade_levels %}
+            <option value="{{ g | lower }}">{{ g }}</option>
+            {% endfor %}
+        </select>
+        <input class="search-input" type="text" id="enrolledSearch"
+               placeholder="Search student name..." oninput="filterEnrolled()">
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span>Enrolled Students</span>
+            <span class="muted-note" id="enrolledCount">
+                {{ enrolled_students | length }} student(s)
+            </span>
+        </div>
+        <div style="overflow:auto;">
+            <table id="enrolledTable">
+                <tr>
+                    <th>Student Name</th>
+                    <th>Grade Level</th>
+                    <th>Section</th>
+                    <th>Status</th>
+                </tr>
+                {% for e in enrolled_students %}
+                <tr class="enrolled-row"
+                    data-grade="{{ e.grade_level | lower }}"
+                    data-name="{{ e.student_name | lower }}">
+                    <td>
+                        <strong>{{ e.student_name }}</strong>
+                        {% if e.gender %}
+                        <div class="muted-note">{{ e.gender }}</div>
+                        {% endif %}
+                    </td>
+                    <td>{{ e.grade_level }}</td>
+                    <td class="muted-note">
+                        {% if e.section_name %}
+                        {{ e.section_name }}
+                        {% elif e.section_id %}
+                        Section #{{ e.section_id }}
+                        {% else %}
+                        <span style="color:#f59e0b; font-weight:700;">⚠ Not assigned</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if e.status == 'open_for_enrollment' %}
+                        <span class="badge badge-open">🔓 Re-Enrollment Open</span>
+                        {% else %}
+                        <span class="badge badge-enrolled">🎓 Enrolled</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr class="empty-row">
+                    <td colspan="4">No enrolled students yet.</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ MODAL: View Documents ═══ -->
+<div class="modal-backdrop" id="docsModal">
+    <div class="modal-box">
+        <button class="modal-close-x" onclick="closeDocsModal()">✕</button>
+        <h3 id="docsModalTitle">Documents</h3>
+        <div class="modal-sub" id="docsModalSub"></div>
+        <div class="doc-grid" id="docsModalGrid"></div>
+    </div>
+</div>
+
+<!-- ═══ MODAL: Create Student Account ═══ -->
+<div class="modal-backdrop" id="createStudentModal">
+    <div class="modal-box">
+        <button class="modal-close-x" onclick="closeCreateModal()">✕</button>
+        <div class="step-badge">👤 Create Student Account</div>
+        <h3 id="modalStudentName">Student Name</h3>
+        <div class="modal-sub" id="modalGradeLevel"></div>
+        <form method="post" id="createStudentForm" action="">
+            <label for="modalSectionSelect">
+                Assign to Section
+                <span style="color:#94a3b8; font-weight:400; text-transform:none;">
+                    (optional — can be done later)
+                </span>
+            </label>
+            <select id="modalSectionSelect" name="section_id">
+                <option value="">— Skip for now —</option>
+            </select>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary btn-sm"
+                        onclick="closeCreateModal()">Cancel</button>
+                <button type="submit" class="btn btn-success btn-sm">✅ Create Account</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // ── Tab switching ──
+    function switchTab(tab, btn) {
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + tab).classList.add('active');
+        btn.classList.add('active');
+        window.location.hash = tab === 'new' ? '' : tab;
+    }
+
+    window.addEventListener('DOMContentLoaded', function () {
+        if (window.location.hash === '#enrolled') {
+            var btn = document.getElementById('tab-enrolled-btn');
+            if (btn) switchTab('enrolled', btn);
+        }
+    });
+
+    // ── Filter enrolled table ──
+    function filterEnrolled() {
+        var grade  = document.getElementById('gradeFilter').value.toLowerCase();
+        var search = document.getElementById('enrolledSearch').value.toLowerCase();
+        var rows   = document.querySelectorAll('.enrolled-row');
+        var visible = 0;
+        rows.forEach(function (row) {
+            var matchGrade = !grade  || row.dataset.grade === grade;
+            var matchName  = !search || row.dataset.name.includes(search);
+            var show = matchGrade && matchName;
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+        var cnt = document.getElementById('enrolledCount');
+        if (cnt) cnt.textContent = visible + ' student' + (visible !== 1 ? 's' : '');
+    }
+
+    // ── Documents modal ──
+    document.querySelectorAll('.view-docs-btn').forEach(btn => {
+        btn.addEventListener('click', function () {
+            openDocsModal(this.dataset.student, JSON.parse(this.dataset.docs || '[]'));
+        });
+    });
+
+    function openDocsModal(studentName, docs) {
+        document.getElementById('docsModalTitle').textContent = '📂 Submitted Documents';
+        document.getElementById('docsModalSub').textContent   = 'Student: ' + studentName;
+        var grid = document.getElementById('docsModalGrid');
+        grid.innerHTML = '';
+        if (!docs || docs.length === 0) {
+            grid.innerHTML = '<div class="no-docs">📭 No documents submitted.</div>';
+        } else {
+            docs.forEach(function (doc) {
+                var ext  = (doc.file_name || '').split('.').pop().toLowerCase();
+                var icon = '📄';
+                if (ext === 'pdf') icon = '📕';
+                else if (['jpg','jpeg','png','webp'].includes(ext)) icon = '🖼️';
+                var card = document.createElement('div');
+                card.className = 'doc-card';
+                card.innerHTML = `
+                    <div class="doc-icon">${icon}</div>
+                    <div class="doc-name">${doc.file_name || 'Unnamed file'}</div>
+                    <div class="doc-type">${ext.toUpperCase()} file</div>
+                    <a href="${doc.file_path}" target="_blank" rel="noopener">👁 View / Download</a>`;
+                grid.appendChild(card);
+            });
+        }
+        document.getElementById('docsModal').classList.add('open');
+    }
+
+    function closeDocsModal() {
+        document.getElementById('docsModal').classList.remove('open');
+    }
+    document.getElementById('docsModal').addEventListener('click', function (e) {
+        if (e.target === this) closeDocsModal();
+    });
+
+    // ── Create Student Account modal ──
+    const ALL_SECTIONS = {{ section_options | tojson | safe }};
+
+    function openCreateModal(enrollmentId, studentName, gradeLevel) {
+        document.getElementById('modalStudentName').textContent = studentName;
+        document.getElementById('modalGradeLevel').textContent  = '📚 Grade Level: ' + gradeLevel;
+        document.getElementById('createStudentForm').action =
+            '/registrar/create-student-account/' + enrollmentId;
+
+        var select    = document.getElementById('modalSectionSelect');
+        select.innerHTML = '<option value="">— Skip for now —</option>';
+        var gradeLower   = gradeLevel.trim().toLowerCase();
+        var filtered     = ALL_SECTIONS.filter(s =>
+            (s.grade_level_name || '').toLowerCase() === gradeLower
+        );
+
+        if (filtered.length === 0) {
+            select.innerHTML += '<option disabled>No sections found for ' + gradeLevel + '</option>';
+        } else {
+            filtered.forEach(s => {
+                select.innerHTML += `<option value="${s.section_id}">${gradeLevel} — ${s.section_name}</option>`;
+            });
+        }
+        document.getElementById('createStudentModal').classList.add('open');
+    }
+
+    function closeCreateModal() {
+        document.getElementById('createStudentModal').classList.remove('open');
+    }
+    document.getElementById('createStudentModal').addEventListener('click', function (e) {
+        if (e.target === this) closeCreateModal();
+    });
+</script>
+{% endblock %}

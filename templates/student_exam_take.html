@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% block title %}Take Exam{% endblock %}
+{% block content %}
+<style>
+    .container { max-width:720px; margin:0 auto; padding:24px 20px; }
+    .exam-header { background:#fff; border-radius:12px; padding:20px 24px; box-shadow:0 2px 8px rgba(0,0,0,.07); margin-bottom:20px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; position:sticky; top:0; z-index:100; }
+    .exam-title { font-size:18px; font-weight:800; color:#1a1a2e; }
+    .exam-meta { font-size:13px; color:#888; margin-top:2px; }
+    .timer-box { background:#dc3545; color:#fff; padding:10px 20px; border-radius:10px; font-size:20px; font-weight:800; letter-spacing:2px; min-width:100px; text-align:center; }
+    .timer-box.warn { background:#fd7e14; }
+    .timer-box.ok   { background:#28a745; }
+    .answered-bar { background:#fff; border-radius:10px; padding:10px 20px; box-shadow:0 2px 8px rgba(0,0,0,.07); margin-bottom:16px; text-align:center; font-weight:700; font-size:14px; }
+    .section-header { font-size:15px; font-weight:800; color:#2c3e50; margin-bottom:12px; padding-bottom:8px; border-bottom:2px solid #007bff; }
+    .progress-indicator { font-size:12px; color:#888; font-weight:700; margin-bottom:10px; }
+    .q-card { background:#fff; border-radius:12px; padding:22px; box-shadow:0 2px 8px rgba(0,0,0,.07); margin-bottom:16px; }
+    .q-num { font-size:12px; font-weight:700; color:#888; margin-bottom:6px; }
+    .q-text { font-size:15px; font-weight:600; margin-bottom:16px; color:#1a1a2e; }
+    .choice-label { display:flex; align-items:center; gap:10px; padding:10px 14px; border:2px solid #dee2e6; border-radius:8px; margin-bottom:8px; cursor:pointer; font-size:14px; transition:.15s; }
+    .choice-label:hover { border-color:#007bff; background:#e7f1ff; }
+    .choice-label input { accent-color:#007bff; width:16px; height:16px; }
+    .tab-warning { background:#fff3cd; border:1px solid #fde68a; color:#92400e; padding:14px 18px; border-radius:10px; margin-bottom:16px; font-size:13px; display:none; }
+    .btn { padding:10px 20px; border:none; border-radius:7px; cursor:pointer; font-size:14px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:8px; transition:.2s; }
+    .btn-primary { background:#007bff; color:#fff; } .btn-primary:hover { background:#0056b3; }
+    .btn-success { background:#28a745; color:#fff; } .btn-success:hover { background:#1e7e34; }
+    .question-section { display:none; }
+</style>
+
+<div class="container">
+    <div class="tab-warning" id="tabWarning">
+        ⚠️ <strong>Warning:</strong> You switched tabs! This has been recorded.
+        Tab switches: <strong id="tabCount">0</strong>
+    </div>
+
+    <div class="exam-header">
+        <div>
+            <div class="exam-title">{{ exam.title }}</div>
+            <div class="exam-meta">{{ exam.subject_name }} · {{ exam.section_name }} · {{ questions|length }} questions</div>
+        </div>
+        <div class="timer-box ok" id="timerBox">--:--</div>
+    </div>
+
+    <div class="answered-bar">
+        Answered: <span id="answeredQuestions">0</span> / <span id="totalQuestions">{{ questions|length }}</span>
+    </div>
+
+    <div class="alert alert-danger text-center" style="font-weight:700; border-radius:10px; font-size:13px;">
+        ⚠️ Answer the question before clicking Next. You cannot go back to previous questions.
+    </div>
+
+    <form method="POST" id="examForm">
+        <input type="hidden" name="result_id"    value="{{ result_id }}" />
+        <input type="hidden" name="tab_switches" id="tabSwitchInput" value="0" />
+        <input type="hidden" name="submit_type"  id="submitType" value="manual" />
+
+        <!-- ── MCQ Section ── -->
+        <div id="section-mc" class="question-section">
+            <div class="section-header">Multiple Choice</div>
+            <div class="progress-indicator" id="mc-progress"></div>
+            {% set mcq_questions = questions | selectattr("question_type", "equalto", "mcq") | list %}
+            {% for q in mcq_questions %}
+            <div class="q-card" id="mc-q{{ loop.index0 }}" style="display:none;">
+                <div class="q-num">Question {{ loop.index }} · {{ q.points }} pt(s)</div>
+                <div class="q-text">{{ q.question_text }}</div>
+                {% if q.choices %}
+                    {% for key, val in q.choices.items() %}
+                    <label class="choice-label">
+                        <input type="radio" name="answer_{{ q.question_id }}" value="{{ key }}"
+                               onchange="saveAnswer('answer_{{ q.question_id }}', '{{ key }}')"/>
+                        <span><strong>{{ key }}.</strong> {{ val }}</span>
+                    </label>
+                    {% endfor %}
+                {% endif %}
+                <div style="margin-top:12px;">
+                    <button type="button" class="btn btn-primary" onclick="nextMC()">
+                        {% if loop.last %}
+                            {% if questions | selectattr("question_type", "equalto", "truefalse") | list | length > 0 %}
+                                Next Section →
+                            {% else %}
+                                Submit Exam
+                            {% endif %}
+                        {% else %}
+                            Next →
+                        {% endif %}
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- ── True/False Section ── -->
+        <div id="section-tf" class="question-section">
+            <div class="section-header">True or False</div>
+            <div class="progress-indicator" id="tf-progress"></div>
+            {% set tf_questions = questions | selectattr("question_type", "equalto", "truefalse") | list %}
+            {% for q in tf_questions %}
+            <div class="q-card" id="tf-q{{ loop.index0 }}" style="display:none;">
+                <div class="q-num">Question {{ loop.index }} · {{ q.points }} pt(s)</div>
+                <div class="q-text">{{ q.question_text }}</div>
+                <label class="choice-label">
+                    <input type="radio" name="answer_{{ q.question_id }}" value="True"
+                           onchange="saveAnswer('answer_{{ q.question_id }}', 'True')"/>
+                    <span>True</span>
+                </label>
+                <label class="choice-label">
+                    <input type="radio" name="answer_{{ q.question_id }}" value="False"
+                           onchange="saveAnswer('answer_{{ q.question_id }}', 'False')"/>
+                    <span>False</span>
+                </label>
+                <div style="margin-top:12px;">
+                    <button type="button" class="btn btn-primary" onclick="nextTF()">
+                        {% if loop.last %}✅ Submit Exam{% else %}Next →{% endif %}
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+    </form>
+</div>
+
+<script>
+(function () {
+    // ── Exam-scoped localStorage key prefix ──
+    const EXAM_KEY = 'exam_{{ result_id | int }}_';
+
+    function lsGet(key)       { return localStorage.getItem(EXAM_KEY + key); }
+    function lsSet(key, val)  { localStorage.setItem(EXAM_KEY + key, val); }
+
+    // ── Timer ──
+    let remaining = {{ remaining_secs | int }};
+    const timerEl = document.getElementById('timerBox');
+
+    function formatTime(s) {
+        const m = Math.floor(s / 60).toString().padStart(2, '0');
+        const sec = (s % 60).toString().padStart(2, '0');
+        return m + ':' + sec;
+    }
+
+    function updateTimer() {
+        timerEl.textContent = formatTime(remaining);
+        timerEl.className = remaining <= 60 ? 'timer-box warn' : 'timer-box ok';
+        if (remaining <= 0) {
+            timerEl.className = 'timer-box';
+            timerEl.textContent = '00:00';
+            autoSubmit();
+            return;
+        }
+        remaining--;
+        setTimeout(updateTimer, 1000);
+    }
+
+    function autoSubmit() {
+        document.getElementById('submitType').value = 'auto';
+        document.getElementById('examForm').submit();
+    }
+
+    updateTimer();
+
+    // ── Answered counter ──
+    let answeredCount = 0;
+    const answeredEl  = document.getElementById('answeredQuestions');
+
+    function saveAnswer(questionId, answer) {
+        lsSet('ans_' + questionId, answer);
+        if (!lsGet('answered_' + questionId)) {
+            answeredCount++;
+            lsSet('answered_' + questionId, 'true');
+            answeredEl.textContent = answeredCount;
+        }
+    }
+    window.saveAnswer = saveAnswer;
+
+    function loadAnswers() {
+        const names = new Set();
+        document.querySelectorAll('.q-card input[type="radio"]').forEach(input => {
+            const saved = lsGet('ans_' + input.name);
+            if (saved && input.value === saved) input.checked = true;
+            if (lsGet('answered_' + input.name) === 'true') names.add(input.name);
+        });
+        answeredCount = names.size;
+        answeredEl.textContent = answeredCount;
+    }
+
+    loadAnswers();
+
+    // ── Section navigation ──
+    const mcTotal = document.querySelectorAll('[id^="mc-q"]').length;
+    const tfTotal = document.querySelectorAll('[id^="tf-q"]').length;
+
+    // ✅ Restore saved index on refresh
+    let mcIndex = parseInt(lsGet('mcIndex') || '0');
+    let tfIndex = parseInt(lsGet('tfIndex') || '0');
+    let currentSection = lsGet('currentSection') || (mcTotal > 0 ? 'mc' : 'tf');
+
+    function showSection(sectionId) {
+        ['section-mc', 'section-tf'].forEach(id => {
+            document.getElementById(id).style.display = 'none';
+        });
+        if (sectionId) document.getElementById(sectionId).style.display = 'block';
+    }
+
+    function showMC(index) {
+        lsSet('mcIndex', index);
+        lsSet('currentSection', 'mc');
+        showSection('section-mc');
+        for (let i = 0; i < mcTotal; i++) {
+            document.getElementById(`mc-q${i}`).style.display = 'none';
+        }
+        if (index < mcTotal) {
+            document.getElementById(`mc-q${index}`).style.display = 'block';
+            document.getElementById('mc-progress').textContent =
+                `Question ${index + 1} of ${mcTotal}`;
+        } else {
+            if (tfTotal > 0) {
+                showTF(0);
+            } else {
+                autoSubmit();
+            }
+        }
+    }
+
+    function showTF(index) {
+        lsSet('tfIndex', index);
+        lsSet('currentSection', 'tf');
+        showSection('section-tf');
+        for (let i = 0; i < tfTotal; i++) {
+            document.getElementById(`tf-q${i}`).style.display = 'none';
+        }
+        if (index < tfTotal) {
+            document.getElementById(`tf-q${index}`).style.display = 'block';
+            document.getElementById('tf-progress').textContent =
+                `Question ${index + 1} of ${tfTotal}`;
+        } else {
+            autoSubmit();
+        }
+    }
+
+    window.nextMC = function () {
+        const card = document.getElementById(`mc-q${mcIndex}`);
+        const sel  = card.querySelector('input[type="radio"]:checked');
+        if (!sel) { alert("⚠️ Please answer the question before proceeding."); return; }
+        saveAnswer(sel.name, sel.value);
+        mcIndex++;
+        showMC(mcIndex);
+    };
+
+    window.nextTF = function () {
+        const card = document.getElementById(`tf-q${tfIndex}`);
+        const sel  = card.querySelector('input[type="radio"]:checked');
+        if (!sel) { alert("⚠️ Please select an answer before proceeding."); return; }
+        saveAnswer(sel.name, sel.value);
+        tfIndex++;
+        showTF(tfIndex);
+    };
+
+    // ✅ Restore position on page load/refresh
+    if (currentSection === 'tf' && tfTotal > 0) {
+        showTF(tfIndex);
+    } else if (mcTotal > 0) {
+        showMC(mcIndex);
+    } else if (tfTotal > 0) {
+        showTF(0);
+    }
+// ── Tab Switch Detection ──
+const tabWarning   = document.getElementById('tabWarning');
+const tabCountEl   = document.getElementById('tabCount');
+const resultId     = {{ result_id | int }};
+
+// ✅ start from current DB value so it persists on refresh
+let tabSwitchCount = {{ current_tab_switches | int }};
+let isBlurred      = false;
+let trackingActive = false;  // ✅ delay activation to skip page load blur
+
+document.getElementById('tabSwitchInput').value = tabSwitchCount;
+tabCountEl.textContent = tabSwitchCount;
+
+// ✅ Only start tracking after 2 seconds (page load blur is gone by then)
+setTimeout(() => { trackingActive = true; }, 2000);
+
+window.addEventListener("blur", function () {
+    if (!trackingActive) return;  // ✅ ignore page load blur
+    if (isBlurred) return;        // ✅ ignore duplicate blur
+    isBlurred = true;
+
+    tabSwitchCount++;
+    document.getElementById('tabSwitchInput').value = tabSwitchCount;
+
+    tabWarning.style.display = 'block';
+    tabCountEl.textContent   = tabSwitchCount;
+
+    fetch("/student/exams/tab-switch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ result_id: resultId })
+    });
+});
+
+window.addEventListener("focus", function () {
+    isBlurred = false;
+    setTimeout(() => {
+        tabWarning.style.display = 'none';
+    }, 3000);
+});
+// ✅ Hide warning when student comes back
+window.addEventListener("focus", function () {
+    setTimeout(() => {
+        tabWarning.style.display = 'none';
+    }, 3000);
+});
+
+    // ✅ Prevent right-click
+    document.addEventListener('contextmenu', event => event.preventDefault());
+
+    // ✅ Block dev tools shortcuts
+    document.onkeydown = function(e) {
+        if (e.key === "F12" ||
+            (e.ctrlKey && e.shiftKey && ['I', 'J', 'C'].includes(e.key.toUpperCase())) ||
+            (e.ctrlKey && e.key.toUpperCase() === 'U')) {
+            return false;
+        }
+    };
+
+    // ✅ Prevent browser back navigation
+    history.pushState(null, null, location.href);
+    window.addEventListener('popstate', function () {
+        history.pushState(null, null, location.href);
+        alert("You cannot go back during the exam.");
+    });
+
+})();
+</script>
+{% endblock %}

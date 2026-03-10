@@ -3,6 +3,13 @@ from flask import Blueprint, render_template, request, session, redirect, url_fo
 from db import get_db_connection
 import psycopg2.extras
 from cloudinary_helper import upload_file
+import os
+import json
+import pandas as pd
+import pdfplumber
+from docx import Document
+from datetime import timezone
+import pytz
 
 teacher_bp = Blueprint("teacher", __name__)
 
@@ -25,31 +32,83 @@ def _normalize_grade(grade_str):
     num = m.group(1) if m else None
     return grade_str, (num or grade_str)
 
+def parse_docx(file):
+    """Parse questions from a .docx file."""
+    questions = []
+    document = Document(file)
+    current_question = {}
 
-# ── DEBUG ─────────────────────────────────────────────────
-@teacher_bp.route("/teacher/debug")
-def teacher_debug():
-    if not _require_teacher():
-        return redirect("/")
-    branch_id = session.get("branch_id")
-    db = get_db_connection()
-    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    try:
-        cur.execute("""
-            SELECT enrollment_id, student_name, grade_level, status, branch_id
-            FROM enrollments
-            WHERE branch_id = %s
-            ORDER BY grade_level, student_name
-        """, (branch_id,))
-        rows = cur.fetchall()
-        return jsonify({
-            "session_branch_id": branch_id,
-            "count": len(rows),
-            "enrollments": [dict(r) for r in rows]
-        })
-    finally:
-        cur.close()
-        db.close()
+    for para in document.paragraphs:
+        line = para.text.strip()
+        if not line:
+            continue
+
+        if line.lower().startswith('question:'):
+            if current_question:
+                questions.append(current_question)
+                current_question = {}
+            current_question['question_text'] = line.split(':', 1)[1].strip()
+        elif line.lower().startswith('type:'):
+            current_question['question_type'] = line.split(':', 1)[1].strip()
+        elif line.lower().startswith('a:'):
+            current_question['choice_a'] = line.split(':', 1)[1].strip()
+        elif line.lower().startswith('b:'):
+            current_question['choice_b'] = line.split(':', 1)[1].strip()
+        elif line.lower().startswith('c:'):
+            current_question['choice_c'] = line.split(':', 1)[1].strip()
+        elif line.lower().startswith('d:'):
+            current_question['choice_d'] = line.split(':', 1)[1].strip()
+        elif line.lower().startswith('answer:'):
+            current_question['correct_answer'] = line.split(':', 1)[1].strip()
+        elif line.lower().startswith('points:'):
+            current_question['points'] = line.split(':', 1)[1].strip()
+
+    if current_question:
+        questions.append(current_question)
+
+    return questions
+
+
+def parse_pdf(file):
+    """Parse questions from a .pdf file."""
+    questions = []
+    current_question = {}
+
+    with pdfplumber.open(file) as pdf:
+        for page in pdf.pages:
+            text = page.extract_text()
+            if not text:
+                continue
+            for line in text.split('\n'):
+                line = line.strip()
+                if not line:
+                    continue
+
+                if line.lower().startswith('question:'):
+                    if current_question:
+                        questions.append(current_question)
+                        current_question = {}
+                    current_question['question_text'] = line.split(':', 1)[1].strip()
+                elif line.lower().startswith('type:'):
+                    current_question['question_type'] = line.split(':', 1)[1].strip()
+                elif line.lower().startswith('a:'):
+                    current_question['choice_a'] = line.split(':', 1)[1].strip()
+                elif line.lower().startswith('b:'):
+                    current_question['choice_b'] = line.split(':', 1)[1].strip()
+                elif line.lower().startswith('c:'):
+                    current_question['choice_c'] = line.split(':', 1)[1].strip()
+                elif line.lower().startswith('d:'):
+                    current_question['choice_d'] = line.split(':', 1)[1].strip()
+                elif line.lower().startswith('answer:'):
+                    current_question['correct_answer'] = line.split(':', 1)[1].strip()
+                elif line.lower().startswith('points:'):
+                    current_question['points'] = line.split(':', 1)[1].strip()
+
+    if current_question:
+        questions.append(current_question)
+
+    return questions
+
 
 
 # ── Dashboard ─────────────────────────────────────────────
@@ -62,15 +121,16 @@ def teacher_dashboard():
     branch_id = session.get("branch_id")
 
     db = get_db_connection()
-    cur = db.cursor()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         cur.execute("""
-    SELECT grade_level
-    FROM users
-    WHERE user_id = %s
-""", (user_id,))
+        SELECT g.name AS grade_level
+        FROM users u
+        LEFT JOIN grade_levels g ON u.grade_level_id = g.id
+        WHERE u.user_id = %s
+    """, (user_id,))
         row = cur.fetchone()
-        teacher_grade = row[0] if row else None
+        teacher_grade = row["grade_level"] if row else None
     finally:
         cur.close()
         db.close()
@@ -234,9 +294,10 @@ def teacher_set_grade():
     try:
         # Check if branch admin already assigned a grade — if so, block the change
         cur.execute("""
-    SELECT grade_level
-    FROM users
-    WHERE user_id = %s
+    SELECT g.name AS grade_level
+    FROM users u
+    LEFT JOIN grade_levels g ON u.grade_level_id = g.id
+    WHERE u.user_id = %s
 """, (user_id,))
         row = cur.fetchone()
         existing_grade = row[0] if row else None
@@ -716,3 +777,665 @@ def allow_resubmission(submission_id):
         db.close()
         
     return redirect(request.referrer)
+
+# ══════════════════════════════════════════
+# EXAM ROUTES — TEACHER
+# ══════════════════════════════════════════
+
+@teacher_bp.route("/teacher/exams")
+def teacher_exams():
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT
+                e.exam_id, e.title, e.exam_type, e.duration_mins,
+                e.scheduled_date, e.status, e.created_at,
+                s.section_name,
+                g.name AS grade_level_name,
+                sub.name AS subject_name,
+                (SELECT COUNT(*) FROM exam_questions q WHERE q.exam_id = e.exam_id) AS question_count,
+                (SELECT COUNT(*) FROM exam_results r WHERE r.exam_id = e.exam_id) AS attempt_count
+            FROM exams e
+            JOIN sections s      ON e.section_id  = s.section_id
+            JOIN grade_levels g  ON s.grade_level_id = g.id
+            JOIN subjects sub    ON e.subject_id  = sub.subject_id
+            WHERE e.teacher_id = %s AND e.branch_id = %s
+            ORDER BY e.created_at DESC
+        """, (user_id, branch_id))
+        exams = cur.fetchall() or []
+        return render_template("teacher_exams.html", exams=exams)
+    finally:
+        cur.close()
+        db.close()
+
+
+@teacher_bp.route("/teacher/exams/create", methods=["GET", "POST"])
+def teacher_exam_create():
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    if request.method == "POST":
+        title           = (request.form.get("title") or "").strip()
+        section_id      = request.form.get("section_id")
+        subject_id      = request.form.get("subject_id")
+        exam_type       = request.form.get("exam_type", "quiz")
+        duration_mins   = int(request.form.get("duration_mins", 60))
+        scheduled_start = request.form.get("scheduled_start") or None
+        max_attempts    = int(request.form.get("max_attempts", 1))
+        passing_score   = int(request.form.get("passing_score", 60))
+        randomize       = request.form.get("randomize") == "1"
+        instructions    = (request.form.get("instructions") or "").strip() or None
+
+        if not title or not section_id or not subject_id:
+            flash("Title, section, and subject are required.", "error")
+            return redirect(url_for("teacher.teacher_exam_create"))
+
+        try:
+            cur.execute("""
+                INSERT INTO exams (
+                    branch_id, section_id, subject_id, teacher_id,
+                    title, exam_type, duration_mins,
+                    scheduled_start,
+                    max_attempts, passing_score,
+                    randomize,
+                    instructions, status
+                )
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'draft')
+                RETURNING exam_id
+            """, (
+                branch_id, section_id, subject_id, user_id,
+                title, exam_type, duration_mins,
+                scheduled_start,
+                max_attempts, passing_score,
+                 randomize,
+                instructions
+            ))
+            exam_id = cur.fetchone()["exam_id"]
+            db.commit()
+            flash("Exam created! Now add your questions.", "success")
+            return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+        except Exception as e:
+            db.rollback()
+            flash(f"Could not create exam: {str(e)}", "error")
+            return redirect(url_for("teacher.teacher_exam_create"))
+        finally:
+            cur.close()
+            db.close()
+
+    # GET
+    try:
+        cur.execute("""
+            SELECT DISTINCT s.section_id, s.section_name, g.name AS grade_level_name
+            FROM section_teachers st
+            JOIN sections s     ON st.section_id = s.section_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            WHERE st.teacher_id = %s AND s.branch_id = %s
+            ORDER BY g.name, s.section_name
+        """, (user_id, branch_id))
+        sections = cur.fetchall() or []
+
+        cur.execute("""
+            SELECT st.section_id, sub.subject_id, sub.name AS subject_name
+            FROM section_teachers st
+            JOIN subjects sub ON st.subject_id = sub.subject_id
+            WHERE st.teacher_id = %s
+            ORDER BY sub.name
+        """, (user_id,))
+        assignments = cur.fetchall() or []
+
+        return render_template("teacher_exam_create.html",
+                               sections=sections,
+                               assignments=assignments)
+    finally:
+        cur.close()
+        db.close()
+
+@teacher_bp.route("/teacher/exams/<int:exam_id>/questions", methods=["GET", "POST"])
+def teacher_exam_questions(exam_id):
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    if request.method == "POST":
+        question_text = (request.form.get("question_text") or "").strip()
+        question_type = request.form.get("question_type", "mcq")
+        correct_answer = (request.form.get("correct_answer") or "").strip()
+        points = int(request.form.get("points", 1))
+
+        choices = None
+        if question_type == "mcq":
+            a = (request.form.get("choice_a") or "").strip()
+            b = (request.form.get("choice_b") or "").strip()
+            c = (request.form.get("choice_c") or "").strip()
+            d = (request.form.get("choice_d") or "").strip()
+            if not all([a, b, c, d]):
+                flash("All 4 choices are required for MCQ.", "error")
+                return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+            choices = json.dumps({"A": a, "B": b, "C": c, "D": d})
+
+        if not question_text or not correct_answer:
+            flash("Question text and correct answer are required.", "error")
+            return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+
+        try:
+            # Verify exam belongs to teacher
+            cur.execute("SELECT 1 FROM exams WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s",
+                        (exam_id, user_id, branch_id))
+            if not cur.fetchone():
+                flash("Exam not found.", "error")
+                return redirect(url_for("teacher.teacher_exams"))
+
+            cur.execute("""
+                INSERT INTO exam_questions
+                    (exam_id, question_text, question_type, choices, correct_answer, points, order_num)
+                VALUES (%s, %s, %s, %s, %s, %s,
+                    (SELECT COALESCE(MAX(order_num),0)+1 FROM exam_questions WHERE exam_id=%s))
+            """, (exam_id, question_text, question_type,
+                  choices, correct_answer, points, exam_id))
+            db.commit()
+            flash("Question added!", "success")
+        except Exception as e:
+            db.rollback()
+            flash(f"Could not add question: {str(e)}", "error")
+        finally:
+            cur.close()
+            db.close()
+
+        return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+
+    # GET
+    try:
+        cur.execute("""
+            SELECT e.*, s.section_name, sub.name AS subject_name
+            FROM exams e
+            JOIN sections s ON e.section_id = s.section_id
+            JOIN subjects sub ON e.subject_id = sub.subject_id
+            WHERE e.exam_id = %s AND e.teacher_id = %s
+        """, (exam_id, user_id))
+        exam = cur.fetchone()
+        if not exam:
+            flash("Exam not found.", "error")
+            return redirect(url_for("teacher.teacher_exams"))
+
+        cur.execute("""
+            SELECT * FROM exam_questions
+            WHERE exam_id = %s ORDER BY order_num
+        """, (exam_id,))
+        questions = cur.fetchall() or []
+
+        # Parse choices JSON
+        for q in questions:
+            if q["choices"]:
+                q["choices"] = json.loads(q["choices"]) if isinstance(q["choices"], str) else q["choices"]
+
+        return render_template("teacher_exam_questions.html",
+                               exam=exam, questions=questions)
+    finally:
+        cur.close()
+        db.close()
+
+
+@teacher_bp.route("/teacher/exams/<int:exam_id>/publish", methods=["POST"])
+def teacher_exam_publish(exam_id):
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("SELECT COUNT(*) AS cnt FROM exam_questions WHERE exam_id=%s", (exam_id,))
+        if cur.fetchone()["cnt"] == 0:
+            flash("Cannot publish — add at least 1 question first.", "error")
+            return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+
+        cur.execute("""
+            UPDATE exams SET status='published'
+            WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s
+        """, (exam_id, user_id, branch_id))
+        db.commit()
+        flash("Exam published! Students can now take it.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not publish: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+
+    return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+
+
+@teacher_bp.route("/teacher/exams/<int:exam_id>/close", methods=["POST"])
+def teacher_exam_close(exam_id):
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    db  = get_db_connection()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            UPDATE exams SET status='closed'
+            WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s
+        """, (exam_id, user_id, branch_id))
+        db.commit()
+        flash("Exam closed.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not close exam: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+
+    return redirect(url_for("teacher.teacher_exams"))
+
+
+
+@teacher_bp.route("/teacher/exams/<int:exam_id>/results")
+def teacher_exam_results(exam_id):
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT e.*, s.section_name, sub.name AS subject_name
+            FROM exams e
+            JOIN sections s   ON e.section_id  = s.section_id
+            JOIN subjects sub ON e.subject_id  = sub.subject_id
+            WHERE e.exam_id = %s AND e.teacher_id = %s
+        """, (exam_id, user_id))
+        exam = cur.fetchone()
+        if not exam:
+            flash("Exam not found.", "error")
+            return redirect(url_for("teacher.teacher_exams"))
+
+        cur.execute("""
+            SELECT
+                r.result_id, r.enrollment_id, r.score, r.total_points, r.status,
+                r.submitted_at, r.started_at, r.tab_switches,
+                e.student_name, e.grade_level,
+                (SELECT COUNT(*) FROM exam_tab_switches ts WHERE ts.result_id = r.result_id) AS switch_count
+            FROM exam_results r
+            JOIN enrollments e ON r.enrollment_id = e.enrollment_id
+            WHERE r.exam_id = %s
+            ORDER BY r.submitted_at DESC NULLS LAST
+        """, (exam_id,))
+        results = cur.fetchall() or []
+
+        # ✅ ADD THIS — convert UTC → PH time for display
+        ph_tz = pytz.timezone("Asia/Manila")
+        results_display = []
+        for r in results:
+            r = dict(r)
+            if r.get("submitted_at"):
+                r["submitted_at"] = r["submitted_at"].replace(tzinfo=timezone.utc).astimezone(ph_tz)
+            if r.get("started_at"):
+                r["started_at"] = r["started_at"].replace(tzinfo=timezone.utc).astimezone(ph_tz)
+            results_display.append(r)
+        # ✅ END ADD
+
+        return render_template("teacher_exam_results.html",
+                               exam=exam, results=results_display)  # ← use results_display
+    finally:
+        cur.close()
+        db.close()
+
+@teacher_bp.route("/teacher/exams/<int:exam_id>/questions/<int:question_id>/delete", methods=["POST"])
+def teacher_exam_question_delete(exam_id, question_id):
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id = session.get("user_id")
+    db  = get_db_connection()
+    cur = db.cursor()
+    try:
+        # Verify ownership
+        cur.execute("SELECT 1 FROM exams WHERE exam_id=%s AND teacher_id=%s AND status='draft'",
+                    (exam_id, user_id))
+        if not cur.fetchone():
+            flash("Cannot delete — exam not found or already published.", "error")
+            return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+
+        cur.execute("DELETE FROM exam_questions WHERE question_id=%s AND exam_id=%s",
+                    (question_id, exam_id))
+        db.commit()
+        flash("Question deleted.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not delete: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+
+    return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+
+
+@teacher_bp.route("/teacher/exams/<int:exam_id>/import-questions", methods=["POST"])
+def teacher_exam_import_questions(exam_id):
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    if 'question_file' not in request.files:
+        flash("No file selected.", "error")
+        return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+
+    file = request.files['question_file']
+    if not file or file.filename == '':
+        flash("No file selected.", "error")
+        return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        # Verify exam belongs to teacher and is still draft
+        cur.execute("""
+            SELECT 1 FROM exams
+            WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s AND status='draft'
+        """, (exam_id, user_id, branch_id))
+        if not cur.fetchone():
+            flash("Exam not found or already published.", "error")
+            return redirect(url_for("teacher.teacher_exams"))
+
+        ext = os.path.splitext(file.filename)[1].lower()
+
+        # Parse file into list of question dicts
+        if ext == '.docx':
+            questions = parse_docx(file)
+        elif ext == '.pdf':
+            questions = parse_pdf(file)
+        elif ext == '.csv':
+            import pandas as pd
+            df = pd.read_csv(file).fillna('')
+            df.columns = [c.lower().strip() for c in df.columns]
+            questions = df.to_dict(orient='records')
+        elif ext in ('.xls', '.xlsx'):
+            import pandas as pd
+            df = pd.read_excel(file).fillna('')
+            df.columns = [c.lower().strip() for c in df.columns]
+            questions = df.to_dict(orient='records')
+        else:
+            flash("Unsupported file format. Use .docx, .pdf, .csv, or .xlsx", "error")
+            return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+
+        inserted = 0
+        skipped  = 0
+        errors   = []
+
+        for i, q in enumerate(questions, start=1):
+            question_text  = str(q.get('question_text', '') or '').strip()
+            correct_answer = str(q.get('correct_answer', '') or '').strip()
+            question_type  = str(q.get('question_type', '') or '').strip().lower()
+            points         = int(q.get('points', 1) or 1)
+
+            if not question_text or not correct_answer:
+                errors.append(f"Row {i}: Missing question text or correct answer — skipped.")
+                skipped += 1
+                continue
+
+            # Auto-detect type if not specified
+            choice_a = str(q.get('choice_a', '') or q.get('option_a', '') or '').strip()
+            choice_b = str(q.get('choice_b', '') or q.get('option_b', '') or '').strip()
+            choice_c = str(q.get('choice_c', '') or q.get('option_c', '') or '').strip()
+            choice_d = str(q.get('choice_d', '') or q.get('option_d', '') or '').strip()
+
+            if not question_type:
+                if choice_a and choice_b:
+                    question_type = 'mcq'
+                elif correct_answer.lower() in ('true', 'false'):
+                    question_type = 'truefalse'
+                else:
+                    question_type = 'mcq'
+
+            # Normalize type
+            if question_type in ('multiple choice', 'multiple_choice', 'mcq'):
+                question_type = 'mcq'
+            elif question_type in ('true/false', 'truefalse', 'true_false', 'tf'):
+                question_type = 'truefalse'
+
+            # Build choices JSON for MCQ
+            choices = None
+            if question_type == 'mcq':
+                if not all([choice_a, choice_b, choice_c, choice_d]):
+                    errors.append(f"Row {i}: MCQ missing some choices — skipped.")
+                    skipped += 1
+                    continue
+                choices = json.dumps({"A": choice_a, "B": choice_b,
+                                      "C": choice_c, "D": choice_d})
+                # Normalize correct answer to uppercase A/B/C/D
+                correct_answer = correct_answer.upper()
+                if correct_answer not in ('A', 'B', 'C', 'D'):
+                    errors.append(f"Row {i}: MCQ correct answer must be A/B/C/D — skipped.")
+                    skipped += 1
+                    continue
+
+            elif question_type == 'truefalse':
+                # Normalize True/False
+                if correct_answer.lower() == 'true':
+                    correct_answer = 'True'
+                elif correct_answer.lower() == 'false':
+                    correct_answer = 'False'
+                else:
+                    errors.append(f"Row {i}: True/False answer must be True or False — skipped.")
+                    skipped += 1
+                    continue
+
+            # Check duplicate
+            cur.execute("""
+                SELECT 1 FROM exam_questions
+                WHERE exam_id=%s AND question_text=%s
+            """, (exam_id, question_text))
+            if cur.fetchone():
+                errors.append(f"Row {i}: Duplicate question — skipped.")
+                skipped += 1
+                continue
+
+            cur.execute("""
+                INSERT INTO exam_questions
+                    (exam_id, question_text, question_type, choices, correct_answer, points, order_num)
+                VALUES (%s, %s, %s, %s, %s, %s,
+                    (SELECT COALESCE(MAX(order_num), 0) + 1 FROM exam_questions WHERE exam_id=%s))
+            """, (exam_id, question_text, question_type,
+                  choices, correct_answer, points, exam_id))
+            inserted += 1
+
+        db.commit()
+
+        if errors:
+            for e in errors:
+                flash(e, "warning")
+
+        flash(f"Import done! {inserted} question(s) added, {skipped} skipped.", "success")
+
+    except Exception as e:
+        db.rollback()
+        flash(f"Import failed: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+
+    return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+
+
+# ══════════════════════════════════════════
+# PRIORITY 2 — EDIT QUESTION
+# ══════════════════════════════════════════
+
+@teacher_bp.route("/teacher/exams/<int:exam_id>/questions/<int:question_id>/edit",
+                  methods=["GET", "POST"])
+def teacher_exam_question_edit(exam_id, question_id):
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        # Verify exam ownership + still draft
+        cur.execute("""
+            SELECT 1 FROM exams
+            WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s AND status='draft'
+        """, (exam_id, user_id, branch_id))
+        if not cur.fetchone():
+            flash("Exam not found or already published.", "error")
+            return redirect(url_for("teacher.teacher_exams"))
+
+        cur.execute("SELECT * FROM exam_questions WHERE question_id=%s AND exam_id=%s",
+                    (question_id, exam_id))
+        question = cur.fetchone()
+        if not question:
+            flash("Question not found.", "error")
+            return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+
+        # Parse choices JSON for template
+        if question["choices"]:
+            question = dict(question)
+            question["choices"] = json.loads(question["choices"]) \
+                if isinstance(question["choices"], str) else question["choices"]
+
+        if request.method == "POST":
+            question_text  = (request.form.get("question_text") or "").strip()
+            question_type  = request.form.get("question_type", "mcq")
+            correct_answer = (request.form.get("correct_answer") or "").strip()
+            points         = int(request.form.get("points", 1))
+
+            choices = None
+            if question_type == "mcq":
+                a = (request.form.get("choice_a") or "").strip()
+                b = (request.form.get("choice_b") or "").strip()
+                c = (request.form.get("choice_c") or "").strip()
+                d = (request.form.get("choice_d") or "").strip()
+                if not all([a, b, c, d]):
+                    flash("All 4 choices are required for MCQ.", "error")
+                    return redirect(request.url)
+                choices = json.dumps({"A": a, "B": b, "C": c, "D": d})
+
+            if not question_text or not correct_answer:
+                flash("Question text and correct answer are required.", "error")
+                return redirect(request.url)
+
+            cur.execute("""
+                UPDATE exam_questions
+                SET question_text=%s, question_type=%s, choices=%s,
+                    correct_answer=%s, points=%s
+                WHERE question_id=%s AND exam_id=%s
+            """, (question_text, question_type, choices,
+                  correct_answer, points, question_id, exam_id))
+            db.commit()
+            flash("Question updated!", "success")
+            return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+
+        # GET — fetch exam info for breadcrumb
+        cur.execute("""
+            SELECT e.*, s.section_name, sub.name AS subject_name
+            FROM exams e
+            JOIN sections s ON e.section_id = s.section_id
+            JOIN subjects sub ON e.subject_id = sub.subject_id
+            WHERE e.exam_id = %s
+        """, (exam_id,))
+        exam = cur.fetchone()
+
+        return render_template("teacher_exam_question_edit.html",
+                               exam=exam, question=question)
+    finally:
+        cur.close()
+        db.close()
+
+
+# ══════════════════════════════════════════
+# PRIORITY 3 — RESET EXAM ATTEMPT
+# ══════════════════════════════════════════
+
+@teacher_bp.route("/teacher/exams/<int:exam_id>/reset/<int:enrollment_id>", methods=["POST"])
+def teacher_exam_reset(exam_id, enrollment_id):
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        # Verify exam belongs to this teacher
+        cur.execute("""
+            SELECT 1 FROM exams
+            WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s
+        """, (exam_id, user_id, branch_id))
+        if not cur.fetchone():
+            flash("Exam not found or unauthorized.", "error")
+            return redirect(url_for("teacher.teacher_exams"))
+
+        # Delete answers first (FK constraint)
+        cur.execute("""
+            DELETE FROM exam_answers
+            WHERE result_id IN (
+                SELECT result_id FROM exam_results
+                WHERE exam_id=%s AND enrollment_id=%s
+            )
+        """, (exam_id, enrollment_id))
+
+        # Delete tab switches
+        cur.execute("""
+            DELETE FROM exam_tab_switches
+            WHERE result_id IN (
+                SELECT result_id FROM exam_results
+                WHERE exam_id=%s AND enrollment_id=%s
+            )
+        """, (exam_id, enrollment_id))
+
+        # Delete the result row entirely so student gets a fresh start
+        cur.execute("""
+            DELETE FROM exam_results
+            WHERE exam_id=%s AND enrollment_id=%s
+        """, (exam_id, enrollment_id))
+
+        db.commit()
+
+        if cur.rowcount > 0:
+            flash("Exam attempt reset. Student can now retake the exam.", "success")
+        else:
+            flash("No exam attempt found for this student.", "warning")
+
+    except Exception as e:
+        db.rollback()
+        flash(f"Error resetting exam: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+
+    return redirect(url_for("teacher.teacher_exam_results", exam_id=exam_id))

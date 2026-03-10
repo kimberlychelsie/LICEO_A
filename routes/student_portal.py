@@ -1,10 +1,13 @@
-from flask import Blueprint, render_template, request, redirect, session, flash, url_for
+from flask import Blueprint, render_template, request, redirect, session, flash, url_for, jsonify
 from db import get_db_connection
 from werkzeug.security import generate_password_hash
 import logging
 import psycopg2.extras
 from cloudinary_helper import upload_file
-from datetime import datetime
+from datetime import datetime, timezone
+import json
+from datetime import timedelta
+import pytz
 
 # Setup logging
 logging.basicConfig(level=logging.ERROR)
@@ -605,3 +608,314 @@ def submit_activity(activity_id):
         db.close()
         
     return redirect(request.referrer)
+
+# ══════════════════════════════════════════
+# EXAM ROUTES — STUDENT PORTAL
+# ══════════════════════════════════════════
+
+@student_portal_bp.route("/student/exams")
+def student_exams():
+    if session.get("role") != "student":
+        return redirect("/")
+
+    enrollment_id = session.get("enrollment_id")
+    branch_id     = session.get("branch_id")
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Get student section
+        cur.execute("SELECT section_id, grade_level FROM enrollments WHERE enrollment_id=%s",
+                    (enrollment_id,))
+        enr = cur.fetchone()
+        if not enr:
+            flash("Enrollment not found.", "error")
+            return redirect(url_for("student_portal.dashboard"))
+
+        section_id = enr["section_id"]
+
+        cur.execute("""
+            SELECT
+                e.exam_id, e.title, e.exam_type, e.duration_mins,
+                e.scheduled_start, e.status,
+                sub.name AS subject_name,
+                (SELECT COUNT(*) FROM exam_questions q WHERE q.exam_id = e.exam_id) AS question_count,
+                r.result_id, r.score, r.total_points, r.status AS result_status,
+                r.submitted_at
+            FROM exams e
+            JOIN subjects sub ON e.subject_id = sub.subject_id
+            LEFT JOIN exam_results r
+                ON r.exam_id = e.exam_id AND r.enrollment_id = %s
+            WHERE e.section_id = %s
+              AND e.status IN ('published', 'closed')
+            ORDER BY e.created_at DESC
+        """, (enrollment_id, section_id))
+        exams = cur.fetchall() or []
+
+        import pytz
+        ph_tz     = pytz.timezone("Asia/Manila")
+        now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+
+        return render_template(
+            "student_exams.html",
+            exams=exams,
+            timedelta=timedelta,
+            now_utc=now_naive )
+    finally:
+        cur.close()
+        db.close()
+
+
+@student_portal_bp.route("/student/exams/<int:exam_id>/take", methods=["GET", "POST"])
+def student_exam_take(exam_id):
+    if session.get("role") != "student":
+        return redirect("/")
+
+    enrollment_id = session.get("enrollment_id")
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        cur.execute("""
+            SELECT e.*, sub.name AS subject_name, s.section_name
+            FROM exams e
+            JOIN subjects sub ON e.subject_id = sub.subject_id
+            JOIN sections s   ON e.section_id  = s.section_id
+            JOIN enrollments en ON en.section_id = e.section_id
+            WHERE e.exam_id = %s
+              AND en.enrollment_id = %s
+              AND e.status = 'published'
+        """, (exam_id, enrollment_id))
+        exam = cur.fetchone()
+        if not exam:
+            flash("Exam not available.", "error")
+            return redirect(url_for("student_portal.student_exams"))
+
+        # ✅ 3. Auto-open / auto-close check
+        ph_tz     = pytz.timezone("Asia/Manila")
+        now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+        if exam["scheduled_start"]:
+            start = exam["scheduled_start"].replace(tzinfo=None)
+            if now_naive < start:
+                flash("This exam has not started yet.", "warning")
+                return redirect(url_for("student_portal.student_exams"))
+        from datetime import timedelta
+        auto_end = start + timedelta(minutes=int(exam["duration_mins"]))
+        if now_naive > auto_end:
+            flash("This exam has already ended.", "warning")
+            return redirect(url_for("student_portal.student_exams"))
+
+        # ✅ 4. Max attempts check
+        cur.execute("""
+            SELECT COUNT(*) AS cnt FROM exam_results
+            WHERE exam_id=%s AND enrollment_id=%s
+            AND status IN ('submitted', 'auto_submitted')
+        """, (exam_id, enrollment_id))
+        attempt_count = cur.fetchone()["cnt"]
+        max_attempts  = exam["max_attempts"] or 1
+        if attempt_count >= max_attempts:
+            flash(f"You have reached the maximum attempts ({max_attempts}) for this exam.", "warning")
+            return redirect(url_for("student_portal.student_exams"))
+
+        # Check if already submitted
+        cur.execute("""
+            SELECT * FROM exam_results
+            WHERE exam_id=%s AND enrollment_id=%s
+        """, (exam_id, enrollment_id))
+        existing = cur.fetchone()
+        if existing and existing["status"] in ("submitted", "auto_submitted"):
+            flash("You have already submitted this exam.", "warning")
+            return redirect(url_for("student_portal.student_exam_result",
+                                    result_id=existing["result_id"]))
+
+        if request.method == "POST":
+            result_id    = request.form.get("result_id")
+            tab_switches = int(request.form.get("tab_switches", 0))
+            submit_type  = request.form.get("submit_type", "manual")
+            status       = "auto_submitted" if submit_type == "auto" else "submitted"
+
+            if not result_id:
+                flash("Session error. Please try again.", "error")
+                return redirect(url_for("student_portal.student_exams"))
+
+            cur.execute("SELECT * FROM exam_questions WHERE exam_id=%s ORDER BY order_num",
+                        (exam_id,))
+            questions    = cur.fetchall()
+            score        = 0
+            total_points = 0
+
+            for q in questions:
+                ans     = (request.form.get(f"answer_{q['question_id']}") or "").strip()
+                correct = str(q["correct_answer"]).strip()
+                is_correct = ans.upper() == correct.upper()
+                if is_correct:
+                    score += q["points"]
+                total_points += q["points"]
+
+                cur.execute("""
+                    INSERT INTO exam_answers (result_id, question_id, student_answer, is_correct)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT DO NOTHING
+                """, (result_id, q["question_id"], ans, is_correct))
+
+            cur.execute("""
+                UPDATE exam_results
+                SET score=%s, total_points=%s, status=%s,
+                    submitted_at=NOW(), tab_switches=%s
+                WHERE result_id=%s AND enrollment_id=%s
+            """, (score, total_points, status, tab_switches, result_id, enrollment_id))
+            db.commit()
+            return redirect(url_for("student_portal.student_exam_result",
+                                    result_id=result_id))
+
+        # GET — show instructions page first if not yet confirmed
+        if exam.get("instructions") and not request.args.get("start"):
+            return render_template("student_exam_instructions.html", exam=exam)
+
+        # GET — create or resume result row
+        if existing and existing["status"] == "in_progress":
+            result_id  = existing["result_id"]
+            started_at = existing["started_at"]
+        else:
+            cur.execute("""
+                INSERT INTO exam_results (exam_id, enrollment_id, status, started_at)
+                VALUES (%s, %s, 'in_progress', NOW())
+                RETURNING result_id, started_at
+            """, (exam_id, enrollment_id))
+            row        = cur.fetchone()
+            result_id  = row["result_id"]
+            started_at = row["started_at"]
+            db.commit()
+
+        # ✅ Timezone-safe remaining time
+        now_naive     = datetime.now(timezone.utc).replace(tzinfo=None)
+        started_naive = started_at.replace(tzinfo=None)
+        elapsed       = int((now_naive - started_naive).total_seconds())
+        total_secs    = int(exam["duration_mins"]) * 60
+        remaining     = max(0, total_secs - elapsed)
+
+        if remaining <= 0:
+            flash("Time has expired for this exam.", "warning")
+            return redirect(url_for("student_portal.student_exams"))
+
+        cur.execute("SELECT * FROM exam_questions WHERE exam_id=%s ORDER BY order_num",
+                    (exam_id,))
+        questions = cur.fetchall()
+
+        # ✅ 1. Randomize question order
+        if exam.get("randomize"):
+            import random
+            questions = list(questions)
+            random.shuffle(questions)
+
+        for q in questions:
+            if q["choices"]:
+                q["choices"] = json.loads(q["choices"]) if isinstance(q["choices"], str) else q["choices"]
+
+        cur.execute("SELECT tab_switches FROM exam_results WHERE result_id=%s", (result_id,))
+        tab_row = cur.fetchone()
+        current_tab_switches = tab_row["tab_switches"] if tab_row else 0
+
+        return render_template("student_exam_take.html",
+                               exam=exam,
+                               questions=questions,
+                               result_id=result_id,
+                               remaining_secs=remaining,
+                       current_tab_switches=current_tab_switches)
+    finally:
+        cur.close()
+        db.close()
+
+
+@student_portal_bp.route("/student/exams/tab-switch", methods=["POST"])
+def student_exam_tab_switch():
+    """AJAX endpoint — called every time student switches tab"""
+    if session.get("role") != "student":
+        return jsonify({"ok": False}), 403
+
+    data      = request.get_json()
+    result_id = data.get("result_id")
+    enrollment_id = session.get("enrollment_id")
+
+    if not result_id:
+        return jsonify({"ok": False}), 400
+
+    db  = get_db_connection()
+    cur = db.cursor()
+    try:
+        # Verify ownership
+        cur.execute("SELECT 1 FROM exam_results WHERE result_id=%s AND enrollment_id=%s",
+                    (result_id, enrollment_id))
+        if not cur.fetchone():
+            return jsonify({"ok": False}), 403
+
+        cur.execute("INSERT INTO exam_tab_switches (result_id) VALUES (%s)", (result_id,))
+        cur.execute("UPDATE exam_results SET tab_switches = tab_switches + 1 WHERE result_id=%s",
+                    (result_id,))
+        db.commit()
+        return jsonify({"ok": True})
+    except Exception:
+        db.rollback()
+        return jsonify({"ok": False}), 500
+    finally:
+        cur.close()
+        db.close()
+
+
+@student_portal_bp.route("/student/exams/result/<int:result_id>")
+def student_exam_result(result_id):
+    if session.get("role") != "student":
+        return redirect("/")
+
+    enrollment_id = session.get("enrollment_id")
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT r.*, e.title, e.exam_type, e.duration_mins,
+                   e.passing_score,
+                   sub.name AS subject_name
+            FROM exam_results r
+            JOIN exams e      ON r.exam_id = e.exam_id
+            JOIN subjects sub ON e.subject_id = sub.subject_id
+            WHERE r.result_id=%s AND r.enrollment_id=%s
+        """, (result_id, enrollment_id))
+        result = cur.fetchone()
+        if not result:
+            flash("Result not found.", "error")
+            return redirect(url_for("student_portal.student_exams"))
+
+        cur.execute("""
+            SELECT q.question_text, q.question_type, q.choices,
+                   q.correct_answer, q.points,
+                   a.student_answer, a.is_correct
+            FROM exam_questions q
+            LEFT JOIN exam_answers a
+                ON a.question_id = q.question_id AND a.result_id = %s
+            WHERE q.exam_id = %s
+            ORDER BY q.order_num
+        """, (result_id, result["exam_id"]))
+        answers = cur.fetchall() or []
+
+        for a in answers:
+            if a["choices"]:
+                a["choices"] = json.loads(a["choices"]) if isinstance(a["choices"], str) else a["choices"]
+
+        percentage = round((result["score"] / result["total_points"] * 100), 1) \
+                     if result["total_points"] else 0
+
+        # ✅ 5. Passing score check
+        passing_score = result["passing_score"] or 75
+        passed        = percentage >= passing_score
+
+        return render_template("student_exam_result.html",
+                               result=result,
+                               answers=answers,
+                               percentage=percentage,
+                               passed=passed,
+                               passing_score=passing_score)
+    finally:
+        cur.close()
+        db.close()

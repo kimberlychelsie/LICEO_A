@@ -23,10 +23,16 @@ def get_db_connection():
         conn = psycopg2.connect(
             host=host,
             port=port,
-            dbname=database,   # dbname is standard param
+            dbname=database,
             user=user,
             password=password,
         )
+
+        # ✅ Force UTC so NOW() always stores UTC consistently
+        with conn.cursor() as cur:
+            cur.execute("SET timezone = 'UTC'")
+        conn.commit()
+
         return conn
 
     except psycopg2.OperationalError as e:

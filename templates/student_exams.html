@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}My Exams{% endblock %}
+{% block content %}
+<style>
+    .container { max-width:800px; margin:0 auto; padding:24px 20px; }
+    .card { background:#fff; border-radius:12px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.07); margin-bottom:16px; }
+    .exam-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; padding:16px 0; border-bottom:1px solid #f0f0f0; }
+    .exam-row:last-child { border-bottom:none; }
+    .exam-info h3 { margin:0 0 4px 0; font-size:15px; }
+    .exam-info .meta { font-size:12px; color:#888; }
+    .schedule-info { font-size:12px; margin-top:5px; display:flex; flex-wrap:wrap; gap:8px; }
+    .schedule-open  { background:#d4edda; color:#155724; padding:3px 10px; border-radius:6px; font-weight:700; }
+    .schedule-close { background:#f8d7da; color:#721c24; padding:3px 10px; border-radius:6px; font-weight:700; }
+    .btn { padding:9px 18px; border:none; border-radius:7px; cursor:pointer; font-size:13px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px; transition:.2s; }
+    .btn-primary { background:#007bff; color:#fff; }
+    .btn-success { background:#28a745; color:#fff; }
+    .btn-secondary { background:#6c757d; color:#fff; }
+    .badge { display:inline-block; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700; }
+    .badge-available { background:#d4edda; color:#155724; }
+    .badge-done { background:#e9ecef; color:#495057; }
+    .badge-closed { background:#f8d7da; color:#721c24; }
+    .badge-notyet { background:#fff3cd; color:#856404; }
+</style>
+<div class="container">
+    <h1 style="margin-bottom:20px;">📝 My Exams</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div style="padding:12px 16px; border-radius:8px; margin-bottom:14px;
+        background:{{ '#d1e7dd' if cat=='success' else '#f8d7da' }};
+        color:{{ '#0f5132' if cat=='success' else '#842029' }};
+        border:1px solid {{ '#badbcc' if cat=='success' else '#f5c2c7' }};">{{ msg }}</div>
+    {% endfor %}{% endif %}{% endwith %}
+
+    <div class="card">
+        {% if exams %}
+        {% for e in exams %}
+        <div class="exam-row">
+            <div class="exam-info">
+                <h3>{{ e.title }}</h3>
+                <div class="meta">
+                    {{ e.subject_name }} · {{ e.exam_type|capitalize }} ·
+                    ⏱ {{ e.duration_mins }} min · {{ e.question_count }} question(s) ·
+                    🔁 {{ e.max_attempts or 1 }} attempt(s)
+                </div>
+
+                <!-- ✅ Schedule display -->
+                {% if e.scheduled_start %}
+                <div class="schedule-info">
+                    <span class="schedule-open">
+                        📅 Opens: {{ e.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}
+                    </span>
+                    <span class="schedule-close">
+                        🔒 Closes: {{ (e.scheduled_start + timedelta(minutes=e.duration_mins)).strftime('%b %d, %Y %I:%M %p') }}
+                    </span>
+                </div>
+                {% endif %}
+
+                {% if e.result_status in ('submitted','auto_submitted') %}
+                <div class="meta" style="margin-top:4px;">
+                    Score: <strong>{{ e.score }} / {{ e.total_points }}</strong>
+                    {% if e.result_status == 'auto_submitted' %}
+                    <span style="color:#856404; font-size:11px;">⚠️ auto-submitted</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+
+            <div>
+                {% if e.result_status in ('submitted', 'auto_submitted') %}
+                    <span class="badge badge-done">✓ Done</span>
+                    <a href="{{ url_for('student_portal.student_exam_result', result_id=e.result_id) }}"
+                       class="btn btn-secondary" style="padding:6px 12px; font-size:12px; margin-left:6px;">View Result</a>
+
+                {% elif e.status == 'closed' %}
+                    <span class="badge badge-closed">Closed</span>
+
+                {% elif e.scheduled_start and now_utc < e.scheduled_start %}
+                    <!-- ✅ Not yet open -->
+                    <span class="badge badge-notyet">⏳ Not Yet Open</span>
+
+                {% else %}
+                    <span class="badge badge-available">Available</span>
+                    <a href="{{ url_for('student_portal.student_exam_take', exam_id=e.exam_id) }}"
+                       class="btn btn-primary" style="margin-left:8px;">📝 Take Exam</a>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div style="text-align:center; padding:40px; color:#aaa;">📭 No exams available.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

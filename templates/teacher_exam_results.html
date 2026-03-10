@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}Exam Results{% endblock %}
+{% block content %}
+<style>
+    .container { max-width:900px; margin:0 auto; padding:24px 20px; }
+    .card { background:#fff; border-radius:12px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.07); }
+    .card h2 { margin:0 0 16px 0; font-size:16px; border-bottom:2px solid #007bff; padding-bottom:8px; color:#2c3e50; }
+    .res-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .res-table th { background:#f8f9fa; padding:10px 12px; text-align:left; border-bottom:2px solid #dee2e6; font-weight:700; color:#555; }
+    .res-table td { padding:10px 12px; border-bottom:1px solid #f0f0f0; vertical-align:middle; }
+    .res-table tr:hover td { background:#f8f9fa; }
+    .badge { display:inline-block; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700; }
+    .badge-submitted { background:#d4edda; color:#155724; }
+    .badge-auto_submitted { background:#fff3cd; color:#856404; }
+    .badge-in_progress { background:#cce5ff; color:#004085; }
+    .tab-warn { background:#fff3cd; color:#856404; font-weight:700; padding:2px 8px; border-radius:4px; font-size:12px; }
+    .tab-ok { color:#aaa; font-size:12px; }
+    .btn { padding:8px 16px; border:none; border-radius:7px; cursor:pointer; font-size:13px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
+    .btn-secondary { background:#6c757d; color:#fff; }
+    .btn-danger { background:#dc3545; color:#fff; }
+    .btn-danger:hover { background:#c82333; }
+</style>
+<div class="container">
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
+        <div>
+            <h1 style="margin:0; font-size:20px;">📊 {{ exam.title }} — Results</h1>
+            <div style="font-size:13px; color:#888; margin-top:4px;">
+                {{ exam.subject_name }} · {{ exam.section_name }}
+            </div>
+        </div>
+        <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=exam.exam_id) }}" class="btn btn-secondary">← Back to Exam</a>
+    </div>
+
+    <div class="card">
+        {% if results %}
+        <table class="res-table">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Grade</th>
+                    <th>Score</th>
+                    <th>Percentage</th>
+                    <th>Status</th>
+                    <th>⚠️ Tab Switches</th>
+                    <th>Submitted</th>
+                    <th>Action</th>  <!-- ← NEW -->
+                </tr>
+            </thead>
+            <tbody>
+            {% for r in results %}
+            <tr>
+                <td><strong>{{ r.student_name }}</strong></td>
+                <td>{{ r.grade_level }}</td>
+                <td>{{ r.score }} / {{ r.total_points }}</td>
+                <td>
+                    {% if r.total_points %}
+                    {{ "%.1f"|format(r.score / r.total_points * 100) }}%
+                    {% else %}—{% endif %}
+                </td>
+                <td><span class="badge badge-{{ r.status }}">{{ r.status|replace('_',' ')|capitalize }}</span></td>
+                <td>
+                    {% if r.switch_count > 0 %}
+                    <span class="tab-warn">⚠️ {{ r.switch_count }} switch{{ 'es' if r.switch_count > 1 else '' }}</span>
+                    {% else %}
+                    <span class="tab-ok">None</span>
+                    {% endif %}
+                </td>
+                <td>{{ r.submitted_at.strftime('%Y-%m-%d %H:%M') if r.submitted_at else '—' }}</td>
+
+                <!-- ── Reset button ── -->
+                <td>
+                    <form method="POST"
+                          action="{{ url_for('teacher.teacher_exam_reset', exam_id=exam.exam_id, enrollment_id=r.enrollment_id) }}"
+                          onsubmit="return confirm('Reset {{ r.student_name }}\'s exam attempt? They will be able to retake it.');">
+                        <button type="submit" class="btn btn-danger"
+                                style="padding:4px 10px; font-size:12px;">
+                            🔄 Reset
+                        </button>
+                    </form>
+                </td>
+
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="text-align:center; padding:40px; color:#aaa;">No submissions yet.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

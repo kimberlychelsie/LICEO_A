@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block title %}Exam Questions{% endblock %}
+{% block content %}
+<style>
+    .container { max-width:800px; margin:0 auto; padding:24px 20px; }
+    .card { background:#fff; border-radius:12px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.07); margin-bottom:20px; }
+    .card h2 { margin:0 0 16px 0; font-size:16px; border-bottom:2px solid #007bff; padding-bottom:8px; color:#2c3e50; }
+    .form-group { margin-bottom:14px; }
+    .form-group label { display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#333; }
+    .form-group input, .form-group select, .form-group textarea { width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; font-size:13px; box-sizing:border-box; }
+    .choices-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .btn { padding:8px 16px; border:none; border-radius:7px; cursor:pointer; font-size:13px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px; transition:.2s; }
+    .btn-primary { background:#007bff; color:#fff; } .btn-primary:hover { background:#0056b3; }
+    .btn-success { background:#28a745; color:#fff; } .btn-success:hover { background:#1e7e34; }
+    .btn-secondary { background:#6c757d; color:#fff; }
+    .btn-danger { background:#dc3545; color:#fff; } .btn-danger:hover { background:#c82333; }
+    .btn-warning { background:#ffc107; color:#212529; }
+    .q-card { background:#f8f9fa; border-radius:10px; padding:16px; margin-bottom:12px; border-left:4px solid #007bff; }
+    .q-card .q-num { font-size:12px; color:#888; font-weight:700; margin-bottom:6px; }
+    .q-card .q-text { font-size:14px; font-weight:600; margin-bottom:8px; }
+    .q-choices { display:flex; flex-wrap:wrap; gap:8px; font-size:12px; }
+    .q-choice { background:#e9ecef; padding:3px 10px; border-radius:4px; }
+    .q-choice.correct { background:#d4edda; color:#155724; font-weight:700; }
+    .type-toggle { display:flex; gap:10px; margin-bottom:16px; }
+    .type-btn { padding:8px 16px; border:2px solid #dee2e6; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; background:#fff; transition:.15s; }
+    .type-btn.active { border-color:#007bff; background:#e7f1ff; color:#007bff; }
+    .badge-draft { background:#e9ecef; color:#495057; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:700; }
+    .badge-published { background:#d4edda; color:#155724; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:700; }
+</style>
+<div class="container">
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
+        <div>
+            <h1 style="margin:0; font-size:20px;">{{ exam.title }}</h1>
+            <div style="font-size:13px; color:#888; margin-top:4px;">
+                {{ exam.subject_name }} · {{ exam.section_name }} · {{ exam.duration_mins }} min ·
+                <span class="badge-{{ exam.status }}">{{ exam.status|capitalize }}</span>
+            </div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            {% if exam.status == 'draft' %}
+            <form method="POST" action="{{ url_for('teacher.teacher_exam_publish', exam_id=exam.exam_id) }}"
+                  onsubmit="return confirm('Publish this exam? Students will be able to take it.');">
+                <button type="submit" class="btn btn-success">🚀 Publish</button>
+            </form>
+            {% elif exam.status == 'published' %}
+            <form method="POST" action="{{ url_for('teacher.teacher_exam_close', exam_id=exam.exam_id) }}"
+                  onsubmit="return confirm('Close this exam?');">
+                <button type="submit" class="btn btn-secondary">🔒 Close Exam</button>
+            </form>
+            {% endif %}
+            <a href="{{ url_for('teacher.teacher_exam_results', exam_id=exam.exam_id) }}" class="btn btn-warning">📊 Results</a>
+            <a href="{{ url_for('teacher.teacher_exams') }}" class="btn btn-secondary">← Back</a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div style="padding:12px 16px; border-radius:8px; margin-bottom:14px;
+        background:{{ '#d1e7dd' if cat=='success' else '#f8d7da' }};
+        color:{{ '#0f5132' if cat=='success' else '#842029' }};
+        border:1px solid {{ '#badbcc' if cat=='success' else '#f5c2c7' }};">{{ msg }}</div>
+    {% endfor %}{% endif %}{% endwith %}
+
+    <!-- Question list -->
+    <div class="card">
+        <h2>📋 Questions ({{ questions|length }})</h2>
+        {% for q in questions %}
+        <div class="q-card">
+            <div class="q-num">Q{{ loop.index }} · {{ q.question_type|upper }} · {{ q.points }} pt(s)</div>
+            <div class="q-text">{{ q.question_text }}</div>
+            {% if q.question_type == 'mcq' and q.choices %}
+            <div class="q-choices">
+                {% for key, val in q.choices.items() %}
+                <span class="q-choice {% if key == q.correct_answer %}correct{% endif %}">
+                    {{ key }}. {{ val }}{% if key == q.correct_answer %} ✓{% endif %}
+                </span>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="q-choices">
+                <span class="q-choice {% if q.correct_answer == 'True' %}correct{% endif %}">True{% if q.correct_answer == 'True' %} ✓{% endif %}</span>
+                <span class="q-choice {% if q.correct_answer == 'False' %}correct{% endif %}">False{% if q.correct_answer == 'False' %} ✓{% endif %}</span>
+            </div>
+            {% endif %}
+            {% if exam.status == 'draft' %}
+<div style="display:flex; gap:8px; margin-top:8px;">
+    <form method="POST"
+          action="{{ url_for('teacher.teacher_exam_question_delete', exam_id=exam.exam_id, question_id=q.question_id) }}"
+          onsubmit="return confirm('Delete this question?');">
+        <button type="submit" class="btn btn-danger" style="padding:4px 10px; font-size:12px;">🗑 Delete</button>
+    </form>
+    <a href="{{ url_for('teacher.teacher_exam_question_edit', exam_id=exam.exam_id, question_id=q.question_id) }}"
+       class="btn btn-warning" style="padding:4px 10px; font-size:12px;">✏️ Edit</a>
+</div>
+{% endif %}
+        </div>
+        {% else %}
+        <div style="text-align:center; padding:30px; color:#aaa;">No questions yet. Add one below.</div>
+        {% endfor %}
+    </div>
+
+    <!-- Add question form (only if draft) -->
+    {% if exam.status == 'draft' %}
+    <div class="card">
+        <h2>➕ Add Question</h2>
+        <form method="POST" id="questionForm">
+            <!-- Type toggle -->
+            <div class="type-toggle">
+                <button type="button" class="type-btn active" id="btnMCQ" onclick="setType('mcq')">Multiple Choice</button>
+                <button type="button" class="type-btn" id="btnTF" onclick="setType('truefalse')">True / False</button>
+            </div>
+            <input type="hidden" name="question_type" id="question_type" value="mcq" />
+
+            <div class="form-group">
+                <label>Question Text</label>
+                <textarea name="question_text" rows="3" required placeholder="Enter your question here..."></textarea>
+            </div>
+
+            <!-- MCQ choices -->
+            <div id="mcqChoices">
+                <div class="choices-grid">
+                    <div class="form-group">
+                        <label>Choice A</label>
+                        <input type="text" name="choice_a" placeholder="Option A" />
+                    </div>
+                    <div class="form-group">
+                        <label>Choice B</label>
+                        <input type="text" name="choice_b" placeholder="Option B" />
+                    </div>
+                    <div class="form-group">
+                        <label>Choice C</label>
+                        <input type="text" name="choice_c" placeholder="Option C" />
+                    </div>
+                    <div class="form-group">
+                        <label>Choice D</label>
+                        <input type="text" name="choice_d" placeholder="Option D" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Correct Answer</label>
+                    <select name="correct_answer_mcq" id="correctMCQ">
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- T/F correct answer -->
+            <div id="tfChoices" style="display:none;">
+                <div class="form-group">
+                    <label>Correct Answer</label>
+                    <select name="correct_answer_tf" id="correctTF">
+                        <option value="True">True</option>
+                        <option value="False">False</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group" style="max-width:120px;">
+                <label>Points</label>
+                <input type="number" name="points" value="1" min="1" max="10" />
+            </div>
+
+            <button type="submit" class="btn btn-primary">➕ Add Question</button>
+        </form>
+    </div>
+    <!-- Add this inside the draft block, alongside the Add Question form -->
+<div class="card">
+    <h2>📂 Import Questions from File</h2>
+    <form method="POST"
+          action="{{ url_for('teacher.teacher_exam_import_questions', exam_id=exam.exam_id) }}"
+          enctype="multipart/form-data">
+        <div class="form-group">
+            <label>Upload File <span style="font-weight:400; color:#888;">.docx / .pdf / .csv / .xlsx</span></label>
+            <input type="file" name="question_file" accept=".docx,.pdf,.csv,.xls,.xlsx" required />
+        </div>
+        <button type="submit" class="btn btn-primary">📥 Import Questions</button>
+    </form>
+    <div style="margin-top:12px; font-size:12px; color:#888;">
+        <strong>Format:</strong><br>
+        DOCX/PDF: each question on lines starting with <code>Question:</code>, <code>A:</code>, <code>B:</code>, <code>C:</code>, <code>D:</code>, <code>Answer:</code>, <code>Type:</code>, <code>Points:</code><br>
+        CSV/XLSX: columns → <code>question_text, question_type, choice_a, choice_b, choice_c, choice_d, correct_answer, points</code>
+    </div>
+</div>
+    {% endif %}
+</div>
+
+<script>
+function setType(type) {
+    document.getElementById('question_type').value = type;
+    if (type === 'mcq') {
+        document.getElementById('mcqChoices').style.display = 'block';
+        document.getElementById('tfChoices').style.display  = 'none';
+        document.getElementById('btnMCQ').classList.add('active');
+        document.getElementById('btnTF').classList.remove('active');
+    } else {
+        document.getElementById('mcqChoices').style.display = 'none';
+        document.getElementById('tfChoices').style.display  = 'block';
+        document.getElementById('btnTF').classList.add('active');
+        document.getElementById('btnMCQ').classList.remove('active');
+    }
+}
+
+// Fix: merge correct_answer fields on submit
+document.getElementById('questionForm')?.addEventListener('submit', function(e) {
+    const type = document.getElementById('question_type').value;
+    const hidden = document.createElement('input');
+    hidden.type = 'hidden';
+    hidden.name = 'correct_answer';
+
+    if (type === 'truefalse') {
+        hidden.value = document.getElementById('correctTF').value;  // "True" or "False"
+    } else {
+        hidden.value = document.getElementById('correctMCQ').value;  // "A", "B", "C", "D"
+    }
+
+    this.appendChild(hidden);
+});
+</script>
+{% endblock %}
