@@ -368,13 +368,21 @@ def teacher_announce():
             grade_short = _m2.group(1) if _m2 else grade_full
 
         cur.execute("""
-            SELECT u.user_id 
+            SELECT DISTINCT u.user_id 
             FROM enrollments e
             JOIN users u ON u.user_id = e.user_id
             WHERE e.branch_id = %s 
               AND (e.grade_level ILIKE %s OR e.grade_level ILIKE %s)
               AND e.status IN ('approved', 'enrolled')
-        """, (branch_id, grade_full, grade_short))
+            UNION
+            SELECT DISTINCT u.user_id
+            FROM enrollments e
+            JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
+            JOIN users u ON u.username = sa.username
+            WHERE e.branch_id = %s 
+              AND (e.grade_level ILIKE %s OR e.grade_level ILIKE %s)
+              AND e.status IN ('approved', 'enrolled')
+        """, (branch_id, grade_full, grade_short, branch_id, grade_full, grade_short))
         students = cur.fetchall()
         if students:
             notif_title = f"New Announcement: {title}"
@@ -615,11 +623,17 @@ def create_activity():
             
             if status == 'Published':
                 cur.execute("""
-                    SELECT u.user_id 
+                    SELECT DISTINCT u.user_id 
                     FROM enrollments e 
                     JOIN users u ON u.user_id = e.user_id 
                     WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
-                """, (section_id,))
+                    UNION
+                    SELECT DISTINCT u.user_id
+                    FROM enrollments e
+                    JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
+                    JOIN users u ON u.username = sa.username
+                    WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+                """, (section_id, section_id))
                 student_users = cur.fetchall()
                 if student_users:
                     notifs = [(su['user_id'], f"New Activity: {title}", f"Your teacher posted a new activity: {title}.", f"/student/activities/{activity_id}") for su in student_users]
@@ -701,11 +715,17 @@ def edit_activity(activity_id):
                   
             if status == 'Published' and activity['status'] != 'Published':
                 cur.execute("""
-                    SELECT u.user_id 
+                    SELECT DISTINCT u.user_id 
                     FROM enrollments e 
                     JOIN users u ON u.user_id = e.user_id 
                     WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
-                """, (activity['section_id'],))
+                    UNION
+                    SELECT DISTINCT u.user_id
+                    FROM enrollments e
+                    JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
+                    JOIN users u ON u.username = sa.username
+                    WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+                """, (activity['section_id'], activity['section_id']))
                 student_users = cur.fetchall()
                 if student_users:
                     notifs = [(su['user_id'], f"New Activity: {title}", f"Your teacher posted a new activity: {title}.", f"/student/activities/{activity_id}") for su in student_users]
@@ -1164,12 +1184,19 @@ def teacher_exam_publish(exam_id):
         if exam_info:
             notif_label = "Quiz" if exam_info['exam_type'] == 'quiz' else "Exam"
             # Send notifications to students in the section
+            # Use UNION to capture students in `users` table AND students via `student_accounts`
             cur.execute("""
-                SELECT u.user_id 
+                SELECT DISTINCT u.user_id
                 FROM enrollments e 
                 JOIN users u ON u.user_id = e.user_id
                 WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
-            """, (exam_info['section_id'],))
+                UNION
+                SELECT DISTINCT u.user_id
+                FROM enrollments e
+                JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
+                JOIN users u ON u.username = sa.username
+                WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+            """, (exam_info['section_id'], exam_info['section_id']))
             students = cur.fetchall()
             for s in students:
                 notif_link = f"/student/subject/{exam_info['subject_id']}" if exam_info['exam_type'] == 'quiz' else "/student/exams"
