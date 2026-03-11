@@ -370,7 +370,7 @@ def teacher_announce():
         cur.execute("""
             SELECT u.user_id 
             FROM enrollments e
-            JOIN users u ON u.enrollment_id = e.enrollment_id
+            JOIN users u ON u.user_id = e.user_id
             WHERE e.branch_id = %s 
               AND (e.grade_level ILIKE %s OR e.grade_level ILIKE %s)
               AND e.status IN ('approved', 'enrolled')
@@ -617,7 +617,7 @@ def create_activity():
                 cur.execute("""
                     SELECT u.user_id 
                     FROM enrollments e 
-                    JOIN users u ON u.enrollment_id = e.enrollment_id 
+                    JOIN users u ON u.user_id = e.user_id 
                     WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
                 """, (section_id,))
                 student_users = cur.fetchall()
@@ -703,7 +703,7 @@ def edit_activity(activity_id):
                 cur.execute("""
                     SELECT u.user_id 
                     FROM enrollments e 
-                    JOIN users u ON u.enrollment_id = e.enrollment_id 
+                    JOIN users u ON u.user_id = e.user_id 
                     WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
                 """, (activity['section_id'],))
                 student_users = cur.fetchall()
@@ -746,7 +746,7 @@ def activity_submissions(activity_id):
         cur.execute('''
             SELECT e.enrollment_id, e.student_name, u.user_id as student_user_id
             FROM enrollments e
-            LEFT JOIN users u ON u.enrollment_id = e.enrollment_id
+            LEFT JOIN users u ON u.user_id = e.user_id
             WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled') AND e.branch_id = %s
             ORDER BY e.student_name ASC
         ''', (activity['section_id'], activity['branch_id']))
@@ -1167,7 +1167,7 @@ def teacher_exam_publish(exam_id):
             cur.execute("""
                 SELECT u.user_id 
                 FROM enrollments e 
-                JOIN users u ON u.enrollment_id = e.enrollment_id
+                JOIN users u ON u.user_id = e.user_id
                 WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
             """, (exam_info['section_id'],))
             students = cur.fetchall()

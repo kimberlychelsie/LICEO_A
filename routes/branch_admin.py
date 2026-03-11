@@ -1629,11 +1629,11 @@ def branch_admin_assign_students():
             # ── Auto-notify student about all existing Published activities in this section ──
             if section_id:
                 try:
-                    # Get the student's user_id via users.enrollment_id
+                    # Get the student's user_id via enrollments.user_id
                     cursor.execute("""
-                        SELECT u.user_id
-                        FROM users u
-                        WHERE u.enrollment_id = %s
+                        SELECT user_id
+                        FROM enrollments
+                        WHERE enrollment_id = %s
                         LIMIT 1
                     """, (enrollment_id,))
                     student_user_row = cursor.fetchone()

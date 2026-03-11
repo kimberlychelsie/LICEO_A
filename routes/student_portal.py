@@ -54,7 +54,7 @@ def dashboard():
                        br.branch_name, br.location
                 FROM enrollments e
                 JOIN branches br ON e.branch_id = br.branch_id
-                JOIN users u ON u.enrollment_id = e.enrollment_id
+                JOIN users u ON u.user_id = e.user_id
                 WHERE e.enrollment_id = %s
             """, (enrollment_id,))
         else:
