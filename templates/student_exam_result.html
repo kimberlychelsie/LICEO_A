@@ -28,8 +28,8 @@
 <div class="container">
     <div class="score-card">
         <div style="font-size:14px; color:#888; margin-bottom:8px;">{{ result.title }} · {{ result.subject_name }}</div>
-        <div class="score-big">{{ result.score }}</div>
-        <div class="score-label">out of {{ result.total_points }} points</div>
+        <div class="score-big">{{ result.score|round|int }}</div>
+        <div class="score-label">out of {{ result.total_points|round|int }} points</div>
 
         <!-- ✅ Dynamic passing score instead of hardcoded 75 -->
         <div class="pct {% if passed %}pass{% else %}fail{% endif %}">
@@ -69,6 +69,14 @@
                         {% endif %}
                     </span>
                     {% endfor %}
+                {% elif a.question_type == 'matching' %}
+                    <span class="choice-chip {% if a.is_correct %}correct{% elif a.student_answer %}wrong{% endif %}">
+                        Your Answer: {{ a.student_answer or '—' }} 
+                        {% if a.is_correct %} ✓{% elif a.student_answer %} ✗{% endif %}
+                    </span>
+                    {% if not a.is_correct %}
+                    <span class="choice-chip correct">Correct Match: {{ a.correct_answer }} ✓</span>
+                    {% endif %}
                 {% else %}
                     {% for opt in ['True', 'False'] %}
                     <span class="choice-chip
@@ -92,7 +100,11 @@
     </div>
 
     <div style="text-align:center;">
+        {% if result.exam_type == 'quiz' %}
+        <a href="{{ url_for('student_portal.subject_view', subject_id=result.subject_id) }}" class="btn btn-primary">← Back to Quizzes</a>
+        {% else %}
         <a href="{{ url_for('student_portal.student_exams') }}" class="btn btn-primary">← Back to Exams</a>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

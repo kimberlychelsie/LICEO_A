@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}My Exams{% endblock %}
+{% block title %}My Quizzes{% endblock %}
 {% block content %}
 <style>
     .container { max-width: 1000px; margin: 0 auto; padding: 24px 20px; }
@@ -7,13 +7,13 @@
     .header-row h1 { margin:0; font-size:22px; }
     .card { background:#fff; border-radius:12px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.07); margin-bottom:20px; }
     .btn { padding:9px 18px; border:none; border-radius:7px; cursor:pointer; font-size:13px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px; transition:.2s; }
-    .btn-primary { background:#007bff; color:#fff; } .btn-primary:hover { background:#0056b3; }
+    .btn-primary { background:#7c3aed; color:#fff; } .btn-primary:hover { background:#5b21b6; }
     .btn-success { background:#28a745; color:#fff; } .btn-success:hover { background:#1e7e34; }
     .btn-secondary { background:#6c757d; color:#fff; } .btn-secondary:hover { background:#545b62; }
     .exam-table { width:100%; border-collapse:collapse; font-size:13px; }
-    .exam-table th { background:#f8f9fa; padding:10px 12px; text-align:left; border-bottom:2px solid #dee2e6; font-weight:700; color:#555; }
+    .exam-table th { background:#f3f0ff; padding:10px 12px; text-align:left; border-bottom:2px solid #e9d5ff; font-weight:700; color:#5b21b6; }
     .exam-table td { padding:10px 12px; border-bottom:1px solid #f0f0f0; vertical-align:middle; }
-    .exam-table tr:hover td { background:#f8f9fa; }
+    .exam-table tr:hover td { background:#faf5ff; }
     .badge { display:inline-block; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700; }
     .badge-draft { background:#e9ecef; color:#495057; }
     .badge-published { background:#d4edda; color:#155724; }
@@ -21,8 +21,8 @@
 </style>
 <div class="container">
     <div class="header-row">
-        <h1>📝 My Exams</h1>
-        <a href="{{ url_for('teacher.teacher_exam_create') }}" class="btn btn-primary">➕ Create Exam</a>
+        <h1>✏️ My Quizzes</h1>
+        <a href="{{ url_for('teacher.teacher_quiz_create') }}" class="btn btn-primary">➕ Create Quiz</a>
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -34,35 +34,34 @@
     {% endfor %}{% endif %}{% endwith %}
 
     <div class="card">
-        {% if exams %}
+        {% if quizzes %}
         <table class="exam-table">
             <thead>
                 <tr>
                     <th>Title</th><th>Subject</th><th>Section</th>
-                    <th>Type</th><th>Duration</th><th>Questions</th>
+                    <th>Duration</th><th>Questions</th>
                     <th>Attempts</th><th>Status</th><th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-            {% for e in exams %}
+            {% for q in quizzes %}
             <tr>
-                <td><strong>{{ e.title }}</strong></td>
-                <td>{{ e.subject_name }}</td>
-                <td>{{ e.grade_level_name }} - {{ e.section_name }}</td>
-                <td>{{ e.exam_type|capitalize }}</td>
-                <td>{{ e.duration_mins }} min</td>
-                <td>{{ e.question_count }}</td>
-                <td>{{ e.attempt_count }}</td>
+                <td><strong>{{ q.title }}</strong></td>
+                <td>{{ q.subject_name }}</td>
+                <td>{{ q.grade_level_name }} - {{ q.section_name }}</td>
+                <td>{{ q.duration_mins }} min</td>
+                <td>{{ q.question_count }}</td>
+                <td>{{ q.attempt_count }}</td>
                 <td>
-                    <span class="badge badge-{{ e.status }}">{{ e.status|capitalize }}</span>
+                    <span class="badge badge-{{ q.status }}">{{ q.status|capitalize }}</span>
                 </td>
                 <td style="white-space:nowrap;">
-                    <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=e.exam_id) }}"
+                    <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=q.exam_id) }}"
                        class="btn btn-secondary" style="padding:5px 10px; font-size:12px;">✏️ Edit</a>
-                    <a href="{{ url_for('teacher.teacher_exam_results', exam_id=e.exam_id) }}"
+                    <a href="{{ url_for('teacher.teacher_exam_results', exam_id=q.exam_id) }}"
                        class="btn btn-success" style="padding:5px 10px; font-size:12px;">📊 Results</a>
-                    <form method="POST" action="{{ url_for('teacher.delete_exam', exam_id=e.exam_id) }}"
-                          onsubmit="return confirm('Delete this exam? All questions and student results will also be deleted. This cannot be undone.');"
+                    <form method="POST" action="{{ url_for('teacher.delete_exam', exam_id=q.exam_id) }}"
+                          onsubmit="return confirm('Delete this quiz? All questions and student results will also be deleted. This cannot be undone.');"
                           style="display:inline;">
                         <button type="submit" class="btn" style="padding:5px 10px; font-size:12px; background:#dc3545; color:#fff;">🗑 Delete</button>
                     </form>
@@ -73,7 +72,7 @@
         </table>
         {% else %}
         <div style="text-align:center; padding:40px; color:#aaa;">
-            📭 No exams yet. <a href="{{ url_for('teacher.teacher_exam_create') }}">Create your first exam →</a>
+            📭 No quizzes yet. <a href="{{ url_for('teacher.teacher_quiz_create') }}">Create your first quiz →</a>
         </div>
         {% endif %}
     </div>

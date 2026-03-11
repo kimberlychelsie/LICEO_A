@@ -145,6 +145,11 @@
                 class="btn btn-secondary btn-sm">Edit</a>
             <a href="{{ url_for('teacher.activity_submissions', activity_id=act.activity_id) }}"
                 class="btn btn-primary btn-sm">Submissions ({{ act.submission_count }})</a>
+            <form method="POST" action="{{ url_for('teacher.delete_activity', activity_id=act.activity_id) }}"
+                  onsubmit="return confirm('Delete this activity? All submissions and grades will also be deleted. This cannot be undone.');"
+                  style="display:inline;">
+                <button type="submit" class="btn btn-sm" style="background:#dc3545; color:#fff;">🗑 Delete</button>
+            </form>
         </div>
     </div>
     {% endfor %}

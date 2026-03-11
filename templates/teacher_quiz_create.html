@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Create Quiz{% endblock %}
+{% block content %}
+<div class="card" style="max-width: 800px; margin: 0 auto;">
+    <h2 class="card-header">✏️ Create New Quiz</h2>
+    <form action="{{ url_for('teacher.teacher_quiz_create') }}" method="POST">
+
+        <div class="form-group">
+            <label class="form-label">Quiz Title <span style="color:red">*</span></label>
+            <input type="text" name="title" class="form-input" required maxlength="255" placeholder="e.g. Chapter 3 Quiz">
+        </div>
+
+        <div class="grid grid-2">
+            <div class="form-group">
+                <label class="form-label">Section &amp; Subject <span style="color:red">*</span></label>
+                <select name="assignment" class="form-select" required>
+                    <option value="">-- Select Section &amp; Subject --</option>
+                    {% for a in teacher_assignments %}
+                    <option value="{{ a.section_id }}_{{ a.subject_id }}">{{ a.grade_level_name }} - {{ a.section_name }} ({{ a.subject_name }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Duration <span style="color:red">*</span></label>
+                <select name="duration_mins" class="form-select" required>
+                    <option value="10">10 minutes</option>
+                    <option value="20">20 minutes</option>
+                    <option value="30" selected>30 minutes</option>
+                    <option value="45">45 minutes</option>
+                    <option value="60">60 minutes</option>
+                </select>
+            </div>
+        </div>
+
+        <hr style="border:0; border-top:1px solid var(--border); margin:20px 0;">
+
+        <div class="form-group">
+            <label class="form-label">Scheduled Start <span style="font-weight:400; color:#888;">(optional)</span></label>
+            <input type="datetime-local" name="scheduled_start" class="form-input">
+            <small style="color:var(--muted);">⏰ Quiz opens at this time. Auto-closes after duration.</small>
+        </div>
+
+        <hr style="border:0; border-top:1px solid var(--border); margin:20px 0;">
+
+        <div class="grid grid-2">
+            <div class="form-group">
+                <label class="form-label">Max Attempts</label>
+                <input type="number" name="max_attempts" class="form-input" value="1" min="1" max="10">
+                <small style="color:var(--muted);">How many times a student can take this quiz</small>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Passing Score (%)</label>
+                <input type="number" name="passing_score" class="form-input" value="60" min="1" max="100">
+                <small style="color:var(--muted);">Minimum % to pass</small>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:600; font-size:0.88rem;">
+                <input type="checkbox" name="randomize" value="1" style="width:18px; height:18px; accent-color:#7c3aed;">
+                🔀 Randomize Question Order
+            </label>
+        </div>
+
+        <hr style="border:0; border-top:1px solid var(--border); margin:20px 0;">
+
+        <div class="form-group">
+            <label class="form-label">Quiz Instructions <span style="font-weight:400; color:#888;">(optional)</span></label>
+            <textarea name="instructions" class="form-textarea" rows="3" placeholder="e.g. Read each question carefully. No back navigation."></textarea>
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:8px;">
+            <a href="{{ url_for('teacher.teacher_quizzes') }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary" style="background:#7c3aed;">➕ Create &amp; Add Questions →</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

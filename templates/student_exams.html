@@ -1,95 +1,248 @@
 {% extends "base.html" %}
 {% block title %}My Exams{% endblock %}
-{% block content %}
+{% block styles %}
 <style>
-    .container { max-width:800px; margin:0 auto; padding:24px 20px; }
-    .card { background:#fff; border-radius:12px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.07); margin-bottom:16px; }
-    .exam-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; padding:16px 0; border-bottom:1px solid #f0f0f0; }
-    .exam-row:last-child { border-bottom:none; }
-    .exam-info h3 { margin:0 0 4px 0; font-size:15px; }
-    .exam-info .meta { font-size:12px; color:#888; }
-    .schedule-info { font-size:12px; margin-top:5px; display:flex; flex-wrap:wrap; gap:8px; }
-    .schedule-open  { background:#d4edda; color:#155724; padding:3px 10px; border-radius:6px; font-weight:700; }
-    .schedule-close { background:#f8d7da; color:#721c24; padding:3px 10px; border-radius:6px; font-weight:700; }
-    .btn { padding:9px 18px; border:none; border-radius:7px; cursor:pointer; font-size:13px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px; transition:.2s; }
-    .btn-primary { background:#007bff; color:#fff; }
-    .btn-success { background:#28a745; color:#fff; }
-    .btn-secondary { background:#6c757d; color:#fff; }
-    .badge { display:inline-block; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700; }
-    .badge-available { background:#d4edda; color:#155724; }
-    .badge-done { background:#e9ecef; color:#495057; }
-    .badge-closed { background:#f8d7da; color:#721c24; }
-    .badge-notyet { background:#fff3cd; color:#856404; }
+  .task-wrap {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 24px 16px;
+  }
+
+  .task-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .task-page-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #1e293b;
+  }
+
+  /* ── Unified Task Card ── */
+  .task-card {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #1e40af;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    transition: transform .15s, box-shadow .15s;
+  }
+
+  .task-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0,0,0,.09);
+  }
+
+  .task-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .task-cat-badge {
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .07em;
+    padding: 3px 10px;
+    border-radius: 6px;
+    display: inline-block;
+    margin-bottom: 8px;
+  }
+
+  .cat-exam   { background: #dbeafe; color: #1e40af; }
+  .cat-quiz   { background: #ede9fe; color: #5b21b6; }
+  .cat-act    { background: #dcfce7; color: #15803d; }
+
+  .task-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 6px;
+  }
+
+  .task-info-row {
+    font-size: 0.82rem;
+    color: #64748b;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .task-info-row span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  /* Status badges */
+  .status-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 12px;
+    border-radius: 999px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .st-available { background: #dcfce7; color: #15803d; }
+  .st-done      { background: #e0f2fe; color: #0369a1; }
+  .st-closed    { background: #fee2e2; color: #991b1b; }
+  .st-notyet    { background: #fef9c3; color: #854d0e; }
+  .st-expired   { background: #fde8d8; color: #9a3412; }
+
+  .task-card-bottom {
+    margin-top: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  /* Score info */
+  .score-info {
+    font-size: 0.82rem;
+    color: #0369a1;
+    font-weight: 600;
+    margin-top: 6px;
+  }
+
+  .schedule-row {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .sch-open  { background: #d4edda; color: #155724; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+  .sch-close { background: #f8d7da; color: #721c24; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; }
+
+  .empty-box {
+    text-align: center;
+    padding: 60px 20px;
+    color: #94a3b8;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+  }
+
+  .empty-box .big-icon { font-size: 3rem; margin-bottom: 12px; }
+
+  .btn-take {
+    background: #1e40af;
+    color: #fff;
+    padding: 9px 20px;
+    border-radius: 9px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all .2s;
+    border: none;
+  }
+
+  .btn-take:hover { background: #1d4ed8; transform: translateY(-1px); }
+
+  .btn-result {
+    background: #f1f5f9;
+    color: #475569;
+    padding: 8px 18px;
+    border-radius: 9px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #e2e8f0;
+    transition: all .2s;
+  }
+
+  .btn-result:hover { background: #e2e8f0; }
 </style>
-<div class="container">
-    <h1 style="margin-bottom:20px;">📝 My Exams</h1>
+{% endblock %}
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}{% for cat, msg in messages %}
-    <div style="padding:12px 16px; border-radius:8px; margin-bottom:14px;
-        background:{{ '#d1e7dd' if cat=='success' else '#f8d7da' }};
-        color:{{ '#0f5132' if cat=='success' else '#842029' }};
-        border:1px solid {{ '#badbcc' if cat=='success' else '#f5c2c7' }};">{{ msg }}</div>
-    {% endfor %}{% endif %}{% endwith %}
+{% block content %}
+<div class="task-wrap">
+  <div class="task-page-header">
+    <div class="task-page-title">📄 My Exams</div>
+  </div>
 
-    <div class="card">
-        {% if exams %}
-        {% for e in exams %}
-        <div class="exam-row">
-            <div class="exam-info">
-                <h3>{{ e.title }}</h3>
-                <div class="meta">
-                    {{ e.subject_name }} · {{ e.exam_type|capitalize }} ·
-                    ⏱ {{ e.duration_mins }} min · {{ e.question_count }} question(s) ·
-                    🔁 {{ e.max_attempts or 1 }} attempt(s)
-                </div>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}{% for cat, msg in messages %}
+  <div style="padding:12px 16px; border-radius:10px; margin-bottom:14px;
+      background:{{ '#d1e7dd' if cat=='success' else '#f8d7da' }};
+      color:{{ '#0f5132' if cat=='success' else '#842029' }};
+      border:1px solid {{ '#badbcc' if cat=='success' else '#f5c2c7' }};">{{ msg }}</div>
+  {% endfor %}{% endif %}{% endwith %}
 
-                <!-- ✅ Schedule display -->
-                {% if e.scheduled_start %}
-                <div class="schedule-info">
-                    <span class="schedule-open">
-                        📅 Opens: {{ e.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}
-                    </span>
-                    <span class="schedule-close">
-                        🔒 Closes: {{ (e.scheduled_start + timedelta(minutes=e.duration_mins)).strftime('%b %d, %Y %I:%M %p') }}
-                    </span>
-                </div>
-                {% endif %}
-
-                {% if e.result_status in ('submitted','auto_submitted') %}
-                <div class="meta" style="margin-top:4px;">
-                    Score: <strong>{{ e.score }} / {{ e.total_points }}</strong>
-                    {% if e.result_status == 'auto_submitted' %}
-                    <span style="color:#856404; font-size:11px;">⚠️ auto-submitted</span>
-                    {% endif %}
-                </div>
-                {% endif %}
-            </div>
-
-            <div>
-                {% if e.result_status in ('submitted', 'auto_submitted') %}
-                    <span class="badge badge-done">✓ Done</span>
-                    <a href="{{ url_for('student_portal.student_exam_result', result_id=e.result_id) }}"
-                       class="btn btn-secondary" style="padding:6px 12px; font-size:12px; margin-left:6px;">View Result</a>
-
-                {% elif e.status == 'closed' %}
-                    <span class="badge badge-closed">Closed</span>
-
-                {% elif e.scheduled_start and now_utc < e.scheduled_start %}
-                    <!-- ✅ Not yet open -->
-                    <span class="badge badge-notyet">⏳ Not Yet Open</span>
-
-                {% else %}
-                    <span class="badge badge-available">Available</span>
-                    <a href="{{ url_for('student_portal.student_exam_take', exam_id=e.exam_id) }}"
-                       class="btn btn-primary" style="margin-left:8px;">📝 Take Exam</a>
-                {% endif %}
-            </div>
+  {% if exams %}
+    {% for e in exams %}
+    {% set is_done    = e.result_status in ('submitted', 'auto_submitted') %}
+    {% set is_closed  = e.status == 'closed' %}
+    {% set is_notyet  = e.scheduled_start and now_utc < e.scheduled_start %}
+    {% set is_expired = e.scheduled_start and now_utc > (e.scheduled_start + timedelta(minutes=e.duration_mins)) %}
+    <div class="task-card">
+      <div class="task-card-top">
+        <div>
+          <div class="task-cat-badge cat-exam">Exam</div>
+          <h3 class="task-title">{{ e.title }}</h3>
+          <div class="task-info-row">
+            <span>⏱ {{ e.duration_mins }} min</span>
+            <span>❓ {{ e.question_count }} question(s)</span>
+            {% if e.scheduled_start %}
+            <span>📅 Opens {{ e.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}</span>
+            {% endif %}
+          </div>
+          {% if is_done %}
+          <div class="score-info">
+            Score: <strong>{{ e.score|round|int }} / {{ e.total_points|round|int }}</strong>
+            {% if e.result_status == 'auto_submitted' %}<span style="color:#856404; font-size:11px;"> ⚠️ auto-submitted</span>{% endif %}
+          </div>
+          {% endif %}
         </div>
-        {% endfor %}
-        {% else %}
-        <div style="text-align:center; padding:40px; color:#aaa;">📭 No exams available.</div>
+        <div>
+          {% if is_done %}
+            <span class="status-badge st-done">✅ Done</span>
+          {% elif is_closed %}
+            <span class="status-badge st-closed">Closed</span>
+          {% elif is_notyet %}
+            <span class="status-badge st-notyet">⏳ Not Yet Open</span>
+          {% elif is_expired %}
+            <span class="status-badge st-expired">⌛ Expired</span>
+          {% else %}
+            <span class="status-badge st-available">Available</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="task-card-bottom">
+        {% if is_done %}
+          <a href="{{ url_for('student_portal.student_exam_result', result_id=e.result_id) }}" class="btn-result">📊 View Result</a>
+        {% elif not is_closed and not is_notyet and not is_expired %}
+          <a href="{{ url_for('student_portal.student_exam_take', exam_id=e.exam_id) }}" class="btn-take">📝 Take Exam</a>
         {% endif %}
+      </div>
     </div>
+    {% endfor %}
+  {% else %}
+  <div class="empty-box">
+    <div class="big-icon">📭</div>
+    <h3 style="color:#475569;">No exams yet</h3>
+    <p>No exams have been posted for your sections yet.</p>
+  </div>
+  {% endif %}
 </div>
 {% endblock %}

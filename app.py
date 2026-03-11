@@ -95,24 +95,18 @@ def inject_student_notifications():
         db = get_db_connection()
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
+            # All recent notifications (for the dropdown list — stays visible even after reading)
             cursor.execute('''
-                SELECT n.* FROM student_notifications n
-                WHERE n.student_id = %s 
-                  AND (
-                    (n.link NOT LIKE '/student/activities/%' AND n.link NOT LIKE '/student/exams%')
-                    OR n.title = 'Activity Graded'
-                    OR NOT EXISTS (
-                        SELECT 1 FROM activity_submissions subm
-                        WHERE subm.student_id = n.student_id
-                          AND n.link LIKE '%%/student/activities/' || subm.activity_id || '%%'
-                    )
-                  )
-                ORDER BY n.created_at DESC LIMIT 10
+                SELECT * FROM student_notifications
+                WHERE student_id = %s
+                ORDER BY created_at DESC LIMIT 15
             ''', (user_id,))
             notifs = cursor.fetchall()
-            return dict(student_global_notifs=notifs)
+            # Count only unread (for the red badge)
+            unread_count = sum(1 for n in notifs if not n.get('is_read'))
+            return dict(student_global_notifs=notifs, student_unread_count=unread_count)
         except:
-            return dict(student_global_notifs=[])
+            return dict(student_global_notifs=[], student_unread_count=0)
         finally:
             cursor.close()
             db.close()

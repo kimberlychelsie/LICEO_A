@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}My Quizzes{% endblock %}
+{% block styles %}
+<style>
+  .task-wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px; }
+
+  .task-page-title { font-size: 1.5rem; font-weight: 800; color: #1e293b; margin-bottom: 24px; }
+
+  .task-card {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #7c3aed;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.05);
+    transition: transform .15s, box-shadow .15s;
+  }
+  .task-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.09); }
+
+  .task-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+
+  .task-cat-badge {
+    font-size: 0.68rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .07em; padding: 3px 10px; border-radius: 6px;
+    display: inline-block; margin-bottom: 8px;
+    background: #ede9fe; color: #5b21b6;
+  }
+
+  .task-title { font-size: 1.1rem; font-weight: 700; color: #1e293b; margin: 0 0 6px; }
+
+  .task-info-row {
+    font-size: 0.82rem; color: #64748b;
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+  }
+
+  .status-badge {
+    font-size: 0.75rem; font-weight: 700; padding: 4px 12px;
+    border-radius: 999px; white-space: nowrap; flex-shrink: 0;
+  }
+  .st-available { background: #dcfce7; color: #15803d; }
+  .st-done      { background: #e0f2fe; color: #0369a1; }
+  .st-closed    { background: #fee2e2; color: #991b1b; }
+  .st-notyet    { background: #fef9c3; color: #854d0e; }
+  .st-expired   { background: #fde8d8; color: #9a3412; }
+
+  .task-card-bottom { margin-top: 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+  .score-info { font-size: 0.82rem; color: #0369a1; font-weight: 600; margin-top: 6px; }
+
+  .btn-take {
+    background: #7c3aed; color: #fff; padding: 9px 20px;
+    border-radius: 9px; font-size: 0.85rem; font-weight: 700;
+    text-decoration: none; display: inline-flex; align-items: center;
+    gap: 6px; border: none; transition: all .2s;
+  }
+  .btn-take:hover { background: #6d28d9; transform: translateY(-1px); }
+
+  .btn-result {
+    background: #f1f5f9; color: #475569; padding: 8px 18px;
+    border-radius: 9px; font-size: 0.85rem; font-weight: 700;
+    text-decoration: none; display: inline-flex; align-items: center;
+    gap: 6px; border: 1px solid #e2e8f0; transition: all .2s;
+  }
+  .btn-result:hover { background: #e2e8f0; }
+
+  .empty-box {
+    text-align: center; padding: 60px 20px; color: #94a3b8;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+  }
+  .empty-box .big-icon { font-size: 3rem; margin-bottom: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="task-wrap">
+  <div class="task-page-title">✏️ My Quizzes</div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}{% for cat, msg in messages %}
+  <div style="padding:12px 16px; border-radius:10px; margin-bottom:14px;
+      background:{{ '#d1e7dd' if cat=='success' else '#f8d7da' }};
+      color:{{ '#0f5132' if cat=='success' else '#842029' }};
+      border:1px solid {{ '#badbcc' if cat=='success' else '#f5c2c7' }};">{{ msg }}</div>
+  {% endfor %}{% endif %}{% endwith %}
+
+  {% if quizzes %}
+    {% for q in quizzes %}
+    {% set is_done    = q.result_status in ('submitted', 'auto_submitted') %}
+    {% set is_closed  = q.status == 'closed' %}
+    {% set is_notyet  = q.scheduled_start and now_utc < q.scheduled_start %}
+    {% set is_expired = q.scheduled_start and now_utc > (q.scheduled_start + timedelta(minutes=q.duration_mins)) %}
+    <div class="task-card">
+      <div class="task-card-top">
+        <div>
+          <div class="task-cat-badge">Quiz</div>
+          <h3 class="task-title">{{ q.title }}</h3>
+          <div class="task-info-row">
+            <span>⏱ {{ q.duration_mins }} min</span>
+            <span>❓ {{ q.question_count }} question(s)</span>
+            {% if q.scheduled_start %}
+            <span>📅 Opens {{ q.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}</span>
+            {% endif %}
+          </div>
+          {% if is_done %}
+          <div class="score-info">
+            Score: <strong>{{ q.score|round|int }} / {{ q.total_points|round|int }}</strong>
+            {% if q.result_status == 'auto_submitted' %}<span style="color:#856404; font-size:11px;"> ⚠️ auto-submitted</span>{% endif %}
+          </div>
+          {% endif %}
+        </div>
+        <div>
+          {% if is_done %}
+            <span class="status-badge st-done">✅ Done</span>
+          {% elif is_closed %}
+            <span class="status-badge st-closed">Closed</span>
+          {% elif is_notyet %}
+            <span class="status-badge st-notyet">⏳ Not Yet Open</span>
+          {% elif is_expired %}
+            <span class="status-badge st-expired">⌛ Expired</span>
+          {% else %}
+            <span class="status-badge st-available">Available</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="task-card-bottom">
+        {% if is_done %}
+          <a href="{{ url_for('student_portal.student_exam_result', result_id=q.result_id) }}" class="btn-result">📊 View Result</a>
+        {% elif not is_closed and not is_notyet and not is_expired %}
+          <a href="{{ url_for('student_portal.student_exam_take', exam_id=q.exam_id) }}" class="btn-take">✏️ Take Quiz</a>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+  <div class="empty-box">
+    <div class="big-icon">📭</div>
+    <h3 style="color:#475569;">No quizzes yet</h3>
+    <p>No quizzes have been posted for your sections yet.</p>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

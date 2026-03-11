@@ -369,6 +369,18 @@ def subject_view(subject_id):
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        # Get student's section and branch
+        cur.execute("""
+            SELECT section_id, branch_id FROM enrollments WHERE enrollment_id = %s
+        """, (enrollment_id,))
+        enr = cur.fetchone()
+        if not enr or not enr.get('section_id'):
+            flash("No section assigned. Please contact your branch admin.", "error")
+            return redirect(url_for("student_portal.dashboard"))
+
+        student_section_id = enr['section_id']
+        student_branch_id  = enr['branch_id']
+
         # Get subject details and teacher
         cur.execute("""
             SELECT sub.subject_id, sub.name as subject_name, u.full_name as teacher_name, u.gender as teacher_gender,
@@ -376,31 +388,43 @@ def subject_view(subject_id):
             FROM subjects sub
             JOIN section_teachers st ON sub.subject_id = st.subject_id
             JOIN sections s ON st.section_id = s.section_id
-            JOIN enrollments e ON e.section_id = s.section_id
             LEFT JOIN users u ON st.teacher_id = u.user_id
-            WHERE sub.subject_id = %s AND e.enrollment_id = %s
-        """, (subject_id, enrollment_id))
+            WHERE sub.subject_id = %s AND s.section_id = %s
+        """, (subject_id, student_section_id))
         subject_info = cur.fetchone()
         
         if not subject_info:
             flash("Subject not found or you are not enrolled in it.", "error")
             return redirect(url_for("student_portal.dashboard"))
         
-        # Get activities for this subject
+        # Get activities for this subject/section/branch — section-based, not student-based
         cur.execute('''
             SELECT a.*, subm.status as submission_status, subm.submission_id
             FROM activities a
             LEFT JOIN activity_submissions subm ON a.activity_id = subm.activity_id AND subm.student_id = %s
-            WHERE a.subject_id = %s AND a.section_id = %s AND a.status = 'Published'
+            WHERE a.subject_id = %s AND a.section_id = %s AND a.branch_id = %s AND a.status = 'Published'
             ORDER BY a.due_date ASC
-        ''', (student_user_id, subject_id, subject_info['section_id']))
+        ''', (student_user_id, subject_id, student_section_id, student_branch_id))
         activities = cur.fetchall()
-        
+
+        # Get quizzes for this subject/section — shown on the same page as activities
+        cur.execute("""
+            SELECT e.*,
+                   r.result_id, r.score, r.total_points, r.status AS result_status
+            FROM exams e
+            LEFT JOIN exam_results r ON r.exam_id = e.exam_id AND r.enrollment_id = %s
+            WHERE e.subject_id = %s AND e.section_id = %s
+              AND e.exam_type = 'quiz'
+              AND e.status IN ('published', 'closed')
+            ORDER BY e.created_at DESC
+        """, (enrollment_id, subject_id, student_section_id))
+        quizzes = cur.fetchall()
+
     finally:
         cur.close()
         db.close()
         
-    return render_template("student_subject_detail.html", subject=subject_info, activities=activities, now=datetime.now())
+    return render_template("student_subject_detail.html", subject=subject_info, activities=activities, quizzes=quizzes, now=datetime.now(), timedelta=timedelta)
 
 
 # ── ACTIVITIES MODULE (STUDENT SIDE) ──────────────────────
@@ -415,15 +439,17 @@ def activities():
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        # Get student's section safely
-        cur.execute("SELECT section_id FROM enrollments WHERE enrollment_id = %s", (enrollment_id,))
+        # Get student's section AND branch safely
+        cur.execute("SELECT section_id, branch_id FROM enrollments WHERE enrollment_id = %s", (enrollment_id,))
         enrollment = cur.fetchone()
         
         activities = []
         if enrollment and enrollment.get("section_id"):
             section_id = enrollment["section_id"]
+            branch_id  = enrollment["branch_id"]
             
-            # Fetch activities for the student's section
+            # Fetch all Published activities for the student's section (section-based, not student-based)
+            # This means even activities created before the student was assigned will appear
             cur.execute('''
                 SELECT DISTINCT ON (a.activity_id)
                        a.*, 
@@ -442,9 +468,9 @@ def activities():
                 LEFT JOIN users u ON a.teacher_id = u.user_id
                 LEFT JOIN activity_submissions subm ON subm.activity_id = a.activity_id AND subm.student_id = %s
                 LEFT JOIN activity_grades g ON g.submission_id = subm.submission_id
-                WHERE a.section_id = %s AND a.status = 'Published'
+                WHERE a.section_id = %s AND a.branch_id = %s AND a.status = 'Published'
                 ORDER BY a.activity_id, subm.submitted_at DESC
-            ''', (student_user_id, section_id))
+            ''', (student_user_id, section_id, branch_id))
             activities_raw = cur.fetchall()
             
             # Sort by ascending due date in python since we used distinct on activity_id
@@ -470,8 +496,8 @@ def activity_detail(activity_id):
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        # Get student section
-        cur.execute("SELECT section_id FROM enrollments WHERE enrollment_id = %s", (enrollment_id,))
+        # Get student section and branch
+        cur.execute("SELECT section_id, branch_id FROM enrollments WHERE enrollment_id = %s", (enrollment_id,))
         enrollment = cur.fetchone()
         
         if not enrollment or not enrollment.get("section_id"):
@@ -483,8 +509,8 @@ def activity_detail(activity_id):
             FROM activities a
             JOIN subjects sub ON a.subject_id = sub.subject_id
             LEFT JOIN users u ON a.teacher_id = u.user_id
-            WHERE a.activity_id = %s AND a.section_id = %s AND a.status = 'Published'
-        ''', (activity_id, enrollment['section_id']))
+            WHERE a.activity_id = %s AND a.section_id = %s AND a.branch_id = %s AND a.status = 'Published'
+        ''', (activity_id, enrollment['section_id'], enrollment['branch_id']))
         activity = cur.fetchone()
         
         if not activity:
@@ -594,8 +620,10 @@ def submit_activity(activity_id):
             ''', (activity_id, student_user_id, enrollment_id, file_path, file.filename, is_late))
             
         # Delete notification for this activity if it exists
+        # Mark activity notification as read when student submits
         cur.execute("""
-            DELETE FROM student_notifications 
+            UPDATE student_notifications 
+            SET is_read = TRUE
             WHERE student_id = %s 
               AND link LIKE %s
         """, (student_user_id, f"%/student/activities/{activity_id}%"))
@@ -608,6 +636,32 @@ def submit_activity(activity_id):
         db.close()
         
     return redirect(request.referrer)
+
+
+@student_portal_bp.route("/student/notifications/mark-read", methods=["POST"])
+def mark_notifications_read():
+    """Mark all unread notifications as read for this student (called when bell is opened)."""
+    if not _require_student():
+        return jsonify({"ok": False}), 403
+
+    user_id = session.get("user_id")
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            UPDATE student_notifications
+            SET is_read = TRUE
+            WHERE student_id = %s AND is_read = FALSE
+        """, (user_id,))
+        db.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
+    finally:
+        cur.close()
+        db.close()
+
 
 # ══════════════════════════════════════════
 # EXAM ROUTES — STUDENT PORTAL
@@ -648,6 +702,7 @@ def student_exams():
                 ON r.exam_id = e.exam_id AND r.enrollment_id = %s
             WHERE e.section_id = %s
               AND e.status IN ('published', 'closed')
+              AND e.exam_type != 'quiz'
             ORDER BY e.created_at DESC
         """, (enrollment_id, section_id))
         exams = cur.fetchall() or []
@@ -661,6 +716,56 @@ def student_exams():
             exams=exams,
             timedelta=timedelta,
             now_utc=now_naive )
+    finally:
+        cur.close()
+        db.close()
+
+
+@student_portal_bp.route("/student/quizzes")
+def student_quizzes():
+    if session.get("role") != "student":
+        return redirect("/")
+
+    enrollment_id = session.get("enrollment_id")
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("SELECT section_id FROM enrollments WHERE enrollment_id=%s", (enrollment_id,))
+        enr = cur.fetchone()
+        if not enr:
+            return redirect(url_for("student_portal.dashboard"))
+
+        section_id = enr["section_id"]
+
+        cur.execute("""
+            SELECT
+                e.exam_id, e.title, e.exam_type, e.duration_mins,
+                e.scheduled_start, e.status,
+                sub.name AS subject_name,
+                (SELECT COUNT(*) FROM exam_questions q WHERE q.exam_id = e.exam_id) AS question_count,
+                r.result_id, r.score, r.total_points, r.status AS result_status,
+                r.submitted_at
+            FROM exams e
+            JOIN subjects sub ON e.subject_id = sub.subject_id
+            LEFT JOIN exam_results r
+                ON r.exam_id = e.exam_id AND r.enrollment_id = %s
+            WHERE e.section_id = %s
+              AND e.status IN ('published', 'closed')
+              AND e.exam_type = 'quiz'
+            ORDER BY e.created_at DESC
+        """, (enrollment_id, section_id))
+        quizzes = cur.fetchall() or []
+
+        import pytz
+        ph_tz     = pytz.timezone("Asia/Manila")
+        now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+
+        return render_template(
+            "student_quizzes.html",
+            quizzes=quizzes,
+            timedelta=timedelta,
+            now_utc=now_naive)
     finally:
         cur.close()
         db.close()
@@ -809,9 +914,20 @@ def student_exam_take(exam_id):
             questions = list(questions)
             random.shuffle(questions)
 
+        # Shared shuffled options for all matching questions in this exam instance
+        shared_matching_opts = None
+        
         for q in questions:
             if q["choices"]:
                 q["choices"] = json.loads(q["choices"]) if isinstance(q["choices"], str) else q["choices"]
+            
+            # Use a consistent shuffled order for all matching dropdowns in this exam
+            if q.get("question_type") == "matching" and q.get("choices") and "options" in q["choices"]:
+                if shared_matching_opts is None:
+                    import random
+                    shared_matching_opts = list(q["choices"]["options"])
+                    random.shuffle(shared_matching_opts)
+                q["choices"]["options"] = shared_matching_opts
 
         cur.execute("SELECT tab_switches FROM exam_results WHERE result_id=%s", (result_id,))
         tab_row = cur.fetchone()
@@ -875,7 +991,7 @@ def student_exam_result(result_id):
     try:
         cur.execute("""
             SELECT r.*, e.title, e.exam_type, e.duration_mins,
-                   e.passing_score,
+                   e.passing_score, e.subject_id,
                    sub.name AS subject_name
             FROM exam_results r
             JOIN exams e      ON r.exam_id = e.exam_id

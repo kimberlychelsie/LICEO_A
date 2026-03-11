@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Exam Questions{% endblock %}
+{% block title %}{{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }} Questions{% endblock %}
 {% block content %}
 <style>
     .container { max-width:800px; margin:0 auto; padding:24px 20px; }
@@ -39,17 +39,17 @@
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
             {% if exam.status == 'draft' %}
             <form method="POST" action="{{ url_for('teacher.teacher_exam_publish', exam_id=exam.exam_id) }}"
-                  onsubmit="return confirm('Publish this exam? Students will be able to take it.');">
+                  onsubmit="return confirm('Publish this {{ 'quiz' if exam.exam_type == 'quiz' else 'exam' }}? Students will be able to take it.');">
                 <button type="submit" class="btn btn-success">🚀 Publish</button>
             </form>
             {% elif exam.status == 'published' %}
             <form method="POST" action="{{ url_for('teacher.teacher_exam_close', exam_id=exam.exam_id) }}"
-                  onsubmit="return confirm('Close this exam?');">
-                <button type="submit" class="btn btn-secondary">🔒 Close Exam</button>
+                  onsubmit="return confirm('Close this {{ 'quiz' if exam.exam_type == 'quiz' else 'exam' }}?');">
+                <button type="submit" class="btn btn-secondary">🔒 Close {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }}</button>
             </form>
             {% endif %}
             <a href="{{ url_for('teacher.teacher_exam_results', exam_id=exam.exam_id) }}" class="btn btn-warning">📊 Results</a>
-            <a href="{{ url_for('teacher.teacher_exams') }}" class="btn btn-secondary">← Back</a>
+            <a href="{{ url_for('teacher.teacher_quizzes') if exam.exam_type == 'quiz' else url_for('teacher.teacher_exams') }}" class="btn btn-secondary">← Back</a>
         </div>
     </div>
 
@@ -75,6 +75,11 @@
                     {{ key }}. {{ val }}{% if key == q.correct_answer %} ✓{% endif %}
                 </span>
                 {% endfor %}
+            </div>
+            {% elif q.question_type == 'matching' %}
+            <div class="q-choices" style="padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: #64748b; margin-right: 8px;">Correct Match:</span>
+                <span style="font-weight: 700; color: #16a34a;">{{ q.correct_answer }} ✓</span>
             </div>
             {% else %}
             <div class="q-choices">
@@ -108,12 +113,13 @@
             <div class="type-toggle">
                 <button type="button" class="type-btn active" id="btnMCQ" onclick="setType('mcq')">Multiple Choice</button>
                 <button type="button" class="type-btn" id="btnTF" onclick="setType('truefalse')">True / False</button>
+                <button type="button" class="type-btn" id="btnMatch" onclick="setType('matching')">Matching Type</button>
             </div>
             <input type="hidden" name="question_type" id="question_type" value="mcq" />
 
-            <div class="form-group">
+            <div class="form-group" id="questionTextGroup">
                 <label>Question Text</label>
-                <textarea name="question_text" rows="3" required placeholder="Enter your question here..."></textarea>
+                <textarea name="question_text" id="question_text_input" rows="3" required placeholder="Enter your question here..."></textarea>
             </div>
 
             <!-- MCQ choices -->
@@ -158,6 +164,32 @@
                 </div>
             </div>
 
+            <!-- Matching Type pairs -->
+            <div id="matchChoices" style="display:none;">
+                <p style="font-size:12px; color:#666; margin-bottom:10px;">Add matching pairs below. The student will see all these answers in a randomized dropdown for each question.</p>
+                <div id="matchPairsList">
+                    <div class="match-pair-row" style="display:flex; gap:10px; margin-bottom:10px;">
+                        <input type="text" name="match_prompt[]" placeholder="Prompt (e.g. Question 1)" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px;" />
+                        <input type="text" name="match_answer[]" placeholder="Correct Answer" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px;" />
+                        <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()" style="padding:4px 8px;">✕</button>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addMatchPair()" style="margin-bottom:15px; font-size:12px; padding:6px 10px;">➕ Add Another Pair</button>
+                <script>
+                    function addMatchPair() {
+                        const row = document.createElement('div');
+                        row.className = 'match-pair-row';
+                        row.style.cssText = 'display:flex; gap:10px; margin-bottom:10px;';
+                        row.innerHTML = `
+                            <input type="text" name="match_prompt[]" placeholder="Prompt" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px;" required/>
+                            <input type="text" name="match_answer[]" placeholder="Correct Answer" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px;" required/>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()" style="padding:4px 8px;">✕</button>
+                        `;
+                        document.getElementById('matchPairsList').appendChild(row);
+                    }
+                </script>
+            </div>
+
             <div class="form-group" style="max-width:120px;">
                 <label>Points</label>
                 <input type="number" name="points" value="1" min="1" max="10" />
@@ -190,16 +222,29 @@
 <script>
 function setType(type) {
     document.getElementById('question_type').value = type;
+    
+    // reset UI
+    document.getElementById('mcqChoices').style.display = 'none';
+    document.getElementById('tfChoices').style.display = 'none';
+    document.getElementById('matchChoices').style.display = 'none';
+    document.getElementById('questionTextGroup').style.display = 'block';
+    document.getElementById('question_text_input').required = true;
+    
+    document.getElementById('btnMCQ').classList.remove('active');
+    document.getElementById('btnTF').classList.remove('active');
+    document.getElementById('btnMatch').classList.remove('active');
+
     if (type === 'mcq') {
         document.getElementById('mcqChoices').style.display = 'block';
-        document.getElementById('tfChoices').style.display  = 'none';
         document.getElementById('btnMCQ').classList.add('active');
-        document.getElementById('btnTF').classList.remove('active');
-    } else {
-        document.getElementById('mcqChoices').style.display = 'none';
+    } else if (type === 'truefalse') {
         document.getElementById('tfChoices').style.display  = 'block';
         document.getElementById('btnTF').classList.add('active');
-        document.getElementById('btnMCQ').classList.remove('active');
+    } else if (type === 'matching') {
+        document.getElementById('matchChoices').style.display = 'block';
+        document.getElementById('btnMatch').classList.add('active');
+        document.getElementById('questionTextGroup').style.display = 'none';
+        document.getElementById('question_text_input').required = false;
     }
 }
 

@@ -909,6 +909,15 @@
       border-bottom: none;
     }
 
+    .notif-unread {
+      background: #f0f7ff;
+      border-left: 3px solid #2563eb;
+    }
+
+    .notif-unread .notif-item-title {
+      color: #1e3a8a;
+    }
+
     .notif-item-title {
       font-weight: 700;
       font-size: 0.88rem;
@@ -1055,7 +1064,7 @@
         <span class="sb-icon">🏠</span> Dashboard
       </a>
       <a class="sb-link {% if request.path.startswith('/student/exams') %}active{% endif %}" href="/student/exams">
-        <span class="sb-icon">📝</span> My Exams
+        <span class="sb-icon">📄</span> My Exams
       </a>
 
       <button class="sb-dropdown-btn {% if '/student/subject/' in request.path %}open{% endif %}"
@@ -1119,12 +1128,25 @@
       <a class="sb-link {% if request.path == '/teacher' %}active{% endif %}" href="/teacher">
         <span class="sb-icon">👩‍🏫</span> My Class
       </a>
-      <a class="sb-link {% if '/teacher/activities' in request.path %}active{% endif %}" href="/teacher/activities">
-        <span class="sb-icon">📝</span> Activities
-      </a>
-      <a class="sb-link {% if request.path.startswith('/teacher/exams') %}active{% endif %}" href="/teacher/exams">
-        <span class="sb-icon">📝</span> Exams
-      </a>
+      {% set manage_active = '/teacher/activities' in request.path or request.path.startswith('/teacher/exams') or request.path.startswith('/teacher/quizzes') %}
+      <button class="sb-dropdown-btn {% if manage_active %}open{% endif %}"
+        onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
+        <div class="sb-left">
+          <span class="sb-icon">📋</span> Manage Task
+        </div>
+        <span class="sb-dropdown-arrow">▼</span>
+      </button>
+      <div class="sb-dropdown-content {% if manage_active %}show{% endif %}">
+        <a class="sb-link {% if '/teacher/activities' in request.path %}active{% endif %}" href="/teacher/activities">
+          📝 Activities
+        </a>
+        <a class="sb-link {% if request.path.startswith('/teacher/exams') %}active{% endif %}" href="/teacher/exams">
+          📄 Exams
+        </a>
+        <a class="sb-link {% if request.path.startswith('/teacher/quizzes') %}active{% endif %}" href="/teacher/quizzes">
+          ✏️ Quizzes
+        </a>
+      </div>
 
       {% elif session.get('role') == 'registrar' %}
       <div class="sb-section-label">Registrar</div>
@@ -1280,20 +1302,20 @@
       <div class="notif-wrapper" style="margin-right: 8px;">
         <button class="notif-btn" id="notifBtn" onclick="toggleNotifs()">
           🔔
-          {% if student_global_notifs and student_global_notifs | length > 0 %}
-          <span class="notif-badge">{{ student_global_notifs | length }}</span>
+          {% if student_unread_count and student_unread_count > 0 %}
+          <span class="notif-badge" id="notifBadge">{{ student_unread_count }}</span>
           {% endif %}
         </button>
         <div class="notif-dropdown" id="notifDropdown">
           <div class="notif-header">
             <span>Notifications</span>
-            {% if student_global_notifs and student_global_notifs | length > 0 %}
-            <span class="badge badge-red" style="font-size: 0.7rem;">{{ student_global_notifs | length }} New</span>
+            {% if student_unread_count and student_unread_count > 0 %}
+            <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ student_unread_count }} New</span>
             {% endif %}
           </div>
           <div class="notif-list">
             {% for n in student_global_notifs %}
-            <a href="{{ n.link or '#' }}" class="notif-item">
+            <a href="{{ n.link or '#' }}" class="notif-item {% if not n.is_read %}notif-unread{% endif %}">
               <div class="notif-item-title">{{ n.title }}</div>
               <div class="notif-item-msg">{{ n.message }}</div>
               <div class="notif-item-time">
@@ -1418,7 +1440,21 @@
       const profDropdown = document.getElementById('profileDropdown');
       if (profDropdown) profDropdown.classList.remove('show');
 
+      const wasHidden = !dropdown.classList.contains('show');
       dropdown.classList.toggle('show');
+
+      // When opening — mark all as read and clear badge
+      if (wasHidden && dropdown.classList.contains('show')) {
+        fetch('/student/notifications/mark-read', { method: 'POST' })
+          .then(() => {
+            // Remove the red badge counter immediately
+            const badge = document.querySelector('.notif-badge');
+            if (badge) badge.remove();
+            const newLabel = document.querySelector('.notif-header .badge-red');
+            if (newLabel) newLabel.remove();
+          })
+          .catch(() => {}); // silent fail
+      }
 
       // Close when clicking outside
       const closeHandler = function (e) {

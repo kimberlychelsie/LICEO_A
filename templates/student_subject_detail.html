@@ -253,84 +253,177 @@
         </div>
     </div>
 
+    <!-- ── Activities ── -->
+    <style>
+      .task-card {
+        background: #fff;
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        border-left: 4px solid #1d4ed8;
+        padding: 18px 20px;
+        margin-bottom: 14px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.05);
+        transition: transform .15s, box-shadow .15s;
+      }
+      .task-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.08); }
+      .task-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+      .task-cat-badge { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; padding: 3px 10px; border-radius: 6px; display: inline-block; margin-bottom: 8px; }
+      .cat-act  { background: #dbeafe; color: #1d4ed8; }
+      .cat-quiz { background: #ede9fe; color: #5b21b6; }
+      .task-title { font-size: 1.1rem; font-weight: 700; color: #1e293b; margin: 0 0 6px; }
+      .task-info-row { font-size: 0.82rem; color: #64748b; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+      .status-badge { font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
+      .st-available { background: #dcfce7; color: #15803d; }
+      .st-done      { background: #e0f2fe; color: #0369a1; }
+      .st-submitted { background: #d1fae5; color: #065f46; }
+      .st-pending   { background: #fef9c3; color: #854d0e; }
+      .st-closed    { background: #fee2e2; color: #991b1b; }
+      .st-notyet    { background: #fef9c3; color: #854d0e; }
+      .st-expired   { background: #fde8d8; color: #9a3412; }
+      .st-graded    { background: #e0f2fe; color: #0369a1; }
+      .task-card-bottom { margin-top: 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+      .btn-task-primary { background: #1d4ed8; color: #fff; padding: 9px 20px; border-radius: 9px; font-size: 0.85rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; border: none; transition: all .2s; cursor: pointer; }
+      .btn-task-primary:hover { background: #1e40af; transform: translateY(-1px); }
+      .btn-task-quiz { background: #7c3aed; color: #fff; }
+      .btn-task-quiz:hover { background: #6d28d9; }
+      .btn-task-secondary { background: #f1f5f9; color: #475569; padding: 8px 18px; border-radius: 9px; font-size: 0.85rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #e2e8f0; transition: all .2s; }
+      .btn-task-secondary:hover { background: #e2e8f0; }
+      .score-tag { font-size: 0.82rem; color: #0369a1; font-weight: 600; margin-top: 5px; }
+    </style>
+
     <div class="act-list">
-        {% for act in activities %}
-        {% set is_submitted = act.submission_status is not none %}
-        <div class="act-card">
-            <div class="act-header-row">
-                <div>
-                    <div class="act-type type-assignment">{{ act.category or 'Activity' }}</div>
-                    <h3 class="act-name">{{ act.title }}</h3>
-                    <div class="act-due">
-                        {% if act.due_date %}
-                        📅 Due: {{ act.due_date.strftime('%b %d, %Y %I:%M %p') }}
-                        {% if act.due_date < now %}<span style="color:#ef4444; margin-left:8px;">(Past Due)</span>{%
-                            endif %}
-                            {% else %}
-                            📅 No due date
-                            {% endif %}
-                    </div>
-                </div>
-                <div>
-                    {% if act.submission_status == 'Graded' %}
-                    <span class="act-badge badge-graded">✅ Graded</span>
-                    {% elif is_submitted %}
-                    <span class="act-badge badge-submitted">✔ Submitted</span>
-                    {% else %}
-                    <span class="act-badge badge-pending">⏳ Pending</span>
-                    {% endif %}
-                </div>
+      {% for act in activities %}
+      {% set is_submitted = act.submission_status is not none %}
+      {% set is_graded    = act.submission_status == 'Graded' %}
+      <div class="task-card">
+        <div class="task-card-top">
+          <div>
+            <div class="task-cat-badge cat-act">{{ act.category or 'Activity' }}</div>
+            <h3 class="task-title">{{ act.title }}</h3>
+            <div class="task-info-row">
+              {% if act.due_date %}
+              <span>📅 Due: {{ act.due_date.strftime('%b %d, %Y %I:%M %p') }}</span>
+              {% if act.due_date < now %}<span style="color:#ef4444; font-weight:700;">⚠️ Past Due</span>{% endif %}
+              {% else %}
+              <span>📅 No due date</span>
+              {% endif %}
+              <span>🏆 Max Score: {{ act.max_score }}</span>
             </div>
-
             {% if act.instructions %}
-            <div style="font-size: 0.9rem; color: #475569; margin: 12px 0; line-height: 1.5;">
-                {{ act.instructions }}
-            </div>
+            <div style="font-size:0.85rem; color:#475569; margin-top:8px; line-height:1.5;">{{ act.instructions }}</div>
             {% endif %}
-
-            {% if act.attachment_path %}
-            <div class="materials-grid">
-                {% set ext = act.attachment_path.split('.')[-1].lower() %}
-                {% if ext in ['jpg', 'jpeg', 'png', 'gif'] %}
-                <div class="material-item" onclick="viewMedia('image', '{{ act.attachment_path }}')">
-                    <span class="mat-icon">🖼️</span>
-                    <span>View Image</span>
-                </div>
-                {% elif ext in ['mp4', 'webm', 'ogg'] %}
-                <div class="material-item" onclick="viewMedia('video', '{{ act.attachment_path }}')">
-                    <span class="mat-icon">🎥</span>
-                    <span>Play Video</span>
-                </div>
-                {% elif ext == 'pdf' %}
-                <div class="material-item" onclick="viewMedia('pdf', '{{ act.attachment_path }}')">
-                    <span class="mat-icon">📕</span>
-                    <span>View PDF</span>
-                </div>
-                {% else %}
-                <a href="{{ act.attachment_path }}" target="_blank" class="material-item">
-                    <span class="mat-icon">📄</span>
-                    <span>Download Document</span>
-                </a>
-                {% endif %}
-            </div>
+          </div>
+          <div>
+            {% if is_graded %}
+              <span class="status-badge st-graded">✅ Graded</span>
+            {% elif is_submitted %}
+              <span class="status-badge st-submitted">✔ Submitted</span>
+            {% else %}
+              <span class="status-badge st-pending">⏳ Pending</span>
             {% endif %}
-
-            <div style="margin-top: 20px; display: flex; gap: 10px;">
-                <a href="{{ url_for('student_portal.activity_detail', activity_id=act.activity_id) }}"
-                    class="btn btn-primary btn-sm">
-                    {{ 'View My Submission' if is_submitted else 'Open Activity' }}
-                </a>
-            </div>
+          </div>
         </div>
-        {% else %}
-        <div
-            style="text-align: center; padding: 60px 20px; color: var(--muted); background: #fff; border: 1px solid var(--border); border-radius: 16px;">
-            <div style="font-size: 3rem; margin-bottom: 12px;">✨</div>
-            <h3>No activities yet</h3>
-            <p>Relax! No activities have been posted for this subject yet.</p>
+
+        {% if act.attachment_path %}
+        <div class="materials-grid">
+          {% set ext = act.attachment_path.split('.')[-1].lower() %}
+          {% if ext in ['jpg', 'jpeg', 'png', 'gif'] %}
+          <div class="material-item" onclick="viewMedia('image', '{{ act.attachment_path }}')">
+            <span class="mat-icon">🖼️</span><span>View Image</span>
+          </div>
+          {% elif ext in ['mp4', 'webm', 'ogg'] %}
+          <div class="material-item" onclick="viewMedia('video', '{{ act.attachment_path }}')">
+            <span class="mat-icon">🎥</span><span>Play Video</span>
+          </div>
+          {% elif ext == 'pdf' %}
+          <div class="material-item" onclick="viewMedia('pdf', '{{ act.attachment_path }}')">
+            <span class="mat-icon">📕</span><span>View PDF</span>
+          </div>
+          {% else %}
+          <a href="{{ act.attachment_path }}" target="_blank" class="material-item">
+            <span class="mat-icon">📄</span><span>Download Document</span>
+          </a>
+          {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="task-card-bottom">
+          <a href="{{ url_for('student_portal.activity_detail', activity_id=act.activity_id) }}"
+             class="btn-task-primary">
+            {{ '📂 View My Submission' if is_submitted else '📋 Open Activity' }}
+          </a>
+        </div>
+      </div>
+      {% else %}
+      <div style="text-align:center; padding:60px 20px; color:#94a3b8; background:#fff; border:1px solid #e2e8f0; border-radius:14px;">
+        <div style="font-size:3rem; margin-bottom:12px;">✨</div>
+        <h3 style="color:#475569;">No activities yet</h3>
+        <p>No activities have been posted for this subject yet.</p>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- ── Quizzes ── -->
+    {% if quizzes %}
+    <div style="margin-top: 32px;">
+      <h2 style="font-size: 1.05rem; font-weight: 800; color: #5b21b6; margin-bottom: 16px; display:flex; align-items:center; gap:8px;">
+        ✏️ Quizzes
+      </h2>
+      <div class="act-list">
+        {% for q in quizzes %}
+        {% set q_done    = q.result_status in ('submitted', 'auto_submitted') %}
+        {% set q_closed  = q.status == 'closed' %}
+        {% set q_notyet  = q.scheduled_start and now < q.scheduled_start %}
+        {% set q_expired = q.scheduled_start and now > (q.scheduled_start + timedelta(minutes=q.duration_mins)) %}
+        <div class="task-card" style="border-left-color: #7c3aed;">
+          <div class="task-card-top">
+            <div>
+              <div class="task-cat-badge cat-quiz">Quiz</div>
+              <h3 class="task-title">{{ q.title }}</h3>
+              <div class="task-info-row">
+                <span>⏱ {{ q.duration_mins }} min</span>
+                <span>❓ {{ q.question_count }} question(s)</span>
+                {% if q.scheduled_start %}
+                <span>📅 Opens {{ q.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}</span>
+                {% endif %}
+              </div>
+              {% if q_done %}
+              <div class="score-info">
+              Score: <strong>{{ q.score|round|int }} / {{ q.total_points|round|int }}</strong>
+              {% if q.result_status == 'auto_submitted' %}<span style="color:#856404; font-size:11px;"> ⚠️ auto-submitted</span>{% endif %}
+            </div>
+              {% endif %}
+              {% if q.instructions %}
+              <div style="font-size:0.85rem; color:#475569; margin-top:8px; line-height:1.5;">{{ q.instructions }}</div>
+              {% endif %}
+            </div>
+            <div>
+              {% if q_done %}
+                <span class="status-badge st-done">✅ Done</span>
+              {% elif q_closed %}
+                <span class="status-badge st-closed">Closed</span>
+              {% elif q_notyet %}
+                <span class="status-badge st-notyet">⏳ Not Yet Open</span>
+              {% elif q_expired %}
+                <span class="status-badge st-expired">⌛ Expired</span>
+              {% else %}
+                <span class="status-badge st-available">Available</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="task-card-bottom">
+            {% if q_done %}
+              <a href="{{ url_for('student_portal.student_exam_result', result_id=q.result_id) }}" class="btn-task-secondary">📊 View Result</a>
+            {% elif not q_closed and not q_notyet and not q_expired %}
+              <a href="{{ url_for('student_portal.student_exam_take', exam_id=q.exam_id) }}" class="btn-task-primary btn-task-quiz">✏️ Take Quiz</a>
+            {% endif %}
+          </div>
         </div>
         {% endfor %}
+      </div>
     </div>
+    {% endif %}
+
 </div>
 
 <!-- Media Viewer -->

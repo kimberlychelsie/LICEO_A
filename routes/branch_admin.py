@@ -1625,6 +1625,53 @@ def branch_admin_assign_students():
 
             cursor.execute("UPDATE enrollments SET section_id=%s WHERE enrollment_id=%s", (section_id, enrollment_id))
             db.commit()
+
+            # ── Auto-notify student about all existing Published activities in this section ──
+            if section_id:
+                try:
+                    # Get the student's user_id via users.enrollment_id
+                    cursor.execute("""
+                        SELECT u.user_id
+                        FROM users u
+                        WHERE u.enrollment_id = %s
+                        LIMIT 1
+                    """, (enrollment_id,))
+                    student_user_row = cursor.fetchone()
+
+                    if student_user_row:
+                        student_user_id = student_user_row['user_id']
+
+                        # Fetch all Published activities for this section that the student hasn't been notified about
+                        cursor.execute("""
+                            SELECT a.activity_id, a.title
+                            FROM activities a
+                            WHERE a.section_id = %s
+                              AND a.branch_id  = %s
+                              AND a.status     = 'Published'
+                              AND NOT EXISTS (
+                                  SELECT 1 FROM student_notifications sn
+                                  WHERE sn.student_id = %s
+                                    AND sn.link = CONCAT('/student/activities/', a.activity_id::text)
+                              )
+                        """, (section_id, branch_id, student_user_id))
+                        pending_activities = cursor.fetchall() or []
+
+                        for act in pending_activities:
+                            cursor.execute("""
+                                INSERT INTO student_notifications (student_id, title, message, link)
+                                VALUES (%s, %s, %s, %s)
+                            """, (
+                                student_user_id,
+                                f"Activity Available: {act['title']}",
+                                f"You have been added to a section with an existing activity: {act['title']}.",
+                                f"/student/activities/{act['activity_id']}"
+                            ))
+                        db.commit()
+                except Exception as notif_err:
+                    # Non-critical: don't rollback the section assignment for a notification failure
+                    db.rollback()
+                    print(f"[WARN] Could not send activity notifications for enrollment {enrollment_id}: {notif_err}")
+
             flash("Student section updated successfully!", "success")
             return redirect(url_for("branch_admin.branch_admin_assign_students", grade=grade_filter))
 

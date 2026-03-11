@@ -1,0 +1,101 @@
+{% extends "base.html" %}
+{% block title %}Edit Question{% endblock %}
+{% block content %}
+<style>
+    .card { background: #fff; padding: 24px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); max-width: 800px; margin: 0 auto; }
+    .header-info { margin-bottom: 24px; border-bottom: 1px solid #eee; padding-bottom: 12px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 6px; color: #444; }
+    .form-group input[type="text"], .form-group textarea, .form-group select {
+        width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px;
+    }
+    .choices-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 12px; }
+    .btn { padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-secondary { background: #e2e8f0; color: #475569; }
+</style>
+
+<div class="card">
+    <div class="header-info">
+        <h2>✏️ Edit Question</h2>
+        <p style="color:#666; font-size:14px; margin:0;">{{ exam.title }} · {{ exam.subject_name }}</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div style="padding:12px; border-radius:6px; margin-bottom:16px; background:{{ '#d1e7dd' if cat=='success' else '#f8d7da' }}; color:{{ '#0f5132' if cat=='success' else '#842029' }};">{{ msg }}</div>
+    {% endfor %}{% endif %}{% endwith %}
+
+    <form method="POST">
+        <div class="form-group" style="display:flex; gap:16px;">
+            <div style="flex:1;">
+                <label>Question Type</label>
+                <input type="text" value="{{ question.question_type|upper }}" disabled style="background:#f8fafc; font-weight:bold; color:#64748b;" />
+                <input type="hidden" name="question_type" value="{{ question.question_type }}" />
+            </div>
+            <div style="flex:1;">
+                <label>Points</label>
+                <input type="number" name="points" value="{{ question.points }}" min="1" max="100" required />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>Prompt / Question text</label>
+            <textarea name="question_text" rows="4" required>{{ question.question_text }}</textarea>
+        </div>
+
+        {% if question.question_type == 'mcq' %}
+        <div class="choices-grid">
+            <div class="form-group">
+                <label>Choice A</label>
+                <input type="text" name="choice_a" value="{{ question.choices.A if question.choices else '' }}" required />
+            </div>
+            <div class="form-group">
+                <label>Choice B</label>
+                <input type="text" name="choice_b" value="{{ question.choices.B if question.choices else '' }}" required />
+            </div>
+            <div class="form-group">
+                <label>Choice C</label>
+                <input type="text" name="choice_c" value="{{ question.choices.C if question.choices else '' }}" required />
+            </div>
+            <div class="form-group">
+                <label>Choice D</label>
+                <input type="text" name="choice_d" value="{{ question.choices.D if question.choices else '' }}" required />
+            </div>
+        </div>
+        <div class="form-group">
+            <label>Correct Answer (A, B, C, or D)</label>
+            <select name="correct_answer" required>
+                <option value="A" {% if question.correct_answer == 'A' %}selected{% endif %}>A</option>
+                <option value="B" {% if question.correct_answer == 'B' %}selected{% endif %}>B</option>
+                <option value="C" {% if question.correct_answer == 'C' %}selected{% endif %}>C</option>
+                <option value="D" {% if question.correct_answer == 'D' %}selected{% endif %}>D</option>
+            </select>
+        </div>
+
+        {% elif question.question_type == 'matching' %}
+        <div class="form-group">
+            <label>Matched Answer (Must exactly match one option from the set or you can edit it directly here)</label>
+            <input type="text" name="correct_answer" value="{{ question.correct_answer }}" required />
+        </div>
+        <div class="form-group" style="background:#fffbeb; padding:12px; border-radius:8px; border:1px solid #fef08a;">
+            <p style="margin:0; font-size:13px; color:#b45309;">⚠️ Note: Updating the matching pair answer here only updates this specific prompt's answer. If you are changing the actual choice name, you should ideally delete the pair and re-add it from the exam builder to ensure shared choices update correctly across all matching dropdowns.</p>
+        </div>
+
+        {% else %}
+        <div class="form-group">
+            <label>Correct Answer (True or False)</label>
+            <select name="correct_answer" required>
+                <option value="True" {% if question.correct_answer == 'True' %}selected{% endif %}>True</option>
+                <option value="False" {% if question.correct_answer == 'False' %}selected{% endif %}>False</option>
+            </select>
+        </div>
+        {% endif %}
+
+        <div style="margin-top:24px; display:flex; gap:12px; justify-content:flex-end;">
+            <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=exam.exam_id) }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary">💾 Save Changes</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
