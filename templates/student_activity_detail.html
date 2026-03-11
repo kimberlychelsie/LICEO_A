@@ -186,9 +186,12 @@
                             {% elif ext == 'pdf' %}
                             <button onclick="viewMedia('pdf', '{{ activity.attachment_path }}')"
                                 class="btn btn-secondary btn-sm">📕 View PDF</button>
+                            {% elif ext in ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'] %}
+                            <button onclick="viewMedia('office', '{{ activity.attachment_path }}')"
+                                class="btn btn-secondary btn-sm">📄 Preview Document</button>
                             {% else %}
                             <a href="{{ activity.attachment_path }}" target="_blank" class="btn btn-secondary btn-sm">📎
-                                View Document</a>
+                                Download File</a>
                             {% endif %}
                         </div>
                         {% else %}
@@ -213,7 +216,7 @@
         <button onclick="closeViewer()"
             style="position:absolute; top:20px; right:20px; background:#fff; color:#000; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem; font-weight:700; cursor:pointer; z-index:10; border:none;">×</button>
         <div id="viewerContent"
-            style="max-width:1000px; width:100%; height:100%; background:#000; border-radius:12px; overflow:hidden; position:relative;">
+            style="max-width:1000px; width:100%; height:100%; background:#fff; border-radius:12px; overflow:hidden; position:relative;">
         </div>
     </div>
 
@@ -224,15 +227,19 @@
             content.innerHTML = '';
 
             if (type === 'image') {
-                content.innerHTML = `<img src="${path}" style="width:100%; height:100%; object-fit:contain;">`;
+                content.innerHTML = `<img src="${path}" style="width:100%; height:100%; object-fit:contain; background:#000;">`;
             } else if (type === 'video') {
                 content.innerHTML = `
-                    <video controls controlsList="nodownload" oncontextmenu="return false;" style="width:100%; height:100%;">
+                    <video controls controlsList="nodownload" oncontextmenu="return false;" style="width:100%; height:100%; background:#000;">
                         <source src="${path}">
                         Your browser does not support the video tag.
                     </video>`;
             } else if (type === 'pdf') {
                 content.innerHTML = `<iframe src="${path}" style="width:100%; height:100%; border:none;"></iframe>`;
+            } else if (type === 'office') {
+                // Use Google Docs Viewer for Office files
+                const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(path)}&embedded=true`;
+                content.innerHTML = `<iframe src="${googleViewerUrl}" style="width:100%; height:100%; border:none;"></iframe>`;
             }
 
             viewer.style.display = 'flex';

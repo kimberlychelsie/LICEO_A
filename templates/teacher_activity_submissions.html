@@ -166,8 +166,24 @@
                     </td>
                     <td>
                         {% if sub.file_path %}
-                        <a href="{{ sub.file_path }}" target="_blank" class="btn btn-secondary btn-sm"
-                            title="{{ sub.original_filename }}">View File</a>
+                        {% set ext = sub.file_path.split('.')[-1].lower() %}
+                        <div style="display:flex; flex-direction:column; gap:4px;">
+                            <a href="{{ sub.file_path }}" target="_blank" class="btn btn-secondary btn-sm"
+                                title="{{ sub.original_filename }}">Download</a>
+
+                            {% if ext in ['jpg', 'jpeg', 'png', 'gif'] %}
+                            <button onclick="viewMedia('image', '{{ sub.file_path }}')"
+                                class="btn btn-secondary btn-sm" style="background:#f0f9ff; color:#0369a1;">🖼️
+                                Preview</button>
+                            {% elif ext == 'pdf' %}
+                            <button onclick="viewMedia('pdf', '{{ sub.file_path }}')" class="btn btn-secondary btn-sm"
+                                style="background:#f0fdf4; color:#166534;">📕 Preview</button>
+                            {% elif ext in ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'] %}
+                            <button onclick="viewMedia('office', '{{ sub.file_path }}')"
+                                class="btn btn-secondary btn-sm" style="background:#fff7ed; color:#9a3412;">📄
+                                Preview</button>
+                            {% endif %}
+                        </div>
                         {% else %}
                         —
                         {% endif %}
@@ -209,6 +225,52 @@
         </table>
     </div>
 </div>
+
+<!-- Media Viewer Modal -->
+<div id="mediaViewer"
+    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; padding:40px;">
+    <button onclick="closeViewer()"
+        style="position:absolute; top:20px; right:20px; background:#fff; color:#000; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem; font-weight:700; cursor:pointer; z-index:10; border:none;">×</button>
+    <div id="viewerContent"
+        style="max-width:1000px; width:100%; height:100%; background:#fff; border-radius:12px; overflow:hidden; position:relative;">
+    </div>
+</div>
+
+<script>
+    function viewMedia(type, path) {
+        const viewer = document.getElementById('mediaViewer');
+        const content = document.getElementById('viewerContent');
+        content.innerHTML = '';
+
+        if (type === 'image') {
+            content.innerHTML = `<img src="${path}" style="width:100%; height:100%; object-fit:contain; background:#000;">`;
+        } else if (type === 'video') {
+            content.innerHTML = `
+                    <video controls controlsList="nodownload" oncontextmenu="return false;" style="width:100%; height:100%; background:#000;">
+                        <source src="${path}">
+                        Your browser does not support the video tag.
+                    </video>`;
+        } else if (type === 'pdf') {
+            content.innerHTML = `<iframe src="${path}" style="width:100%; height:100%; border:none;"></iframe>`;
+        } else if (type === 'office') {
+            // Use Google Docs Viewer for Office files
+            const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(path)}&embedded=true`;
+            content.innerHTML = `<iframe src="${googleViewerUrl}" style="width:100%; height:100%; border:none;"></iframe>`;
+        }
+
+        viewer.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeViewer() {
+        const viewer = document.getElementById('mediaViewer');
+        const content = document.getElementById('viewerContent');
+        content.innerHTML = '';
+        viewer.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeViewer(); });
+</script>
 
 <!-- Grading Modal -->
 <div id="gradeModal" class="modal">
