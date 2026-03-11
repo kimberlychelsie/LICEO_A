@@ -62,8 +62,18 @@
         <div class="form-group">
             <label class="form-label">Reference Attachment</label>
             {% if activity.attachment_path %}
+            {% set ext = activity.attachment_path.split('.')[-1].lower() %}
             <div style="margin-bottom:8px; font-size:0.9rem;">
-                Current: <a href="{{ activity.attachment_path }}" target="_blank">View File</a>
+                Current:
+                <a href="{{ activity.attachment_path }}" target="_blank" rel="noopener noreferrer">
+                    {% if ext == 'pdf' %}📕 View PDF
+                    {% elif ext in ['jpg', 'jpeg', 'png', 'gif'] %}🖼️ View Image
+                    {% elif ext in ['doc', 'docx'] %}📄 View Document
+                    {% elif ext in ['xls', 'xlsx'] %}📊 View Spreadsheet
+                    {% elif ext in ['ppt', 'pptx'] %}📊 View Presentation
+                    {% else %}📎 View File
+                    {% endif %}
+                </a>
             </div>
             {% endif %}
             <input type="file" name="attachment" class="form-input">

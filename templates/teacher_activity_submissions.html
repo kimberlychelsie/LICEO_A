@@ -168,20 +168,24 @@
                         {% if sub.file_path %}
                         {% set ext = sub.file_path.split('.')[-1].lower() %}
                         <div style="display:flex; flex-direction:column; gap:4px;">
-                            <a href="{{ sub.file_path }}" target="_blank" class="btn btn-secondary btn-sm"
-                                title="{{ sub.original_filename }}">Download</a>
-
+                            <!-- ✅ Opens directly in new tab — works on Railway -->
+                            <a href="{{ sub.file_path }}" target="_blank" rel="noopener noreferrer"
+                                class="btn btn-secondary btn-sm" title="{{ sub.original_filename }}">
+                                {% if ext == 'pdf' %}📕 Open PDF
+                                {% elif ext in ['jpg', 'jpeg', 'png', 'gif'] %}🖼️ Open Image
+                                {% elif ext in ['doc', 'docx'] %}📄 Open Doc
+                                {% elif ext in ['xls', 'xlsx'] %}📊 Open Sheet
+                                {% elif ext in ['ppt', 'pptx'] %}📊 Open Slides
+                                {% else %}📎 Open File
+                                {% endif %}
+                            </a>
+                    
+                            <!-- ✅ Preview button only for images (works natively) -->
                             {% if ext in ['jpg', 'jpeg', 'png', 'gif'] %}
                             <button onclick="viewMedia('image', '{{ sub.file_path }}')"
-                                class="btn btn-secondary btn-sm" style="background:#f0f9ff; color:#0369a1;">🖼️
-                                Preview</button>
-                            {% elif ext == 'pdf' %}
-                            <button onclick="viewMedia('pdf', '{{ sub.file_path }}')" class="btn btn-secondary btn-sm"
-                                style="background:#f0fdf4; color:#166534;">📕 Preview</button>
-                            {% elif ext in ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'] %}
-                            <button onclick="viewMedia('office', '{{ sub.file_path }}')"
-                                class="btn btn-secondary btn-sm" style="background:#fff7ed; color:#9a3412;">📄
-                                Preview</button>
+                                class="btn btn-secondary btn-sm" style="background:#f0f9ff; color:#0369a1;">
+                                🖼️ Preview
+                            </button>
                             {% endif %}
                         </div>
                         {% else %}
@@ -238,29 +242,36 @@
 
 <script>
     function viewMedia(type, path) {
-        const viewer = document.getElementById('mediaViewer');
-        const content = document.getElementById('viewerContent');
-        content.innerHTML = '';
+    const viewer = document.getElementById('mediaViewer');
+    const content = document.getElementById('viewerContent');
+    content.innerHTML = '';
 
-        if (type === 'image') {
-            content.innerHTML = `<img src="${path}" style="width:100%; height:100%; object-fit:contain; background:#000;">`;
-        } else if (type === 'video') {
-            content.innerHTML = `
-                    <video controls controlsList="nodownload" oncontextmenu="return false;" style="width:100%; height:100%; background:#000;">
-                        <source src="${path}">
-                        Your browser does not support the video tag.
-                    </video>`;
-        } else if (type === 'pdf') {
-            content.innerHTML = `<iframe src="${path}" style="width:100%; height:100%; border:none;"></iframe>`;
-        } else if (type === 'office') {
-            // Use Google Docs Viewer for Office files
-            const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(path)}&embedded=true`;
-            content.innerHTML = `<iframe src="${googleViewerUrl}" style="width:100%; height:100%; border:none;"></iframe>`;
-        }
+    if (type === 'image') {
+        content.innerHTML = `<img src="${path}" style="width:100%; height:100%; object-fit:contain; background:#000;">`;
 
-        viewer.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
+    } else if (type === 'pdf') {
+        // ✅ Use Google Docs Viewer — works for Cloudinary PDFs
+        const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(path)}&embedded=true`;
+        content.innerHTML = `
+            <div style="width:100%; height:100%; display:flex; flex-direction:column;">
+                <iframe src="${googleViewerUrl}" 
+                    style="width:100%; height:100%; border:none;"
+                    onload="this.style.opacity='1'"
+                    style="opacity:0; transition: opacity 0.3s;">
+                </iframe>
+                <div style="padding:8px; text-align:center; background:#f8f9fa; font-size:12px; color:#666;">
+                    Can't view? <a href="${path}" target="_blank" style="color:#0369a1;">Download PDF</a>
+                </div>
+            </div>`;
+
+    } else if (type === 'office') {
+        const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(path)}&embedded=true`;
+        content.innerHTML = `<iframe src="${googleViewerUrl}" style="width:100%; height:100%; border:none;"></iframe>`;
     }
+
+    viewer.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
 
     function closeViewer() {
         const viewer = document.getElementById('mediaViewer');
