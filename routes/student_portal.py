@@ -713,7 +713,17 @@ def student_exams():
               AND e.exam_type != 'quiz'
             ORDER BY e.created_at DESC
         """, (enrollment_id, section_id))
-        exams = cur.fetchall() or []
+        exams_raw = cur.fetchall() or []
+
+        # Normalize scheduled_start to PH naive time for correct comparison in Jinja
+        exams = []
+        for e in exams_raw:
+            e = dict(e)
+            if e.get("scheduled_start"):
+                ss = e["scheduled_start"]
+                if hasattr(ss, "tzinfo") and ss.tzinfo is not None:
+                    e["scheduled_start"] = ss.astimezone(ph_tz).replace(tzinfo=None)
+            exams.append(e)
 
         return render_template(
             "student_exams.html",
@@ -731,6 +741,10 @@ def student_quizzes():
         return redirect("/")
 
     enrollment_id = session.get("enrollment_id")
+
+    import pytz
+    ph_tz     = pytz.timezone("Asia/Manila")
+    now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
 
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -763,11 +777,18 @@ def student_quizzes():
               AND e.exam_type = 'quiz'
             ORDER BY e.created_at DESC
         """, (enrollment_id, section_id))
-        quizzes = cur.fetchall() or []
+        quizzes_raw = cur.fetchall() or []
 
-        import pytz
-        ph_tz     = pytz.timezone("Asia/Manila")
-        now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+        # Normalize scheduled_start to PH naive time for correct comparison in Jinja
+        quizzes = []
+        for q in quizzes_raw:
+            q = dict(q)
+            if q.get("scheduled_start"):
+                ss = q["scheduled_start"]
+                # If it's timezone-aware (UTC from DB), convert to PH naive
+                if hasattr(ss, "tzinfo") and ss.tzinfo is not None:
+                    q["scheduled_start"] = ss.astimezone(ph_tz).replace(tzinfo=None)
+            quizzes.append(q)
 
         return render_template(
             "student_quizzes.html",
