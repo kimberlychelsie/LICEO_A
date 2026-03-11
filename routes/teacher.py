@@ -353,7 +353,38 @@ def teacher_announce():
             INSERT INTO teacher_announcements
                 (teacher_user_id, branch_id, grade_level, title, body)
             VALUES (%s, %s, %s, %s, %s)
+            RETURNING announcement_id
         """, (user_id, branch_id, grade, title, body or None))
+        ann_id = cur.fetchone()[0]
+
+        # Send Notifications to students in this grade level
+        import re as _re
+        if _re.match(r'^\d+$', grade.strip()):
+            grade_short = grade.strip()
+            grade_full  = "Grade " + grade_short
+        else:
+            grade_full  = grade.strip()
+            _m2 = _re.match(r'^Grade\s+(\d+)$', grade_full, _re.IGNORECASE)
+            grade_short = _m2.group(1) if _m2 else grade_full
+
+        cur.execute("""
+            SELECT u.user_id 
+            FROM enrollments e
+            JOIN users u ON e.user_id = u.user_id
+            WHERE e.branch_id = %s 
+              AND (e.grade_level ILIKE %s OR e.grade_level ILIKE %s)
+              AND e.status IN ('approved', 'enrolled')
+        """, (branch_id, grade_full, grade_short))
+        students = cur.fetchall()
+        if students:
+            notif_title = f"New Announcement: {title}"
+            notif_msg = f"Your teacher posted a new announcement."
+            for s in students:
+                cur.execute("""
+                    INSERT INTO student_notifications (student_id, title, message, link)
+                    VALUES (%s, %s, %s, %s)
+                """, (s[0], notif_title, notif_msg, f"/student/dashboard"))
+
         db.commit()
         flash("Announcement posted! Students in your class will see it.", "success")
     except Exception as e:
@@ -749,6 +780,18 @@ def grade_submission(submission_id):
         ''', (user_id, submission_id))
         
         db.commit()
+
+        # Send Notification to student
+        cur.execute("SELECT title FROM activities WHERE activity_id = %s", (sub['activity_id'],))
+        act_title = (cur.fetchone() or {}).get('title', 'Activity')
+        
+        cur.execute("""
+            INSERT INTO student_notifications (student_id, title, message, link)
+            VALUES (%s, %s, %s, %s)
+        """, (sub['student_id'], "Activity Graded", f"Your submission for '{act_title}' has been graded.", f"/student/activities/{sub['activity_id']}"))
+        
+        db.commit()
+
         flash("Grade saved successfully.", "success")
         
     finally:
@@ -1009,7 +1052,24 @@ def teacher_exam_publish(exam_id):
         cur.execute("""
             UPDATE exams SET status='published'
             WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s
+            RETURNING title, section_id
         """, (exam_id, user_id, branch_id))
+        exam_info = cur.fetchone()
+        
+        if exam_info:
+            # Send notifications to students in the section
+            cur.execute("""
+                SELECT e.user_id 
+                FROM enrollments e 
+                WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled') AND e.user_id IS NOT NULL
+            """, (exam_info['section_id'],))
+            students = cur.fetchall()
+            for s in students:
+                cur.execute("""
+                    INSERT INTO student_notifications (student_id, title, message, link)
+                    VALUES (%s, %s, %s, %s)
+                """, (s['user_id'], f"New Exam: {exam_info['title']}", f"A new exam/quiz has been published: {exam_info['title']}", "/student/exams"))
+
         db.commit()
         flash("Exam published! Students can now take it.", "success")
     except Exception as e:

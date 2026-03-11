@@ -99,7 +99,8 @@ def inject_student_notifications():
                 SELECT n.* FROM student_notifications n
                 WHERE n.student_id = %s 
                   AND (
-                    n.link NOT LIKE '/student/activities/%'
+                    (n.link NOT LIKE '/student/activities/%' AND n.link NOT LIKE '/student/exams%')
+                    OR n.title = 'Activity Graded'
                     OR NOT EXISTS (
                         SELECT 1 FROM activity_submissions subm
                         WHERE subm.student_id = n.student_id
