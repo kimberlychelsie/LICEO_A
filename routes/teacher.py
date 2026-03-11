@@ -1052,11 +1052,12 @@ def teacher_exam_publish(exam_id):
         cur.execute("""
             UPDATE exams SET status='published'
             WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s
-            RETURNING title, section_id
+            RETURNING title, section_id, exam_type
         """, (exam_id, user_id, branch_id))
         exam_info = cur.fetchone()
         
         if exam_info:
+            notif_label = "Quiz" if exam_info['exam_type'] == 'quiz' else "Exam"
             # Send notifications to students in the section
             cur.execute("""
                 SELECT e.user_id 
@@ -1068,7 +1069,7 @@ def teacher_exam_publish(exam_id):
                 cur.execute("""
                     INSERT INTO student_notifications (student_id, title, message, link)
                     VALUES (%s, %s, %s, %s)
-                """, (s['user_id'], f"New Exam: {exam_info['title']}", f"A new exam/quiz has been published: {exam_info['title']}", "/student/exams"))
+                """, (s['user_id'], f"New {notif_label}: {exam_info['title']}", f"A new {notif_label.lower()} has been published: {exam_info['title']}", "/student/exams"))
 
         db.commit()
         flash("Exam published! Students can now take it.", "success")
