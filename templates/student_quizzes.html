@@ -88,8 +88,11 @@
     {% for q in quizzes %}
     {% set is_done    = q.result_status in ('submitted', 'auto_submitted') %}
     {% set is_closed  = q.status == 'closed' %}
+    {# Only block if scheduled_start is in the FUTURE (not yet open) #}
     {% set is_notyet  = q.scheduled_start and now_utc < q.scheduled_start %}
-    {% set is_expired = q.scheduled_start and now_utc > (q.scheduled_start + timedelta(minutes=q.duration_mins)) %}
+    {# Only block if PAST the scheduled window. Without a scheduled_start = always available #}
+    {% set quiz_end   = (q.scheduled_start + timedelta(minutes=q.duration_mins)) if q.scheduled_start else none %}
+    {% set is_expired = quiz_end and now_utc > quiz_end %}
     <div class="task-card">
       <div class="task-card-top">
         <div>

@@ -193,7 +193,8 @@
     {% set is_done    = e.result_status in ('submitted', 'auto_submitted') %}
     {% set is_closed  = e.status == 'closed' %}
     {% set is_notyet  = e.scheduled_start and now_utc < e.scheduled_start %}
-    {% set is_expired = e.scheduled_start and now_utc > (e.scheduled_start + timedelta(minutes=e.duration_mins)) %}
+    {% set exam_end   = (e.scheduled_start + timedelta(minutes=e.duration_mins)) if e.scheduled_start else none %}
+    {% set is_expired = exam_end and now_utc > exam_end %}
     <div class="task-card">
       <div class="task-card-top">
         <div>
