@@ -1772,7 +1772,7 @@ def branch_admin_manage_accounts():
                 cursor.execute("""
                     INSERT INTO users
                         (branch_id, username, password, role, require_password_change,
-                         grade_level, full_name, gender)
+                         grade_level_id, full_name, gender)
                     VALUES (%s, %s, %s, %s, TRUE, %s, %s, %s)
                 """, (branch_id, username, hashed_password, role,
                       grade_level or None, full_name or None, gender or None))
@@ -1791,11 +1791,12 @@ def branch_admin_manage_accounts():
         # ✅ Already correctly scoped by branch_id
         cursor.execute("""
             SELECT
-                user_id, username, role, full_name, gender,
-                grade_level, status
-            FROM users
-            WHERE branch_id = %s AND role = %s
-            ORDER BY user_id DESC
+                u.user_id, u.username, u.role, u.full_name, u.gender,
+                COALESCE(g.name, u.grade_level) AS grade_level, u.status
+            FROM users u
+            LEFT JOIN grade_levels g ON u.grade_level_id = g.id
+            WHERE u.branch_id = %s AND u.role = %s
+            ORDER BY u.user_id DESC
         """, (branch_id, role_filter))
         accounts = cursor.fetchall() or []
 

@@ -124,7 +124,7 @@ def teacher_dashboard():
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         cur.execute("""
-        SELECT g.name AS grade_level
+        SELECT COALESCE(g.name, u.grade_level) AS grade_level
         FROM users u
         LEFT JOIN grade_levels g ON u.grade_level_id = g.id
         WHERE u.user_id = %s
