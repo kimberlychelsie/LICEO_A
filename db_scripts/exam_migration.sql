@@ -84,3 +84,6 @@ ALTER TABLE exams ADD COLUMN IF NOT EXISTS passing_score INT DEFAULT 75;
 
 -- 7. Exam instructions
 ALTER TABLE exams ADD COLUMN IF NOT EXISTS instructions TEXT DEFAULT NULL;
+
+-- 8. Randomize questions
+ALTER TABLE exams ADD COLUMN IF NOT EXISTS randomize BOOLEAN DEFAULT FALSE;
