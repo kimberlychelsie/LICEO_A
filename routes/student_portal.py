@@ -675,10 +675,13 @@ def student_exams():
     enrollment_id = session.get("enrollment_id")
     branch_id     = session.get("branch_id")
 
+    # ✅ Define now_naive at the TOP before any checks
+    ph_tz     = pytz.timezone("Asia/Manila")
+    now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        # Get student section
         cur.execute("SELECT section_id, grade_level FROM enrollments WHERE enrollment_id=%s",
                     (enrollment_id,))
         enr = cur.fetchone()
@@ -687,6 +690,11 @@ def student_exams():
             return redirect(url_for("student_portal.dashboard"))
 
         section_id = enr["section_id"]
+
+        # ✅ section check now works because now_naive is already defined
+        if not section_id:
+            flash("You have not been assigned to a section yet. Please contact your school admin.", "warning")
+            return render_template("student_exams.html", exams=[], timedelta=timedelta, now_utc=now_naive)
 
         cur.execute("""
             SELECT
@@ -707,15 +715,11 @@ def student_exams():
         """, (enrollment_id, section_id))
         exams = cur.fetchall() or []
 
-        import pytz
-        ph_tz     = pytz.timezone("Asia/Manila")
-        now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
-
         return render_template(
             "student_exams.html",
             exams=exams,
             timedelta=timedelta,
-            now_utc=now_naive )
+            now_utc=now_naive)
     finally:
         cur.close()
         db.close()
@@ -737,6 +741,10 @@ def student_quizzes():
             return redirect(url_for("student_portal.dashboard"))
 
         section_id = enr["section_id"]
+
+        if not section_id:
+            flash("You have not been assigned to a section yet. Please contact your school admin.", "warning")
+            return render_template("student_quizzes.html", quizzes=[], timedelta=timedelta, now_utc=now_naive)
 
         cur.execute("""
             SELECT
@@ -805,11 +813,11 @@ def student_exam_take(exam_id):
             if now_naive < start:
                 flash("This exam has not started yet.", "warning")
                 return redirect(url_for("student_portal.student_exams"))
-        from datetime import timedelta
-        auto_end = start + timedelta(minutes=int(exam["duration_mins"]))
-        if now_naive > auto_end:
-            flash("This exam has already ended.", "warning")
-            return redirect(url_for("student_portal.student_exams"))
+        
+            auto_end = start + timedelta(minutes=int(exam["duration_mins"]))
+            if now_naive > auto_end:
+                    flash("This exam has already ended.", "warning")
+                    return redirect(url_for("student_portal.student_exams"))
 
         # ✅ 4. Max attempts check
         cur.execute("""
