@@ -826,21 +826,31 @@ def student_exam_take(exam_id):
             flash("Exam not available.", "error")
             return redirect(url_for("student_portal.student_exams"))
 
-        # ✅ 3. Auto-open / auto-close check
-        ph_tz     = pytz.timezone("Asia/Manila")
+        # ✅ Determine type + correct back URL
+        ph_tz    = pytz.timezone("Asia/Manila")
         now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+        is_quiz  = exam.get("exam_type") == "quiz"
+        back_url = url_for("student_portal.student_quizzes") if is_quiz else url_for("student_portal.student_exams")
+
+        # ✅ Auto-open / auto-close check with proper PHT conversion
         if exam["scheduled_start"]:
-            start = exam["scheduled_start"].replace(tzinfo=None)
+            ss = exam["scheduled_start"]
+            # ✅ Convert UTC-aware timestamp to PHT naive (fixes Railway timezone issue)
+            if hasattr(ss, "tzinfo") and ss.tzinfo is not None:
+                start = ss.astimezone(ph_tz).replace(tzinfo=None)
+            else:
+                start = ss.replace(tzinfo=None)
+
             if now_naive < start:
-                flash("This exam has not started yet.", "warning")
-                return redirect(url_for("student_portal.student_exams"))
-        
+                flash("This quiz has not started yet." if is_quiz else "This exam has not started yet.", "warning")
+                return redirect(back_url)
+
             auto_end = start + timedelta(minutes=int(exam["duration_mins"]))
             if now_naive > auto_end:
-                    flash("This exam has already ended.", "warning")
-                    return redirect(url_for("student_portal.student_exams"))
+                flash("This quiz has already ended." if is_quiz else "This exam has already ended.", "warning")
+                return redirect(back_url)
 
-        # ✅ 4. Max attempts check
+        # ✅ Max attempts check
         cur.execute("""
             SELECT COUNT(*) AS cnt FROM exam_results
             WHERE exam_id=%s AND enrollment_id=%s
@@ -849,17 +859,17 @@ def student_exam_take(exam_id):
         attempt_count = cur.fetchone()["cnt"]
         max_attempts  = exam["max_attempts"] or 1
         if attempt_count >= max_attempts:
-            flash(f"You have reached the maximum attempts ({max_attempts}) for this exam.", "warning")
-            return redirect(url_for("student_portal.student_exams"))
+            flash(f"You have reached the maximum attempts ({max_attempts}).", "warning")
+            return redirect(back_url)
 
-        # Check if already submitted
+        # ✅ Check if already submitted
         cur.execute("""
             SELECT * FROM exam_results
             WHERE exam_id=%s AND enrollment_id=%s
         """, (exam_id, enrollment_id))
         existing = cur.fetchone()
         if existing and existing["status"] in ("submitted", "auto_submitted"):
-            flash("You have already submitted this exam.", "warning")
+            flash("You have already submitted this.", "warning")
             return redirect(url_for("student_portal.student_exam_result",
                                     result_id=existing["result_id"]))
 
@@ -871,7 +881,7 @@ def student_exam_take(exam_id):
 
             if not result_id:
                 flash("Session error. Please try again.", "error")
-                return redirect(url_for("student_portal.student_exams"))
+                return redirect(back_url)
 
             cur.execute("SELECT * FROM exam_questions WHERE exam_id=%s ORDER BY order_num",
                         (exam_id,))
@@ -880,8 +890,8 @@ def student_exam_take(exam_id):
             total_points = 0
 
             for q in questions:
-                ans     = (request.form.get(f"answer_{q['question_id']}") or "").strip()
-                correct = str(q["correct_answer"]).strip()
+                ans        = (request.form.get(f"answer_{q['question_id']}") or "").strip()
+                correct    = str(q["correct_answer"]).strip()
                 is_correct = ans.upper() == correct.upper()
                 if is_correct:
                     score += q["points"]
@@ -923,34 +933,31 @@ def student_exam_take(exam_id):
             db.commit()
 
         # ✅ Timezone-safe remaining time
-        now_naive     = datetime.now(timezone.utc).replace(tzinfo=None)
+        now_utc       = datetime.now(timezone.utc).replace(tzinfo=None)
         started_naive = started_at.replace(tzinfo=None)
-        elapsed       = int((now_naive - started_naive).total_seconds())
+        elapsed       = int((now_utc - started_naive).total_seconds())
         total_secs    = int(exam["duration_mins"]) * 60
         remaining     = max(0, total_secs - elapsed)
 
         if remaining <= 0:
-            flash("Time has expired for this exam.", "warning")
-            return redirect(url_for("student_portal.student_exams"))
+            flash("Time has expired.", "warning")
+            return redirect(back_url)
 
         cur.execute("SELECT * FROM exam_questions WHERE exam_id=%s ORDER BY order_num",
                     (exam_id,))
         questions = cur.fetchall()
 
-        # ✅ 1. Randomize question order
+        # ✅ Randomize question order
         if exam.get("randomize"):
             import random
             questions = list(questions)
             random.shuffle(questions)
 
-        # Shared shuffled options for all matching questions in this exam instance
         shared_matching_opts = None
-        
         for q in questions:
             if q["choices"]:
                 q["choices"] = json.loads(q["choices"]) if isinstance(q["choices"], str) else q["choices"]
-            
-            # Use a consistent shuffled order for all matching dropdowns in this exam
+
             if q.get("question_type") == "matching" and q.get("choices") and "options" in q["choices"]:
                 if shared_matching_opts is None:
                     import random
@@ -967,7 +974,7 @@ def student_exam_take(exam_id):
                                questions=questions,
                                result_id=result_id,
                                remaining_secs=remaining,
-                       current_tab_switches=current_tab_switches)
+                               current_tab_switches=current_tab_switches)
     finally:
         cur.close()
         db.close()
