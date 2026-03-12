@@ -80,13 +80,14 @@ def upload_file_to_subfolder(file_storage, subfolder: str) -> str:
 
 # ── Internal: Cloudinary ────────────────────────────────────────────────────
 def _upload_to_cloudinary(file_storage, folder: str) -> str:
-    # Check if file is a PDF
-    is_pdf = file_storage.filename.lower().endswith('.pdf') if file_storage.filename else False
+    # Check if file is a PDF or Office document
+    ext = file_storage.filename.lower().rsplit('.', 1)[-1] if (file_storage.filename and '.' in file_storage.filename) else ''
+    is_raw_type = ext in ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']
     
     result = cloudinary.uploader.upload(
         file_storage,
         folder=folder,
-        resource_type="raw" if is_pdf else "auto",   # explicitly use raw for PDFs to allow public access without 401
+        resource_type="raw" if is_raw_type else "auto",   # use raw for docs to allow public access/viewers
         use_filename=False,
         unique_filename=True,
     )
@@ -94,8 +95,8 @@ def _upload_to_cloudinary(file_storage, folder: str) -> str:
     if not url:
         raise Exception("Cloudinary upload succeeded but returned no URL.")
         
-    # As a fallback for any auto-assigned image/upload URLs that are actually PDFs
-    if url.endswith('.pdf') and '/image/upload/' in url:
+    # Standardize URL for raw uploads if they were incorrectly categorized
+    if is_raw_type and '/image/upload/' in url:
         url = url.replace('/image/upload/', '/raw/upload/')
         
     logger.info("Uploaded to Cloudinary: %s", url)

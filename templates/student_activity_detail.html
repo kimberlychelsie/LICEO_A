@@ -224,24 +224,30 @@
 
     <script>
     function viewFilePreview(path, forcedExt = '') {
-        const ext = forcedExt || path.split('.').pop().toLowerCase();
+        const ext = (forcedExt || path.split('.').pop().toLowerCase()).trim();
         
-        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-            window.open(path, '_blank');
-        } else if (ext === 'pdf') {
-            // Fix Cloudinary URL for inline viewing
-            let finalPath = path;
-            if (path.includes('/image/upload/')) {
-                finalPath = path.replace('/image/upload/', '/raw/upload/');
-            }
+        // Sanitize Cloudinary URL: Ensure raw files use /raw/upload/
+        let finalPath = path;
+        const isDocOrPdf = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
+        if (isDocOrPdf && finalPath.includes('/image/upload/')) {
+            finalPath = finalPath.replace('/image/upload/', '/raw/upload/');
+        }
+
+        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext) || ext === 'pdf') {
+            // PDF and Images -> Direct preview in new tab
             window.open(finalPath, '_blank');
         } else if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
-            // Using Microsoft Office Online Viewer for better compatibility with .docx
-            const officeViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(path)}`;
-            window.open(officeViewerUrl, '_blank');
+            // DOCX and Office docs -> Google Viewer
+            const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(finalPath)}&embedded=false`;
+            window.open(googleViewerUrl, '_blank');
         } else {
-            // For other types or if we still can't preview, try opening in new tab first
-            window.open(path, '_blank');
+            // Others -> Download
+            const link = document.createElement('a');
+            link.href = finalPath;
+            link.download = '';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
         }
     }
 
