@@ -175,9 +175,9 @@
                     <div class="info-label">Attachment</div>
                     <div class="info-value">
                         {% if activity.attachment_path %}
-                        {% set ext = activity.attachment_path.split('.')[-1].lower() %}
+                        {% set attachment_ext = activity.attachment_path.split('.')[-1].lower() %}
                         <a href="javascript:void(0)" 
-                           onclick="viewFilePreview('{{ activity.attachment_path }}')"
+                           onclick="viewFilePreview('{{ activity.attachment_path }}', '{{ attachment_ext }}')"
                            class="btn btn-secondary btn-sm" 
                            style="margin-top:8px; display:inline-block;">
                             {% if ext in ['jpg', 'jpeg', 'png', 'gif'] %}
@@ -223,8 +223,8 @@
     </div>
 
     <script>
-    function viewFilePreview(path) {
-        const ext = path.split('.').pop().toLowerCase();
+    function viewFilePreview(path, forcedExt = '') {
+        const ext = forcedExt || path.split('.').pop().toLowerCase();
         
         if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
             window.open(path, '_blank');
@@ -236,16 +236,12 @@
             }
             window.open(finalPath, '_blank');
         } else if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
-            const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(path)}&embedded=false`;
-            window.open(googleViewerUrl, '_blank');
+            // Using Microsoft Office Online Viewer for better compatibility with .docx
+            const officeViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(path)}`;
+            window.open(officeViewerUrl, '_blank');
         } else {
-            // Unsupported types: download normally
-            const link = document.createElement('a');
-            link.href = path;
-            link.download = '';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            // For other types or if we still can't preview, try opening in new tab first
+            window.open(path, '_blank');
         }
     }
 
@@ -330,9 +326,9 @@
                 </div>
                 {% if submission.file_path %}
                 {% set display_filename = submission.original_filename or 'Submission File' %}
-                {% set ext = display_filename.split('.')[-1].lower() if '.' in display_filename else submission.file_path.split('.')[-1].lower() %}
+                {% set submission_ext = display_filename.split('.')[-1].lower() if '.' in display_filename else submission.file_path.split('.')[-1].lower() %}
                 <div class="submission-file-card" 
-                     onclick="viewFilePreview('{{ submission.file_path }}')"
+                     onclick="viewFilePreview('{{ submission.file_path }}', '{{ submission_ext }}')"
                      title="Click to preview {{ display_filename }}">
                     <div style="font-size:1.8rem; flex-shrink: 0; display: flex; align-items: center;">
                         {% if ext == 'pdf' %}📕
