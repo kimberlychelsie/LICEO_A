@@ -238,6 +238,11 @@
                 Your browser does not support the video tag.
             </video>`;
     } else if (type === 'pdf') {
+        // Fix existing DB URLs that have /image/upload/ for PDFs
+        if (path.includes('/image/upload/') && path.toLowerCase().endsWith('.pdf')) {
+            path = path.replace('/image/upload/', '/raw/upload/');
+        }
+        
         // ✅ Google Docs Viewer — fixes Cloudinary iframe block
         const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(path)}&embedded=true`;
         content.innerHTML = `
