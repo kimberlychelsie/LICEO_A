@@ -147,7 +147,8 @@
                 <tr>
                     <td>
                         {% if sub.file_path %}
-                        <a href="javascript:void(0)" onclick="viewFilePreview('{{ sub.file_path }}')" style="text-decoration:none; color:inherit; cursor:pointer;" title="Click to preview">
+                        {% set sub_ext = sub.original_filename.split('.')[-1].lower() if sub.original_filename and '.' in sub.original_filename else sub.file_path.split('.')[-1].lower() %}
+                        <a href="javascript:void(0)" onclick="viewFilePreview('{{ sub.file_path }}', '{{ sub_ext }}')" style="text-decoration:none; color:inherit; cursor:pointer;" title="Click to preview">
                             <strong>{{ sub.student_name }}</strong>
                         </a>
                         {% else %}
@@ -174,18 +175,18 @@
                     </td>
                     <td>
                         {% if sub.file_path %}
-                        {% set ext = sub.file_path.split('.')[-1].lower() %}
+                        {% set sub_ext = sub.original_filename.split('.')[-1].lower() if sub.original_filename and '.' in sub.original_filename else sub.file_path.split('.')[-1].lower() %}
                         <div style="display:flex; flex-direction:column; gap:4px;">
                             <a href="javascript:void(0)" 
-                               onclick="viewFilePreview('{{ sub.file_path }}')"
+                               onclick="viewFilePreview('{{ sub.file_path }}', '{{ sub_ext }}')"
                                class="btn btn-secondary btn-sm" 
                                title="{{ sub.original_filename }}"
-                               style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                {% if ext == 'pdf' %}📕
-                                {% elif ext in ['jpg', 'jpeg', 'png', 'gif'] %}🖼️
-                                {% elif ext in ['doc', 'docx'] %}📄
-                                {% elif ext in ['xls', 'xlsx'] %}📊
-                                {% elif ext in ['ppt', 'pptx'] %}📈
+                               style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">
+                                {% if sub_ext == 'pdf' %}📕
+                                {% elif sub_ext in ['jpg', 'jpeg', 'png', 'gif'] %}🖼️
+                                {% elif sub_ext in ['doc', 'docx'] %}📄
+                                {% elif sub_ext in ['xls', 'xlsx'] %}📊
+                                {% elif sub_ext in ['ppt', 'pptx'] %}📈
                                 {% else %}📎
                                 {% endif %}
                                 {{ sub.original_filename }}
@@ -233,67 +234,34 @@
     </div>
 </div>
 
-<!-- Media Viewer Modal -->
-<div id="mediaViewer"
-    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; padding:40px;">
-    <button onclick="closeViewer()"
-        style="position:absolute; top:20px; right:20px; background:#fff; color:#000; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem; font-weight:700; cursor:pointer; z-index:10; border:none;">×</button>
-    <div id="viewerContent"
-        style="max-width:1000px; width:100%; height:100%; background:#fff; border-radius:12px; overflow:hidden; position:relative;">
-    </div>
-</div>
-
 <script>
-    function viewFilePreview(path) {
-        const ext = path.split('.').pop().toLowerCase();
+    function viewFilePreview(path, forcedExt = '') {
+        const ext = (forcedExt || path.split('.').pop().toLowerCase()).trim();
         
-        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-            window.open(path, '_blank');
-        } else if (ext === 'pdf') {
-            // Fix Cloudinary URL for inline viewing
-            let finalPath = path;
-            if (path.includes('/image/upload/')) {
-                finalPath = path.replace('/image/upload/', '/raw/upload/');
-            }
+        // Sanitize Cloudinary URL: Ensure raw files use /raw/upload/
+        let finalPath = path;
+        const isDocOrPdf = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
+        if (isDocOrPdf && finalPath.includes('/image/upload/')) {
+            finalPath = finalPath.replace('/image/upload/', '/raw/upload/');
+        }
+
+        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext) || ext === 'pdf') {
+            // PDF and Images -> Direct preview in new tab
             window.open(finalPath, '_blank');
         } else if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
-            const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(path)}&embedded=false`;
+            // DOCX and Office docs -> Google Viewer
+            const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(finalPath)}&embedded=false`;
             window.open(googleViewerUrl, '_blank');
         } else {
-            // Unsupported types: download normally
+            // Others -> Download
             const link = document.createElement('a');
-            link.href = path;
+            link.href = finalPath;
             link.download = '';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
     }
-
-    function viewMedia(type, path) {
-        const viewer = document.getElementById('mediaViewer');
-        const content = document.getElementById('viewerContent');
-        content.innerHTML = '';
-
-        if (type === 'image') {
-            content.innerHTML = `<img src="${path}" style="width:100%; height:100%; object-fit:contain; background:#000;">`;
-        } else if (type === 'office') {
-            const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(path)}&embedded=true`;
-            content.innerHTML = `<iframe src="${googleViewerUrl}" style="width:100%; height:100%; border:none;"></iframe>`;
-        }
-
-        viewer.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeViewer() {
-        const viewer = document.getElementById('mediaViewer');
-        const content = document.getElementById('viewerContent');
-        content.innerHTML = '';
-        viewer.style.display = 'none';
-        document.body.style.overflow = 'auto';
-    }
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeViewer(); });
 </script>
 
 <!-- Grading Modal -->
