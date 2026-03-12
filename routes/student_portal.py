@@ -743,7 +743,7 @@ def student_quizzes():
     enrollment_id = session.get("enrollment_id")
 
     ph_tz     = pytz.timezone("Asia/Manila")
-    # ✅ CHANGED: use PHT now to match naive PHT stored in DB
+    # ✅ Keep UTC for DB ops, but pass PHT to template for comparison
     now_naive = datetime.now(pytz.utc).astimezone(ph_tz).replace(tzinfo=None)
 
     db  = get_db_connection()
@@ -788,8 +788,8 @@ def student_quizzes():
                     # UTC-aware → convert to PHT naive
                     q["scheduled_start"] = ss.astimezone(ph_tz).replace(tzinfo=None)
                 else:
-                    # ✅ Already naive PHT — use as-is
-                    q["scheduled_start"] = ss
+                    # ✅ Naive PHT stored in DB — add 8 hours to fix UTC mismatch
+                    q["scheduled_start"] = ss - timedelta(hours=8)
             quizzes.append(q)
 
         return render_template(

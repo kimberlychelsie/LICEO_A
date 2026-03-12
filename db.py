@@ -30,7 +30,7 @@ def get_db_connection():
 
         # ✅ Force UTC so NOW() always stores UTC consistently
         with conn.cursor() as cur:
-            cur.execute("SET timezone = 'Asia/Manila'")
+            cur.execute("SET timezone = 'UTC'")
         conn.commit()
 
         return conn
