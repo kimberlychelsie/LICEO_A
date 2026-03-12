@@ -785,9 +785,12 @@ def student_quizzes():
             q = dict(q)
             if q.get("scheduled_start"):
                 ss = q["scheduled_start"]
-                # If it's timezone-aware (UTC from DB), convert to PH naive
                 if hasattr(ss, "tzinfo") and ss.tzinfo is not None:
+            # ✅ Has timezone — convert UTC → PHT
                     q["scheduled_start"] = ss.astimezone(ph_tz).replace(tzinfo=None)
+                else:
+            # ✅ No timezone — already stored as PHT naive, use as-is
+                    q["scheduled_start"] = ss
             quizzes.append(q)
 
         return render_template(
