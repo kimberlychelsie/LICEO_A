@@ -12,15 +12,6 @@
     .fail-badge { background:#f8d7da; color:#721c24; border-radius:10px; padding:14px 20px; font-size:18px; font-weight:800; text-align:center; margin:12px 0; }
     .auto-badge { background:#fff3cd; color:#856404; padding:6px 14px; border-radius:8px; font-size:13px; font-weight:700; display:inline-block; margin-top:10px; }
     .tab-badge { background:#f8d7da; color:#721c24; padding:6px 14px; border-radius:8px; font-size:13px; font-weight:700; display:inline-block; margin-top:6px; }
-    .card { background:#fff; border-radius:12px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.07); margin-bottom:16px; }
-    .card h2 { margin:0 0 16px 0; font-size:16px; border-bottom:2px solid #007bff; padding-bottom:8px; color:#2c3e50; }
-    .ans-row { padding:14px 0; border-bottom:1px solid #f0f0f0; }
-    .ans-row:last-child { border-bottom:none; }
-    .ans-q { font-size:14px; font-weight:600; margin-bottom:8px; }
-    .ans-choices { display:flex; flex-wrap:wrap; gap:8px; font-size:13px; }
-    .choice-chip { padding:4px 12px; border-radius:6px; background:#e9ecef; color:#495057; }
-    .choice-chip.correct { background:#d4edda; color:#155724; font-weight:700; }
-    .choice-chip.wrong   { background:#f8d7da; color:#721c24; font-weight:700; }
     .btn { padding:10px 20px; border:none; border-radius:7px; cursor:pointer; font-size:13px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
     .btn-primary { background:#007bff; color:#fff; }
 </style>
@@ -31,12 +22,10 @@
         <div class="score-big">{{ result.score|round|int }}</div>
         <div class="score-label">out of {{ result.total_points|round|int }} points</div>
 
-        <!-- ✅ Dynamic passing score instead of hardcoded 75 -->
         <div class="pct {% if passed %}pass{% else %}fail{% endif %}">
             {{ percentage }}%
         </div>
 
-        <!-- ✅ PASSED / FAILED badge -->
         {% if passed %}
         <div class="pass-badge">🎉 PASSED! {{ percentage }}% (Passing: {{ passing_score }}%)</div>
         {% else %}
@@ -49,54 +38,6 @@
         {% if result.tab_switches and result.tab_switches > 0 %}
         <div class="tab-badge">⚠️ {{ result.tab_switches }} tab switch{{ 'es' if result.tab_switches > 1 else '' }} recorded</div>
         {% endif %}
-    </div>
-
-    <div class="card">
-        <h2>📋 Answer Review</h2>
-        {% for a in answers %}
-        <div class="ans-row">
-            <div class="ans-q">{{ loop.index }}. {{ a.question_text }}</div>
-            <div class="ans-choices">
-                {% if a.question_type == 'mcq' and a.choices %}
-                    {% for key, val in a.choices.items() %}
-                    <span class="choice-chip
-                        {% if key == a.correct_answer %}correct
-                        {% elif key == a.student_answer and not a.is_correct %}wrong
-                        {% endif %}">
-                        {{ key }}. {{ val }}
-                        {% if key == a.correct_answer %} ✓
-                        {% elif key == a.student_answer and not a.is_correct %} ✗
-                        {% endif %}
-                    </span>
-                    {% endfor %}
-                {% elif a.question_type == 'matching' %}
-                    <span class="choice-chip {% if a.is_correct %}correct{% elif a.student_answer %}wrong{% endif %}">
-                        Your Answer: {{ a.student_answer or '—' }} 
-                        {% if a.is_correct %} ✓{% elif a.student_answer %} ✗{% endif %}
-                    </span>
-                    {% if not a.is_correct %}
-                    <span class="choice-chip correct">Correct Match: {{ a.correct_answer }} ✓</span>
-                    {% endif %}
-                {% else %}
-                    {% for opt in ['True', 'False'] %}
-                    <span class="choice-chip
-                        {% if opt == a.correct_answer %}correct
-                        {% elif opt == a.student_answer and not a.is_correct %}wrong
-                        {% endif %}">
-                        {{ opt }}
-                        {% if opt == a.correct_answer %} ✓
-                        {% elif opt == a.student_answer and not a.is_correct %} ✗
-                        {% endif %}
-                    </span>
-                    {% endfor %}
-                {% endif %}
-            </div>
-            <div style="font-size:12px; margin-top:6px; color:{% if a.is_correct %}#28a745{% else %}#dc3545{% endif %};">
-                {% if a.is_correct %}✓ Correct{% elif not a.student_answer %}— Not answered{% else %}✗ Incorrect{% endif %}
-                · {{ a.points }} pt(s)
-            </div>
-        </div>
-        {% endfor %}
     </div>
 
     <div style="text-align:center;">
