@@ -44,7 +44,7 @@ def dashboard():
                 ELSE 3
               END,
               e.created_at DESC
-        """, (session.get("branch_id"), session.get("branch_id")))
+        """, (session.get("branch_id"),))
         enrollments = cursor.fetchall()
 
         cursor.execute("""
