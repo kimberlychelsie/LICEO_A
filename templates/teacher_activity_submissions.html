@@ -169,7 +169,19 @@
                         {% set ext = sub.file_path.split('.')[-1].lower() %}
                         <div style="display:flex; flex-direction:column; gap:4px;">
                             <!-- ✅ Opens directly in new tab — works on Railway -->
-                            <a href="{{ sub.file_path }}" target="_blank" rel="noopener noreferrer"
+                            {% set file_url = sub.file_path %}
+                            
+                            <!-- Fix URL raw mapping for PDFs, making them inline viewing instead of downloading -->
+                            {% if ext == 'pdf' and '/image/upload/' in file_url %}
+                                {% set file_url = file_url | replace('/image/upload/', '/raw/upload/') %}
+                            {% endif %}
+                            
+                            <!-- Use Google Docs Viewer for unsupported formats -->
+                            {% if ext in ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'] %}
+                                {% set file_url = 'https://docs.google.com/gview?url=' ~ file_url ~ '&embedded=true' %}
+                            {% endif %}
+                            
+                            <a href="{{ file_url }}" target="_blank" rel="noopener noreferrer"
                                 class="btn btn-secondary btn-sm" title="{{ sub.original_filename }}">
                                 {% if ext == 'pdf' %}📕 Open PDF
                                 {% elif ext in ['jpg', 'jpeg', 'png', 'gif'] %}🖼️ Open Image
