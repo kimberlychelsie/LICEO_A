@@ -743,8 +743,7 @@ def student_quizzes():
     enrollment_id = session.get("enrollment_id")
 
     ph_tz     = pytz.timezone("Asia/Manila")
-    # ✅ Keep UTC for DB ops, but pass PHT to template for comparison
-    now_naive = datetime.now(pytz.utc).astimezone(ph_tz).replace(tzinfo=None)
+    now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
 
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -785,10 +784,11 @@ def student_quizzes():
             if q.get("scheduled_start"):
                 ss = q["scheduled_start"]
                 if hasattr(ss, "tzinfo") and ss.tzinfo is not None:
-                    # UTC-aware → convert to PHT naive
+                    # ✅ UTC-aware → convert to PHT naive (same as exams)
                     q["scheduled_start"] = ss.astimezone(ph_tz).replace(tzinfo=None)
                 else:
-                    # ✅ Naive PHT stored in DB — add 8 hours to fix UTC mismatch
+                    # ✅ Naive — stored as PHT but read as UTC by psycopg2
+                    # Subtract 8hrs so it matches now_naive (PHT)
                     q["scheduled_start"] = ss - timedelta(hours=8)
             quizzes.append(q)
 
