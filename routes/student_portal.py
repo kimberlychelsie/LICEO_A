@@ -217,6 +217,9 @@ def dashboard():
                 cursor.execute("SELECT * FROM billing WHERE bill_id=%s", (bill['bill_id'],))
                 bill = cursor.fetchone()
 
+        ph_tz = pytz.timezone("Asia/Manila")
+        now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+
         return render_template(
             "student_dashboard.html",
             student=student,
@@ -227,7 +230,7 @@ def dashboard():
             teacher_announcements=teacher_announcements,
             subjects_for_grade=subject_rows,
             reservations=reservations,
-            now=datetime.now(),
+            now=now_naive,
         )
 
     finally:
@@ -418,13 +421,25 @@ def subject_view(subject_id):
               AND e.status IN ('published', 'closed')
             ORDER BY e.created_at DESC
         """, (enrollment_id, subject_id, student_section_id))
-        quizzes = cur.fetchall()
+        quizzes_raw = cur.fetchall() or []
+
+        ph_tz = pytz.timezone("Asia/Manila")
+        now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+
+        quizzes = []
+        for q in quizzes_raw:
+            q = dict(q)
+            if q.get("scheduled_start"):
+                ss = q["scheduled_start"]
+                if hasattr(ss, "tzinfo") and ss.tzinfo is not None:
+                    q["scheduled_start"] = ss.astimezone(ph_tz).replace(tzinfo=None)
+            quizzes.append(q)
 
     finally:
         cur.close()
         db.close()
         
-    return render_template("student_subject_detail.html", subject=subject_info, activities=activities, quizzes=quizzes, now=datetime.now(), timedelta=timedelta)
+    return render_template("student_subject_detail.html", subject=subject_info, activities=activities, quizzes=quizzes, now=now_naive, timedelta=timedelta)
 
 
 # ── ACTIVITIES MODULE (STUDENT SIDE) ──────────────────────
@@ -483,7 +498,10 @@ def activities():
         cur.close()
         db.close()
         
-    return render_template("student_activities.html", activities=activities, subjects=subjects, now=datetime.now())
+    ph_tz = pytz.timezone("Asia/Manila")
+    now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+        
+    return render_template("student_activities.html", activities=activities, subjects=subjects, now=now_naive)
 
 
 @student_portal_bp.route("/student/activities/<int:activity_id>")
@@ -531,7 +549,10 @@ def activity_detail(activity_id):
         cur.close()
         db.close()
         
-    return render_template("student_activity_detail.html", activity=activity, submission=submission, now=datetime.now())
+    ph_tz = pytz.timezone("Asia/Manila")
+    now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+        
+    return render_template("student_activity_detail.html", activity=activity, submission=submission, now=now_naive)
 
 
 @student_portal_bp.route("/student/activities/<int:activity_id>/submit", methods=["POST"])
@@ -602,7 +623,9 @@ def submit_activity(activity_id):
             flash(f"File upload failed: {e}", "error")
             return redirect(request.referrer)
             
-        is_late = bool(activity['due_date'] and datetime.now() > activity['due_date'])
+        ph_tz = pytz.timezone("Asia/Manila")
+        now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+        is_late = bool(activity['due_date'] and now_naive > activity['due_date'])
         
         if existing_sub:
             # Update existing submission
