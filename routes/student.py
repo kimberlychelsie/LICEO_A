@@ -221,7 +221,6 @@ def enroll(branch_id):
         if not branch:
             return "Branch not found", 404
 
-        # ✅ Load grade levels for this branch from DB
         cursor.execute("""
             SELECT id, name FROM grade_levels
             WHERE branch_id = %s
@@ -234,19 +233,39 @@ def enroll(branch_id):
                 flash("This branch is currently deactivated. New enrollments are not allowed.", "error")
                 return redirect(url_for("public.homepage"))
 
-            student_name     = request.form.get("student_name", "").strip()
-            grade_level      = request.form.get("grade_level", "").strip()
-            grade_level      = normalize_grade_level(grade_level)  # ✅ normalize before saving
-            gender           = request.form.get("gender", "").strip()
-            dob              = request.form.get("dob", "").strip() or None
-            lrn              = request.form.get("lrn", "").strip() or None
-            address          = request.form.get("address", "").strip()
-            contact_number   = request.form.get("contact_number", "").strip()
-            guardian_name    = request.form.get("guardian_name", "").strip()
-            guardian_contact = request.form.get("guardian_contact", "").strip()
-            previous_school  = request.form.get("previous_school", "").strip() or None
-            email            = request.form.get("email", "").strip() or None
-            guardian_email   = request.form.get("guardian_email", "").strip() or None
+            # ── Student Details ──
+            student_name      = request.form.get("student_name", "").strip()
+            grade_level       = request.form.get("grade_level", "").strip()
+            grade_level       = normalize_grade_level(grade_level)
+            gender            = request.form.get("gender", "").strip()
+            dob               = request.form.get("dob", "").strip() or None
+            lrn               = request.form.get("lrn", "").strip() or None
+            address           = request.form.get("address", "").strip()
+            contact_number    = request.form.get("contact_number", "").strip()
+            email             = request.form.get("email", "").strip() or None
+            birthplace        = request.form.get("birthplace", "").strip() or None
+
+            # ── Guardian ──
+            guardian_name     = request.form.get("guardian_name", "").strip()
+            guardian_contact  = request.form.get("guardian_contact", "").strip()
+            guardian_email    = request.form.get("guardian_email", "").strip() or None
+
+            # ── Parents ──
+            father_name       = request.form.get("father_name", "").strip() or None
+            father_contact    = request.form.get("father_contact", "").strip() or None
+            father_occupation = request.form.get("father_occupation", "").strip() or None
+            mother_name       = request.form.get("mother_name", "").strip() or None
+            mother_contact    = request.form.get("mother_contact", "").strip() or None
+            mother_occupation = request.form.get("mother_occupation", "").strip() or None
+
+            # ── Previous School ──
+            previous_school   = request.form.get("previous_school", "").strip() or None
+            school_year       = request.form.get("school_year", "").strip() or None
+
+            # ── Enrollment Type ──
+            enroll_type       = request.form.get("enroll_type", "").strip() or None
+            enroll_date       = request.form.get("enroll_date", "").strip() or None
+            remarks           = request.form.get("remarks", "").strip() or None
 
             # ── SERVER-SIDE DUPLICATE CHECK ──
             cursor.execute("""
@@ -268,7 +287,7 @@ def enroll(branch_id):
                 return render_template(
                     "student_enroll.html",
                     branch=branch,
-                    grade_levels=grade_levels,   # ✅ pass back
+                    grade_levels=grade_levels,
                     message=None,
                     duplicate_blocked=True,
                     duplicate_reason=reason_text,
@@ -281,20 +300,41 @@ def enroll(branch_id):
             next_no = cursor.fetchone()["next_no"]
 
             cursor.execute("""
-                INSERT INTO enrollments
-                  (student_name, grade_level, gender, dob, address, contact_number,
-                   guardian_name, guardian_contact, previous_school, branch_id, status,
-                   branch_enrollment_no, lrn, email, guardian_email)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s,%s,%s)
+                INSERT INTO enrollments (
+                    student_name, grade_level, gender, dob, address, contact_number,
+                    guardian_name, guardian_contact, previous_school, branch_id, status,
+                    branch_enrollment_no, lrn, email, guardian_email,
+                    birthplace,
+                    father_name, father_contact, father_occupation,
+                    mother_name, mother_contact, mother_occupation,
+                    school_year,
+                    enroll_type, enroll_date, remarks
+                )
+                VALUES (
+                    %s,%s,%s,%s,%s,%s,
+                    %s,%s,%s,%s,'pending',
+                    %s,%s,%s,%s,
+                    %s,
+                    %s,%s,%s,
+                    %s,%s,%s,
+                    %s,
+                    %s,%s,%s
+                )
                 RETURNING enrollment_id
             """, (
                 student_name, grade_level, gender, dob, address, contact_number,
                 guardian_name, guardian_contact, previous_school, branch_id,
-                next_no, lrn, email, guardian_email
+                next_no, lrn, email, guardian_email,
+                birthplace,
+                father_name, father_contact, father_occupation,
+                mother_name, mother_contact, mother_occupation,
+                school_year,
+                enroll_type, enroll_date, remarks
             ))
             enrollment_id = cursor.fetchone()["enrollment_id"]
             db.commit()
 
+            # ── Documents ──
             psa_file        = request.files.get("psa_birth_cert")
             baptismal_file  = request.files.get("baptismal_cert")
             form138_file    = request.files.get("form_138")
@@ -313,7 +353,7 @@ def enroll(branch_id):
         return render_template(
             "student_enroll.html",
             branch=branch,
-            grade_levels=grade_levels,   # ✅ pass to template
+            grade_levels=grade_levels,
             message=None,
             duplicate_blocked=False,
             duplicate_reason=None

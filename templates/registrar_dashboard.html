@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Registrar Dashboard{% endblock %}
+{% block title %}Enrollments{% endblock %}
 
 {% block styles %}
 <style>
@@ -488,11 +488,8 @@
 
 <div
     style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
-    <h2 style="margin:0;">Registrar Dashboard</h2>
-    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <a href="/change-password" class="btn btn-secondary btn-sm">Change Password</a>
-        <a href="/logout" class="btn btn-dark btn-sm">Logout</a>
-    </div>
+    <h2 style="margin:0;">Enrollments</h2>
+    <a href="/registrar" class="btn btn-secondary btn-sm">← Back to Dashboard</a>
 </div>
 
 <!-- ═══ TABS ═══ -->
@@ -538,7 +535,6 @@
                     </td>
                     <td>{{ enrollment.grade_level }}</td>
 
-                    <!-- ✅ Documents column with View button -->
                     <td>
                         {% if enrollment.documents and enrollment.documents | length > 0 %}
                         <button class="btn btn-info btn-sm view-docs-btn" data-student="{{ enrollment.student_name }}"
@@ -560,14 +556,20 @@
                         {% endif %}
                     </td>
 
+                    <!-- ✅ UPDATED Actions column — added View Detail button -->
                     <td>
+                        <a href="/registrar/enrollment/{{ enrollment.enrollment_id }}"
+                           class="btn btn-info btn-sm" style="text-decoration:none; margin-bottom:4px; display:inline-block;">
+                            👁 View
+                        </a>
+
                         {% if enrollment.status == 'pending' %}
                         {% if is_branch_active_status %}
-                        <form method="post" style="display:inline;">
+                        <form method="post" action="/registrar/enrollments" style="display:inline;">
                             <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
                             <button name="action" value="approved" class="btn btn-success btn-sm">✅ Approve</button>
                         </form>
-                        <form method="post" style="display:inline;">
+                        <form method="post" action="/registrar/enrollments" style="display:inline;">
                             <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
                             <button name="action" value="rejected" class="btn btn-danger btn-sm"
                                 onclick="return confirm('Reject this enrollment?')">❌ Reject</button>
@@ -575,9 +577,6 @@
                         {% else %}
                         <span class="muted-note">Actions disabled (Archive Mode)</span>
                         {% endif %}
-
-                        {% else %}
-                        <span class="muted-note">—</span>
                         {% endif %}
                     </td>
                 </tr>
@@ -644,8 +643,7 @@
     <div class="card">
         <div class="card-header">
             <span>Enrolled Students</span>
-            <span class="muted-note" id="enrolledCount">{{ enrolled_students | length }}
-                students</span>
+            <span class="muted-note" id="enrolledCount">{{ enrolled_students | length }} students</span>
         </div>
         <div style="overflow:auto;">
             <table id="enrolledTable">
@@ -685,6 +683,12 @@
                         {% endif %}
                     </td>
                     <td>
+                        <!-- ✅ View detail link -->
+                        <a href="/registrar/enrollment/{{ e.enrollment_id }}"
+                           class="btn btn-info btn-sm" style="text-decoration:none; margin-bottom:6px; display:inline-block;">
+                            👁 View
+                        </a>
+                        <br>
                         {% if not e.has_student_account %}
                         {% if is_branch_active_status %}
                         <button class="btn btn-primary btn-sm" onclick="openCreateModal(
@@ -750,7 +754,6 @@
             </label>
             <select id="modalSectionSelect" name="section_id">
                 <option value="">— Skip for now —</option>
-                <!-- ✅ Options are built dynamically by JS based on student's grade level -->
             </select>
 
             <div class="modal-actions">
@@ -772,6 +775,7 @@
             openDocsModal(studentName, docs);
         });
     });
+
     // ── Tab switching ──
     function switchTab(tab, btn) {
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
@@ -845,7 +849,6 @@
         document.getElementById('docsModal').classList.remove('open');
     }
 
-    // Close docs modal on backdrop click
     document.getElementById('docsModal').addEventListener('click', function (e) {
         if (e.target === this) closeDocsModal();
     });
@@ -872,7 +875,6 @@
         document.getElementById('createStudentForm').action =
             '/registrar/create-student-account/' + enrollmentId;
 
-        // ✅ Rebuild dropdown with ONLY matching grade sections
         var select = document.getElementById('modalSectionSelect');
         select.innerHTML = '<option value="">— Skip for now —</option>';
 
