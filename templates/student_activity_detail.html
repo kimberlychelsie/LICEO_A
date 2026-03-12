@@ -173,34 +173,33 @@
                 </li>
                 <li>
                     <div class="info-label">Attachment</div>
-<div class="info-value">
-    {% if activity.attachment_path %}
-    {% set ext = activity.attachment_path.split('.')[-1].lower() %}
-    <a href="{{ activity.attachment_path }}" 
-       target="_blank" 
-       rel="noopener noreferrer"
-       class="btn btn-secondary btn-sm" 
-       style="margin-top:8px; display:inline-block;">
-        {% if ext in ['jpg', 'jpeg', 'png', 'gif'] %}
-            🖼️ View Image
-        {% elif ext == 'pdf' %}
-            📕 View PDF
-        {% elif ext in ['mp4', 'webm', 'ogg'] %}
-            🎥 View Video
-        {% elif ext in ['doc', 'docx'] %}
-            📄 View Document
-        {% elif ext in ['xls', 'xlsx'] %}
-            📊 View Spreadsheet
-        {% elif ext in ['ppt', 'pptx'] %}
-            📊 View Presentation
-        {% else %}
-            📎 View File
-        {% endif %}
-    </a>
-    {% else %}
-    <span style="color:var(--muted)">None</span>
-    {% endif %}
-</div>
+                    <div class="info-value">
+                        {% if activity.attachment_path %}
+                        {% set ext = activity.attachment_path.split('.')[-1].lower() %}
+                        <a href="javascript:void(0)" 
+                           onclick="viewFilePreview('{{ activity.attachment_path }}')"
+                           class="btn btn-secondary btn-sm" 
+                           style="margin-top:8px; display:inline-block;">
+                            {% if ext in ['jpg', 'jpeg', 'png', 'gif'] %}
+                                🖼️ View Image
+                            {% elif ext == 'pdf' %}
+                                📕 View PDF
+                            {% elif ext in ['mp4', 'webm', 'ogg'] %}
+                                🎥 View Video
+                            {% elif ext in ['doc', 'docx'] %}
+                                📄 View Document
+                            {% elif ext in ['xls', 'xlsx'] %}
+                                📊 View Spreadsheet
+                            {% elif ext in ['ppt', 'pptx'] %}
+                                📊 View Presentation
+                            {% else %}
+                                📎 View File
+                            {% endif %}
+                        </a>
+                        {% else %}
+                        <span style="color:var(--muted)">None</span>
+                        {% endif %}
+                    </div>
                 </li>
             </ul>
 
@@ -280,14 +279,14 @@
         document.body.style.overflow = 'hidden';
     }
 
-        function closeViewer() {
-            const viewer = document.getElementById('mediaViewer');
-            const content = document.getElementById('viewerContent');
-            content.innerHTML = '';
-            viewer.style.display = 'none';
-            document.body.style.overflow = 'auto';
-        }
-        document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeViewer(); });
+    function closeViewer() {
+        const viewer = document.getElementById('mediaViewer');
+        const content = document.getElementById('viewerContent');
+        content.innerHTML = '';
+        viewer.style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeViewer(); });
     </script>
 
     <!-- My Work Tab -->
@@ -347,7 +346,12 @@
                         </div>
                         <div style="font-size:0.8rem; color:var(--muted)">{{ ext|upper }} File</div>
                     </div>
-                    <a href="javascript:void(0)" onclick="viewFilePreview('{{ submission.file_path }}')" class="btn btn-secondary btn-sm">Preview</a>
+                    <a href="javascript:void(0)" 
+                       onclick="viewFilePreview('{{ submission.file_path }}')" 
+                       class="btn btn-secondary btn-sm"
+                       style="white-space: nowrap;">
+                        {{ submission.original_filename or 'Preview' }}
+                    </a>
                 </div>
                 {% endif %}
             </div>
@@ -403,4 +407,4 @@
         </div>
     </div>
 
-    {% endblock %}
+{% endblock %}

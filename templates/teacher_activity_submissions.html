@@ -176,15 +176,19 @@
                         {% if sub.file_path %}
                         {% set ext = sub.file_path.split('.')[-1].lower() %}
                         <div style="display:flex; flex-direction:column; gap:4px;">
-                            <a href="javascript:void(0)" onclick="viewFilePreview('{{ sub.file_path }}')"
-                                class="btn btn-secondary btn-sm" title="{{ sub.original_filename }}">
-                                {% if ext == 'pdf' %}📕 Open PDF
-                                {% elif ext in ['jpg', 'jpeg', 'png', 'gif'] %}🖼️ Open Image
-                                {% elif ext in ['doc', 'docx'] %}📄 Open Doc
-                                {% elif ext in ['xls', 'xlsx'] %}📊 Open Sheet
-                                {% elif ext in ['ppt', 'pptx'] %}📊 Open Slides
-                                {% else %}📎 Open File
+                            <a href="javascript:void(0)" 
+                               onclick="viewFilePreview('{{ sub.file_path }}')"
+                               class="btn btn-secondary btn-sm" 
+                               title="{{ sub.original_filename }}"
+                               style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                {% if ext == 'pdf' %}📕
+                                {% elif ext in ['jpg', 'jpeg', 'png', 'gif'] %}🖼️
+                                {% elif ext in ['doc', 'docx'] %}📄
+                                {% elif ext in ['xls', 'xlsx'] %}📊
+                                {% elif ext in ['ppt', 'pptx'] %}📈
+                                {% else %}📎
                                 {% endif %}
+                                {{ sub.original_filename }}
                             </a>
                         </div>
                         {% else %}
