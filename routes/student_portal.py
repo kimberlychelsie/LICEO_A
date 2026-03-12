@@ -742,9 +742,9 @@ def student_quizzes():
 
     enrollment_id = session.get("enrollment_id")
 
-    import pytz
     ph_tz     = pytz.timezone("Asia/Manila")
-    now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+    # ✅ CHANGED: use PHT now to match naive PHT stored in DB
+    now_naive = datetime.now(pytz.utc).astimezone(ph_tz).replace(tzinfo=None)
 
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -779,17 +779,16 @@ def student_quizzes():
         """, (enrollment_id, section_id))
         quizzes_raw = cur.fetchall() or []
 
-        # Normalize scheduled_start to PH naive time for correct comparison in Jinja
         quizzes = []
         for q in quizzes_raw:
             q = dict(q)
             if q.get("scheduled_start"):
                 ss = q["scheduled_start"]
                 if hasattr(ss, "tzinfo") and ss.tzinfo is not None:
-            # ✅ Has timezone — convert UTC → PHT
+                    # UTC-aware → convert to PHT naive
                     q["scheduled_start"] = ss.astimezone(ph_tz).replace(tzinfo=None)
                 else:
-            # ✅ No timezone — already stored as PHT naive, use as-is
+                    # ✅ Already naive PHT — use as-is
                     q["scheduled_start"] = ss
             quizzes.append(q)
 
