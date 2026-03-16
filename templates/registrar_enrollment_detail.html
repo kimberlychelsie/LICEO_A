@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+{% block title %}Enrollment Detail{% endblock %}
+{% block styles %}
+<style>
+    .det-wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px; }
+    .det-title { font-size: 1.3rem; font-weight: 900; color: #1e293b; margin-bottom: 4px; }
+    .det-sub   { color: #64748b; font-size: 0.85rem; margin-bottom: 24px; }
+
+    .section-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        overflow: hidden;
+        margin-bottom: 16px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+    .section-head {
+        background: #f8fafc;
+        border-bottom: 1px solid #e2e8f0;
+        padding: 10px 16px;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        color: #475569;
+    }
+    .section-body {
+        padding: 16px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 14px;
+    }
+    .det-field label {
+        font-size: 10.5px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        color: #94a3b8;
+        display: block;
+        margin-bottom: 3px;
+    }
+    .det-field span {
+        font-size: 13.5px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+    .det-field span.empty {
+        color: #cbd5e1;
+        font-weight: 400;
+        font-style: italic;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+    .badge-pending  { background:#eff6ff; color:#1d4ed8; }
+    .badge-approved { background:#f0fdf4; color:#166534; }
+    .badge-rejected { background:#fef2f2; color:#991b1b; }
+    .badge-enrolled { background:#f0fdfa; color:#0f766e; }
+
+    .doc-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 12px;
+        padding: 16px;
+    }
+    .doc-card {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px;
+        background: #f8fafc;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .doc-card .doc-icon { font-size: 1.8rem; }
+    .doc-card .doc-name { font-size: 12px; font-weight: 700; color: #1e293b; word-break: break-word; }
+    .doc-card a {
+        display: inline-flex; align-items: center; gap: 5px;
+        background: #1d4ed8; color: #fff; border-radius: 8px;
+        padding: 6px 12px; font-size: 12px; font-weight: 700;
+        text-decoration: none; width: fit-content;
+    }
+    .doc-card a:hover { background: #1e40af; }
+
+    .action-bar {
+        display: flex; gap: 10px; flex-wrap: wrap;
+        margin-bottom: 20px; align-items: center;
+    }
+    .btn {
+        padding: 9px 18px; border-radius: 9px; font-size: 13px;
+        font-weight: 700; text-decoration: none; display: inline-flex;
+        align-items: center; gap: 6px; border: none; cursor: pointer;
+        transition: filter .15s;
+    }
+    .btn:hover { filter: brightness(.93); }
+    .btn-back    { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
+    .btn-success { background: #16a34a; color: #fff; }
+    .btn-danger  { background: #dc2626; color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="det-wrap">
+
+    <!-- ── Back + Actions ── -->
+    <div class="action-bar">
+        <a href="/registrar/enrollments" class="btn btn-back">← Back to Enrollments</a>
+        {% if enrollment.status == 'pending' %}
+        <form method="post" action="/registrar/enrollments" style="display:inline;">
+            <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
+            <button name="action" value="approved" class="btn btn-success">✅ Approve</button>
+        </form>
+        <form method="post" action="/registrar/enrollments" style="display:inline;">
+            <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
+            <button name="action" value="rejected" class="btn btn-danger"
+                onclick="return confirm('Reject this enrollment?')">❌ Reject</button>
+        </form>
+        {% endif %}
+    </div>
+
+    <div class="det-title">📋 Enrollment Detail</div>
+    <div class="det-sub">
+        #{{ enrollment.branch_enrollment_no }} ·
+        {% if enrollment.status == 'pending' %}
+        <span class="badge badge-pending">⏳ Pending</span>
+        {% elif enrollment.status == 'approved' %}
+        <span class="badge badge-approved">✅ Approved</span>
+        {% elif enrollment.status == 'rejected' %}
+        <span class="badge badge-rejected">❌ Rejected</span>
+        {% else %}
+        <span class="badge badge-enrolled">🎓 {{ enrollment.status | title }}</span>
+        {% endif %}
+    </div>
+
+    <!-- ── Enrollment Info ── -->
+    <div class="section-card">
+        <div class="section-head">📝 Enrollment Info</div>
+        <div class="section-body">
+            <div class="det-field">
+                <label>Enrollment Type</label>
+                <span {% if not enrollment.enroll_type %}class="empty"{% endif %}>{{ enrollment.enroll_type or '—' }}</span>
+            </div>
+            <div class="det-field">
+                <label>Enrollment Date</label>
+                <span {% if not enrollment.enroll_date %}class="empty"{% endif %}>
+                    {{ enrollment.enroll_date.strftime('%b %d, %Y') if enrollment.enroll_date else '—' }}
+                </span>
+            </div>
+            <div class="det-field">
+                <label>Remarks</label>
+                <span {% if not enrollment.remarks %}class="empty"{% endif %}>{{ enrollment.remarks or '—' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Student Details ── -->
+    <div class="section-card">
+        <div class="section-head">🎓 Student Details</div>
+        <div class="section-body">
+            <div class="det-field">
+                <label>Full Name</label>
+                <span>{{ enrollment.student_name }}</span>
+            </div>
+            <div class="det-field">
+                <label>Grade Level</label>
+                <span>{{ enrollment.grade_level }}</span>
+            </div>
+            <div class="det-field">
+                <label>Sex</label>
+                <span>{{ enrollment.gender or '—' }}</span>
+            </div>
+            <div class="det-field">
+                <label>Birthday</label>
+                <span {% if not enrollment.dob %}class="empty"{% endif %}>
+                    {{ enrollment.dob.strftime('%b %d, %Y') if enrollment.dob else '—' }}
+                </span>
+            </div>
+            <div class="det-field">
+                <label>Birthplace</label>
+                <span {% if not enrollment.birthplace %}class="empty"{% endif %}>{{ enrollment.birthplace or '—' }}</span>
+            </div>
+            <div class="det-field">
+                <label>LRN</label>
+                <span {% if not enrollment.lrn %}class="empty"{% endif %}>{{ enrollment.lrn or '—' }}</span>
+            </div>
+            <div class="det-field" style="grid-column: span 2;">
+                <label>Address</label>
+                <span>{{ enrollment.address or '—' }}</span>
+            </div>
+            <div class="det-field">
+                <label>Contact Number</label>
+                <span>{{ enrollment.contact_number or '—' }}</span>
+            </div>
+            <div class="det-field">
+                <label>Email</label>
+                <span {% if not enrollment.email %}class="empty"{% endif %}>{{ enrollment.email or '—' }}</span>
+            </div>
+            <div class="det-field">
+                <label>Section</label>
+                <span {% if not enrollment.section_name %}class="empty"{% endif %}>
+                    {{ enrollment.section_name or '⚠ Not assigned' }}
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Parent / Guardian ── -->
+    <div class="section-card">
+        <div class="section-head">👨‍👩‍👧 Parent / Guardian</div>
+        <div class="section-body">
+            <div class="det-field">
+                <label>Father's Name</label>
+                <span {% if not enrollment.father_name %}class="empty"{% endif %}>{{ enrollment.father_name or '—' }}</span>
+            </div>
+            <div class="det-field">
+                <label>Father's Contact</label>
+                <span {% if not enrollment.father_contact %}class="empty"{% endif %}>{{ enrollment.father_contact or '—' }}</span>
+            </div>
+            <div class="det-field">
+                <label>Father's Occupation</label>
+                <span {% if not enrollment.father_occupation %}class="empty"{% endif %}>{{ enrollment.father_occupation or '—' }}</span>
+            </div>
+            <div class="det-field">
+                <label>Mother's Name</label>
+                <span {% if not enrollment.mother_name %}class="empty"{% endif %}>{{ enrollment.mother_name or '—' }}</span>
+            </div>
+            <div class="det-field">
+                <label>Mother's Contact</label>
+                <span {% if not enrollment.mother_contact %}class="empty"{% endif %}>{{ enrollment.mother_contact or '—' }}</span>
+            </div>
+            <div class="det-field">
+                <label>Mother's Occupation</label>
+                <span {% if not enrollment.mother_occupation %}class="empty"{% endif %}>{{ enrollment.mother_occupation or '—' }}</span>
+            </div>
+            <div class="det-field">
+                <label>Guardian Name</label>
+                <span>{{ enrollment.guardian_name or '—' }}</span>
+            </div>
+            <div class="det-field">
+                <label>Guardian Contact</label>
+                <span>{{ enrollment.guardian_contact or '—' }}</span>
+            </div>
+            <div class="det-field">
+                <label>Guardian Email</label>
+                <span {% if not enrollment.guardian_email %}class="empty"{% endif %}>{{ enrollment.guardian_email or '—' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Previous School ── -->
+    <div class="section-card">
+        <div class="section-head">🏫 Previous School</div>
+        <div class="section-body">
+            <div class="det-field">
+                <label>Last School Attended</label>
+                <span {% if not enrollment.previous_school %}class="empty"{% endif %}>{{ enrollment.previous_school or '—' }}</span>
+            </div>
+            <div class="det-field">
+                <label>School Year</label>
+                <span {% if not enrollment.school_year %}class="empty"{% endif %}>{{ enrollment.school_year or '—' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Documents ── -->
+    <div class="section-card">
+        <div class="section-head">📂 Submitted Documents</div>
+        {% if documents %}
+        <div class="doc-grid">
+            {% for doc in documents %}
+            {% set ext = doc.file_name.rsplit('.', 1)[-1].lower() if doc.file_name else '' %}
+            <div class="doc-card">
+                <div class="doc-icon">
+                    {% if ext == 'pdf' %}📕{% elif ext in ['jpg','jpeg','png'] %}🖼️{% else %}📄{% endif %}
+                </div>
+                <div class="doc-name">{{ doc.doc_type or doc.file_name }}</div>
+                <div style="font-size:11px; color:#94a3b8;">{{ ext.upper() }} file</div>
+                <a href="{{ doc.file_path }}" target="_blank">👁 View</a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="padding:20px; color:#94a3b8; text-align:center;">📭 No documents submitted.</div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

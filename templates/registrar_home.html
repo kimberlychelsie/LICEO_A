@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% block title %}Registrar Dashboard{% endblock %}
+{% block styles %}
+<style>
+    .reg-wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
+    .reg-title { font-size: 1.5rem; font-weight: 900; color: #1e293b; margin-bottom: 6px; }
+    .reg-sub   { color: #64748b; font-size: 0.88rem; margin-bottom: 28px; }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 14px;
+        margin-bottom: 28px;
+    }
+
+    .stat-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 20px 18px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.05);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        text-decoration: none;
+        transition: box-shadow .15s, transform .15s;
+    }
+    .stat-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,.10); transform: translateY(-2px); }
+
+    .stat-icon  { font-size: 1.8rem; line-height: 1; }
+    .stat-num   { font-size: 2rem; font-weight: 900; color: #1e293b; line-height: 1; }
+    .stat-label { font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
+
+    .stat-card.blue   { border-left: 4px solid #3b82f6; }
+    .stat-card.green  { border-left: 4px solid #22c55e; }
+    .stat-card.yellow { border-left: 4px solid #f59e0b; }
+    .stat-card.red    { border-left: 4px solid #ef4444; }
+    .stat-card.teal   { border-left: 4px solid #14b8a6; }
+
+    .section-title {
+        font-size: 1rem; font-weight: 800; color: #1e293b;
+        margin: 0 0 12px;
+        display: flex; align-items: center; gap: 8px;
+    }
+
+    .quick-links {
+        display: flex; flex-wrap: wrap; gap: 10px;
+        margin-bottom: 28px;
+    }
+
+    .ql-btn {
+        padding: 10px 18px;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all .15s;
+        border: none;
+        cursor: pointer;
+    }
+    .ql-primary  { background: #3b82f6; color: #fff; }
+    .ql-primary:hover  { background: #2563eb; }
+    .ql-success  { background: #22c55e; color: #fff; }
+    .ql-success:hover  { background: #16a34a; }
+    .ql-warning  { background: #f59e0b; color: #fff; }
+    .ql-warning:hover  { background: #d97706; }
+
+    .preview-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.05);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .preview-header {
+        padding: 13px 16px;
+        font-weight: 800;
+        font-size: 0.9rem;
+        border-bottom: 1px solid #e2e8f0;
+        background: #f8fafc;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .preview-table { width: 100%; border-collapse: collapse; }
+    .preview-table th, .preview-table td {
+        padding: 10px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 13px;
+        text-align: left;
+    }
+    .preview-table th {
+        font-size: 11px; font-weight: 800;
+        text-transform: uppercase; letter-spacing: .04em;
+        color: #94a3b8; background: #f8fafc;
+    }
+    .preview-table tr:last-child td { border-bottom: none; }
+
+    .empty-state {
+        text-align: center; padding: 32px 20px;
+        color: #94a3b8; font-size: 0.88rem;
+    }
+    .empty-state .big { font-size: 2rem; margin-bottom: 8px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reg-wrap">
+    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
+        <div>
+            <div class="reg-title">🏫 Registrar Dashboard</div>
+            <div class="reg-sub">Overview of enrollment status and student accounts.</div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <a href="/change-password" class="ql-btn" style="background:#475569; color:#fff;">🔑 Change Password</a>
+            <a href="/logout" class="ql-btn" style="background:#1e293b; color:#fff;">🚪 Logout</a>
+        </div>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div style="padding:12px 16px; border-radius:10px; margin-bottom:14px;
+        background:{{ '#d1fae5' if cat=='success' else ('#fef9c3' if cat=='warning' else '#fee2e2') }};
+        color:{{ '#065f46' if cat=='success' else ('#854d0e' if cat=='warning' else '#991b1b') }};
+        border:1px solid {{ '#6ee7b7' if cat=='success' else ('#fde68a' if cat=='warning' else '#fca5a5') }};">
+        {{ msg }}
+    </div>
+    {% endfor %}{% endif %}{% endwith %}
+
+    <!-- ── STATS CARDS ── -->
+    <div class="stats-grid">
+        <a href="/registrar/enrollments" class="stat-card blue">
+            <div class="stat-icon">📋</div>
+            <div class="stat-num">{{ pending_count }}</div>
+            <div class="stat-label">Pending Applications</div>
+        </a>
+        <a href="/registrar/enrollments#enrolled" class="stat-card green">
+            <div class="stat-icon">🎓</div>
+            <div class="stat-num">{{ enrolled_count }}</div>
+            <div class="stat-label">Enrolled Students</div>
+        </a>
+        <a href="/registrar/enrollments#enrolled" class="stat-card yellow">
+            <div class="stat-icon">⚠️</div>
+            <div class="stat-num">{{ no_section_count }}</div>
+            <div class="stat-label">No Section Assigned</div>
+        </a>
+        <a href="/registrar/enrollments#enrolled" class="stat-card red">
+            <div class="stat-icon">👤</div>
+            <div class="stat-num">{{ no_account_count }}</div>
+            <div class="stat-label">No Student Account</div>
+        </a>
+        <a href="/registrar/enrollments#enrolled" class="stat-card teal">
+            <div class="stat-icon">🔓</div>
+            <div class="stat-num">{{ reenroll_count }}</div>
+            <div class="stat-label">Open Re-enrollment</div>
+        </a>
+    </div>
+
+    <!-- ── QUICK LINKS ── -->
+    <div class="section-title">⚡ Quick Actions</div>
+    <div class="quick-links">
+        <a href="/registrar/enrollments" class="ql-btn ql-primary">📋 Manage Enrollments</a>
+        <a href="/registrar/enrollments#enrolled" class="ql-btn ql-success">🎓 Enrolled Students</a>
+    </div>
+
+    <!-- ── RECENT PENDING PREVIEW ── -->
+    <div class="section-title">🕐 Recent Pending Applications</div>
+    <div class="preview-card">
+        <div class="preview-header">
+            <span>Latest Pending Enrollments</span>
+            <a href="/registrar/enrollments" style="font-size:12px; color:#3b82f6; font-weight:700; text-decoration:none;">View All →</a>
+        </div>
+        {% if recent_pending %}
+        <table class="preview-table">
+            <tr>
+                <th>No.</th>
+                <th>Student Name</th>
+                <th>Grade Level</th>
+                <th>Applied</th>
+            </tr>
+            {% for e in recent_pending %}
+            <tr>
+                <td><strong>#{{ e.display_no }}</strong></td>
+                <td>{{ e.student_name }}</td>
+                <td>{{ e.grade_level }}</td>
+                <td style="color:#94a3b8; font-size:12px;">
+                    {{ e.created_at.strftime('%b %d, %Y') if e.created_at else '—' }}
+                </td>
+            </tr>
+            {% endfor %}
+        </table>
+        {% else %}
+        <div class="empty-state">
+            <div class="big">📭</div>
+            No pending enrollment applications.
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
