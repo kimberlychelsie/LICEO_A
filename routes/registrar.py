@@ -6,6 +6,7 @@ import string
 import logging
 import psycopg2.extras
 import json
+from utils.send_email import send_email
 
 # Setup logging
 logging.basicConfig(level=logging.ERROR)
@@ -369,6 +370,27 @@ def create_student_account(enrollment_id):
                     db.rollback()
                     logger.warning(f"Section assign failed (non-fatal): {str(e)}")
 
+            # ─────── SEND EMAIL WITH CREDENTIALS ───────
+            student_email = enrollment.get("email")
+            if student_email:
+                subject = "Your Student Account Credentials"
+                body = f"""
+Dear {enrollment.get('student_name')},
+
+Your student account has been created.
+
+Username: {username}
+Temporary Password: {temp_password}
+
+You can log in at: https://liceolms.up.railway.app/
+
+Please change your password after logging in!
+
+Regards,
+Registrar
+"""
+                send_email(student_email, subject, body)
+
             return render_template(
                 "account_created.html",
                 account_type="student",
@@ -459,6 +481,27 @@ def create_parent_account(enrollment_id):
                 VALUES (%s, %s, 'guardian')
             """, (parent_id, enrollment_id))
             db.commit()
+
+            # ─────── SEND EMAIL WITH CREDENTIALS ───────
+            parent_email = enrollment.get("guardian_email") or enrollment.get("email")
+            if parent_email:
+                subject = "Your Parent Account Credentials"
+                body = f"""
+Dear Parent/Guardian of {enrollment.get('student_name')},
+
+Your parent account has been created.
+
+Username: {username}
+Temporary Password: {temp_password}
+
+You can log in at: https://liceolms.up.railway.app/
+
+Please change your password after logging in!
+
+Regards,
+Registrar
+"""
+                send_email(parent_email, subject, body)
 
             return render_template(
                 "account_created.html",
