@@ -313,53 +313,22 @@ def enroll(branch_id):
             next_no = cursor.fetchone()["next_no"]
 
             cursor.execute("""
-<<<<<<< HEAD
                 INSERT INTO enrollments
                   (student_name, grade_level, gender, dob, address, contact_number,
                    guardian_name, guardian_contact, previous_school, branch_id, status,
                    branch_enrollment_no, lrn, email, guardian_email,
-                   enroll_type, enroll_date, remarks, birthplace,
-                   father_name, father_contact, father_occupation,
-                   mother_name, mother_contact, mother_occupation, school_year)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s,%s,%s, %s,%s,%s,%s, %s,%s,%s, %s,%s,%s, %s)
-=======
-                INSERT INTO enrollments (
-                    student_name, grade_level, gender, dob, address, contact_number,
-                    guardian_name, guardian_contact, previous_school, branch_id, status,
-                    branch_enrollment_no, lrn, email, guardian_email,
-                    birthplace,
-                    father_name, father_contact, father_occupation,
-                    mother_name, mother_contact, mother_occupation,
-                    school_year,
-                    enroll_type, enroll_date, remarks
-                )
-                VALUES (
-                    %s,%s,%s,%s,%s,%s,
-                    %s,%s,%s,%s,'pending',
-                    %s,%s,%s,%s,
-                    %s,
-                    %s,%s,%s,
-                    %s,%s,%s,
-                    %s,
-                    %s,%s,%s
-                )
->>>>>>> 7d5002a9c54d659da67efe029b900deffd076307
+                   birthplace, father_name, father_contact, father_occupation,
+                   mother_name, mother_contact, mother_occupation, school_year,
+                   enroll_type, enroll_date, remarks)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s,%s,%s, %s,%s,%s,%s, %s,%s,%s, %s, %s,%s,%s)
                 RETURNING enrollment_id
             """, (
                 student_name, grade_level, gender, dob, address, contact_number,
                 guardian_name, guardian_contact, previous_school, branch_id,
                 next_no, lrn, email, guardian_email,
-<<<<<<< HEAD
-                enroll_type, enroll_date, remarks, birthplace,
-                father_name, father_contact, father_occupation,
-                mother_name, mother_contact, mother_occupation, school_year
-=======
-                birthplace,
-                father_name, father_contact, father_occupation,
-                mother_name, mother_contact, mother_occupation,
-                school_year,
+                birthplace, father_name, father_contact, father_occupation,
+                mother_name, mother_contact, mother_occupation, school_year,
                 enroll_type, enroll_date, remarks
->>>>>>> 7d5002a9c54d659da67efe029b900deffd076307
             ))
             enrollment_id = cursor.fetchone()["enrollment_id"]
             db.commit()
