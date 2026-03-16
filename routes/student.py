@@ -248,6 +248,19 @@ def enroll(branch_id):
             email            = request.form.get("email", "").strip() or None
             guardian_email   = request.form.get("guardian_email", "").strip() or None
 
+            # ✅ NEW: Handle additional fields from the enhanced form
+            enroll_type       = request.form.get("enroll_type", "").strip() or None
+            enroll_date       = request.form.get("enroll_date", "").strip() or None
+            remarks           = request.form.get("remarks", "").strip() or None
+            birthplace        = request.form.get("birthplace", "").strip() or None
+            father_name       = request.form.get("father_name", "").strip() or None
+            father_contact    = request.form.get("father_contact", "").strip() or None
+            father_occupation = request.form.get("father_occupation", "").strip() or None
+            mother_name       = request.form.get("mother_name", "").strip() or None
+            mother_contact    = request.form.get("mother_contact", "").strip() or None
+            mother_occupation = request.form.get("mother_occupation", "").strip() or None
+            school_year       = request.form.get("school_year", "").strip() or None
+
             # ── SERVER-SIDE DUPLICATE CHECK ──
             cursor.execute("""
                 SELECT student_name, dob, lrn, grade_level
@@ -284,13 +297,19 @@ def enroll(branch_id):
                 INSERT INTO enrollments
                   (student_name, grade_level, gender, dob, address, contact_number,
                    guardian_name, guardian_contact, previous_school, branch_id, status,
-                   branch_enrollment_no, lrn, email, guardian_email)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s,%s,%s)
+                   branch_enrollment_no, lrn, email, guardian_email,
+                   enroll_type, enroll_date, remarks, birthplace,
+                   father_name, father_contact, father_occupation,
+                   mother_name, mother_contact, mother_occupation, school_year)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s,%s,%s, %s,%s,%s,%s, %s,%s,%s, %s,%s,%s, %s)
                 RETURNING enrollment_id
             """, (
                 student_name, grade_level, gender, dob, address, contact_number,
                 guardian_name, guardian_contact, previous_school, branch_id,
-                next_no, lrn, email, guardian_email
+                next_no, lrn, email, guardian_email,
+                enroll_type, enroll_date, remarks, birthplace,
+                father_name, father_contact, father_occupation,
+                mother_name, mother_contact, mother_occupation, school_year
             ))
             enrollment_id = cursor.fetchone()["enrollment_id"]
             db.commit()
