@@ -767,10 +767,24 @@ def branch_admin_grade_levels():
     db = get_db_connection()
     cursor = db.cursor()
 
+    VALID_GRADES = [
+        "Kinder",
+        "Grade 1", "Grade 2", "Grade 3",
+        "Grade 4", "Grade 5", "Grade 6",
+        "Grade 7", "Grade 8", "Grade 9",
+        "Grade 10", "Grade 11", "Grade 12"
+    ]
+
     if request.method == "POST":
         name = (request.form.get("name") or "").strip()
         order = request.form.get("display_order") or None
         description = (request.form.get("description") or "").strip()
+
+        # ✅ validation
+        if name not in VALID_GRADES:
+            flash("Invalid grade level selected.", "error")
+            return redirect(url_for('branch_admin.branch_admin_grade_levels'))
+
         try:
             order_int = int(order)
         except (TypeError, ValueError):
@@ -779,14 +793,15 @@ def branch_admin_grade_levels():
         if not name or order is None or order_int < 1:
             flash("Name and order (must be 1 or greater) are required.", "error")
         else:
-            try:                                          # ← try wraps the INSERT
+            try:
                 cursor.execute(
                     "INSERT INTO grade_levels (name, display_order, description, branch_id) VALUES (%s, %s, %s, %s)",
                     (name, order_int, description if description else None, branch_id)
                 )
                 db.commit()
                 flash("Grade level added!", "success")
-            except Exception as e:                        # ← except at same level as try
+                return redirect(url_for('branch_admin.branch_admin_grade_levels'))  # ✅ important
+            except Exception as e:
                 db.rollback()
                 if "duplicate key" in str(e).lower():
                     flash(f"Grade level '{name}' already exists for this branch.", "error")
@@ -798,8 +813,10 @@ def branch_admin_grade_levels():
         (branch_id,)
     )
     grades = cursor.fetchall()
+
     cursor.close()
     db.close()
+
     return render_template("branch_admin_grade_levels.html", grades=grades)
 
 @branch_admin_bp.route("/branch-admin/grade-levels/<int:grade_id>/edit", methods=["POST"])
