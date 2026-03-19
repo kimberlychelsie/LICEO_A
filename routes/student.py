@@ -764,9 +764,18 @@ def track_enrollment():
     enrollment = None
     documents = []
     branches = []
+    requirements = {}  # Add this for template
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    REQUIRED_DOCS = {
+    "PSA Birth Certificate": "PSA Birth Certificate",
+    "Baptismal Certificate": "Baptismal Certificate",
+    "Form 138": "Form 138",
+    "Good Moral Certificate": "Good Moral Certificate",
+    "Form 137": "Form 137",
+}
 
     try:
         cursor.execute("SELECT branch_id, branch_name FROM branches WHERE is_active = TRUE ORDER BY branch_name")
@@ -793,6 +802,8 @@ def track_enrollment():
                 if enrollment:
                     cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id=%s", (enrollment["enrollment_id"],))
                     documents = cursor.fetchall()
+                    submitted_types = set(d["doc_type"] for d in documents)
+                    requirements = {label: key in submitted_types for key, label in REQUIRED_DOCS.items()}
                 else:
                     flash("No enrollment found with that ID in the selected branch.", "error")
     finally:
@@ -803,7 +814,8 @@ def track_enrollment():
         "track_enrollment.html",
         enrollment=enrollment,
         documents=documents,
-        branches=branches
+        branches=branches,
+        requirements=requirements    # Pass the requirements dict!
     )
 
 

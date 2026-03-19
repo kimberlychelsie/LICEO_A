@@ -275,19 +275,29 @@
         </div>
 
         <div class="result-section">
-            <h3>&#128193; Submitted Documents</h3>
-            {% if documents %}
-            <div class="doc-list">
-                {% for doc in documents %}
-                <a class="doc-item" href="{{ doc.file_path }}" target="_blank">
-                    <span class="doc-icon">&#128196;</span>
-                    <span>{{ doc.file_name }}</span>
-                </a>
-                {% endfor %}
-            </div>
-            {% else %}
-            <p class="empty-msg">No documents were uploaded for this enrollment.</p>
-            {% endif %}
+            <h3>&#128193; Documents Submitted</h3>
+            <table style="width:100%; margin-bottom:10px;">
+                <thead>
+                    <tr>
+                        <th>Document</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for req, submitted in requirements.items() %}
+                    <tr>
+                        <td>{{ req }}</td>
+                        <td>
+                            {% if submitted %}
+                                <span style="color: #166534; font-weight: 700;">Submitted</span>
+                            {% else %}
+                                <span style="color: #991b1b; font-weight: 700;">None</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
 
         {% if enrollment.status == 'approved' %}
