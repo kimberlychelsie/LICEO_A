@@ -220,9 +220,18 @@
                             <select name="section_id" class="field" style="flex: 1;">
                                 <option value="">— Select Section —</option>
                                 {% for sec in sections %}
-                                <option value="{{ sec.section_id }}" {{ 'selected' if sec.section_id==s.section_id
-                                    else '' }}>
-                                    {{ sec.section_name }}
+                                {% set is_full = sec.current_count >= sec.capacity %}
+                                {% set is_current = (sec.section_id == s.section_id) %}
+                                <option value="{{ sec.section_id }}" 
+                                    {{ 'selected' if is_current else '' }} 
+                                    {{ 'disabled' if is_full and not is_current else '' }}
+                                    style="{{ 'color: #dc3545; font-weight: bold;' if is_full and not is_current else '' }}">
+                                    {{ sec.section_name }} 
+                                    {% if is_full %}
+                                        (Full: {{ sec.current_count }}/{{ sec.capacity }})
+                                    {% else %}
+                                        (Available: {{ sec.current_count }}/{{ sec.capacity }})
+                                    {% endif %}
                                 </option>
                                 {% endfor %}
                             </select>

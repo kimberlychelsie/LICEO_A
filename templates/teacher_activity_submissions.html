@@ -139,6 +139,7 @@
                     <th>Submitted At</th>
                     <th>File</th>
                     <th>Score / {{ activity.max_score }}</th>
+                    <th>Extension</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -182,13 +183,7 @@
                                class="btn btn-secondary btn-sm" 
                                title="{{ sub.original_filename }}"
                                style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">
-                                {% if sub_ext == 'pdf' %}📕
-                                {% elif sub_ext in ['jpg', 'jpeg', 'png', 'gif'] %}🖼️
-                                {% elif sub_ext in ['doc', 'docx'] %}📄
-                                {% elif sub_ext in ['xls', 'xlsx'] %}📊
-                                {% elif sub_ext in ['ppt', 'pptx'] %}📈
-                                {% else %}📎
-                                {% endif %}
+                                {{ '📕' if sub_ext == 'pdf' else '🖼️' if sub_ext in ['jpg', 'jpeg', 'png', 'gif'] else '📄' if sub_ext in ['doc', 'docx'] else '📊' if sub_ext in ['xls', 'xlsx'] else '📈' if sub_ext in ['ppt', 'pptx'] else '📎' }}
                                 {{ sub.original_filename }}
                             </a>
                         </div>
@@ -198,17 +193,29 @@
                     </td>
                     <td>
                         {% if sub.grade_id %}
-                        <strong>{{ sub.raw_score | int if sub.raw_score == (sub.raw_score | int) else sub.raw_score
-                            }}</strong> / {{ activity.max_score }}<br>
-                        <span style="font-size:0.8rem; color:var(--muted)">{{ sub.percentage | int if sub.percentage ==
-                            (sub.percentage | int) else sub.percentage }}%</span>
+                        <strong>{{ sub.raw_score | int if sub.raw_score == (sub.raw_score | int) else sub.raw_score }}</strong> / {{ activity.max_score }}<br>
+                        <span style="font-size:0.8rem; color:var(--muted)">{{ sub.percentage | int if sub.percentage == (sub.percentage | int) else sub.percentage }}%</span>
                         {% else %}
                         —
                         {% endif %}
                     </td>
                     <td>
-                        {% if sub.submission_id %}
+                        {% if sub.individual_extension %}
+                        <span class="badge badge-blue" style="background:#17a2b8; color:#fff;">
+                            📅 {{ sub.individual_extension.strftime('%b %d, %I:%M %p') }}
+                        </span>
+                        {% else %}
+                        —
+                        {% endif %}
+                    </td>
+                    <td>
                         <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-secondary btn-sm" 
+                                    style="background:#17a2b8; border:none; color:#fff;"
+                                    onclick="openRescheduleModal('{{ sub.enrollment_id }}', '{{ sub.student_name }}')">
+                                📅 Resched
+                            </button>
+                            {% if sub.submission_id %}
                             <button type="button" class="btn btn-primary btn-sm" data-sub-id="{{ sub.submission_id }}"
                                 data-name="{{ sub.student_name }}"
                                 data-score="{{ sub.raw_score if sub.raw_score is not none else '' }}"
@@ -217,15 +224,12 @@
                             </button>
                             <form action="{{ url_for('teacher.allow_resubmission', submission_id=sub.submission_id) }}"
                                 method="POST" style="margin:0;">
-                                <button type="submit" class="btn btn-secondary btn-sm" {% if sub.allow_resubmit
-                                    %}disabled title="Already allowed" {% endif %}>
+                                <button type="submit" class="btn btn-secondary btn-sm" {% if sub.allow_resubmit %}disabled title="Already allowed"{% endif %}>
                                     Allow Resubmit
                                 </button>
                             </form>
+                            {% endif %}
                         </div>
-                        {% else %}
-                        —
-                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}
@@ -237,8 +241,6 @@
 <script>
     function viewFilePreview(path, forcedExt = '') {
         const ext = (forcedExt || path.split('.').pop().toLowerCase()).trim();
-        
-        // Sanitize Cloudinary URL: Ensure raw files use /raw/upload/
         let finalPath = path;
         const isDocOrPdf = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
         if (isDocOrPdf && finalPath.includes('/image/upload/')) {
@@ -246,14 +248,11 @@
         }
 
         if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext) || ext === 'pdf') {
-            // PDF and Images -> Direct preview in new tab
             window.open(finalPath, '_blank');
         } else if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
-            // DOCX and Office docs -> Google Viewer
             const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(finalPath)}&embedded=false`;
             window.open(googleViewerUrl, '_blank');
         } else {
-            // Others -> Download
             const link = document.createElement('a');
             link.href = finalPath;
             link.download = '';
@@ -275,13 +274,9 @@
             <input type="hidden" name="activity_id" value="{{ activity.activity_id }}">
             <div class="form-group">
                 <label class="form-label">Score (Max: {{ activity.max_score }})</label>
-                <select name="raw_score" id="raw_score" class="form-select" required>
-                    <option value="" disabled selected>-- Select Score --</option>
-                    {% for score in [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100] %}
-                    {% if score <= activity.max_score %} <option value="{{ score }}">{{ score }}</option>
-                        {% endif %}
-                        {% endfor %}
-                </select>
+                <input type="number" name="raw_score" id="raw_score" class="form-select" 
+                       min="0" max="{{ activity.max_score }}" step="0.5" required
+                       style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;">
             </div>
             <div class="form-group">
                 <label class="form-label">Feedback / Remarks (Optional)</label>
@@ -290,6 +285,32 @@
             <div style="display:flex; justify-content:flex-end; gap:10px;">
                 <button type="button" class="btn btn-secondary" onclick="closeGradeModal()">Cancel</button>
                 <button type="submit" class="btn btn-primary">Save Grade</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Reschedule Modal -->
+<div id="rescheduleModal" class="modal">
+    <div class="modal-content" style="max-width:400px;">
+        <div class="modal-header">
+            <span id="reschedModalTitle">Reschedule Activity</span>
+            <span class="close-btn" onclick="closeRescheduleModal()">&times;</span>
+        </div>
+        <form id="rescheduleForm">
+            <input type="hidden" id="resched_enrollment_id">
+            <input type="hidden" id="resched_item_id" value="{{ activity.activity_id }}">
+            <input type="hidden" id="resched_item_type" value="activity">
+            
+            <div style="margin-bottom:20px;">
+                <label style="display:block; font-size:13px; margin-bottom:8px; color:var(--muted);">New Deadline (Date & Time)</label>
+                <input type="datetime-local" id="new_due_date" required 
+                       style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; font-family:inherit; background:var(--card); color:var(--text); box-sizing:border-box;">
+            </div>
+            
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn btn-secondary" onclick="closeRescheduleModal()">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Changes</button>
             </div>
         </form>
     </div>
@@ -308,14 +329,13 @@
         document.getElementById('modalTitle').textContent = 'Grade: ' + studentName;
         document.getElementById('gradeForm').action = '/teacher/activities/submissions/' + submissionId + '/grade';
 
-        let select = document.getElementById('raw_score');
+        document.getElementById('gradeForm').action = '/teacher/activities/submissions/' + submissionId + '/grade';
+
+        let scoreInput = document.getElementById('raw_score');
         if (score !== '' && score !== 'None' && score !== null) {
-            let numScore = Math.round(Number(score));
-            // Ensure the value exists in the dropdown, else round it to nearest ten
-            numScore = Math.round(numScore / 10) * 10;
-            select.value = numScore;
+            scoreInput.value = score;
         } else {
-            select.value = '';
+            scoreInput.value = '';
         }
 
         document.getElementById('remarks').value = feedback || '';
@@ -329,11 +349,57 @@
         document.getElementById('remarks').value = '';
     }
 
+    function openRescheduleModal(enrollmentId, studentName) {
+        document.getElementById('reschedModalTitle').innerText = 'Reschedule: ' + studentName;
+        document.getElementById('resched_enrollment_id').value = enrollmentId;
+        
+        // Set min date to current time
+        const now = new Date();
+        const offset = now.getTimezoneOffset() * 60000;
+        const localISOTime = new Date(now - offset).toISOString().slice(0, 16);
+        document.getElementById('new_due_date').setAttribute('min', localISOTime);
+        
+        document.getElementById('rescheduleModal').style.display = 'block';
+    }
+
+    function closeRescheduleModal() {
+        document.getElementById('rescheduleModal').style.display = 'none';
+    }
+
+    document.getElementById('rescheduleForm').onsubmit = function(e) {
+        e.preventDefault();
+        const data = {
+            enrollment_id: document.getElementById('resched_enrollment_id').value,
+            item_id: document.getElementById('resched_item_id').value,
+            item_type: document.getElementById('resched_item_type').value,
+            new_due_date: document.getElementById('new_due_date').value
+        };
+
+        fetch('/teacher/reschedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(res => {
+            if (res.ok) {
+                alert('Rescheduled successfully!');
+                location.reload();
+            } else {
+                alert('Error: ' + res.error);
+            }
+        })
+        .catch(err => {
+            alert('Failed to save changes.');
+            console.error(err);
+        });
+    };
+
     window.onclick = function (event) {
-        var modal = document.getElementById('gradeModal');
-        if (event.target == modal) {
-            closeGradeModal();
-        }
+        var gModal = document.getElementById('gradeModal');
+        var rModal = document.getElementById('rescheduleModal');
+        if (event.target == gModal) closeGradeModal();
+        if (event.target == rModal) closeRescheduleModal();
     }
 </script>
 {% endblock %}

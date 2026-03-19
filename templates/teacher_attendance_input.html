@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Attendance Scores — {{ period }} Grading{% endblock %}
+
+{% block styles %}
+<style>
+.pi-wrap { max-width: 760px; margin: 0 auto; }
+.pi-title { font-size: 1.4rem; font-weight: 800; }
+.pi-sub { color: var(--muted); font-size: 0.9rem; margin-top: 4px; }
+.score-table { width: 100%; border-collapse: collapse; }
+.score-table th { background: var(--card); padding: 12px 16px; text-align: left; font-size: 0.8rem; font-weight: 700; color: var(--muted); text-transform: uppercase; border-bottom: 2px solid var(--border); }
+.score-table td { padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.score-table tr:hover td { background: var(--hover); }
+.score-input { width: 90px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); text-align: center; font-size: 0.95rem; }
+.score-hint { font-size: 0.78rem; color: var(--muted); margin-top: 2px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pi-wrap">
+    <a href="{{ url_for('teacher.class_record', section_id=section_id, subject_id=subject_id, period=period) }}"
+       style="font-size:0.85rem; color:var(--btn);">← Back to Class Record</a>
+    <h1 class="pi-title" style="margin-top:8px;">🗓 Attendance Scores</h1>
+    <div class="pi-sub">
+        {{ ctx.subject_name }} &bull; {{ ctx.section_name }} &bull; <strong>{{ period }} Grading</strong>
+    </div>
+    <div style="margin-top:8px; font-size:0.85rem; color:var(--muted); margin-bottom:18px;">
+        Enter attendance score per student (0–100). This represents the student's overall attendance standing for the grading period.
+    </div>
+
+    <form method="POST">
+        {% if students %}
+        <div style="border-radius:12px; border:1px solid var(--border); overflow:hidden;">
+            <table class="score-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Student Name</th>
+                        <th>Attendance Score (0–100)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in students %}
+                    <tr>
+                        <td style="color:var(--muted); font-size:0.85rem;">{{ loop.index }}</td>
+                        <td style="font-weight:600;">{{ s.student_name }}</td>
+                        <td>
+                            <input type="number" name="score_{{ s.enrollment_id }}"
+                                   class="score-input" min="0" max="100" step="0.5"
+                                   value="{{ s.score | round(1) }}">
+                            <div class="score-hint">out of 100</div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div style="margin-top:16px; display:flex; gap:10px;">
+            <button type="submit" class="btn btn-primary">💾 Save All Scores</button>
+            <a href="{{ url_for('teacher.class_record', section_id=section_id, subject_id=subject_id, period=period) }}"
+               class="btn btn-secondary">Cancel</a>
+        </div>
+        {% else %}
+        <div style="text-align:center; padding:60px; color:var(--muted);">
+            <div style="font-size:3rem;">👥</div><h3>No students found</h3>
+        </div>
+        {% endif %}
+    </form>
+</div>
+{% endblock %}

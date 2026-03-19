@@ -180,6 +180,22 @@
     <div class="task-page-title">📄 My Exams</div>
   </div>
 
+  <!-- Filter Tabs -->
+  <style>
+    .filter-tabs { display: flex; gap: 8px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 8px; }
+    .filter-tab { padding: 8px 16px; background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; cursor: pointer; font-size: 0.9rem; font-weight: 600; white-space: nowrap; transition: all 0.2s; color: #475569; }
+    .filter-tab:hover { border-color: #1e40af; color: #1e40af; }
+    .filter-tab.active { background: #1e40af; color: #fff; border-color: #1e40af; }
+  </style>
+  <div class="filter-tabs">
+    <div class="filter-tab active" onclick="filterExams('all', this)">All Periods</div>
+    <div class="filter-tab" onclick="filterExams('1st', this)">1st Grading</div>
+    <div class="filter-tab" onclick="filterExams('2nd', this)">2nd Grading</div>
+    <div class="filter-tab" onclick="filterExams('3rd', this)">3rd Grading</div>
+    <div class="filter-tab" onclick="filterExams('4th', this)">4th Grading</div>
+    <div class="filter-tab" onclick="filterExams('none', this)">Unassigned</div>
+  </div>
+
   {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}{% for cat, msg in messages %}
   <div style="padding:12px 16px; border-radius:10px; margin-bottom:14px;
@@ -189,55 +205,69 @@
   {% endfor %}{% endif %}{% endwith %}
 
   {% if exams %}
-    {% for e in exams %}
-    {% set is_done    = e.result_status in ('submitted', 'auto_submitted') %}
-    {% set is_closed  = e.status == 'closed' %}
-    {% set is_notyet  = e.scheduled_start and now_utc < e.scheduled_start %}
-    {% set exam_end   = (e.scheduled_start + timedelta(minutes=e.duration_mins)) if e.scheduled_start else none %}
-    {% set is_expired = exam_end and now_utc > exam_end %}
-    <div class="task-card">
-      <div class="task-card-top">
-        <div>
-          <div class="task-cat-badge cat-exam">Exam</div>
-          <h3 class="task-title">{{ e.title }}</h3>
-          <div class="task-info-row">
-            <span>⏱ {{ e.duration_mins }} min</span>
-            <span>❓ {{ e.question_count }} question(s)</span>
-            {% if e.scheduled_start %}
-            <span>📅 Opens {{ e.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}</span>
+    <div id="examsContainer">
+      {% for e in exams %}
+      {% set is_done    = e.result_status in ('submitted', 'auto_submitted') %}
+      {% set is_closed  = e.status == 'closed' %}
+      {% set is_notyet  = e.scheduled_start and now_utc < e.scheduled_start %}
+      {% set exam_end      = (e.scheduled_start + timedelta(minutes=e.duration_mins)) if e.scheduled_start else none %}
+      {% set effective_end = e.individual_extension if e.individual_extension else exam_end %}
+      {% set is_expired    = effective_end and now_utc > effective_end %}
+      
+      <div class="task-card" data-period="{{ e.grading_period or 'none' }}" 
+           {% if e.individual_extension %}style="border-left-color: #10b981;"{% endif %}>
+        <div class="task-card-top">
+          <div>
+            <div class="task-cat-badge cat-exam">Exam</div>
+            <h3 class="task-title">{{ e.title }}</h3>
+            <div class="task-info-row">
+              <strong style="color:#1e40af;">{{ e.subject_name }}</strong> &bull;
+              <span>⏱ {{ e.duration_mins }} min</span>
+              <span>❓ {{ e.question_count }} question(s)</span>
+              {% if e.grading_period %}
+              <span class="status-badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #dbeafe;">{{ e.grading_period }} Grading</span>
+              {% endif %}
+              {% if e.scheduled_start %}
+              <span>📅 Opens {{ e.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}</span>
+              {% endif %}
+              {% if e.individual_extension %}
+              <span class="status-badge" style="background:#d1fae5; color:#065f46; border:1px solid #10b981;">
+                  ⭐ Extended until {{ e.individual_extension.strftime('%b %d, %I:%M %p') }}
+              </span>
+              {% endif %}
+            </div>
+            {% if is_done %}
+            <div class="score-info">
+              Score: <strong>{{ e.score|round|int }} / {{ e.total_points|round|int }}</strong>
+              {% if e.result_status == 'auto_submitted' %}<span style="color:#856404; font-size:11px;"> ⚠️ auto-submitted</span>{% endif %}
+            </div>
             {% endif %}
           </div>
-          {% if is_done %}
-          <div class="score-info">
-            Score: <strong>{{ e.score|round|int }} / {{ e.total_points|round|int }}</strong>
-            {% if e.result_status == 'auto_submitted' %}<span style="color:#856404; font-size:11px;"> ⚠️ auto-submitted</span>{% endif %}
+          <div>
+            {% if is_done %}
+              <span class="status-badge st-done">✅ Done</span>
+            {% elif is_closed %}
+              <span class="status-badge st-closed">Closed</span>
+            {% elif is_notyet %}
+              <span class="status-badge st-notyet">⏳ Not Yet Open</span>
+            {% elif is_expired %}
+              <span class="status-badge st-expired">⌛ Expired</span>
+            {% else %}
+              <span class="status-badge st-available">Available</span>
+            {% endif %}
           </div>
-          {% endif %}
         </div>
-        <div>
-          {% if is_done %}
-            <span class="status-badge st-done">✅ Done</span>
-          {% elif is_closed %}
-            <span class="status-badge st-closed">Closed</span>
-          {% elif is_notyet %}
-            <span class="status-badge st-notyet">⏳ Not Yet Open</span>
-          {% elif is_expired %}
-            <span class="status-badge st-expired">⌛ Expired</span>
-          {% else %}
-            <span class="status-badge st-available">Available</span>
-          {% endif %}
-        </div>
-      </div>
 
-      <div class="task-card-bottom">
-        {% if is_done %}
-          <a href="{{ url_for('student_portal.student_exam_result', result_id=e.result_id) }}" class="btn-result">📊 View Result</a>
-        {% elif not is_closed and not is_notyet and not is_expired %}
-          <a href="{{ url_for('student_portal.student_exam_take', exam_id=e.exam_id) }}" class="btn-take">📝 Take Exam</a>
-        {% endif %}
+        <div class="task-card-bottom">
+          {% if is_done %}
+            <a href="{{ url_for('student_portal.student_exam_result', result_id=e.result_id) }}" class="btn-result">📊 View Result</a>
+          {% elif not is_closed and not is_notyet and not is_expired %}
+            <a href="{{ url_for('student_portal.student_exam_take', exam_id=e.exam_id) }}" class="btn-take">📝 Take Exam</a>
+          {% endif %}
+        </div>
       </div>
+      {% endfor %}
     </div>
-    {% endfor %}
   {% else %}
   <div class="empty-box">
     <div class="big-icon">📭</div>
@@ -246,4 +276,20 @@
   </div>
   {% endif %}
 </div>
+
+<script>
+function filterExams(period, el) {
+  document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+  el.classList.add('active');
+
+  const cards = document.querySelectorAll('.task-card');
+  cards.forEach(card => {
+    if (period === 'all' || card.dataset.period === period) {
+      card.style.display = 'block';
+    } else {
+      card.style.display = 'none';
+    }
+  });
+}
+</script>
 {% endblock %}

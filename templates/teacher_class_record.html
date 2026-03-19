@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+{% block title %}Class Record — {{ context.subject_name }}{% endblock %}
+
+{% block styles %}
+<style>
+.cr-wrap { max-width: 1200px; margin: 0 auto; }
+.cr-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+.cr-title { font-size: 1.4rem; font-weight: 800; }
+.cr-sub { font-size: 0.9rem; color: var(--muted); margin-top: 4px; }
+.period-tabs { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+.ptab { padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 0.9rem; border: 2px solid var(--border); background: var(--bg); color: var(--muted); text-decoration: none; transition: all 0.15s; }
+.ptab:hover { border-color: var(--btn); color: var(--btn); }
+.ptab.active { background: var(--btn); color: #fff; border-color: var(--btn); }
+.weights-bar { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; margin-bottom: 18px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; font-size: 0.85rem; }
+.w-item { color: var(--muted); }
+.w-item strong { color: var(--btn); }
+.no-weights { color: #f59e0b; font-size: 0.85rem; }
+.cr-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
+table.cr-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+table.cr-table th { background: var(--card); padding: 12px 14px; text-align: center; font-weight: 700; font-size: 0.8rem; color: var(--muted); text-transform: uppercase; border-bottom: 2px solid var(--border); white-space: nowrap; }
+table.cr-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); text-align: center; }
+table.cr-table td:first-child { text-align: left; font-weight: 600; }
+table.cr-table tr:hover td { background: var(--hover); }
+.grade-pill { display: inline-block; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 0.9rem; }
+.grade-pass { background: #dcfce7; color: #166534; }
+.grade-fail { background: #fee2e2; color: #991b1b; }
+.grade-none { background: var(--bg); color: var(--muted); font-style: italic; font-size: 0.8rem; }
+.action-links { display: flex; gap: 8px; flex-wrap: wrap; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cr-wrap">
+    <div class="cr-header">
+        <div>
+            <h1 class="cr-title">📊 Class Record</h1>
+            <div class="cr-sub">
+                {{ context.subject_name }} &bull; {{ context.grade_level_name }} / {{ context.section_name }}
+            </div>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <a href="{{ url_for('teacher.grading_weights') }}" class="btn btn-secondary btn-sm">⚖️ Back to Weights Setup</a>
+            {% if weights %}
+            <a href="{{ url_for('teacher.participation_input', section_id=section_id, subject_id=subject_id, period=period) }}" class="btn btn-secondary btn-sm">🙋 Participation</a>
+            <a href="{{ url_for('teacher.attendance_input', section_id=section_id, subject_id=subject_id, period=period) }}" class="btn btn-secondary btn-sm">🗓 Attendance</a>
+            <form action="{{ url_for('teacher.teacher_post_grades', section_id=section_id, subject_id=subject_id, period=period) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to post these grades to the student portal? This will overwrite any previously posted grades for this period.');">
+                <button type="submit" class="btn btn-primary btn-sm">🚀 Post Grades to Student Portal</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Period tabs -->
+    <div class="period-tabs">
+        {% for p in grading_periods %}
+        <a href="{{ url_for('teacher.class_record', section_id=section_id, subject_id=subject_id, period=p) }}"
+           class="ptab {% if p == period %}active{% endif %}">{{ p }} Grading</a>
+        {% endfor %}
+    </div>
+
+    <!-- Weights banner -->
+    {% if weights %}
+    <div class="weights-bar">
+        <span style="font-weight:700; color:var(--text);">📐 {{ period }} Weights:</span>
+        <span class="w-item">Quiz <strong>{{ weights.quiz_pct }}%</strong></span>
+        <span class="w-item">Exam <strong>{{ weights.exam_pct }}%</strong></span>
+        <span class="w-item">SA Activity <strong>{{ weights.activity_pct }}%</strong></span>
+        <span class="w-item">Participation <strong>{{ weights.participation_pct }}%</strong></span>
+        <span class="w-item">Attendance <strong>{{ weights.attendance_pct }}%</strong></span>
+    </div>
+    {% else %}
+    <div class="weights-bar">
+        <span class="no-weights">⚠️ No weights set for {{ period }} Grading. Period grade cannot be computed.
+        <a href="{{ url_for('teacher.grading_weights') }}" style="color:var(--btn);">Set weights →</a></span>
+    </div>
+    {% endif %}
+
+    <!-- Class Record Table -->
+    {% if records %}
+    <div class="cr-table-wrap">
+        <table class="cr-table">
+            <thead>
+                <tr>
+                    <th style="text-align:left;">Student</th>
+                    <th>📝 Quiz<br><small>avg %</small></th>
+                    <th>📄 Exam<br><small>avg %</small></th>
+                    <th>📁 SA Activity<br><small>avg %</small></th>
+                    <th>🙋 Participation<br><small>/100</small></th>
+                    <th>🗓 Attendance<br><small>/100</small></th>
+                    <th>🏆 Period Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr>
+                    <td>{{ loop.index }}. {{ r.student_name }}</td>
+                    <td>{{ r.quiz }}</td>
+                    <td>{{ r.exam }}</td>
+                    <td>{{ r.activity }}</td>
+                    <td>{{ r.participation }}</td>
+                    <td>{{ r.attendance }}</td>
+                    <td>
+                        {% if r.period_grade is not none %}
+                            <span class="grade-pill {% if r.period_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}">
+                                {{ r.period_grade }}
+                            </span>
+                        {% else %}
+                            <span class="grade-pill grade-none">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div style="text-align:center; padding:60px; color:var(--muted);">
+        <div style="font-size:3rem;">👥</div>
+        <h3>No students found</h3>
+        <p>No enrolled students in this section yet.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

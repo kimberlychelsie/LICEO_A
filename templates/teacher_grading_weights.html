@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}Grading Weights Setup{% endblock %}
+
+{% block styles %}
+<style>
+.gw-wrap { max-width: 1100px; margin: 0 auto; }
+.gw-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+.gw-title { font-size: 1.5rem; font-weight: 800; }
+.subject-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
+.subject-label { font-size: 1rem; font-weight: 700; margin-bottom: 14px; color: var(--text); }
+.period-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.ptab { padding: 5px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 700; cursor: pointer; border: 2px solid var(--border); background: var(--bg); color: var(--muted); transition: all 0.15s; }
+.ptab.active { background: var(--btn); color: #fff; border-color: var(--btn); }
+.weight-form { display: none; }
+.weight-form.active { display: block; }
+.weight-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 12px; }
+.weight-item label { font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; }
+.weight-item input { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.95rem; text-align: center; }
+.total-display { font-size: 0.85rem; color: var(--muted); margin-bottom: 10px; }
+.total-ok { color: #22c55e; font-weight: 700; }
+.total-bad { color: #ef4444; font-weight: 700; }
+.saved-badge { display: inline-block; background: #dcfce7; color: #166534; border-radius: 6px; font-size: 0.78rem; padding: 2px 10px; font-weight: 600; margin-left: 8px; vertical-align: middle; }
+@media (max-width: 600px) { .weight-grid { grid-template-columns: repeat(2, 1fr); } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="gw-wrap">
+    <div class="gw-header">
+        <div>
+            <h1 class="gw-title">⚖️ Grading Weights</h1>
+            <p style="color:var(--muted); margin-top:4px;">Set component percentages per subject per grading period. Must total exactly <strong>100%</strong>.</p>
+        </div>
+    </div>
+
+    {% if not assignments %}
+    <div style="text-align:center; padding:60px; color:var(--muted);">
+        <div style="font-size:3rem;">📭</div>
+        <h3>No subjects assigned yet</h3>
+        <p>Contact your branch admin to assign you to a section and subject.</p>
+    </div>
+    {% endif %}
+
+    {% for asgn in assignments %}
+    {% set sid = asgn.section_id %}
+    {% set subjid = asgn.subject_id %}
+    {% set card_id = 'card_' ~ sid ~ '_' ~ subjid %}
+    <div class="subject-card">
+        <div class="subject-label">
+            📖 {{ asgn.subject_name }}
+            <span style="font-weight:400; color:var(--muted); font-size:0.9rem;">— {{ asgn.grade_level_name }} / {{ asgn.section_name }}</span>
+            <a href="{{ url_for('teacher.class_record', section_id=sid, subject_id=subjid) }}" class="btn btn-sm btn-secondary" style="margin-left:12px;">📊 Class Record</a>
+        </div>
+
+        <!-- Period tabs -->
+        <div class="period-tabs" id="tabs_{{ card_id }}">
+            {% for period in grading_periods %}
+            <div class="ptab {% if loop.first %}active{% endif %}"
+                 onclick="switchPeriod('{{ card_id }}', '{{ period }}')">
+                {{ period }} Grading
+                {% set w = weights_map.get((sid, subjid, period)) %}
+                {% if w %}<span class="saved-badge">✓ Set</span>{% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Weight forms per period -->
+        {% for period in grading_periods %}
+        {% set w = weights_map.get((sid, subjid, period)) %}
+        <div class="weight-form {% if loop.first %}active{% endif %}"
+             id="form_{{ card_id }}_{{ period }}">
+            <form method="POST" action="{{ url_for('teacher.grading_weights_set') }}"
+                  onsubmit="return validateWeights(this)">
+                <input type="hidden" name="section_id" value="{{ sid }}">
+                <input type="hidden" name="subject_id" value="{{ subjid }}">
+                <input type="hidden" name="grading_period" value="{{ period }}">
+
+                <div class="weight-grid">
+                    <div class="weight-item">
+                        <label>📝 Quiz</label>
+                        <input type="number" name="quiz_pct" min="0" max="100" step="0.5"
+                               value="{{ w.quiz_pct | default(0) }}" oninput="updateTotal(this)" required>
+                    </div>
+                    <div class="weight-item">
+                        <label>📄 Exam</label>
+                        <input type="number" name="exam_pct" min="0" max="100" step="0.5"
+                               value="{{ w.exam_pct | default(0) }}" oninput="updateTotal(this)" required>
+                    </div>
+                    <div class="weight-item">
+                        <label>📁 SA Activity</label>
+                        <input type="number" name="activity_pct" min="0" max="100" step="0.5"
+                               value="{{ w.activity_pct | default(0) }}" oninput="updateTotal(this)" required>
+                    </div>
+                    <div class="weight-item">
+                        <label>🙋 Participation</label>
+                        <input type="number" name="participation_pct" min="0" max="100" step="0.5"
+                               value="{{ w.participation_pct | default(0) }}" oninput="updateTotal(this)" required>
+                    </div>
+                    <div class="weight-item">
+                        <label>🗓 Attendance</label>
+                        <input type="number" name="attendance_pct" min="0" max="100" step="0.5"
+                               value="{{ w.attendance_pct | default(0) }}" oninput="updateTotal(this)" required>
+                    </div>
+                </div>
+
+                <div class="total-display" id="total_{{ card_id }}_{{ period }}">
+                    Total: <span class="total-val">{{ (w.quiz_pct|float + w.exam_pct|float + w.activity_pct|float + w.participation_pct|float + w.attendance_pct|float) | round(1) if w else '0.0' }}</span>% 
+                    {% set tot = (w.quiz_pct|float + w.exam_pct|float + w.activity_pct|float + w.participation_pct|float + w.attendance_pct|float) if w else 0 %}
+                    {% if w and (tot - 100.0)|abs < 0.01 %}
+                    <span class="total-ok">✓ OK</span>
+                    {% elif w %}
+                    <span class="total-bad">✗ Must equal 100%</span>
+                    {% endif %}
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-sm">💾 Save {{ period }} Weights</button>
+
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>
+
+<script>
+function switchPeriod(cardId, period) {
+    document.querySelectorAll(`#tabs_${cardId} .ptab`).forEach(t => t.classList.remove('active'));
+    document.querySelectorAll(`[id^="form_${cardId}_"]`).forEach(f => f.classList.remove('active'));
+    event.currentTarget.classList.add('active');
+    document.getElementById(`form_${cardId}_${period}`).classList.add('active');
+}
+
+function updateTotal(input) {
+    const form = input.closest('form');
+    const inputs = form.querySelectorAll('input[type="number"]');
+    let total = 0;
+    inputs.forEach(i => total += parseFloat(i.value || 0));
+    const formId = form.id || '';
+    const totalDiv = form.querySelector('.total-display');
+    if (totalDiv) {
+        const val = totalDiv.querySelector('.total-val');
+        if (val) val.textContent = total.toFixed(1);
+        let badge = totalDiv.querySelector('.total-badge');
+        if (!badge) { badge = document.createElement('span'); badge.className = 'total-badge'; totalDiv.appendChild(badge); }
+        if (Math.abs(total - 100) < 0.01) {
+            badge.className = 'total-badge total-ok'; badge.textContent = '✓ OK';
+        } else {
+            badge.className = 'total-badge total-bad'; badge.textContent = '✗ Must equal 100%';
+        }
+    }
+}
+
+function validateWeights(form) {
+    const inputs = form.querySelectorAll('input[type="number"]');
+    let total = 0;
+    inputs.forEach(i => total += parseFloat(i.value || 0));
+    if (Math.abs(total - 100) > 0.01) {
+        alert(`Percentages must total exactly 100%. Current total: ${total.toFixed(1)}%`);
+        return false;
+    }
+    return true;
+}
+
+// Initialize totals on load
+document.querySelectorAll('.weight-item input').forEach(i => updateTotal(i));
+</script>
+{% endblock %}

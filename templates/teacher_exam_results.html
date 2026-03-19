@@ -13,6 +13,7 @@
     .badge-submitted { background:#d4edda; color:#155724; }
     .badge-auto_submitted { background:#fff3cd; color:#856404; }
     .badge-in_progress { background:#cce5ff; color:#004085; }
+    .badge-info { background:#d1ecf1; color:#0c5460; }
     .tab-warn { background:#fff3cd; color:#856404; font-weight:700; padding:2px 8px; border-radius:4px; font-size:12px; }
     .tab-ok { color:#aaa; font-size:12px; }
     .btn { padding:8px 16px; border:none; border-radius:7px; cursor:pointer; font-size:13px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
@@ -43,7 +44,8 @@
                     <th>Status</th>
                     <th>⚠️ Tab Switches</th>
                     <th>Submitted</th>
-                    <th>Action</th>  <!-- ← NEW -->
+                    <th>Extension</th>
+                    <th>Action</th>
                 </tr>
             </thead>
             <tbody>
@@ -66,17 +68,30 @@
                     {% endif %}
                 </td>
                 <td>{{ r.submitted_at.strftime('%Y-%m-%d %H:%M') if r.submitted_at else '—' }}</td>
-
-                <!-- ── Reset button ── -->
                 <td>
+                    {% if r.individual_extension %}
+                    <span class="badge badge-info" title="Extended to {{ r.individual_extension.strftime('%Y-%m-%d %H:%M') }}">
+                        📅 Extended
+                    </span>
+                    {% endif %}
+                </td>
+
+                <!-- ── Action buttons ── -->
+                <td style="display:flex; gap:8px;">
                     <form method="POST"
                           action="{{ url_for('teacher.teacher_exam_reset', exam_id=exam.exam_id, enrollment_id=r.enrollment_id) }}"
-                          onsubmit="return confirm('Reset {{ r.student_name }}\'s exam attempt? They will be able to retake it.');">
+                          onsubmit="return confirm('Reset {{ r.student_name }}\'s exam attempt? They will be able to retake it.');"
+                          style="margin:0;">
                         <button type="submit" class="btn btn-danger"
                                 style="padding:4px 10px; font-size:12px;">
                             🔄 Reset
                         </button>
                     </form>
+                    <button type="button" class="btn btn-secondary" 
+                            style="padding:4px 10px; font-size:12px; background:#17a2b8; color:#fff;"
+                            onclick="openRescheduleModal('{{ r.enrollment_id }}', '{{ r.student_name }}')">
+                        📅 Resched
+                    </button>
                 </td>
 
             </tr>
@@ -88,4 +103,75 @@
         {% endif %}
     </div>
 </div>
+
+<!-- Reschedule Modal -->
+<div id="rescheduleModal" class="modal" style="display:none; position:fixed; z-index:9999; left:0; top:0; width:100%; height:100%; background:rgba(0,0,0,0.5);">
+    <div class="card" style="max-width:400px; margin:100px auto; position:relative; background:#fff; padding:24px; border-radius:12px;">
+        <h2 id="modalTitle" style="font-size:18px; margin-top:0; border-bottom:1px solid #eee; padding-bottom:10px;">Reschedule</h2>
+        <form id="rescheduleForm">
+            <input type="hidden" id="resched_enrollment_id">
+            <input type="hidden" id="resched_item_id" value="{{ exam.exam_id }}">
+            <input type="hidden" id="resched_item_type" value="{{ exam.exam_type }}">
+            
+            <div style="margin:20px 0;">
+                <label style="display:block; font-size:13px; margin-bottom:8px; color:#555;">New Deadline (Date & Time)</label>
+                <input type="datetime-local" id="new_due_date" required 
+                       style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-family:inherit;">
+            </div>
+            
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" class="btn btn-secondary" onclick="closeRescheduleModal()" style="background:#f1f3f5; color:#495057;">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="background:#007bff; color:#fff;">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openRescheduleModal(enrollmentId, studentName) {
+    document.getElementById('modalTitle').innerText = 'Reschedule: ' + studentName;
+    document.getElementById('resched_enrollment_id').value = enrollmentId;
+    
+    // Set min date to current time
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000;
+    const localISOTime = new Date(now - offset).toISOString().slice(0, 16);
+    document.getElementById('new_due_date').setAttribute('min', localISOTime);
+    
+    document.getElementById('rescheduleModal').style.display = 'block';
+}
+
+function closeRescheduleModal() {
+    document.getElementById('rescheduleModal').style.display = 'none';
+}
+
+document.getElementById('rescheduleForm').onsubmit = function(e) {
+    e.preventDefault();
+    const data = {
+        enrollment_id: document.getElementById('resched_enrollment_id').value,
+        item_id: document.getElementById('resched_item_id').value,
+        item_type: document.getElementById('resched_item_type').value,
+        new_due_date: document.getElementById('new_due_date').value
+    };
+
+    fetch('/teacher/reschedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(res => {
+        if (res.ok) {
+            alert('Rescheduled successfully!');
+            location.reload();
+        } else {
+            alert('Error: ' + res.error);
+        }
+    })
+    .catch(err => {
+        alert('Failed to save changes.');
+        console.error(err);
+    });
+};
+</script>
 {% endblock %}

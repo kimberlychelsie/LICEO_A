@@ -476,16 +476,18 @@ def activities():
                        subm.is_late,
                        subm.allow_resubmit,
                        g.grade_id,
-                       g.raw_score
+                       g.raw_score,
+                       ext.new_due_date AS individual_extension
                 FROM activities a
                 JOIN sections s ON a.section_id = s.section_id
                 JOIN subjects sub ON a.subject_id = sub.subject_id
                 LEFT JOIN users u ON a.teacher_id = u.user_id
                 LEFT JOIN activity_submissions subm ON subm.activity_id = a.activity_id AND subm.student_id = %s
                 LEFT JOIN activity_grades g ON g.submission_id = subm.submission_id
+                LEFT JOIN individual_extensions ext ON ext.item_id = a.activity_id AND ext.enrollment_id = %s AND ext.item_type = 'activity'
                 WHERE a.section_id = %s AND a.branch_id = %s AND a.status = 'Published'
                 ORDER BY a.activity_id, subm.submitted_at DESC
-            ''', (student_user_id, section_id, branch_id))
+            ''', (student_user_id, enrollment_id, section_id, branch_id))
             activities_raw = cur.fetchall()
             
             # Sort by ascending due date in python since we used distinct on activity_id
@@ -523,12 +525,14 @@ def activity_detail(activity_id):
             return redirect(url_for("student_portal.activities"))
             
         cur.execute('''
-            SELECT a.*, sub.name AS subject_name, u.full_name AS teacher_name
+            SELECT a.*, sub.name AS subject_name, u.full_name AS teacher_name,
+                   ext.new_due_date AS individual_extension
             FROM activities a
             JOIN subjects sub ON a.subject_id = sub.subject_id
             LEFT JOIN users u ON a.teacher_id = u.user_id
+            LEFT JOIN individual_extensions ext ON ext.item_id = a.activity_id AND ext.enrollment_id = %s AND ext.item_type = 'activity'
             WHERE a.activity_id = %s AND a.section_id = %s AND a.branch_id = %s AND a.status = 'Published'
-        ''', (activity_id, enrollment['section_id'], enrollment['branch_id']))
+        ''', (enrollment_id, activity_id, enrollment['section_id'], enrollment['branch_id']))
         activity = cur.fetchone()
         
         if not activity:
@@ -570,15 +574,23 @@ def submit_activity(activity_id):
         cur.execute("SELECT section_id FROM enrollments WHERE enrollment_id = %s", (enrollment_id,))
         enrollment = cur.fetchone()
         
-        cur.execute("SELECT * FROM activities WHERE activity_id = %s AND section_id = %s AND status = 'Published'", 
-                   (activity_id, enrollment['section_id']))
+        cur.execute("""
+            SELECT a.*, ext.new_due_date AS individual_extension 
+            FROM activities a 
+            LEFT JOIN individual_extensions ext ON ext.item_id = a.activity_id AND ext.enrollment_id = %s AND ext.item_type = 'activity'
+            WHERE a.activity_id = %s AND a.section_id = %s AND a.status = 'Published'
+            """, (enrollment_id, activity_id, enrollment['section_id']))
         activity = cur.fetchone()
         
         if not activity:
             flash("Activity not available.", "error")
             return redirect(url_for("student_portal.activities"))
             
-        if activity['status'] == 'Closed':
+        # Check if closed, but bypass if there is an active individual extension
+        effective_due_date = activity['individual_extension'] if activity['individual_extension'] else activity['due_date']
+        is_extended = bool(activity['individual_extension'] and now_naive <= activity['individual_extension'])
+
+        if activity['status'] == 'Closed' and not is_extended:
             flash("Submissions for this activity are closed.", "error")
             return redirect(request.referrer)
             
@@ -625,7 +637,9 @@ def submit_activity(activity_id):
             
         ph_tz = pytz.timezone("Asia/Manila")
         now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
-        is_late = bool(activity['due_date'] and now_naive > activity['due_date'])
+        
+        effective_due_date = activity['individual_extension'] if activity['individual_extension'] else activity['due_date']
+        is_late = bool(effective_due_date and now_naive > effective_due_date)
         
         if existing_sub:
             # Update existing submission
@@ -722,20 +736,23 @@ def student_exams():
         cur.execute("""
             SELECT
                 e.exam_id, e.title, e.exam_type, e.duration_mins,
-                e.scheduled_start, e.status,
+                e.scheduled_start, e.status, e.grading_period,
                 sub.name AS subject_name,
                 (SELECT COUNT(*) FROM exam_questions q WHERE q.exam_id = e.exam_id) AS question_count,
                 r.result_id, r.score, r.total_points, r.status AS result_status,
-                r.submitted_at
+                r.submitted_at,
+                ext.new_due_date AS individual_extension
             FROM exams e
             JOIN subjects sub ON e.subject_id = sub.subject_id
             LEFT JOIN exam_results r
                 ON r.exam_id = e.exam_id AND r.enrollment_id = %s
+            LEFT JOIN individual_extensions ext
+                ON ext.item_id = e.exam_id AND ext.enrollment_id = %s AND ext.item_type IN ('exam', 'quiz')
             WHERE e.section_id = %s
               AND e.status IN ('published', 'closed')
               AND e.exam_type != 'quiz'
             ORDER BY e.created_at DESC
-        """, (enrollment_id, section_id))
+        """, (enrollment_id, enrollment_id, section_id))
         exams_raw = cur.fetchall() or []
 
         # Normalize scheduled_start to PH naive time for correct comparison in Jinja
@@ -785,20 +802,23 @@ def student_quizzes():
         cur.execute("""
             SELECT
                 e.exam_id, e.title, e.exam_type, e.duration_mins,
-                e.scheduled_start, e.status,
+                e.scheduled_start, e.status, e.grading_period,
                 sub.name AS subject_name,
                 (SELECT COUNT(*) FROM exam_questions q WHERE q.exam_id = e.exam_id) AS question_count,
                 r.result_id, r.score, r.total_points, r.status AS result_status,
-                r.submitted_at
+                r.submitted_at,
+                ext.new_due_date AS individual_extension
             FROM exams e
             JOIN subjects sub ON e.subject_id = sub.subject_id
             LEFT JOIN exam_results r
                 ON r.exam_id = e.exam_id AND r.enrollment_id = %s
+            LEFT JOIN individual_extensions ext
+                ON ext.item_id = e.exam_id AND ext.enrollment_id = %s AND ext.item_type = 'quiz'
             WHERE e.section_id = %s
               AND e.status IN ('published', 'closed')
               AND e.exam_type = 'quiz'
             ORDER BY e.created_at DESC
-        """, (enrollment_id, section_id))
+        """, (enrollment_id, enrollment_id, section_id))
         quizzes_raw = cur.fetchall() or []
 
         quizzes = []
@@ -837,15 +857,18 @@ def student_exam_take(exam_id):
 
     try:
         cur.execute("""
-            SELECT e.*, sub.name AS subject_name, s.section_name
+            SELECT e.*, sub.name AS subject_name, s.section_name,
+                   ext.new_due_date AS individual_extension
             FROM exams e
             JOIN subjects sub ON e.subject_id = sub.subject_id
             JOIN sections s   ON e.section_id  = s.section_id
             JOIN enrollments en ON en.section_id = e.section_id
+            LEFT JOIN individual_extensions ext
+                ON ext.item_id = e.exam_id AND ext.enrollment_id = %s AND ext.item_type IN ('exam', 'quiz')
             WHERE e.exam_id = %s
               AND en.enrollment_id = %s
               AND e.status = 'published'
-        """, (exam_id, enrollment_id))
+        """, (enrollment_id, exam_id, enrollment_id))
         exam = cur.fetchone()
         if not exam:
             flash("Exam not available.", "error")
@@ -870,7 +893,12 @@ def student_exam_take(exam_id):
                 flash("This quiz has not started yet." if is_quiz else "This exam has not started yet.", "warning")
                 return redirect(back_url)
 
-            auto_end = start + timedelta(minutes=int(exam["duration_mins"]))
+            if exam["individual_extension"]:
+                # If there's an individual extension, use it as the end time
+                auto_end = exam["individual_extension"]
+            else:
+                auto_end = start + timedelta(minutes=int(exam["duration_mins"]))
+
             if now_naive > auto_end:
                 flash("This quiz has already ended." if is_quiz else "This exam has already ended.", "warning")
                 return redirect(back_url)
@@ -1096,3 +1124,148 @@ def student_exam_result(result_id):
     finally:
         cur.close()
         db.close()
+
+
+# ══════════════════════════════════════════════════════════════
+# GRADES VIEW — STUDENT PORTAL
+# ══════════════════════════════════════════════════════════════
+
+GRADING_PERIODS = ["1st", "2nd", "3rd", "4th"]
+
+
+@student_portal_bp.route("/student/grades")
+def student_grades():
+    if not _require_student():
+        return redirect("/")
+
+    user_id       = session.get("user_id")
+    curr_enr_id   = session.get("enrollment_id") # Anchor
+    selected_enrollment_id = request.args.get("enrollment_id", type=int)
+    
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # 0. Get the "Anchor" enrollment to find who this student is
+        anchor_enr = None
+        if curr_enr_id:
+            cur.execute("SELECT * FROM enrollments WHERE enrollment_id = %s", (curr_enr_id,))
+            anchor_enr = cur.fetchone()
+
+        # 1. Fetch ALL enrollments for this student (by user_id or name/branch_no)
+        all_enrollments = []
+        if anchor_enr:
+            # We have a current enrollment, find all related ones:
+            # 1. Match by user_id if valid
+            # 2. Match by student_name
+            cur.execute("""
+                SELECT e.enrollment_id, e.student_name, e.section_id, e.status, e.branch_enrollment_no,
+                       s.section_name, s.school_year, gl.name as grade_level_name
+                FROM enrollments e
+                LEFT JOIN sections s ON e.section_id = s.section_id
+                LEFT JOIN grade_levels gl ON s.grade_level_id = gl.id
+                WHERE (e.enrollment_id = %s)
+                   OR (e.user_id IS NOT NULL AND e.user_id = %s)
+                   OR (e.student_name = %s)
+                ORDER BY e.created_at DESC
+            """, (curr_enr_id, anchor_enr['user_id'], anchor_enr['student_name']))
+            all_enrollments = cur.fetchall() or []
+        elif user_id:
+            # Fallback if no curr_enr_id but have user_id
+            cur.execute("""
+                SELECT e.enrollment_id, e.student_name, e.section_id, e.status, e.branch_enrollment_no,
+                       s.section_name, s.school_year, gl.name as grade_level_name
+                FROM enrollments e
+                LEFT JOIN sections s ON e.section_id = s.section_id
+                LEFT JOIN grade_levels gl ON s.grade_level_id = gl.id
+                WHERE e.user_id = %s
+                ORDER BY e.created_at DESC
+            """, (user_id,))
+            all_enrollments = cur.fetchall() or []
+
+        if not all_enrollments:
+            # Provide empty placeholders instead of redirecting
+            return render_template("student_grades.html",
+                                   student={"student_name": session.get("username", "Student")},
+                                   all_enrollments=[],
+                                   selected_enrollment_id=None,
+                                   grade_data=[],
+                                   grading_periods=GRADING_PERIODS)
+
+        # 2. Determine which enrollment to show
+        enr = None
+        if selected_enrollment_id:
+            enr = next((e for e in all_enrollments if e['enrollment_id'] == selected_enrollment_id), None)
+        
+        if not enr:
+            # Try to match the session one first
+            sess_eid = session.get("enrollment_id")
+            enr = next((e for e in all_enrollments if e['enrollment_id'] == sess_eid), None)
+            
+            # If still no match or no section, try to find the newest one THAT HAS a section
+            if not enr or not enr.get("section_id"):
+                enr_with_section = next((e for e in all_enrollments if e.get("section_id")), None)
+                if enr_with_section:
+                    enr = enr_with_section
+                else:
+                    # Absolute fallback to the first one available
+                    enr = all_enrollments[0]
+        
+        enrollment_id = enr["enrollment_id"]
+        section_id    = enr["section_id"]
+
+        if not section_id:
+            # flash(f"No section assigned for {enr.get('school_year', 'this term')}.", "warning")
+            subjects = []
+            posted_map = {}
+        else:
+            # 3. Get subjects for this specific enrollment's section
+            cur.execute("""
+                SELECT sub.subject_id, sub.name AS subject_name
+                FROM section_teachers st
+                JOIN subjects sub ON st.subject_id = sub.subject_id
+                WHERE st.section_id = %s
+                ORDER BY sub.name
+            """, (section_id,))
+            subjects = cur.fetchall() or []
+
+            # 4. Get posted grades
+            cur.execute("""
+                SELECT subject_id, grading_period, grade
+                FROM posted_grades
+                WHERE enrollment_id = %s
+            """, (enrollment_id,))
+            posted = cur.fetchall() or []
+
+            posted_map = {}
+            for p in posted:
+                sid = p["subject_id"]
+                if sid not in posted_map: posted_map[sid] = {}
+                # Round to nearest integer for student view
+                posted_map[sid][p["grading_period"]] = int(round(float(p["grade"])))
+
+        # Final record list
+        grade_data = []
+        for s in subjects:
+            sid = s["subject_id"]
+            grades = posted_map.get(sid, {})
+            period_vals = [float(v) for v in grades.values()]
+            # Final average only shows if ALL 4 periods are posted (rounded to whole number)
+            final_avg = int(round(sum(period_vals) / 4)) if len(period_vals) == 4 else None
+
+            grade_data.append({
+                "subject_name": s["subject_name"],
+                "units":        3, # Default
+                "grades":       grades,
+                "final_grade":  final_avg
+            })
+
+        return render_template("student_grades.html",
+                               student=enr,
+                               all_enrollments=all_enrollments,
+                               selected_enrollment_id=enrollment_id,
+                               grade_data=grade_data,
+                               grading_periods=GRADING_PERIODS)
+    finally:
+        cur.close()
+        db.close()
+

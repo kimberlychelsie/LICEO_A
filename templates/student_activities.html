@@ -131,26 +131,45 @@
 
     {% if activities %}
     <div class="tabs">
-        <button class="tab-btn active" onclick="filterActs('all', this)">All Subjects</button>
+        <button class="tab-btn active" onclick="setSubject('all', this)">All Subjects</button>
         {% for sub in subjects %}
-        <button class="tab-btn" onclick="filterActs('{{ sub | escape }}', this)">{{ sub }}</button>
+        <button class="tab-btn" onclick="setSubject('{{ sub | escape }}', this)">{{ sub }}</button>
         {% endfor %}
+    </div>
+
+    <!-- Period Tabs -->
+    <div class="tabs" style="margin-top: -10px; margin-bottom: 24px;">
+        <button class="period-btn active" onclick="setPeriod('all', this)" style="padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); cursor: pointer; font-size: 0.8rem; font-weight: 600;">All Periods</button>
+        <button class="period-btn" onclick="setPeriod('1st', this)" style="padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); cursor: pointer; font-size: 0.8rem; font-weight: 600;">1st Grading</button>
+        <button class="period-btn" onclick="setPeriod('2nd', this)" style="padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); cursor: pointer; font-size: 0.8rem; font-weight: 600;">2nd Grading</button>
+        <button class="period-btn" onclick="setPeriod('3rd', this)" style="padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); cursor: pointer; font-size: 0.8rem; font-weight: 600;">3rd Grading</button>
+        <button class="period-btn" onclick="setPeriod('4th', this)" style="padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); cursor: pointer; font-size: 0.8rem; font-weight: 600;">4th Grading</button>
     </div>
 
     <div id="activities-container">
         {% for act in activities %}
         {# Determine Status #}
-        {% set due_past = act.due_date and act.due_date < now %} {% set is_submitted=act.submission_id is not none %} {%
-            set is_graded=act.grade_id is not none %} {% set badge_class='status-new' %} {% set
-            badge_text='Not Submitted' %} {% if is_graded %} {% set badge_class='status-graded' %} {% set
-            badge_text='Graded' %} {% elif is_submitted %} {% set badge_class='status-submitted' %} {% set
-            badge_text='Submitted' %} {% elif due_past %} {% set badge_class='status-missing' %} {% set
-            badge_text='Missing (Late)' %} {% endif %} <div class="act-card"
-            data-subject="{{ act.subject_name | escape }}">
+        {% set due_past = act.due_date and act.due_date < now %} 
+        {% set is_submitted = act.submission_id is not none %} 
+        {% set is_graded = act.grade_id is not none %} 
+        {% set badge_class = 'status-new' %} 
+        {% set badge_text = 'Not Submitted' %} 
+        {% if is_graded %} 
+            {% set badge_class = 'status-graded' %} 
+            {% set badge_text = 'Graded' %} 
+        {% elif is_submitted %} 
+            {% set badge_class = 'status-submitted' %} 
+            {% set badge_text = 'Submitted' %} 
+        {% elif due_past %} 
+            {% set badge_class = 'status-missing' %} 
+            {% set badge_text = 'Missing (Late)' %} 
+        {% endif %} 
+        <div class="act-card" data-subject="{{ act.subject_name | escape }}" data-period="{{ act.grading_period or 'none' }}">
             <div class="act-info">
                 <h4>{{ act.title }}</h4>
                 <div class="act-meta">
-                    <strong>{{ act.subject_name }}</strong> ({{ act.section_name }})<br>
+                    <strong>{{ act.subject_name }}</strong> ({{ act.section_name }}) &bull; 
+                    <span style="color:#1d4ed8; font-weight:700;">{{ act.grading_period or 'Unassigned' }} Grading</span><br>
                     Teacher: {{ act.teacher_name }}<br>
                     Due: {{ act.due_date.strftime('%b %d, %Y %I:%M %p') if act.due_date else 'No timeline' }}
                     <br>
@@ -165,9 +184,9 @@
                 <a href="{{ url_for('student_portal.activity_detail', activity_id=act.activity_id) }}"
                     class="btn btn-primary">View Details</a>
             </div>
+        </div>
+        {% endfor %}
     </div>
-    {% endfor %}
-</div>
 {% else %}
 <div class="empty-state">
     <div class="big-icon">📚</div>
@@ -178,15 +197,37 @@
 </div>
 
 <script>
-    function filterActs(subject, btn) {
-        // Update active class on tabs
+    let currentSubject = 'all';
+    let currentPeriod = 'all';
+
+    function setSubject(subject, btn) {
         document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
         btn.classList.add('active');
+        currentSubject = subject;
+        applyFilters();
+    }
 
-        // Filter cards
+    function setPeriod(period, btn) {
+        document.querySelectorAll('.period-btn').forEach(t => {
+            t.classList.remove('active');
+            t.style.background = 'var(--card)';
+            t.style.color = 'var(--text)';
+            t.style.borderColor = 'var(--border)';
+        });
+        btn.classList.add('active');
+        btn.style.background = 'var(--primary)';
+        btn.style.color = 'white';
+        btn.style.borderColor = 'var(--primary)';
+        currentPeriod = period;
+        applyFilters();
+    }
+
+    function applyFilters() {
         const cards = document.querySelectorAll('.act-card');
         cards.forEach(card => {
-            if (subject === 'all' || card.getAttribute('data-subject') === subject) {
+            const matchSub = currentSubject === 'all' || card.getAttribute('data-subject') === currentSubject;
+            const matchPer = currentPeriod === 'all' || card.getAttribute('data-period') === currentPeriod;
+            if (matchSub && matchPer) {
                 card.style.display = 'flex';
             } else {
                 card.style.display = 'none';

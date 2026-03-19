@@ -17,6 +17,58 @@ MIGRATIONS = [
     ("guardian_email column", "ALTER TABLE public.enrollments ADD COLUMN IF NOT EXISTS guardian_email character varying(255);"),
     ("branch_code column", "ALTER TABLE public.branches ADD COLUMN IF NOT EXISTS branch_code character varying(20);"),
     ("doc_type column", "ALTER TABLE public.enrollment_documents ADD COLUMN IF NOT EXISTS doc_type character varying(255);"),
+
+    # ── Grading Period System ─────────────────────────────────────────────
+    ("grading_period on activities",
+     "ALTER TABLE public.activities ADD COLUMN IF NOT EXISTS grading_period VARCHAR(10);"),
+    ("grading_period on exams",
+     "ALTER TABLE public.exams ADD COLUMN IF NOT EXISTS grading_period VARCHAR(10);"),
+
+    ("grading_weights table", """
+        CREATE TABLE IF NOT EXISTS public.grading_weights (
+            weight_id         SERIAL PRIMARY KEY,
+            teacher_id        INTEGER NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE,
+            branch_id         INTEGER NOT NULL REFERENCES public.branches(branch_id) ON DELETE CASCADE,
+            section_id        INTEGER NOT NULL REFERENCES public.sections(section_id) ON DELETE CASCADE,
+            subject_id        INTEGER NOT NULL REFERENCES public.subjects(subject_id) ON DELETE CASCADE,
+            grading_period    VARCHAR(10) NOT NULL,
+            quiz_pct          NUMERIC(5,2) NOT NULL DEFAULT 0,
+            exam_pct          NUMERIC(5,2) NOT NULL DEFAULT 0,
+            activity_pct      NUMERIC(5,2) NOT NULL DEFAULT 0,
+            participation_pct NUMERIC(5,2) NOT NULL DEFAULT 0,
+            attendance_pct    NUMERIC(5,2) NOT NULL DEFAULT 0,
+            updated_at        TIMESTAMP DEFAULT NOW(),
+            CONSTRAINT uq_grading_weights UNIQUE (teacher_id, section_id, subject_id, grading_period)
+        );
+    """),
+
+    ("participation_scores table", """
+        CREATE TABLE IF NOT EXISTS public.participation_scores (
+            id             SERIAL PRIMARY KEY,
+            teacher_id     INTEGER NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE,
+            enrollment_id  INTEGER NOT NULL REFERENCES public.enrollments(enrollment_id) ON DELETE CASCADE,
+            section_id     INTEGER NOT NULL REFERENCES public.sections(section_id) ON DELETE CASCADE,
+            subject_id     INTEGER NOT NULL REFERENCES public.subjects(subject_id) ON DELETE CASCADE,
+            grading_period VARCHAR(10) NOT NULL,
+            score          NUMERIC(5,2) NOT NULL DEFAULT 0,
+            updated_at     TIMESTAMP DEFAULT NOW(),
+            CONSTRAINT uq_participation UNIQUE (enrollment_id, subject_id, grading_period)
+        );
+    """),
+
+    ("attendance_scores table", """
+        CREATE TABLE IF NOT EXISTS public.attendance_scores (
+            id             SERIAL PRIMARY KEY,
+            teacher_id     INTEGER NOT NULL REFERENCES public.users(user_id) ON DELETE CASCADE,
+            enrollment_id  INTEGER NOT NULL REFERENCES public.enrollments(enrollment_id) ON DELETE CASCADE,
+            section_id     INTEGER NOT NULL REFERENCES public.sections(section_id) ON DELETE CASCADE,
+            subject_id     INTEGER NOT NULL REFERENCES public.subjects(subject_id) ON DELETE CASCADE,
+            grading_period VARCHAR(10) NOT NULL,
+            score          NUMERIC(5,2) NOT NULL DEFAULT 0,
+            updated_at     TIMESTAMP DEFAULT NOW(),
+            CONSTRAINT uq_attendance UNIQUE (enrollment_id, subject_id, grading_period)
+        );
+    """),
 ]
 
 print(f"Connecting to Railway...\n")

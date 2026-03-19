@@ -522,6 +522,20 @@
                 <option value="{{ g }}" {% if g==selected_grade %}selected{% endif %}>{{ g }}</option>
                 {% endfor %}
             </select>
+
+            {% if selected_grade %}
+            <select name="section_id" class="grade-select" onchange="this.form.submit()">
+                <option value="">— All My Sections —</option>
+                {% set ns = namespace(printed=[]) %}
+                {% for a in teacher_assignments %}
+                {% if a.grade_level_name == selected_grade and a.section_id not in ns.printed %}
+                <option value="{{ a.section_id }}" {% if selected_section_id==a.section_id %}selected{% endif %}>{{
+                    a.section_name }}</option>
+                {% set _ = ns.printed.append(a.section_id) %}
+                {% endif %}
+                {% endfor %}
+            </select>
+            {% endif %}
         </form>
 
         <!-- Save grade -->
@@ -536,7 +550,30 @@
             {% endif %}
         </form>
         {% endif %}
+
+        <!-- Add Section Picker if admin assigned grade -->
+        {% if teacher_grade %}
+        <form method="get" action="/teacher" class="grade-form">
+            <select name="section_id" class="grade-select" onchange="this.form.submit()">
+                <option value="">— All My Sections —</option>
+                {% set ns = namespace(printed=[]) %}
+                {% for a in teacher_assignments %}
+                {% if a.grade_level_name == teacher_grade and a.section_id not in ns.printed %}
+                <option value="{{ a.section_id }}" {% if selected_section_id==a.section_id %}selected{% endif %}>{{
+                    a.section_name }}</option>
+                {% set _ = ns.printed.append(a.section_id) %}
+                {% endif %}
+                {% endfor %}
+            </select>
+        </form>
         {% endif %}
+
+        {% endif %}
+        
+        <!-- My Classlist Button -->
+        <button onclick="openClasslist()" class="btn-apply" style="background: var(--text); color: white; display: flex; align-items: center; gap: 6px;">
+            🧑‍🎓 My Classlist
+        </button>
     </div>
 
     {% if not selected_grade %}
@@ -567,219 +604,160 @@
 
     {% else %}
 
-    <!-- ════ STATS ════ -->
-    <div class="stat-grid">
-        <div class="stat-card stat-blue">
-            <div class="num">{{ stats.total }}</div>
-            <div class="lbl">Total Students</div>
-        </div>
-        <div class="stat-card stat-green">
-            <div class="num">{{ stats.cleared }}</div>
-            <div class="lbl">Billing Cleared</div>
-        </div>
-        <div class="stat-card stat-orange">
-            <div class="num">{{ stats.pending_bill }}</div>
-            <div class="lbl">Pending Payment</div>
-        </div>
-        <div class="stat-card stat-purple">
-            <div class="num">{{ stats.claimed }}</div>
-            <div class="lbl">Items Claimed</div>
-        </div>
-        <div class="stat-card stat-teal">
-            <div class="num">{{ stats.reserved }}</div>
-            <div class="lbl">Reservation Pending</div>
-        </div>
-        <div class="stat-card stat-gray">
-            <div class="num">{{ stats.no_reservation }}</div>
-            <div class="lbl">No Reservation</div>
-        </div>
-    </div>
 
-    {% if teacher_assignments %}
-    <!-- ════ MY SECTIONS & SUBJECTS ════ -->
-    <div class="ann-section" style="margin-top: 18px;">
-        <p class="ann-section-title">📘 My Sections &amp; Subjects</p>
-        <div class="td-table-wrap">
-            <table class="td-table">
-                <thead>
-                    <tr>
-                        <th>Grade / Section</th>
-                        <th>Subject</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% set ns = namespace(last_section='') %}
-                    {% for a in teacher_assignments %}
-                    {% set label = a.grade_level_name ~ ' — ' ~ a.section_name %}
-                    {% if label != ns.last_section %}
-                    {% if ns.last_section %}
-                    <tr>
-                        <td colspan="2">
-                            <hr style="border:none;border-top:1px dashed #e5e7eb;margin:4px 0;">
-                        </td>
-                    </tr>
-                    {% endif %}
-                    {% set ns.last_section = label %}
-                    <tr>
-                        <td><strong>{{ label }}</strong></td>
-                        <td>{{ a.subject_name }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td class="muted">{{ a.section_name }}</td>
-                        <td>{{ a.subject_name }}</td>
-                    </tr>
-                    {% endif %}
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- ════ ANNOUNCEMENTS ════ -->
-    <div class="ann-section">
-        <p class="ann-section-title">📢 Class Announcements — {{ selected_grade }}</p>
-
-        <!-- Post form -->
-        {% if is_branch_active_status %}
-        <form method="post" action="/teacher/announce" class="ann-form">
-            <input type="hidden" name="grade_level" value="{{ selected_grade }}">
-            <input type="text" name="title" class="ann-input" placeholder="📌  Title (e.g. Quiz Tomorrow — Chapter 3)"
-                maxlength="150" required>
-            <textarea name="body" class="ann-textarea"
-                placeholder="Optional — add details about the assignment, topics to review, reminders, etc."
-                maxlength="2000"></textarea>
-            <button type="submit" class="btn-post">📤 Post Announcement</button>
-        </form>
-        {% endif %}
-
-        <hr class="ann-divider">
-
-        <!-- List -->
-        {% if announcements %}
-        <div class="ann-list">
-            {% for a in announcements %}
-            <div class="ann-card" id="ann-card-{{ a.announcement_id }}">
-
-                <!-- View mode -->
-                <div id="ann-view-{{ a.announcement_id }}">
-                    <div class="ann-card-head">
-                        <div style="flex:1;">
-                            <div class="ann-card-title">{{ a.title }}</div>
-                            <div class="ann-card-meta">
-                                👩‍🏫 {{ a.display_name }} &nbsp;&middot;&nbsp;
-                                {{ a.created_at.strftime('%b %d, %Y %I:%M %p') if a.created_at else '' }}
-                            </div>
-                        </div>
-                        <!-- Edit & Delete buttons -->
-                        {% if is_branch_active_status %}
-                        <div style="display:flex; gap:4px; flex-shrink:0;">
-                            <button type="button" class="btn-edit-ann" data-id="{{ a.announcement_id }}"
-                                data-title="{{ a.title | e }}" data-body="{{ (a.body or '') | e }}"
-                                onclick="openEditAnn(this)" title="Edit">✏️</button>
-                            <form method="post" action="/teacher/announce/{{ a.announcement_id }}/delete"
-                                onsubmit="return confirm('Delete this announcement?')" style="margin:0;">
-                                <input type="hidden" name="grade_level" value="{{ selected_grade }}">
-                                <button type="submit" class="btn-del-ann" title="Delete">🗑</button>
-                            </form>
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% if a.body %}
-                    <div class="ann-card-body">{{ a.body }}</div>
-                    {% endif %}
+            <!-- ════ STATS ════ -->
+            <div class="stat-grid">
+                <div class="stat-card stat-blue">
+                    <div class="num">{{ stats.total }}</div>
+                    <div class="lbl">Total Students</div>
                 </div>
-
-                <!-- Inline edit form (hidden by default) -->
-                <form method="post" action="/teacher/announce/{{ a.announcement_id }}/edit" class="ann-edit-form"
-                    id="ann-edit-{{ a.announcement_id }}">
-                    <input type="hidden" name="grade_level" value="{{ selected_grade }}">
-                    <input type="text" name="title" class="ann-input" id="ann-edit-title-{{ a.announcement_id }}"
-                        maxlength="150" required placeholder="Title">
-                    <textarea name="body" class="ann-textarea" id="ann-edit-body-{{ a.announcement_id }}"
-                        maxlength="2000" placeholder="Optional details..." style="min-height:70px;"></textarea>
-                    <div class="ann-edit-actions">
-                        <button type="submit" class="btn-save-ann">💾 Save Changes</button>
-                        <button type="button" class="btn-cancel-ann" data-id="{{ a.announcement_id }}"
-                            onclick="closeEditAnn(this)">
-                            ✕ Cancel
-                        </button>
-                    </div>
-                </form>
-
+                <div class="stat-card stat-green">
+                    <div class="num">{{ stats.cleared }}</div>
+                    <div class="lbl">Billing Cleared</div>
+                </div>
+                <div class="stat-card stat-orange">
+                    <div class="num">{{ stats.pending_bill }}</div>
+                    <div class="lbl">Pending Payment</div>
+                </div>
+                <div class="stat-card stat-purple">
+                    <div class="num">{{ stats.claimed }}</div>
+                    <div class="lbl">Items Claimed</div>
+                </div>
+                <div class="stat-card stat-teal">
+                    <div class="num">{{ stats.reserved }}</div>
+                    <div class="lbl">Reservation Pending</div>
+                </div>
+                <div class="stat-card stat-gray">
+                    <div class="num">{{ stats.no_reservation }}</div>
+                    <div class="lbl">No Reservation</div>
+                </div>
             </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="ann-empty">
-            📭 No announcements yet for {{ selected_grade }}. Post your first one above!
-        </div>
-        {% endif %}
-    </div>
 
-    <!-- ════ STUDENT TABLE ════ -->
-    {% if students %}
-    <div class="td-table-wrap">
-        <table class="td-table">
-            <thead>
-                <tr>
-                    <th>#</th>
-                    <th>Student Name</th>
-                    <th>Grade Level</th>
-                    <th>Enrollment</th>
-                    <th>Billing</th>
-                    <th>Reservation</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for s in students %}
-                <tr>
-                    <td style="color:var(--muted); font-size:0.85rem;">{{ loop.index }}</td>
-                    <td><strong>{{ s.student_name }}</strong></td>
-                    <td>{{ s.grade_level or '—' }}</td>
+            {% if teacher_assignments %}
+            <!-- ════ MY SECTIONS & SUBJECTS ════ -->
+            <div class="ann-section" style="margin-top: 18px;">
+                <p class="ann-section-title">📘 My Sections &amp; Subjects</p>
+                <div class="td-table-wrap">
+                    <table class="td-table">
+                        <thead>
+                            <tr>
+                                <th>Grade / Section</th>
+                                <th>Subject</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set ns = namespace(last_section='') %}
+                            {% for a in teacher_assignments %}
+                            {% set label = a.grade_level_name ~ ' — ' ~ a.section_name %}
+                            {% if label != ns.last_section %}
+                            {% if ns.last_section %}
+                            <tr>
+                                <td colspan="2">
+                                    <hr style="border:none;border-top:1px dashed #e5e7eb;margin:4px 0;">
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% set ns.last_section = label %}
+                            <tr>
+                                <td><strong>{{ label }}</strong></td>
+                                <td>{{ a.subject_name }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td class="muted">{{ a.section_name }}</td>
+                                <td>{{ a.subject_name }}</td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
 
-                    <td>
-                        {% if s.enrollment_status == 'approved' %}
-                        <span class="badge badge-green">✅ Approved</span>
-                        {% else %}
-                        <span class="badge badge-gray">{{ s.enrollment_status | title }}</span>
-                        {% endif %}
-                    </td>
+            <!-- ════ ANNOUNCEMENTS ════ -->
+            <div class="ann-section">
+                <p class="ann-section-title">📢 Class Announcements — {{ selected_grade }}</p>
 
-                    <td>
-                        {% if s.billing_status == 'CLEARED' %}
-                        <span class="badge badge-green">✅ Cleared</span>
-                        {% elif s.billing_status == 'PENDING' %}
-                        <span class="badge badge-red">⏳ Pending</span>
-                        {% else %}
-                        <span class="badge badge-gray">No Bill</span>
-                        {% endif %}
-                    </td>
+                <!-- Post form -->
+                {% if is_branch_active_status %}
+                <form method="post" action="/teacher/announce" class="ann-form">
+                    <input type="hidden" name="grade_level" value="{{ selected_grade }}">
+                    <input type="text" name="title" class="ann-input"
+                        placeholder="📌  Title (e.g. Quiz Tomorrow — Chapter 3)" maxlength="150" required>
+                    <textarea name="body" class="ann-textarea"
+                        placeholder="Optional — add details about the assignment, topics to review, reminders, etc."
+                        maxlength="2000"></textarea>
+                    <button type="submit" class="btn-post">📤 Post Announcement</button>
+                </form>
+                {% endif %}
 
-                    <td>
-                        {% set res = s.reservation_status %}
-                        {% if res == 'CLAIMED' %}
-                        <span class="badge badge-purple">📦 Claimed</span>
-                        {% elif res in ('PENDING', 'RESERVED') %}
-                        <span class="badge badge-blue">🕐 Reserved</span>
-                        {% else %}
-                        <span class="badge badge-gray">—</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
+                <hr class="ann-divider">
 
-    {% else %}
-    <div class="empty-state">
-        <div class="big-icon">🎒</div>
-        <h3>No students found for {{ selected_grade }}</h3>
-        <p>There are no enrolled students in this grade level at your branch yet.</p>
-    </div>
-    {% endif %}
+                <!-- List -->
+                {% if announcements %}
+                <div class="ann-list">
+                    {% for a in announcements %}
+                    <div class="ann-card" id="ann-card-{{ a.announcement_id }}">
+
+                        <!-- View mode -->
+                        <div id="ann-view-{{ a.announcement_id }}">
+                            <div class="ann-card-head">
+                                <div style="flex:1;">
+                                    <div class="ann-card-title">{{ a.title }}</div>
+                                    <div class="ann-card-meta">
+                                        👩‍🏫 {{ a.display_name }} &nbsp;&middot;&nbsp;
+                                        {{ a.created_at.strftime('%b %d, %Y %I:%M %p') if a.created_at else '' }}
+                                    </div>
+                                </div>
+                                <!-- Edit & Delete buttons -->
+                                {% if is_branch_active_status %}
+                                <div style="display:flex; gap:4px; flex-shrink:0;">
+                                    <button type="button" class="btn-edit-ann" data-id="{{ a.announcement_id }}"
+                                        data-title="{{ a.title | e }}" data-body="{{ (a.body or '') | e }}"
+                                        onclick="openEditAnn(this)" title="Edit">✏️</button>
+                                    <form method="post" action="/teacher/announce/{{ a.announcement_id }}/delete"
+                                        onsubmit="return confirm('Delete this announcement?')" style="margin:0;">
+                                        <input type="hidden" name="grade_level" value="{{ selected_grade }}">
+                                        <button type="submit" class="btn-del-ann" title="Delete">🗑</button>
+                                    </form>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% if a.body %}
+                            <div class="ann-card-body">{{ a.body }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Inline edit form (hidden by default) -->
+                        <form method="post" action="/teacher/announce/{{ a.announcement_id }}/edit"
+                            class="ann-edit-form" id="ann-edit-{{ a.announcement_id }}">
+                            <input type="hidden" name="grade_level" value="{{ selected_grade }}">
+                            <input type="text" name="title" class="ann-input"
+                                id="ann-edit-title-{{ a.announcement_id }}" maxlength="150" required
+                                placeholder="Title">
+                            <textarea name="body" class="ann-textarea" id="ann-edit-body-{{ a.announcement_id }}"
+                                maxlength="2000" placeholder="Optional details..." style="min-height:70px;"></textarea>
+                            <div class="ann-edit-actions">
+                                <button type="submit" class="btn-save-ann">💾 Save Changes</button>
+                                <button type="button" class="btn-cancel-ann" data-id="{{ a.announcement_id }}"
+                                    onclick="closeEditAnn(this)">
+                                    ✕ Cancel
+                                </button>
+                            </div>
+                        </form>
+
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="ann-empty">
+                    📭 No announcements yet for {{ selected_grade }}. Post your first one above!
+                </div>
+                {% endif %}
+            </div>
+
+
 
     {% endif %}
 

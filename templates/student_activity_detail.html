@@ -155,16 +155,20 @@
                     <div class="info-value">{{ activity.category or '—' }}</div>
                 </li>
                 <li>
-                    <div class="info-label">Due Date</div>
+                    <div class="info-label">
+                        {% if activity.individual_extension %}⭐ Extended Due Date{% else %}Due Date{% endif %}
+                    </div>
                     <div class="info-value">
-                        {% if activity.due_date %}
+                        {% if activity.individual_extension %}
+                        <span style="color:#059669; font-weight:700;">{{ activity.individual_extension.strftime('%B %d, %Y at %I:%M %p') }}</span>
+                        {% elif activity.due_date %}
                         {{ activity.due_date.strftime('%B %d, %Y at %I:%M %p') }}
-                        {% if activity.due_date < now %} <span
-                            style="color:#dc2626; font-size:0.8rem; font-weight:700; margin-left:8px;">(Past Due)</span>
-                            {% endif %}
-                            {% else %}
-                            No due date
-                            {% endif %}
+                        {% if activity.due_date < now %} 
+                        <span style="color:#dc2626; font-size:0.8rem; font-weight:700; margin-left:8px;">(Past Due)</span>
+                        {% endif %}
+                        {% else %}
+                        No due date
+                        {% endif %}
                     </div>
                 </li>
                 <li>
@@ -381,14 +385,24 @@
                 {% endif %}
             </div>
             {% else %}
+            {% set effective_due = activity.individual_extension if activity.individual_extension else activity.due_date %}
             <div
                 style="padding:16px; background:#fef2f2; border-radius:8px; border:1px solid #fecaca; color:#991b1b; margin-bottom:16px; font-weight:500;">
-                {% if activity.due_date and activity.due_date < now %} You haven't submitted this activity. It is now
-                    missing. {% else %} You haven't submitted your work yet. {% endif %} </div>
+                {% if effective_due and effective_due < now %} 
+                    You haven't submitted this activity. It is now missing. 
+                {% else %} 
+                    You haven't submitted your work yet. 
+                {% endif %} 
+            </div>
                     {% endif %}
 
+                    {% set effective_due = activity.individual_extension if activity.individual_extension else activity.due_date %}
+                    {% set is_expired_by_date = effective_due and effective_due < now %}
+                    
                     {% set can_submit = True %}
-                    {% if activity.status == 'Closed' %}
+                    {% if activity.status == 'Closed' and not activity.individual_extension %}
+                    {% set can_submit = False %}
+                    {% elif is_expired_by_date %}
                     {% set can_submit = False %}
                     {% elif submission and not submission.allow_resubmit %}
                     {% set can_submit = False %}

@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, request, redirect, session, flash, url_for, jsonify
+from flask import Blueprint, render_template, request, redirect, session, flash, url_for, jsonify, Response
+import csv
+import io
 from db import get_db_connection, is_branch_active
 from datetime import datetime, date
 from decimal import Decimal
@@ -612,7 +614,7 @@ def cashier_reservations():
                 LIMIT 1
             ) svp ON (reserved_by.role = 'parent')
             WHERE r.branch_id = %s
-            ORDER BY r.created_at DESC
+            ORDER BY r.created_at ASC
         """, (branch_id,))
         rows = cur.fetchall() or []
     finally:
@@ -1082,6 +1084,253 @@ def reservation_receipt(reservation_id):
                 pass
         conn.close()
         
+
+# =======================
+# CSV EXPORT ROUTES
+# =======================
+
+@cashier_bp.route("/cashier/reservations/export")
+def export_reservations_csv():
+    """Export ALL reservations for this branch as a CSV file."""
+    if not _require_cashier():
+        return redirect(url_for("auth.login"))
+
+    branch_id = session.get("branch_id")
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT
+                r.reservation_id,
+                COALESCE(u.username, '') AS username,
+                COALESCE(
+                    e.student_name,
+                    svp.student_name,
+                    u.username,
+                    ''
+                ) AS full_name,
+                COALESCE(r.student_grade_level, svp.grade_level) AS grade_level,
+                r.status,
+                r.created_at,
+                CASE
+                  WHEN r.reserved_by_user_id IS NOT NULL
+                       AND reserved_by.role = 'parent'
+                  THEN 'Parent'
+                  ELSE 'Student'
+                END AS reserved_by_role,
+                CASE
+                  WHEN r.reserved_by_user_id IS NOT NULL
+                       AND reserved_by.role = 'parent'
+                  THEN COALESCE(svp.guardian_name, reserved_by.username)
+                  ELSE NULL
+                END AS parent_name,
+                (
+                    SELECT STRING_AGG(DISTINCT UPPER(ii.category), ', ')
+                    FROM reservation_items ri
+                    JOIN inventory_items ii ON ri.item_id = ii.item_id
+                    WHERE ri.reservation_id = r.reservation_id
+                ) AS item_categories,
+                COALESCE(
+                    (SELECT SUM(ri.line_total)
+                     FROM reservation_items ri
+                     WHERE ri.reservation_id = r.reservation_id), 0
+                ) AS grand_total
+            FROM reservations r
+            LEFT JOIN users u ON u.user_id = r.student_user_id
+            LEFT JOIN student_accounts sa ON sa.username = u.username
+            LEFT JOIN enrollments e ON e.enrollment_id = sa.enrollment_id
+            LEFT JOIN users reserved_by ON reserved_by.user_id = r.reserved_by_user_id
+            LEFT JOIN LATERAL (
+                SELECT
+                    e2.student_name,
+                    e2.grade_level,
+                    e2.guardian_name,
+                    ps2.relationship
+                FROM parent_student ps2
+                JOIN enrollments e2 ON e2.enrollment_id = ps2.student_id
+                WHERE ps2.parent_id = r.reserved_by_user_id
+                ORDER BY ps2.student_id
+                LIMIT 1
+            ) svp ON (reserved_by.role = 'parent')
+            WHERE r.branch_id = %s
+            ORDER BY r.created_at DESC
+        """, (branch_id,))
+        rows = cur.fetchall() or []
+    finally:
+        if cur:
+            try:
+                cur.close()
+            except Exception:
+                pass
+        conn.close()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Header row
+    writer.writerow([
+        "Reservation ID", "Student Username", "Full Name", "Grade Level",
+        "Status", "Date Reserved", "Reserved By", "Parent Name",
+        "Item Categories", "Grand Total (PHP)"
+    ])
+
+    for r in rows:
+        res_id   = f"RES-{r[0]:04d}"
+        username = r[1] or ""
+        fullname = r[2] or username
+        grade    = r[3] or ""
+        status   = r[4] or ""
+        date_str = r[5].strftime("%Y-%m-%d %H:%M") if r[5] else ""
+        role     = r[6] or "Student"
+        parent   = r[7] or ""
+        cats     = r[8] or ""
+        total    = f"{float(r[9]):.2f}" if r[9] else "0.00"
+
+        writer.writerow([res_id, username, fullname, grade, status,
+                         date_str, role, parent, cats, total])
+
+    today = date.today().strftime("%Y-%m-%d")
+    filename = f"reservations_{today}.csv"
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@cashier_bp.route("/cashier/reservations/<int:reservation_id>/export")
+def export_reservation_detail_csv(reservation_id):
+    """Export a single reservation (summary + items) as a CSV file."""
+    if not _require_cashier():
+        return redirect(url_for("auth.login"))
+
+    branch_id = session.get("branch_id")
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor()
+
+        # -- Header / summary info
+        cur.execute("""
+            SELECT
+                r.reservation_id,
+                COALESCE(u.username, '') AS username,
+                COALESCE(
+                    e.student_name,
+                    svp.student_name,
+                    u.username,
+                    ''
+                ) AS full_name,
+                COALESCE(r.student_grade_level, svp.grade_level) AS grade_level,
+                r.status,
+                r.created_at,
+                CASE
+                  WHEN r.reserved_by_user_id IS NOT NULL
+                       AND reserved_by.role = 'parent'
+                  THEN 'Parent'
+                  ELSE 'Student'
+                END AS reserved_by_role,
+                CASE
+                  WHEN r.reserved_by_user_id IS NOT NULL
+                       AND reserved_by.role = 'parent'
+                  THEN COALESCE(svp.guardian_name, reserved_by.username)
+                  ELSE NULL
+                END AS parent_name,
+                svp.relationship
+            FROM reservations r
+            LEFT JOIN users u ON u.user_id = r.student_user_id
+            LEFT JOIN student_accounts sa ON sa.username = u.username
+            LEFT JOIN enrollments e ON e.enrollment_id = sa.enrollment_id
+            LEFT JOIN users reserved_by ON reserved_by.user_id = r.reserved_by_user_id
+            LEFT JOIN LATERAL (
+                SELECT
+                    e2.student_name,
+                    e2.grade_level,
+                    e2.guardian_name,
+                    ps2.relationship
+                FROM parent_student ps2
+                JOIN enrollments e2 ON e2.enrollment_id = ps2.student_id
+                WHERE ps2.parent_id = r.reserved_by_user_id
+                ORDER BY ps2.student_id
+                LIMIT 1
+            ) svp ON (reserved_by.role = 'parent')
+            WHERE r.reservation_id = %s AND r.branch_id = %s
+            LIMIT 1
+        """, (reservation_id, branch_id))
+        header = cur.fetchone()
+
+        if not header:
+            flash("Reservation not found.", "error")
+            return redirect(url_for("cashier.cashier_reservations"))
+
+        # -- Items
+        cur.execute("""
+            SELECT ii.category, ii.item_name, ri.qty,
+                   COALESCE(NULLIF(TRIM(ri.size_label), ''), ii.publisher, ii.size_label) AS display_label,
+                   ri.unit_price, ri.line_total
+            FROM reservation_items ri
+            JOIN inventory_items ii ON ii.item_id = ri.item_id
+            WHERE ri.reservation_id = %s
+            ORDER BY ii.category, ii.item_name
+        """, (reservation_id,))
+        items = cur.fetchall() or []
+        grand_total = sum(float(it[5] or 0) for it in items)
+
+    finally:
+        if cur:
+            try:
+                cur.close()
+            except Exception:
+                pass
+        conn.close()
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # ── Section 1: Reservation Summary ──
+    writer.writerow(["=== RESERVATION SUMMARY ==="])
+    writer.writerow(["Reservation ID", f"RES-{header[0]:04d}"])
+    writer.writerow(["Student Name",   header[2] or header[1] or ""])
+    writer.writerow(["Username",       header[1] or ""])
+    writer.writerow(["Grade Level",    header[3] or ""])
+    writer.writerow(["Status",         header[4] or ""])
+    writer.writerow(["Date Reserved",  header[5].strftime("%Y-%m-%d %H:%M") if header[5] else ""])
+    writer.writerow(["Reserved By",    header[6] or "Student"])
+    if header[7]:  # parent name
+        writer.writerow(["Parent Name",  header[7]])
+    if header[8]:  # relationship
+        writer.writerow(["Relationship", header[8]])
+    writer.writerow([])  # blank separator
+
+    # ── Section 2: Item List ──
+    writer.writerow(["=== RESERVED ITEMS ==="])
+    writer.writerow(["Category", "Item Name", "Qty", "Size / Publisher", "Unit Price (PHP)", "Line Total (PHP)"])
+
+    for it in items:
+        writer.writerow([
+            it[0] or "",
+            it[1] or "",
+            it[2] or 0,
+            it[3] or "",
+            f"{float(it[4] or 0):.2f}",
+            f"{float(it[5] or 0):.2f}",
+        ])
+
+    writer.writerow([])
+    writer.writerow(["", "", "", "", "GRAND TOTAL", f"{grand_total:.2f}"])
+
+    today = date.today().strftime("%Y-%m-%d")
+    filename = f"reservation_RES-{header[0]:04d}_{today}.csv"
+    output.seek(0)
+    return Response(
+        output.getvalue(),
+        mimetype="text/csv",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
 @cashier_bp.after_request
 def add_no_cache_headers(response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"

@@ -1110,6 +1110,9 @@
         </a>
       </div>
 
+      <a class="sb-link {% if request.path == '/student/grades' %}active{% endif %}" href="/student/grades">
+        <span class="sb-icon">📊</span> My Grades
+      </a>
 
       {% elif session.get('role') == 'parent' %}
       <div class="sb-section-label">Parent</div>
@@ -1128,7 +1131,8 @@
       <a class="sb-link {% if request.path == '/teacher' %}active{% endif %}" href="/teacher">
         <span class="sb-icon">👩‍🏫</span> My Class
       </a>
-      {% set manage_active = '/teacher/activities' in request.path or request.path.startswith('/teacher/exams') or request.path.startswith('/teacher/quizzes') %}
+      {% set manage_active = '/teacher/activities' in request.path or request.path.startswith('/teacher/exams') or
+      request.path.startswith('/teacher/quizzes') %}
       <button class="sb-dropdown-btn {% if manage_active %}open{% endif %}"
         onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
         <div class="sb-left">
@@ -1143,8 +1147,25 @@
         <a class="sb-link {% if request.path.startswith('/teacher/exams') %}active{% endif %}" href="/teacher/exams">
           📄 Exams
         </a>
-        <a class="sb-link {% if request.path.startswith('/teacher/quizzes') %}active{% endif %}" href="/teacher/quizzes">
+        <a class="sb-link {% if request.path.startswith('/teacher/quizzes') %}active{% endif %}"
+          href="/teacher/quizzes">
           ✏️ Quizzes
+        </a>
+      </div>
+
+      {% set grading_active = '/teacher/grading-weights' in request.path or '/teacher/class-record' in request.path
+      or '/teacher/participation' in request.path or '/teacher/attendance' in request.path %}
+      <button class="sb-dropdown-btn {% if grading_active %}open{% endif %}"
+        onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
+        <div class="sb-left">
+          <span class="sb-icon">⚖️</span> Grading
+        </div>
+        <span class="sb-dropdown-arrow">▼</span>
+      </button>
+      <div class="sb-dropdown-content {% if grading_active %}show{% endif %}">
+        <a class="sb-link {% if '/teacher/grading-weights' in request.path %}active{% endif %}"
+          href="/teacher/grading-weights">
+          ⚖️ Set Weights
         </a>
       </div>
 
@@ -1153,7 +1174,8 @@
       <a class="sb-link {% if request.path == '/registrar' %}active{% endif %}" href="/registrar">
         <span class="sb-icon">🏠</span> Dashboard
       </a>
-      <a class="sb-link {% if request.path == '/registrar/enrollments' %}active{% endif %}" href="/registrar/enrollments">
+      <a class="sb-link {% if request.path == '/registrar/enrollments' %}active{% endif %}"
+        href="/registrar/enrollments">
         <span class="sb-icon">📋</span> Enrollments
       </a>
 
@@ -1313,7 +1335,8 @@
           <div class="notif-header">
             <span>Notifications</span>
             {% if student_unread_count and student_unread_count > 0 %}
-            <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ student_unread_count }} New</span>
+            <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ student_unread_count }}
+              New</span>
             {% endif %}
           </div>
           <div class="notif-list">
@@ -1456,7 +1479,7 @@
             const newLabel = document.querySelector('.notif-header .badge-red');
             if (newLabel) newLabel.remove();
           })
-          .catch(() => {}); // silent fail
+          .catch(() => { }); // silent fail
       }
 
       // Close when clicking outside
@@ -1519,6 +1542,87 @@
     });
   </script>
 
+  <!-- ══ TEACHER CLASSLIST SIDEBAR ══ -->
+  {% if session.get('role') == 'teacher' %}
+  <div class="sb-overlay" id="clOverlay" onclick="closeClasslist()"></div>
+  <div id="classlistSidebar" style="
+      position: fixed; top: 0; right: -400px; width: 350px; height: 100vh;
+      background: var(--bg); box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+      z-index: 2000; transition: right 0.3s ease; display: flex; flex-direction: column;">
+      <div style="padding: 16px 20px; background: var(--topbar-bg); color: #fff; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 1.1rem;">
+          Classlist
+          <button onclick="closeClasslist()" style="background:none; border:none; color:#fff; font-size:1.5rem; cursor:pointer;">&times;</button>
+      </div>
+      <div style="padding: 16px 20px; background: var(--card); border-bottom: 1px solid var(--border);">
+          <select id="clSectionSelect" onchange="fetchClasslist()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem;">
+              <option value="">— Select Section —</option>
+          </select>
+      </div>
+      <div style="flex: 1; overflow-y: auto; background: var(--card);">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+              <thead style="background: #f8fafc; position: sticky; top: 0;">
+                  <tr>
+                      <th style="padding: 10px 16px; border-bottom: 1px solid var(--border); text-align: left; color: var(--muted); font-size: 0.75rem;">#</th>
+                      <th style="padding: 10px 16px; border-bottom: 1px solid var(--border); text-align: left; color: var(--muted); font-size: 0.75rem;">Student Name</th>
+                  </tr>
+              </thead>
+              <tbody id="clTableBody">
+                  <tr><td colspan="2" style="text-align: center; padding: 20px; color: var(--muted);">Select a section to view students</td></tr>
+              </tbody>
+          </table>
+      </div>
+  </div>
+  <script>
+      function openClasslist() {
+          document.getElementById('classlistSidebar').style.right = '0';
+          document.getElementById('clOverlay').classList.add('show');
+          if (document.getElementById('clSectionSelect').options.length <= 1) {
+              fetch('/api/teacher/sections')
+                  .then(r => r.json())
+                  .then(data => {
+                      if (data.sections) {
+                          const sel = document.getElementById('clSectionSelect');
+                          sel.innerHTML = '<option value="">— Select Section —</option>';
+                          data.sections.forEach(s => {
+                              sel.innerHTML += `<option value="${s.section_id}">${s.grade_level_name} - ${s.section_name}</option>`;
+                          });
+                      }
+                  });
+          }
+      }
+      function closeClasslist() {
+          document.getElementById('classlistSidebar').style.right = '-400px';
+          document.getElementById('clOverlay').classList.remove('show');
+      }
+      function fetchClasslist() {
+          const sec = document.getElementById('clSectionSelect').value;
+          const tb = document.getElementById('clTableBody');
+          if (!sec) {
+              tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: var(--muted);">Select a section to view students</td></tr>';
+              return;
+          }
+          tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: var(--muted);">Loading...</td></tr>';
+          fetch('/api/teacher/classlist/' + sec)
+              .then(r => r.json())
+              .then(data => {
+                  if (data.students && data.students.length > 0) {
+                      tb.innerHTML = '';
+                      data.students.forEach((st, i) => {
+                          tb.innerHTML += `<tr>
+                              <td style="padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--muted); min-width:40px; font-size: 0.85rem;">${i+1}</td>
+                              <td style="padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 600; color: var(--text);">${st.student_name}</td>
+                          </tr>`;
+                      });
+                  } else {
+                      tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: var(--muted);">No students found</td></tr>';
+                  }
+              })
+              .catch(() => {
+                  tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: red;">Error loading classlist</td></tr>';
+              });
+      }
+  </script>
+  {% endif %}
 </body>
 
 </html>

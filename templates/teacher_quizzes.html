@@ -25,6 +25,20 @@
         <a href="{{ url_for('teacher.teacher_quiz_create') }}" class="btn btn-primary">➕ Create Quiz</a>
     </div>
 
+    <!-- Filter Tabs -->
+    <style>
+        .filter-tabs { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 8px; }
+        .filter-tab { padding: 8px 16px; background: #fff; border: 1px solid #e9d5ff; border-radius: 20px; cursor: pointer; font-size: 0.9rem; font-weight: 600; white-space: nowrap; transition: all 0.2s; }
+        .filter-tab:hover { border-color: #7c3aed; color: #7c3aed; }
+        .filter-tab.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+    </style>
+    <div class="filter-tabs">
+        <div class="filter-tab active" onclick="filterQuizzes('1st', this)">1st Grading</div>
+        <div class="filter-tab" onclick="filterQuizzes('2nd', this)">2nd Grading</div>
+        <div class="filter-tab" onclick="filterQuizzes('3rd', this)">3rd Grading</div>
+        <div class="filter-tab" onclick="filterQuizzes('4th', this)">4th Grading</div>
+    </div>
+
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}{% for cat, msg in messages %}
     <div style="padding:12px 16px; border-radius:8px; margin-bottom:14px;
@@ -35,20 +49,21 @@
 
     <div class="card">
         {% if quizzes %}
-        <table class="exam-table">
+        <table class="exam-table" id="quizTable">
             <thead>
                 <tr>
                     <th>Title</th><th>Subject</th><th>Section</th>
-                    <th>Duration</th><th>Questions</th>
+                    <th>Period</th><th>Duration</th><th>Questions</th>
                     <th>Attempts</th><th>Status</th><th>Actions</th>
                 </tr>
             </thead>
             <tbody>
             {% for q in quizzes %}
-            <tr>
+            <tr class="quiz-row" data-period="{{ q.grading_period or 'none' }}">
                 <td><strong>{{ q.title }}</strong></td>
                 <td>{{ q.subject_name }}</td>
                 <td>{{ q.grade_level_name }} - {{ q.section_name }}</td>
+                <td><span class="badge" style="background:#f3f0ff; color:#7c3aed;">{{ q.grading_period or 'None' }}</span></td>
                 <td>{{ q.duration_mins }} min</td>
                 <td>{{ q.question_count }}</td>
                 <td>{{ q.attempt_count }}</td>
@@ -77,4 +92,27 @@
         {% endif %}
     </div>
 </div>
+
+<script>
+function filterQuizzes(period, el) {
+    document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+    if (el) el.classList.add('active');
+
+    const rows = document.querySelectorAll('.quiz-row');
+    rows.forEach(row => {
+        if (period === 'all' || row.dataset.period === period) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    const activeTab = document.querySelector('.filter-tab.active');
+    if (activeTab) {
+        filterQuizzes('1st', activeTab);
+    }
+});
+</script>
 {% endblock %}

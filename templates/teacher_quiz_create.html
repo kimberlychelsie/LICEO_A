@@ -32,6 +32,17 @@
             </div>
         </div>
 
+        <div class="form-group">
+            <label class="form-label">📅 Grading Period <span style="color:red">*</span></label>
+            <select name="grading_period" class="form-select" required>
+                <option value="">-- Select Grading Period --</option>
+                <option value="1st">1st Grading</option>
+                <option value="2nd">2nd Grading</option>
+                <option value="3rd">3rd Grading</option>
+                <option value="4th">4th Grading</option>
+            </select>
+        </div>
+
         <hr style="border:0; border-top:1px solid var(--border); margin:20px 0;">
 
         <div class="form-group">
@@ -75,4 +86,15 @@
         </div>
     </form>
 </div>
+
+<script>
+    // Set min date to current time on load
+    window.addEventListener('load', () => {
+        const now = new Date();
+        const offset = now.getTimezoneOffset() * 60000;
+        const localISOTime = new Date(now - offset).toISOString().slice(0, 16);
+        const startInput = document.querySelector('input[name="scheduled_start"]');
+        if (startInput) startInput.setAttribute('min', localISOTime);
+    });
+</script>
 {% endblock %}

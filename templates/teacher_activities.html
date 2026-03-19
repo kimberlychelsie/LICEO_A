@@ -105,6 +105,43 @@
         <a href="{{ url_for('teacher.create_activity') }}" class="btn btn-primary">➕ Create New Activity</a>
     </div>
 
+    <!-- Filter Tabs -->
+    <style>
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+        .filter-tab {
+            padding: 8px 16px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .filter-tab:hover {
+            border-color: var(--btn);
+            color: var(--btn);
+        }
+        .filter-tab.active {
+            background: var(--btn);
+            color: #fff;
+            border-color: var(--btn);
+        }
+    </style>
+    <div class="filter-tabs">
+        <div class="filter-tab active" onclick="filterActivities('1st', this)">1st Grading</div>
+        <div class="filter-tab" onclick="filterActivities('2nd', this)">2nd Grading</div>
+        <div class="filter-tab" onclick="filterActivities('3rd', this)">3rd Grading</div>
+        <div class="filter-tab" onclick="filterActivities('4th', this)">4th Grading</div>
+    </div>
+
     <!-- Quick Stats -->
     <div class="stats-card">
         <div class="stat-item">
@@ -126,33 +163,42 @@
     </div>
 
     {% if activities %}
-    {% for act in activities %}
-    <div class="act-card">
-        <div class="act-info">
-            <h4>{{ act.title }}</h4>
-            <div class="act-meta">
-                <strong>{{ act.subject_name }}</strong> ({{ act.section_name }}) &bull; Due: {{
-                act.due_date.strftime('%b %d, %Y %I:%M %p') if act.due_date else 'No timeline' }}
-                &bull; Max Score: {{ act.max_score }}
-                &bull; Status:
-                {% if act.status == 'Published' %}<span class="badge badge-green">Published</span>
-                {% elif act.status == 'Draft' %}<span class="badge badge-gray">Draft</span>
-                {% else %}<span class="badge badge-red">Closed</span>{% endif %}
+    <div id="activitiesList">
+        {% for act in activities %}
+        <div class="act-card" data-period="{{ act.grading_period or 'none' }}">
+            <div class="act-info">
+                <h4>{{ act.title }}</h4>
+                <div class="act-meta">
+                    <strong>{{ act.subject_name }}</strong> ({{ act.section_name }}) &bull; Due: {{
+                    act.due_date.strftime('%b %d, %Y %I:%M %p') if act.due_date else 'No timeline' }}
+                    &bull; Max Score: {{ act.max_score }}
+                    &bull; Period: <span class="badge badge-blue">{{ act.grading_period or 'None' }}</span>
+                    &bull; Status:
+                    {% if act.status == 'Published' %}<span class="badge badge-green">Published</span>
+                    {% elif act.status == 'Draft' %}<span class="badge badge-gray">Draft</span>
+                    {% else %}<span class="badge badge-red">Closed</span>{% endif %}
+                </div>
+            </div>
+            <div class="act-actions">
+                <button onclick="toggleActivityStatus({{ act.activity_id }}, this)" 
+                        class="btn btn-secondary btn-sm toggle-vis-btn" 
+                        title="Toggle Visibility" 
+                        style="padding: 6px 10px;">
+                    {% if act.status == 'Published' %}👁️{% else %}🙈{% endif %}
+                </button>
+                <a href="{{ url_for('teacher.edit_activity', activity_id=act.activity_id) }}"
+                    class="btn btn-secondary btn-sm">Edit</a>
+                <a href="{{ url_for('teacher.activity_submissions', activity_id=act.activity_id) }}"
+                    class="btn btn-primary btn-sm">Submissions ({{ act.submission_count }})</a>
+                <form method="POST" action="{{ url_for('teacher.delete_activity', activity_id=act.activity_id) }}"
+                      onsubmit="return confirm('Delete this activity? All submissions and grades will also be deleted. This cannot be undone.');"
+                      style="display:inline;">
+                    <button type="submit" class="btn btn-sm" style="background:#dc3545; color:#fff;">🗑 Delete</button>
+                </form>
             </div>
         </div>
-        <div class="act-actions">
-            <a href="{{ url_for('teacher.edit_activity', activity_id=act.activity_id) }}"
-                class="btn btn-secondary btn-sm">Edit</a>
-            <a href="{{ url_for('teacher.activity_submissions', activity_id=act.activity_id) }}"
-                class="btn btn-primary btn-sm">Submissions ({{ act.submission_count }})</a>
-            <form method="POST" action="{{ url_for('teacher.delete_activity', activity_id=act.activity_id) }}"
-                  onsubmit="return confirm('Delete this activity? All submissions and grades will also be deleted. This cannot be undone.');"
-                  style="display:inline;">
-                <button type="submit" class="btn btn-sm" style="background:#dc3545; color:#fff;">🗑 Delete</button>
-            </form>
-        </div>
+        {% endfor %}
     </div>
-    {% endfor %}
     {% else %}
     <div class="empty-state">
         <div class="big-icon">📚</div>
@@ -161,4 +207,82 @@
     </div>
     {% endif %}
 </div>
+
+<script>
+function filterActivities(period, el) {
+    // Update active tab
+    document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+    if (el) el.classList.add('active');
+
+    // Filter items
+    const cards = document.querySelectorAll('.act-card');
+    let visibleCount = 0;
+    
+    cards.forEach(card => {
+        if (period === 'all' || card.dataset.period === period) {
+            card.style.display = 'flex';
+            visibleCount++;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    // Handle empty state for filter
+    let emptyMsg = document.getElementById('filterEmptyMsg');
+    if (visibleCount === 0) {
+        if (!emptyMsg) {
+            emptyMsg = document.createElement('div');
+            emptyMsg.id = 'filterEmptyMsg';
+            emptyMsg.className = 'empty-state';
+            emptyMsg.innerHTML = '<h3>No activities for this period</h3>';
+            const list = document.getElementById('activitiesList');
+            if (list) list.appendChild(emptyMsg);
+        }
+    } else if (emptyMsg) {
+        emptyMsg.remove();
+    }
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    const activeTab = document.querySelector('.filter-tab.active');
+    if (activeTab) {
+        filterActivities('1st', activeTab);
+    }
+});
+
+async function toggleActivityStatus(activityId, btn) {
+    try {
+        const response = await fetch(`/teacher/activities/${activityId}/toggle-status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        const result = await response.json();
+        
+        if (result.ok) {
+            // Update the icon
+            btn.innerHTML = result.new_status === 'Published' ? '👁️' : '🙈';
+            
+            // Update the status badge in the same card
+            const card = btn.closest('.act-card');
+            const badge = card.querySelector('.badge:last-child'); // Status is the last badge
+            if (badge) {
+                if (result.new_status === 'Published') {
+                    badge.className = 'badge badge-green';
+                    badge.textContent = 'Published';
+                } else {
+                    badge.className = 'badge badge-gray';
+                    badge.textContent = 'Draft';
+                }
+            }
+            
+            // Optional: Show a quick toast or just let the UI change speak
+        } else {
+            alert(result.error || "Failed to toggle status");
+        }
+    } catch (err) {
+        console.error(err);
+        alert("An error occurred. Please try again.");
+    }
+}
+</script>
 {% endblock %}

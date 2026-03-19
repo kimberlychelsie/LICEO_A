@@ -136,6 +136,7 @@ def teacher_dashboard():
         db.close()
 
     selected_grade = (request.args.get("grade") or teacher_grade or "").strip()
+    selected_section_id = request.args.get("section_id", type=int)
 
     students = []
     announcements = []
@@ -150,7 +151,7 @@ def teacher_dashboard():
         cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
             # ── Students ──
-            cur.execute("""
+            query_str = """
                 SELECT
                     e.enrollment_id,
                     e.student_name,
@@ -182,12 +183,21 @@ def teacher_dashboard():
                       OR e.grade_level ILIKE %(grade_short)s
                   )
                   AND e.status IN ('approved', 'enrolled')
-                ORDER BY e.student_name ASC
-            """, {
+            """
+            
+            query_params = {
                 "branch_id":   branch_id,
                 "grade_full":  grade_full,
                 "grade_short": grade_short,
-            })
+            }
+            
+            if selected_section_id:
+                query_str += " AND e.section_id = %(section_id)s "
+                query_params["section_id"] = selected_section_id
+                
+            query_str += " ORDER BY e.student_name ASC "
+            
+            cur.execute(query_str, query_params)
             students = cur.fetchall() or []
 
             stats["total"] = len(students)
@@ -273,6 +283,7 @@ def teacher_dashboard():
         announcements=announcements,
         teacher_assignments=teacher_assignments,
         teacher_user_id=session.get("user_id"),
+        selected_section_id=selected_section_id,
     )
 
 
@@ -592,6 +603,7 @@ def create_activity():
             due_date = request.form.get("due_date", "")
             status = request.form.get("status", "Draft")
             allowed_file_types = request.form.get("allowed_file_types", "").strip()
+            grading_period = request.form.get("grading_period")
             
             if "_" not in assignment:
                 flash("Invalid section/subject assignment", "error")
@@ -613,12 +625,12 @@ def create_activity():
                 INSERT INTO activities (
                     branch_id, section_id, subject_id, teacher_id, 
                     title, category, instructions, max_score, due_date, 
-                    status, allowed_file_types, attachment_path
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    status, allowed_file_types, attachment_path, grading_period
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING activity_id
             ''', (branch_id, section_id, subject_id, user_id, 
                   title, category, instructions, max_score, due_date or None, 
-                  status, allowed_file_types, attachment_path))
+                  status, allowed_file_types, attachment_path, grading_period))
             activity_id = cur.fetchone()['activity_id']
             
             if status == 'Published':
@@ -693,6 +705,7 @@ def edit_activity(activity_id):
             due_date = request.form.get("due_date", "")
             status = request.form.get("status", "Draft")
             allowed_file_types = request.form.get("allowed_file_types", "").strip()
+            grading_period = request.form.get("grading_period")
             
             attachment_path = activity['attachment_path']
             if 'attachment' in request.files:
@@ -708,10 +721,10 @@ def edit_activity(activity_id):
                 UPDATE activities SET
                     title = %s, category = %s, instructions = %s, max_score = %s, 
                     due_date = %s, status = %s, allowed_file_types = %s, attachment_path = %s,
-                    updated_at = NOW()
+                    grading_period = %s, updated_at = NOW()
                 WHERE activity_id = %s
             ''', (title, category, instructions, max_score, due_date or None, 
-                  status, allowed_file_types, attachment_path, activity_id))
+                  status, allowed_file_types, attachment_path, grading_period, activity_id))
                   
             if status == 'Published' and activity['status'] != 'Published':
                 cur.execute("""
@@ -774,13 +787,23 @@ def activity_submissions(activity_id):
         
         # Get all submissions for this activity
         cur.execute('''
-            SELECT sub.*, g.grade_id, g.raw_score, g.percentage, g.remarks
+            SELECT sub.*, g.grade_id, g.raw_score, g.percentage, g.remarks,
+                   ext.new_due_date AS individual_extension
             FROM activity_submissions sub
             LEFT JOIN activity_grades g ON sub.submission_id = g.submission_id
+            LEFT JOIN individual_extensions ext ON ext.enrollment_id = sub.enrollment_id AND ext.item_id = %s AND ext.item_type = 'activity'
             WHERE sub.activity_id = %s
             ORDER BY sub.submitted_at ASC
-        ''', (activity_id,))
+        ''', (activity_id, activity_id))
         submissions_raw = {row['enrollment_id']: row for row in cur.fetchall()}
+        
+        # Also need students who haven't submitted but might have extensions
+        cur.execute('''
+            SELECT enrollment_id, new_due_date 
+            FROM individual_extensions 
+            WHERE item_id = %s AND item_type = 'activity'
+        ''', (activity_id,))
+        extensions_only = {row['enrollment_id']: row['new_due_date'] for row in cur.fetchall()}
         
         submissions_data = []
         for s in students:
@@ -788,7 +811,8 @@ def activity_submissions(activity_id):
             item = {
                 'student_name': s['student_name'],
                 'student_user_id': s['student_user_id'],
-                'enrollment_id': s['enrollment_id']
+                'enrollment_id': s['enrollment_id'],
+                'individual_extension': extensions_only.get(s['enrollment_id'])
             }
             if sub:
                 item.update(sub)
@@ -835,6 +859,10 @@ def grade_submission(submission_id):
         
         if not sub or sub['teacher_id'] != user_id:
             flash("Unauthorized or submission not found.", "error")
+            return redirect(request.referrer)
+            
+        if raw_score > sub['max_score']:
+            flash(f"Score cannot exceed maximum score ({sub['max_score']}).", "error")
             return redirect(request.referrer)
             
         percentage = (raw_score / sub['max_score']) * 100 if sub['max_score'] > 0 else 0
@@ -918,7 +946,7 @@ def teacher_exams():
         cur.execute("""
             SELECT
                 e.exam_id, e.title, e.exam_type, e.duration_mins,
-                e.scheduled_date, e.status, e.created_at,
+                e.scheduled_date, e.status, e.created_at, e.grading_period,
                 s.section_name,
                 g.name AS grade_level_name,
                 sub.name AS subject_name,
@@ -960,6 +988,7 @@ def teacher_exam_create():
         passing_score   = int(request.form.get("passing_score", 60))
         randomize       = request.form.get("randomize") == "1"
         instructions    = (request.form.get("instructions") or "").strip() or None
+        grading_period  = request.form.get("grading_period")
 
         if not title or not section_id or not subject_id:
             flash("Title, section, and subject are required.", "error")
@@ -973,9 +1002,9 @@ def teacher_exam_create():
                     scheduled_start,
                     max_attempts, passing_score,
                     randomize,
-                    instructions, status
+                    instructions, status, grading_period
                 )
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'draft')
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'draft',%s)
                 RETURNING exam_id
             """, (
                 branch_id, section_id, subject_id, user_id,
@@ -983,7 +1012,7 @@ def teacher_exam_create():
                 scheduled_start,
                 max_attempts, passing_score,
                  randomize,
-                instructions
+                instructions, grading_period
             ))
             exam_id = cur.fetchone()["exam_id"]
             db.commit()
@@ -1263,7 +1292,7 @@ def teacher_quizzes():
         cur.execute("""
             SELECT
                 e.exam_id, e.title, e.exam_type, e.duration_mins,
-                e.scheduled_date, e.status, e.created_at,
+                e.scheduled_date, e.status, e.created_at, e.grading_period,
                 s.section_name,
                 g.name AS grade_level_name,
                 sub.name AS subject_name,
@@ -1303,6 +1332,7 @@ def teacher_quiz_create():
         passing_score = int(request.form.get("passing_score", 60))
         randomize     = request.form.get("randomize") == "1"
         instructions  = (request.form.get("instructions") or "").strip() or None
+        grading_period = request.form.get("grading_period")
 
         if not title or "_" not in assignment:
             flash("Title and Section/Subject are required.", "error")
@@ -1322,9 +1352,9 @@ def teacher_quiz_create():
                     scheduled_start,
                     max_attempts, passing_score,
                     randomize,
-                    instructions, status
+                    instructions, status, grading_period
                 )
-                VALUES (%s,%s,%s,%s,%s,'quiz',%s,%s,%s,%s,%s,%s,'draft')
+                VALUES (%s,%s,%s,%s,%s,'quiz',%s,%s,%s,%s,%s,%s,'draft', %s)
                 RETURNING exam_id
             """, (
                 branch_id, section_id, subject_id, user_id,
@@ -1332,7 +1362,7 @@ def teacher_quiz_create():
                 scheduled_start,
                 max_attempts, passing_score,
                 randomize,
-                instructions
+                instructions, grading_period
             ))
             exam_id = cur.fetchone()["exam_id"]
             db.commit()
@@ -1752,3 +1782,666 @@ def teacher_exam_reset(exam_id, enrollment_id):
         db.close()
 
     return redirect(url_for("teacher.teacher_exam_results", exam_id=exam_id))
+
+
+# ══════════════════════════════════════════════════════════════
+# GRADING PERIOD SYSTEM — TEACHER
+# ══════════════════════════════════════════════════════════════
+
+GRADING_PERIODS = ["1st", "2nd", "3rd", "4th"]
+
+
+def _get_teacher_assignments(cur, user_id, branch_id):
+    """Helper: fetch all section+subject assignments for a teacher."""
+    cur.execute("""
+        SELECT st.section_id, s.section_name, g.name AS grade_level_name,
+               st.subject_id, sub.name AS subject_name
+        FROM section_teachers st
+        JOIN sections s      ON st.section_id = s.section_id
+        JOIN grade_levels g  ON s.grade_level_id = g.id
+        JOIN subjects sub    ON st.subject_id = sub.subject_id
+        WHERE st.teacher_id = %s AND s.branch_id = %s
+        ORDER BY g.display_order, s.section_name, sub.name
+    """, (user_id, branch_id))
+    return cur.fetchall() or []
+
+
+# ── Grading Weights Setup ─────────────────────────────────────────────────────
+
+@teacher_bp.route("/teacher/grading-weights")
+def grading_weights():
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        assignments = _get_teacher_assignments(cur, user_id, branch_id)
+
+        # Fetch existing weights so we can pre-fill the form
+        cur.execute("""
+            SELECT section_id, subject_id, grading_period,
+                   quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct
+            FROM grading_weights
+            WHERE teacher_id = %s AND branch_id = %s
+        """, (user_id, branch_id))
+        raw_weights = cur.fetchall() or []
+
+        # Build a quick lookup dict: (section_id, subject_id, period) → row
+        weights_map = {}
+        for w in raw_weights:
+            key = (w['section_id'], w['subject_id'], w['grading_period'])
+            weights_map[key] = w
+
+    finally:
+        cur.close()
+        db.close()
+
+    return render_template("teacher_grading_weights.html",
+                           assignments=assignments,
+                           weights_map=weights_map,
+                           grading_periods=GRADING_PERIODS)
+
+
+@teacher_bp.route("/teacher/grading-weights/set", methods=["POST"])
+def grading_weights_set():
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    section_id  = request.form.get("section_id")
+    subject_id  = request.form.get("subject_id")
+    period      = request.form.get("grading_period")
+
+    try:
+        quiz_pct          = float(request.form.get("quiz_pct", 0) or 0)
+        exam_pct          = float(request.form.get("exam_pct", 0) or 0)
+        activity_pct      = float(request.form.get("activity_pct", 0) or 0)
+        participation_pct = float(request.form.get("participation_pct", 0) or 0)
+        attendance_pct    = float(request.form.get("attendance_pct", 0) or 0)
+    except ValueError:
+        flash("All percentage values must be numbers.", "error")
+        return redirect(url_for("teacher.grading_weights"))
+
+    if period not in GRADING_PERIODS:
+        flash("Invalid grading period.", "error")
+        return redirect(url_for("teacher.grading_weights"))
+
+    total = quiz_pct + exam_pct + activity_pct + participation_pct + attendance_pct
+    if abs(total - 100.0) > 0.01:
+        flash(f"Percentages must total exactly 100%. Current total: {total:.1f}%", "error")
+        return redirect(url_for("teacher.grading_weights"))
+
+    db  = get_db_connection()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            INSERT INTO grading_weights
+                (teacher_id, branch_id, section_id, subject_id, grading_period,
+                 quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct, updated_at)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
+            ON CONFLICT ON CONSTRAINT uq_grading_weights
+            DO UPDATE SET
+                quiz_pct          = EXCLUDED.quiz_pct,
+                exam_pct          = EXCLUDED.exam_pct,
+                activity_pct      = EXCLUDED.activity_pct,
+                participation_pct = EXCLUDED.participation_pct,
+                attendance_pct    = EXCLUDED.attendance_pct,
+                updated_at        = NOW()
+        """, (user_id, branch_id, section_id, subject_id, period,
+              quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct))
+        db.commit()
+        flash(f"Grading weights for {period} Grading saved successfully!", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not save weights: {e}", "error")
+    finally:
+        cur.close()
+        db.close()
+
+    return redirect(url_for("teacher.grading_weights"))
+
+
+def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, period):
+    """Internal helper to compute grades for all students in a section/subject/period."""
+    # All students in the section
+    cur.execute("""
+        SELECT e.enrollment_id, e.student_name
+        FROM enrollments e
+        WHERE e.section_id = %s AND e.branch_id = %s AND e.status IN ('approved','enrolled')
+        ORDER BY e.student_name ASC
+    """, (section_id, branch_id))
+    students = cur.fetchall() or []
+    
+    # Grading weights for this period
+    cur.execute("""
+        SELECT quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct
+        FROM grading_weights
+        WHERE teacher_id=%s AND section_id=%s AND subject_id=%s AND grading_period=%s
+    """, (user_id, section_id, subject_id, period))
+    weights = cur.fetchone()
+    
+    # --- Fetch scores per student for this period ---
+    enrollment_ids = [s['enrollment_id'] for s in students]
+    quiz_scores = {}
+    exam_scores = {}
+    if enrollment_ids:
+        cur.execute("""
+            SELECT er.enrollment_id,
+                   AVG(CASE WHEN er.total_points > 0
+                            THEN (er.score / er.total_points * 100) ELSE 0 END) AS avg_pct
+            FROM exam_results er
+            JOIN exams e ON er.exam_id = e.exam_id
+            WHERE e.section_id = %s AND e.subject_id = %s
+              AND e.exam_type = 'quiz' AND e.grading_period = %s
+              AND er.enrollment_id = ANY(%s)
+              AND er.status IN ('submitted', 'auto_submitted')
+            GROUP BY er.enrollment_id
+        """, (section_id, subject_id, period, enrollment_ids))
+        for row in cur.fetchall():
+            quiz_scores[row['enrollment_id']] = float(row['avg_pct'] or 0)
+
+        cur.execute("""
+            SELECT er.enrollment_id,
+                   AVG(CASE WHEN er.total_points > 0
+                            THEN (er.score / er.total_points * 100) ELSE 0 END) AS avg_pct
+            FROM exam_results er
+            JOIN exams e ON er.exam_id = e.exam_id
+            WHERE e.section_id = %s AND e.subject_id = %s
+              AND e.exam_type = 'exam' AND e.grading_period = %s
+              AND er.enrollment_id = ANY(%s)
+              AND er.status IN ('submitted', 'auto_submitted')
+            GROUP BY er.enrollment_id
+        """, (section_id, subject_id, period, enrollment_ids))
+        for row in cur.fetchall():
+            exam_scores[row['enrollment_id']] = float(row['avg_pct'] or 0)
+
+    activity_scores = {}
+    cur.execute("""
+        SELECT ag.submission_id, asub.enrollment_id, ag.percentage
+        FROM activity_grades ag
+        JOIN activity_submissions asub ON ag.submission_id = asub.submission_id
+        JOIN activities a ON ag.activity_id = a.activity_id
+        WHERE a.section_id = %s AND a.subject_id = %s AND a.grading_period = %s
+    """, (section_id, subject_id, period))
+    act_raw = cur.fetchall() or []
+    act_bucket = {}
+    for row in act_raw:
+        eid = row['enrollment_id']
+        act_bucket.setdefault(eid, []).append(float(row['percentage'] or 0))
+    for eid, pcts in act_bucket.items():
+        activity_scores[eid] = sum(pcts) / len(pcts)
+
+    participation_scores = {}
+    cur.execute("""
+        SELECT enrollment_id, score FROM participation_scores
+        WHERE section_id=%s AND subject_id=%s AND grading_period=%s
+    """, (section_id, subject_id, period))
+    for row in cur.fetchall():
+        participation_scores[row['enrollment_id']] = float(row['score'] or 0)
+
+    attendance_scores = {}
+    cur.execute("""
+        SELECT enrollment_id, score FROM attendance_scores
+        WHERE section_id=%s AND subject_id=%s AND grading_period=%s
+    """, (section_id, subject_id, period))
+    for row in cur.fetchall():
+        attendance_scores[row['enrollment_id']] = float(row['score'] or 0)
+
+    records = []
+    for s in students:
+        eid = s['enrollment_id']
+        q = quiz_scores.get(eid, 0)
+        e2 = exam_scores.get(eid, 0)
+        a = activity_scores.get(eid, 0)
+        p = participation_scores.get(eid, 0)
+        att = attendance_scores.get(eid, 0)
+
+        if weights:
+            period_grade = (
+                q   * (float(weights['quiz_pct']) / 100) +
+                e2  * (float(weights['exam_pct']) / 100) +
+                a   * (float(weights['activity_pct']) / 100) +
+                p   * (float(weights['participation_pct']) / 100) +
+                att * (float(weights['attendance_pct']) / 100)
+            )
+            period_grade = round(period_grade, 2)
+        else:
+            period_grade = None
+
+        records.append({
+            'enrollment_id':   eid,
+            'student_name':    s['student_name'],
+            'quiz':            round(q, 2),
+            'exam':            round(e2, 2),
+            'activity':        round(a, 2),
+            'participation':   round(p, 2),
+            'attendance':      round(att, 2),
+            'period_grade':    period_grade
+        })
+    return students, weights, records
+
+# ── Class Record ──────────────────────────────────────────────────────────────
+
+@teacher_bp.route("/teacher/class-record/<int:section_id>/<int:subject_id>")
+def class_record(section_id, subject_id):
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+    period    = request.args.get("period", "1st")
+    if period not in GRADING_PERIODS:
+        period = "1st"
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Verify teacher owns this section+subject
+        cur.execute("""
+            SELECT 1 FROM section_teachers
+            WHERE teacher_id=%s AND section_id=%s AND subject_id=%s
+        """, (user_id, section_id, subject_id))
+        if not cur.fetchone():
+            flash("Unauthorized or assignment not found.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        # Section and subject info
+        cur.execute("""
+            SELECT s.section_name, g.name AS grade_level_name, sub.name AS subject_name
+            FROM sections s
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            JOIN subjects sub ON sub.subject_id = %s
+            WHERE s.section_id = %s
+        """, (subject_id, section_id))
+        context = cur.fetchone()
+
+        _, weights, records = _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, period)
+
+        return render_template("teacher_class_record.html",
+                               context=context,
+                               section_id=section_id,
+                               subject_id=subject_id,
+                               records=records,
+                               weights=weights,
+                               period=period,
+                               grading_periods=GRADING_PERIODS)
+    finally:
+        cur.close()
+        db.close()
+
+@teacher_bp.route("/teacher/post-grades/<int:section_id>/<int:subject_id>/<string:period>", methods=["POST"])
+def teacher_post_grades(section_id, subject_id, period):
+    if not _require_teacher(): return redirect("/")
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+    if period not in GRADING_PERIODS: return redirect(url_for("teacher.teacher_dashboard"))
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("SELECT 1 FROM section_teachers WHERE teacher_id=%s AND section_id=%s AND subject_id=%s", (user_id, section_id, subject_id))
+        if not cur.fetchone():
+            flash("Unauthorized.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        _, weights, records = _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, period)
+        if not weights:
+            flash(f"Cannot post grades: Weights not set for {period} Grading.", "error")
+            return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
+
+        for r in records:
+            if r['period_grade'] is not None:
+                cur.execute("""
+                    INSERT INTO posted_grades (enrollment_id, section_id, subject_id, grading_period, grade, posted_by, posted_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, NOW())
+                    ON CONFLICT (enrollment_id, subject_id, grading_period)
+                    DO UPDATE SET grade = EXCLUDED.grade, posted_at = NOW(), posted_by = EXCLUDED.posted_by
+                """, (r['enrollment_id'], section_id, subject_id, period, r['period_grade'], user_id))
+        
+        db.commit()
+        flash(f"Grades for {period} Grading have been posted to the Student Portal!", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error posting grades: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+    return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
+
+
+# ── Participation Scores ──────────────────────────────────────────────────────
+
+@teacher_bp.route("/teacher/participation/<int:section_id>/<int:subject_id>/<period>",
+                  methods=["GET", "POST"])
+def participation_input(section_id, subject_id, period):
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    if period not in GRADING_PERIODS:
+        flash("Invalid grading period.", "error")
+        return redirect(url_for("teacher.grading_weights"))
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Verify ownership
+        cur.execute("""
+            SELECT 1 FROM section_teachers
+            WHERE teacher_id=%s AND section_id=%s AND subject_id=%s
+        """, (user_id, section_id, subject_id))
+        if not cur.fetchone():
+            flash("Unauthorized.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        # Context info
+        cur.execute("""
+            SELECT s.section_name, sub.name AS subject_name
+            FROM sections s, subjects sub
+            WHERE s.section_id=%s AND sub.subject_id=%s
+        """, (section_id, subject_id))
+        ctx = cur.fetchone()
+
+        if request.method == "POST":
+            scores = request.form.to_dict()
+            for key, val in scores.items():
+                if key.startswith("score_"):
+                    try:
+                        eid   = int(key.split("_", 1)[1])
+                        score = max(0.0, min(100.0, float(val or 0)))
+                        cur.execute("""
+                            INSERT INTO participation_scores
+                                (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, updated_at)
+                            VALUES (%s,%s,%s,%s,%s,%s,NOW())
+                            ON CONFLICT ON CONSTRAINT uq_participation
+                            DO UPDATE SET score=EXCLUDED.score, updated_at=NOW()
+                        """, (user_id, eid, section_id, subject_id, period, score))
+                    except (ValueError, IndexError):
+                        continue
+            db.commit()
+            flash("Participation scores saved!", "success")
+            return redirect(url_for("teacher.class_record",
+                                    section_id=section_id,
+                                    subject_id=subject_id,
+                                    period=period))
+
+        # GET — load students + existing scores
+        cur.execute("""
+            SELECT e.enrollment_id, e.student_name,
+                   COALESCE(ps.score, 0) AS score
+            FROM enrollments e
+            LEFT JOIN participation_scores ps
+                ON ps.enrollment_id = e.enrollment_id
+               AND ps.subject_id = %s AND ps.grading_period = %s
+            WHERE e.section_id = %s AND e.branch_id = %s AND e.status IN ('approved','enrolled')
+            ORDER BY e.student_name
+        """, (subject_id, period, section_id, branch_id))
+        students = cur.fetchall() or []
+
+    finally:
+        cur.close()
+        db.close()
+
+    return render_template("teacher_participation_input.html",
+                           ctx=ctx, students=students,
+                           section_id=section_id, subject_id=subject_id,
+                           period=period)
+
+
+# ── Attendance Scores ─────────────────────────────────────────────────────────
+
+@teacher_bp.route("/teacher/attendance/<int:section_id>/<int:subject_id>/<period>",
+                  methods=["GET", "POST"])
+def attendance_input(section_id, subject_id, period):
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    if period not in GRADING_PERIODS:
+        flash("Invalid grading period.", "error")
+        return redirect(url_for("teacher.grading_weights"))
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT 1 FROM section_teachers
+            WHERE teacher_id=%s AND section_id=%s AND subject_id=%s
+        """, (user_id, section_id, subject_id))
+        if not cur.fetchone():
+            flash("Unauthorized.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        cur.execute("""
+            SELECT s.section_name, sub.name AS subject_name
+            FROM sections s, subjects sub
+            WHERE s.section_id=%s AND sub.subject_id=%s
+        """, (section_id, subject_id))
+        ctx = cur.fetchone()
+
+        if request.method == "POST":
+            scores = request.form.to_dict()
+            for key, val in scores.items():
+                if key.startswith("score_"):
+                    try:
+                        eid   = int(key.split("_", 1)[1])
+                        score = max(0.0, min(100.0, float(val or 0)))
+                        cur.execute("""
+                            INSERT INTO attendance_scores
+                                (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, updated_at)
+                            VALUES (%s,%s,%s,%s,%s,%s,NOW())
+                            ON CONFLICT ON CONSTRAINT uq_attendance
+                            DO UPDATE SET score=EXCLUDED.score, updated_at=NOW()
+                        """, (user_id, eid, section_id, subject_id, period, score))
+                    except (ValueError, IndexError):
+                        continue
+            db.commit()
+            flash("Attendance scores saved!", "success")
+            return redirect(url_for("teacher.class_record",
+                                    section_id=section_id,
+                                    subject_id=subject_id,
+                                    period=period))
+
+        cur.execute("""
+            SELECT e.enrollment_id, e.student_name,
+                   COALESCE(att.score, 0) AS score
+            FROM enrollments e
+            LEFT JOIN attendance_scores att
+                ON att.enrollment_id = e.enrollment_id
+               AND att.subject_id = %s AND att.grading_period = %s
+            WHERE e.section_id = %s AND e.branch_id = %s AND e.status IN ('approved','enrolled')
+            ORDER BY e.student_name
+        """, (subject_id, period, section_id, branch_id))
+        students = cur.fetchall() or []
+
+    finally:
+        cur.close()
+        db.close()
+
+    return render_template("teacher_attendance_input.html",
+                           ctx=ctx, students=students,
+                           section_id=section_id, subject_id=subject_id,
+                           period=period)
+
+# ── API for Teacher Sidebar Classlist ─────────────────────
+
+@teacher_bp.route("/api/teacher/sections")
+def api_teacher_sections():
+    if not _require_teacher(): return jsonify({"error": "Unauthorized"}), 403
+    user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT s.section_id, s.section_name, g.name AS grade_level_name 
+            FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            WHERE st.teacher_id = %s AND s.branch_id = %s
+            GROUP BY s.section_id, s.section_name, g.name, g.display_order
+            ORDER BY g.display_order, s.section_name
+        """, (user_id, branch_id))
+        sections = cur.fetchall()
+        return jsonify({"sections": sections})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        db.close()
+
+
+@teacher_bp.route("/api/teacher/classlist/<int:section_id>")
+def api_teacher_classlist(section_id):
+    if not _require_teacher(): return jsonify({"error": "Unauthorized"}), 403
+    branch_id = session.get("branch_id")
+    user_id = session.get("user_id")
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Verify ownership
+        cur.execute("SELECT 1 FROM section_teachers WHERE teacher_id = %s AND section_id = %s", (user_id, section_id))
+        if not cur.fetchone():
+            return jsonify({"error": "Unauthorized section access"}), 403
+
+        cur.execute("""
+            SELECT e.enrollment_id, e.student_name, u.user_id as student_user_id
+            FROM enrollments e
+            LEFT JOIN users u ON u.user_id = e.user_id
+            WHERE e.section_id = %s AND e.branch_id = %s AND e.status IN ('approved', 'enrolled')
+            ORDER BY e.student_name ASC
+        """, (section_id, branch_id))
+        students = cur.fetchall()
+        return jsonify({"students": students})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        db.close()
+
+@teacher_bp.route("/teacher/reschedule", methods=["POST"])
+def teacher_reschedule():
+    if not _require_teacher():
+        return jsonify({"error": "Unauthorized"}), 403
+
+    user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    if request.is_json:
+        data = request.get_json()
+    else:
+        data = request.form
+
+    enrollment_id = data.get("enrollment_id")
+    item_type     = data.get("item_type")  # 'activity', 'exam', 'quiz'
+    item_id       = data.get("item_id")
+    new_due_date  = data.get("new_due_date")
+
+    if not all([enrollment_id, item_type, item_id, new_due_date]):
+        return jsonify({"error": "Missing required fields"}), 400
+
+    # 0. Validate date is not in the past
+    try:
+        ph_tz = pytz.timezone("Asia/Manila")
+        now_pht = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+        dt_val = datetime.strptime(new_due_date, '%Y-%m-%dT%H:%M')
+        if dt_val < now_pht:
+            return jsonify({"error": "Cannot reschedule to a past date."}), 400
+    except Exception as e:
+        print(f"Date validation error: {e}")
+        # If parsing fails, we skip this check and let DB handle format, 
+        # but 400 error is usually better.
+        pass
+
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        # 1. Verify ownership of the item
+        if item_type == 'activity':
+            cur.execute("SELECT 1 FROM activities WHERE activity_id = %s AND teacher_id = %s", (item_id, user_id))
+        else:
+            cur.execute("SELECT 1 FROM exams WHERE exam_id = %s AND teacher_id = %s", (item_id, user_id))
+
+        if not cur.fetchone():
+            return jsonify({"error": "Unauthorized item access or item not found."}), 403
+
+        # 2. Verify student enrollment in the same branch
+        cur.execute("SELECT 1 FROM enrollments WHERE enrollment_id = %s AND branch_id = %s", (enrollment_id, branch_id))
+        if not cur.fetchone():
+            return jsonify({"error": "Invalid student or branch mismatch."}), 403
+
+        # 3. Upsert into individual_extensions
+        cur.execute("""
+            INSERT INTO individual_extensions (enrollment_id, item_type, item_id, new_due_date)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT ON CONSTRAINT uq_extension
+            DO UPDATE SET new_due_date = EXCLUDED.new_due_date
+        """, (enrollment_id, item_type, item_id, new_due_date))
+
+        db.commit()
+        return jsonify({"ok": True, "message": "Rescheduled successfully!"})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        db.close()
+
+@teacher_bp.route("/teacher/activities/<int:activity_id>/toggle-status", methods=["POST"])
+def toggle_activity_status(activity_id):
+    if not _require_teacher(): return jsonify({"error": "Unauthorized"}), 403
+    user_id = session.get("user_id")
+    
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("SELECT status, section_id, title FROM activities WHERE activity_id = %s AND teacher_id = %s", (activity_id, user_id))
+        act = cur.fetchone()
+        if not act:
+            return jsonify({"error": "Activity not found"}), 404
+            
+        new_status = 'Published' if act['status'] == 'Draft' else 'Draft'
+        cur.execute("UPDATE activities SET status = %s, updated_at = NOW() WHERE activity_id = %s", (new_status, activity_id))
+        
+        # If toggled to Published, send notifications
+        if new_status == 'Published':
+            section_id = act['section_id']
+            title = act['title']
+            cur.execute("""
+                SELECT DISTINCT u.user_id 
+                FROM enrollments e 
+                JOIN users u ON u.user_id = e.user_id 
+                WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+                UNION
+                SELECT DISTINCT u.user_id
+                FROM enrollments e
+                JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
+                JOIN users u ON u.username = sa.username
+                WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+            """, (section_id, section_id))
+            student_users = cur.fetchall()
+            if student_users:
+                for su in student_users:
+                    cur.execute("""
+                        INSERT INTO student_notifications (student_id, title, message, link) 
+                        VALUES (%s, %s, %s, %s)
+                    """, (su['user_id'], f"New Activity: {title}", f"Your teacher posted a new activity: {title}.", f"/student/activities/{activity_id}"))
+        
+        db.commit()
+        return jsonify({"ok": True, "new_status": new_status})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        db.close()

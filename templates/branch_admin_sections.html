@@ -149,6 +149,10 @@
                         {% endfor %}
                     </select>
                 </div>
+                <div style="flex:1; min-width:100px;">
+                    <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Capacity</label>
+                    <input class="field" type="number" name="capacity" value="50" min="1" required>
+                </div>
                 <div>
                     <button type="submit" class="btn btn-success">Add Section</button>
                 </div>
@@ -166,6 +170,7 @@
                 <tr>
                     <th>Section Name</th>
                     <th>Grade Level</th>
+                    <th>Capacity</th>
                     <th style="min-width:80px;">Actions</th>
                 </tr>
             </thead>
@@ -174,11 +179,12 @@
                 <tr>
                     <td>{{ sec.section_name }}</td>
                     <td>{{ sec.grade_level_name }}</td>
+                    <td>{{ sec.capacity }}</td>
                     <td>
                         {% if is_branch_active_status %}
                         <div style="display:flex; gap:6px;">
                             <button class="btn btn-success" type="button"
-                                onclick='openEditModal({{ sec.section_id }}, {{ sec.section_name | tojson }}, {{ sec.grade_level_id }})'>Edit</button>
+                                onclick='openEditModal({{ sec.section_id }}, {{ sec.section_name | tojson }}, {{ sec.grade_level_id }}, {{ sec.capacity | default(50) }})'>Edit</button>
                             <form method="post"
                                 action="{{ url_for('branch_admin.branch_admin_section_delete', section_id=sec.section_id) }}"
                                 onsubmit="return confirm('Delete section {{ sec.section_name }}?');">
@@ -209,12 +215,16 @@
                 style="margin-bottom:12px;">
 
             <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Grade Level *</label>
-            <select name="grade_level_id" id="edit_grade_level_id" class="field" required style="margin-bottom:20px;">
+            <select name="grade_level_id" id="edit_grade_level_id" class="field" required style="margin-bottom:12px;">
                 <option value="">Select Grade Level</option>
                 {% for g in grades %}
                 <option value="{{ g.id }}">{{ g.name }}</option>
                 {% endfor %}
             </select>
+
+            <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Capacity *</label>
+            <input class="field" type="number" name="capacity" id="edit_capacity" min="1" required
+                style="margin-bottom:20px;">
 
             <div style="display:flex; justify-content:flex-end; gap:8px;">
                 <button type="button" class="btn" onclick="closeEditModal()">Cancel</button>
@@ -225,10 +235,11 @@
 </div>
 
 <script>
-    function openEditModal(sectionId, sectionName, gradeLevelId) {
+    function openEditModal(sectionId, sectionName, gradeLevelId, capacity) {
         document.getElementById('editForm').action = '/branch-admin/sections/' + sectionId + '/edit';
         document.getElementById('edit_section_name').value = sectionName;
         document.getElementById('edit_grade_level_id').value = gradeLevelId;
+        document.getElementById('edit_capacity').value = capacity;
         document.getElementById('editModal').style.display = 'flex';
     }
 

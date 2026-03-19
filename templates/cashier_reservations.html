@@ -276,7 +276,15 @@
 <div class="container">
   <header>
     <h1>📋 Reservations</h1>
-    <a href="{{ url_for('cashier.dashboard') }}" class="btn">⬅ Back</a>
+    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+      <a href="{{ url_for('cashier.export_reservations_csv') }}"
+         class="btn"
+         style="background:#16a34a; color:#fff; border-color:#16a34a; font-weight:700;"
+         title="Download all reservations as CSV (opens in Excel)">
+        ⬇ Export CSV
+      </a>
+      <a href="{{ url_for('cashier.dashboard') }}" class="btn">⬅ Back</a>
+    </div>
   </header>
 
   {% if rows and rows|length > 0 %}
@@ -344,6 +352,10 @@
       <label>🔍 Search Name</label>
       <input type="text" id="fSearch" placeholder="Student name..." oninput="applyFilters()">
     </div>
+    <div class="filter-group">
+      <label>🔢 Reservation No.</label>
+      <input type="text" id="fResId" placeholder="e.g. 1, 2, 0045..." oninput="applyFilters()">
+    </div>
   </div>
 
   <!-- Table -->
@@ -377,7 +389,7 @@
 
         <tr class="{{ 'parent-row' if role == 'parent' else 'student-row' }}" data-role="{{ role }}"
           data-status="{{ status|upper }}" data-grade="{{ grade }}" data-name="{{ fullname|lower }}"
-          data-categories="{{ categories|upper }}">
+          data-categories="{{ categories|upper }}" data-resid="{{ r[0] }}">
           <td>
             <div style="font-weight: 800; font-size: 13px; color: #0c2461; margin-bottom: 4px;">RES-{{ "%04d" |
               format(r[0]) }}</div>
@@ -437,29 +449,35 @@
 {% block scripts %}
 <script>
   function applyFilters() {
-    const fRole = (document.getElementById('fUserType')?.value || '').toLowerCase();
-    const fStatus = (document.getElementById('fStatus')?.value || '').toUpperCase();
-    const fGrade = (document.getElementById('fGrade')?.value || '').toLowerCase().trim();
-    const fSearch = (document.getElementById('fSearch')?.value || '').toLowerCase().trim();
+    const fRole     = (document.getElementById('fUserType')?.value || '').toLowerCase();
+    const fStatus   = (document.getElementById('fStatus')?.value || '').toUpperCase();
+    const fGrade    = (document.getElementById('fGrade')?.value || '').toLowerCase().trim();
+    const fSearch   = (document.getElementById('fSearch')?.value || '').toLowerCase().trim();
     const fItemType = (document.getElementById('fItemType')?.value || '').toUpperCase().trim();
+    // Reservation number: strip leading zeros and non-digits for flexible matching
+    const fResIdRaw = (document.getElementById('fResId')?.value || '').trim();
+    const fResId    = fResIdRaw.replace(/\D/g, '');  // keep digits only (handles "RES-0001", "1", "45")
 
     const rows = document.querySelectorAll('#resBody tr');
     let visible = 0;
 
     rows.forEach(function (row) {
-      const role = (row.dataset.role || '').toLowerCase();
-      const status = (row.dataset.status || '').toUpperCase();
-      const grade = (row.dataset.grade || '').toLowerCase().trim();
-      const name = (row.dataset.name || '').toLowerCase();
+      const role       = (row.dataset.role || '').toLowerCase();
+      const status     = (row.dataset.status || '').toUpperCase();
+      const grade      = (row.dataset.grade || '').toLowerCase().trim();
+      const name       = (row.dataset.name || '').toLowerCase();
       const categories = (row.dataset.categories || '').toUpperCase();
+      const resId      = (row.dataset.resid || '').toString();
 
-      const okRole = !fRole || role === fRole;
-      const okStatus = !fStatus || status === fStatus;
-      const okGrade = !fGrade || grade === fGrade;
-      const okSearch = !fSearch || name.includes(fSearch);
+      const okRole     = !fRole     || role === fRole;
+      const okStatus   = !fStatus   || status === fStatus;
+      const okGrade    = !fGrade    || grade === fGrade;
+      const okSearch   = !fSearch   || name.includes(fSearch);
       const okItemType = !fItemType || categories.includes(fItemType);
+      // Match if the typed digits appear anywhere in the reservation ID number
+      const okResId    = !fResId    || resId === fResId || resId.padStart(4,'0').includes(fResId.padStart(1,'0'));
 
-      if (okRole && okStatus && okGrade && okSearch && okItemType) {
+      if (okRole && okStatus && okGrade && okSearch && okItemType && okResId) {
         row.classList.remove('hidden');
         visible++;
       } else {

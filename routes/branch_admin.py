@@ -897,6 +897,13 @@ def branch_admin_sections():
         section_name = (request.form.get("section_name") or "").strip()
         grade_level_id_raw = request.form.get("grade_level_id")
         school_year = (request.form.get("school_year") or "").strip() or None
+        
+        try:
+            capacity = int(request.form.get("capacity") or 50)
+            if capacity < 1:
+                capacity = 50
+        except (TypeError, ValueError):
+            capacity = 50
 
         try:
             grade_level_id = int(grade_level_id_raw)
@@ -917,9 +924,9 @@ def branch_admin_sections():
 
             try:
                 cursor.execute("""
-                    INSERT INTO sections (branch_id, school_year, section_name, grade_level_id)
-                    VALUES (%s, %s, %s, %s)
-                """, (branch_id, school_year, section_name, grade_level_id))
+                    INSERT INTO sections (branch_id, school_year, section_name, grade_level_id, capacity)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (branch_id, school_year, section_name, grade_level_id, capacity))
                 db.commit()
                 flash("Section added.", "success")
             except Exception as e:
@@ -988,6 +995,13 @@ def branch_admin_section_edit(section_id):
     grade_level_id_raw = request.form.get("grade_level_id")
     
     try:
+        capacity = int(request.form.get("capacity") or 50)
+        if capacity < 1:
+            capacity = 50
+    except (TypeError, ValueError):
+        capacity = 50
+    
+    try:
         grade_level_id = int(grade_level_id_raw)
     except (TypeError, ValueError):
         grade_level_id = None
@@ -1007,9 +1021,9 @@ def branch_admin_section_edit(section_id):
 
         cursor.execute("""
             UPDATE sections 
-            SET section_name = %s, grade_level_id = %s
+            SET section_name = %s, grade_level_id = %s, capacity = %s
             WHERE section_id = %s AND branch_id = %s
-        """, (section_name, grade_level_id, section_id, branch_id))
+        """, (section_name, grade_level_id, capacity, section_id, branch_id))
         db.commit()
         flash("Section updated successfully.", "success")
     except Exception as e:
@@ -1636,9 +1650,18 @@ def branch_admin_assign_students():
                 return redirect(url_for("branch_admin.branch_admin_assign_students", grade=grade_filter))
 
             if section_id:
-                cursor.execute("SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s", (section_id, branch_id))
-                if not cursor.fetchone():
+                cursor.execute("""
+                    SELECT capacity,
+                           (SELECT COUNT(*) FROM enrollments WHERE section_id = s.section_id AND status IN ('approved', 'enrolled')) AS current_count
+                    FROM sections s
+                    WHERE s.section_id=%s AND s.branch_id=%s
+                """, (section_id, branch_id))
+                sec_info = cursor.fetchone()
+                if not sec_info:
                     flash("Section not found.", "error")
+                    return redirect(url_for("branch_admin.branch_admin_assign_students", grade=grade_filter))
+                if sec_info['current_count'] >= sec_info['capacity']:
+                    flash(f"👉 Section is already full ({sec_info['current_count']} students). Please choose another section.", "error")
                     return redirect(url_for("branch_admin.branch_admin_assign_students", grade=grade_filter))
 
             cursor.execute("UPDATE enrollments SET section_id=%s WHERE enrollment_id=%s", (section_id, enrollment_id))
@@ -1695,7 +1718,9 @@ def branch_admin_assign_students():
 
         # ── Load data for GET ──
         cursor.execute("""
-            SELECT s.section_id, s.section_name, g.name AS grade_level_name, g.id AS grade_level_id
+            SELECT s.section_id, s.section_name, g.name AS grade_level_name, g.id AS grade_level_id,
+                   s.capacity,
+                   (SELECT COUNT(*) FROM enrollments e2 WHERE e2.section_id = s.section_id AND e2.status IN ('approved', 'enrolled')) AS current_count
             FROM sections s
             JOIN grade_levels g ON s.grade_level_id = g.id
             WHERE s.branch_id = %s
