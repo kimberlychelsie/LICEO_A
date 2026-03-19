@@ -5,6 +5,7 @@ import psycopg2.extras
 import secrets
 import string
 import logging
+from utils.send_email import send_email
 
 super_admin_bp = Blueprint("super_admin", __name__)
 
@@ -129,9 +130,10 @@ def super_admin_branches():
         branch_name = request.form.get("branch_name", "").strip()
         branch_code = (request.form.get("branch_code") or "").strip().upper()
         location    = request.form.get("location", "").strip()
+        admin_email = request.form.get("admin_email", "").strip()
 
-        if not branch_name or not location or not branch_code:
-            flash("Branch name, code, and location are required.", "error")
+        if not branch_name or not location or not branch_code or not admin_email:
+            flash("Branch name, code, location, and admin email are required.", "error")
             return redirect(url_for("super_admin.super_admin_branches"))
 
         username      = branch_name.lower().replace(" ", "_") + "_admin"
@@ -162,10 +164,32 @@ def super_admin_branches():
             branch_id = cursor.fetchone()["branch_id"]
 
             cursor.execute(
-                "INSERT INTO users (branch_id, username, password, role, require_password_change) VALUES (%s, %s, %s, %s, TRUE)",
-                (branch_id, username, hashed, "branch_admin")
+                "INSERT INTO users (branch_id, username, password, role, email, require_password_change) VALUES (%s, %s, %s, %s, %s, TRUE)",
+                (branch_id, username, hashed, "branch_admin", admin_email)
             )
             db.commit()
+
+            db.commit()
+
+            subject = f"Liceo Branch Admin Credentials for {branch_name}"
+            body = f"""Hello,
+
+            Your branch admin account for {branch_name} has been created!
+
+            Username: {username}
+            Password: {temp_password}
+            Login URL: https://liceolms.up.railway.app/
+
+            Please log in and change your password immediately.
+
+            If you have any questions, contact your super admin.
+
+            -- The Liceo LMS Team
+            """
+
+            email_sent = send_email(admin_email, subject, body)
+            if not email_sent:
+                flash("Branch admin account created, but failed to send email.", "warning")
 
             return render_template(
                 "branch_admin_created.html",
@@ -193,6 +217,7 @@ def super_admin_branches():
                 b.branch_id, b.branch_name, b.location,
                 b.is_active, b.created_at, b.branch_code,
                 u.username AS admin_username,
+                u.email AS admin_email,
                 u.user_id  AS admin_id
             FROM branches b
             LEFT JOIN users u ON u.branch_id = b.branch_id AND u.role = 'branch_admin'
@@ -221,8 +246,9 @@ def super_admin_edit_branch(branch_id):
     branch_name = (request.form.get("branch_name") or "").strip()
     branch_code = (request.form.get("branch_code") or "").strip().upper()
     location    = (request.form.get("location") or "").strip()
+    admin_email = (request.form.get("admin_email") or "").strip()
 
-    if not branch_name or not branch_code or not location:
+    if not branch_name or not branch_code or not location or not admin_email:
         flash("All fields are required.", "error")
         return redirect(url_for("super_admin.super_admin_branches"))
 
@@ -242,6 +268,12 @@ def super_admin_edit_branch(branch_id):
             SET branch_name = %s, branch_code = %s, location = %s
             WHERE branch_id = %s
         """, (branch_name, branch_code, location, branch_id))
+        
+        cursor.execute("""
+            UPDATE users
+            SET email = %s
+            WHERE branch_id = %s AND role = 'branch_admin'
+        """, (admin_email, branch_id))
         db.commit()
         flash(f"Branch updated! Code set to: {branch_code}", "success")
 

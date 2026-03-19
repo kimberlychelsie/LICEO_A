@@ -9,6 +9,7 @@ import psycopg2.extras
 import secrets
 import string
 from cloudinary_helper import upload_announcement_photo
+from utils.send_email import send_email
 
 branch_admin_bp = Blueprint("branch_admin", __name__)
 
@@ -1775,6 +1776,7 @@ def branch_admin_manage_accounts():
             full_name    = (request.form.get("full_name")    or "").strip()
             gender       = (request.form.get("gender")       or "").strip().lower()
             custom_uname = (request.form.get("username")     or "").strip()
+            user_email = (request.form.get("email") or "").strip()
 
             if role not in ("registrar", "cashier", "librarian", "teacher"):
                 flash("Invalid role selected.", "error")
@@ -1836,21 +1838,41 @@ def branch_admin_manage_accounts():
                 cursor.execute("""
                     INSERT INTO users
                         (branch_id, username, password, role, require_password_change,
-                         grade_level_id, full_name, gender)
-                    VALUES (%s, %s, %s, %s, TRUE, %s, %s, %s)
+                         grade_level_id, full_name, gender, email)
+                    VALUES (%s, %s, %s, %s, TRUE, %s, %s, %s, %s)
                 """, (branch_id, username, hashed_password, role,
-                      grade_level or None, full_name or None, gender or None))
+                      grade_level or None, full_name or None, gender or None, user_email))
             else:
                 cursor.execute("""
                     INSERT INTO users
-                        (branch_id, username, password, role, require_password_change)
-                    VALUES (%s, %s, %s, %s, TRUE)
-                """, (branch_id, username, hashed_password, role))
+                        (branch_id, username, password, role, require_password_change, email)
+                    VALUES (%s, %s, %s, %s, TRUE, %s)
+                """, (branch_id, username, hashed_password, role, user_email))
+            created_user = {"username": username, "password": temp_password, "role": role}
 
             db.commit()
-            created_user = {"username": username, "password": temp_password, "role": role}
-            flash("User created successfully!", "success")
-            role_filter = role
+            if created_user and user_email:
+                subject = f"Your {role.capitalize()} Account for Liceo Branch"
+                body = f"""Hello,
+
+        Your account has been created!
+
+        Username: {created_user['username']}
+        Password: {created_user['password']}
+        Login URL: https://liceolms.up.railway.app/
+
+        Please log in and change your password immediately.
+
+        If you have any questions, contact your branch admin.
+
+        -- The Liceo LMS Team
+        """
+                email_sent = send_email(user_email, subject, body)
+                if not email_sent:
+                    flash(f"User account created, but failed to send email.", "warning")
+                
+                flash("User created successfully!", "success")
+                role_filter = role
 
         # ✅ Already correctly scoped by branch_id
         cursor.execute("""

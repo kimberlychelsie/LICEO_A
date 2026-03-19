@@ -118,6 +118,10 @@
                 <label for="location">Location:</label>
                 <input type="text" id="location" name="location" placeholder="e.g., Laguna" required>
             </div>
+            <div class="form-group">
+                <label for="admin_email">Admin Email:</label>
+                <input type="email" id="admin_email" name="admin_email" placeholder="e.g., branchadmin@example.com" required>
+            </div>
             <button type="submit" class="btn btn-primary">➕ Create Branch &amp; Admin Account</button>
         </form>
 
@@ -146,6 +150,7 @@
                     <th>Location</th>
                     <th>Code</th>
                     <th>Admin</th>
+                    <th>Admin Email</th>
                     <th>Status</th>
                     <th>Created</th>
                     <th>Actions</th>
@@ -172,6 +177,13 @@
                         {% endif %}
                     </td>
                     <td>
+                        {% if branch.admin_email %}
+                          <a href="mailto:{{ branch.admin_email }}">{{ branch.admin_email }}</a>
+                        {% else %}
+                          <span class="badge badge-warning">No Email</span>
+                        {% endif %}
+                      </td>
+                    <td>
                         {% if branch.is_active %}
                         <span class="badge badge-success">✓ Active</span>
                         {% else %}
@@ -196,7 +208,8 @@
                             data-id="{{ branch.branch_id }}"
                             data-name="{{ branch.branch_name | e }}"
                             data-code="{{ branch.branch_code or '' }}"
-                            data-location="{{ branch.location | e }}">
+                            data-location="{{ branch.location | e }}"
+                            data-email="{{ branch.admin_email or '' }}">
                             ✏️ Edit
                         </button>
                     </td>
@@ -232,6 +245,10 @@
                 <label>Location</label>
                 <input type="text" name="location" id="editBranchLocation" required />
             </div>
+            <div class="form-group">
+                <label>Admin Email</label>
+                <input type="email" name="admin_email" id="editAdminEmail" required />
+            </div>
             <div class="modal-footer">
                 <button type="button" onclick="closeEditBranch()" class="btn btn-secondary">Cancel</button>
                 <button type="submit" class="btn btn-primary">💾 Save Changes</button>
@@ -241,10 +258,11 @@
 </div>
 
 <script>
-    function openEditBranch(id, name, code, location) {
+    function openEditBranch(id, name, code, location, email) {
         document.getElementById('editBranchName').value     = name;
         document.getElementById('editBranchCode').value     = code;
         document.getElementById('editBranchLocation').value = location;
+        document.getElementById('editAdminEmail').value     = email;
         document.getElementById('editBranchForm').action    = '/super-admin/branches/' + id + '/edit';
         const m = document.getElementById('editBranchModal');
         m.style.display      = 'flex';
@@ -268,7 +286,8 @@
             btn.dataset.id,
             btn.dataset.name,
             btn.dataset.code,
-            btn.dataset.location
+            btn.dataset.location,
+            btn.dataset.email
         );
     });
 </script>
