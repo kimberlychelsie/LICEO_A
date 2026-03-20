@@ -188,14 +188,18 @@ function validateWeights(form) {
     return true;
 }
 
-// Initialize totals on load
-document.querySelectorAll('.weight-item input').forEach(i => updateTotal(i));
-
 function syncWeights(checkbox, period) {
     if (!checkbox.checked) return;
     
     // Get the source form (the one with the checkbox)
     const sourceForm = checkbox.closest('form');
+    
+    // Validate the weights first
+    if (!validateWeights(sourceForm)) {
+        checkbox.checked = false; // Uncheck if validation fails
+        return;
+    }
+
     const quiz = sourceForm.querySelector('input[name="quiz_pct"]').value;
     const exam = sourceForm.querySelector('input[name="exam_pct"]').value;
     const activity = sourceForm.querySelector('input[name="activity_pct"]').value;
@@ -219,6 +223,17 @@ function syncWeights(checkbox, period) {
         const anyInput = targetForm.querySelector('input[name="quiz_pct"]');
         if (anyInput) updateTotal(anyInput);
     });
+
+    // Auto-save the form
+    const btn = sourceForm.querySelector('button[type="submit"]');
+    if (btn) {
+        btn.innerHTML = '⏳ Saving All...';
+        btn.disabled = true;
+    }
+    sourceForm.submit();
 }
+
+// Initialize totals on load
+document.querySelectorAll('.weight-item input').forEach(i => updateTotal(i));
 </script>
 {% endblock %}
