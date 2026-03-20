@@ -71,6 +71,11 @@
                     <span class="badge badge-{{ e.status }}">{{ e.status|capitalize }}</span>
                 </td>
                 <td style="white-space:nowrap;">
+                    <form method="POST" action="{{ url_for('teacher.toggle_exam_visibility', exam_id=e.exam_id) }}" style="display:inline;">
+                        <button type="submit" class="btn btn-secondary" style="padding:5px 10px; font-size:12px; background: {{ '#f8f9fa' if e.is_visible else '#fff' }}; border: 1px solid #dee2e6; color: #333;" title="{{ 'Hide from Students' if e.is_visible else 'Show to Students' }}">
+                            {{ '👁️' if e.is_visible else '🙈' }}
+                        </button>
+                    </form>
                     <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=e.exam_id) }}"
                        class="btn btn-secondary" style="padding:5px 10px; font-size:12px;">✏️ Edit</a>
                     <a href="{{ url_for('teacher.teacher_exam_results', exam_id=e.exam_id) }}"

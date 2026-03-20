@@ -419,6 +419,7 @@ def subject_view(subject_id):
             WHERE e.subject_id = %s AND e.section_id = %s
               AND e.exam_type = 'quiz'
               AND e.status IN ('published', 'closed')
+              AND e.is_visible = TRUE
             ORDER BY e.created_at DESC
         """, (enrollment_id, subject_id, student_section_id))
         quizzes_raw = cur.fetchall() or []
@@ -751,6 +752,7 @@ def student_exams():
             WHERE e.section_id = %s
               AND e.status IN ('published', 'closed')
               AND e.exam_type != 'quiz'
+              AND e.is_visible = TRUE
             ORDER BY e.created_at DESC
         """, (enrollment_id, enrollment_id, section_id))
         exams_raw = cur.fetchall() or []

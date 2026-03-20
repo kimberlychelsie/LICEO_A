@@ -946,7 +946,7 @@ def teacher_exams():
         cur.execute("""
             SELECT
                 e.exam_id, e.title, e.exam_type, e.duration_mins,
-                e.scheduled_start, e.status, e.created_at, e.grading_period,
+                e.scheduled_start, e.status, e.created_at, e.grading_period, e.is_visible,
                 s.section_name,
                 g.name AS grade_level_name,
                 sub.name AS subject_name,
@@ -1002,9 +1002,9 @@ def teacher_exam_create():
                     scheduled_start,
                     max_attempts, passing_score,
                     randomize,
-                    instructions, status, grading_period
+                    instructions, status, grading_period, is_visible
                 )
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'draft',%s)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'draft',%s,FALSE)
                 RETURNING exam_id
             """, (
                 branch_id, section_id, subject_id, user_id,
@@ -1273,6 +1273,39 @@ def teacher_exam_close(exam_id):
     return redirect(url_for("teacher.teacher_exams"))
 
 
+@teacher_bp.route("/teacher/exams/<int:exam_id>/toggle-visibility", methods=["POST"])
+def toggle_exam_visibility(exam_id):
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id = session.get("user_id")
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Check ownership
+        cur.execute("SELECT is_visible, exam_type FROM exams WHERE exam_id=%s AND teacher_id=%s", (exam_id, user_id))
+        exam = cur.fetchone()
+        if not exam:
+            flash("Exam/Quiz not found or unauthorized.", "error")
+            return redirect(request.referrer or url_for("teacher.teacher_exams"))
+
+        new_status = not exam["is_visible"]
+        cur.execute("UPDATE exams SET is_visible=%s WHERE exam_id=%s", (new_status, exam_id))
+        db.commit()
+
+        label = "Quiz" if exam["exam_type"] == "quiz" else "Exam"
+        msg = f"{label} is now {'visible' if new_status else 'hidden'} for students."
+        flash(msg, "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error toggling visibility: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+
+    return redirect(request.referrer or url_for("teacher.teacher_exams"))
+
+
 
 # ══════════════════════════════════════════
 # QUIZ ROUTES — TEACHER (separate from Exams)
@@ -1292,7 +1325,7 @@ def teacher_quizzes():
         cur.execute("""
             SELECT
                 e.exam_id, e.title, e.exam_type, e.duration_mins,
-                e.scheduled_start, e.status, e.created_at, e.grading_period,
+                e.scheduled_start, e.status, e.created_at, e.grading_period, e.is_visible,
                 s.section_name,
                 g.name AS grade_level_name,
                 sub.name AS subject_name,
@@ -1352,9 +1385,9 @@ def teacher_quiz_create():
                     scheduled_start,
                     max_attempts, passing_score,
                     randomize,
-                    instructions, status, grading_period
+                    instructions, status, grading_period, is_visible
                 )
-                VALUES (%s,%s,%s,%s,%s,'quiz',%s,%s,%s,%s,%s,%s,'draft', %s)
+                VALUES (%s,%s,%s,%s,%s,'quiz',%s,%s,%s,%s,%s,%s,'draft', %s, FALSE)
                 RETURNING exam_id
             """, (
                 branch_id, section_id, subject_id, user_id,
