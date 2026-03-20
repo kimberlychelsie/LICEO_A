@@ -136,7 +136,7 @@
                     <button type="submit" class="btn btn-primary btn-sm">💾 Save {{ period }} Weights</button>
                     {% if outer_loop.first %}
                     <label style="font-size:0.9rem; color:var(--text); cursor:pointer;">
-                        <input type="checkbox" name="apply_all_subjects" value="1" style="margin-right:4px;">
+                        <input type="checkbox" name="apply_all_subjects" value="1" style="margin-right:4px;" onchange="syncWeights(this, '{{ period }}')">
                         Apply to ALL my subjects for {{ period }} Grading
                     </label>
                     {% endif %}
@@ -190,5 +190,35 @@ function validateWeights(form) {
 
 // Initialize totals on load
 document.querySelectorAll('.weight-item input').forEach(i => updateTotal(i));
+
+function syncWeights(checkbox, period) {
+    if (!checkbox.checked) return;
+    
+    // Get the source form (the one with the checkbox)
+    const sourceForm = checkbox.closest('form');
+    const quiz = sourceForm.querySelector('input[name="quiz_pct"]').value;
+    const exam = sourceForm.querySelector('input[name="exam_pct"]').value;
+    const activity = sourceForm.querySelector('input[name="activity_pct"]').value;
+    const participation = sourceForm.querySelector('input[name="participation_pct"]').value;
+    const attendance = sourceForm.querySelector('input[name="attendance_pct"]').value;
+
+    // Find all other forms for the same period
+    const allForms = document.querySelectorAll(`form input[name="grading_period"][value="${period}"]`);
+    
+    allForms.forEach(hiddenInput => {
+        const targetForm = hiddenInput.closest('form');
+        if (targetForm === sourceForm) return; // skip self
+        
+        targetForm.querySelector('input[name="quiz_pct"]').value = quiz;
+        targetForm.querySelector('input[name="exam_pct"]').value = exam;
+        targetForm.querySelector('input[name="activity_pct"]').value = activity;
+        targetForm.querySelector('input[name="participation_pct"]').value = participation;
+        targetForm.querySelector('input[name="attendance_pct"]').value = attendance;
+        
+        // Update the visual total indicator on the target form
+        const anyInput = targetForm.querySelector('input[name="quiz_pct"]');
+        if (anyInput) updateTotal(anyInput);
+    });
+}
 </script>
 {% endblock %}
