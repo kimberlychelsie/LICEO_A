@@ -8,7 +8,7 @@ import json
 import pandas as pd
 import pdfplumber
 from docx import Document
-from datetime import timezone
+from datetime import datetime, timezone
 import pytz
 
 teacher_bp = Blueprint("teacher", __name__)
