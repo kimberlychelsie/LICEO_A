@@ -103,23 +103,6 @@
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         const dueDateInput = document.getElementById("due_date");
-
-        dueDateInput.addEventListener("change", function () {
-            if (!this.value) return;
-            const dateObj = new Date(this.value);
-            const hours = dateObj.getHours();
-            const minutes = dateObj.getMinutes();
-
-            // Check if time is strictly between 00:00 and 05:00 (12:00 AM to 5:00 AM)
-            if ((hours >= 0 && hours < 5) || (hours === 5 && minutes === 0)) {
-                alert("Allowed time is only from 5:01 AM to 11:59 PM. Please select a valid time.");
-                this.setCustomValidity("Time must be between 5:01 AM and 11:59 PM.");
-                this.reportValidity();
-                this.value = ''; // Reset invalid value
-            } else {
-                this.setCustomValidity("");
-            }
-        });
     });
 </script>
 {% endblock %}

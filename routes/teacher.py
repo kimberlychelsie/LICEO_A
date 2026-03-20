@@ -679,7 +679,8 @@ def create_activity():
         
     # GET
     ph_tz = pytz.timezone("Asia/Manila")
-    min_date = datetime.now(ph_tz).strftime("%Y-%m-%dT%H:%M")
+    ph_now = datetime.now(ph_tz)
+    min_date = ph_now.strftime("%Y-%m-%d") + "T00:00"
     
     return render_template("teacher_create_activity.html", teacher_assignments=teacher_assignments, min_date=min_date)
 
@@ -762,7 +763,8 @@ def edit_activity(activity_id):
         db.close()
         
     ph_tz = pytz.timezone("Asia/Manila")
-    min_date = datetime.now(ph_tz).strftime("%Y-%m-%dT%H:%M")
+    ph_now = datetime.now(ph_tz)
+    min_date = ph_now.strftime("%Y-%m-%d") + "T00:00"
     return render_template("teacher_edit_activity.html", activity=activity, min_date=min_date)
 
 
@@ -835,7 +837,10 @@ def activity_submissions(activity_id):
         cur.close()
         db.close()
         
-    return render_template("teacher_activity_submissions.html", activity=activity, submissions=submissions_data, stats=stats)
+    ph_tz = pytz.timezone("Asia/Manila")
+    ph_now = datetime.now(ph_tz)
+    min_date = ph_now.strftime("%Y-%m-%d") + "T00:00"
+    return render_template("teacher_activity_submissions.html", activity=activity, submissions=submissions_data, stats=stats, min_date=min_date)
 
 
 @teacher_bp.route("/teacher/activities/submissions/<int:submission_id>/grade", methods=["POST"])
@@ -1054,7 +1059,8 @@ def teacher_exam_create():
         assignments = cur.fetchall() or []
 
         ph_tz = pytz.timezone("Asia/Manila")
-        min_date = datetime.now(ph_tz).strftime("%Y-%m-%dT%H:%M")
+        ph_now = datetime.now(ph_tz)
+        min_date = ph_now.strftime("%Y-%m-%d") + "T00:00"
         return render_template("teacher_exam_create.html",
                                sections=sections,
                                assignments=assignments,
@@ -1432,7 +1438,8 @@ def teacher_quiz_create():
         """, (user_id, branch_id))
         teacher_assignments = cur.fetchall() or []
         ph_tz = pytz.timezone("Asia/Manila")
-        min_date = datetime.now(ph_tz).strftime("%Y-%m-%dT%H:%M")
+        ph_now = datetime.now(ph_tz)
+        min_date = ph_now.strftime("%Y-%m-%d") + "T00:00"
         return render_template("teacher_quiz_create.html", teacher_assignments=teacher_assignments, min_date=min_date)
     finally:
         cur.close()
@@ -1489,7 +1496,8 @@ def teacher_exam_results(exam_id):
         # ✅ END ADD
 
         ph_tz = pytz.timezone("Asia/Manila")
-        min_date = datetime.now(ph_tz).strftime("%Y-%m-%dT%H:%M")
+        ph_now = datetime.now(ph_tz)
+        min_date = ph_now.strftime("%Y-%m-%d") + "T00:00"
         return render_template("teacher_exam_results.html",
                                exam=exam, results=results_display, min_date=min_date)  # ← use results_display
     finally:

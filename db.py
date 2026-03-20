@@ -31,6 +31,15 @@ def get_db_connection():
         # ✅ Force UTC so NOW() always stores UTC consistently
         with conn.cursor() as cur:
             cur.execute("SET timezone = 'UTC'")
+            
+            # Simple migration for exams table
+            cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'exams'")
+            existing_cols = [r[0] for r in cur.fetchall()]
+            if 'grading_period' not in existing_cols:
+                cur.execute("ALTER TABLE exams ADD COLUMN grading_period VARCHAR(50)")
+            if 'is_visible' not in existing_cols:
+                cur.execute("ALTER TABLE exams ADD COLUMN is_visible BOOLEAN DEFAULT FALSE")
+                
         conn.commit()
 
         return conn
