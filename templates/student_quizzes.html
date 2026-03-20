@@ -84,12 +84,10 @@
     .filter-tab.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
   </style>
   <div class="filter-tabs">
-    <div class="filter-tab active" onclick="filterQuizzes('all', this)">All Periods</div>
-    <div class="filter-tab" onclick="filterQuizzes('1st', this)">1st Grading</div>
+    <div class="filter-tab active" onclick="filterQuizzes('1st', this)">1st Grading</div>
     <div class="filter-tab" onclick="filterQuizzes('2nd', this)">2nd Grading</div>
     <div class="filter-tab" onclick="filterQuizzes('3rd', this)">3rd Grading</div>
     <div class="filter-tab" onclick="filterQuizzes('4th', this)">4th Grading</div>
-    <div class="filter-tab" onclick="filterQuizzes('none', this)">Unassigned</div>
   </div>
 
   {% with messages = get_flashed_messages(with_categories=true) %}
@@ -183,5 +181,12 @@ function filterQuizzes(period, el) {
     }
   });
 }
+
+document.addEventListener("DOMContentLoaded", function() {
+    const activeTab = document.querySelector('.filter-tab.active');
+    if (activeTab) {
+        filterQuizzes('1st', activeTab);
+    }
+});
 </script>
 {% endblock %}
