@@ -1826,8 +1826,8 @@ def grading_weights():
             SELECT section_id, subject_id, grading_period,
                    quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct
             FROM grading_weights
-            WHERE teacher_id = %s AND branch_id = %s
-        """, (user_id, branch_id))
+            WHERE teacher_id = %s
+        """, (user_id,))
         raw_weights = cur.fetchall() or []
 
         # Build a quick lookup dict: (section_id, subject_id, period) → row
@@ -1882,18 +1882,17 @@ def grading_weights_set():
     try:
         cur.execute("""
             INSERT INTO grading_weights
-                (teacher_id, branch_id, section_id, subject_id, grading_period,
-                 quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct, updated_at)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,NOW())
-            ON CONFLICT ON CONSTRAINT uq_grading_weights
+                (teacher_id, section_id, subject_id, grading_period,
+                 quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            ON CONFLICT (teacher_id, section_id, subject_id, grading_period)
             DO UPDATE SET
                 quiz_pct          = EXCLUDED.quiz_pct,
                 exam_pct          = EXCLUDED.exam_pct,
                 activity_pct      = EXCLUDED.activity_pct,
                 participation_pct = EXCLUDED.participation_pct,
-                attendance_pct    = EXCLUDED.attendance_pct,
-                updated_at        = NOW()
-        """, (user_id, branch_id, section_id, subject_id, period,
+                attendance_pct    = EXCLUDED.attendance_pct
+        """, (user_id, section_id, subject_id, period,
               quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct))
         db.commit()
         flash(f"Grading weights for {period} Grading saved successfully!", "success")
