@@ -946,7 +946,7 @@ def teacher_exams():
         cur.execute("""
             SELECT
                 e.exam_id, e.title, e.exam_type, e.duration_mins,
-                e.scheduled_date, e.status, e.created_at, e.grading_period,
+                e.scheduled_start, e.status, e.created_at, e.grading_period,
                 s.section_name,
                 g.name AS grade_level_name,
                 sub.name AS subject_name,
@@ -1292,7 +1292,7 @@ def teacher_quizzes():
         cur.execute("""
             SELECT
                 e.exam_id, e.title, e.exam_type, e.duration_mins,
-                e.scheduled_date, e.status, e.created_at, e.grading_period,
+                e.scheduled_start, e.status, e.created_at, e.grading_period,
                 s.section_name,
                 g.name AS grade_level_name,
                 sub.name AS subject_name,
