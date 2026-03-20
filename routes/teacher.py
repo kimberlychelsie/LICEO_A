@@ -1886,7 +1886,7 @@ def grading_weights_set():
         if apply_all == "1":
             cur.execute("""
                 SELECT st.section_id, st.subject_id
-                FROM teacher_assignments st
+                FROM section_teachers st
                 JOIN sections s ON st.section_id = s.section_id
                 WHERE st.teacher_id = %s AND s.branch_id = %s
             """, (user_id, branch_id))
