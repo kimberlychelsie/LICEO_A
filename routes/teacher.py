@@ -677,7 +677,11 @@ def create_activity():
         cur.close()
         db.close()
         
-    return render_template("teacher_create_activity.html", teacher_assignments=teacher_assignments)
+    # GET
+    ph_tz = pytz.timezone("Asia/Manila")
+    min_date = datetime.now(ph_tz).strftime("%Y-%m-%dT%H:%M")
+    
+    return render_template("teacher_create_activity.html", teacher_assignments=teacher_assignments, min_date=min_date)
 
 
 @teacher_bp.route("/teacher/activities/<int:activity_id>/edit", methods=["GET", "POST"])
@@ -757,7 +761,9 @@ def edit_activity(activity_id):
         cur.close()
         db.close()
         
-    return render_template("teacher_edit_activity.html", activity=activity)
+    ph_tz = pytz.timezone("Asia/Manila")
+    min_date = datetime.now(ph_tz).strftime("%Y-%m-%dT%H:%M")
+    return render_template("teacher_edit_activity.html", activity=activity, min_date=min_date)
 
 
 @teacher_bp.route("/teacher/activities/<int:activity_id>/submissions")
@@ -1047,9 +1053,12 @@ def teacher_exam_create():
         """, (user_id,))
         assignments = cur.fetchall() or []
 
+        ph_tz = pytz.timezone("Asia/Manila")
+        min_date = datetime.now(ph_tz).strftime("%Y-%m-%dT%H:%M")
         return render_template("teacher_exam_create.html",
                                sections=sections,
-                               assignments=assignments)
+                               assignments=assignments,
+                               min_date=min_date)
     finally:
         cur.close()
         db.close()
@@ -1422,7 +1431,9 @@ def teacher_quiz_create():
             ORDER BY g.display_order, s.section_name, sub.name
         """, (user_id, branch_id))
         teacher_assignments = cur.fetchall() or []
-        return render_template("teacher_quiz_create.html", teacher_assignments=teacher_assignments)
+        ph_tz = pytz.timezone("Asia/Manila")
+        min_date = datetime.now(ph_tz).strftime("%Y-%m-%dT%H:%M")
+        return render_template("teacher_quiz_create.html", teacher_assignments=teacher_assignments, min_date=min_date)
     finally:
         cur.close()
         db.close()
@@ -1477,8 +1488,10 @@ def teacher_exam_results(exam_id):
             results_display.append(r)
         # ✅ END ADD
 
+        ph_tz = pytz.timezone("Asia/Manila")
+        min_date = datetime.now(ph_tz).strftime("%Y-%m-%dT%H:%M")
         return render_template("teacher_exam_results.html",
-                               exam=exam, results=results_display)  # ← use results_display
+                               exam=exam, results=results_display, min_date=min_date)  # ← use results_display
     finally:
         cur.close()
         db.close()

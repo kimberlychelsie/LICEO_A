@@ -49,7 +49,7 @@
             <div class="form-group">
                 <label class="form-label">Due Date</label>
                 <input type="datetime-local" name="due_date" id="due_date" class="form-input"
-                    value="{{ activity.due_date.strftime('%Y-%m-%dT%H:%M') if activity.due_date else '' }}" required>
+                    value="{{ activity.due_date.strftime('%Y-%m-%dT%H:%M') if activity.due_date else '' }}" min="{{ min_date }}" required>
             </div>
         </div>
 
@@ -103,15 +103,6 @@
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         const dueDateInput = document.getElementById("due_date");
-
-        // Set minimum date to now
-        const now = new Date();
-        const yyyy = now.getFullYear();
-        const MM = String(now.getMonth() + 1).padStart(2, '0');
-        const dd = String(now.getDate()).padStart(2, '0');
-        const hh = String(now.getHours()).padStart(2, '0');
-        const mm = String(now.getMinutes()).padStart(2, '0');
-        dueDateInput.min = `${yyyy}-${MM}-${dd}T${hh}:${mm}`;
 
         dueDateInput.addEventListener("change", function () {
             if (!this.value) return;

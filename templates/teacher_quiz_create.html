@@ -47,7 +47,7 @@
 
         <div class="form-group">
             <label class="form-label">Scheduled Start <span style="font-weight:400; color:#888;">(optional)</span></label>
-            <input type="datetime-local" name="scheduled_start" class="form-input">
+            <input type="datetime-local" name="scheduled_start" class="form-input" min="{{ min_date }}">
             <small style="color:var(--muted);">⏰ Quiz opens at this time. Auto-closes after duration.</small>
         </div>
 
@@ -88,13 +88,6 @@
 </div>
 
 <script>
-    // Set min date to current time on load
-    window.addEventListener('load', () => {
-        const now = new Date();
-        const offset = now.getTimezoneOffset() * 60000;
-        const localISOTime = new Date(now - offset).toISOString().slice(0, 16);
-        const startInput = document.querySelector('input[name="scheduled_start"]');
-        if (startInput) startInput.setAttribute('min', localISOTime);
-    });
+    // JS removed in favor of server-side min_date
 </script>
 {% endblock %}
