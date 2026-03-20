@@ -51,6 +51,18 @@ def get_db_connection():
             att_cols = [r[0] for r in cur.fetchall()]
             if 'teacher_id' not in att_cols:
                 cur.execute("ALTER TABLE attendance_scores ADD COLUMN teacher_id INTEGER")
+            
+            # Add unique constraint uq_attendance if missing
+            cur.execute("""
+                SELECT constraint_name 
+                FROM information_schema.table_constraints 
+                WHERE table_name = 'attendance_scores' AND constraint_name = 'uq_attendance'
+            """)
+            if not cur.fetchone():
+                cur.execute("""
+                    ALTER TABLE attendance_scores 
+                    ADD CONSTRAINT uq_attendance UNIQUE (enrollment_id, section_id, subject_id, grading_period)
+                """)
                 
         conn.commit()
 
