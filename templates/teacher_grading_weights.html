@@ -15,7 +15,10 @@
 .weight-form.active { display: block; }
 .weight-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 12px; }
 .weight-item label { font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; }
-.weight-item input { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font-size: 0.95rem; text-align: center; }
+.input-with-percent { display: flex; align-items: center; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.input-with-percent input { flex-grow: 1; padding: 8px; border: none; background: transparent; color: var(--text); font-size: 0.95rem; text-align: center; outline: none; }
+.input-with-percent span { padding: 8px 12px; font-weight: 600; color: var(--muted); background: rgba(0,0,0,0.03); border-left: 1px solid var(--border); }
+.weight-item input:focus { outline: none; }
 .total-display { font-size: 0.85rem; color: var(--muted); margin-bottom: 10px; }
 .total-ok { color: #22c55e; font-weight: 700; }
 .total-bad { color: #ef4444; font-weight: 700; }
@@ -78,28 +81,43 @@
                 <div class="weight-grid">
                     <div class="weight-item">
                         <label>📝 Quiz</label>
-                        <input type="number" name="quiz_pct" min="0" max="100" step="0.5"
-                               value="{{ w.quiz_pct | default(0) }}" oninput="updateTotal(this)" required>
+                        <div class="input-with-percent">
+                            <input type="number" name="quiz_pct" min="0" max="100" step="0.5"
+                                   value="{{ w.quiz_pct | default(0) }}" oninput="updateTotal(this)" required>
+                            <span>%</span>
+                        </div>
                     </div>
                     <div class="weight-item">
                         <label>📄 Exam</label>
-                        <input type="number" name="exam_pct" min="0" max="100" step="0.5"
-                               value="{{ w.exam_pct | default(0) }}" oninput="updateTotal(this)" required>
+                        <div class="input-with-percent">
+                            <input type="number" name="exam_pct" min="0" max="100" step="0.5"
+                                   value="{{ w.exam_pct | default(0) }}" oninput="updateTotal(this)" required>
+                            <span>%</span>
+                        </div>
                     </div>
                     <div class="weight-item">
                         <label>📁 SA Activity</label>
-                        <input type="number" name="activity_pct" min="0" max="100" step="0.5"
-                               value="{{ w.activity_pct | default(0) }}" oninput="updateTotal(this)" required>
+                        <div class="input-with-percent">
+                            <input type="number" name="activity_pct" min="0" max="100" step="0.5"
+                                   value="{{ w.activity_pct | default(0) }}" oninput="updateTotal(this)" required>
+                            <span>%</span>
+                        </div>
                     </div>
                     <div class="weight-item">
                         <label>🙋 Participation</label>
-                        <input type="number" name="participation_pct" min="0" max="100" step="0.5"
-                               value="{{ w.participation_pct | default(0) }}" oninput="updateTotal(this)" required>
+                        <div class="input-with-percent">
+                            <input type="number" name="participation_pct" min="0" max="100" step="0.5"
+                                   value="{{ w.participation_pct | default(0) }}" oninput="updateTotal(this)" required>
+                            <span>%</span>
+                        </div>
                     </div>
                     <div class="weight-item">
                         <label>🗓 Attendance</label>
-                        <input type="number" name="attendance_pct" min="0" max="100" step="0.5"
-                               value="{{ w.attendance_pct | default(0) }}" oninput="updateTotal(this)" required>
+                        <div class="input-with-percent">
+                            <input type="number" name="attendance_pct" min="0" max="100" step="0.5"
+                                   value="{{ w.attendance_pct | default(0) }}" oninput="updateTotal(this)" required>
+                            <span>%</span>
+                        </div>
                     </div>
                 </div>
 

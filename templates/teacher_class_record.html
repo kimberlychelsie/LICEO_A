@@ -62,11 +62,13 @@ table.cr-table tr:hover td { background: var(--hover); }
     {% if weights %}
     <div class="weights-bar">
         <span style="font-weight:700; color:var(--text);">📐 {{ period }} Weights:</span>
-        <span class="w-item">Quiz <strong>{{ weights.quiz_pct }}%</strong></span>
-        <span class="w-item">Exam <strong>{{ weights.exam_pct }}%</strong></span>
-        <span class="w-item">SA Activity <strong>{{ weights.activity_pct }}%</strong></span>
-        <span class="w-item">Participation <strong>{{ weights.participation_pct }}%</strong></span>
-        <span class="w-item">Attendance <strong>{{ weights.attendance_pct }}%</strong></span>
+        <span class="w-item">Quiz <strong>{{ "%0.1f" | format(weights.quiz_pct | float) }}%</strong></span>
+        <span class="w-item">Exam <strong>{{ "%0.1f" | format(weights.exam_pct | float) }}%</strong></span>
+        <span class="w-item">SA Activity <strong>{{ "%0.1f" | format(weights.activity_pct | float) }}%</strong></span>
+        <span class="w-item">Participation <strong>{{ "%0.1f" | format(weights.participation_pct | float) }}%</strong></span>
+        <span class="w-item">Attendance <strong>{{ "%0.1f" | format(weights.attendance_pct | float) }}%</strong></span>
+
+
     </div>
     {% else %}
     <div class="weights-bar">
@@ -94,15 +96,17 @@ table.cr-table tr:hover td { background: var(--hover); }
                 {% for r in records %}
                 <tr>
                     <td>{{ loop.index }}. {{ r.student_name }}</td>
-                    <td>{{ r.quiz }}</td>
-                    <td>{{ r.exam }}</td>
-                    <td>{{ r.activity }}</td>
-                    <td>{{ r.participation }}</td>
-                    <td>{{ r.attendance }}</td>
+                    <td>{{ "%0.1f" | format(r.quiz | float) }}</td>
+                    <td>{{ "%0.1f" | format(r.exam | float) }}</td>
+                    <td>{{ "%0.1f" | format(r.activity | float) }}</td>
+                    <td>{{ "%0.1f" | format(r.participation | float) }}</td>
+                    <td>{{ "%0.1f" | format(r.attendance | float) }}</td>
                     <td>
+
+
                         {% if r.period_grade is not none %}
                             <span class="grade-pill {% if r.period_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}">
-                                {{ r.period_grade }}
+                                {{ "%0.1f" | format(r.period_grade | float) }}
                             </span>
                         {% else %}
                             <span class="grade-pill grade-none">—</span>
