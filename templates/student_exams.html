@@ -207,9 +207,8 @@
       {% for e in exams %}
       {% set is_done    = e.result_status in ('submitted', 'auto_submitted') %}
       {% set is_closed  = e.status == 'closed' %}
-      {% set is_notyet  = e.scheduled_start and now_utc < e.scheduled_start %}
-      {% set exam_end      = (e.scheduled_start + timedelta(minutes=e.duration_mins)) if e.scheduled_start else none %}
-      {% set effective_end = e.individual_extension if e.individual_extension else exam_end %}
+      {% set is_notyet  = e.effective_start and now_utc < e.effective_start %}
+      {% set effective_end = (e.effective_start + timedelta(minutes=e.duration_mins)) if e.effective_start else none %}
       {% set is_expired    = effective_end and now_utc > effective_end %}
       
       <div class="task-card" data-period="{{ e.grading_period or 'none' }}" 
@@ -225,13 +224,12 @@
               {% if e.grading_period %}
               <span class="status-badge" style="background:#eff6ff; color:#1d4ed8; border:1px solid #dbeafe;">{{ e.grading_period }} Grading</span>
               {% endif %}
-              {% if e.scheduled_start %}
-              <span>📅 Opens {{ e.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}</span>
-              {% endif %}
               {% if e.individual_extension %}
               <span class="status-badge" style="background:#d1fae5; color:#065f46; border:1px solid #10b981;">
-                  ⭐ Extended until {{ e.individual_extension.strftime('%b %d, %I:%M %p') }}
+                  ⭐ Rescheduled to {{ e.individual_extension.strftime('%b %d, %I:%M %p') }}
               </span>
+              {% elif e.scheduled_start %}
+              <span>📅 Opens {{ e.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}</span>
               {% endif %}
             </div>
             {% if is_done %}

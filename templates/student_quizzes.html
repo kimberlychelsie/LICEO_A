@@ -103,11 +103,8 @@
       {% for q in quizzes %}
       {% set is_done    = q.result_status in ('submitted', 'auto_submitted') %}
       {% set is_closed  = q.status == 'closed' %}
-      {# Only block if scheduled_start is in the FUTURE (not yet open) #}
-      {% set is_notyet  = q.scheduled_start and now_utc < q.scheduled_start %}
-      {# Only block if PAST the scheduled window. Without a scheduled_start = always available #}
-      {% set quiz_end      = (q.scheduled_start + timedelta(minutes=q.duration_mins)) if q.scheduled_start else none %}
-      {% set effective_end = q.individual_extension if q.individual_extension else quiz_end %}
+      {% set is_notyet  = q.effective_start and now_utc < q.effective_start %}
+      {% set effective_end = (q.effective_start + timedelta(minutes=q.duration_mins)) if q.effective_start else none %}
       {% set is_expired    = effective_end and now_utc > effective_end %}
 
       <div class="task-card" data-period="{{ q.grading_period or 'none' }}"
@@ -123,13 +120,12 @@
               {% if q.grading_period %}
               <span class="status-badge" style="background:#f5f3ff; color:#7c3aed; border:1px solid #ddd6fe;">{{ q.grading_period }} Grading</span>
               {% endif %}
-              {% if q.scheduled_start %}
-              <span>📅 Opens {{ q.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}</span>
-              {% endif %}
               {% if q.individual_extension %}
               <span class="status-badge" style="background:#d1fae5; color:#065f46; border:1px solid #10b981;">
-                  ⭐ Extended until {{ q.individual_extension.strftime('%b %d, %I:%M %p') }}
+                  ⭐ Rescheduled to {{ q.individual_extension.strftime('%b %d, %I:%M %p') }}
               </span>
+              {% elif q.scheduled_start %}
+              <span>📅 Opens {{ q.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}</span>
               {% endif %}
             </div>
             {% if is_done %}

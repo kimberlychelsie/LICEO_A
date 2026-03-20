@@ -761,10 +761,18 @@ def student_exams():
         exams = []
         for e in exams_raw:
             e = dict(e)
-            if e.get("scheduled_start"):
-                ss = e["scheduled_start"]
+            # Use individual_extension as the new start if present
+            effective_start = e.get("individual_extension") or e.get("scheduled_start")
+            
+            if effective_start:
+                ss = effective_start
                 if hasattr(ss, "tzinfo") and ss.tzinfo is not None:
-                    e["scheduled_start"] = ss.astimezone(ph_tz).replace(tzinfo=None)
+                    e["effective_start"] = ss.astimezone(ph_tz).replace(tzinfo=None)
+                else:
+                    e["effective_start"] = ss.replace(tzinfo=None)
+            else:
+                e["effective_start"] = None
+                
             exams.append(e)
 
         return render_template(
@@ -826,15 +834,20 @@ def student_quizzes():
         quizzes = []
         for q in quizzes_raw:
             q = dict(q)
-            if q.get("scheduled_start"):
-                ss = q["scheduled_start"]
+            # Use individual_extension as the new start if present
+            effective_start = q.get("individual_extension") or q.get("scheduled_start")
+            
+            if effective_start:
+                ss = effective_start
                 if hasattr(ss, "tzinfo") and ss.tzinfo is not None:
-                    # ✅ UTC-aware → convert to PHT naive (same as exams)
-                    q["scheduled_start"] = ss.astimezone(ph_tz).replace(tzinfo=None)
+                    # ✅ UTC-aware → convert to PHT naive
+                    q["effective_start"] = ss.astimezone(ph_tz).replace(tzinfo=None)
                 else:
-                    # ✅ Naive — stored as PHT but read as UTC by psycopg2
-                    # Subtract 8hrs so it matches now_naive (PHT)
-                    q["scheduled_start"] = ss - timedelta(hours=8)
+                    # ✅ Naive — check if we need to adjust
+                    q["effective_start"] = ss.replace(tzinfo=None)
+            else:
+                q["effective_start"] = None
+                
             quizzes.append(q)
 
         return render_template(
@@ -882,24 +895,22 @@ def student_exam_take(exam_id):
         is_quiz  = exam.get("exam_type") == "quiz"
         back_url = url_for("student_portal.student_quizzes") if is_quiz else url_for("student_portal.student_exams")
 
-        # ✅ Auto-open / auto-close check with proper PHT conversion
-        if exam["scheduled_start"]:
-            ss = exam["scheduled_start"]
-            # ✅ Convert UTC-aware timestamp to PHT naive (fixes Railway timezone issue)
-            if hasattr(ss, "tzinfo") and ss.tzinfo is not None:
-                start = ss.astimezone(ph_tz).replace(tzinfo=None)
+        # ✅ Effective Timing Logic (Individual Rescheduling)
+        effective_start = exam["individual_extension"] or exam["scheduled_start"]
+        
+        if effective_start:
+            # ✅ Convert UTC-aware timestamp to PHT naive
+            if hasattr(effective_start, "tzinfo") and effective_start.tzinfo is not None:
+                start = effective_start.astimezone(ph_tz).replace(tzinfo=None)
             else:
-                start = ss.replace(tzinfo=None)
+                start = effective_start.replace(tzinfo=None)
 
             if now_naive < start:
                 flash("This quiz has not started yet." if is_quiz else "This exam has not started yet.", "warning")
                 return redirect(back_url)
 
-            if exam["individual_extension"]:
-                # If there's an individual extension, use it as the end time
-                auto_end = exam["individual_extension"]
-            else:
-                auto_end = start + timedelta(minutes=int(exam["duration_mins"]))
+            # Deadline is Start + Duration
+            auto_end = start + timedelta(minutes=int(exam["duration_mins"]))
 
             if now_naive > auto_end:
                 flash("This quiz has already ended." if is_quiz else "This exam has already ended.", "warning")
