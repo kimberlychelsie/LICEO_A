@@ -1857,6 +1857,7 @@ def grading_weights_set():
     section_id  = request.form.get("section_id")
     subject_id  = request.form.get("subject_id")
     period      = request.form.get("grading_period")
+    apply_all   = request.form.get("apply_all_subjects")
 
     try:
         quiz_pct          = float(request.form.get("quiz_pct", 0) or 0)
@@ -1878,22 +1879,37 @@ def grading_weights_set():
         return redirect(url_for("teacher.grading_weights"))
 
     db  = get_db_connection()
-    cur = db.cursor()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cur.execute("""
-            INSERT INTO grading_weights
-                (teacher_id, section_id, subject_id, grading_period,
-                 quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-            ON CONFLICT (teacher_id, section_id, subject_id, grading_period)
-            DO UPDATE SET
-                quiz_pct          = EXCLUDED.quiz_pct,
-                exam_pct          = EXCLUDED.exam_pct,
-                activity_pct      = EXCLUDED.activity_pct,
-                participation_pct = EXCLUDED.participation_pct,
-                attendance_pct    = EXCLUDED.attendance_pct
-        """, (user_id, section_id, subject_id, period,
-              quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct))
+        targets = [{'section_id': section_id, 'subject_id': subject_id}]
+        
+        if apply_all == "1":
+            cur.execute("""
+                SELECT st.section_id, st.subject_id
+                FROM teacher_assignments st
+                JOIN sections s ON st.section_id = s.section_id
+                WHERE st.teacher_id = %s AND s.branch_id = %s
+            """, (user_id, branch_id))
+            targets = cur.fetchall()
+
+        for t in targets:
+            sid = t['section_id']
+            subjid = t['subject_id']
+            cur.execute("""
+                INSERT INTO grading_weights
+                    (teacher_id, section_id, subject_id, grading_period,
+                     quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                ON CONFLICT (teacher_id, section_id, subject_id, grading_period)
+                DO UPDATE SET
+                    quiz_pct          = EXCLUDED.quiz_pct,
+                    exam_pct          = EXCLUDED.exam_pct,
+                    activity_pct      = EXCLUDED.activity_pct,
+                    participation_pct = EXCLUDED.participation_pct,
+                    attendance_pct    = EXCLUDED.attendance_pct
+            """, (user_id, sid, subjid, period,
+                  quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct))
+        
         db.commit()
         flash(f"Grading weights for {period} Grading saved successfully!", "success")
     except Exception as e:
