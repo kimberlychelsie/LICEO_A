@@ -1227,30 +1227,11 @@ def teacher_exam_publish(exam_id):
         
         if exam_info:
             notif_label = "Quiz" if exam_info['exam_type'] == 'quiz' else "Exam"
-            # Send notifications to students in the section
-            # Use UNION to capture students in `users` table AND students via `student_accounts`
-            cur.execute("""
-                SELECT DISTINCT u.user_id
-                FROM enrollments e 
-                JOIN users u ON u.user_id = e.user_id
-                WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
-                UNION
-                SELECT DISTINCT u.user_id
-                FROM enrollments e
-                JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
-                JOIN users u ON u.username = sa.username
-                WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
-            """, (exam_info['section_id'], exam_info['section_id']))
-            students = cur.fetchall()
-            for s in students:
-                notif_link = f"/student/subject/{exam_info['subject_id']}" if exam_info['exam_type'] == 'quiz' else "/student/exams"
-                cur.execute("""
-                    INSERT INTO student_notifications (student_id, title, message, link)
-                    VALUES (%s, %s, %s, %s)
-                """, (s['user_id'], f"New {notif_label}: {exam_info['title']}", f"A new {notif_label.lower()} has been published: {exam_info['title']}", notif_link))
+            # Notifications are now deferred to the toggle-visibility action
+            pass
 
         db.commit()
-        flash(f"{notif_label} published! Students can now take it.", "success")
+        flash(f"{notif_label} finalized! Use the eye icon to make it visible to students.", "success")
     except Exception as e:
         db.rollback()
         flash(f"Could not publish: {str(e)}", "error")
@@ -1306,6 +1287,33 @@ def toggle_exam_visibility(exam_id):
 
         new_status = not exam["is_visible"]
         cur.execute("UPDATE exams SET is_visible=%s WHERE exam_id=%s", (new_status, exam_id))
+        
+        # Send notifications if becoming visible and is already published
+        if new_status:
+            cur.execute("SELECT status, title, section_id, subject_id, exam_type FROM exams WHERE exam_id=%s", (exam_id,))
+            exam_info = cur.fetchone()
+            if exam_info and exam_info['status'] == 'published':
+                notif_label = "Quiz" if exam_info['exam_type'] == 'quiz' else "Exam"
+                cur.execute("""
+                    SELECT DISTINCT u.user_id
+                    FROM enrollments e 
+                    JOIN users u ON u.user_id = e.user_id
+                    WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+                    UNION
+                    SELECT DISTINCT u.user_id
+                    FROM enrollments e
+                    JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
+                    JOIN users u ON u.username = sa.username
+                    WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+                """, (exam_info['section_id'], exam_info['section_id']))
+                students = cur.fetchall()
+                for s in students:
+                    notif_link = f"/student/subject/{exam_info['subject_id']}" if exam_info['exam_type'] == 'quiz' else "/student/exams"
+                    cur.execute("""
+                        INSERT INTO student_notifications (student_id, title, message, link)
+                        VALUES (%s, %s, %s, %s)
+                    """, (s['user_id'], f"New {notif_label}: {exam_info['title']}", f"A new {notif_label.lower()} is now available: {exam_info['title']}", notif_link))
+
         db.commit()
 
         label = "Quiz" if exam["exam_type"] == "quiz" else "Exam"
@@ -1475,12 +1483,15 @@ def teacher_exam_results(exam_id):
                 r.result_id, r.enrollment_id, r.score, r.total_points, r.status,
                 r.submitted_at, r.started_at, r.tab_switches,
                 e.student_name, e.grade_level,
-                (SELECT COUNT(*) FROM exam_tab_switches ts WHERE ts.result_id = r.result_id) AS switch_count
+                (SELECT COUNT(*) FROM exam_tab_switches ts WHERE ts.result_id = r.result_id) AS switch_count,
+                ext.new_due_date AS individual_extension
             FROM exam_results r
             JOIN enrollments e ON r.enrollment_id = e.enrollment_id
+            LEFT JOIN individual_extensions ext ON ext.enrollment_id = e.enrollment_id 
+                 AND ext.item_id = r.exam_id AND ext.item_type = %s
             WHERE r.exam_id = %s
             ORDER BY r.submitted_at DESC NULLS LAST
-        """, (exam_id,))
+        """, (exam.get('exam_type', 'exam'), exam_id))
         results = cur.fetchall() or []
 
         # ✅ ADD THIS — convert UTC → PH time for display
@@ -1492,6 +1503,13 @@ def teacher_exam_results(exam_id):
                 r["submitted_at"] = r["submitted_at"].replace(tzinfo=timezone.utc).astimezone(ph_tz)
             if r.get("started_at"):
                 r["started_at"] = r["started_at"].replace(tzinfo=timezone.utc).astimezone(ph_tz)
+            if r.get("individual_extension"):
+                # individual_extension is usually a naive datetime from DB, 
+                # but let's be safe and check if it has tzinfo.
+                ext_date = r["individual_extension"]
+                if ext_date.tzinfo is None:
+                    ext_date = ext_date.replace(tzinfo=timezone.utc)
+                r["individual_extension"] = ext_date.astimezone(ph_tz)
             results_display.append(r)
         # ✅ END ADD
 
