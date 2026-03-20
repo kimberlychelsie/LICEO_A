@@ -39,6 +39,12 @@ def get_db_connection():
                 cur.execute("ALTER TABLE exams ADD COLUMN grading_period VARCHAR(50)")
             if 'is_visible' not in existing_cols:
                 cur.execute("ALTER TABLE exams ADD COLUMN is_visible BOOLEAN DEFAULT FALSE")
+
+            # Simple migration for activities table
+            cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'activities'")
+            act_cols = [r[0] for r in cur.fetchall()]
+            if 'grading_period' not in act_cols:
+                cur.execute("ALTER TABLE activities ADD COLUMN grading_period VARCHAR(50)")
                 
         conn.commit()
 
