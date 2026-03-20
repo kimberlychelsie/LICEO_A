@@ -45,6 +45,7 @@
     {% endif %}
 
     {% for asgn in assignments %}
+    {% set outer_loop = loop %}
     {% set sid = asgn.section_id %}
     {% set subjid = asgn.subject_id %}
     {% set card_id = 'card_' ~ sid ~ '_' ~ subjid %}
@@ -133,10 +134,12 @@
 
                 <div style="display:flex; align-items:center; gap:16px;">
                     <button type="submit" class="btn btn-primary btn-sm">💾 Save {{ period }} Weights</button>
+                    {% if outer_loop.first %}
                     <label style="font-size:0.9rem; color:var(--text); cursor:pointer;">
                         <input type="checkbox" name="apply_all_subjects" value="1" style="margin-right:4px;">
                         Apply to ALL my subjects for {{ period }} Grading
                     </label>
+                    {% endif %}
                 </div>
 
             </form>
