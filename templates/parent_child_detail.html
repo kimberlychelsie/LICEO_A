@@ -71,7 +71,8 @@
     <div style="margin-bottom: 2rem;">
         <h3 style="margin-bottom: 1rem;">Books Ordered</h3>
         {% if books %}
-        <table>
+        <div class="table-responsive">
+        <table style="width:100%;border-radius:6px;">
             <thead>
                 <tr>
                     <th>Book Name</th>
@@ -87,6 +88,7 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         {% else %}
         <p style="color: #6b7280;">No books ordered</p>
         {% endif %}
@@ -96,7 +98,8 @@
     <div style="margin-bottom: 2rem;">
         <h3 style="margin-bottom: 1rem;">Uniforms Ordered</h3>
         {% if uniforms %}
-        <table>
+        <div class="table-responsive">
+        <table style="width:100%;border-radius:6px;">
             <thead>
                 <tr>
                     <th>Type</th>
@@ -114,15 +117,155 @@
                 {% endfor %}
             </tbody>
         </table>
+        </div>
         {% else %}
         <p style="color: #6b7280;">No uniforms ordered</p>
         {% endif %}
     </div>
 
+    <div class="card" style="margin-bottom: 2rem;">
+        <div class="card-header" style="background: #2563eb; color: #fff; border-radius: 6px 6px 0 0; font-weight:bold;">
+            <span style="font-size:1.2em;">📝</span> Activities & Project Scores
+        </div>
+        <div class="table-responsive" style="padding:1rem;">
+            {% if activity_scores %}
+            <table class="striped" style="width:100%;border-radius:6px;">
+                <thead>
+                    <tr style="background:#f1f5f9;">
+                        <th>Subject</th>
+                        <th>Activity</th>
+                        <th>Date</th>
+                        <th>Score</th>
+                        <th>%</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in activity_scores %}
+                    <tr>
+                        <td>{{ a.subject_name }}</td>
+                        <td>{{ a.activity_title }}</td>
+                        <td>{{ a.due_date.strftime('%b %d %Y') if a.due_date else '' }}</td>
+                        <td>{{ a.raw_score }}</td>
+                        <td>{{ a.percentage }}</td>
+                        <td>
+                            {% if a.remarks %}
+                            <span class="badge badge-info" style="background:#0ea5e9;color:white;border-radius:12px;">{{ a.remarks }}</span>
+                            {% else %}
+                            <span class="muted" style="color:#64748b;">-</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="muted" style="color:#64748b;padding:1rem;">No graded activities yet.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Quiz Scores (SEPARATED) -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <div class="card-header" style="background: #0ea5e9; color: #fff; border-radius: 6px 6px 0 0; font-weight:bold;">
+            <span style="font-size:1.2em;">📝</span> Quiz Scores
+        </div>
+        <div class="table-responsive" style="padding:1rem;">
+            {% if quiz_scores %}
+            <table class="striped" style="width:100%;border-radius:6px;">
+                <thead>
+                    <tr style="background:#f1f5f9;">
+                        <th>Subject</th>
+                        <th>Title</th>
+                        <th>Date</th>
+                        <th>Score</th>
+                        <th>Total Points</th>
+                        <th>Status</th>
+                        <th>Passing</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for q in quiz_scores %}
+                    <tr>
+                        <td>{{ q.subject_name }}</td>
+                        <td>{{ q.exam_title }}</td>
+                        <td>{{ q.submitted_at.strftime('%b %d %Y') if q.submitted_at else '' }}</td>
+                        <td>{{ q.score }}</td>
+                        <td>{{ q.total_points }}</td>
+                        <td>
+                            <span class="badge badge-{{ q.result_status|lower }}" style="background:#f59e42;color:#fff;border-radius:12px;">
+                                {{ q.result_status|capitalize }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if (q.score or 0) >= (q.passing_score or 75) %}
+                                <span style="color:#166534;font-weight:bold;">Passed</span>
+                            {% else %}
+                                <span style="color:#991b1b;font-weight:bold;">Failed</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="muted" style="color:#64748b;padding:1rem;">No quiz scores yet.</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Exam Scores (SEPARATED) -->
+    <div class="card" style="margin-bottom: 2rem;">
+        <div class="card-header" style="background: #eab308; color: #fff; border-radius: 6px 6px 0 0; font-weight:bold;">
+            <span style="font-size:1.2em;">🧑‍🏫</span> Exam Scores
+        </div>
+        <div class="table-responsive" style="padding:1rem;">
+            {% if exam_scores %}
+            <table class="striped" style="width:100%;border-radius:6px;">
+                <thead>
+                    <tr style="background:#f1f5f9;">
+                        <th>Subject</th>
+                        <th>Title</th>
+                        <th>Date</th>
+                        <th>Score</th>
+                        <th>Total Points</th>
+                        <th>Status</th>
+                        <th>Passing</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in exam_scores %}
+                    <tr>
+                        <td>{{ e.subject_name }}</td>
+                        <td>{{ e.exam_title }}</td>
+                        <td>{{ e.submitted_at.strftime('%b %d %Y') if e.submitted_at else '' }}</td>
+                        <td>{{ e.score }}</td>
+                        <td>{{ e.total_points }}</td>
+                        <td>
+                            <span class="badge badge-{{ e.result_status|lower }}" style="background:#f59e42;color:#fff;border-radius:12px;">
+                                {{ e.result_status|capitalize }}
+                            </span>
+                        </td>
+                        <td>
+                            {% if (e.score or 0) >= (e.passing_score or 75) %}
+                                <span style="color:#166534;font-weight:bold;">Passed</span>
+                            {% else %}
+                                <span style="color:#991b1b;font-weight:bold;">Failed</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="muted" style="color:#64748b;padding:1rem;">No exam scores yet.</div>
+            {% endif %}
+        </div>
+    </div>
+
     <!-- Actions -->
     <div style="display: flex; gap: 1rem;">
-        <a href="{{ url_for('parent.child_bills', enrollment_id=child.enrollment_id) }}" class="btn btn-primary">View
-            Billing</a>
+        <a href="{{ url_for('parent.child_bills', enrollment_id=child.enrollment_id) }}" class="btn btn-primary">View Billing</a>
         <a href="{{ url_for('parent.dashboard') }}" class="btn btn-secondary">⬅ Back</a>
     </div>
 </div>

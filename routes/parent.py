@@ -169,7 +169,6 @@ def link_child():
         cursor.close()
         db.close()
 
-
 @parent_bp.route("/parent/child/<int:enrollment_id>")
 def child_detail(enrollment_id):
     if not _require_parent():
@@ -201,12 +200,46 @@ def child_detail(enrollment_id):
         cursor.execute("SELECT * FROM enrollment_uniforms WHERE enrollment_id=%s", (enrollment_id,))
         uniforms = cursor.fetchall()
 
+        # -- Add activity/project scores --
+        cursor.execute("""
+            SELECT s.name AS subject_name, a.title AS activity_title,
+                   g.raw_score, g.percentage, g.remarks, a.due_date
+            FROM activities a
+            JOIN subjects s ON a.subject_id = s.subject_id
+            JOIN activity_submissions sub ON sub.activity_id = a.activity_id
+            LEFT JOIN activity_grades g ON g.submission_id = sub.submission_id
+            WHERE sub.enrollment_id = %s AND g.raw_score IS NOT NULL
+            ORDER BY a.due_date DESC
+        """, (enrollment_id,))
+        activity_scores = cursor.fetchall()
+
+        # -- Add quiz/exam scores --
+        cursor.execute("""
+            SELECT e.title AS exam_title, sub.name AS subject_name,
+                   r.score, r.total_points, r.status AS result_status, r.submitted_at,
+                   e.exam_type, e.passing_score
+            FROM exam_results r
+            JOIN exams e ON r.exam_id = e.exam_id
+            JOIN subjects sub ON e.subject_id = sub.subject_id
+            WHERE r.enrollment_id = %s
+              AND r.status IN ('submitted', 'auto_submitted')
+            ORDER BY r.submitted_at DESC
+        """, (enrollment_id,))
+        all_exam_scores = cursor.fetchall()
+
+        # Split scores into quizzes and exams for tabbed UI
+        quiz_scores = [e for e in all_exam_scores if e["exam_type"] == "quiz"]
+        exam_scores = [e for e in all_exam_scores if e["exam_type"] != "quiz"]
+
         return render_template(
             "parent_child_detail.html",
             child=child,
             documents=documents,
             books=books,
-            uniforms=uniforms
+            uniforms=uniforms,
+            activity_scores=activity_scores,
+            quiz_scores=quiz_scores,
+            exam_scores=exam_scores
         )
 
     finally:
