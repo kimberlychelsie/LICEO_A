@@ -45,6 +45,8 @@ def get_db_connection():
             act_cols = [r[0] for r in cur.fetchall()]
             if 'grading_period' not in act_cols:
                 cur.execute("ALTER TABLE activities ADD COLUMN grading_period VARCHAR(50)")
+            if 'batch_id' not in act_cols:
+                cur.execute("ALTER TABLE activities ADD COLUMN batch_id VARCHAR(20)")
 
             # Simple migration for attendance_scores table
             cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'attendance_scores'")

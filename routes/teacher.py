@@ -609,7 +609,8 @@ def create_activity():
             if not subject_id or not section_ids:
                 flash("Subject and at least one section are required.", "error")
                 return redirect(url_for("teacher.create_activity"))
-            
+            import uuid
+            batch_id = str(uuid.uuid4())[:8]  # links this activity across all chosen sections
             
             attachment_path = None
             if 'attachment' in request.files:
@@ -626,12 +627,12 @@ def create_activity():
                     INSERT INTO activities (
                         branch_id, section_id, subject_id, teacher_id, 
                         title, category, instructions, max_score, due_date, 
-                        status, allowed_file_types, attachment_path, grading_period
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        status, allowed_file_types, attachment_path, grading_period, batch_id
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING activity_id
                 ''', (branch_id, section_id, subject_id, user_id, 
                       title, category, instructions, max_score, due_date or None, 
-                      status, allowed_file_types, attachment_path, grading_period))
+                      status, allowed_file_types, attachment_path, grading_period, batch_id))
                 activity_id = cur.fetchone()['activity_id']
                 
                 if status == 'Published':
