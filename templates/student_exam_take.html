@@ -291,8 +291,8 @@
     <input type="hidden" name="result_id"    value="{{ result_id }}" />
     <input type="hidden" name="tab_switches" id="tabSwitchInput" value="0" />
     <input type="hidden" name="submit_type"  id="submitType" value="manual" />
-
-    <!-- ── MCQ Section ── -->
+  
+    <!-- MCQ Section -->
     <div id="section-mc" class="question-section">
       <div class="section-label">📝 Multiple Choice</div>
       <div class="progress-indicator" id="mc-progress"></div>
@@ -316,9 +316,15 @@
           {% endfor %}
         </div>
         {% endif %}
-        <button type="button" class="next-btn {% if loop.last %}submit-btn{% endif %}" onclick="nextMC()">
+        {# --- Here is the logic for the MCQ last question --- #}
+        {% set is_mcq_last = loop.last and (tf_questions|length == 0 and match_questions|length == 0) %}
+        <button
+          type="{% if is_mcq_last %}submit{% else %}button{% endif %}"
+          class="next-btn submit-btn"
+          {% if not is_mcq_last %}onclick="nextMC()"{% endif %}
+        >
           {% if loop.last %}
-            {% if questions | selectattr("question_type", "equalto", "truefalse") | list | length > 0 %}
+            {% if tf_questions|length > 0 or match_questions|length > 0 %}
               Next Section →
             {% else %}
               ✅ Submit
@@ -330,8 +336,8 @@
       </div>
       {% endfor %}
     </div>
-
-    <!-- ── True/False Section ── -->
+  
+    <!-- True/False Section -->
     <div id="section-tf" class="question-section">
       <div class="section-label">✅ True or False</div>
       <div class="progress-indicator" id="tf-progress"></div>
@@ -355,9 +361,15 @@
             <span class="choice-key">B.</span><span>False</span>
           </label>
         </div>
-        <button type="button" class="next-btn {% if loop.last %}submit-btn{% endif %}" onclick="nextTF()">
+        {# --- Here is the logic for the TF last question --- #}
+        {% set is_tf_last = loop.last and match_questions|length == 0 %}
+        <button
+          type="{% if is_tf_last %}submit{% else %}button{% endif %}"
+          class="next-btn submit-btn"
+          {% if not is_tf_last %}onclick="nextTF()"{% endif %}
+        >
           {% if loop.last %}
-            {% if questions | selectattr("question_type", "equalto", "matching") | list | length > 0 %}
+            {% if match_questions|length > 0 %}
               Next Section →
             {% else %}
               ✅ Submit
@@ -369,8 +381,8 @@
       </div>
       {% endfor %}
     </div>
-
-    <!-- ── Matching Section ── -->
+  
+    <!-- Matching Section -->
     <div id="section-match" class="question-section">
       <div class="section-label">🔗 Matching Type</div>
       <div class="progress-indicator" id="match-progress"></div>
@@ -382,7 +394,6 @@
           <span class="q-pts-badge">{{ q.points }} pt(s)</span>
         </div>
         <div class="q-text">{{ q.question_text }}</div>
-        
         {% if q.choices and q.choices.options %}
         <div class="form-group" style="margin-bottom:20px;">
           <select class="form-select" name="answer_{{ q.question_id }}" id="match-sel-{{ q.question_id }}" 
@@ -395,14 +406,22 @@
           </select>
         </div>
         {% endif %}
-
-        <button type="button" class="next-btn {% if loop.last %}submit-btn{% endif %}" onclick="nextMatch()">
-          {% if loop.last %}✅ Submit{% else %}Next →{% endif %}
+        {# --- Here is the logic for Matching last question --- #}
+        {% set is_match_last = loop.last %}
+        <button
+          type="{% if is_match_last %}submit{% else %}button{% endif %}"
+          class="next-btn submit-btn"
+          {% if not is_match_last %}onclick="nextMatch()"{% endif %}
+        >
+          {% if loop.last %}
+            ✅ Submit
+          {% else %}
+            Next →
+          {% endif %}
         </button>
       </div>
       {% endfor %}
     </div>
-
   </form>
 </div>
 
