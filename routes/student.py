@@ -518,7 +518,7 @@ def continuing_enrollment(branch_id):
             JOIN grade_levels g ON s.grade_level_id = g.id
             WHERE s.branch_id = %s 
             ORDER BY s.section_name
-        """, (branch_id, next_grade))
+        """, (branch_id,))
         # fetch all sections, filter in JS based on chosen grade
         raw_sections = cursor.fetchall() or []
         sections = [dict(s) for s in raw_sections]
