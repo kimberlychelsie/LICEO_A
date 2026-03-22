@@ -1,106 +1,148 @@
 {% extends "base.html" %}
 {% block title %}Create Activity{% endblock %}
-
 {% block content %}
-<div class="card" style="max-width: 800px; margin: 0 auto;">
-    <h2 class="card-header">📝 Create New Activity</h2>
-    <form action="{{ url_for('teacher.create_activity') }}" method="POST" enctype="multipart/form-data">
+<div style="max-width:700px; margin:0 auto;">
+    <div class="card">
+        <h2 class="card-header">📝 Create New Activity</h2>
+        <form action="{{ url_for('teacher.create_activity') }}" method="POST" enctype="multipart/form-data">
 
-        <div class="form-group">
-            <label class="form-label">Activity Title <span style="color:red">*</span></label>
-            <input type="text" name="title" class="form-input" required maxlength="255">
-        </div>
-
-        <div class="grid grid-2">
             <div class="form-group">
-                <label class="form-label">Section & Subject <span style="color:red">*</span></label>
-                <select name="assignment" class="form-select" required>
-                    <option value="">-- Select Section & Subject --</option>
-                    {% for a in teacher_assignments %}
-                    <option value="{{ a.section_id }}_{{ a.subject_id }}">{{ a.grade_level_name }} - {{ a.section_name
-                        }} ({{ a.subject_name }})</option>
-                    {% endfor %}
-                </select>
+                <label class="form-label">Activity Title <span style="color:red">*</span></label>
+                <input type="text" name="title" class="form-input" required maxlength="255" placeholder="e.g. Chapter 3 Activity">
             </div>
+
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label class="form-label">Subject <span style="color:red">*</span></label>
+                    <select name="subject_id" id="subjectSelect" class="form-select" required onchange="updateSectionCheckboxes()">
+                        <option value="">— Select Subject —</option>
+                        {% set unique_subjects = [] %}
+                        {% for a in teacher_assignments %}
+                            {% if a.subject_id not in unique_subjects %}
+                                <option value="{{ a.subject_id }}">{{ a.subject_name }}</option>
+                                {% set _ = unique_subjects.append(a.subject_id) %}
+                            {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Assign to Sections <span style="color:red">*</span></label>
+                    <div id="sectionsContainer" style="border:1px solid #ddd; border-radius:6px; padding:10px; min-height:80px; max-height:160px; overflow-y:auto; background:#f8f9fa;">
+                        <p style="color:#888; font-size:13px; margin:0;">Select a subject first...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select name="category" class="form-select">
+                        <option value="Assignment">Assignment</option>
+                        <option value="Project">Project</option>
+                        <option value="Activity">Activity</option>
+                        <option value="Performance Task">Performance Task</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">📅 Grading Period <span style="color:red">*</span></label>
+                    <select name="grading_period" class="form-select" required>
+                        <option value="">— Select Grading Period —</option>
+                        <option value="1st">1st Grading</option>
+                        <option value="2nd">2nd Grading</option>
+                        <option value="3rd">3rd Grading</option>
+                        <option value="4th">4th Grading</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="grid grid-3">
+                <div class="form-group">
+                    <label class="form-label">Max Score <span style="color:red">*</span></label>
+                    <select name="max_score" class="form-select" required>
+                        <option value="10">10</option>
+                        <option value="20">20</option>
+                        <option value="30">30</option>
+                        <option value="40">40</option>
+                        <option value="50">50</option>
+                        <option value="60">60</option>
+                        <option value="70">70</option>
+                        <option value="80">80</option>
+                        <option value="90">90</option>
+                        <option value="100" selected>100</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Due Date <span style="color:red">*</span></label>
+                    <input type="datetime-local" name="due_date" id="due_date" class="form-input" min="{{ min_date }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status <span style="color:red">*</span></label>
+                    <select name="status" class="form-select" required>
+                        <option value="Published">Published (Visible immediately)</option>
+                        <option value="Draft" selected>Draft (Hidden)</option>
+                    </select>
+                </div>
+            </div>
+
             <div class="form-group">
-                <label class="form-label">Category</label>
-                <select name="category" class="form-select">
-                    <option value="Assignment">Assignment</option>
-                    <option value="Project">Project</option>
-                    <option value="Activity">Activity</option>
-                    <option value="Performance Task">Performance Task</option>
-                </select>
+                <label class="form-label">Instructions / Description</label>
+                <textarea name="instructions" class="form-textarea" rows="3" placeholder="e.g. Submit a 1-page reflection on..."></textarea>
             </div>
-        </div>
 
-        <div class="form-group">
-            <label class="form-label">Instructions / Description</label>
-            <textarea name="instructions" class="form-textarea" rows="6"></textarea>
-        </div>
-
-        <div class="grid grid-3">
-            <div class="form-group">
-                <label class="form-label">Max Score <span style="color:red">*</span></label>
-                <select name="max_score" class="form-select" required>
-                    <option value="10">10</option>
-                    <option value="20">20</option>
-                    <option value="30">30</option>
-                    <option value="40">40</option>
-                    <option value="50">50</option>
-                    <option value="60">60</option>
-                    <option value="70">70</option>
-                    <option value="80">80</option>
-                    <option value="90">90</option>
-                    <option value="100" selected>100</option>
-                </select>
+            <div class="grid grid-2">
+                <div class="form-group">
+                    <label class="form-label">Allowed File Types <span style="font-weight:400; color:#888;">(optional)</span></label>
+                    <input type="text" name="allowed_file_types" class="form-input" placeholder="pdf, jpg, docx — leave empty for any">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Reference Attachment <span style="font-weight:400; color:#888;">(optional)</span></label>
+                    <input type="file" name="attachment" class="form-input" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+                </div>
             </div>
-            <div class="form-group">
-                <label class="form-label">Due Date <span style="color:red">*</span></label>
-                <input type="datetime-local" name="due_date" id="due_date" class="form-input" min="{{ min_date }}" required>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px; padding-top:12px; border-top:1px solid var(--border);">
+                <a href="{{ url_for('teacher.activities') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">Create Activity</button>
             </div>
-            <div class="form-group">
-                <label class="form-label">Status <span style="color:red">*</span></label>
-                <select name="status" class="form-select" required>
-                    <option value="Published">Published (Visible immediately)</option>
-                    <option value="Draft" selected>Draft (Hidden)</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="form-group">
-            <label class="form-label">📅 Grading Period <span style="color:red">*</span></label>
-            <select name="grading_period" class="form-select" required>
-                <option value="">-- Select Grading Period --</option>
-                <option value="1st">1st Grading</option>
-                <option value="2nd">2nd Grading</option>
-                <option value="3rd">3rd Grading</option>
-                <option value="4th">4th Grading</option>
-            </select>
-        </div>
-
-
-        <div class="form-group">
-            <label class="form-label">Allowed File Extensions (comma separated, e.g. pdf, doc, png)</label>
-            <input type="text" name="allowed_file_types" class="form-input" placeholder="pdf, jpg, docx">
-            <small style="color:var(--muted)">Leave empty for any type.</small>
-        </div>
-
-        <div class="form-group">
-            <label class="form-label">Reference Attachment (Optional)</label>
-            <input type="file" name="attachment" class="form-input" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
-        </div>
-
-        <hr style="border:0; border-top:1px solid var(--border); margin: 24px 0;">
-
-        <div style="display:flex; justify-content:flex-end; gap:12px;">
-            <a href="{{ url_for('teacher.activities') }}" class="btn btn-secondary">Cancel</a>
-            <button type="submit" class="btn btn-primary">Create Activity</button>
-        </div>
-    </form>
+        </form>
+    </div>
 </div>
-</div>
+
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-    });
+    const assignments = {{ teacher_assignments|tojson }};
+
+    function updateSectionCheckboxes() {
+        const subjectId = document.getElementById('subjectSelect').value;
+        const container = document.getElementById('sectionsContainer');
+        container.innerHTML = '';
+        if (!subjectId) {
+            container.innerHTML = '<p style="color:#888; font-size:13px; margin:0;">Select a subject first...</p>';
+            return;
+        }
+        const filtered = assignments.filter(a => a.subject_id == subjectId);
+        if (filtered.length === 0) {
+            container.innerHTML = '<p style="color:#888; font-size:13px; margin:0;">No sections found for this subject.</p>';
+            return;
+        }
+        filtered.forEach(a => {
+            const div = document.createElement('div');
+            div.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:6px;';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox'; cb.name = 'section_ids'; cb.value = a.section_id; cb.id = 'sec_' + a.section_id;
+            const lbl = document.createElement('label');
+            lbl.htmlFor = 'sec_' + a.section_id;
+            lbl.style.cssText = 'font-size:14px; cursor:pointer; font-weight:400;';
+            lbl.textContent = a.grade_level_name + ' — ' + a.section_name;
+            div.appendChild(cb); div.appendChild(lbl); container.appendChild(div);
+        });
+    }
+
+    document.querySelector('form').onsubmit = function(e) {
+        const checked = document.querySelectorAll('input[name="section_ids"]:checked');
+        if (checked.length === 0) {
+            alert('Please select at least one section.');
+            e.preventDefault(); return false;
+        }
+    };
 </script>
 {% endblock %}

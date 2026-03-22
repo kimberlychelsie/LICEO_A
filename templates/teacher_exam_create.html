@@ -1,83 +1,52 @@
 {% extends "base.html" %}
 {% block title %}Create Exam{% endblock %}
 {% block content %}
-<style>
-    .container { max-width:640px; margin:0 auto; padding:24px 20px; }
-    .card { background:#fff; border-radius:12px; padding:28px; box-shadow:0 2px 8px rgba(0,0,0,.07); }
-    .card h2 { margin:0 0 20px 0; font-size:18px; border-bottom:2px solid #007bff; padding-bottom:10px; color:#2c3e50; }
-    .form-group { margin-bottom:16px; }
-    .form-group label { display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#333; }
-    .form-group input, .form-group select, .form-group textarea { width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; font-size:14px; box-sizing:border-box; }
-    .form-group textarea { resize:vertical; min-height:80px; }
-    .form-row { display:flex; gap:12px; }
-    .form-row .form-group { flex:1; }
-    .toggle-label { display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:700; font-size:13px; }
-    .toggle-label input[type="checkbox"] { width:18px; height:18px; accent-color:#007bff; }
-    .hint { font-size:11px; color:#888; margin-top:3px; }
-    .section-divider { border:none; border-top:1px dashed #dee2e6; margin:20px 0; }
-    .btn { padding:10px 20px; border:none; border-radius:7px; cursor:pointer; font-size:14px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px; transition:.2s; }
-    .btn-primary { background:#007bff; color:#fff; } .btn-primary:hover { background:#0056b3; }
-    .btn-secondary { background:#6c757d; color:#fff; } .btn-secondary:hover { background:#545b62; }
-</style>
-
-<script>
-    // Section → Subject mapping
-    const sectionSubjects = {
-        {% for a in assignments %}
-        "{{ a.section_id }}": [
-            {% for s in assignments | selectattr("section_id", "equalto", a.section_id) | list %}
-            { "id": "{{ s.subject_id }}", "name": "{{ s.subject_name }}" },
-            {% endfor %}
-        ],
-        {% endfor %}
-    };
-</script>
-
-<div class="container">
-    <div style="margin-bottom:16px;">
-        <a href="{{ url_for('teacher.teacher_exams') }}" class="btn btn-secondary">← Back</a>
-    </div>
+<div style="max-width:700px; margin:0 auto;">
     <div class="card">
-        <h2>➕ Create New Exam</h2>
+        <h2 class="card-header">📋 Create New Exam</h2>
         <form method="POST">
 
-            <!-- Basic Info -->
             <div class="form-group">
-                <label>Exam Title</label>
-                <input type="text" name="title" placeholder="e.g. Quarter 1 Exam" required />
+                <label class="form-label">Exam Title <span style="color:red">*</span></label>
+                <input type="text" name="title" class="form-input" placeholder="e.g. Quarter 1 Exam" required>
             </div>
 
-            <div class="form-row">
+            <div class="grid grid-2">
                 <div class="form-group">
-                    <label>Section</label>
-                    <select name="section_id" id="sectionSelect" required onchange="filterSubjects()">
-                        <option value="">— Select Section —</option>
-                        {% for s in sections %}
-                        <option value="{{ s.section_id }}">{{ s.grade_level_name }} — {{ s.section_name }}</option>
+                    <label class="form-label">Subject <span style="color:red">*</span></label>
+                    <select name="subject_id" id="subjectSelect" class="form-select" required onchange="filterSections()">
+                        <option value="">— Select Subject —</option>
+                        {% set unique_subs = [] %}
+                        {% for a in assignments %}
+                            {% if a.subject_id not in unique_subs %}
+                                <option value="{{ a.subject_id }}">{{ a.subject_name }}</option>
+                                {% set _ = unique_subs.append(a.subject_id) %}
+                            {% endif %}
                         {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Subject</label>
-                    <select name="subject_id" id="subjectSelect" required>
-                        <option value="">— Select Section First —</option>
-                    </select>
+                    <label class="form-label">Assign to Sections <span style="color:red">*</span></label>
+                    <div id="sectionsContainer" style="border:1px solid #ddd; border-radius:6px; padding:10px; min-height:80px; max-height:160px; overflow-y:auto; background:#f8f9fa;">
+                        <p style="color:#888; font-size:13px; margin:0;">Select a subject first...</p>
+                    </div>
                 </div>
             </div>
 
-            <div class="form-row">
+            <div class="grid grid-2">
                 <div class="form-group">
-                    <label>Duration</label>
-                    <select name="duration_mins">
+                    <label class="form-label">Duration <span style="color:red">*</span></label>
+                    <select name="duration_mins" class="form-select">
                         <option value="30">30 minutes</option>
                         <option value="60" selected>60 minutes</option>
+                        <option value="90">90 minutes</option>
                         <option value="120">120 minutes</option>
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>📅 Grading Period <span style="color:red">*</span></label>
-                    <select name="grading_period" required>
-                        <option value="">-- Select Grading Period --</option>
+                    <label class="form-label">📅 Grading Period <span style="color:red">*</span></label>
+                    <select name="grading_period" class="form-select" required>
+                        <option value="">— Select Grading Period —</option>
                         <option value="1st">1st Grading</option>
                         <option value="2nd">2nd Grading</option>
                         <option value="3rd">3rd Grading</option>
@@ -86,83 +55,91 @@
                 </div>
             </div>
 
-            <hr class="section-divider">
-
-            <!-- Schedule -->
-            <div class="form-group">
-                <label>Scheduled Start <span style="font-weight:400;color:#888;">(optional)</span></label>
-                <input type="datetime-local" name="scheduled_start" min="{{ min_date }}" />
-                <div class="hint">⏰ Exam opens at this time. Auto-closes after the duration ends (start time + duration)</div>
-            </div>
-
-            <hr class="section-divider">
-
-            <!-- Rules -->
-            <div class="form-row">
+            <div class="grid grid-2">
                 <div class="form-group">
-                    <label>Max Attempts</label>
-                    <input type="number" name="max_attempts" value="1" min="1" max="10" />
-                    <div class="hint">How many times a student can take this exam</div>
+                    <label class="form-label">Scheduled Start <span style="font-weight:400; color:#888;">(optional)</span></label>
+                    <input type="datetime-local" name="scheduled_start" class="form-input" min="{{ min_date }}">
+                    <small style="color:var(--muted);">⏰ Auto-closes after duration.</small>
                 </div>
-                <div class="form-group">
-                    <label>Passing Score (%)</label>
-                    <input type="number" name="passing_score" value="60" min="1" max="100" />
-                    <div class="hint">Minimum % to pass</div>
-                </div>
-            </div>
-                <div class="form-group" style="display:flex; align-items:center; padding-top:22px;">
-                    <label class="toggle-label">
-                        <input type="checkbox" name="randomize" value="1" />
-                        🔀 Randomize Question Order
-                    </label>
+                <div class="grid grid-2" style="gap:10px;">
+                    <div class="form-group">
+                        <label class="form-label">Max Attempts</label>
+                        <input type="number" name="max_attempts" class="form-input" value="1" min="1" max="10">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Passing Score (%)</label>
+                        <input type="number" name="passing_score" class="form-input" value="60" min="1" max="100">
+                    </div>
                 </div>
             </div>
 
-            <hr class="section-divider">
-
-            <!-- Instructions -->
             <div class="form-group">
-                <label>Exam Instructions <span style="font-weight:400;color:#888;">(optional)</span></label>
-                <textarea name="instructions" placeholder="e.g. Read each question carefully. No back navigation allowed."></textarea>
-                <div class="hint">Shown to students before they start the exam</div>
+                <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:600; font-size:0.88rem;">
+                    <input type="checkbox" name="randomize" value="1" style="width:16px; height:16px; accent-color:var(--primary);">
+                    🔀 Randomize Question Order
+                </label>
             </div>
 
-            <div style="display:flex; gap:10px; margin-top:8px;">
-                <button type="submit" class="btn btn-primary">➕ Create &amp; Add Questions →</button>
+            <div class="form-group">
+                <label class="form-label">Exam Instructions <span style="font-weight:400; color:#888;">(optional)</span></label>
+                <textarea name="instructions" class="form-textarea" rows="3" placeholder="e.g. Read each question carefully. No back navigation allowed."></textarea>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px; padding-top:12px; border-top:1px solid var(--border);">
                 <a href="{{ url_for('teacher.teacher_exams') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary">➕ Create &amp; Add Questions →</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-    function filterSubjects() {
-        const sectionId    = document.getElementById('sectionSelect').value;
-        const subjectSelect = document.getElementById('subjectSelect');
-        subjectSelect.innerHTML = '';
+    const subjectSections = {
+        {% set unique_subjects = [] %}
+        {% for a in assignments %}
+            {% if a.subject_id not in unique_subjects %}
+                "{{ a.subject_id }}": [
+                    {% for s in assignments | selectattr("subject_id", "equalto", a.subject_id) | list %}
+                    { "id": "{{ s.section_id }}", "name": "{{ s.grade_level_name }} — {{ s.section_name }}" },
+                    {% endfor %}
+                ],
+                {% set _ = unique_subjects.append(a.subject_id) %}
+            {% endif %}
+        {% endfor %}
+    };
 
-        if (!sectionId || !sectionSubjects[sectionId]) {
-            subjectSelect.innerHTML = '<option value="">— Select Section First —</option>';
+    function filterSections() {
+        const subjectId = document.getElementById('subjectSelect').value;
+        const container = document.getElementById('sectionsContainer');
+        container.innerHTML = '';
+        if (!subjectId || !subjectSections[subjectId]) {
+            container.innerHTML = '<p style="color:#888; font-size:13px; margin:0;">Select a subject first...</p>';
             return;
         }
-
-        const subjects = sectionSubjects[sectionId];
-        if (subjects.length === 0) {
-            subjectSelect.innerHTML = '<option value="">— No subjects assigned —</option>';
+        const sections = subjectSections[subjectId];
+        if (sections.length === 0) {
+            container.innerHTML = '<p style="color:#888; font-size:13px; margin:0;">No sections found for this subject.</p>';
             return;
         }
-
-        const placeholder = document.createElement('option');
-        placeholder.value = '';
-        placeholder.textContent = '— Select Subject —';
-        subjectSelect.appendChild(placeholder);
-
-        subjects.forEach(s => {
-            const opt = document.createElement('option');
-            opt.value = s.id;
-            opt.textContent = s.name;
-            subjectSelect.appendChild(opt);
+        sections.forEach(s => {
+            const div = document.createElement('div');
+            div.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:6px;';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox'; cb.name = 'section_ids'; cb.value = s.id; cb.id = 'sec_' + s.id;
+            const lbl = document.createElement('label');
+            lbl.htmlFor = 'sec_' + s.id;
+            lbl.style.cssText = 'font-size:14px; cursor:pointer; font-weight:400;';
+            lbl.textContent = s.name;
+            div.appendChild(cb); div.appendChild(lbl); container.appendChild(div);
         });
     }
+
+    document.querySelector('form').onsubmit = function(e) {
+        const checked = document.querySelectorAll('input[name="section_ids"]:checked');
+        if (checked.length === 0) {
+            alert('Please select at least one section.');
+            e.preventDefault(); return false;
+        }
+    };
 </script>
 {% endblock %}

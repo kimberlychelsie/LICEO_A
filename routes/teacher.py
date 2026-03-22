@@ -596,7 +596,8 @@ def create_activity():
     try:
         if request.method == "POST":
             title = request.form.get("title", "").strip()
-            assignment = request.form.get("assignment", "") # section_id_subject_id
+            subject_id = request.form.get("subject_id")
+            section_ids = request.form.getlist("section_ids")
             category = request.form.get("category", "")
             instructions = request.form.get("instructions", "").strip()
             max_score = int(request.form.get("max_score", 100))
@@ -605,11 +606,12 @@ def create_activity():
             allowed_file_types = request.form.get("allowed_file_types", "").strip()
             grading_period = request.form.get("grading_period")
             
-            if "_" not in assignment:
-                flash("Invalid section/subject assignment", "error")
+            if not subject_id or not section_ids:
+                flash("Subject and at least one section are required.", "error")
                 return redirect(url_for("teacher.create_activity"))
             
-            section_id, subject_id = assignment.split("_", 1)
+            import uuid
+            batch_id = str(uuid.uuid4())[:8] # Unique short ID for the batch
             
             attachment_path = None
             if 'attachment' in request.files:
@@ -621,39 +623,40 @@ def create_activity():
                         flash(f"File upload failed: {e}", "error")
                         return redirect(url_for("teacher.create_activity"))
                         
-            cur.execute('''
-                INSERT INTO activities (
-                    branch_id, section_id, subject_id, teacher_id, 
-                    title, category, instructions, max_score, due_date, 
-                    status, allowed_file_types, attachment_path, grading_period
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                RETURNING activity_id
-            ''', (branch_id, section_id, subject_id, user_id, 
-                  title, category, instructions, max_score, due_date or None, 
-                  status, allowed_file_types, attachment_path, grading_period))
-            activity_id = cur.fetchone()['activity_id']
-            
-            if status == 'Published':
-                cur.execute("""
-                    SELECT DISTINCT u.user_id 
-                    FROM enrollments e 
-                    JOIN users u ON u.user_id = e.user_id 
-                    WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
-                    UNION
-                    SELECT DISTINCT u.user_id
-                    FROM enrollments e
-                    JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
-                    JOIN users u ON u.username = sa.username
-                    WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
-                """, (section_id, section_id))
-                student_users = cur.fetchall()
-                if student_users:
-                    notifs = [(su['user_id'], f"New Activity: {title}", f"Your teacher posted a new activity: {title}.", f"/student/activities/{activity_id}") for su in student_users]
-                    for notif in notifs:
-                        cur.execute("""
-                            INSERT INTO student_notifications (student_id, title, message, link) 
-                            VALUES (%s, %s, %s, %s)
-                        """, notif)
+            for section_id in section_ids:
+                cur.execute('''
+                    INSERT INTO activities (
+                        branch_id, section_id, subject_id, teacher_id, 
+                        title, category, instructions, max_score, due_date, 
+                        status, allowed_file_types, attachment_path, grading_period, batch_id
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    RETURNING activity_id
+                ''', (branch_id, section_id, subject_id, user_id, 
+                      title, category, instructions, max_score, due_date or None, 
+                      status, allowed_file_types, attachment_path, grading_period, batch_id))
+                activity_id = cur.fetchone()['activity_id']
+                
+                if status == 'Published':
+                    cur.execute("""
+                        SELECT DISTINCT u.user_id 
+                        FROM enrollments e 
+                        JOIN users u ON u.user_id = e.user_id 
+                        WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+                        UNION
+                        SELECT DISTINCT u.user_id
+                        FROM enrollments e
+                        JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
+                        JOIN users u ON u.username = sa.username
+                        WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+                    """, (section_id, section_id))
+                    student_users = cur.fetchall()
+                    if student_users:
+                        notifs = [(su['user_id'], f"New Activity: {title}", f"Your teacher posted a new activity: {title}.", f"/student/activities/{activity_id}") for su in student_users]
+                        for notif in notifs:
+                            cur.execute("""
+                                INSERT INTO student_notifications (student_id, title, message, link) 
+                                VALUES (%s, %s, %s, %s)
+                            """, notif)
                         
             db.commit()
             
@@ -990,8 +993,8 @@ def teacher_exam_create():
 
     if request.method == "POST":
         title           = (request.form.get("title") or "").strip()
-        section_id      = request.form.get("section_id")
         subject_id      = request.form.get("subject_id")
+        section_ids     = request.form.getlist("section_ids")
         exam_type       = "exam"  # always 'exam' for this route
         duration_mins   = int(request.form.get("duration_mins", 60))
         scheduled_start = request.form.get("scheduled_start") or None
@@ -1001,34 +1004,42 @@ def teacher_exam_create():
         instructions    = (request.form.get("instructions") or "").strip() or None
         grading_period  = request.form.get("grading_period")
 
-        if not title or not section_id or not subject_id:
-            flash("Title, section, and subject are required.", "error")
+        if not title or not subject_id or not section_ids:
+            flash("Title, subject, and at least one section are required.", "error")
             return redirect(url_for("teacher.teacher_exam_create"))
+        
+        import uuid
+        batch_id = str(uuid.uuid4())[:8]
 
         try:
-            cur.execute("""
-                INSERT INTO exams (
-                    branch_id, section_id, subject_id, teacher_id,
+            primary_exam_id = None
+            for section_id in section_ids:
+                cur.execute("""
+                    INSERT INTO exams (
+                        branch_id, section_id, subject_id, teacher_id,
+                        title, exam_type, duration_mins,
+                        scheduled_start,
+                        max_attempts, passing_score,
+                        randomize,
+                        instructions, status, grading_period, is_visible, batch_id
+                    )
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'draft',%s,FALSE, %s)
+                    RETURNING exam_id
+                """, (
+                    branch_id, section_id, subject_id, user_id,
                     title, exam_type, duration_mins,
                     scheduled_start,
                     max_attempts, passing_score,
-                    randomize,
-                    instructions, status, grading_period, is_visible
-                )
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'draft',%s,FALSE)
-                RETURNING exam_id
-            """, (
-                branch_id, section_id, subject_id, user_id,
-                title, exam_type, duration_mins,
-                scheduled_start,
-                max_attempts, passing_score,
-                 randomize,
-                instructions, grading_period
-            ))
-            exam_id = cur.fetchone()["exam_id"]
+                     randomize,
+                    instructions, grading_period, batch_id
+                ))
+                exam_id = cur.fetchone()["exam_id"]
+                if primary_exam_id is None:
+                    primary_exam_id = exam_id
+            
             db.commit()
-            flash("Exam created! Now add your questions.", "success")
-            return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+            flash("Exam(s) created! Now add your questions.", "success")
+            return redirect(url_for("teacher.teacher_exam_questions", exam_id=primary_exam_id))
         except Exception as e:
             db.rollback()
             flash(f"Could not create exam: {str(e)}", "error")
@@ -1050,11 +1061,14 @@ def teacher_exam_create():
         sections = cur.fetchall() or []
 
         cur.execute("""
-            SELECT st.section_id, sub.subject_id, sub.name AS subject_name
+            SELECT st.section_id, sub.subject_id, sub.name AS subject_name,
+                   s.section_name, g.name AS grade_level_name
             FROM section_teachers st
-            JOIN subjects sub ON st.subject_id = sub.subject_id
+            JOIN subjects sub   ON st.subject_id = sub.subject_id
+            JOIN sections s     ON st.section_id = s.section_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
             WHERE st.teacher_id = %s
-            ORDER BY sub.name
+            ORDER BY sub.name, s.section_name
         """, (user_id,))
         assignments = cur.fetchall() or []
 
@@ -1103,21 +1117,30 @@ def teacher_exam_questions(exam_id):
             choices = json.dumps({"options": all_answers})
 
             try:
-                cur.execute("SELECT 1 FROM exams WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s",
+                cur.execute("SELECT batch_id FROM exams WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s",
                             (exam_id, user_id, branch_id))
-                if not cur.fetchone():
-                    flash("Exam not found.", "error")
+                exam_row = cur.fetchone()
+                if not exam_row:
+                    flash("Exam not found or unauthorized.", "error")
                     return redirect(url_for("teacher.teacher_exams"))
+                
+                batch_id = exam_row.get("batch_id")
+                target_exams = [exam_id]
+                if batch_id:
+                    cur.execute("SELECT exam_id FROM exams WHERE batch_id=%s AND teacher_id=%s", (batch_id, user_id))
+                    target_exams = [r["exam_id"] for r in cur.fetchall()]
 
-                for prompt, answer in pairs:
-                    cur.execute("""
-                        INSERT INTO exam_questions
-                            (exam_id, question_text, question_type, choices, correct_answer, points, order_num)
-                        VALUES (%s, %s, %s, %s, %s, %s,
-                            (SELECT COALESCE(MAX(order_num),0)+1 FROM exam_questions WHERE exam_id=%s))
-                    """, (exam_id, prompt, 'matching', choices, answer, points, exam_id))
+                for t_id in target_exams:
+                    for prompt, answer in pairs:
+                        cur.execute("""
+                            INSERT INTO exam_questions
+                                (exam_id, question_text, question_type, choices, correct_answer, points, order_num)
+                            VALUES (%s, %s, %s, %s, %s, %s,
+                                (SELECT COALESCE(MAX(order_num),0)+1 FROM exam_questions WHERE exam_id=%s))
+                        """, (t_id, prompt, 'matching', choices, answer, points, t_id))
                 db.commit()
-                flash(f"Added {len(pairs)} matching pairs!", "success")
+                sync_msg = " (synced across batch)" if len(target_exams) > 1 else ""
+                flash(f"Added {len(pairs)} matching pairs!{sync_msg}", "success")
             except Exception as e:
                 db.rollback()
                 flash(f"Could not add matching questions: {str(e)}", "error")
@@ -1146,12 +1169,6 @@ def teacher_exam_questions(exam_id):
                 return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
 
             try:
-                cur.execute("SELECT 1 FROM exams WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s",
-                            (exam_id, user_id, branch_id))
-                if not cur.fetchone():
-                    flash("Exam not found.", "error")
-                    return redirect(url_for("teacher.teacher_exams"))
-
                 cur.execute("""
                     INSERT INTO exam_questions
                         (exam_id, question_text, question_type, choices, correct_answer, points, order_num)
@@ -1381,7 +1398,8 @@ def teacher_quiz_create():
 
     if request.method == "POST":
         title         = (request.form.get("title") or "").strip()
-        assignment    = request.form.get("assignment", "")  # section_id_subject_id
+        subject_id    = request.form.get("subject_id")
+        section_ids   = request.form.getlist("section_ids")
         duration_mins = int(request.form.get("duration_mins", 30))
         scheduled_start = request.form.get("scheduled_start") or None
         max_attempts  = int(request.form.get("max_attempts", 1))
@@ -1390,36 +1408,35 @@ def teacher_quiz_create():
         instructions  = (request.form.get("instructions") or "").strip() or None
         grading_period = request.form.get("grading_period")
 
-        if not title or "_" not in assignment:
-            flash("Title and Section/Subject are required.", "error")
+        if not title or not subject_id or not section_ids:
+            flash("Title, Subject and at least one Section are required.", "error")
             return redirect(url_for("teacher.teacher_quiz_create"))
 
-        section_id, subject_id = assignment.split("_", 1)
-
-        if not title or not section_id or not subject_id:
-            flash("Title, section, and subject are required.", "error")
-            return redirect(url_for("teacher.teacher_quiz_create"))
+        import uuid
+        batch_id = str(uuid.uuid4())[:8]
 
         try:
-            cur.execute("""
-                INSERT INTO exams (
-                    branch_id, section_id, subject_id, teacher_id,
-                    title, exam_type, duration_mins,
+            primary_exam_id = None
+            for section_id in section_ids:
+                cur.execute("""
+                    INSERT INTO exams (
+                        branch_id, section_id, subject_id, teacher_id,
+                        title, exam_type, duration_mins,
+                        scheduled_start,
+                        max_attempts, passing_score,
+                        randomize,
+                        instructions, status, grading_period, is_visible, batch_id
+                    )
+                    VALUES (%s,%s,%s,%s,%s,'quiz',%s,%s,%s,%s,%s,%s,'draft',%s,FALSE,%s)
+                    RETURNING exam_id
+                """, (
+                    branch_id, section_id, subject_id, user_id,
+                    title, duration_mins,
                     scheduled_start,
                     max_attempts, passing_score,
                     randomize,
-                    instructions, status, grading_period, is_visible
-                )
-                VALUES (%s,%s,%s,%s,%s,'quiz',%s,%s,%s,%s,%s,%s,'draft', %s, FALSE)
-                RETURNING exam_id
-            """, (
-                branch_id, section_id, subject_id, user_id,
-                title, duration_mins,
-                scheduled_start,
-                max_attempts, passing_score,
-                randomize,
-                instructions, grading_period
-            ))
+                    instructions, grading_period, batch_id
+                ))
             exam_id = cur.fetchone()["exam_id"]
             db.commit()
             flash("Quiz created! Now add your questions.", "success")
@@ -1531,17 +1548,37 @@ def teacher_exam_question_delete(exam_id, question_id):
     db  = get_db_connection()
     cur = db.cursor()
     try:
-        # Verify ownership
-        cur.execute("SELECT 1 FROM exams WHERE exam_id=%s AND teacher_id=%s AND status='draft'",
-                    (exam_id, user_id))
-        if not cur.fetchone():
-            flash("Cannot delete — exam not found or already published.", "error")
+        # Fetch question details and batch info
+        cur.execute("""
+            SELECT q.question_text, q.question_type, e.batch_id 
+            FROM exam_questions q
+            JOIN exams e ON q.exam_id = e.exam_id
+            WHERE q.question_id=%s AND q.exam_id=%s AND e.teacher_id=%s AND e.status='draft'
+        """, (question_id, exam_id, user_id))
+        target_q = cur.fetchone()
+        
+        if not target_q:
+            flash("Cannot delete — question not found or exam is already published.", "error")
             return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
 
-        cur.execute("DELETE FROM exam_questions WHERE question_id=%s AND exam_id=%s",
-                    (question_id, exam_id))
+        batch_id = target_q.get("batch_id")
+        q_text = target_q["question_text"]
+        q_type = target_q["question_type"]
+
+        # Delete from current + others in batch if text and type match
+        if batch_id:
+            cur.execute("""
+                DELETE FROM exam_questions 
+                WHERE question_text = %s AND question_type = %s 
+                AND exam_id IN (SELECT exam_id FROM exams WHERE batch_id = %s AND teacher_id = %s)
+            """, (q_text, q_type, batch_id, user_id))
+            sync_msg = " (synced across batch)"
+        else:
+            cur.execute("DELETE FROM exam_questions WHERE question_id=%s AND exam_id=%s", (question_id, exam_id))
+            sync_msg = ""
+
         db.commit()
-        flash("Question deleted.", "success")
+        flash(f"Question deleted!{sync_msg}", "success")
     except Exception as e:
         db.rollback()
         flash(f"Could not delete: {str(e)}", "error")
@@ -1575,12 +1612,19 @@ def teacher_exam_import_questions(exam_id):
     try:
         # Verify exam belongs to teacher and is still draft
         cur.execute("""
-            SELECT 1 FROM exams
+            SELECT batch_id FROM exams
             WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s AND status='draft'
         """, (exam_id, user_id, branch_id))
-        if not cur.fetchone():
+        exam_row = cur.fetchone()
+        if not exam_row:
             flash("Exam not found or already published.", "error")
             return redirect(url_for("teacher.teacher_exams"))
+        
+        batch_id = exam_row.get("batch_id")
+        target_exams = [exam_id]
+        if batch_id:
+            cur.execute("SELECT exam_id FROM exams WHERE batch_id=%s AND teacher_id=%s", (batch_id, user_id))
+            target_exams = [r["exam_id"] for r in cur.fetchall()]
 
         ext = os.path.splitext(file.filename)[1].lower()
 
@@ -1665,23 +1709,23 @@ def teacher_exam_import_questions(exam_id):
                     skipped += 1
                     continue
 
-            # Check duplicate
-            cur.execute("""
-                SELECT 1 FROM exam_questions
-                WHERE exam_id=%s AND question_text=%s
-            """, (exam_id, question_text))
-            if cur.fetchone():
-                errors.append(f"Row {i}: Duplicate question — skipped.")
-                skipped += 1
-                continue
+            for t_id in target_exams:
+                # Check duplicate in this specific exam
+                cur.execute("""
+                    SELECT 1 FROM exam_questions
+                    WHERE exam_id=%s AND question_text=%s
+                """, (t_id, question_text))
+                if cur.fetchone():
+                    continue
 
-            cur.execute("""
-                INSERT INTO exam_questions
-                    (exam_id, question_text, question_type, choices, correct_answer, points, order_num)
-                VALUES (%s, %s, %s, %s, %s, %s,
-                    (SELECT COALESCE(MAX(order_num), 0) + 1 FROM exam_questions WHERE exam_id=%s))
-            """, (exam_id, question_text, question_type,
-                  choices, correct_answer, points, exam_id))
+                cur.execute("""
+                    INSERT INTO exam_questions
+                        (exam_id, question_text, question_type, choices, correct_answer, points, order_num)
+                    VALUES (%s, %s, %s, %s, %s, %s,
+                        (SELECT COALESCE(MAX(order_num), 0) + 1 FROM exam_questions WHERE exam_id=%s))
+                """, (t_id, question_text, question_type,
+                      choices, correct_answer, points, t_id))
+            
             inserted += 1
 
         db.commit()
@@ -1762,15 +1806,40 @@ def teacher_exam_question_edit(exam_id, question_id):
                 flash("Question text and correct answer are required.", "error")
                 return redirect(request.url)
 
+            # Fetch batch info and ORIGINAL question text/type for syncing
             cur.execute("""
-                UPDATE exam_questions
-                SET question_text=%s, question_type=%s, choices=%s,
-                    correct_answer=%s, points=%s
-                WHERE question_id=%s AND exam_id=%s
-            """, (question_text, question_type, choices,
-                  correct_answer, points, question_id, exam_id))
+                SELECT q.question_text, q.question_type, e.batch_id
+                FROM exam_questions q
+                JOIN exams e ON q.exam_id = e.exam_id
+                WHERE q.question_id = %s
+            """, (question_id,))
+            orig = cur.fetchone()
+            batch_id = orig.get("batch_id") if orig else None
+            orig_text = orig["question_text"] if orig else None
+            orig_type = orig["question_type"] if orig else None
+
+            if batch_id and orig_text:
+                cur.execute("""
+                    UPDATE exam_questions
+                    SET question_text=%s, question_type=%s, choices=%s,
+                        correct_answer=%s, points=%s
+                    WHERE question_text=%s AND question_type=%s
+                    AND exam_id IN (SELECT exam_id FROM exams WHERE batch_id=%s AND teacher_id=%s)
+                """, (question_text, question_type, choices,
+                      correct_answer, points, orig_text, orig_type, batch_id, user_id))
+                sync_msg = " (synced across batch)"
+            else:
+                cur.execute("""
+                    UPDATE exam_questions
+                    SET question_text=%s, question_type=%s, choices=%s,
+                        correct_answer=%s, points=%s
+                    WHERE question_id=%s AND exam_id=%s
+                """, (question_text, question_type, choices,
+                      correct_answer, points, question_id, exam_id))
+                sync_msg = ""
+
             db.commit()
-            flash("Question updated!", "success")
+            flash(f"Question updated!{sync_msg}", "success")
             return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
 
         # GET — fetch exam info for breadcrumb
@@ -2414,7 +2483,8 @@ def api_teacher_classlist(section_id):
         return jsonify({"error": str(e)}), 500
     finally:
         cur.close()
-        db.close()
+        db.close()
+
 
 @teacher_bp.route("/teacher/reschedule", methods=["POST"])
 def teacher_reschedule():
@@ -2519,10 +2589,19 @@ def toggle_activity_status(activity_id):
             student_users = cur.fetchall()
             if student_users:
                 for su in student_users:
-                    cur.execute("""
+                    # Ensure there are no stray backslashes or hidden characters
+                    cur.execute(
+                        """
                         INSERT INTO student_notifications (student_id, title, message, link) 
                         VALUES (%s, %s, %s, %s)
-                    """, (su['user_id'], f"New Activity: {title}", f"Your teacher posted a new activity: {title}.", f"/student/activities/{activity_id}"))
+                        """, 
+                        (
+                            su['user_id'], 
+                            f"New Activity: {title}", 
+                            f"Your teacher posted a new activity: {title}.", 
+                            f"/student/activities/{activity_id}"
+                        )
+                    )
         
         db.commit()
         return jsonify({"ok": True, "new_status": new_status})
