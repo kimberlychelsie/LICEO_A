@@ -1806,6 +1806,89 @@ def branch_admin_assign_students():
     )
 
 
+@branch_admin_bp.route("/branch-admin/api/assign-student-section", methods=["POST"])
+def api_assign_student_section():
+    """AJAX: assign a single student to a section (or clear it)"""
+    if session.get("role") != "branch_admin":
+        return {"error": "Unauthorized"}, 403
+
+    branch_id = session.get("branch_id")
+    data = request.get_json()
+    enrollment_id = data.get("enrollment_id")
+    section_id = data.get("section_id")  # None = unassign
+
+    if not enrollment_id:
+        return {"success": False, "message": "Missing enrollment_id"}, 400
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Verify enrollment belongs to this branch
+        cursor.execute(
+            "SELECT 1 FROM enrollments WHERE enrollment_id=%s AND branch_id=%s",
+            (enrollment_id, branch_id)
+        )
+        if not cursor.fetchone():
+            return {"success": False, "message": "Enrollment not found"}, 404
+
+        if section_id:
+            # Check capacity
+            cursor.execute("""
+                SELECT capacity,
+                       (SELECT COUNT(*) FROM enrollments
+                        WHERE section_id = s.section_id
+                          AND status IN ('approved','enrolled')) AS current_count
+                FROM sections s
+                WHERE s.section_id=%s AND s.branch_id=%s
+            """, (section_id, branch_id))
+            sec = cursor.fetchone()
+            if not sec:
+                return {"success": False, "message": "Section not found"}, 404
+            if sec["current_count"] >= sec["capacity"]:
+                return {"success": False, "message": f"Section is full ({sec['current_count']}/{sec['capacity']})"}, 400
+
+        cursor.execute(
+            "UPDATE enrollments SET section_id=%s WHERE enrollment_id=%s",
+            (section_id, enrollment_id)
+        )
+        db.commit()
+
+        # Auto-notify student about existing published activities in the new section
+        if section_id:
+            try:
+                cursor.execute("SELECT user_id FROM enrollments WHERE enrollment_id=%s LIMIT 1", (enrollment_id,))
+                student_row = cursor.fetchone()
+                if student_row:
+                    student_user_id = student_row["user_id"]
+                    cursor.execute("""
+                        SELECT a.activity_id, a.title FROM activities a
+                        WHERE a.section_id=%s AND a.branch_id=%s AND a.status='Published'
+                          AND NOT EXISTS (
+                              SELECT 1 FROM student_notifications sn
+                              WHERE sn.student_id=%s AND sn.link=CONCAT('/student/activities/', a.activity_id::text)
+                          )
+                    """, (section_id, branch_id, student_user_id))
+                    for act in (cursor.fetchall() or []):
+                        cursor.execute("""
+                            INSERT INTO student_notifications (student_id, title, message, link)
+                            VALUES (%s, %s, %s, %s)
+                        """, (student_user_id,
+                              f"Activity Available: {act['title']}",
+                              f"You have been added to a section with an existing activity: {act['title']}.",
+                              f"/student/activities/{act['activity_id']}"))
+                    db.commit()
+            except Exception:
+                db.rollback()
+
+        return {"success": True}
+    except Exception as e:
+        db.rollback()
+        return {"success": False, "message": str(e)}, 500
+    finally:
+        cursor.close()
+        db.close()
+
+
 # =======================
 # MANAGE ACCOUNTS
 # =======================

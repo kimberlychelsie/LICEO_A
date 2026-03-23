@@ -1,250 +1,351 @@
 {% extends "base.html" %}
 {% block title %}Assign Students to Sections{% endblock %}
-{% block content %}
+
+{% block styles %}
 <style>
-    .at-container {
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 20px;
-    }
+  .summary-bar {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .summary-chip {
+    padding: 8px 16px;
+    border-radius: 10px;
+    font-size: 0.83rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .chip-total  { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+  .chip-done   { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+  .chip-pending{ background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
 
-    .at-card {
-        background: #fff;
-        border: 1px solid #eee;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, .06);
-        margin-bottom: 18px;
-    }
+  .filter-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 16px;
+  }
 
-    .at-card h2 {
-        margin: 0 0 14px 0;
-        font-size: 18px;
-    }
+  .student-table tbody tr.hidden-row { display: none; }
 
-    .field {
-        width: 100%;
-        padding: 8px 10px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        font-size: 14px;
-        box-sizing: border-box;
-        background: #fff;
-    }
+  .section-select {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    font-size: 0.83rem;
+    background: var(--card);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    transition: border-color 0.15s;
+    cursor: pointer;
+  }
+  .section-select:focus {
+    outline: none;
+    border-color: var(--btn);
+  }
+  .section-select option:disabled { color: #94a3b8; }
 
-    .btn {
-        display: inline-block;
-        padding: 7px 14px;
-        border-radius: 8px;
-        border: 1px solid #ddd;
-        background: #f8f8f8;
-        text-decoration: none;
-        color: #222;
-        font-weight: 600;
-        cursor: pointer;
-        font-size: 13px;
-    }
+  .save-row-btn {
+    padding: 6px 14px;
+    border-radius: 8px;
+    border: none;
+    background: var(--btn);
+    color: #fff;
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s, opacity 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .save-row-btn:hover { background: var(--btnHover); }
+  .save-row-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+  .save-row-btn.saving { background: #64748b; }
+  .save-row-btn.saved  { background: #16a34a; }
+  .save-row-btn.error  { background: #dc2626; }
 
-    .btn:hover {
-        background: #efefef;
-    }
+  .row-status {
+    font-size: 0.75rem;
+    min-width: 50px;
+  }
 
-    .btn-primary {
-        background: #007bff;
-        color: #fff;
-        border-color: #007bff;
-    }
+  .toggle-unassigned {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    cursor: pointer;
+    font-size: 0.83rem;
+    font-weight: 600;
+    color: var(--text);
+    transition: border-color 0.15s, background 0.15s;
+    white-space: nowrap;
+  }
+  .toggle-unassigned.active {
+    border-color: #dc2626;
+    background: #fef2f2;
+    color: #991b1b;
+  }
 
-    .btn-primary:hover {
-        background: #0056b3;
-    }
+  .section-capacity-info {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .cap-full { color: #dc2626; font-weight: 700; }
 
-    .btn-sm {
-        padding: 5px 10px;
-        font-size: 12px;
-    }
-
-    .muted {
-        color: #666;
-        font-size: 12px;
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 14px;
-    }
-
-    th {
-        background: #f4f6f9;
-        text-align: left;
-        padding: 9px 12px;
-        font-size: 13px;
-        color: #555;
-        border-bottom: 2px solid #e5e7eb;
-    }
-
-    td {
-        padding: 8px 10px;
-        border-bottom: 1px solid #f0f0f0;
-        vertical-align: middle;
-    }
-
-    tr:last-child td {
-        border-bottom: none;
-    }
-
-    .back-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        color: #007bff;
-        text-decoration: none;
-        font-size: 14px;
-        margin-bottom: 14px;
-    }
-
-    .back-link:hover {
-        text-decoration: underline;
-    }
-
-    .badge-assigned {
-        display: inline-block;
-        padding: 3px 9px;
-        border-radius: 999px;
-        background: #d1fae5;
-        color: #065f46;
-        font-size: 12px;
-        font-weight: 700;
-    }
-
-    .badge-none {
-        display: inline-block;
-        padding: 3px 9px;
-        border-radius: 999px;
-        background: #fee2e2;
-        color: #991b1b;
-        font-size: 12px;
-        font-weight: 600;
-    }
-
-    /* ← NEW: grade level badge */
-    .badge-grade {
-        display: inline-block;
-        padding: 3px 9px;
-        border-radius: 999px;
-        background: #eff6ff;
-        color: #1d4ed8;
-        font-size: 12px;
-        font-weight: 700;
-        border: 1px solid #bfdbfe;
-    }
+  .grade-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .grade-tab {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .grade-tab:hover { background: var(--sidebar-hover); color: var(--btn); border-color: var(--btn); }
+  .grade-tab.active { background: var(--btn); color: #fff; border-color: var(--btn); }
 </style>
+{% endblock %}
 
-<div class="at-container">
-    <a class="back-link" href="{{ url_for('branch_admin.dashboard') }}">← Back to Dashboard</a>
-    <h1 style="margin: 0 0 6px 0;">🎓 Assign Students to Sections</h1>
-    <p class="muted" style="margin-bottom: 18px;">
-        Select a section for each approved student. Students will only see the subjects assigned to their section.
-    </p>
+{% block content %}
+<div style="max-width:1100px;">
 
-    <!-- Filter by Grade Level -->
-    <div
-        style="margin-bottom: 16px; background: #fff; padding: 12px 16px; border-radius: 9px; border: 1px solid #eee; display: flex; align-items: center; gap: 12px;">
-        <span style="font-weight: 600; font-size: 14px;">Filter by Grade:</span>
-        <select class="field" style="max-width: 250px;" onchange="window.location.href='?grade=' + this.value;">
-            {% for g in grade_options %}
-            <option value="{{ g.id }}" {% if grade_filter==g.id|string %}selected{% endif %}>{{ g.name }}</option>
-            {% endfor %}
-        </select>
-    </div>
+  <!-- Header -->
+  <div style="margin-bottom:18px;">
+    <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:4px;">🎓 Assign Students to Sections</h2>
+    <p style="color:var(--muted);font-size:0.88rem;">Select a section for each approved student. Saving is instant — no page reload needed.</p>
+  </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% for cat, msg in messages %}
-    <div style="padding: 10px 14px; border-radius: 9px; margin-bottom: 12px;
-        background: {{ '#d1e7dd' if cat == 'success' else '#f8d7da' }};
-        color: {{ '#0f5132' if cat == 'success' else '#842029' }};
-        border: 1px solid {{ '#badbcc' if cat == 'success' else '#f5c2c7' }};">
-        {{ msg }}
-    </div>
+  <!-- Grade level tabs -->
+  <div class="grade-tabs">
+    {% for g in grade_options %}
+    <a href="?grade={{ g.id }}" class="grade-tab {% if grade_filter == g.id|string %}active{% endif %}">{{ g.name }}</a>
     {% endfor %}
-    {% endwith %}
+  </div>
 
-    {% if not students %}
-    <div class="at-card">
-        <div class="muted" style="text-align: center; padding: 24px;">
-            <div style="font-size: 32px; margin-bottom: 8px;">📭</div>
-            No approved students found for this grade level.
+  {% if students %}
+  <!-- Summary chips -->
+  {% set assigned_count = students | selectattr('section_name') | list | length %}
+  {% set pending_count = students | length - assigned_count %}
+  <div class="summary-bar">
+    <div class="summary-chip chip-total">👥 {{ students | length }} Students</div>
+    <div class="summary-chip chip-done">✓ {{ assigned_count }} Assigned</div>
+    <div class="summary-chip chip-pending">⏳ {{ pending_count }} Pending</div>
+  </div>
+
+  <!-- Section capacity overview -->
+  {% if sections %}
+  <div class="card" style="margin-bottom:18px;padding:16px 20px;">
+    <div style="font-weight:700;font-size:0.88rem;margin-bottom:10px;color:var(--muted);">SECTION CAPACITY</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      {% for sec in sections %}
+      {% set is_full = sec.current_count >= sec.capacity %}
+      <div style="padding:8px 14px;border-radius:9px;border:1.5px solid {% if is_full %}#fecaca{% else %}var(--border){% endif %};background:{% if is_full %}#fef2f2{% else %}var(--card){% endif %};">
+        <div style="font-weight:700;font-size:0.82rem;">{{ sec.section_name }}</div>
+        <div style="font-size:0.73rem;{% if is_full %}color:#dc2626;font-weight:700;{% else %}color:var(--muted);{% endif %}">
+          {{ sec.current_count }}/{{ sec.capacity }} {% if is_full %}• Full{% endif %}
         </div>
+      </div>
+      {% endfor %}
     </div>
-    {% else %}
+  </div>
+  {% endif %}
 
-    <div class="at-card">
-        <h2>Students and Section Assignments</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Enrollment #</th>
-                    <th>Student Name</th>
-                    <th>Grade Level</th> <!-- ← NEW column -->
-                    <th>Current Section</th>
-                    <th style="min-width: 220px;">Assign Section</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for s in students %}
-                <tr>
-                    <td class="muted">#{{ s.branch_enrollment_no }}</td>
-                    <td><strong>{{ s.student_name }}</strong></td>
-                    <td>
-                        <!-- ← NEW: show grade level badge -->
-                        {% if s.grade_level %}
-                        <span class="badge-grade">{{ s.grade_level }}</span>
-                        {% else %}
-                        <span class="muted">—</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if s.section_name %}
-                        <span class="badge-assigned">{{ s.section_name }}</span>
-                        {% else %}
-                        <span class="badge-none">No Section</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if is_branch_active_status %}
-                        <form method="post"
-                            action="{{ url_for('branch_admin.branch_admin_assign_students', grade=grade_filter) }}"
-                            style="display: flex; gap: 6px; align-items: center;">
-                            <input type="hidden" name="enrollment_id" value="{{ s.enrollment_id }}">
-                            <select name="section_id" class="field" style="flex: 1;">
-                                <option value="">— Select Section —</option>
-                                {% for sec in sections %}
-                                {% set is_full = sec.current_count >= sec.capacity %}
-                                {% set is_current = (sec.section_id == s.section_id) %}
-                                <option value="{{ sec.section_id }}" 
-                                    {{ 'selected' if is_current else '' }} 
-                                    {{ 'disabled' if is_full and not is_current else '' }}
-                                    style="{{ 'color: #dc3545; font-weight: bold;' if is_full and not is_current else '' }}">
-                                    {{ sec.section_name }} 
-                                    {% if is_full %}
-                                        (Full: {{ sec.current_count }}/{{ sec.capacity }})
-                                    {% else %}
-                                        (Available: {{ sec.current_count }}/{{ sec.capacity }})
-                                    {% endif %}
-                                </option>
-                                {% endfor %}
-                            </select>
-                            <button type="submit" class="btn btn-primary btn-sm">Save</button>
-                        </form>
-                        {% endif %}
-                    </td>
-                </tr>
+  <!-- Filters -->
+  <div class="filter-row">
+    <input type="text" id="searchInput" class="form-input" style="max-width:280px;"
+      placeholder="🔍 Search student name…" oninput="applyFilters()">
+    <button class="toggle-unassigned" id="pendingToggle" onclick="togglePending()">
+      ⏳ Show Unassigned Only
+    </button>
+    <span style="margin-left:auto;font-size:0.8rem;color:var(--muted);" id="visibleCount"></span>
+  </div>
+
+  <!-- Student table -->
+  <div class="card" style="padding:0;overflow:hidden;">
+    <div class="table-wrap">
+      <table class="student-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Student Name</th>
+            <th>Current Section</th>
+            {% if is_branch_active_status %}<th style="min-width:220px;">Assign Section</th><th></th>{% endif %}
+          </tr>
+        </thead>
+        <tbody id="studentTbody">
+          {% for s in students %}
+          <tr data-name="{{ s.student_name | lower }}" data-assigned="{{ '1' if s.section_name else '0' }}"
+              data-enrollment="{{ s.enrollment_id }}">
+            <td style="color:var(--muted);font-size:0.8rem;">#{{ s.branch_enrollment_no }}</td>
+            <td><strong>{{ s.student_name }}</strong></td>
+            <td id="sectionLabel_{{ s.enrollment_id }}">
+              {% if s.section_name %}
+              <span class="badge badge-green">{{ s.section_name }}</span>
+              {% else %}
+              <span class="badge badge-red">No Section</span>
+              {% endif %}
+            </td>
+            {% if is_branch_active_status %}
+            <td>
+              <select class="section-select" id="sel_{{ s.enrollment_id }}"
+                onchange="markChanged({{ s.enrollment_id }})">
+                <option value="">— No Section —</option>
+                {% for sec in sections %}
+                {% set is_full = sec.current_count >= sec.capacity %}
+                {% set is_current = (sec.section_id == s.section_id) %}
+                <option value="{{ sec.section_id }}"
+                  {{ 'selected' if is_current else '' }}
+                  {{ 'disabled' if is_full and not is_current else '' }}>
+                  {{ sec.section_name }}
+                  {% if is_full and not is_current %}(Full {{ sec.current_count }}/{{ sec.capacity }})
+                  {% else %}({{ sec.current_count }}/{{ sec.capacity }}){% endif %}
+                </option>
                 {% endfor %}
-            </tbody>
-        </table>
+              </select>
+            </td>
+            <td style="white-space:nowrap;">
+              <button class="save-row-btn" id="btn_{{ s.enrollment_id }}" disabled
+                onclick="saveStudent({{ s.enrollment_id }})">
+                Save
+              </button>
+              <span class="row-status" id="status_{{ s.enrollment_id }}"></span>
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
-    {% endif %}
+  </div>
+
+  {% else %}
+  <div class="card" style="text-align:center;padding:48px;">
+    <div style="font-size:2.5rem;margin-bottom:10px;">📭</div>
+    <div style="color:var(--muted);">No approved students found for this grade level.</div>
+  </div>
+  {% endif %}
 
 </div>
+
+<script>
+  let showPendingOnly = false;
+
+  function applyFilters() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('#studentTbody tr');
+    let visible = 0;
+    rows.forEach(row => {
+      const name = row.dataset.name || '';
+      const assigned = row.dataset.assigned === '1';
+      const matchSearch = !search || name.includes(search);
+      const matchPending = !showPendingOnly || !assigned;
+      if (matchSearch && matchPending) {
+        row.classList.remove('hidden-row');
+        visible++;
+      } else {
+        row.classList.add('hidden-row');
+      }
+    });
+    const countEl = document.getElementById('visibleCount');
+    if (countEl) countEl.textContent = `Showing ${visible} of ${rows.length}`;
+  }
+
+  function togglePending() {
+    showPendingOnly = !showPendingOnly;
+    const btn = document.getElementById('pendingToggle');
+    btn.classList.toggle('active', showPendingOnly);
+    btn.textContent = showPendingOnly ? '✕ Show All Students' : '⏳ Show Unassigned Only';
+    applyFilters();
+  }
+
+  function markChanged(enrollmentId) {
+    const btn = document.getElementById('btn_' + enrollmentId);
+    btn.disabled = false;
+    btn.className = 'save-row-btn';
+    btn.textContent = 'Save';
+    document.getElementById('status_' + enrollmentId).textContent = '';
+  }
+
+  function saveStudent(enrollmentId) {
+    const sel = document.getElementById('sel_' + enrollmentId);
+    const btn = document.getElementById('btn_' + enrollmentId);
+    const statusEl = document.getElementById('status_' + enrollmentId);
+    const sectionId = sel.value ? parseInt(sel.value) : null;
+
+    btn.disabled = true;
+    btn.className = 'save-row-btn saving';
+    btn.textContent = '…';
+    statusEl.textContent = '';
+
+    fetch('/branch-admin/api/assign-student-section', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ enrollment_id: enrollmentId, section_id: sectionId })
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          btn.className = 'save-row-btn saved';
+          btn.textContent = '✓ Saved';
+
+          // Update the section label cell and row data
+          const row = btn.closest('tr');
+          const labelCell = document.getElementById('sectionLabel_' + enrollmentId);
+          const selectedText = sectionId ? sel.options[sel.selectedIndex].text.split('(')[0].trim() : null;
+
+          if (selectedText && sectionId) {
+            labelCell.innerHTML = `<span class="badge badge-green">${selectedText}</span>`;
+            row.dataset.assigned = '1';
+          } else {
+            labelCell.innerHTML = `<span class="badge badge-red">No Section</span>`;
+            row.dataset.assigned = '0';
+          }
+
+          setTimeout(() => {
+            btn.textContent = 'Save';
+            btn.className = 'save-row-btn';
+            btn.disabled = true;
+          }, 1500);
+        } else {
+          btn.className = 'save-row-btn error';
+          btn.textContent = '✗';
+          btn.disabled = false;
+          statusEl.innerHTML = `<span style="color:#dc2626;font-size:0.73rem;">${data.message || 'Error'}</span>`;
+          setTimeout(() => {
+            btn.textContent = 'Save';
+            btn.className = 'save-row-btn';
+          }, 2000);
+        }
+      })
+      .catch(() => {
+        btn.className = 'save-row-btn error';
+        btn.textContent = '✗';
+        btn.disabled = false;
+        statusEl.innerHTML = '<span style="color:#dc2626;font-size:0.73rem;">Network error</span>';
+      });
+  }
+
+  // Init count
+  applyFilters();
+</script>
 {% endblock %}
