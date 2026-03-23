@@ -41,6 +41,7 @@ def get_db_connection():
                 cur.execute("ALTER TABLE exams ADD COLUMN is_visible BOOLEAN DEFAULT FALSE")
             if 'batch_id' not in existing_cols:
                 cur.execute("ALTER TABLE exams ADD COLUMN batch_id VARCHAR(20)")
+            conn.commit()
 
             # Simple migration for activities table
             cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'activities'")
@@ -49,6 +50,7 @@ def get_db_connection():
                 cur.execute("ALTER TABLE activities ADD COLUMN grading_period VARCHAR(50)")
             if 'batch_id' not in act_cols:
                 cur.execute("ALTER TABLE activities ADD COLUMN batch_id VARCHAR(20)")
+            conn.commit()
 
             # Simple migration for attendance_scores table
             cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'attendance_scores'")
@@ -67,18 +69,30 @@ def get_db_connection():
                     ALTER TABLE attendance_scores 
                     ADD CONSTRAINT uq_attendance UNIQUE (enrollment_id, section_id, subject_id, grading_period)
                 """)
+            conn.commit()
 
             # Profile image migration
-            cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'users'")
-            user_cols = [r[0] for r in cur.fetchall()]
-            if 'profile_image' not in user_cols:
-                cur.execute("ALTER TABLE users ADD COLUMN profile_image VARCHAR(255)")
-            # Also add to enrollments for students who don't have users rows yet
-            cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'enrollments'")
-            enr_cols = [r[0] for r in cur.fetchall()]
-            if 'profile_image' not in enr_cols:
-                cur.execute("ALTER TABLE enrollments ADD COLUMN profile_image VARCHAR(255)")
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'users'")
+                user_cols = [r[0] for r in cur.fetchall()]
+                if 'profile_image' not in user_cols:
+                    cur.execute("ALTER TABLE users ADD COLUMN profile_image VARCHAR(255)")
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate users table: {e}")
+                conn.rollback()  # Rollback failed transaction block
+            
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'enrollments'")
+                enr_cols = [r[0] for r in cur.fetchall()]
+                if 'profile_image' not in enr_cols:
+                    cur.execute("ALTER TABLE enrollments ADD COLUMN profile_image VARCHAR(255)")
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate enrollments table: {e}")
+                conn.rollback()
                 
+        # Commit successful things
         conn.commit()
 
         return conn
