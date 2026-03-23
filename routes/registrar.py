@@ -533,6 +533,7 @@ Registrar
 
 import os
 from werkzeug.utils import secure_filename
+from cloudinary_helper import upload_file_to_subfolder
 
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 def allowed_file(filename):
@@ -567,30 +568,30 @@ def registrar_profile_pictures():
                 return redirect(request.url)
 
             if file and allowed_file(file.filename):
-                filename = secure_filename(f"{user_type}_{target_id}_{file.filename}")
-                # We save images to 'static/uploads/profiles'
-                upload_folder = os.path.join(request.environ.get('FLASK_APP_DIR', os.getcwd()), 'static', 'uploads', 'profiles')
-                os.makedirs(upload_folder, exist_ok=True)
-                file_path = os.path.join(upload_folder, filename)
-                file.save(file_path)
+                try:
+                    # Upload to Cloudinary (returns a secure URL)
+                    file_url = upload_file_to_subfolder(file, "profiles")
 
-                if user_type == 'student':
-                    # Update enrollments and if they have user account, update users too
-                    cursor.execute("UPDATE enrollments SET profile_image = %s WHERE enrollment_id = %s", (filename, target_id))
+                    if user_type == 'student':
+                        # Update enrollments and if they have user account, update users too
+                        cursor.execute("UPDATE enrollments SET profile_image = %s WHERE enrollment_id = %s", (file_url, target_id))
+                        
+                        # See if student account exists to update users table as well
+                        cursor.execute("""
+                            SELECT user_id FROM enrollments WHERE enrollment_id = %s
+                        """, (target_id,))
+                        row = cursor.fetchone()
+                        if row and row['user_id']:
+                            cursor.execute("UPDATE users SET profile_image = %s WHERE user_id = %s", (file_url, row['user_id']))
+
+                    elif user_type == 'teacher':
+                        cursor.execute("UPDATE users SET profile_image = %s WHERE user_id = %s", (file_url, target_id))
                     
-                    # See if student account exists to update users table as well
-                    cursor.execute("""
-                        SELECT user_id FROM enrollments WHERE enrollment_id = %s
-                    """, (target_id,))
-                    row = cursor.fetchone()
-                    if row and row['user_id']:
-                        cursor.execute("UPDATE users SET profile_image = %s WHERE user_id = %s", (filename, row['user_id']))
-
-                elif user_type == 'teacher':
-                    cursor.execute("UPDATE users SET profile_image = %s WHERE user_id = %s", (filename, target_id))
-                
-                db.commit()
-                flash("Profile picture uploaded successfully!", "success")
+                    db.commit()
+                    flash("Profile picture uploaded successfully!", "success")
+                except Exception as e:
+                    db.rollback()
+                    flash(f"Error uploading image: {e}", "error")
             else:
                 flash("Invalid file type. Allowed: png, jpg, jpeg, gif", "error")
 

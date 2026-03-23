@@ -1049,7 +1049,7 @@
     <div class="sb-user">
       {% if live_profile_image %}
       <div class="sb-avatar" style="padding:0; overflow:hidden; background:transparent;">
-        <img src="{{ url_for('static', filename='uploads/profiles/' ~ live_profile_image) }}" style="width:100%;height:100%;object-fit:cover;">
+        <img src="{% if live_profile_image.startswith('http') %}{{ live_profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ live_profile_image) }}{% endif %}" style="width:100%;height:100%;object-fit:cover;">
       </div>
       {% else %}
       <div class="sb-avatar">{{ disp[0] | upper }}</div>
@@ -1353,7 +1353,7 @@
       <div class="profile-dropdown-wrapper">
         <button class="profile-toggle-btn" id="profileBtn" onclick="toggleProfileMenu()">
           {% if live_profile_image %}
-          <img src="{{ url_for('static', filename='uploads/profiles/' ~ live_profile_image) }}" class="sb-avatar" style="width: 34px; height: 34px; border: 2px solid rgba(255,255,255,0.3); object-fit: cover;">
+          <img src="{% if live_profile_image.startswith('http') %}{{ live_profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ live_profile_image) }}{% endif %}" class="sb-avatar" style="width: 34px; height: 34px; border: 2px solid rgba(255,255,255,0.3); object-fit: cover;">
           {% else %}
           <div class="sb-avatar"
             style="width: 34px; height: 34px; font-size: 0.75rem; border: 2px solid rgba(255,255,255,0.3);">

@@ -156,7 +156,7 @@
             <tr data-name="{{ s.student_name | lower }}">
               <td>
                 {% if s.profile_image %}
-                <img src="{{ url_for('static', filename='uploads/profiles/' ~ s.profile_image) }}" class="avatar-preview">
+                <img src="{% if s.profile_image.startswith('http') %}{{ s.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ s.profile_image) }}{% endif %}" class="avatar-preview">
                 {% else %}
                 <div class="avatar-preview">{{ s.student_name[0]|upper }}</div>
                 {% endif %}
@@ -183,7 +183,7 @@
                     <button type="button" class="btn-choose">📁 Choose File</button>
                     <input type="file" name="profile_image" accept=".png,.jpg,.jpeg,.gif" required onchange="this.previousElementSibling.textContent = this.files[0].name.substring(0,15) + (this.files[0].name.length>15?'...':'')">
                   </div>
-                  <button type="submit" class="upload-btn">Upload</button>
+                  <button type="submit" class="upload-btn">{% if s.profile_image %}Update{% else %}Upload{% endif %}</button>
                 </form>
               </td>
             </tr>
@@ -218,7 +218,7 @@
             <tr data-name="{{ t.full_name | lower }}">
               <td>
                 {% if t.profile_image %}
-                <img src="{{ url_for('static', filename='uploads/profiles/' ~ t.profile_image) }}" class="avatar-preview">
+                <img src="{% if t.profile_image.startswith('http') %}{{ t.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ t.profile_image) }}{% endif %}" class="avatar-preview">
                 {% else %}
                 <div class="avatar-preview">{{ (t.full_name or t.username)[0]|upper }}</div>
                 {% endif %}
@@ -234,7 +234,7 @@
                     <button type="button" class="btn-choose">📁 Choose File</button>
                     <input type="file" name="profile_image" accept=".png,.jpg,.jpeg,.gif" required onchange="this.previousElementSibling.textContent = this.files[0].name.substring(0,15) + (this.files[0].name.length>15?'...':'')">
                   </div>
-                  <button type="submit" class="upload-btn">Upload</button>
+                  <button type="submit" class="upload-btn">{% if t.profile_image %}Update{% else %}Upload{% endif %}</button>
                 </form>
               </td>
             </tr>
