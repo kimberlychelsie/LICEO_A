@@ -220,6 +220,19 @@ def dashboard():
         ph_tz = pytz.timezone("Asia/Manila")
         now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
 
+        school_year_label = None
+        if student.get("section_id"):
+            cursor.execute("""
+    SELECT sy.label
+    FROM sections s
+    LEFT JOIN school_years sy ON s.year_id = sy.year_id
+    WHERE s.section_id = %s
+""", (student["section_id"],))
+
+        row = cursor.fetchone()
+        school_year_label = row["label"] if row and row.get("label") else None
+
+
         return render_template(
             "student_dashboard.html",
             student=student,
@@ -231,6 +244,7 @@ def dashboard():
             subjects_for_grade=subject_rows,
             reservations=reservations,
             now=now_naive,
+            school_year_label=school_year_label,
         )
 
     finally:
@@ -368,6 +382,7 @@ def subject_view(subject_id):
     
     enrollment_id = session.get("enrollment_id")
     student_user_id = session.get("user_id")
+    print("SESSION VALUES:", session.get("user_id"), session.get("enrollment_id"))
     
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -401,14 +416,24 @@ def subject_view(subject_id):
             return redirect(url_for("student_portal.dashboard"))
         
         # Get activities for this subject/section/branch — section-based, not student-based
-        cur.execute('''
-            SELECT a.*, subm.status as submission_status, subm.submission_id
-            FROM activities a
-            LEFT JOIN activity_submissions subm ON a.activity_id = subm.activity_id AND subm.student_id = %s
-            WHERE a.subject_id = %s AND a.section_id = %s AND a.branch_id = %s AND a.status = 'Published'
-            ORDER BY a.due_date ASC
-        ''', (student_user_id, subject_id, student_section_id, student_branch_id))
-        activities = cur.fetchall()
+        if enrollment_id and student_user_id:
+            cur.execute('''
+    SELECT a.*, subm.status as submission_status, subm.submission_id
+    FROM activities a
+    LEFT JOIN activity_submissions subm 
+        ON a.activity_id = subm.activity_id 
+        AND subm.student_id = %s 
+        AND subm.enrollment_id = %s
+    WHERE a.subject_id = %s 
+      AND a.section_id = %s 
+      AND a.branch_id = %s 
+      AND a.status = 'Published'
+    ORDER BY a.due_date ASC
+''', (student_user_id, enrollment_id, subject_id, student_section_id, student_branch_id))
+            activities = cur.fetchall()
+        else:
+            activities = []
+            print("DEBUG VALUES:", student_user_id, enrollment_id, subject_id, student_section_id, student_branch_id)
 
         # Get quizzes for this subject/section — shown on the same page as activities
         cur.execute("""
@@ -483,12 +508,12 @@ def activities():
                 JOIN sections s ON a.section_id = s.section_id
                 JOIN subjects sub ON a.subject_id = sub.subject_id
                 LEFT JOIN users u ON a.teacher_id = u.user_id
-                LEFT JOIN activity_submissions subm ON subm.activity_id = a.activity_id AND subm.student_id = %s
+                LEFT JOIN activity_submissions subm ON subm.activity_id = a.activity_id AND subm.student_id = %s AND subm.enrollment_id = %s  
                 LEFT JOIN activity_grades g ON g.submission_id = subm.submission_id
                 LEFT JOIN individual_extensions ext ON ext.item_id = a.activity_id AND ext.enrollment_id = %s AND ext.item_type = 'activity'
                 WHERE a.section_id = %s AND a.branch_id = %s AND a.status = 'Published'
                 ORDER BY a.activity_id, subm.submitted_at DESC
-            ''', (student_user_id, enrollment_id, section_id, branch_id))
+            ''', (student_user_id, enrollment_id, enrollment_id, section_id, branch_id))
             activities_raw = cur.fetchall()
             
             # Sort by ascending due date in python since we used distinct on activity_id
@@ -542,13 +567,13 @@ def activity_detail(activity_id):
             
         # Get submission if exists
         cur.execute('''
-            SELECT sub.*, g.grade_id, g.raw_score, g.percentage, g.remarks
-            FROM activity_submissions sub
-            LEFT JOIN activity_grades g ON g.submission_id = sub.submission_id
-            WHERE sub.activity_id = %s AND sub.student_id = %s
-            ORDER BY sub.submitted_at DESC LIMIT 1
-        ''', (activity_id, student_user_id))
-        submission = cur.fetchone()
+    SELECT sub.*, g.grade_id, g.raw_score, g.percentage, g.remarks
+    FROM activity_submissions sub
+    LEFT JOIN activity_grades g ON g.submission_id = sub.submission_id
+    WHERE sub.activity_id = %s AND sub.student_id = %s AND sub.enrollment_id = %s
+    ORDER BY sub.submitted_at DESC LIMIT 1
+    ''', (activity_id, student_user_id, enrollment_id))
+        submission = cur.fetchone() 
         
     finally:
         cur.close()

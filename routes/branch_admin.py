@@ -855,7 +855,25 @@ def branch_admin_grade_level_delete(grade_id):
     flash("Grade level deleted.", "success")
     return redirect(url_for("branch_admin.branch_admin_grade_levels"))
 
+#SCHOOL YEAR
 
+@branch_admin_bp.route('/branch_admin/add_year', methods=['GET', 'POST'])
+def add_year():
+    db = get_db_connection()
+    cursor = db.cursor()
+    if request.method == 'POST':
+        label = request.form['label'].strip()
+        cursor.execute("INSERT INTO school_years (label) VALUES (%s) ON CONFLICT DO NOTHING", (label,))
+        db.commit()
+        flash("School year added!", "success")
+       
+        return redirect(url_for('branch_admin.add_year'))
+
+    cursor.execute("SELECT year_id, label FROM school_years ORDER BY label DESC")
+    years = cursor.fetchall()
+    cursor.close()
+    db.close()
+    return render_template('branch_admin_school_years.html', years=years)
 # =======================
 # SECTIONS (branch-scoped)
 @branch_admin_bp.route("/branch-admin/sections", methods=["GET", "POST"])
@@ -871,7 +889,7 @@ def branch_admin_sections():
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    # ✅ Check only THIS branch's grade levels, not all branches
+    # -- UNCHANGED: Check and populate grade levels --
     cursor.execute("SELECT COUNT(*) FROM grade_levels WHERE branch_id = %s", (branch_id,))
     if cursor.fetchone()['count'] == 0:
         default_grades = [
@@ -882,22 +900,25 @@ def branch_admin_sections():
         for g_name, g_order in default_grades:
             cursor.execute(
                 "INSERT INTO grade_levels (name, display_order, branch_id) VALUES (%s, %s, %s)",
-                (g_name, g_order, branch_id)  # ✅ include branch_id
+                (g_name, g_order, branch_id)
             )
         db.commit()
 
-    # ✅ Only fetch THIS branch's grade levels for the dropdown
     cursor.execute(
         "SELECT id, name FROM grade_levels WHERE branch_id = %s ORDER BY display_order",
         (branch_id,)
     )
     grades = cursor.fetchall() or []
 
+    # --- NEW: Fetch available years for dropdown
+    cursor.execute("SELECT year_id, label FROM school_years ORDER BY label DESC")
+    years = cursor.fetchall() or []
+
     if request.method == "POST":
         section_name = (request.form.get("section_name") or "").strip()
         grade_level_id_raw = request.form.get("grade_level_id")
-        school_year = (request.form.get("school_year") or "").strip() or None
-        
+        year_id_raw = request.form.get("year_id")
+
         try:
             capacity = int(request.form.get("capacity") or 50)
             if capacity < 1:
@@ -910,8 +931,12 @@ def branch_admin_sections():
         except (TypeError, ValueError):
             grade_level_id = None
 
-        if section_name and grade_level_id:
-            # ✅ Verify the grade_level_id belongs to this branch before inserting
+        try:
+            year_id = int(year_id_raw)
+        except (TypeError, ValueError):
+            year_id = None
+
+        if section_name and grade_level_id and year_id:
             cursor.execute(
                 "SELECT 1 FROM grade_levels WHERE id = %s AND branch_id = %s",
                 (grade_level_id, branch_id)
@@ -922,29 +947,38 @@ def branch_admin_sections():
                 db.close()
                 return redirect("/branch-admin/sections")
 
+            cursor.execute("SELECT 1 FROM school_years WHERE year_id = %s", (year_id,))
+            if not cursor.fetchone():
+                flash("Invalid school year selected.", "error")
+                cursor.close()
+                db.close()
+                return redirect("/branch-admin/sections")
+
             try:
                 cursor.execute("""
-                    INSERT INTO sections (branch_id, school_year, section_name, grade_level_id, capacity)
+                    INSERT INTO sections (branch_id, year_id, section_name, grade_level_id, capacity)
                     VALUES (%s, %s, %s, %s, %s)
-                """, (branch_id, school_year, section_name, grade_level_id, capacity))
+                """, (branch_id, year_id, section_name, grade_level_id, capacity))
                 db.commit()
                 flash("Section added.", "success")
             except Exception as e:
                 db.rollback()
                 flash(f"Could not add section: {str(e)}", "error")
         else:
-            flash("Section name and grade level are required.", "error")
+            flash("Section name, grade level, and year are required.", "error")
 
         cursor.close()
         db.close()
         return redirect("/branch-admin/sections")
 
+    # -- Update to include school year label
     cursor.execute("""
-        SELECT s.*, g.name AS grade_level_name
+        SELECT s.*, g.name AS grade_level_name, y.label AS school_year_label
         FROM sections s
         LEFT JOIN grade_levels g ON s.grade_level_id = g.id
+        LEFT JOIN school_years y ON s.year_id = y.year_id
         WHERE s.branch_id = %s
-        ORDER BY g.display_order, s.section_name
+        ORDER BY y.label DESC, g.display_order, s.section_name
     """, (branch_id,))
     sections = cursor.fetchall() or []
 
@@ -954,7 +988,8 @@ def branch_admin_sections():
     return render_template(
         "branch_admin_sections.html",
         sections=sections,
-        grades=grades
+        grades=grades,
+        years=years  # <-- Pass to template!
     )
 
 
