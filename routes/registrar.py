@@ -528,8 +528,134 @@ Registrar
 
 
 # ══════════════════════════════════════════
+# PROFILE PICTURES
+# ══════════════════════════════════════════
+
+import os
+from werkzeug.utils import secure_filename
+
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+@registrar_bp.route("/registrar/profile-pictures", methods=["GET", "POST"])
+def registrar_profile_pictures():
+    # Only registrar
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("Missing branch in session. Please login again.", "error")
+        return redirect("/logout")
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        if request.method == "POST":
+            user_type = request.form.get("user_type") # 'student' or 'teacher'
+            target_id = request.form.get("target_id") # enrollment_id or user_id
+            
+            if 'profile_image' not in request.files:
+                flash("No file part", "error")
+                return redirect(request.url)
+            
+            file = request.files['profile_image']
+            if file.filename == '':
+                flash("No selected file", "error")
+                return redirect(request.url)
+
+            if file and allowed_file(file.filename):
+                filename = secure_filename(f"{user_type}_{target_id}_{file.filename}")
+                # We save images to 'static/uploads/profiles'
+                upload_folder = os.path.join(request.environ.get('FLASK_APP_DIR', os.getcwd()), 'static', 'uploads', 'profiles')
+                os.makedirs(upload_folder, exist_ok=True)
+                file_path = os.path.join(upload_folder, filename)
+                file.save(file_path)
+
+                if user_type == 'student':
+                    # Update enrollments and if they have user account, update users too
+                    cursor.execute("UPDATE enrollments SET profile_image = %s WHERE enrollment_id = %s", (filename, target_id))
+                    
+                    # See if student account exists to update users table as well
+                    cursor.execute("""
+                        SELECT user_id FROM enrollments WHERE enrollment_id = %s
+                    """, (target_id,))
+                    row = cursor.fetchone()
+                    if row and row['user_id']:
+                        cursor.execute("UPDATE users SET profile_image = %s WHERE user_id = %s", (filename, row['user_id']))
+
+                elif user_type == 'teacher':
+                    cursor.execute("UPDATE users SET profile_image = %s WHERE user_id = %s", (filename, target_id))
+                
+                db.commit()
+                flash("Profile picture uploaded successfully!", "success")
+            else:
+                flash("Invalid file type. Allowed: png, jpg, jpeg, gif", "error")
+
+            # redirect back to same tab/filter
+            return redirect(request.referrer or url_for('registrar.registrar_profile_pictures'))
+
+        # GET request
+        tab = request.args.get("tab", "students")
+        grade_filter = request.args.get("grade", "")
+
+        students = []
+        teachers = []
+        grade_options = []
+
+        if tab == "students":
+            # Get grades for filter
+            cursor.execute("SELECT DISTINCT grade_level FROM enrollments WHERE branch_id = %s ORDER BY grade_level", (branch_id,))
+            grade_options = [r["grade_level"] for r in cursor.fetchall() if r["grade_level"]]
+
+            query = """
+                SELECT e.enrollment_id, e.branch_enrollment_no, e.student_name, e.grade_level, 
+                       s.section_name, e.profile_image, e.status
+                FROM enrollments e
+                LEFT JOIN sections s ON e.section_id = s.section_id
+                WHERE e.branch_id = %s AND e.status IN ('enrolled', 'approved', 'open_for_enrollment')
+            """
+            params = [branch_id]
+            if grade_filter:
+                query += " AND e.grade_level = %s"
+                params.append(grade_filter)
+            query += " ORDER BY e.student_name"
+            
+            cursor.execute(query, tuple(params))
+            students = cursor.fetchall()
+
+        elif tab == "teachers":
+            cursor.execute("""
+                SELECT u.user_id, u.full_name, u.username, u.profile_image,
+                       STRING_AGG(DISTINCT sub.name, ', ') as subjects
+                FROM users u
+                LEFT JOIN section_teachers st ON u.user_id = st.teacher_id
+                LEFT JOIN subjects sub ON st.subject_id = sub.subject_id
+                WHERE u.branch_id = %s AND u.role = 'teacher'
+                GROUP BY u.user_id, u.full_name, u.username, u.profile_image
+                ORDER BY u.full_name
+            """, (branch_id,))
+            teachers = cursor.fetchall()
+
+        return render_template(
+            "registrar_profile_pictures.html",
+            tab=tab,
+            grade_filter=grade_filter,
+            grade_options=grade_options,
+            students=students,
+            teachers=teachers
+        )
+
+    finally:
+        cursor.close()
+        db.close()
+
+
+# ══════════════════════════════════════════
 # NO CACHE
-# ══════════════════��═══════════════════════
+# ══════════════════════════════════════════
 
 @registrar_bp.after_request
 def add_no_cache_headers(response):

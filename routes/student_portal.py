@@ -1282,3 +1282,37 @@ def student_grades():
         cur.close()
         db.close()
 
+
+@student_portal_bp.route("/student/profile")
+def student_profile():
+    if not _require_student():
+        return redirect("/")
+
+    enrollment_id = session.get("enrollment_id")
+    if not enrollment_id:
+        flash("Enrollment ID not found.", "error")
+        return redirect("/")
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT e.enrollment_id, e.branch_enrollment_no, e.student_name, e.grade_level, e.status, e.profile_image,
+                   s.section_name,
+                   br.branch_name, br.location
+            FROM enrollments e
+            LEFT JOIN sections s ON e.section_id = s.section_id
+            JOIN branches br ON e.branch_id = br.branch_id
+            WHERE e.enrollment_id = %s
+        """, (enrollment_id,))
+        student = cur.fetchone()
+
+        if not student:
+            flash("Student profile not found.", "error")
+            return redirect(url_for("student_portal.dashboard"))
+        
+        return render_template("student_profile.html", student=student)
+    finally:
+        cur.close()
+        db.close()
+

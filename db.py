@@ -67,6 +67,17 @@ def get_db_connection():
                     ALTER TABLE attendance_scores 
                     ADD CONSTRAINT uq_attendance UNIQUE (enrollment_id, section_id, subject_id, grading_period)
                 """)
+
+            # Profile image migration
+            cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'users'")
+            user_cols = [r[0] for r in cur.fetchall()]
+            if 'profile_image' not in user_cols:
+                cur.execute("ALTER TABLE users ADD COLUMN profile_image VARCHAR(255)")
+            # Also add to enrollments for students who don't have users rows yet
+            cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'enrollments'")
+            enr_cols = [r[0] for r in cur.fetchall()]
+            if 'profile_image' not in enr_cols:
+                cur.execute("ALTER TABLE enrollments ADD COLUMN profile_image VARCHAR(255)")
                 
         conn.commit()
 

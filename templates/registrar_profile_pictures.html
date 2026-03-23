@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+{% block title %}Manage Profile Pictures{% endblock %}
+
+{% block styles %}
+<style>
+  .profile-tabs {
+    display: flex;
+    gap: 15px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid var(--border);
+  }
+  .profile-tab {
+    padding: 10px 20px;
+    font-weight: 700;
+    color: var(--muted);
+    cursor: pointer;
+    text-decoration: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s;
+  }
+  .profile-tab.active {
+    color: var(--btn);
+    border-bottom-color: var(--btn);
+  }
+  .profile-tab:hover:not(.active) {
+    color: var(--text);
+  }
+
+  .grade-tabs {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 18px;
+  }
+  .grade-tab {
+    padding: 7px 16px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .grade-tab:hover { background: var(--sidebar-hover); color: var(--btn); border-color: var(--btn); }
+  .grade-tab.active { background: var(--btn); color: #fff; border-color: var(--btn); }
+
+  .filter-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+
+  .upload-btn {
+    padding: 6px 12px;
+    border-radius: 6px;
+    background: var(--btn);
+    color: white;
+    border: none;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .upload-btn:hover { background: var(--btnHover); }
+
+  .file-input-wrapper {
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+  }
+  .file-input-wrapper input[type=file] {
+    font-size: 100px;
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+  .btn-choose {
+    border: 1.5px solid var(--border);
+    background: var(--card);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .hidden-row { display: none; }
+
+  .avatar-preview {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--border);
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width:1100px;">
+
+  <div style="margin-bottom:24px;">
+    <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:4px;">🖼️ Manage Profile Pictures</h2>
+    <p style="color:var(--muted);font-size:0.88rem;">Upload or update profile pictures for students and teachers.</p>
+  </div>
+
+  <div class="profile-tabs">
+    <a href="?tab=students" class="profile-tab {% if tab == 'students' %}active{% endif %}">Students</a>
+    <a href="?tab=teachers" class="profile-tab {% if tab == 'teachers' %}active{% endif %}">Teachers</a>
+  </div>
+
+  {% if tab == 'students' %}
+    <!-- Grade level tabs inside Students tab -->
+    <div class="grade-tabs">
+      <a href="?tab=students" class="grade-tab {% if grade_filter == '' %}active{% endif %}">All Grades</a>
+      {% for g in grade_options %}
+      <a href="?tab=students&grade={{ g }}" class="grade-tab {% if grade_filter == g|string %}active{% endif %}">{{ g }}</a>
+      {% endfor %}
+    </div>
+
+    <div class="filter-row">
+      <input type="text" id="searchInput" class="form-input" style="max-width:280px;" placeholder="🔍 Search student name…" oninput="applyFilters()">
+      <span style="margin-left:auto;font-size:0.8rem;color:var(--muted);" id="visibleCount"></span>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div class="table-wrap">
+        <table class="student-table" style="width:100%;">
+          <thead>
+            <tr>
+              <th style="width:60px;">Photo</th>
+              <th>Student Name</th>
+              <th>Grade & Section</th>
+              <th>Status</th>
+              <th style="width:300px;">Upload / Update</th>
+            </tr>
+          </thead>
+          <tbody id="studentTbody">
+            {% for s in students %}
+            <tr data-name="{{ s.student_name | lower }}">
+              <td>
+                {% if s.profile_image %}
+                <img src="{{ url_for('static', filename='uploads/profiles/' ~ s.profile_image) }}" class="avatar-preview">
+                {% else %}
+                <div class="avatar-preview">{{ s.student_name[0]|upper }}</div>
+                {% endif %}
+              </td>
+              <td><strong>{{ s.student_name }}</strong><br><span style="font-size:0.75rem;color:var(--muted);">#{{ s.branch_enrollment_no or s.enrollment_id }}</span></td>
+              <td>
+                <span class="badge badge-blue" style="margin-bottom:4px;">{{ s.grade_level }}</span>
+                {% if s.section_name %}
+                <span class="badge badge-green">{{ s.section_name }}</span>
+                {% else %}
+                <span class="badge badge-red">No Section</span>
+                {% endif %}
+              </td>
+              <td>
+                <span class="badge {% if s.status == 'enrolled' %}badge-green{% elif s.status == 'approved' %}badge-blue{% else %}badge-yellow{% endif %}">
+                  {{ s.status | replace('_', ' ') | title }}
+                </span>
+              </td>
+              <td>
+                <form method="POST" action="{{ url_for('registrar.registrar_profile_pictures') }}" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center;">
+                  <input type="hidden" name="user_type" value="student">
+                  <input type="hidden" name="target_id" value="{{ s.enrollment_id }}">
+                  <div class="file-input-wrapper">
+                    <button type="button" class="btn-choose">📁 Choose File</button>
+                    <input type="file" name="profile_image" accept=".png,.jpg,.jpeg,.gif" required onchange="this.previousElementSibling.textContent = this.files[0].name.substring(0,15) + (this.files[0].name.length>15?'...':'')">
+                  </div>
+                  <button type="submit" class="upload-btn">Upload</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted);">No students found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  {% elif tab == 'teachers' %}
+    <div class="filter-row">
+      <input type="text" id="searchInput" class="form-input" style="max-width:280px;" placeholder="🔍 Search teacher name…" oninput="applyFilters()">
+      <span style="margin-left:auto;font-size:0.8rem;color:var(--muted);" id="visibleCount"></span>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;">
+      <div class="table-wrap">
+        <table class="student-table" style="width:100%;">
+          <thead>
+            <tr>
+              <th style="width:60px;">Photo</th>
+              <th>Teacher Name</th>
+              <th>Username</th>
+              <th>Subjects</th>
+              <th style="width:300px;">Upload / Update</th>
+            </tr>
+          </thead>
+          <tbody id="studentTbody">
+            {% for t in teachers %}
+            <tr data-name="{{ t.full_name | lower }}">
+              <td>
+                {% if t.profile_image %}
+                <img src="{{ url_for('static', filename='uploads/profiles/' ~ t.profile_image) }}" class="avatar-preview">
+                {% else %}
+                <div class="avatar-preview">{{ (t.full_name or t.username)[0]|upper }}</div>
+                {% endif %}
+              </td>
+              <td><strong>{{ t.full_name or t.username }}</strong></td>
+              <td><span style="font-size:0.8rem;color:var(--muted);">{{ t.username }}</span></td>
+              <td><span style="font-size:0.8rem;">{{ t.subjects or 'No active subjects' }}</span></td>
+              <td>
+                <form method="POST" action="{{ url_for('registrar.registrar_profile_pictures') }}" enctype="multipart/form-data" style="display:flex;gap:8px;align-items:center;">
+                  <input type="hidden" name="user_type" value="teacher">
+                  <input type="hidden" name="target_id" value="{{ t.user_id }}">
+                  <div class="file-input-wrapper">
+                    <button type="button" class="btn-choose">📁 Choose File</button>
+                    <input type="file" name="profile_image" accept=".png,.jpg,.jpeg,.gif" required onchange="this.previousElementSibling.textContent = this.files[0].name.substring(0,15) + (this.files[0].name.length>15?'...':'')">
+                  </div>
+                  <button type="submit" class="upload-btn">Upload</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" style="text-align:center;padding:30px;color:var(--muted);">No teachers found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+
+<script>
+  function applyFilters() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('#studentTbody tr');
+    let visible = 0;
+    rows.forEach(row => {
+      const name = row.dataset.name || '';
+      if (!search || name.includes(search)) {
+        row.classList.remove('hidden-row');
+        visible++;
+      } else {
+        row.classList.add('hidden-row');
+      }
+    });
+    const countEl = document.getElementById('visibleCount');
+    if (countEl) countEl.textContent = `Showing ${visible} of ${rows.length}`;
+  }
+  
+  // Init filter counter
+  applyFilters();
+</script>
+{% endblock %}

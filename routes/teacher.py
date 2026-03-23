@@ -2610,3 +2610,49 @@ def toggle_activity_status(activity_id):
     finally:
         cur.close()
         db.close()
+
+
+@teacher_bp.route("/teacher/profile")
+def teacher_profile():
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id = session.get("user_id")
+    if not user_id:
+        flash("User ID not found.", "error")
+        return redirect("/")
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT u.user_id, u.full_name, u.username, u.profile_image,
+                   br.branch_name, br.location
+            FROM users u
+            JOIN branches br ON u.branch_id = br.branch_id
+            WHERE u.user_id = %s
+        """, (user_id,))
+        teacher = cur.fetchone()
+
+        if not teacher:
+            flash("Teacher profile not found.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        # Get assigned subjects and sections
+        cur.execute("""
+            SELECT sub.name AS subject_name,
+                   g.name AS grade_level,
+                   s.section_name
+            FROM section_teachers st
+            JOIN subjects sub ON st.subject_id = sub.subject_id
+            JOIN sections s ON st.section_id = s.section_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            WHERE st.teacher_id = %s
+            ORDER BY g.name, s.section_name, sub.name
+        """, (user_id,))
+        assignments = cur.fetchall()
+        
+        return render_template("teacher_profile.html", teacher=teacher, assignments=assignments)
+    finally:
+        cur.close()
+        db.close()

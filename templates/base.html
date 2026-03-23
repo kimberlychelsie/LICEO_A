@@ -1178,6 +1178,11 @@
         href="/registrar/enrollments">
         <span class="sb-icon">📋</span> Enrollments
       </a>
+      <a class="sb-link {% if request.path == '/registrar/profile-pictures' %}active{% endif %}"
+        href="/registrar/profile-pictures">
+        <span class="sb-icon">🖼️</span> Profile Pictures
+      </a>
+
 
       {% elif session.get('role') == 'cashier' %}
       <div class="sb-section-label">Cashier</div>
@@ -1341,18 +1346,28 @@
       {% if session.get('role') %}
       <div class="profile-dropdown-wrapper">
         <button class="profile-toggle-btn" id="profileBtn" onclick="toggleProfileMenu()">
+          {% if session.get('profile_image') %}
+          <img src="{{ url_for('static', filename='uploads/profiles/' ~ session.get('profile_image')) }}" class="sb-avatar" style="width: 34px; height: 34px; border: 2px solid rgba(255,255,255,0.3); object-fit: cover;">
+          {% else %}
           <div class="sb-avatar"
             style="width: 34px; height: 34px; font-size: 0.75rem; border: 2px solid rgba(255,255,255,0.3);">
             {{ (session.get('full_name') or session.get('student_name') or session.get('username') or 'U')[0] | upper }}
           </div>
+          {% endif %}
         </button>
         <div class="profile-dropdown" id="profileDropdown">
           <div style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; background: #f8fafc;">
             <div style="font-weight: 700; font-size: 0.78rem; color: #1e3a8f;">{{ disp }}</div>
             <div style="font-size: 0.7rem; color: #64748b;">{{ role_label }}</div>
           </div>
+          {% if session.get('role') == 'student' %}
+          <a href="/student/profile">👤 My Profile</a>
+          {% elif session.get('role') == 'teacher' %}
+          <a href="/teacher/profile">👤 My Profile</a>
+          {% endif %}
           <a href="/change-password">🔑 Change Password</a>
           <a href="/logout" style="color: #ef4444; border-top: 1px solid #f1f5f9;">↩ Logout</a>
+
         </div>
       </div>
       {% endif %}
