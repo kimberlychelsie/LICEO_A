@@ -1351,6 +1351,7 @@ def branch_admin_assign_teachers():
         # ── GET: load all section+subject combos for this branch ──
         base_query = """
             SELECT
+                st.id          AS section_teacher_id,
                 st.section_id,
                 st.subject_id,
                 st.teacher_id,
@@ -1551,9 +1552,46 @@ def assign_teachers_bulk():
     finally:
         cursor.close()
         db.close()
-    # =======================
-# API: Get subjects for a section (AJAX)
-# =======================
+
+
+@branch_admin_bp.route("/branch-admin/remove-teacher-assignment", methods=["POST"])
+def remove_teacher_assignment():
+    """Remove (unassign) a teacher from a section+subject"""
+    if session.get("role") != "branch_admin":
+        return {"error": "Unauthorized"}, 403
+
+    branch_id = session.get("branch_id")
+    data = request.get_json()
+    section_teacher_id = data.get("section_teacher_id")
+
+    if not section_teacher_id:
+        return {"success": False, "message": "Missing section_teacher_id"}, 400
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Verify this row belongs to this branch
+        cursor.execute("""
+            SELECT st.id FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            WHERE st.id = %s AND s.branch_id = %s
+        """, (section_teacher_id, branch_id))
+        if not cursor.fetchone():
+            return {"success": False, "message": "Assignment not found"}, 404
+
+        cursor.execute(
+            "UPDATE section_teachers SET teacher_id = NULL WHERE id = %s",
+            (section_teacher_id,)
+        )
+        db.commit()
+        return {"success": True}
+    except Exception as e:
+        db.rollback()
+        return {"success": False, "message": str(e)}, 500
+    finally:
+        cursor.close()
+        db.close()
+
 @branch_admin_bp.route("/branch-admin/api/get-subjects/<int:section_id>", methods=["GET"])
 def api_get_section_subjects(section_id):
     """Returns JSON list of subjects for a given section"""

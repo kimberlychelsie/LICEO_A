@@ -1,420 +1,531 @@
 {% extends "base.html" %}
+{% block title %}Assign Teachers{% endblock %}
 
-{% block title %}Assign Teachers to Sections{% endblock %}
+{% block styles %}
+<style>
+  .step-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    background: var(--btn);
+    color: #fff;
+    font-weight: 800;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+  }
+  .step-box {
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+    background: var(--card);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .step-box.active {
+    border-color: var(--btn);
+    box-shadow: 0 0 0 3px rgba(26,58,143,.08);
+  }
+  .step-box.dimmed {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+  .step-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+  .subject-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    cursor: pointer;
+    background: var(--card);
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+    width: 100%;
+  }
+  .subject-card:hover {
+    border-color: var(--btn);
+    box-shadow: 0 0 0 2px rgba(26,58,143,.1);
+  }
+  .subject-card.assigned-me {
+    border-color: #16a34a;
+    background: #f0fdf4;
+    cursor: not-allowed;
+    opacity: 0.85;
+  }
+  .subject-card.assigned-other {
+    border-color: #d97706;
+    background: #fffbeb;
+  }
+  .subjects-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 10px;
+  }
+  .grade-group-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 4px 0 6px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+    margin-top: 4px;
+  }
+  .toolbar-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .selected-badge {
+    margin-left: auto;
+    background: var(--btn);
+    color: #fff;
+    padding: 3px 12px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 700;
+  }
+  .subjects-scroll {
+    max-height: 420px;
+    overflow-y: auto;
+    padding-right: 4px;
+  }
+  .teacher-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #eff6ff;
+    color: var(--btn);
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    padding: 4px 12px;
+    font-size: 0.83rem;
+    font-weight: 600;
+    margin-top: 8px;
+  }
+  .assign-btn {
+    background: #16a34a;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 11px 28px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .assign-btn:hover:not(:disabled) { background: #15803d; transform: translateY(-1px); }
+  .assign-btn:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
+  .legend {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 4px;
+  }
+  .remove-btn {
+    font-size: 0.75rem;
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid #dc2626;
+    color: #dc2626;
+    background: none;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .remove-btn:hover { background: #fef2f2; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container mt-5">
+<div style="max-width:1100px;">
 
-    <!-- Page Header -->
-    <div class="d-flex align-items-center mb-2">
-        <div>
-            <h2 class="mb-0">👨‍🏫 Assign Teachers to Subjects</h2>
-            <p class="text-muted mb-0">Select a teacher, then check which subjects to assign them to.</p>
-        </div>
+  <!-- Page header -->
+  <div style="margin-bottom:20px;">
+    <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:4px;">👨‍🏫 Assign Teachers to Subjects</h2>
+    <p style="color:var(--muted);font-size:0.88rem;">Pick a teacher, then select which section–subject pairs to assign them to.</p>
+  </div>
+
+  {% if is_branch_active_status %}
+  <!-- ══ ASSIGNMENT FORM ══ -->
+  <div class="card" style="margin-bottom:24px;">
+    <div style="font-weight:800;font-size:1rem;margin-bottom:18px;display:flex;align-items:center;gap:8px;">
+      📋 New Assignment
     </div>
-    <hr class="mb-4">
 
-    <!-- STEP CARD -->
-    {% if is_branch_active_status %}
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-primary text-white">
-            <h5 class="mb-0">📋 Teacher Assignment</h5>
-        </div>
-        <div class="card-body">
-
-            <!-- STEP 1: Select Teacher -->
-            <div class="mb-4">
-                <label class="form-label fw-bold">
-                    <span class="badge bg-primary me-2">Step 1</span> Select a Teacher
-                </label>
-                <select id="teacherSelect" class="form-select form-select-lg" onchange="loadTeacherSubjects()">
-                    <option value="">-- Choose a teacher --</option>
-                    {% for teacher in teachers %}
-                    <option value="{{ teacher.user_id }}">
-                        {{ teacher.full_name or teacher.username }}
-                        ({{ teacher.gender or 'N/A' }})
-                    </option>
-                    {% endfor %}
-                </select>
-                <!-- Teacher summary badge (shown after selection) -->
-                <div id="teacherSummary" class="mt-2 d-none">
-                    <span class="badge bg-success fs-6" id="teacherSummaryText"></span>
-                </div>
-            </div>
-
-            <!-- STEP 2: Filter + Search (disabled until teacher selected) -->
-            <div id="step2" class="mb-3" style="opacity:0.4; pointer-events:none;">
-                <label class="form-label fw-bold">
-                    <span class="badge bg-primary me-2">Step 2</span> Filter Subjects <small
-                        class="text-muted fw-normal">(optional)</small>
-                </label>
-                <div class="row g-2">
-                    <div class="col-md-4">
-                        <select id="gradeFilterAssign" class="form-select" onchange="filterSubjects()">
-                            <option value="">-- All Grades --</option>
-                            {% for grade in grade_options %}
-                            <option value="{{ grade.id }}">{{ grade.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="col-md-8">
-                        <input type="text" id="subjectSearch" class="form-control"
-                            placeholder="🔍 Search subject or section name..." onkeyup="filterSubjects()">
-                    </div>
-                </div>
-            </div>
-
-            <!-- STEP 3: Pick Subjects -->
-            <div id="step3" style="opacity:0.4; pointer-events:none;">
-                <label class="form-label fw-bold">
-                    <span class="badge bg-primary me-2">Step 3</span> Select Subjects to Assign
-                </label>
-
-                <!-- Select All / Deselect toolbar -->
-                <div class="d-flex align-items-center gap-2 mb-2" id="selectToolbar" style="display:none !important;">
-                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="selectAll()">✓ Select All
-                        Unassigned</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="deselectAll()">✗ Deselect
-                        All</button>
-                    <span class="ms-auto badge bg-primary fs-6" id="selectedCount">0 selected</span>
-                </div>
-
-                <!-- Subject checkboxes container -->
-                <div class="border rounded p-3" id="subjectsContainer"
-                    style="min-height:120px; max-height:450px; overflow-y:auto; background:#f8f9fa;">
-                    <p class="text-muted text-center py-4 mb-0" id="subjectsPlaceholder">
-                        ⬆️ Select a teacher above to see their assignable subjects.
-                    </p>
-                </div>
-            </div>
-
-            <!-- Action Button -->
-            <div class="mt-4 d-flex align-items-center gap-3">
-                <button class="btn btn-success btn-lg px-5" id="assignBtn" disabled onclick="submitAssignment()">
-                    ✅ Save Assignments
-                </button>
-                <span id="assignStatus" class="text-muted"></span>
-            </div>
-        </div>
+    <!-- STEP 1 -->
+    <div class="step-box active" id="stepBox1">
+      <div class="step-title">
+        <span class="step-pill">1</span>
+        Choose a Teacher
+      </div>
+      <select id="teacherSelect" class="form-select" style="max-width:420px;" onchange="loadTeacherSubjects()">
+        <option value="">— Select a teacher —</option>
+        {% for teacher in teachers %}
+        <option value="{{ teacher.user_id }}">{{ teacher.full_name or teacher.username }}</option>
+        {% endfor %}
+      </select>
+      <div id="teacherChip" style="display:none;">
+        <div class="teacher-chip" id="teacherChipText"></div>
+      </div>
     </div>
-    {% endif %}
 
-    <!-- Current Assignments Table -->
-    <div class="card shadow-sm mt-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <h5 class="mb-0">📊 Current Assignments</h5>
-
-            <!-- Grade filter for table -->
-            <div class="d-flex align-items-center gap-2">
-                <label class="mb-0 text-muted small">Filter table by grade:</label>
-                <select id="tableGradeFilter" class="form-select form-select-sm" style="width:160px;"
-                    onchange="filterByGrade()">
-                    <option value="">All Grades</option>
-                    {% for grade in grade_options %}
-                    <option value="{{ grade.id }}" {% if grade.id|string==grade_filter %}selected{% endif %}>
-                        {{ grade.name }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-dark">
-                    <tr>
-                        <th>Grade</th>
-                        <th>Section</th>
-                        <th>Subject</th>
-                        <th>Assigned Teacher</th>
-                        <th>Status</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% if assignments %}
-                    {% for a in assignments %}
-                    <tr>
-                        <td><strong>{{ a.grade_level_name }}</strong></td>
-                        <td>{{ a.section_name }}</td>
-                        <td>{{ a.subject_name }}</td>
-                        <td>
-                            {% if a.teacher_full_name %}
-                            <span class="badge bg-success">
-                                {{ a.teacher_full_name }} <span class="opacity-75">({{ a.teacher_username }})</span>
-                            </span>
-                            {% else %}
-                            <span class="badge bg-secondary">Unassigned</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if a.teacher_full_name %}
-                            <span class="badge bg-success">✓ Assigned</span>
-                            {% else %}
-                            <span class="badge bg-danger">⏳ Pending</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                    {% else %}
-                    <tr>
-                        <td colspan="5" class="text-center text-muted py-4">No assignments yet.</td>
-                    </tr>
-                    {% endif %}
-                </tbody>
-            </table>
-        </div>
+    <!-- STEP 2 -->
+    <div class="step-box dimmed" id="stepBox2">
+      <div class="step-title">
+        <span class="step-pill">2</span>
+        Filter &amp; Search <span style="font-weight:500;color:var(--muted);font-size:0.8rem;">(optional)</span>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <select id="gradeFilterAssign" class="form-select" style="max-width:200px;" onchange="filterSubjects()">
+          <option value="">All Grade Levels</option>
+          {% for grade in grade_options %}
+          <option value="{{ grade.id }}">{{ grade.name }}</option>
+          {% endfor %}
+        </select>
+        <input type="text" id="subjectSearch" class="form-input" style="max-width:300px;"
+          placeholder="🔍 Search subject or section…" oninput="filterSubjects()">
+      </div>
     </div>
+
+    <!-- STEP 3 -->
+    <div class="step-box dimmed" id="stepBox3">
+      <div class="step-title">
+        <span class="step-pill">3</span>
+        Select Subjects to Assign
+      </div>
+
+      <!-- Legend -->
+      <div class="legend">
+        <span><span class="legend-dot" style="background:#16a34a;"></span> Already assigned to this teacher</span>
+        <span><span class="legend-dot" style="background:#d97706;"></span> Assigned to another teacher</span>
+        <span><span class="legend-dot" style="background:#cbd5e1;"></span> Unassigned</span>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="toolbar-row" id="selectToolbar" style="display:none;">
+        <button type="button" class="btn btn-secondary btn-sm" onclick="selectAll()">✓ Select All Unassigned</button>
+        <button type="button" class="btn btn-secondary btn-sm" onclick="deselectAll()">✗ Clear</button>
+        <span class="selected-badge" id="selectedCount">0 selected</span>
+      </div>
+
+      <!-- Subject cards -->
+      <div class="subjects-scroll" id="subjectsContainer">
+        <p style="color:var(--muted);text-align:center;padding:32px 0;font-size:0.9rem;">
+          ⬆️ Select a teacher in Step 1 to see their assignable subjects.
+        </p>
+      </div>
+    </div>
+
+    <!-- Save button -->
+    <div style="margin-top:4px;display:flex;align-items:center;gap:14px;">
+      <button class="assign-btn" id="assignBtn" disabled onclick="submitAssignment()">
+        ✅ Save Assignments
+      </button>
+      <span id="assignStatus" style="font-size:0.88rem;"></span>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ══ CURRENT ASSIGNMENTS TABLE ══ -->
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+      <div style="font-weight:800;font-size:1rem;">📊 Current Assignments</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <label style="font-size:0.82rem;color:var(--muted);">Filter by grade:</label>
+        <select id="tableGradeFilter" class="form-select" style="width:170px;" onchange="filterByGrade()">
+          <option value="">All Grades</option>
+          {% for grade in grade_options %}
+          <option value="{{ grade.id }}" {% if grade.id|string==grade_filter %}selected{% endif %}>{{ grade.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Grade</th>
+            <th>Section</th>
+            <th>Subject</th>
+            <th>Assigned Teacher</th>
+            <th>Status</th>
+            {% if is_branch_active_status %}<th></th>{% endif %}
+          </tr>
+        </thead>
+        <tbody>
+          {% if assignments %}
+          {% for a in assignments %}
+          <tr>
+            <td><strong>{{ a.grade_level_name }}</strong></td>
+            <td>{{ a.section_name }}</td>
+            <td>{{ a.subject_name }}</td>
+            <td>
+              {% if a.teacher_full_name %}
+              <span style="font-weight:600;color:#166534;">{{ a.teacher_full_name }}</span>
+              <span style="color:var(--muted);font-size:0.78rem;"> ({{ a.teacher_username }})</span>
+              {% else %}
+              <span style="color:var(--muted);font-style:italic;">—</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if a.teacher_full_name %}
+              <span class="badge badge-green">✓ Assigned</span>
+              {% else %}
+              <span class="badge badge-red">Unassigned</span>
+              {% endif %}
+            </td>
+            {% if is_branch_active_status %}
+            <td>
+              {% if a.teacher_full_name %}
+              <button class="remove-btn"
+                onclick="removeAssignment({{ a.section_teacher_id }}, '{{ a.teacher_full_name }}', '{{ a.section_name }}', '{{ a.subject_name }}')">
+                Remove
+              </button>
+              {% endif %}
+            </td>
+            {% endif %}
+          </tr>
+          {% endfor %}
+          {% else %}
+          <tr>
+            <td colspan="6" style="text-align:center;color:var(--muted);padding:32px;">No assignments yet.</td>
+          </tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+  </div>
 
 </div>
 
 <script>
-    let allSubjects = [];
-    let selectedTeacherId = null;
+  let allSubjects = [];
+  let selectedTeacherId = null;
 
-    // ─── Step 1: Teacher selected ───────────────────────────────────────────
-    function loadTeacherSubjects() {
-        const select = document.getElementById('teacherSelect');
-        selectedTeacherId = select.value;
-        const teacherName = select.options[select.selectedIndex].text;
+  function loadTeacherSubjects() {
+    const select = document.getElementById('teacherSelect');
+    selectedTeacherId = select.value;
+    const teacherName = select.options[select.selectedIndex].text;
 
-        const step2 = document.getElementById('step2');
-        const step3 = document.getElementById('step3');
-        const container = document.getElementById('subjectsContainer');
-        const placeholder = document.getElementById('subjectsPlaceholder');
-        const toolbar = document.getElementById('selectToolbar');
-        const summary = document.getElementById('teacherSummary');
-        const summaryText = document.getElementById('teacherSummaryText');
+    const box2 = document.getElementById('stepBox2');
+    const box3 = document.getElementById('stepBox3');
+    const container = document.getElementById('subjectsContainer');
+    const toolbar = document.getElementById('selectToolbar');
+    const chip = document.getElementById('teacherChip');
+    const chipText = document.getElementById('teacherChipText');
 
-        // Reset
-        deselectAll();
-        document.getElementById('gradeFilterAssign').value = '';
-        document.getElementById('subjectSearch').value = '';
-        updateCount();
+    deselectAll();
+    document.getElementById('gradeFilterAssign').value = '';
+    document.getElementById('subjectSearch').value = '';
+    updateCount();
 
-        if (!selectedTeacherId) {
-            step2.style.opacity = '0.4';
-            step2.style.pointerEvents = 'none';
-            step3.style.opacity = '0.4';
-            step3.style.pointerEvents = 'none';
-            container.innerHTML = '<p class="text-muted text-center py-4 mb-0" id="subjectsPlaceholder">⬆️ Select a teacher above to see their assignable subjects.</p>';
-            toolbar.style.setProperty('display', 'none', 'important');
-            summary.classList.add('d-none');
-            document.getElementById('assignBtn').disabled = true;
-            return;
+    if (!selectedTeacherId) {
+      box2.className = 'step-box dimmed';
+      box3.className = 'step-box dimmed';
+      container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:32px 0;font-size:0.9rem;">⬆️ Select a teacher in Step 1 to see their assignable subjects.</p>';
+      toolbar.style.display = 'none';
+      chip.style.display = 'none';
+      document.getElementById('assignBtn').disabled = true;
+      return;
+    }
+
+    chip.style.display = 'block';
+    chipText.innerHTML = '👤 ' + teacherName.trim();
+    box2.className = 'step-box active';
+    box3.className = 'step-box active';
+
+    container.innerHTML = '<p style="text-align:center;padding:28px 0;color:var(--muted);">⏳ Loading subjects…</p>';
+
+    fetch(`/branch-admin/api/get-all-subjects/${selectedTeacherId}`)
+      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(data => {
+        if (data.success && data.subjects.length > 0) {
+          allSubjects = data.subjects;
+          renderSubjects(allSubjects);
+          toolbar.style.display = 'flex';
+        } else {
+          container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:28px 0;">No subjects found for this branch.</p>';
+          allSubjects = [];
+          toolbar.style.display = 'none';
         }
+      })
+      .catch(() => {
+        container.innerHTML = '<p style="color:#dc2626;text-align:center;padding:28px 0;">❌ Error loading subjects. Please try again.</p>';
+        toolbar.style.display = 'none';
+      });
+  }
 
-        // Show teacher summary
-        summary.classList.remove('d-none');
-        summaryText.textContent = `👤 ${teacherName.trim()}`;
-
-        // Enable step 2 & 3 visually
-        step2.style.opacity = '1';
-        step2.style.pointerEvents = 'auto';
-        step3.style.opacity = '1';
-        step3.style.pointerEvents = 'auto';
-
-        container.innerHTML = '<p class="text-center py-4"><span class="spinner-border spinner-border-sm me-2"></span>Loading subjects...</p>';
-
-        fetch(`/branch-admin/api/get-all-subjects/${selectedTeacherId}`)
-            .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
-            .then(data => {
-                if (data.success && data.subjects.length > 0) {
-                    allSubjects = data.subjects;
-                    renderSubjects(allSubjects);
-                    toolbar.style.removeProperty('display');
-                } else {
-                    container.innerHTML = '<p class="text-muted text-center py-4 mb-0">No subjects found for this branch.</p>';
-                    allSubjects = [];
-                    toolbar.style.setProperty('display', 'none', 'important');
-                }
-            })
-            .catch(() => {
-                container.innerHTML = '<p class="text-danger text-center py-4 mb-0">❌ Error loading subjects. Please try again.</p>';
-                toolbar.style.setProperty('display', 'none', 'important');
-            });
+  function renderSubjects(subjects) {
+    const container = document.getElementById('subjectsContainer');
+    if (subjects.length === 0) {
+      container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:28px 0;">No subjects match your filter.</p>';
+      updateCount();
+      return;
     }
 
-    // ─── Render subject checkboxes ──────────────────────────────────────────
-    function renderSubjects(subjects) {
-        const container = document.getElementById('subjectsContainer');
+    const grouped = {};
+    subjects.forEach(s => {
+      if (!grouped[s.grade_level_name]) grouped[s.grade_level_name] = [];
+      grouped[s.grade_level_name].push(s);
+    });
 
-        if (subjects.length === 0) {
-            container.innerHTML = '<p class="text-muted text-center py-3 mb-0">No subjects match your filter.</p>';
-            updateCount();
-            return;
+    let html = '';
+    Object.entries(grouped).forEach(([grade, items]) => {
+      html += `<div class="grade-group-label">📚 ${grade}</div><div class="subjects-grid" style="margin-bottom:16px;">`;
+      items.forEach(s => {
+        let cardClass = 'subject-card';
+        let badge = '';
+        let disabled = '';
+        if (s.is_assigned_to_this_teacher) {
+          cardClass += ' assigned-me';
+          badge = '<span class="badge badge-green" style="font-size:0.7rem;margin-top:4px;">✓ Yours</span>';
+          disabled = 'disabled checked';
+        } else if (s.is_currently_assigned) {
+          cardClass += ' assigned-other';
+          badge = `<span class="badge badge-yellow" style="font-size:0.7rem;margin-top:4px;">⚠ ${s.current_teacher_name}</span>`;
+        } else {
+          badge = '<span style="font-size:0.7rem;color:var(--muted);margin-top:2px;">○ Unassigned</span>';
         }
+        html += `
+          <label class="${cardClass}" for="subj_${s.subject_id}_${s.section_id}" style="cursor:${disabled ? 'not-allowed' : 'pointer'}">
+            <input class="subject-cb" type="checkbox"
+              id="subj_${s.subject_id}_${s.section_id}"
+              value="${s.subject_id}"
+              data-section-id="${s.section_id}"
+              data-grade="${s.grade_level_name}"
+              data-grade-id="${s.grade_level_id}"
+              data-section="${s.section_name}"
+              data-subject="${s.subject_name}"
+              ${disabled}
+              onchange="updateCount()"
+              style="margin-top:2px;flex-shrink:0;">
+            <div>
+              <div style="font-weight:600;font-size:0.88rem;">${s.section_name}</div>
+              <div style="color:var(--muted);font-size:0.8rem;">${s.subject_name}</div>
+              ${badge}
+            </div>
+          </label>`;
+      });
+      html += '</div>';
+    });
 
-        // Group by grade
-        const grouped = {};
-        subjects.forEach(s => {
-            const key = s.grade_level_name;
-            if (!grouped[key]) grouped[key] = [];
-            grouped[key].push(s);
-        });
+    container.innerHTML = html;
+    updateCount();
+  }
 
-        let html = '';
-        Object.entries(grouped).forEach(([grade, items]) => {
-            html += `
-                <div class="mb-3">
-                    <div class="d-flex align-items-center mb-2">
-                        <span class="badge bg-secondary me-2">📚 ${grade}</span>
-                        <hr class="flex-grow-1 my-0">
-                    </div>
-                    <div class="row g-2 ms-1">
-            `;
+  function filterSubjects() {
+    const search = document.getElementById('subjectSearch').value.toLowerCase();
+    const grade = document.getElementById('gradeFilterAssign').value;
+    const filtered = allSubjects.filter(s => {
+      const matchSearch = !search || s.subject_name.toLowerCase().includes(search) || s.section_name.toLowerCase().includes(search);
+      const matchGrade = !grade || String(s.grade_level_id) === grade;
+      return matchSearch && matchGrade;
+    });
+    renderSubjects(filtered);
+  }
 
-            items.forEach(s => {
-                let cardClass = 'border';
-                let badgeHtml = '';
-                let disabled = '';
-                let checkboxClass = 'form-check-input';
+  function selectAll() {
+    document.querySelectorAll('.subject-cb:not([disabled])').forEach(cb => cb.checked = true);
+    updateCount();
+  }
 
-                if (s.is_assigned_to_this_teacher) {
-                    cardClass = 'border border-success bg-success bg-opacity-10';
-                    badgeHtml = '<span class="badge bg-success ms-1">✓ Assigned to this teacher</span>';
-                    disabled = 'disabled checked';
-                    checkboxClass = 'form-check-input border-success';
-                } else if (s.is_currently_assigned) {
-                    cardClass = 'border border-warning bg-warning bg-opacity-10';
-                    badgeHtml = `<span class="badge bg-warning text-dark ms-1">⚠ Currently: ${s.current_teacher_name}</span>`;
-                } else {
-                    cardClass = 'border';
-                    badgeHtml = '<span class="badge bg-light text-secondary ms-1">○ Unassigned</span>';
-                }
+  function deselectAll() {
+    document.querySelectorAll('.subject-cb:not([disabled])').forEach(cb => cb.checked = false);
+    updateCount();
+  }
 
-                html += `
-                    <div class="col-md-6 col-lg-4">
-                        <label class="d-flex align-items-start p-2 rounded ${cardClass} w-100 h-100"
-                               style="cursor:${disabled ? 'not-allowed' : 'pointer'}; gap:10px;"
-                               for="subj_${s.subject_id}_${s.section_id}">
-                            <input class="${checkboxClass} mt-1 flex-shrink-0 subject-cb"
-                                type="checkbox"
-                                id="subj_${s.subject_id}_${s.section_id}"
-                                value="${s.subject_id}"
-                                data-grade="${s.grade_level_name}"
-                                data-grade-id="${s.grade_level_id}"
-                                data-section="${s.section_name}"
-                                data-subject="${s.subject_name}"
-                                ${disabled}
-                                onchange="updateCount()">
-                            <div>
-                                <div class="fw-semibold small">${s.section_name}</div>
-                                <div class="text-muted small">${s.subject_name}</div>
-                                ${badgeHtml}
-                            </div>
-                        </label>
-                    </div>
-                `;
-            });
+  function updateCount() {
+    const count = document.querySelectorAll('.subject-cb:not([disabled]):checked').length;
+    document.getElementById('selectedCount').textContent = count + ' selected';
+    document.getElementById('assignBtn').disabled = count === 0;
+    document.getElementById('assignStatus').textContent = '';
+  }
 
-            html += `</div></div>`;
-        });
+  function submitAssignment() {
+    const checked = document.querySelectorAll('.subject-cb:not([disabled]):checked');
+    if (!selectedTeacherId || checked.length === 0) return;
 
-        container.innerHTML = html;
-        updateCount();
-    }
+    const subjectIds = Array.from(checked).map(cb => parseInt(cb.value));
+    const sectionIds = Array.from(checked).map(cb => parseInt(cb.dataset.sectionId));
+    const preview = Array.from(checked).map(cb => `• ${cb.dataset.section} — ${cb.dataset.subject}`).join('\n');
 
-    // ─── Filter subjects ────────────────────────────────────────────────────
-    function filterSubjects() {
-        const search = document.getElementById('subjectSearch').value.toLowerCase();
-        const grade = document.getElementById('gradeFilterAssign').value;
+    if (!confirm(`Assign teacher to ${subjectIds.length} subject(s)?\n\n${preview}`)) return;
 
-        const filtered = allSubjects.filter(s => {
-            const matchSearch = !search ||
-                s.subject_name.toLowerCase().includes(search) ||
-                s.section_name.toLowerCase().includes(search);
-            const matchGrade = !grade || String(s.grade_level_id) === grade;
-            return matchSearch && matchGrade;
-        });
+    const btn = document.getElementById('assignBtn');
+    const status = document.getElementById('assignStatus');
+    btn.disabled = true;
+    btn.innerHTML = '⏳ Saving…';
+    status.textContent = '';
 
-        renderSubjects(filtered);
-    }
+    fetch('/branch-admin/assign-teachers-bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ teacher_id: parseInt(selectedTeacherId), subject_ids: subjectIds })
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) {
+          status.innerHTML = `<span style="color:#16a34a;font-weight:600;">✅ ${data.count} subject(s) assigned!</span>`;
+          btn.innerHTML = '✅ Save Assignments';
+          setTimeout(() => location.reload(), 900);
+        } else {
+          status.innerHTML = `<span style="color:#dc2626;">❌ ${data.message}</span>`;
+          btn.disabled = false;
+          btn.innerHTML = '✅ Save Assignments';
+        }
+      })
+      .catch(() => {
+        status.innerHTML = '<span style="color:#dc2626;">❌ Network error. Try again.</span>';
+        btn.disabled = false;
+        btn.innerHTML = '✅ Save Assignments';
+      });
+  }
 
-    // ─── Select / Deselect helpers ──────────────────────────────────────────
-    function selectAll() {
-        document.querySelectorAll('.subject-cb:not([disabled])').forEach(cb => cb.checked = true);
-        updateCount();
-    }
+  function filterByGrade() {
+    const gradeId = document.getElementById('tableGradeFilter').value;
+    const url = new URL(window.location);
+    gradeId ? url.searchParams.set('grade', gradeId) : url.searchParams.delete('grade');
+    window.location.href = url.toString();
+  }
 
-    function deselectAll() {
-        document.querySelectorAll('.subject-cb:not([disabled])').forEach(cb => cb.checked = false);
-        updateCount();
-    }
-
-    // ─── Update selected count badge ────────────────────────────────────────
-    function updateCount() {
-        const count = document.querySelectorAll('.subject-cb:not([disabled]):checked').length;
-        document.getElementById('selectedCount').textContent = `${count} selected`;
-        document.getElementById('assignBtn').disabled = count === 0;
-        document.getElementById('assignStatus').textContent = '';
-    }
-
-    // ─── Submit assignment ──────────────────────────────────────────────────
-    function submitAssignment() {
-        const checked = document.querySelectorAll('.subject-cb:not([disabled]):checked');
-        if (!selectedTeacherId || checked.length === 0) return;
-
-        const subjectIds = Array.from(checked).map(cb => parseInt(cb.value));
-        const preview = Array.from(checked)
-            .map(cb => `• ${cb.dataset.section} — ${cb.dataset.subject}`)
-            .join('\n');
-
-        if (!confirm(`Assign teacher to ${subjectIds.length} subject(s)?\n\n${preview}`)) return;
-
-        const btn = document.getElementById('assignBtn');
-        const status = document.getElementById('assignStatus');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
-        status.textContent = '';
-
-        fetch('/branch-admin/assign-teachers-bulk', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                teacher_id: parseInt(selectedTeacherId),
-                subject_ids: subjectIds
-            })
-        })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    status.innerHTML = `<span class="text-success">✅ ${data.count} subject(s) assigned!</span>`;
-                    btn.innerHTML = '✅ Save Assignments';
-                    setTimeout(() => location.reload(), 1000);
-                } else {
-                    status.innerHTML = `<span class="text-danger">❌ ${data.message}</span>`;
-                    btn.disabled = false;
-                    btn.innerHTML = '✅ Save Assignments';
-                }
-            })
-            .catch(() => {
-                status.innerHTML = '<span class="text-danger">❌ Network error. Please try again.</span>';
-                btn.disabled = false;
-                btn.innerHTML = '✅ Save Assignments';
-            });
-    }
-
-    // ─── Filter assignments table by grade ──────────────────────────────────
-    function filterByGrade() {
-        const gradeId = document.getElementById('tableGradeFilter').value;
-        const url = new URL(window.location);
-        gradeId ? url.searchParams.set('grade', gradeId) : url.searchParams.delete('grade');
-        window.location.href = url.toString();
-    }
+  function removeAssignment(sectionTeacherId, teacherName, sectionName, subjectName) {
+    if (!confirm(`Remove ${teacherName} from ${sectionName} — ${subjectName}?`)) return;
+    fetch('/branch-admin/remove-teacher-assignment', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ section_teacher_id: sectionTeacherId })
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.success) location.reload();
+        else alert('Error: ' + (data.message || 'Could not remove assignment.'));
+      })
+      .catch(() => alert('Network error. Please try again.'));
+  }
 </script>
-
-<style>
-    label[for^="subj_"] {
-        transition: box-shadow 0.15s ease;
-    }
-
-    label[for^="subj_"]:hover {
-        box-shadow: 0 0 0 2px #0d6efd44;
-    }
-
-    #step2,
-    #step3 {
-        transition: opacity 0.3s ease;
-    }
-</style>
-
 {% endblock %}
