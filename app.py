@@ -56,6 +56,37 @@ def inject_is_branch_active():
         is_active = is_branch_active(branch_id)
     return dict(is_branch_active_status=is_active)
 
+@app.context_processor
+def inject_profile_image():
+    img = session.get('profile_image')
+    role = session.get('role')
+    user_id = session.get('user_id')
+    enrollment_id = session.get('enrollment_id')
+    
+    if role and (user_id or enrollment_id):
+        from db import get_db_connection
+        import psycopg2.extras
+        db = None
+        cursor = None
+        try:
+            db = get_db_connection()
+            cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            if role == 'student' and enrollment_id:
+                cursor.execute("SELECT profile_image FROM enrollments WHERE enrollment_id = %s", (enrollment_id,))
+                row = cursor.fetchone()
+                if row: img = row['profile_image']
+            elif user_id:
+                cursor.execute("SELECT profile_image FROM users WHERE user_id = %s", (user_id,))
+                row = cursor.fetchone()
+                if row: img = row['profile_image']
+        except:
+            pass
+        finally:
+            if cursor: cursor.close()
+            if db: db.close()
+
+    return dict(live_profile_image=img)
+
 
 @app.context_processor
 def inject_student_subjects():
