@@ -1063,9 +1063,6 @@
       <a class="sb-link {% if request.path == '/student/dashboard' %}active{% endif %}" href="/student/dashboard">
         <span class="sb-icon">🏠</span> Dashboard
       </a>
-      <a class="sb-link {% if request.path.startswith('/student/exams') %}active{% endif %}" href="/student/exams">
-        <span class="sb-icon">📄</span> My Exams
-      </a>
 
       <button class="sb-dropdown-btn {% if '/student/subject/' in request.path %}open{% endif %}"
         onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
@@ -1083,6 +1080,12 @@
         {% endfor %}
       </div>
 
+      <a class="sb-link {% if request.path.startswith('/student/exams') %}active{% endif %}" href="/student/exams">
+        <span class="sb-icon">📄</span> My Exams
+      </a>
+      <a class="sb-link {% if request.path == '/student/grades' %}active{% endif %}" href="/student/grades">
+        <span class="sb-icon">📊</span> My Grades
+      </a>
       <a class="sb-link {% if request.path == '/student/billing' %}active{% endif %}" href="/student/billing">
         <span class="sb-icon">💳</span> Billing
       </a>
@@ -1110,9 +1113,6 @@
         </a>
       </div>
 
-      <a class="sb-link {% if request.path == '/student/grades' %}active{% endif %}" href="/student/grades">
-        <span class="sb-icon">📊</span> My Grades
-      </a>
 
       {% elif session.get('role') == 'parent' %}
       <div class="sb-section-label">Parent</div>
@@ -1289,26 +1289,8 @@
         <span class="sb-icon">❓</span> FAQ
       </a>
       {% endif %}
-      {% if session.get('role') %}
-      {% if session.get('role') != 'student' %}
-      <a class="sb-link" href="/change-password">
-        <span class="sb-icon">🔑</span> Change Password
-      </a>
-      {% endif %}
-      {% endif %}
-
     </nav>
 
-    <!-- Logout -->
-    {% if session.get('role') %}
-    {% if session.get('role') != 'student' %}
-    <div class="sb-footer">
-      <a class="sb-logout" href="/logout">
-        <span class="sb-icon">↩</span> Logout
-      </a>
-    </div>
-    {% endif %}
-    {% endif %}
 
   </aside>
 
@@ -1335,8 +1317,7 @@
           <div class="notif-header">
             <span>Notifications</span>
             {% if student_unread_count and student_unread_count > 0 %}
-            <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ student_unread_count }}
-              New</span>
+            <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ student_unread_count }} New</span>
             {% endif %}
           </div>
           <div class="notif-list">
@@ -1344,9 +1325,7 @@
             <a href="{{ n.link or '#' }}" class="notif-item {% if not n.is_read %}notif-unread{% endif %}">
               <div class="notif-item-title">{{ n.title }}</div>
               <div class="notif-item-msg">{{ n.message }}</div>
-              <div class="notif-item-time">
-                {{ n.created_at.strftime('%b %d, %I:%M %p') if n.created_at else '' }}
-              </div>
+              <div class="notif-item-time">{{ n.created_at.strftime('%b %d, %I:%M %p') if n.created_at else '' }}</div>
             </a>
             {% else %}
             <div class="notif-empty">
@@ -1357,17 +1336,20 @@
           </div>
         </div>
       </div>
+      {% endif %}
 
+      {% if session.get('role') %}
       <div class="profile-dropdown-wrapper">
         <button class="profile-toggle-btn" id="profileBtn" onclick="toggleProfileMenu()">
           <div class="sb-avatar"
             style="width: 34px; height: 34px; font-size: 0.75rem; border: 2px solid rgba(255,255,255,0.3);">
-            {{ (session.get('full_name') or session.get('student_name') or 'S')[0] | upper }}
+            {{ (session.get('full_name') or session.get('student_name') or session.get('username') or 'U')[0] | upper }}
           </div>
         </button>
         <div class="profile-dropdown" id="profileDropdown">
-          <div style="padding: 12px 16px; border-bottom: 1px solid #f1f5f9; background: #f8fafc;">
-            <div style="font-weight: 700; font-size: 0.8rem; color: #1e3a8f;">Student Profile</div>
+          <div style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; background: #f8fafc;">
+            <div style="font-weight: 700; font-size: 0.78rem; color: #1e3a8f;">{{ disp }}</div>
+            <div style="font-size: 0.7rem; color: #64748b;">{{ role_label }}</div>
           </div>
           <a href="/change-password">🔑 Change Password</a>
           <a href="/logout" style="color: #ef4444; border-top: 1px solid #f1f5f9;">↩ Logout</a>
