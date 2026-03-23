@@ -587,6 +587,11 @@ def submit_activity(activity_id):
             flash("Activity not available.", "error")
             return redirect(url_for("student_portal.activities"))
             
+        # Define now_naive for Philippine time
+        import pytz
+        from datetime import datetime, timezone
+        now_naive = datetime.now(timezone.utc).astimezone(pytz.timezone("Asia/Manila")).replace(tzinfo=None)
+        
         # Check if closed, but bypass if there is an active individual extension
         effective_due_date = activity['individual_extension'] if activity['individual_extension'] else activity['due_date']
         is_extended = bool(activity['individual_extension'] and now_naive <= activity['individual_extension'])

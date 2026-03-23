@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Exam Results{% endblock %}
+{% block title %}{{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }} Results{% endblock %}
 {% block content %}
 <style>
     .container { max-width:900px; margin:0 auto; padding:24px 20px; }
@@ -24,12 +24,12 @@
 <div class="container">
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
         <div>
-            <h1 style="margin:0; font-size:20px;">📊 {{ exam.title }} — Results</h1>
+            <h1 style="margin:0; font-size:20px;">📊 {{ exam.title }} — {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }} Results</h1>
             <div style="font-size:13px; color:#888; margin-top:4px;">
                 {{ exam.subject_name }} · {{ exam.section_name }}
             </div>
         </div>
-        <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=exam.exam_id) }}" class="btn btn-secondary">← Back to Exam</a>
+        <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=exam.exam_id) }}" class="btn btn-secondary">← Back to {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }} questions</a>
     </div>
 
     <div class="card">

@@ -1135,29 +1135,25 @@
       {% elif session.get('role') == 'teacher' %}
       <div class="sb-section-label">Teacher</div>
       <a class="sb-link {% if request.path == '/teacher' %}active{% endif %}" href="/teacher">
-        <span class="sb-icon">👩‍🏫</span> My Class
+        <span class="sb-icon">🏠</span> Dashboard
       </a>
-      {% set manage_active = '/teacher/activities' in request.path or request.path.startswith('/teacher/exams') or
-      request.path.startswith('/teacher/quizzes') %}
-      <button class="sb-dropdown-btn {% if manage_active %}open{% endif %}"
+
+      <button class="sb-dropdown-btn {% if '/teacher/class/' in request.path %}open{% endif %}"
         onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
         <div class="sb-left">
-          <span class="sb-icon">📋</span> Manage Task
+          <span class="sb-icon">🎓</span> My Classes
         </div>
         <span class="sb-dropdown-arrow">▼</span>
       </button>
-      <div class="sb-dropdown-content {% if manage_active %}show{% endif %}">
-        <a class="sb-link {% if '/teacher/activities' in request.path %}active{% endif %}" href="/teacher/activities">
-          📝 Activities
+      <div class="sb-dropdown-content {% if '/teacher/subject/' in request.path %}show{% endif %}">
+        {% for cls in teacher_global_classes %}
+        <a class="sb-link {% if '/teacher/subject/' ~ cls.subject_id in request.path %}active{% endif %}"
+          href="/teacher/subject/{{ cls.subject_id }}">
+          {{ cls.subject_name }}
         </a>
-        <a class="sb-link {% if request.path.startswith('/teacher/exams') %}active{% endif %}" href="/teacher/exams">
-          📄 Exams
-        </a>
-        <a class="sb-link {% if request.path.startswith('/teacher/quizzes') %}active{% endif %}"
-          href="/teacher/quizzes">
-          ✏️ Quizzes
-        </a>
+        {% endfor %}
       </div>
+
 
       {% set grading_active = '/teacher/grading-weights' in request.path or '/teacher/class-record' in request.path
       or '/teacher/participation' in request.path or '/teacher/attendance' in request.path %}
@@ -1557,9 +1553,22 @@
           <button onclick="closeClasslist()" style="background:none; border:none; color:#fff; font-size:1.5rem; cursor:pointer;">&times;</button>
       </div>
       <div style="padding: 16px 20px; background: var(--card); border-bottom: 1px solid var(--border);">
-          <select id="clSectionSelect" onchange="fetchClasslist()" style="width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem;">
-              <option value="">— Select Section —</option>
-          </select>
+          <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+              <select id="clSectionSelect" onchange="fetchClasslist()" style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem;">
+                  <option value="">— Select Section —</option>
+              </select>
+          </div>
+          <div id="addStudentWrap" style="display: none; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+              <div style="font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 6px;">Add Late Enrollee</div>
+              <input type="text" id="newStudentName" placeholder="Student Full Name" style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; margin-bottom: 8px;">
+              <div style="display: flex; gap: 8px;">
+                  <button onclick="submitNewStudent()" style="background: #10b981; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: pointer; flex: 1;">Save</button>
+                  <button onclick="toggleAddStudent()" style="background: #e2e8f0; color: #475569; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer;">Cancel</button>
+              </div>
+          </div>
+          <button id="btnAddStudentBtn" onclick="toggleAddStudent()" style="display: none; width: 100%; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; padding: 8px; border-radius: 8px; font-size: 0.85rem; font-weight: 700; cursor: pointer;">
+              + Add Student
+          </button>
       </div>
       <div style="flex: 1; overflow-y: auto; background: var(--card);">
           <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
@@ -1576,9 +1585,10 @@
       </div>
   </div>
   <script>
-      function openClasslist() {
+      function openClasslist(preselectSectionId = null) {
           document.getElementById('classlistSidebar').style.right = '0';
           document.getElementById('clOverlay').classList.add('show');
+          
           if (document.getElementById('clSectionSelect').options.length <= 1) {
               fetch('/api/teacher/sections')
                   .then(r => r.json())
@@ -1589,22 +1599,70 @@
                           data.sections.forEach(s => {
                               sel.innerHTML += `<option value="${s.section_id}">${s.grade_level_name} - ${s.section_name}</option>`;
                           });
+                          if (preselectSectionId) {
+                              sel.value = preselectSectionId;
+                              fetchClasslist();
+                          }
                       }
                   });
+          } else if (preselectSectionId) {
+              document.getElementById('clSectionSelect').value = preselectSectionId;
+              fetchClasslist();
           }
       }
       function closeClasslist() {
           document.getElementById('classlistSidebar').style.right = '-400px';
           document.getElementById('clOverlay').classList.remove('show');
       }
+      function toggleAddStudent() {
+          const wrap = document.getElementById('addStudentWrap');
+          const btn = document.getElementById('btnAddStudentBtn');
+          if (wrap.style.display === 'none') {
+              wrap.style.display = 'block';
+              btn.style.display = 'none';
+          } else {
+              wrap.style.display = 'none';
+              btn.style.display = 'block';
+              document.getElementById('newStudentName').value = '';
+          }
+      }
+      function submitNewStudent() {
+          const sec = document.getElementById('clSectionSelect').value;
+          const name = document.getElementById('newStudentName').value.trim();
+          if (!sec) return alert("Please select a section first.");
+          if (!name) return alert("Please enter a student name.");
+          
+          fetch('/api/teacher/add-student', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ section_id: sec, student_name: name })
+          })
+          .then(r => r.json())
+          .then(data => {
+              if (data.ok) {
+                  toggleAddStudent();
+                  fetchClasslist();
+              } else {
+                  alert("Error: " + (data.error || "Failed to add student"));
+              }
+          })
+          .catch(err => alert("Server error"));
+      }
       function fetchClasslist() {
           const sec = document.getElementById('clSectionSelect').value;
           const tb = document.getElementById('clTableBody');
+          const addBtn = document.getElementById('btnAddStudentBtn');
+          
           if (!sec) {
               tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: var(--muted);">Select a section to view students</td></tr>';
+              addBtn.style.display = 'none';
+              document.getElementById('addStudentWrap').style.display = 'none';
               return;
           }
+          
+          addBtn.style.display = 'block';
           tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: var(--muted);">Loading...</td></tr>';
+          
           fetch('/api/teacher/classlist/' + sec)
               .then(r => r.json())
               .then(data => {

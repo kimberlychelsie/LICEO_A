@@ -19,7 +19,7 @@
                         {% set unique_subjects = [] %}
                         {% for a in teacher_assignments %}
                             {% if a.subject_id not in unique_subjects %}
-                                <option value="{{ a.subject_id }}">{{ a.subject_name }}</option>
+                                <option value="{{ a.subject_id }}" {% if subject_id|string == a.subject_id|string %}selected{% endif %}>{{ a.subject_name }}</option>
                                 {% set _ = unique_subjects.append(a.subject_id) %}
                             {% endif %}
                         {% endfor %}
@@ -101,7 +101,7 @@
             </div>
 
             <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:8px; padding-top:12px; border-top:1px solid var(--border);">
-                <a href="{{ url_for('teacher.activities') }}" class="btn btn-secondary">Cancel</a>
+                <a href="{{ url_for('teacher.teacher_class_view', subject_id=subject_id) if subject_id else url_for('teacher.activities') }}" class="btn btn-secondary">Cancel</a>
                 <button type="submit" class="btn btn-primary">Create Activity</button>
             </div>
         </form>
@@ -136,6 +136,12 @@
             div.appendChild(cb); div.appendChild(lbl); container.appendChild(div);
         });
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        if (document.getElementById('subjectSelect').value) {
+            updateSectionCheckboxes();
+        }
+    });
 
     document.querySelector('form').onsubmit = function(e) {
         const checked = document.querySelectorAll('input[name="section_ids"]:checked');

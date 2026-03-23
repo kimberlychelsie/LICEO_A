@@ -118,6 +118,34 @@ def inject_student_subjects():
 
 
 @app.context_processor
+def inject_teacher_subjects():
+    if session.get('role') == 'teacher':
+        user_id = session.get('user_id')
+        from db import get_db_connection
+        import psycopg2.extras
+        db = get_db_connection()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            cursor.execute("""
+                SELECT DISTINCT
+                    sub.subject_id,
+                    sub.name AS subject_name
+                FROM section_teachers st
+                JOIN subjects sub ON st.subject_id = sub.subject_id
+                WHERE st.teacher_id = %s
+                ORDER BY sub.name
+            """, (user_id,))
+            classes = cursor.fetchall()
+            return dict(teacher_global_classes=classes)
+        except:
+            pass
+        finally:
+            cursor.close()
+            db.close()
+    return dict(teacher_global_classes=[])
+
+
+@app.context_processor
 def inject_student_notifications():
     if session.get('role') == 'student':
         user_id = session.get('user_id')

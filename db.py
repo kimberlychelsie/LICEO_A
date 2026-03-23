@@ -92,6 +92,32 @@ def get_db_connection():
                 logger.warning(f"Could not migrate enrollments table: {e}")
                 conn.rollback()
                 
+            try:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS individual_extensions (
+                        extension_id SERIAL PRIMARY KEY,
+                        enrollment_id INTEGER NOT NULL REFERENCES enrollments(enrollment_id) ON DELETE CASCADE,
+                        item_type VARCHAR(20) NOT NULL,
+                        item_id INTEGER NOT NULL,
+                        new_due_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+                        created_at TIMESTAMP DEFAULT NOW()
+                    )
+                """)
+                cur.execute("""
+                    SELECT constraint_name 
+                    FROM information_schema.table_constraints 
+                    WHERE table_name = 'individual_extensions' AND constraint_name = 'uq_extension'
+                """)
+                if not cur.fetchone():
+                    cur.execute("""
+                        ALTER TABLE individual_extensions 
+                        ADD CONSTRAINT uq_extension UNIQUE (enrollment_id, item_type, item_id)
+                    """)
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate individual_extensions table: {e}")
+                conn.rollback()
+                
         # Commit successful things
         conn.commit()
 

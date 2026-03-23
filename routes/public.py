@@ -40,7 +40,7 @@ def homepage():
         elif role == "branch_admin":
             return redirect(url_for("branch_admin.dashboard"))
         elif role == "registrar":
-            return redirect(url_for("registrar.registrar_dashboard"))
+            return redirect(url_for("registrar.registrar_home"))
         elif role == "cashier":
             return redirect(url_for("cashier.dashboard"))
         elif role == "teacher":
