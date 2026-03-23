@@ -73,10 +73,20 @@
     font-weight: 600;
     color: var(--text);
   }
+  .section-title {
+    text-align: left;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text);
+    margin: 25px 0 10px 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
   .profile-notice {
     font-size: 0.75rem;
     color: var(--muted);
-    margin-top: 20px;
+    margin-top: 25px;
   }
 </style>
 {% endblock %}
@@ -101,10 +111,15 @@
     </span>
   </div>
 
+  <div class="section-title">🎓 Academic Information</div>
   <div class="profile-details">
     <div class="detail-row">
       <span class="detail-label">Enrollment No.</span>
       <span class="detail-value">#{{ student.branch_enrollment_no or student.enrollment_id }}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">LRN</span>
+      <span class="detail-value">{{ student.lrn or '-' }}</span>
     </div>
     <div class="detail-row">
       <span class="detail-label">Section</span>
@@ -119,6 +134,50 @@
     <div class="detail-row">
       <span class="detail-label">Branch</span>
       <span class="detail-value">{{ student.branch_name }}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Previous School</span>
+      <span class="detail-value">{{ student.previous_school or '-' }}</span>
+    </div>
+  </div>
+
+  <div class="section-title">👤 Personal Information</div>
+  <div class="profile-details">
+    <div class="detail-row">
+      <span class="detail-label">Gender</span>
+      <span class="detail-value">{{ student.gender | title if student.gender else '-' }}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Date of Birth</span>
+      <span class="detail-value">{{ student.dob.strftime('%b %d, %Y') if student.dob else '-' }}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Contact No.</span>
+      <span class="detail-value">{{ student.contact_number or '-' }}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Email</span>
+      <span class="detail-value">{{ student.email or '-' }}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Address</span>
+      <span class="detail-value" style="text-align:right;max-width:250px;">{{ student.address or '-' }}</span>
+    </div>
+  </div>
+
+  <div class="section-title">👨‍👩‍👧 Guardian Information</div>
+  <div class="profile-details">
+    <div class="detail-row">
+      <span class="detail-label">Guardian Name</span>
+      <span class="detail-value">{{ student.guardian_name or '-' }}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Guardian Contact</span>
+      <span class="detail-value">{{ student.guardian_contact or '-' }}</span>
+    </div>
+    <div class="detail-row">
+      <span class="detail-label">Guardian Email</span>
+      <span class="detail-value">{{ student.guardian_email or '-' }}</span>
     </div>
   </div>
 

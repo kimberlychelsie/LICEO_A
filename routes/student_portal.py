@@ -1298,6 +1298,8 @@ def student_profile():
     try:
         cur.execute("""
             SELECT e.enrollment_id, e.branch_enrollment_no, e.student_name, e.grade_level, e.status, e.profile_image,
+                   e.gender, e.dob, e.address, e.contact_number, e.guardian_name, e.guardian_contact,
+                   e.previous_school, e.email, e.guardian_email, e.lrn,
                    s.section_name,
                    br.branch_name, br.location
             FROM enrollments e
