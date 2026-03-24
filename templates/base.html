@@ -192,6 +192,12 @@
       font-weight: 500;
       text-transform: capitalize;
     }
+    .school-year-badge {
+      font-size: 0.7rem;
+      color: var(--muted);
+      font-weight: 500;
+      text-transform: capitalize;
+}
 
     /* Nav */
     .sb-nav {
@@ -1047,6 +1053,7 @@
     {% endif %}
 
     <div class="sb-user">
+      
       {% if live_profile_image %}
       <div class="sb-avatar" style="padding:0; overflow:hidden; background:transparent;">
         <img src="{% if live_profile_image.startswith('http') %}{{ live_profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ live_profile_image) }}{% endif %}" style="width:100%;height:100%;object-fit:cover;">
@@ -1057,9 +1064,17 @@
       <div>
         <div class="sb-user-name">{{ disp }}</div>
         <div class="sb-user-role">{{ role_label }}</div>
+        <div>
+          {% if active_school_year %}
+          <div class="school-yer-badge">
+            S.Y. {{ active_school_year }}
+          </div>
+          {% endif %}
+        </div>
+        {% endif %}
       </div>
     </div>
-    {% endif %}
+    
 
     <!-- Navigation -->
     <nav class="sb-nav">

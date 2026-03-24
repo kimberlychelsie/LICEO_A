@@ -856,48 +856,110 @@ def branch_admin_grade_level_delete(grade_id):
     return redirect(url_for("branch_admin.branch_admin_grade_levels"))
 
 #SCHOOL YEAR
-
 @branch_admin_bp.route('/branch_admin/add_year', methods=['GET', 'POST'])
 def add_year():
     db = get_db_connection()
     cursor = db.cursor()
-    
-    if request.method == 'POST':
-        label = request.form['label'].strip()
-        cursor.execute(
-            "INSERT INTO school_years (label) VALUES (%s) ON CONFLICT DO NOTHING",
-            (label,)
-        )
-        db.commit()
-        flash("School year added!", "success")
-        return redirect(url_for('branch_admin.add_year'))
-    
-    # Handle activate/deactivate action
-    action = request.args.get('action')
-    year_id = request.args.get('year_id')
-    if action in ['activate', 'deactivate'] and year_id:
-        is_active = True if action == 'activate' else False
-        
-        # Optional: only allow one active year at a time
-        if is_active:
-            cursor.execute("UPDATE school_years SET is_active = FALSE WHERE is_active = TRUE")
-        
-        cursor.execute(
-            "UPDATE school_years SET is_active = %s WHERE year_id = %s",
-            (is_active, year_id)
-        )
-        db.commit()
-        flash(f"School year {'activated' if is_active else 'deactivated'}!", "success")
-        return redirect(url_for('branch_admin.add_year'))
 
-    # Fetch all years
-    cursor.execute("SELECT year_id, label, is_active FROM school_years ORDER BY label DESC")
-    years = cursor.fetchall()
-    
-    cursor.close()
-    db.close()
+    branch_id = session.get("branch_id")  # ✅ IMPORTANT
+
+    try:
+        # ── ADD NEW YEAR ──
+        if request.method == 'POST':
+            label = request.form['label'].strip()
+
+            cursor.execute(
+                "INSERT INTO school_years (label) VALUES (%s) ON CONFLICT DO NOTHING",
+                (label,)
+            )
+            db.commit()
+
+            flash("School year added!", "success")
+            return redirect(url_for('branch_admin.add_year'))
+
+        # ── ACTIVATE / DEACTIVATE ──
+        action = request.args.get('action')
+        year_id = request.args.get('year_id')
+
+        if action in ['activate', 'deactivate'] and year_id:
+            year_id = int(year_id)
+
+            if action == 'activate':
+                # ✅ 1. Get current active year
+                cursor.execute("SELECT year_id FROM school_years WHERE is_active = TRUE LIMIT 1")
+                old = cursor.fetchone()
+                old_year_id = old[0] if old else None
+
+                # ✅ 2. Deactivate all
+                cursor.execute("UPDATE school_years SET is_active = FALSE")
+
+                # ✅ 3. Activate selected year
+                cursor.execute(
+                    "UPDATE school_years SET is_active = TRUE WHERE year_id = %s",
+                    (year_id,)
+                )
+
+                # ✅ 4. Check how many sections exist for this year + branch
+                cursor.execute("""
+                    SELECT COUNT(*) FROM sections 
+                    WHERE year_id = %s AND branch_id = %s
+                """, (year_id, branch_id))
+                section_count = cursor.fetchone()[0]
+
+                if section_count == 0 and old_year_id:
+                    # ✅ 5. Copy sections from old year
+                    cursor.execute("""
+                        INSERT INTO sections (branch_id, year_id, section_name, grade_level_id, capacity)
+                        SELECT branch_id, %s, section_name, grade_level_id, capacity
+                        FROM sections
+                        WHERE year_id = %s AND branch_id = %s
+                    """, (year_id, old_year_id, branch_id))
+
+                    # ✅ 6. Copy subjects (no teacher yet)
+                    cursor.execute("""
+                        INSERT INTO section_teachers (section_id, subject_id, teacher_id)
+                        SELECT new_s.section_id, st.subject_id, NULL
+                        FROM section_teachers st
+                        JOIN sections old_s ON st.section_id = old_s.section_id
+                        JOIN sections new_s 
+                            ON new_s.section_name = old_s.section_name
+                            AND new_s.grade_level_id = old_s.grade_level_id
+                            AND new_s.branch_id = old_s.branch_id
+                            AND new_s.year_id = %s
+                        WHERE old_s.year_id = %s
+                        AND old_s.branch_id = %s
+                    """, (year_id, old_year_id, branch_id))
+
+                    db.commit()
+                    flash("✅ School year activated and sections copied!", "success")
+                else:
+                    db.commit()
+                    flash("✅ School year activated! Sections already exist, nothing copied.", "success")
+
+            else:
+                # ── DEACTIVATE ──
+                cursor.execute(
+                    "UPDATE school_years SET is_active = FALSE WHERE year_id = %s",
+                    (year_id,)
+                )
+                db.commit()
+                flash("School year deactivated!", "success")
+
+            return redirect(url_for('branch_admin.add_year'))
+
+        # ── FETCH YEARS ──
+        cursor.execute("""
+            SELECT year_id, label, is_active 
+            FROM school_years 
+            ORDER BY label DESC
+        """)
+        years = cursor.fetchall()
+
+    finally:
+        cursor.close()
+        db.close()
+
     return render_template('branch_admin_school_years.html', years=years)
-
 # =======================
 # SECTIONS (branch-scoped)
 @branch_admin_bp.route("/branch-admin/sections", methods=["GET", "POST"])

@@ -222,14 +222,13 @@ def enroll(branch_id):
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
-        cursor.execute(
-            "SELECT branch_id, branch_name FROM branches WHERE branch_id=%s",
-            (branch_id,)
-        )
+        # ── Fetch branch ──
+        cursor.execute("SELECT branch_id, branch_name FROM branches WHERE branch_id=%s", (branch_id,))
         branch = cursor.fetchone()
         if not branch:
             return "Branch not found", 404
 
+        # ── Fetch grade levels ──
         cursor.execute("""
             SELECT id, name FROM grade_levels
             WHERE branch_id = %s
@@ -237,9 +236,24 @@ def enroll(branch_id):
         """, (branch_id,))
         grade_levels = cursor.fetchall() or []
 
+        # ── Fetch school years ──
+        cursor.execute("""
+            SELECT year_id, label, is_active
+            FROM school_years
+            ORDER BY label DESC
+        """)
+        school_years = cursor.fetchall() or []
+
+        # ── POST: Handle enrollment ──
         if request.method == "POST":
-            active_sy_id = get_active_school_year_id(cursor)
-            if not active_sy_id:
+            # Selected school year from form, fallback to active
+            selected_sy_id = request.form.get("school_year_id")
+            if selected_sy_id:
+                selected_sy_id = int(selected_sy_id)
+            else:
+                selected_sy_id = get_active_school_year_id(cursor)
+
+            if not selected_sy_id:
                 flash("No active school year found. Please contact admin.", "error")
                 return redirect(url_for("public.homepage"))
             if not is_branch_active(branch_id):
@@ -248,8 +262,7 @@ def enroll(branch_id):
 
             # ── Student Details ──
             student_name      = request.form.get("student_name", "").strip()
-            grade_level       = request.form.get("grade_level", "").strip()
-            grade_level       = normalize_grade_level(grade_level)
+            grade_level       = normalize_grade_level(request.form.get("grade_level", "").strip())
             gender            = request.form.get("gender", "").strip()
             dob               = request.form.get("dob", "").strip() or None
             lrn               = request.form.get("lrn", "").strip() or None
@@ -273,9 +286,6 @@ def enroll(branch_id):
 
             # ── Previous School ──
             previous_school   = request.form.get("previous_school", "").strip() or None
-            school_year       = request.form.get("school_year", "").strip() or None
-
-            # ── Enrollment Type ──
             enroll_type       = request.form.get("enroll_type", "").strip() or None
             enroll_date       = request.form.get("enroll_date", "").strip() or None
             remarks           = request.form.get("remarks", "").strip() or None
@@ -287,7 +297,7 @@ def enroll(branch_id):
                 WHERE status NOT IN ('rejected')
                 AND branch_id = %s
                 AND school_year_id = %s
-            """, (branch_id, active_sy_id))
+            """, (branch_id, selected_sy_id))
             existing_records = cursor.fetchall()
             best_score = 0
             best_reasons = []
@@ -303,58 +313,57 @@ def enroll(branch_id):
                     "student_enroll.html",
                     branch=branch,
                     grade_levels=grade_levels,
+                    school_years=school_years,
                     message=None,
                     duplicate_blocked=True,
                     duplicate_reason=reason_text,
                 )
 
-            cursor.execute("""
-                SELECT COALESCE(MAX(branch_enrollment_no), 0) + 1 AS next_no
-                FROM enrollments WHERE branch_id = %s
-            """, (branch_id,))
+            # ── Enrollment number ──
+            cursor.execute("SELECT COALESCE(MAX(branch_enrollment_no), 0) + 1 AS next_no FROM enrollments WHERE branch_id = %s", (branch_id,))
             next_no = cursor.fetchone()["next_no"]
 
+            # ── Insert enrollment ──
             cursor.execute("""
                 INSERT INTO enrollments
                   (student_name, grade_level, gender, dob, address, contact_number,
                    guardian_name, guardian_contact, previous_school, branch_id, status,
                    branch_enrollment_no, lrn, email, guardian_email,
                    birthplace, father_name, father_contact, father_occupation,
-                   mother_name, mother_contact, mother_occupation, school_year,
+                   mother_name, mother_contact, mother_occupation,
                    enroll_type, enroll_date, remarks, school_year_id)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s,%s,%s, %s,%s,%s,%s, %s,%s,%s, %s, %s,%s,%s, %s)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s,%s,%s, %s,%s,%s,%s, %s,%s,%s, %s,%s,%s,%s)
                 RETURNING enrollment_id
             """, (
                 student_name, grade_level, gender, dob, address, contact_number,
                 guardian_name, guardian_contact, previous_school, branch_id,
                 next_no, lrn, email, guardian_email,
                 birthplace, father_name, father_contact, father_occupation,
-                mother_name, mother_contact, mother_occupation, school_year,
-                enroll_type, enroll_date, remarks, active_sy_id
+                mother_name, mother_contact, mother_occupation,
+                enroll_type, enroll_date, remarks, selected_sy_id
             ))
             enrollment_id = cursor.fetchone()["enrollment_id"]
             db.commit()
 
             # ── Documents ──
-            psa_file        = request.files.get("psa_birth_cert")
-            baptismal_file  = request.files.get("baptismal_cert")
-            form138_file    = request.files.get("form_138")
-            good_moral_file = request.files.get("good_moral")
-            form137_file    = request.files.get("form_137")
-
-            save_doc_file(cursor, enrollment_id, psa_file,        'PSA Birth Certificate')
-            save_doc_file(cursor, enrollment_id, baptismal_file,  'Baptismal Certificate')
-            save_doc_file(cursor, enrollment_id, form138_file,    'Form 138')
-            save_doc_file(cursor, enrollment_id, good_moral_file, 'Good Moral Certificate')
-            save_doc_file(cursor, enrollment_id, form137_file,    'Form 137')
+            for file_field, doc_name in [
+                ("psa_birth_cert", "PSA Birth Certificate"),
+                ("baptismal_cert", "Baptismal Certificate"),
+                ("form_138", "Form 138"),
+                ("good_moral", "Good Moral Certificate"),
+                ("form_137", "Form 137")
+            ]:
+                save_doc_file(cursor, enrollment_id, request.files.get(file_field), doc_name)
             db.commit()
 
             return redirect(url_for("student.enrollment_success", branch_id=branch_id, enrollment_id=enrollment_id))
 
+        # ── GET: Render form ──
         return render_template(
             "student_enroll.html",
             branch=branch,
             grade_levels=grade_levels,
+            school_years=school_years,  # ✅ pass school years to template
             message=None,
             duplicate_blocked=False,
             duplicate_reason=None

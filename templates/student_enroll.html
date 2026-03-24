@@ -772,8 +772,14 @@
                             </div>
                             <div class="c4">
                                 <div class="field">
-                                    <label>School Year</label>
-                                    <input type="text" name="school_year" placeholder="e.g., 2024–2025" />
+                                    <label for="school_year_id">School Year</label>
+<select name="school_year_id" id="school_year_id" required>
+    {% for sy in school_years %}
+        <option value="{{ sy.year_id }}" {% if sy.is_active %}selected{% endif %}>
+            {{ sy.label }} {% if sy.is_active %}(Active){% endif %}
+        </option>
+    {% endfor %}
+</select>
                                 </div>
                             </div>
                         </div>

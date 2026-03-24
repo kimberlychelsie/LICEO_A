@@ -4,7 +4,7 @@ load_dotenv()  # loads .env file locally; no effect in Railway (env vars set dir
 
 from flask import Flask, request, session, flash, redirect, url_for, render_template
 from routes import init_routes
-from db import is_branch_active
+from db import is_branch_active, get_db_connection
 from extensions import limiter
 
 app = Flask(__name__)
@@ -240,6 +240,25 @@ def rate_limit_exceeded(e):
         429,
     )
 
+@app.context_processor
+def inject_active_school_year():
+    db = get_db_connection()
+    cursor = db.cursor()
+
+    cursor.execute("""
+        SELECT label 
+        FROM school_years 
+        WHERE is_active = TRUE 
+        LIMIT 1
+    """)
+    row = cursor.fetchone()
+
+    cursor.close()
+    db.close()
+
+    return {
+        "active_school_year": row[0] if row else None
+    }
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)
