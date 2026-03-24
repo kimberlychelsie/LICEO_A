@@ -861,19 +861,43 @@ def branch_admin_grade_level_delete(grade_id):
 def add_year():
     db = get_db_connection()
     cursor = db.cursor()
+    
     if request.method == 'POST':
         label = request.form['label'].strip()
-        cursor.execute("INSERT INTO school_years (label) VALUES (%s) ON CONFLICT DO NOTHING", (label,))
+        cursor.execute(
+            "INSERT INTO school_years (label) VALUES (%s) ON CONFLICT DO NOTHING",
+            (label,)
+        )
         db.commit()
         flash("School year added!", "success")
-       
+        return redirect(url_for('branch_admin.add_year'))
+    
+    # Handle activate/deactivate action
+    action = request.args.get('action')
+    year_id = request.args.get('year_id')
+    if action in ['activate', 'deactivate'] and year_id:
+        is_active = True if action == 'activate' else False
+        
+        # Optional: only allow one active year at a time
+        if is_active:
+            cursor.execute("UPDATE school_years SET is_active = FALSE WHERE is_active = TRUE")
+        
+        cursor.execute(
+            "UPDATE school_years SET is_active = %s WHERE year_id = %s",
+            (is_active, year_id)
+        )
+        db.commit()
+        flash(f"School year {'activated' if is_active else 'deactivated'}!", "success")
         return redirect(url_for('branch_admin.add_year'))
 
-    cursor.execute("SELECT year_id, label FROM school_years ORDER BY label DESC")
+    # Fetch all years
+    cursor.execute("SELECT year_id, label, is_active FROM school_years ORDER BY label DESC")
     years = cursor.fetchall()
+    
     cursor.close()
     db.close()
     return render_template('branch_admin_school_years.html', years=years)
+
 # =======================
 # SECTIONS (branch-scoped)
 @branch_admin_bp.route("/branch-admin/sections", methods=["GET", "POST"])
@@ -911,7 +935,7 @@ def branch_admin_sections():
     grades = cursor.fetchall() or []
 
     # --- NEW: Fetch available years for dropdown
-    cursor.execute("SELECT year_id, label FROM school_years ORDER BY label DESC")
+    cursor.execute("SELECT year_id, label FROM school_years WHERE is_active = TRUE ORDER BY label DESC")
     years = cursor.fetchall() or []
 
     if request.method == "POST":
@@ -977,7 +1001,7 @@ def branch_admin_sections():
         FROM sections s
         LEFT JOIN grade_levels g ON s.grade_level_id = g.id
         LEFT JOIN school_years y ON s.year_id = y.year_id
-        WHERE s.branch_id = %s
+        WHERE s.branch_id = %s AND y.is_active = true
         ORDER BY y.label DESC, g.display_order, s.section_name
     """, (branch_id,))
     sections = cursor.fetchall() or []
@@ -1091,7 +1115,8 @@ def branch_admin_subjects():
         SELECT s.section_id, s.section_name, g.id AS grade_level_id, g.name AS grade_level_name
         FROM sections s
         INNER JOIN grade_levels g ON s.grade_level_id = g.id
-        WHERE s.branch_id = %s
+        INNER JOIN school_years y ON s.year_id = y.year_id           
+        WHERE s.branch_id = %s AND y.is_active = TRUE
         ORDER BY g.display_order, s.section_name
     """, (branch_id,))
     section_options = cursor.fetchall() or []
@@ -1162,7 +1187,8 @@ def branch_admin_subjects():
         FROM subjects sub
         JOIN section_teachers st ON st.subject_id = sub.subject_id
         JOIN sections s ON s.section_id = st.section_id
-        WHERE s.branch_id = %s
+        INNER JOIN school_years y ON s.year_id = y.year_id           
+        WHERE s.branch_id = %s AND y.is_active = TRUE
         ORDER BY sub.name
     """, (branch_id,))
     subjects = cursor.fetchall() or []
@@ -1177,7 +1203,8 @@ def branch_admin_subjects():
         FROM section_teachers st
         INNER JOIN sections s ON st.section_id = s.section_id
         INNER JOIN grade_levels g ON s.grade_level_id = g.id
-        WHERE s.branch_id = %s
+        INNER JOIN school_years y ON s.year_id = y.year_id           
+        WHERE s.branch_id = %s AND y.is_active = TRUE
         ORDER BY st.subject_id, g.display_order, s.section_name
     """, (branch_id,))
     assignments = cursor.fetchall() or []
@@ -1320,7 +1347,8 @@ def branch_admin_assign_teachers():
             SELECT DISTINCT g.id, g.name, g.display_order
             FROM sections s
             JOIN grade_levels g ON s.grade_level_id = g.id
-            WHERE s.branch_id = %s
+            JOIN school_years y ON s.year_id = y.year_id
+            WHERE s.branch_id = %s AND y.is_active = TRUE
             ORDER BY g.display_order
         """, (branch_id,))
         grade_options = cursor.fetchall() or []
@@ -1402,7 +1430,8 @@ def branch_admin_assign_teachers():
             JOIN grade_levels g ON s.grade_level_id = g.id
             JOIN subjects sub  ON st.subject_id  = sub.subject_id
             LEFT JOIN users u  ON st.teacher_id  = u.user_id
-            WHERE s.branch_id = %s
+            JOIN school_years y ON s.year_id = y.year_id
+            WHERE s.branch_id = %s AND y.is_active = TRUE
         """
         params = [branch_id]
 
@@ -1423,7 +1452,8 @@ def branch_admin_assign_teachers():
                 g.id AS grade_level_id
             FROM sections s
             JOIN grade_levels g ON s.grade_level_id = g.id
-            WHERE s.branch_id = %s
+            JOIN school_years y ON s.year_id = y.year_id
+            WHERE s.branch_id = %s AND y.is_active = TRUE
             ORDER BY g.display_order, s.section_name
         """, (branch_id,))
         section_options = cursor.fetchall() or []
@@ -1488,7 +1518,8 @@ def api_get_all_subjects(teacher_id):
             JOIN grade_levels g ON s.grade_level_id = g.id
             JOIN subjects sub ON st.subject_id = sub.subject_id
             LEFT JOIN users u ON st.teacher_id = u.user_id
-            WHERE s.branch_id = %s
+            JOIN school_years y ON s.year_id = y.year_id
+            WHERE s.branch_id = %s AND y.is_active = TRUE
             ORDER BY g.display_order, s.section_name, sub.name
         """, (teacher_id, branch_id))
         
@@ -1643,7 +1674,7 @@ def api_get_section_subjects(section_id):
     try:
         # Verify section belongs to this branch
         cursor.execute(
-            "SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s",
+            "SELECT 1 FROM sections s JOIN school_years y ON s.year_id = y.year_id WHERE section_id=%s AND branch_id=%s AND y.is_active = TRUE",
             (section_id, branch_id)
         )
         if not cursor.fetchone():
@@ -1659,8 +1690,10 @@ def api_get_section_subjects(section_id):
                 u.username AS teacher_username
             FROM section_teachers st
             JOIN subjects sub ON st.subject_id = sub.subject_id
+            JOIN school_years y ON s.year_id = y.year_id
             LEFT JOIN users u ON st.teacher_id = u.user_id
             WHERE st.section_id = %s
+            AND y.is_active = TRUE
             ORDER BY sub.name
         """, (section_id,))
         subjects = cursor.fetchall() or []
@@ -1727,7 +1760,8 @@ def branch_admin_assign_students():
                     SELECT capacity,
                            (SELECT COUNT(*) FROM enrollments WHERE section_id = s.section_id AND status IN ('approved', 'enrolled')) AS current_count
                     FROM sections s
-                    WHERE s.section_id=%s AND s.branch_id=%s
+                    JOIN school_years y ON s.year_id = y.year_id
+                    WHERE s.section_id=%s AND s.branch_id=%s AND y.is_active = TRUE
                 """, (section_id, branch_id))
                 sec_info = cursor.fetchone()
                 if not sec_info:
@@ -1796,7 +1830,9 @@ def branch_admin_assign_students():
                    (SELECT COUNT(*) FROM enrollments e2 WHERE e2.section_id = s.section_id AND e2.status IN ('approved', 'enrolled')) AS current_count
             FROM sections s
             JOIN grade_levels g ON s.grade_level_id = g.id
+            JOIN school_years y ON s.year_id = y.year_id
             WHERE s.branch_id = %s
+            AND y.is_active = TRUE
             ORDER BY g.display_order, s.section_name
         """, (branch_id,))
         all_sections = cursor.fetchall() or []
@@ -1874,7 +1910,8 @@ def api_assign_student_section():
                         WHERE section_id = s.section_id
                           AND status IN ('approved','enrolled')) AS current_count
                 FROM sections s
-                WHERE s.section_id=%s AND s.branch_id=%s
+                JOIN school_years y ON s.year_id = y.year_id
+                WHERE s.section_id=%s AND s.branch_id=%s AND y.is_active = TRUE
             """, (section_id, branch_id))
             sec = cursor.fetchone()
             if not sec:

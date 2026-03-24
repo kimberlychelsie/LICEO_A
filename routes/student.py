@@ -113,6 +113,15 @@ def render_template_safe(template_name, **context):
     else:
         return render_template("template_missing.html", missing=template_name, **context)
 
+def get_active_school_year_id(cursor):
+    cursor.execute("""
+        SELECT year_id
+        FROM school_years
+        WHERE is_active = TRUE
+        LIMIT 1
+    """)
+    row = cursor.fetchone()
+    return row["year_id"] if row else None
 # =======================
 # DUPLICATE CHECK HELPER
 # =======================
@@ -229,6 +238,10 @@ def enroll(branch_id):
         grade_levels = cursor.fetchall() or []
 
         if request.method == "POST":
+            active_sy_id = get_active_school_year_id(cursor)
+            if not active_sy_id:
+                flash("No active school year found. Please contact admin.", "error")
+                return redirect(url_for("public.homepage"))
             if not is_branch_active(branch_id):
                 flash("This branch is currently deactivated. New enrollments are not allowed.", "error")
                 return redirect(url_for("public.homepage"))
@@ -267,25 +280,14 @@ def enroll(branch_id):
             enroll_date       = request.form.get("enroll_date", "").strip() or None
             remarks           = request.form.get("remarks", "").strip() or None
 
-            # ✅ NEW: Handle additional fields from the enhanced form
-            enroll_type       = request.form.get("enroll_type", "").strip() or None
-            enroll_date       = request.form.get("enroll_date", "").strip() or None
-            remarks           = request.form.get("remarks", "").strip() or None
-            birthplace        = request.form.get("birthplace", "").strip() or None
-            father_name       = request.form.get("father_name", "").strip() or None
-            father_contact    = request.form.get("father_contact", "").strip() or None
-            father_occupation = request.form.get("father_occupation", "").strip() or None
-            mother_name       = request.form.get("mother_name", "").strip() or None
-            mother_contact    = request.form.get("mother_contact", "").strip() or None
-            mother_occupation = request.form.get("mother_occupation", "").strip() or None
-            school_year       = request.form.get("school_year", "").strip() or None
-
             # ── SERVER-SIDE DUPLICATE CHECK ──
             cursor.execute("""
                 SELECT student_name, dob, lrn, grade_level
                 FROM enrollments
                 WHERE status NOT IN ('rejected')
-            """)
+                AND branch_id = %s
+                AND school_year_id = %s
+            """, (branch_id, active_sy_id))
             existing_records = cursor.fetchall()
             best_score = 0
             best_reasons = []
@@ -319,8 +321,8 @@ def enroll(branch_id):
                    branch_enrollment_no, lrn, email, guardian_email,
                    birthplace, father_name, father_contact, father_occupation,
                    mother_name, mother_contact, mother_occupation, school_year,
-                   enroll_type, enroll_date, remarks)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s,%s,%s, %s,%s,%s,%s, %s,%s,%s, %s, %s,%s,%s)
+                   enroll_type, enroll_date, remarks, school_year_id)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s,%s,%s, %s,%s,%s,%s, %s,%s,%s, %s, %s,%s,%s, %s)
                 RETURNING enrollment_id
             """, (
                 student_name, grade_level, gender, dob, address, contact_number,
@@ -328,7 +330,7 @@ def enroll(branch_id):
                 next_no, lrn, email, guardian_email,
                 birthplace, father_name, father_contact, father_occupation,
                 mother_name, mother_contact, mother_occupation, school_year,
-                enroll_type, enroll_date, remarks
+                enroll_type, enroll_date, remarks, active_sy_id
             ))
             enrollment_id = cursor.fetchone()["enrollment_id"]
             db.commit()
@@ -444,6 +446,11 @@ def continuing_enrollment(branch_id):
         if not enrollment:
             flash("Enrollment record not found for this branch.", "error")
             return redirect(url_for("public.homepage"))
+        active_sy_id = get_active_school_year_id(cursor)
+        if not active_sy_id:
+            flash("No active school year found. Please contact admin.", "error")
+            return redirect(url_for("student.dashboard"))
+        
 
         if enrollment.get("status") != "open_for_enrollment":
             flash("Continuing enrollment is currently not open for your account. Please wait for the registrar to open it.", "error")
@@ -473,8 +480,8 @@ def continuing_enrollment(branch_id):
                 INSERT INTO enrollments
                   (student_name, grade_level, gender, dob, address, contact_number,
                    guardian_name, guardian_contact, previous_school, branch_id, status,
-                   branch_enrollment_no, lrn, email, guardian_email, user_id, section_id)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'enrolled',%s,%s,%s,%s,%s,%s)
+                   branch_enrollment_no, lrn, email, guardian_email, user_id, section_id, school_year_id)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'enrolled',%s,%s,%s,%s,%s,%s,%s)
                 RETURNING enrollment_id
             """, (
                 enrollment["student_name"], chosen_grade, enrollment["gender"], 
@@ -483,7 +490,7 @@ def continuing_enrollment(branch_id):
                 enrollment["guardian_contact"], enrollment["previous_school"], 
                 branch_id, next_no, enrollment["lrn"], enrollment.get("email"), 
                 enrollment.get("guardian_email"), enrollment.get("user_id"), 
-                section_id
+                section_id, active_sy_id
             ))
             new_enrollment_id = cursor.fetchone()["enrollment_id"]
 
@@ -517,8 +524,9 @@ def continuing_enrollment(branch_id):
             FROM sections s
             JOIN grade_levels g ON s.grade_level_id = g.id
             WHERE s.branch_id = %s 
+             AND s.school_year_id = %s
             ORDER BY s.section_name
-        """, (branch_id,))
+        """, (branch_id, active_sy_id))
         # fetch all sections, filter in JS based on chosen grade
         raw_sections = cursor.fetchall() or []
         sections = [dict(s) for s in raw_sections]

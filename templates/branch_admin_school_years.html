@@ -23,4 +23,38 @@
         <button type="submit" class="btn btn-success" style="width:100%;">Add School Year</button>
     </form>
 </div>
+<div style="max-width:400px; margin:20px auto; background:#fff; border-radius:12px; box-shadow:0 2px 14px rgba(0,0,0,0.08); padding:24px;">
+    <h3 style="margin-bottom:12px;">📋 Existing School Years</h3>
+
+    <table style="width:100%; border-collapse:collapse;">
+        <thead>
+            <tr>
+                <th style="text-align:left; padding:8px;">School Year</th>
+                <th style="text-align:center; padding:8px;">Status</th>
+                <th style="text-align:center; padding:8px;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for year in years %}
+            <tr style="border-bottom:1px solid #ddd;">
+                <td style="padding:8px;">{{ year[1] }}</td>
+                <td style="padding:8px; text-align:center;">{{ 'Active' if year[2] else 'Inactive' }}</td>
+                <td style="padding:8px; text-align:center;">
+                    {% if year[2] %}
+                        <a href="{{ url_for('branch_admin.add_year', action='deactivate', year_id=year[0]) }}" 
+                           style="padding:5px 10px; border-radius:6px; background:#ffc107; color:#fff; text-decoration:none;">
+                           Deactivate
+                        </a>
+                    {% else %}
+                        <a href="{{ url_for('branch_admin.add_year', action='activate', year_id=year[0]) }}" 
+                           style="padding:5px 10px; border-radius:6px; background:#28a745; color:#fff; text-decoration:none;">
+                           Activate
+                        </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endblock %}
