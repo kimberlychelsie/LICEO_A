@@ -109,6 +109,16 @@ def parse_pdf(file):
 
     return questions
 
+def _get_active_school_year(cur, branch_id):
+    cur.execute("""
+        SELECT year_id 
+        FROM school_years 
+        WHERE  is_active = TRUE 
+        LIMIT 1
+    """)
+    row = cur.fetchone()
+    return row["year_id"] if row else None
+
 
 
 # ── Dashboard ─────────────────────────────────────────────
@@ -262,7 +272,7 @@ def teacher_dashboard():
                 JOIN grade_levels g ON s.grade_level_id = g.id
                 JOIN subjects sub   ON st.subject_id  = sub.subject_id
                 WHERE st.teacher_id = %s
-                  AND s.branch_id   = %s
+                  AND s.branch_id   = %s AND s.year_id
                 ORDER BY g.display_order, s.section_name, sub.name
                 """,
                 (user_id, branch_id),
@@ -2460,25 +2470,39 @@ def attendance_input(section_id, subject_id, period):
 
 @teacher_bp.route("/api/teacher/sections")
 def api_teacher_sections():
-    if not _require_teacher(): return jsonify({"error": "Unauthorized"}), 403
+    if not _require_teacher(): 
+        return jsonify({"error": "Unauthorized"}), 403
+
     user_id = session.get("user_id")
     branch_id = session.get("branch_id")
+
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
     try:
+        # ✅ Get active year
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            return jsonify({"sections": []})
+
         cur.execute("""
-            SELECT s.section_id, s.section_name, g.name AS grade_level_name 
-            FROM section_teachers st
-            JOIN sections s ON st.section_id = s.section_id
-            JOIN grade_levels g ON s.grade_level_id = g.id
-            WHERE st.teacher_id = %s AND s.branch_id = %s
-            GROUP BY s.section_id, s.section_name, g.name, g.display_order
-            ORDER BY g.display_order, s.section_name
-        """, (user_id, branch_id))
+            SELECT s.section_id, s.section_name, g.name AS grade_level_name, sub.name AS subject_name
+FROM section_teachers st
+JOIN sections s ON st.section_id = s.section_id
+JOIN grade_levels g ON s.grade_level_id = g.id
+JOIN subjects sub ON st.subject_id = sub.subject_id
+WHERE st.teacher_id = %s
+  AND s.branch_id = %s
+  AND s.year_id = %s
+ORDER BY g.display_order, s.section_name
+        """, (user_id, branch_id, year_id))
+
         sections = cur.fetchall()
         return jsonify({"sections": sections})
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
     finally:
         cur.close()
         db.close()
@@ -2486,28 +2510,50 @@ def api_teacher_sections():
 
 @teacher_bp.route("/api/teacher/classlist/<int:section_id>")
 def api_teacher_classlist(section_id):
-    if not _require_teacher(): return jsonify({"error": "Unauthorized"}), 403
+    if not _require_teacher(): 
+        return jsonify({"error": "Unauthorized"}), 403
+
     branch_id = session.get("branch_id")
     user_id = session.get("user_id")
+
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
     try:
-        # Verify ownership
-        cur.execute("SELECT 1 FROM section_teachers WHERE teacher_id = %s AND section_id = %s", (user_id, section_id))
+        # ✅ Get active year
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            return jsonify({"students": []})
+
+        # ✅ FIXED ownership check (added branch_id)
+        cur.execute("""
+            SELECT 1 
+            FROM section_teachers 
+            WHERE teacher_id = %s 
+              AND section_id = %s
+        """, (user_id, section_id))
+
         if not cur.fetchone():
             return jsonify({"error": "Unauthorized section access"}), 403
 
+        # ✅ FIXED: filter by year
         cur.execute("""
             SELECT e.enrollment_id, e.student_name, u.user_id as student_user_id
             FROM enrollments e
             LEFT JOIN users u ON u.user_id = e.user_id
-            WHERE e.section_id = %s AND e.branch_id = %s AND e.status IN ('approved', 'enrolled')
+            WHERE e.section_id = %s 
+              AND e.branch_id = %s 
+              AND e.year_id = %s   -- ✅ IMPORTANT
+              AND e.status IN ('approved', 'enrolled')
             ORDER BY e.student_name ASC
-        """, (section_id, branch_id))
+        """, (section_id, branch_id, year_id))
+
         students = cur.fetchall()
         return jsonify({"students": students})
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
     finally:
         cur.close()
         db.close()
@@ -2541,11 +2587,9 @@ def teacher_reschedule():
         dt_val = datetime.strptime(new_due_date, '%Y-%m-%dT%H:%M')
         if dt_val < now_pht:
             return jsonify({"error": "Cannot reschedule to a past date."}), 400
-    except Exception as e:
-        print(f"Date validation error: {e}")
-        # If parsing fails, we skip this check and let DB handle format, 
-        # but 400 error is usually better.
-        pass
+    except Exception:
+        return jsonify({"error": "Invalid date format"}), 400
+       
 
     db = get_db_connection()
     cur = db.cursor()
@@ -2593,174 +2637,251 @@ def teacher_reschedule():
 
 @teacher_bp.route("/teacher/activities/<int:activity_id>/toggle-status", methods=["POST"])
 def toggle_activity_status(activity_id):
-    if not _require_teacher(): return redirect("/")
+    if not _require_teacher(): 
+        return redirect("/")
+
     user_id = session.get("user_id")
-    
+    branch_id = session.get("branch_id")
+
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
     try:
         active_tab = request.form.get("active_tab")
-        cur.execute("SELECT status, section_id, title, subject_id FROM activities WHERE activity_id = %s AND teacher_id = %s", (activity_id, user_id))
+
+        # ✅ Get active school year
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(request.referrer or url_for("teacher.teacher_dashboard"))
+
+        # ✅ Verify activity (OPTIONAL: add year_id if your table has it)
+        cur.execute("""
+            SELECT status, section_id, title, subject_id 
+            FROM activities 
+            WHERE activity_id = %s AND teacher_id = %s
+        """, (activity_id, user_id))
+
         act = cur.fetchone()
         if not act:
             flash("Activity not found.", "error")
             return redirect(request.referrer or url_for("teacher.teacher_dashboard"))
-            
+
         subject_id = act['subject_id']
+        section_id = act['section_id']
+        title = act['title']
+
+        # Toggle status
         new_status = 'Published' if act['status'] == 'Draft' else 'Draft'
-        cur.execute("UPDATE activities SET status = %s, updated_at = NOW() WHERE activity_id = %s", (new_status, activity_id))
-        
-        # If toggled to Published, send notifications
+
+        cur.execute("""
+            UPDATE activities 
+            SET status = %s, updated_at = NOW() 
+            WHERE activity_id = %s
+        """, (new_status, activity_id))
+
+        # 🔥 SEND NOTIFICATIONS ONLY TO ACTIVE YEAR STUDENTS
         if new_status == 'Published':
-            section_id = act['section_id']
-            title = act['title']
             cur.execute("""
                 SELECT DISTINCT u.user_id 
                 FROM enrollments e 
                 JOIN users u ON u.user_id = e.user_id 
-                WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+                WHERE e.section_id = %s 
+                  AND e.branch_id = %s
+                  AND e.year_id = %s
+                  AND e.status IN ('approved', 'enrolled')
+
                 UNION
+
                 SELECT DISTINCT u.user_id
                 FROM enrollments e
                 JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
                 JOIN users u ON u.username = sa.username
-                WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
-            """, (section_id, section_id))
+                WHERE e.section_id = %s 
+                  AND e.branch_id = %s
+                  AND e.year_id = %s
+                  AND e.status IN ('approved', 'enrolled')
+            """, (section_id, branch_id, year_id, section_id, branch_id, year_id))
+
             student_users = cur.fetchall()
-            if student_users:
-                for su in student_users:
-                    cur.execute(
-                        """
-                        INSERT INTO student_notifications (student_id, title, message, link) 
-                        VALUES (%s, %s, %s, %s)
-                        """, 
-                        (
-                            su['user_id'], 
-                            f"New Activity: {title}", 
-                            f"Your teacher posted a new activity: {title}.", 
-                            f"/student/activities/{activity_id}"
-                        )
-                    )
-        
+
+            for su in student_users:
+                cur.execute("""
+                    INSERT INTO student_notifications 
+                        (student_id, title, message, link) 
+                    VALUES (%s, %s, %s, %s)
+                """, (
+                    su['user_id'],
+                    f"New Activity: {title}",
+                    f"Your teacher posted a new activity: {title}.",
+                    f"/student/activities/{activity_id}"
+                ))
+
         db.commit()
-        flash(f"Activity is now {'visible' if new_status == 'Published' else 'hidden'} for students.", "success")
-        return redirect(url_for("teacher.teacher_class_view", subject_id=subject_id, active_tab=active_tab))
+
+        flash(
+            f"Activity is now {'visible' if new_status == 'Published' else 'hidden'} for students.",
+            "success"
+        )
+
+        return redirect(url_for(
+            "teacher.teacher_class_view",
+            subject_id=subject_id,
+            active_tab=active_tab
+        ))
+
     except Exception as e:
         db.rollback()
         flash(f"Error toggling status: {str(e)}", "error")
         return redirect(request.referrer or url_for("teacher.teacher_dashboard"))
-        return redirect(request.referrer or url_for("teacher.teacher_dashboard"))
+
     finally:
         cur.close()
         db.close()
 
-
 @teacher_bp.route("/teacher/subject/<int:subject_id>")
 def teacher_class_view(subject_id):
-    if not _require_teacher(): return redirect("/")
-    
+    if not _require_teacher(): 
+        return redirect("/")
+
     user_id = session.get("user_id")
     branch_id = session.get("branch_id")
-    
+
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
     try:
+        # ✅ GET ACTIVE SCHOOL YEAR
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        # ✅ FILTER SECTIONS BY YEAR
         cur.execute("""
             SELECT s.section_id, s.section_name, g.name AS grade_level_name, sub.name AS subject_name
             FROM section_teachers st
             JOIN sections s ON st.section_id = s.section_id
             JOIN grade_levels g ON s.grade_level_id = g.id
             JOIN subjects sub ON st.subject_id = sub.subject_id
-            WHERE st.teacher_id = %s AND st.subject_id = %s
+            WHERE st.teacher_id = %s 
+              AND st.subject_id = %s
+              AND s.branch_id = %s
+              AND s.year_id = %s
             ORDER BY g.name, s.section_name
-        """, (user_id, subject_id))
+        """, (user_id, subject_id, branch_id, year_id))
+
         sections = cur.fetchall()
-        
+
         if not sections:
-            flash("You do not teach this subject, or it doesn't exist.", "error")
+            flash("No sections found for the active school year.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
-        
+
         subject_name = sections[0]["subject_name"]
-        
+
+        # ✅ ACTIVE SECTION LOGIC
         active_section_id = request.args.get("section", type=int)
         if not active_section_id:
             active_section_id = session.get('teacher_selected_section')
+
             if active_section_id not in [sec["section_id"] for sec in sections]:
                 active_section_id = sections[0]["section_id"]
-                
+
         session['teacher_selected_section'] = active_section_id
         session['teacher_selected_subject'] = subject_id
-        
-        active_section = next((s for s in sections if s["section_id"] == active_section_id), sections[0])
-        
+
+        active_section = next(
+            (s for s in sections if s["section_id"] == active_section_id),
+            sections[0]
+        )
+
         class_info = {
             "subject_name": subject_name,
             "section_name": active_section["section_name"],
             "grade_level_name": active_section["grade_level_name"]
         }
-        
-        # Activities
+
+        # ✅ ACTIVITIES (FILTER BY YEAR)
         cur.execute('''
             SELECT a.*, 
-                   (SELECT COUNT(*) FROM activity_submissions sub2 WHERE sub2.activity_id = a.activity_id) AS submission_count
+                   (SELECT COUNT(*) FROM activity_submissions sub2 
+                    WHERE sub2.activity_id = a.activity_id) AS submission_count
             FROM activities a
-            WHERE a.teacher_id = %s AND a.section_id = %s AND a.subject_id = %s
+            JOIN sections s ON a.section_id = s.section_id
+            WHERE a.teacher_id = %s 
+              AND a.section_id = %s 
+              AND a.subject_id = %s
+              AND s.year_id = %s
             ORDER BY a.created_at DESC
-        ''', (user_id, active_section_id, subject_id))
+        ''', (user_id, active_section_id, subject_id, year_id))
+
         activities = cur.fetchall() or []
-        
-        # Quizzes
+
+        # ✅ QUIZZES (FILTER BY YEAR)
         cur.execute("""
             SELECT e.exam_id, e.title, e.scheduled_start, e.status, e.created_at, e.is_visible,
                    e.grading_period, e.duration_mins,
                    (SELECT COUNT(*) FROM exam_questions q WHERE q.exam_id = e.exam_id) AS question_count,
                    (SELECT COUNT(*) FROM exam_results r WHERE r.exam_id = e.exam_id) AS attempt_count
             FROM exams e
-            WHERE e.teacher_id = %s AND e.section_id = %s AND e.subject_id = %s AND e.exam_type = 'quiz'
+            JOIN sections s ON e.section_id = s.section_id
+            WHERE e.teacher_id = %s 
+              AND e.section_id = %s 
+              AND e.subject_id = %s 
+              AND e.exam_type = 'quiz'
+              AND s.year_id = %s
             ORDER BY e.created_at DESC
-        """, (user_id, active_section_id, subject_id))
+        """, (user_id, active_section_id, subject_id, year_id))
+
         quizzes = cur.fetchall() or []
-        
-        # Exams
+
+        # ✅ EXAMS (FILTER BY YEAR)
         cur.execute("""
             SELECT e.exam_id, e.title, e.scheduled_start, e.status, e.created_at, e.is_visible,
                    e.grading_period, e.duration_mins,
                    (SELECT COUNT(*) FROM exam_questions q WHERE q.exam_id = e.exam_id) AS question_count,
                    (SELECT COUNT(*) FROM exam_results r WHERE r.exam_id = e.exam_id) AS attempt_count
             FROM exams e
-            WHERE e.teacher_id = %s AND e.section_id = %s AND e.subject_id = %s AND e.exam_type != 'quiz'
+            JOIN sections s ON e.section_id = s.section_id
+            WHERE e.teacher_id = %s 
+              AND e.section_id = %s 
+              AND e.subject_id = %s 
+              AND e.exam_type != 'quiz'
+              AND s.year_id = %s
             ORDER BY e.created_at DESC
-        """, (user_id, active_section_id, subject_id))
+        """, (user_id, active_section_id, subject_id, year_id))
+
         exams = cur.fetchall() or []
-        
+
+        # ✅ STATS (no change)
         act_stats = {
             'total': len(activities),
             'published': sum(1 for a in activities if a['status'].lower() == 'published'),
             'drafts': sum(1 for a in activities if a['status'].lower() == 'draft'),
             'closed': sum(1 for a in activities if a['status'].lower() == 'closed')
         }
-        
+
         quiz_stats = {
             'total': len(quizzes),
             'published': sum(1 for q in quizzes if q['status'].lower() == 'published'),
             'drafts': sum(1 for q in quizzes if q['status'].lower() == 'draft'),
             'closed': sum(1 for q in quizzes if q['status'].lower() == 'closed')
         }
-        
+
         exam_stats = {
             'total': len(exams),
             'published': sum(1 for e in exams if e['status'].lower() == 'published'),
             'drafts': sum(1 for e in exams if e['status'].lower() == 'draft'),
             'closed': sum(1 for e in exams if e['status'].lower() == 'closed')
         }
-        
+
     finally:
         cur.close()
         db.close()
-        
+
     ph_tz = pytz.timezone("Asia/Manila")
     now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
-        
+
     return render_template(
         "teacher_subject_detail.html",
         sections=sections,

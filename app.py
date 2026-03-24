@@ -6,7 +6,7 @@ from flask import Flask, request, session, flash, redirect, url_for, render_temp
 from routes import init_routes
 from db import is_branch_active, get_db_connection
 from extensions import limiter
-
+from routes.teacher import _get_active_school_year
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "liceo_secret_key_dev")
 limiter.init_app(app)
@@ -115,33 +115,49 @@ def inject_student_subjects():
             cursor.close()
             db.close()
     return dict(student_global_subjects=[])
-
-
 @app.context_processor
 def inject_teacher_subjects():
     if session.get('role') == 'teacher':
         user_id = session.get('user_id')
+        branch_id = session.get('branch_id')
         from db import get_db_connection
         import psycopg2.extras
+
         db = get_db_connection()
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
+            # Get the active school year for this branch
             cursor.execute("""
-                SELECT DISTINCT
-                    sub.subject_id,
-                    sub.name AS subject_name
+                SELECT year_id
+                FROM school_years
+                WHERE is_active = TRUE
+                LIMIT 1
+            """)
+            row = cursor.fetchone()
+            if not row:
+                return dict(teacher_global_classes=[])
+
+            year_id = row["year_id"]
+
+            # Fetch only subjects for the active school year and this branch
+            cursor.execute("""
+                SELECT DISTINCT sub.subject_id, sub.name AS subject_name
                 FROM section_teachers st
+                JOIN sections s ON st.section_id = s.section_id
                 JOIN subjects sub ON st.subject_id = sub.subject_id
                 WHERE st.teacher_id = %s
+                  AND s.branch_id = %s
+                  AND s.year_id = %s
                 ORDER BY sub.name
-            """, (user_id,))
+            """, (user_id, branch_id, year_id))
+
             classes = cursor.fetchall()
             return dict(teacher_global_classes=classes)
-        except:
-            pass
+
         finally:
             cursor.close()
             db.close()
+
     return dict(teacher_global_classes=[])
 
 
