@@ -855,24 +855,30 @@ def branch_admin_grade_level_delete(grade_id):
     flash("Grade level deleted.", "success")
     return redirect(url_for("branch_admin.branch_admin_grade_levels"))
 
-#SCHOOL YEAR
+# SCHOOL YEAR
 @branch_admin_bp.route('/branch_admin/add_year', methods=['GET', 'POST'])
 def add_year():
     db = get_db_connection()
     cursor = db.cursor()
 
-    branch_id = session.get("branch_id")  # ✅ IMPORTANT
+    branch_id = int(session.get("branch_id"))
+
+    if not branch_id:
+        flash("No branch found in session.", "error")
+        return redirect(url_for("auth.login"))
 
     try:
         # ── ADD NEW YEAR ──
         if request.method == 'POST':
             label = request.form['label'].strip()
 
-            cursor.execute(
-                "INSERT INTO school_years (label) VALUES (%s) ON CONFLICT DO NOTHING",
-                (label,)
-            )
-            db.commit()
+            cursor.execute("""
+                INSERT INTO school_years (label, branch_id)
+                VALUES (%s, %s)
+                ON CONFLICT (branch_id, label) DO NOTHING
+            """, (label, branch_id))
+
+            db.commit()  # ✅ YOU MISSED THIS BEFORE
 
             flash("School year added!", "success")
             return redirect(url_for('branch_admin.add_year'))
@@ -885,21 +891,30 @@ def add_year():
             year_id = int(year_id)
 
             if action == 'activate':
-                # ✅ 1. Get current active year
-                cursor.execute("SELECT year_id FROM school_years WHERE is_active = TRUE LIMIT 1")
+                # ✅ 1. Get current active year (PER BRANCH ONLY)
+                cursor.execute("""
+                    SELECT year_id FROM school_years
+                    WHERE is_active = TRUE AND branch_id = %s
+                    LIMIT 1
+                """, (branch_id,))
                 old = cursor.fetchone()
                 old_year_id = old[0] if old else None
 
-                # ✅ 2. Deactivate all
-                cursor.execute("UPDATE school_years SET is_active = FALSE")
+                # ✅ 2. Deactivate ONLY this branch
+                cursor.execute("""
+                    UPDATE school_years
+                    SET is_active = FALSE
+                    WHERE branch_id = %s
+                """, (branch_id,))
 
-                # ✅ 3. Activate selected year
-                cursor.execute(
-                    "UPDATE school_years SET is_active = TRUE WHERE year_id = %s",
-                    (year_id,)
-                )
+                # ✅ 3. Activate selected year (same branch only)
+                cursor.execute("""
+                    UPDATE school_years
+                    SET is_active = TRUE
+                    WHERE year_id = %s AND branch_id = %s
+                """, (year_id, branch_id))
 
-                # ✅ 4. Check how many sections exist for this year + branch
+                # ✅ 4. Check sections for this year + branch
                 cursor.execute("""
                     SELECT COUNT(*) FROM sections 
                     WHERE year_id = %s AND branch_id = %s
@@ -907,7 +922,7 @@ def add_year():
                 section_count = cursor.fetchone()[0]
 
                 if section_count == 0 and old_year_id:
-                    # ✅ 5. Copy sections from old year
+                    # ✅ 5. Copy sections from old year (same branch)
                     cursor.execute("""
                         INSERT INTO sections (branch_id, year_id, section_name, grade_level_id, capacity)
                         SELECT branch_id, %s, section_name, grade_level_id, capacity
@@ -934,25 +949,28 @@ def add_year():
                     flash("✅ School year activated and sections copied!", "success")
                 else:
                     db.commit()
-                    flash("✅ School year activated! Sections already exist, nothing copied.", "success")
+                    flash("✅ School year activated! Sections already exist.", "success")
 
             else:
-                # ── DEACTIVATE ──
-                cursor.execute(
-                    "UPDATE school_years SET is_active = FALSE WHERE year_id = %s",
-                    (year_id,)
-                )
+                # ── DEACTIVATE (branch-specific) ──
+                cursor.execute("""
+                    UPDATE school_years
+                    SET is_active = FALSE
+                    WHERE year_id = %s AND branch_id = %s
+                """, (year_id, branch_id))
+
                 db.commit()
                 flash("School year deactivated!", "success")
 
             return redirect(url_for('branch_admin.add_year'))
 
-        # ── FETCH YEARS ──
+        # ── FETCH YEARS (branch only) ──
         cursor.execute("""
             SELECT year_id, label, is_active 
             FROM school_years 
+            WHERE branch_id = %s
             ORDER BY label DESC
-        """)
+        """, (branch_id,))
         years = cursor.fetchall()
 
     finally:
@@ -997,7 +1015,12 @@ def branch_admin_sections():
     grades = cursor.fetchall() or []
 
     # --- NEW: Fetch available years for dropdown
-    cursor.execute("SELECT year_id, label FROM school_years WHERE is_active = TRUE ORDER BY label DESC")
+    cursor.execute("""
+    SELECT year_id, label 
+    FROM school_years 
+    WHERE is_active = TRUE AND branch_id = %s 
+    ORDER BY label DESC
+""", (branch_id,))
     years = cursor.fetchall() or []
 
     if request.method == "POST":
@@ -1033,7 +1056,10 @@ def branch_admin_sections():
                 db.close()
                 return redirect("/branch-admin/sections")
 
-            cursor.execute("SELECT 1 FROM school_years WHERE year_id = %s", (year_id,))
+            cursor.execute("""
+                SELECT 1 FROM school_years 
+                WHERE year_id = %s AND branch_id = %s
+            """, (year_id, branch_id))
             if not cursor.fetchone():
                 flash("Invalid school year selected.", "error")
                 cursor.close()
@@ -1060,11 +1086,12 @@ def branch_admin_sections():
     # -- Update to include school year label
     cursor.execute("""
         SELECT s.*, g.name AS grade_level_name, y.label AS school_year_label
-        FROM sections s
-        LEFT JOIN grade_levels g ON s.grade_level_id = g.id
-        LEFT JOIN school_years y ON s.year_id = y.year_id
-        WHERE s.branch_id = %s AND y.is_active = true
-        ORDER BY y.label DESC, g.display_order, s.section_name
+    FROM sections s
+    LEFT JOIN grade_levels g ON s.grade_level_id = g.id
+    LEFT JOIN school_years y 
+        ON s.year_id = y.year_id AND y.branch_id = s.branch_id
+    WHERE s.branch_id = %s AND y.is_active = TRUE
+    ORDER BY y.label DESC, g.display_order, s.section_name
     """, (branch_id,))
     sections = cursor.fetchall() or []
 

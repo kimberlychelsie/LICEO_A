@@ -113,9 +113,9 @@ def _get_active_school_year(cur, branch_id):
     cur.execute("""
         SELECT year_id 
         FROM school_years 
-        WHERE  is_active = TRUE 
+        WHERE  is_active = TRUE AND branch_id = %s
         LIMIT 1
-    """)
+    """, (branch_id,))
     row = cur.fetchone()
     return row["year_id"] if row else None
 
@@ -160,6 +160,10 @@ def teacher_dashboard():
         db  = get_db_connection()
         cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
+            year_id = _get_active_school_year(cur, branch_id)
+            if not year_id:
+                flash("No active school year.", "error")
+                return redirect(url_for("teacher.teacher_dashboard"))
             # ── Students ──
             query_str = """
                 SELECT
@@ -193,12 +197,14 @@ def teacher_dashboard():
                       OR e.grade_level ILIKE %(grade_short)s
                   )
                   AND e.status IN ('approved', 'enrolled')
+                  AND e.year_id = %(year_id)s 
             """
             
             query_params = {
                 "branch_id":   branch_id,
                 "grade_full":  grade_full,
                 "grade_short": grade_short,
+                "year_id":     year_id,     
             }
             
             if selected_section_id:
@@ -226,6 +232,7 @@ def teacher_dashboard():
                 else:
                     stats["no_reservation"] += 1
 
+            year_id = _get_active_school_year(cur, branch_id)
             # ── Announcements for this grade ──
             cur.execute("""
                 SELECT a.announcement_id, a.title, a.body,
@@ -243,6 +250,7 @@ def teacher_dashboard():
                 "branch_id":   branch_id,
                 "grade_full":  grade_full,
                 "grade_short": grade_short,
+                "year_id":     year_id,  
             })
             raw_ann = cur.fetchall() or []
 
@@ -272,10 +280,10 @@ def teacher_dashboard():
                 JOIN grade_levels g ON s.grade_level_id = g.id
                 JOIN subjects sub   ON st.subject_id  = sub.subject_id
                 WHERE st.teacher_id = %s
-                  AND s.branch_id   = %s AND s.year_id
+                  AND s.branch_id = %s AND s.year_id = %s
                 ORDER BY g.display_order, s.section_name, sub.name
                 """,
-                (user_id, branch_id),
+                (user_id, branch_id, year_id),
             )
             teacher_assignments = cur.fetchall() or []
 
@@ -980,6 +988,10 @@ def teacher_exams():
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
         cur.execute("""
             SELECT
                 e.exam_id, e.title, e.exam_type, e.duration_mins,
@@ -993,9 +1005,9 @@ def teacher_exams():
             JOIN sections s      ON e.section_id  = s.section_id
             JOIN grade_levels g  ON s.grade_level_id = g.id
             JOIN subjects sub    ON e.subject_id  = sub.subject_id
-            WHERE e.teacher_id = %s AND e.branch_id = %s AND e.exam_type != 'quiz'
+            WHERE e.teacher_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.exam_type != 'quiz'
             ORDER BY e.created_at DESC
-        """, (user_id, branch_id))
+        """, (user_id, branch_id, year_id))
         exams = cur.fetchall() or []
         return render_template("teacher_exams.html", exams=exams)
     finally:
@@ -1035,6 +1047,10 @@ def teacher_exam_create():
         batch_id = str(uuid.uuid4())[:8]
 
         try:
+            year_id = _get_active_school_year(cur, branch_id)
+            if not year_id:
+                flash("No active school year.", "error")
+                return redirect(url_for("teacher.teacher_dashboard"))
             primary_exam_id = None
             for section_id in section_ids:
                 cur.execute("""
@@ -1073,14 +1089,18 @@ def teacher_exam_create():
 
     # GET
     try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
         cur.execute("""
             SELECT DISTINCT s.section_id, s.section_name, g.name AS grade_level_name
             FROM section_teachers st
             JOIN sections s     ON st.section_id = s.section_id
             JOIN grade_levels g ON s.grade_level_id = g.id
-            WHERE st.teacher_id = %s AND s.branch_id = %s
+            WHERE st.teacher_id = %s AND s.branch_id = %s AND s.year_id = %s
             ORDER BY g.name, s.section_name
-        """, (user_id, branch_id))
+        """, (user_id, branch_id, year_id))
         sections = cur.fetchall() or []
 
         cur.execute("""
@@ -1090,9 +1110,9 @@ def teacher_exam_create():
             JOIN subjects sub   ON st.subject_id = sub.subject_id
             JOIN sections s     ON st.section_id = s.section_id
             JOIN grade_levels g ON s.grade_level_id = g.id
-            WHERE st.teacher_id = %s
+            WHERE st.teacher_id = %s AND s.branch_id = %s AND s.year_id = %s
             ORDER BY sub.name, s.section_name
-        """, (user_id,))
+        """, (user_id, branch_id, year_id))
         assignments = cur.fetchall() or []
 
         ph_tz = pytz.timezone("Asia/Manila")
@@ -2467,7 +2487,6 @@ def attendance_input(section_id, subject_id, period):
                            period=period)
 
 # ── API for Teacher Sidebar Classlist ─────────────────────
-
 @teacher_bp.route("/api/teacher/sections")
 def api_teacher_sections():
     if not _require_teacher(): 
@@ -2475,26 +2494,29 @@ def api_teacher_sections():
 
     user_id = session.get("user_id")
     branch_id = session.get("branch_id")
+    print("user_id", user_id, "branch_id", branch_id)  # For debug
 
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
-        # ✅ Get active year
+        # Always fetch the latest active year for this branch, every request
         year_id = _get_active_school_year(cur, branch_id)
+        print("Active year_id:", year_id)  # For debug
+
         if not year_id:
-            return jsonify({"sections": []})
+            return jsonify({"sections": [], "error": "No active school year."})
 
         cur.execute("""
             SELECT s.section_id, s.section_name, g.name AS grade_level_name, sub.name AS subject_name
-FROM section_teachers st
-JOIN sections s ON st.section_id = s.section_id
-JOIN grade_levels g ON s.grade_level_id = g.id
-JOIN subjects sub ON st.subject_id = sub.subject_id
-WHERE st.teacher_id = %s
-  AND s.branch_id = %s
-  AND s.year_id = %s
-ORDER BY g.display_order, s.section_name
+            FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            JOIN subjects sub ON st.subject_id = sub.subject_id
+            WHERE st.teacher_id = %s
+              AND s.branch_id = %s
+              AND s.year_id = %s
+            ORDER BY g.display_order, s.section_name
         """, (user_id, branch_id, year_id))
 
         sections = cur.fetchall()
@@ -2520,30 +2542,32 @@ def api_teacher_classlist(section_id):
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
-        # ✅ Get active year
+        # Get active year ID for this branch
         year_id = _get_active_school_year(cur, branch_id)
         if not year_id:
             return jsonify({"students": []})
 
-        # ✅ FIXED ownership check (added branch_id)
+        # STRONG ownership check includes branch/year  
         cur.execute("""
             SELECT 1 
-            FROM section_teachers 
-            WHERE teacher_id = %s 
-              AND section_id = %s
-        """, (user_id, section_id))
+            FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            WHERE st.teacher_id = %s 
+              AND st.section_id = %s
+              AND s.branch_id = %s
+              AND s.year_id = %s
+        """, (user_id, section_id, branch_id, year_id))
 
         if not cur.fetchone():
             return jsonify({"error": "Unauthorized section access"}), 403
 
-        # ✅ FIXED: filter by year
         cur.execute("""
             SELECT e.enrollment_id, e.student_name, u.user_id as student_user_id
             FROM enrollments e
             LEFT JOIN users u ON u.user_id = e.user_id
             WHERE e.section_id = %s 
               AND e.branch_id = %s 
-              AND e.year_id = %s   -- ✅ IMPORTANT
+              AND e.year_id = %s
               AND e.status IN ('approved', 'enrolled')
             ORDER BY e.student_name ASC
         """, (section_id, branch_id, year_id))
@@ -2567,48 +2591,67 @@ def teacher_reschedule():
     user_id = session.get("user_id")
     branch_id = session.get("branch_id")
 
-    if request.is_json:
-        data = request.get_json()
-    else:
-        data = request.form
-
-    enrollment_id = data.get("enrollment_id")
-    item_type     = data.get("item_type")  # 'activity', 'exam', 'quiz'
-    item_id       = data.get("item_id")
-    new_due_date  = data.get("new_due_date")
-
-    if not all([enrollment_id, item_type, item_id, new_due_date]):
-        return jsonify({"error": "Missing required fields"}), 400
-
-    # 0. Validate date is not in the past
-    try:
-        ph_tz = pytz.timezone("Asia/Manila")
-        now_pht = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
-        dt_val = datetime.strptime(new_due_date, '%Y-%m-%dT%H:%M')
-        if dt_val < now_pht:
-            return jsonify({"error": "Cannot reschedule to a past date."}), 400
-    except Exception:
-        return jsonify({"error": "Invalid date format"}), 400
-       
-
     db = get_db_connection()
     cur = db.cursor()
     try:
-        # 1. Verify ownership of the item
-        if item_type == 'activity':
-            cur.execute("SELECT 1 FROM activities WHERE activity_id = %s AND teacher_id = %s", (item_id, user_id))
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            return jsonify({"error": "No active school year."}), 400
+
+        if request.is_json:
+            data = request.get_json()
         else:
-            cur.execute("SELECT 1 FROM exams WHERE exam_id = %s AND teacher_id = %s", (item_id, user_id))
+            data = request.form
+
+        enrollment_id = data.get("enrollment_id")
+        item_type     = data.get("item_type")  # 'activity', 'exam', 'quiz'
+        item_id       = data.get("item_id")
+        new_due_date  = data.get("new_due_date")
+
+        if not all([enrollment_id, item_type, item_id, new_due_date]):
+            return jsonify({"error": "Missing required fields"}), 400
+
+        # 0. Validate date is not in the past
+        try:
+            ph_tz = pytz.timezone("Asia/Manila")
+            now_pht = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+            dt_val = datetime.strptime(new_due_date, '%Y-%m-%dT%H:%M')
+            if dt_val < now_pht:
+                return jsonify({"error": "Cannot reschedule to a past date."}), 400
+        except Exception:
+            return jsonify({"error": "Invalid date format"}), 400
+
+        # 1. Verify teacher ownership AND year match for activity/exam
+        if item_type == 'activity':
+            cur.execute("""
+                SELECT 1 FROM activities 
+                WHERE activity_id = %s AND teacher_id = %s AND branch_id = %s AND year_id = %s
+            """, (item_id, user_id, branch_id, year_id))
+        elif item_type == 'exam':
+            cur.execute("""
+                SELECT 1 FROM exams 
+                WHERE exam_id = %s AND teacher_id = %s AND branch_id = %s AND year_id = %s
+            """, (item_id, user_id, branch_id, year_id))
+        else:
+            # Optional: Handle 'quiz' similarly
+            return jsonify({"error": "Unknown item_type"}), 400
 
         if not cur.fetchone():
             return jsonify({"error": "Unauthorized item access or item not found."}), 403
 
-        # 2. Verify student enrollment in the same branch
-        cur.execute("SELECT 1 FROM enrollments WHERE enrollment_id = %s AND branch_id = %s", (enrollment_id, branch_id))
-        if not cur.fetchone():
-            return jsonify({"error": "Invalid student or branch mismatch."}), 403
+        # 2. Verify student enrollment in this branch AND year
+        cur.execute("""
+            SELECT user_id FROM enrollments 
+            WHERE enrollment_id = %s AND branch_id = %s AND year_id = %s
+        """, (enrollment_id, branch_id, year_id))
 
-        # 3. Upsert into individual_extensions (Safe fallback ignoring DB constraints)
+        student_row = cur.fetchone()
+        if not student_row or not student_row[0]:
+            return jsonify({"error": "Invalid student or branch/year mismatch."}), 403
+
+        student_id = student_row[0]
+
+        # 3. Upsert individual_extensions, properly referencing by year
         cur.execute("""
             SELECT extension_id FROM individual_extensions 
             WHERE enrollment_id=%s AND item_type=%s AND item_id=%s
@@ -2622,9 +2665,9 @@ def teacher_reschedule():
             """, (new_due_date, enrollment_id, item_type, item_id))
         else:
             cur.execute("""
-                INSERT INTO individual_extensions (enrollment_id, item_type, item_id, new_due_date)
-                VALUES (%s, %s, %s, %s)
-            """, (enrollment_id, item_type, item_id, new_due_date))
+                INSERT INTO individual_extensions (enrollment_id, user_id, item_type, item_id, new_due_date)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (enrollment_id, student_id, item_type, item_id, new_due_date))
 
         db.commit()
         return jsonify({"ok": True, "message": "Rescheduled successfully!"})
@@ -2922,20 +2965,21 @@ def api_teacher_add_student():
             
         # Get grade level for the section to fill the enrollment record properly
         cur.execute("""
-            SELECT g.name AS grade_level
+            SELECT g.name AS grade_level, s.year_id
             FROM sections s
             JOIN grade_levels g ON s.grade_level_id = g.id
             WHERE s.section_id = %s
         """, (section_id,))
         grade_row = cur.fetchone()
         grade_level = grade_row['grade_level'] if grade_row else ""
+        year_id = grade_row['year_id'] if grade_row else None
         
         # Insert minimal late enrollee
         cur.execute("""
-            INSERT INTO enrollments (student_name, branch_id, section_id, grade_level, status)
-            VALUES (%s, %s, %s, %s, 'enrolled')
+            INSERT INTO enrollments (student_name, branch_id, section_id, grade_level, status, year_id)
+            VALUES (%s, %s, %s, %s, 'enrolled', %s)
             RETURNING enrollment_id
-        """, (student_name, branch_id, section_id, grade_level))
+        """, (student_name, branch_id, section_id, grade_level, year_id))
         
         db.commit()
         return jsonify({"ok": True})

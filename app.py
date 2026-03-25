@@ -124,22 +124,22 @@ def inject_teacher_subjects():
         import psycopg2.extras
 
         db = get_db_connection()
+        # FIX: Use RealDictCursor so fetchone() returns dict, not tuple
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
-            # Get the active school year for this branch
+            # Get the active school year for THIS branch
             cursor.execute("""
                 SELECT year_id
                 FROM school_years
-                WHERE is_active = TRUE
+                WHERE is_active = TRUE AND branch_id = %s
                 LIMIT 1
-            """)
+            """, (branch_id,))
             row = cursor.fetchone()
             if not row:
                 return dict(teacher_global_classes=[])
-
+            # Now this is safe:
             year_id = row["year_id"]
 
-            # Fetch only subjects for the active school year and this branch
             cursor.execute("""
                 SELECT DISTINCT sub.subject_id, sub.name AS subject_name
                 FROM section_teachers st
@@ -153,7 +153,6 @@ def inject_teacher_subjects():
 
             classes = cursor.fetchall()
             return dict(teacher_global_classes=classes)
-
         finally:
             cursor.close()
             db.close()
@@ -258,23 +257,27 @@ def rate_limit_exceeded(e):
 
 @app.context_processor
 def inject_active_school_year():
+    branch_id = session.get("branch_id")
+
+    if not branch_id:
+        return {"active_school_year": None}
+
     db = get_db_connection()
     cursor = db.cursor()
 
     cursor.execute("""
         SELECT label 
         FROM school_years 
-        WHERE is_active = TRUE 
+        WHERE is_active = TRUE AND branch_id = %s
         LIMIT 1
-    """)
+    """, (branch_id,))
+
     row = cursor.fetchone()
 
     cursor.close()
     db.close()
 
-    return {
-        "active_school_year": row[0] if row else None
-    }
+    return {"active_school_year": row[0] if row else None}
 
 if __name__ == "__main__":
     app.run(debug=True, port=5001)

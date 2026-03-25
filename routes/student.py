@@ -113,13 +113,14 @@ def render_template_safe(template_name, **context):
     else:
         return render_template("template_missing.html", missing=template_name, **context)
 
-def get_active_school_year_id(cursor):
+def get_active_school_year_id(cursor, branch_id):
     cursor.execute("""
         SELECT year_id
         FROM school_years
         WHERE is_active = TRUE
+        AND branch_id = %s
         LIMIT 1
-    """)
+    """, (branch_id,))
     row = cursor.fetchone()
     return row["year_id"] if row else None
 # =======================
@@ -240,18 +241,19 @@ def enroll(branch_id):
         cursor.execute("""
             SELECT year_id, label, is_active
             FROM school_years
+            WHERE branch_id = %s
             ORDER BY label DESC
-        """)
+        """, (branch_id,))
         school_years = cursor.fetchall() or []
 
         # ── POST: Handle enrollment ──
         if request.method == "POST":
             # Selected school year from form, fallback to active
-            selected_sy_id = request.form.get("school_year_id")
+            selected_sy_id = request.form.get("year_id")
             if selected_sy_id:
                 selected_sy_id = int(selected_sy_id)
             else:
-                selected_sy_id = get_active_school_year_id(cursor)
+                selected_sy_id = get_active_school_year_id(cursor, branch_id)
 
             if not selected_sy_id:
                 flash("No active school year found. Please contact admin.", "error")
@@ -296,7 +298,7 @@ def enroll(branch_id):
                 FROM enrollments
                 WHERE status NOT IN ('rejected')
                 AND branch_id = %s
-                AND school_year_id = %s
+                AND year_id = %s
             """, (branch_id, selected_sy_id))
             existing_records = cursor.fetchall()
             best_score = 0
@@ -331,7 +333,7 @@ def enroll(branch_id):
                    branch_enrollment_no, lrn, email, guardian_email,
                    birthplace, father_name, father_contact, father_occupation,
                    mother_name, mother_contact, mother_occupation,
-                   enroll_type, enroll_date, remarks, school_year_id)
+                   enroll_type, enroll_date, remarks, year_id)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s,%s,%s, %s,%s,%s,%s, %s,%s,%s, %s,%s,%s,%s)
                 RETURNING enrollment_id
             """, (
@@ -455,7 +457,7 @@ def continuing_enrollment(branch_id):
         if not enrollment:
             flash("Enrollment record not found for this branch.", "error")
             return redirect(url_for("public.homepage"))
-        active_sy_id = get_active_school_year_id(cursor)
+        active_sy_id = get_active_school_year_id(cursor, branch_id)
         if not active_sy_id:
             flash("No active school year found. Please contact admin.", "error")
             return redirect(url_for("student.dashboard"))
@@ -489,7 +491,7 @@ def continuing_enrollment(branch_id):
                 INSERT INTO enrollments
                   (student_name, grade_level, gender, dob, address, contact_number,
                    guardian_name, guardian_contact, previous_school, branch_id, status,
-                   branch_enrollment_no, lrn, email, guardian_email, user_id, section_id, school_year_id)
+                   branch_enrollment_no, lrn, email, guardian_email, user_id, section_id, year_id)
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'enrolled',%s,%s,%s,%s,%s,%s,%s)
                 RETURNING enrollment_id
             """, (
@@ -533,7 +535,7 @@ def continuing_enrollment(branch_id):
             FROM sections s
             JOIN grade_levels g ON s.grade_level_id = g.id
             WHERE s.branch_id = %s 
-             AND s.school_year_id = %s
+             AND s.year_id = %s
             ORDER BY s.section_name
         """, (branch_id, active_sy_id))
         # fetch all sections, filter in JS based on chosen grade
