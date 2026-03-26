@@ -2648,11 +2648,11 @@ def teacher_reschedule():
         if not cur.fetchone():
             return jsonify({"error": "Unauthorized item access or item not found."}), 403
 
-        # 2. Verify student enrollment in this branch AND year
+        # 2. Verify student enrollment in this branch
         cur.execute("""
             SELECT user_id FROM enrollments 
-            WHERE enrollment_id = %s AND branch_id = %s AND year_id = %s
-        """, (enrollment_id, branch_id, year_id))
+            WHERE enrollment_id = %s AND branch_id = %s
+        """, (enrollment_id, branch_id))
 
         student_row = cur.fetchone()
         if not student_row or not student_row[0]:
