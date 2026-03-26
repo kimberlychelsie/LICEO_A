@@ -1,4 +1,3 @@
-import os
 import logging
 import threading
 import json
@@ -11,6 +10,10 @@ from email.message import EmailMessage
 # Setup logging
 logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
+
+# === Set your credentials directly here for testing ONLY ===
+SMTP_USER = "biticonmr@gmail.com"         # <-- Replace with your Gmail/App Password user
+SMTP_PASS = "bjhf wlsh pxkc veln"     # <-- Replace with your Gmail App Password
 
 def _send_email_resend(api_key, to_email, subject, body):
     """Sends email using Resend API (HTTPS) - Fallback"""
@@ -30,8 +33,8 @@ def _send_email_resend(api_key, to_email, subject, body):
 
 def _send_email_smtp_sync(to_email, subject, body):
     """Primary SMTP logic with IPv4 Forcing and Fallback Ports"""
-    smtp_user = os.environ.get("SMTP_USER")
-    smtp_pass = os.environ.get("SMTP_PASS")
+    smtp_user = SMTP_USER
+    smtp_pass = SMTP_PASS
 
     if not smtp_user or not smtp_pass:
         print(f"❌ [SMTP] MISSING credentials for {to_email}")
@@ -82,15 +85,7 @@ def _combined_send(to_email, subject, body):
     # Try SMTP first (User requested)
     if _send_email_smtp_sync(to_email, subject, body):
         return True
-    
-    # Try Resend as fallback if key exists
-    resend_key = os.environ.get("RESEND_API_KEY")
-    if resend_key:
-        print("🔄 [SMTP FAILED] Trying Resend fallback...")
-        if _send_email_resend(resend_key, to_email, subject, body):
-            print("✅ [RESEND] Fallback worked!")
-            return True
-    return False
+  
 
 def send_email(to_email, subject, body):
     # Always async to avoid timeouts
