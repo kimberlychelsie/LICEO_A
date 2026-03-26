@@ -215,7 +215,7 @@ def registrar_enrollments():
 # ENROLLMENT DETAIL
 # ══════════════════════════════════════════
 
-@registrar_bp.route("/registrar/enrollment/<int:enrollment_id>")
+@registrar_bp.route("/registrar/enrollment/<int:enrollment_id>", methods=["GET", "POST"])
 def enrollment_detail(enrollment_id):
     if session.get("role") != "registrar":
         return redirect("/")
@@ -224,6 +224,37 @@ def enrollment_detail(enrollment_id):
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        if request.method == "POST":
+            EDITABLE_FIELDS = [
+                "student_name", "grade_level", "gender", "dob", "birthplace",
+                "lrn", "address", "contact_number", "email",
+                "guardian_name", "guardian_contact", "guardian_email",
+                "father_name", "father_contact", "father_occupation",
+                "mother_name", "mother_contact", "mother_occupation",
+                "previous_school", "school_year", "enroll_type", "remarks",
+            ]
+            sets = []
+            vals = []
+            for f in EDITABLE_FIELDS:
+                raw = request.form.get(f)
+                if raw is not None:
+                    val = raw.strip() or None
+                    # dob needs special handling for empty string
+                    if f == "dob" and not val:
+                        val = None
+                    sets.append(f"{f} = %s")
+                    vals.append(val)
+
+            if sets:
+                vals.extend([enrollment_id, branch_id])
+                cursor.execute(
+                    f"UPDATE enrollments SET {', '.join(sets)} WHERE enrollment_id = %s AND branch_id = %s",
+                    vals,
+                )
+                db.commit()
+                flash("Enrollment details updated!", "success")
+            return redirect(f"/registrar/enrollment/{enrollment_id}")
+
         cursor.execute("""
             SELECT e.*, s.section_name
             FROM enrollments e
@@ -244,6 +275,11 @@ def enrollment_detail(enrollment_id):
             enrollment=enrollment,
             documents=documents,
         )
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Enrollment detail error: {str(e)}")
+        flash(f"Error: {str(e)}", "error")
+        return redirect(f"/registrar/enrollment/{enrollment_id}")
     finally:
         cursor.close()
         db.close()
