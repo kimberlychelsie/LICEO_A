@@ -1932,14 +1932,18 @@ def teacher_exam_reset(exam_id, enrollment_id):
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
-        # Verify exam belongs to this teacher
+        # Verify exam belongs to this teacher and get exam_type
         cur.execute("""
-            SELECT 1 FROM exams
+            SELECT exam_type FROM exams
             WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s
         """, (exam_id, user_id, branch_id))
-        if not cur.fetchone():
-            flash("Exam not found or unauthorized.", "error")
+        row = cur.fetchone()
+        if not row:
+            flash("Item not found or unauthorized.", "error")
             return redirect(url_for("teacher.teacher_exams"))
+
+        etype = (row.get("exam_type") or "exam").lower()
+        item_name = "Quiz" if etype == "quiz" else "Exam"
 
         # Delete answers first (FK constraint)
         cur.execute("""
@@ -1968,9 +1972,9 @@ def teacher_exam_reset(exam_id, enrollment_id):
         db.commit()
 
         if cur.rowcount > 0:
-            flash("Exam attempt reset. Student can now retake the exam.", "success")
+            flash(f"{item_name} attempt reset. Student can now retake the {item_name.lower()}.", "success")
         else:
-            flash("No exam attempt found for this student.", "warning")
+            flash(f"No {item_name.lower()} attempt found for this student.", "warning")
 
     except Exception as e:
         db.rollback()
