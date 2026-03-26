@@ -29,17 +29,13 @@ def _send_email_async(to_email, subject, body):
 
     for host, port, use_ssl in configs:
         try:
-            # Force IPv4 to avoid 'Network is unreachable' issues on some IPv6-enabled hosts
-            addr_info = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
-            target_ip = addr_info[0][4][0]
-
             if use_ssl:
                 context = ssl.create_default_context()
-                with smtplib.SMTP_SSL(target_ip, port, timeout=15, context=context) as server:
+                with smtplib.SMTP_SSL(host, port, timeout=30, context=context) as server:
                     server.login(smtp_user, smtp_pass)
                     server.send_message(msg)
             else:
-                with smtplib.SMTP(target_ip, port, timeout=15) as server:
+                with smtplib.SMTP(host, port, timeout=30) as server:
                     server.starttls()
                     server.login(smtp_user, smtp_pass)
                     server.send_message(msg)
