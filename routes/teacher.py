@@ -2630,19 +2630,19 @@ def teacher_reschedule():
         except Exception:
             return jsonify({"error": "Invalid date format"}), 400
 
-        # 1. Verify teacher ownership AND year match for activity/exam
+        # 1. Verify teacher ownership
         if item_type == 'activity':
             cur.execute("""
                 SELECT 1 FROM activities 
-                WHERE activity_id = %s AND teacher_id = %s AND branch_id = %s AND year_id = %s
-            """, (item_id, user_id, branch_id, year_id))
+                WHERE activity_id = %s AND teacher_id = %s AND branch_id = %s
+            """, (item_id, user_id, branch_id))
         elif item_type == 'exam':
             cur.execute("""
                 SELECT 1 FROM exams 
-                WHERE exam_id = %s AND teacher_id = %s AND branch_id = %s AND year_id = %s
-            """, (item_id, user_id, branch_id, year_id))
+                WHERE exam_id = %s AND teacher_id = %s AND branch_id = %s
+            """, (item_id, user_id, branch_id))
         else:
-            # Optional: Handle 'quiz' similarly
+            # Optional: Handle 'quiz' similarly if needed, or map it to exam
             return jsonify({"error": "Unknown item_type"}), 400
 
         if not cur.fetchone():
