@@ -89,7 +89,46 @@ def get_db_connection():
                     cur.execute("ALTER TABLE enrollments ADD COLUMN profile_image VARCHAR(255)")
                 conn.commit()
             except Exception as e:
-                logger.warning(f"Could not migrate enrollments table: {e}")
+                logger.warning(f"Could not migrate enrollments profile_image: {e}")
+                conn.rollback()
+                
+            # School years migration
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'school_years'")
+                sy_cols = [r[0] for r in cur.fetchall()]
+                if sy_cols:  # If table exists
+                    if 'branch_id' not in sy_cols:
+                        cur.execute("ALTER TABLE school_years ADD COLUMN branch_id INTEGER")
+                    if 'is_active' not in sy_cols:
+                        cur.execute("ALTER TABLE school_years ADD COLUMN is_active BOOLEAN DEFAULT FALSE")
+                    conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate school_years table: {e}")
+                conn.rollback()
+
+            # Enrollments year_id migration
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'enrollments'")
+                enr_c = [r[0] for r in cur.fetchall()]
+                if 'year_id' not in enr_c:
+                    if 'school_year_id' in enr_c:
+                        cur.execute("ALTER TABLE enrollments RENAME COLUMN school_year_id TO year_id")
+                    else:
+                        cur.execute("ALTER TABLE enrollments ADD COLUMN year_id INTEGER")
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate enrollments year_id: {e}")
+                conn.rollback()
+
+            # Sections year_id migration
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'sections'")
+                sec_c = [r[0] for r in cur.fetchall()]
+                if 'year_id' not in sec_c:
+                    cur.execute("ALTER TABLE sections ADD COLUMN year_id INTEGER")
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate sections year_id: {e}")
                 conn.rollback()
                 
             try:
