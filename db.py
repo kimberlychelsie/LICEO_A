@@ -77,6 +77,8 @@ def get_db_connection():
                 user_cols = [r[0] for r in cur.fetchall()]
                 if 'profile_image' not in user_cols:
                     cur.execute("ALTER TABLE users ADD COLUMN profile_image VARCHAR(255)")
+                if 'email' not in user_cols:
+                    cur.execute("ALTER TABLE users ADD COLUMN email VARCHAR(255)")
                 conn.commit()
             except Exception as e:
                 logger.warning(f"Could not migrate users table: {e}")
@@ -131,6 +133,18 @@ def get_db_connection():
                 logger.warning(f"Could not migrate sections year_id: {e}")
                 conn.rollback()
                 
+            # student_accounts migration
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'student_accounts'")
+                sa_cols = [r[0] for r in cur.fetchall()]
+                if sa_cols:
+                    if 'email' not in sa_cols:
+                        cur.execute("ALTER TABLE student_accounts ADD COLUMN email VARCHAR(255)")
+                    conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate student_accounts table: {e}")
+                conn.rollback()
+
             try:
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS individual_extensions (

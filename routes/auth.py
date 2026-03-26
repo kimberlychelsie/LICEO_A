@@ -166,7 +166,8 @@ def login():
                     sa.*,
                     e.branch_id AS enroll_branch_id,
                     e.student_name,
-                    e.grade_level
+                    e.grade_level,
+                    e.email AS enroll_email
                 FROM student_accounts sa
                 JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
                 WHERE sa.username=%s
@@ -206,15 +207,16 @@ def login():
                         """, (branch_id, student.get("require_password_change", False), enrollment_id, student_user_id))
                     else:
                         cursor.execute("""
-                            INSERT INTO users (branch_id, username, password, role, require_password_change, enrollment_id, last_password_change)
-                            VALUES (%s, %s, %s, 'student', %s, %s, NOW())
+                            INSERT INTO users (branch_id, username, password, role, require_password_change, enrollment_id, last_password_change, email)
+                            VALUES (%s, %s, %s, 'student', %s, %s, NOW(), %s)
                             RETURNING user_id
                         """, (
                             branch_id,
                             username,
                             stored,
                             student.get("require_password_change", 0),
-                            enrollment_id
+                            enrollment_id,
+                            student.get("enroll_email")
                         ))
                         student_user_id = cursor.fetchone()["user_id"]
 

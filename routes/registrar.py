@@ -384,9 +384,9 @@ def create_student_account(enrollment_id):
         try:
             cursor.execute("""
                 INSERT INTO student_accounts
-                  (enrollment_id, branch_id, username, password, is_active, require_password_change)
-                VALUES (%s, %s, %s, %s, TRUE, TRUE)
-            """, (enrollment_id, enrollment["branch_id"], username, hashed_password))
+                  (enrollment_id, branch_id, username, password, is_active, require_password_change, email)
+                VALUES (%s, %s, %s, %s, TRUE, TRUE, %s)
+            """, (enrollment_id, enrollment["branch_id"], username, hashed_password, enrollment.get("email")))
             db.commit()
 
             section_id = request.form.get("section_id", "").strip()
@@ -506,11 +506,12 @@ def create_parent_account(enrollment_id):
         hashed_password = generate_password_hash(temp_password)
 
         try:
+            parent_email = enrollment.get("guardian_email") or enrollment.get("email")
             cursor.execute("""
-                INSERT INTO users (username, password, role, branch_id, require_password_change)
-                VALUES (%s, %s, 'parent', %s, TRUE)
+                INSERT INTO users (username, password, role, branch_id, require_password_change, email)
+                VALUES (%s, %s, 'parent', %s, TRUE, %s)
                 RETURNING user_id
-            """, (username, hashed_password, branch_id))
+            """, (username, hashed_password, branch_id, parent_email))
             parent_id = cursor.fetchone()["user_id"]
 
             cursor.execute("""
