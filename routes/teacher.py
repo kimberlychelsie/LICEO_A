@@ -116,8 +116,11 @@ def _get_active_school_year(cur, branch_id):
         WHERE  is_active = TRUE AND branch_id = %s
         LIMIT 1
     """, (branch_id,))
-    row = cur.fetchone()
-    return row["year_id"] if row else None
+    if not row:
+        return None
+    if isinstance(row, tuple):
+        return row[0]
+    return row["year_id"]
 
 
 
