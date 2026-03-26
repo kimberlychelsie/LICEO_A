@@ -1559,18 +1559,19 @@ def teacher_exam_results(exam_id):
 
         cur.execute("""
             SELECT
-                r.result_id, r.enrollment_id, r.score, r.total_points, r.status,
+                e.enrollment_id, e.student_name, e.grade_level,
+                r.result_id, r.score, r.total_points, COALESCE(r.status, 'Not Taken') AS status,
                 r.submitted_at, r.started_at, r.tab_switches,
-                e.student_name, e.grade_level,
                 (SELECT COUNT(*) FROM exam_tab_switches ts WHERE ts.result_id = r.result_id) AS switch_count,
                 ext.new_due_date AS individual_extension
-            FROM exam_results r
-            JOIN enrollments e ON r.enrollment_id = e.enrollment_id
+            FROM enrollments e
+            LEFT JOIN exam_results r ON e.enrollment_id = r.enrollment_id AND r.exam_id = %s
             LEFT JOIN individual_extensions ext ON ext.enrollment_id = e.enrollment_id 
-                 AND ext.item_id = r.exam_id AND ext.item_type = %s
-            WHERE r.exam_id = %s
-            ORDER BY r.submitted_at DESC NULLS LAST
-        """, (exam.get('exam_type', 'exam'), exam_id))
+                 AND ext.item_id = %s AND ext.item_type = %s
+            WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+              AND e.branch_id = %s
+            ORDER BY e.student_name ASC
+        """, (exam_id, exam_id, exam.get('exam_type', 'exam'), exam['section_id'], branch_id))
         results = cur.fetchall() or []
 
         # ✅ ADD THIS — convert UTC → PH time for display

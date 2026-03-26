@@ -13,6 +13,7 @@
     .badge-submitted { background:#d4edda; color:#155724; }
     .badge-auto_submitted { background:#fff3cd; color:#856404; }
     .badge-in_progress { background:#cce5ff; color:#004085; }
+    .badge-not_taken { background:#e9ecef; color:#6c757d; }
     .badge-info { background:#d1ecf1; color:#0c5460; }
     .tab-warn { background:#fff3cd; color:#856404; font-weight:700; padding:2px 8px; border-radius:4px; font-size:12px; }
     .tab-ok { color:#aaa; font-size:12px; }
@@ -53,13 +54,13 @@
             <tr>
                 <td><strong>{{ r.student_name }}</strong></td>
                 <td>{{ r.grade_level }}</td>
-                <td>{{ r.score|round|int }} / {{ r.total_points|round|int }}</td>
+                <td>{{ (r.score|round|int) if r.score is not none else '—' }} / {{ (r.total_points|round|int) if r.total_points is not none else '—' }}</td>
                 <td>
-                    {% if r.total_points %}
+                    {% if r.total_points and r.score is not none %}
                     {{ "%.1f"|format(r.score / r.total_points * 100) }}%
                     {% else %}—{% endif %}
                 </td>
-                <td><span class="badge badge-{{ r.status }}">{{ r.status|replace('_',' ')|capitalize }}</span></td>
+                <td><span class="badge badge-{{ r.status|lower|replace(' ', '_') }}">{{ r.status|replace('_',' ')|capitalize }}</span></td>
                 <td>
                     {% if r.switch_count > 0 %}
                     <span class="tab-warn">⚠️ {{ r.switch_count }} switch{{ 'es' if r.switch_count > 1 else '' }}</span>
@@ -79,6 +80,7 @@
                 <!-- ── Action buttons ── -->
                 <td style="display:flex; gap:8px;">
                     {% set ctype = 'quiz' if exam.exam_type == 'quiz' else 'exam' %}
+                    {% if r.result_id %}
                     <form method="POST"
                           action="{{ url_for('teacher.teacher_exam_reset', exam_id=exam.exam_id, enrollment_id=r.enrollment_id) }}"
                           onsubmit="return confirm('Reset the {{ ctype }} attempt of {{ r.student_name }}? They will be able to retake it.');"
@@ -88,11 +90,13 @@
                             🔄 Reset
                         </button>
                     </form>
+                    {% else %}
                     <button type="button" class="btn btn-secondary" 
                             style="padding:4px 10px; font-size:12px; background:#17a2b8; color:#fff;"
                             onclick="openRescheduleModal('{{ r.enrollment_id }}', '{{ r.student_name }}')">
                         📅 Resched
                     </button>
+                    {% endif %}
                 </td>
 
             </tr>
