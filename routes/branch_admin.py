@@ -2397,3 +2397,83 @@ def branch_admin_delete_student_account(account_id):
         cursor.close()
         db.close()
     return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts", role='student'))
+
+@branch_admin_bp.route("/api/branch-admin/filtered-accounts")
+def get_filtered_accounts_api():
+    if session.get("role") != "branch_admin":
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    branch_id = session.get("branch_id")
+    role = request.args.get("role", "registrar").strip().lower()
+    grade = request.args.get("grade", "")
+    section = request.args.get("section", "")
+    
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    
+    try:
+        if role == "student":
+            query = """
+                SELECT 
+                    sa.account_id, sa.username, 'student' AS role, e.student_name AS full_name,
+                    e.gender, e.grade_level, sa.is_active, sa.email, e.enrollment_id,
+                    s.section_name
+                FROM student_accounts sa
+                JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
+                LEFT JOIN sections s ON e.section_id = s.section_id
+                WHERE sa.branch_id = %s
+            """
+            params = [branch_id]
+            if grade:
+                query += " AND e.grade_level = %s"
+                params.append(grade)
+            if section:
+                query += " AND e.section_id = %s"
+                params.append(int(section))
+            
+            query += " ORDER BY e.student_name ASC"
+            cursor.execute(query, tuple(params))
+        else:
+            query = """
+                SELECT
+                    u.user_id, u.username, u.role, u.full_name, u.gender,
+                    u.email, COALESCE(g.name, u.grade_level) AS grade_level, u.status,
+                    STRING_AGG(DISTINCT s.section_name, ', ') AS sections
+                FROM users u
+                LEFT JOIN grade_levels g ON u.grade_level_id = g.id
+                LEFT JOIN section_teachers st ON u.user_id = st.teacher_id
+                LEFT JOIN sections s ON st.section_id = s.section_id
+                WHERE u.branch_id = %s AND u.role = %s
+            """
+            params = [branch_id, role]
+            if grade and role == "teacher":
+                query += " AND u.grade_level_id = %s"
+                params.append(int(grade))
+            if section and role == "teacher":
+                query += " AND EXISTS (SELECT 1 FROM section_teachers st2 WHERE st2.teacher_id = u.user_id AND st2.section_id = %s)"
+                params.append(int(section))
+            
+            query += " GROUP BY u.user_id, g.name ORDER BY u.user_id DESC"
+            cursor.execute(query, tuple(params))
+        
+        accounts = cursor.fetchall() or []
+        
+        # Also return section options for this branch
+        cursor.execute("""
+            SELECT s.section_id, s.section_name, g.name as grade_level_name, g.id as grade_level_id
+            FROM sections s 
+            JOIN grade_levels g ON s.grade_level_id = g.id 
+            WHERE s.branch_id = %s 
+            ORDER BY g.display_order, s.section_name
+        """, (branch_id,))
+        section_options = cursor.fetchall() or []
+
+        return jsonify({
+            "accounts": accounts,
+            "section_options": section_options
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()

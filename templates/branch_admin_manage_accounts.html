@@ -130,15 +130,14 @@
     <!-- FILTER BAR -->
     {% if role_filter in ['student', 'teacher'] %}
     <div class="ios-card" style="padding: 24px; margin-bottom: 32px; border: 1px solid rgba(0,0,0,0.05);">
-        <form method="get" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
-            <input type="hidden" name="role" value="{{ role_filter }}">
+        <form id="filter-form" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
+            <input type="hidden" id="current-role" name="role" value="{{ role_filter }}">
             
             <div style="flex: 1; min-width: 180px;">
                 <label class="ios-label">Filter by Grade</label>
-                <select name="grade" class="ios-input" style="margin-bottom: 0;">
+                <select id="filter-grade" name="grade" class="ios-input" style="margin-bottom: 0;">
                     <option value="">All Grade Levels</option>
                     {% if role_filter == 'student' %}
-                        {# Use unique grades from section options for the list #}
                         {% set unique_grades = [] %}
                         {% for s in section_options %}{% if s.grade_level_name not in unique_grades %}{% set _ = unique_grades.append(s.grade_level_name) %}{% endif %}{% endfor %}
                         {% for gname in unique_grades|sort %}
@@ -152,36 +151,32 @@
                 </select>
             </div>
 
-            {% if role_filter == 'student' %}
             <div style="flex: 1; min-width: 180px;">
                 <label class="ios-label">Filter by Section</label>
-                <select name="section" class="ios-input" style="margin-bottom: 0;">
+                <select id="filter-section" name="section" class="ios-input" style="margin-bottom: 0;">
                     <option value="">All Sections</option>
                     {% for s in section_options %}
-                    <option value="{{ s.section_id }}" {% if filter_section == s.section_id|string %}selected{% endif %}>
+                    <option value="{{ s.section_id }}" data-grade-id="{{ s.grade_level_id }}" data-grade-name="{{ s.grade_level_name }}" {% if filter_section == s.section_id|string %}selected{% endif %}>
                         {{ s.grade_level_name }} - {{ s.section_name }}
                     </option>
                     {% endfor %}
                 </select>
             </div>
-            {% endif %}
 
             <div style="display: flex; gap: 10px;">
-                <button type="submit" class="ios-btn ios-btn-blue" style="height: 48px; padding: 0 24px;">Apply</button>
-                <a href="?role={{ role_filter }}" class="ios-btn" style="height: 48px; padding: 0 24px; background: #f2f2f7; color: #1d1d1f; text-decoration: none;">Reset</a>
+                <a href="?role={{ role_filter }}" class="ios-btn" style="height: 48px; padding: 0 24px; background: #f2f2f7; color: #1d1d1f; text-decoration: none; display: flex; align-items: center; justify-content: center;">Reset Filters</a>
             </div>
         </form>
     </div>
     {% endif %}
 
-    {% if not accounts %}
-    <div style="text-align: center; padding: 80px 20px; background: #fff; border-radius: 20px;">
+    <div id="no-accounts-view" style="display: {% if not accounts %}block{% else %}none{% endif %}; text-align: center; padding: 80px 20px; background: #fff; border-radius: 20px;">
         <div style="font-size: 48px; margin-bottom: 16px;">🔍</div>
         <div style="font-weight: 600; color: #1d1d1f;">No accounts found</div>
-        <div style="color: #86868b; font-size: 14px;">Try selecting a different role.</div>
+        <div style="color: #86868b; font-size: 14px;">Try selecting a different filter.</div>
     </div>
-    {% else %}
-    <table class="ios-table">
+
+    <table id="accounts-table" class="ios-table" style="display: {% if accounts %}table{% else %}none{% endif %};">
         <thead>
             <tr>
                 <th>Name</th>
@@ -239,16 +234,157 @@
             {% endfor %}
         </tbody>
     </table>
-    {% endif %}
 
 </div>
 
 <script>
+    const roleFilter = "{{ role_filter }}";
+    const editBaseUrl = "{{ url_for('branch_admin.branch_admin_edit_account', user_id=8888) }}";
+    const editStudentBaseUrl = "{{ url_for('branch_admin.branch_admin_edit_student_account', account_id=8888) }}";
+    const toggleBaseUrl = "{{ url_for('branch_admin.branch_admin_toggle_account', user_id=8888) }}";
+    const deleteBaseUrl = "{{ url_for('branch_admin.branch_admin_delete_account', user_id=8888) }}";
+    const deleteStudentBaseUrl = "{{ url_for('branch_admin.branch_admin_delete_student_account', account_id=8888) }}";
+    const isBranchActive = {{ 'true' if is_branch_active_status else 'false' }};
+
     function toggleTeacherFields(role) {
         const gradeGroup = document.getElementById('gradeLevelGroup');
         if (gradeGroup) {
             gradeGroup.style.display = (role === 'teacher') ? 'block' : 'none';
         }
+    }
+
+    // Dynamic Filtering Logic
+    const gradeSelect = document.getElementById('filter-grade');
+    const sectionSelect = document.getElementById('filter-section');
+    const tableBody = document.getElementById('accounts-table-body');
+    const noResultsView = document.getElementById('no-accounts-view');
+    const accountsTable = document.getElementById('accounts-table');
+
+    if (gradeSelect && sectionSelect) {
+        gradeSelect.addEventListener('change', () => {
+            updateSectionOptions();
+            fetchFilteredAccounts();
+        });
+        sectionSelect.addEventListener('change', fetchFilteredAccounts);
+    }
+
+    function updateSectionOptions() {
+        const selectedGrade = gradeSelect.value;
+        const sections = sectionSelect.querySelectorAll('option');
+        
+        let firstVisible = null;
+        sections.forEach(opt => {
+            if (opt.value === "") {
+                opt.style.display = "block";
+                return;
+            }
+            
+            const gradeId = opt.getAttribute('data-grade-id');
+            const gradeName = opt.getAttribute('data-grade-name');
+            
+            // For students, selectedGrade is the name. For teachers, it's the ID.
+            const matches = (roleFilter === 'student' ? gradeName === selectedGrade : gradeId === selectedGrade);
+            
+            if (!selectedGrade || matches) {
+                opt.style.display = "block";
+                if (!firstVisible) firstVisible = opt;
+            } else {
+                opt.style.display = "none";
+            }
+        });
+        
+        // Reset section if it's now hidden
+        if (sectionSelect.value !== "" && sectionSelect.selectedOptions[0].style.display === "none") {
+            sectionSelect.value = "";
+        }
+    }
+
+    async function fetchFilteredAccounts() {
+        const grade = gradeSelect.value;
+        const section = sectionSelect.value;
+        const role = document.getElementById('current-role').value;
+
+        try {
+            const resp = await fetch(`/api/branch-admin/filtered-accounts?role=${role}&grade=${grade}&section=${section}`);
+            const data = await resp.json();
+            
+            if (data.error) {
+                console.error(data.error);
+                return;
+            }
+
+            renderTable(data.accounts);
+        } catch (err) {
+            console.error("Fetch error:", err);
+        }
+    }
+
+    function renderTable(accounts) {
+        tableBody.innerHTML = '';
+        
+        if (!accounts || accounts.length === 0) {
+            noResultsView.style.display = 'block';
+            accountsTable.style.display = 'none';
+            return;
+        }
+
+        noResultsView.style.display = 'none';
+        accountsTable.style.display = 'table';
+
+        accounts.forEach(a => {
+            const row = document.createElement('tr');
+            row.className = 'ios-row';
+            
+            const namePrefix = (a.role !== 'student' && a.gender) ? (a.gender === 'female' ? 'Ms. ' : 'Mr. ') : '';
+            const fullName = a.full_name || "Unnamed User";
+            const roleDisplay = a.role.charAt(0).toUpperCase() + a.role.slice(1);
+            const emailDisplay = a.email || 'No email';
+            
+            let metaHtml = `${roleDisplay} • ${emailDisplay}`;
+            if (a.grade_level) metaHtml += ` • Grade: ${a.grade_level}`;
+            if (a.section_name) metaHtml += ` • Section: ${a.section_name}`;
+            if (a.sections) metaHtml += ` • Sections: ${a.sections}`;
+
+            const statusBadge = a.status !== 'inactive' 
+                ? '<span class="status-badge status-active">Active</span>'
+                : '<span class="status-badge status-inactive">Inactive</span>';
+
+            const editUrl = (a.role === 'student' ? editStudentBaseUrl : editBaseUrl).replace('8888', a.role === 'student' ? a.account_id : a.user_id);
+            const toggleUrl = toggleBaseUrl.replace('8888', a.user_id);
+            const deleteUrl = (a.role === 'student' ? deleteStudentBaseUrl : deleteBaseUrl).replace('8888', a.role === 'student' ? a.account_id : a.user_id);
+
+            let actionsHtml = `<a href="${editUrl}?role=${roleFilter}" class="action-btn action-edit">Edit</a>`;
+            if (isBranchActive) {
+                actionsHtml += `
+                    <form method="post" action="${toggleUrl}?role=${roleFilter}" style="display:inline;">
+                        <button type="submit" class="action-btn action-toggle" onclick="return confirm('Toggle status?');" ${a.role === 'student' ? 'disabled' : ''}>
+                            ${a.role !== 'student' ? (a.status !== 'inactive' ? 'Deactivate' : 'Activate') : '-'}
+                        </button>
+                    </form>
+                    <form method="post" action="${deleteUrl}?role=${roleFilter}" style="display:inline;" onsubmit="return confirm('Delete this account?')">
+                        <button type="submit" class="action-btn action-delete">Delete</button>
+                    </form>
+                `;
+            }
+
+            row.innerHTML = `
+                <td>
+                    <div style="font-weight: 700; color: #1d1d1f; font-size: 15px;">${namePrefix}${fullName}</div>
+                    <div style="font-size: 13px; color: #86868b; margin-top: 2px;">${metaHtml}</div>
+                </td>
+                <td>
+                    <code style="background: #f4f4f5; padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 13px;">${a.username}</code>
+                </td>
+                <td>${statusBadge}</td>
+                <td style="text-align: right; white-space: nowrap;">${actionsHtml}</td>
+            `;
+            tableBody.appendChild(row);
+        });
+    }
+
+    // Initialize dropdowns on load
+    if (gradeSelect) {
+        updateSectionOptions();
     }
 </script>
 {% endblock %}
