@@ -2262,7 +2262,8 @@ def branch_admin_toggle_account(user_id):
         cursor.close()
         db.close()
     
-    return redirect(request.referrer or "/branch-admin/manage-accounts")
+    role = request.args.get('role', 'registrar')
+    return redirect(url_for("branch_admin.branch_admin_manage_accounts", role=role))
 @branch_admin_bp.route("/branch-admin/manage-accounts/<int:user_id>/edit", methods=["GET", "POST"])
 def branch_admin_edit_account(user_id):
     if session.get("role") != "branch_admin":
@@ -2281,7 +2282,8 @@ def branch_admin_edit_account(user_id):
             """, (full_name, email, gender, grade_level_id or None, user_id, session.get("branch_id")))
             db.commit()
             flash("Account updated successfully.", "success")
-            return redirect(url_for("branch_admin.branch_admin_manage_accounts"))
+            role = request.args.get('role', 'registrar')
+            return redirect(url_for("branch_admin.branch_admin_manage_accounts", role=role))
         cursor.execute("SELECT * FROM users WHERE user_id=%s AND branch_id=%s", (user_id, session.get("branch_id")))
         user = cursor.fetchone()
         cursor.execute("SELECT id, name FROM grade_levels WHERE branch_id=%s ORDER BY display_order", (session.get("branch_id"),))
@@ -2340,7 +2342,8 @@ def branch_admin_delete_account(user_id):
     finally:
         cursor.close()
         db.close()
-    return redirect(url_for("branch_admin.branch_admin_manage_accounts"))
+    role = request.args.get('role', 'registrar')
+    return redirect(url_for("branch_admin.branch_admin_manage_accounts", role=role))
 
 @branch_admin_bp.route("/branch-admin/manage-accounts/student/<int:account_id>/delete", methods=["POST"])
 def branch_admin_delete_student_account(account_id):

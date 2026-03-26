@@ -23,7 +23,7 @@
         <p style="color: var(--ios-gray); margin-top: 4px;">Update details for {{ user.role|title }}</p>
     </div>
 
-    <form method="post">
+    <form method="post" action="{{ url_for('branch_admin.branch_admin_edit_account', user_id=user.user_id, role=request.args.get('role', 'registrar')) }}">
         <div class="ios-card">
             <label class="ios-label">Full Name</label>
             <input class="ios-input" name="full_name" value="{{ user.full_name or '' }}" placeholder="Name" required>
@@ -51,7 +51,7 @@
 
         <div style="margin-top: 24px; display: flex; flex-direction: column; gap: 12px;">
             <button type="submit" class="ios-btn ios-btn-blue">Save Changes</button>
-            <a href="/branch-admin/manage-accounts" class="ios-btn ios-btn-gray" style="text-decoration: none;">Cancel</a>
+            <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role=request.args.get('role', 'registrar')) }}" class="ios-btn ios-btn-gray" style="text-decoration: none;">Cancel</a>
         </div>
     </form>
 </div>
