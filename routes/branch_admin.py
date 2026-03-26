@@ -872,15 +872,18 @@ def add_year():
         if request.method == 'POST':
             label = request.form['label'].strip()
 
-            cursor.execute("""
-                INSERT INTO school_years (label, branch_id)
-                VALUES (%s, %s)
-                ON CONFLICT (branch_id, label) DO NOTHING
-            """, (label, branch_id))
-
-            db.commit()  # ✅ YOU MISSED THIS BEFORE
-
-            flash("School year added!", "success")
+            # Check if exists first to avoid ON CONFLICT errors on DBs without unique constraints
+            cursor.execute("SELECT 1 FROM school_years WHERE label=%s AND branch_id=%s", (label, branch_id))
+            if not cursor.fetchone():
+                cursor.execute("""
+                    INSERT INTO school_years (label, branch_id)
+                    VALUES (%s, %s)
+                """, (label, branch_id))
+                db.commit()  # ✅ YOU MISSED THIS BEFORE
+                flash("School year added!", "success")
+            else:
+                flash("School year already exists.", "warning")
+                
             return redirect(url_for('branch_admin.add_year'))
 
         # ── ACTIVATE / DEACTIVATE ──
