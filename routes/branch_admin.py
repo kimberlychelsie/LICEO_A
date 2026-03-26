@@ -2126,13 +2126,21 @@ def branch_admin_manage_accounts():
             elif role == "teacher":
                 grade_suffix = ""
                 if grade_level:
-                    m = re.search(r"(\d+)", grade_level)
-                    if m:
-                        grade_suffix = m.group(1)
-                    elif "kinder" in grade_level.lower():
-                        grade_suffix = "K"
-                    elif "nursery" in grade_level.lower():
-                        grade_suffix = "N"
+                    # grade_level is the ID. Fetch the real name.
+                    try:
+                        cursor.execute("SELECT name FROM grade_levels WHERE id=%s", (grade_level,))
+                        g_row = cursor.fetchone()
+                        if g_row:
+                            g_name = g_row['name']
+                            m = re.search(r"(\d+)", g_name)
+                            if m:
+                                grade_suffix = m.group(1)
+                            elif "kinder" in g_name.lower():
+                                grade_suffix = "K"
+                            elif "nursery" in g_name.lower():
+                                grade_suffix = "N"
+                    except Exception:
+                        pass
                 base_username = f"{branch_code}_Teacher{grade_suffix}" if grade_suffix else f"{branch_code}_Teacher"
             else:
                 base_username = f"{branch_code}_{role.capitalize()}"
