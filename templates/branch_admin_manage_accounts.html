@@ -1,348 +1,205 @@
 {% extends "base.html" %}
 {% block title %}Manage Accounts{% endblock %}
+
 {% block content %}
 <style>
-    .card {
-        background: #fff;
-        border: 1px solid #eee;
-        border-radius: 12px;
-        padding: 24px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, .03);
-        margin-bottom: 24px;
+    :root {
+        --ios-blue: #007aff;
+        --ios-gray: #8e8e93;
+        --ios-light-gray: #f2f2f7;
     }
 
-    .row {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 16px;
-    }
+    .ios-container { padding: 40px 20px; max-width: 1000px; margin: 0 auto; }
+    .ios-card { background: #fff; border-radius: 20px; padding: 32px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); margin-bottom: 32px; border: 1px solid rgba(0, 0, 0, 0.02); }
+    .ios-heading { font-size: 32px; font-weight: 800; color: #1d1d1f; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
+    .ios-sub-heading { font-size: 16px; color: var(--ios-gray); margin-bottom: 40px; }
+    
+    .ios-label { font-size: 12px; font-weight: 700; color: #86868b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block; }
+    .ios-input { background: var(--ios-light-gray); border: none; border-radius: 12px; padding: 14px 18px; font-size: 16px; width: 100%; color: #1d1d1f; margin-bottom: 20px; transition: all 0.2s; }
+    .ios-input:focus { background: #fff; box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1); outline: none; }
+    
+    .ios-btn { padding: 14px 28px; border-radius: 12px; font-weight: 700; font-size: 16px; border: none; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; }
+    .ios-btn-blue { background: var(--ios-blue); color: #fff; }
+    .ios-btn-blue:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3); }
 
-    .field {
-        width: 100%;
-        padding: 10px 14px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        font-size: 14px;
-        box-sizing: border-box;
-        transition: border-color 0.2s;
-    }
+    .ios-tabs { display: flex; gap: 8px; margin-bottom: 24px; background: #eee; padding: 4px; border-radius: 14px; width: fit-content; }
+    .ios-tab { padding: 8px 16px; border-radius: 10px; font-size: 14px; font-weight: 600; text-decoration: none; color: #86868b; transition: all 0.2s; }
+    .ios-tab.active { background: #fff; color: #1d1d1f; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
 
-    .field:focus {
-        outline: none;
-        border-color: #007bff;
-        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
-    }
+    .ios-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.02); }
+    .ios-table th { text-align: left; padding: 16px 20px; background: #fafafa; font-size: 12px; font-weight: 700; color: #86868b; text-transform: uppercase; border-bottom: 1px solid #f2f2f7; }
+    .ios-table td { padding: 18px 20px; border-bottom: 1px solid #f2f2f7; vertical-align: middle; }
+    .ios-row:hover { background: #fbfbfb; }
 
-    .btn {
-        display: inline-block;
-        padding: 10px 18px;
-        border-radius: 8px;
-        background: #f8f8f8;
-        color: #222;
-        text-decoration: none;
-        font-weight: 600;
-        font-size: 14px;
-        cursor: pointer;
-        border: 1px solid #ddd;
-        transition: background 0.2s;
-    }
+    .status-badge { padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .status-active { background: #e3f9e5; color: #34c759; }
+    .status-inactive { background: #fff1f0; color: #ff3b30; }
 
-    .btn:hover {
-        background: #efefef;
-    }
-
-    .btn-primary {
-        background: #007bff;
-        color: #fff;
-        border-color: #007bff;
-    }
-
-    .btn-primary:hover {
-        background: #0056b3;
-    }
-
-    .btn-danger {
-        background: #fee2e2;
-        color: #b91c1c;
-        border-color: #fca5a5;
-    }
-
-    .btn-danger:hover {
-        background: #fecaca;
-    }
-
-    .btn-sm {
-        padding: 5px 12px;
-        font-size: 12px;
-    }
-
-    .muted {
-        color: #666;
-        font-size: 12px;
-    }
-
-    .success {
-        background: #ecfdf5;
-        border: 1px solid #a7f3d0;
-        color: #065f46;
-        padding: 16px;
-        border-radius: 8px;
-    }
-
-    .badge {
-        background: #f1f5f9;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-weight: 700;
-        border: 1px solid #e2e8f0;
-    }
-
-    .filter-tabs {
-        display: flex;
-        gap: 8px;
-        margin-bottom: 16px;
-        flex-wrap: wrap;
-    }
-
-    .filter-tab {
-        padding: 8px 16px;
-        border-radius: 999px;
-        background: #f4f4f5;
-        color: #52525b;
-        text-decoration: none;
-        font-size: 14px;
-        font-weight: 600;
-        transition: all 0.2s;
-    }
-
-    .filter-tab:hover {
-        background: #e4e4e7;
-    }
-
-    .filter-tab.active {
-        background: #007bff;
-        color: white;
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 10px;
-    }
-
-    th {
-        background: #f8f9fa;
-        padding: 12px;
-        text-align: left;
-        font-size: 13px;
-        color: #555;
-        border-bottom: 2px solid #eee;
-    }
-
-    td {
-        padding: 12px;
-        border-bottom: 1px solid #f0f0f0;
-        font-size: 14px;
-        vertical-align: middle;
-    }
-
-    .status-badge {
-        padding: 4px 8px;
-        border-radius: 999px;
-        font-size: 12px;
-        font-weight: 700;
-    }
-
-    .status-active {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    .status-inactive {
-        background: #fee2e2;
-        color: #991b1b;
-    }
+    .action-btn { padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; text-decoration: none; transition: all 0.2s; cursor: pointer; border: none; background: transparent; }
+    .action-edit { color: var(--ios-blue); }
+    .action-edit:hover { background: rgba(0, 122, 255, 0.08); }
+    .action-toggle { color: #86868b; }
+    .action-delete { color: #ff3b30; }
+    .action-delete:hover { background: rgba(255, 59, 48, 0.08); }
 </style>
 
-<div style="max-width: 1000px; margin: 0 auto;">
-    <h1 style="margin: 0 0 6px 0;">👥 Manage Accounts</h1>
-    <p class="muted" style="margin-bottom: 24px; font-size:14px;">
-        Create and manage users for your branch.
-    </p>
+<div class="ios-container">
+    <h1 class="ios-heading">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="var(--ios-blue)" style="margin-right: 8px;">
+            <path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>
+        </svg>
+        Accounts
+    </h1>
+    <p class="ios-sub-heading">Manage branch users and students</p>
 
     <!-- CREATE USERS CARD -->
     {% if is_branch_active_status %}
-    <div class="card">
-        <h2 style="margin:0 0 6px 0;">Create New User</h2>
-        <div class="muted" style="margin-bottom:12px;">
-            Usernames and default passwords are auto-generated from your branch code.
-        </div>
+    <div class="ios-card">
+        <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 24px;">
+            Create {{ (role_filter or 'Registrar')|title }}
+        </h2>
 
-        <form method="post" action="{{ url_for('branch_admin.branch_admin_manage_accounts') }}">
-            <div class="row">
-                <div style="flex:1; min-width:220px;">
-                    <label style="font-weight:700; font-size:13px;">Role</label>
-                    <select class="field" name="role" required id="roleSelect"
-                        onchange="toggleTeacherFields(this.value)">
-                        <option value="registrar" {% if role_filter=='registrar' %}selected{% endif %}>Registrar
-                        </option>
+        <form method="post" action="{{ url_for('branch_admin.branch_admin_manage_accounts') }}" class="ios-form">
+            <div style="display: grid; grid-template-columns: 1fr 2fr 1fr; gap: 20px;">
+                <div>
+                    <label class="ios-label">Role</label>
+                    <select class="ios-input" name="role" required id="roleSelect" onchange="toggleTeacherFields(this.value)">
+                        <option value="registrar" {% if role_filter=='registrar' %}selected{% endif %}>Registrar</option>
                         <option value="cashier" {% if role_filter=='cashier' %}selected{% endif %}>Cashier</option>
-                        <option value="librarian" {% if role_filter=='librarian' %}selected{% endif %}>Librarian
-                        </option>
+                        <option value="librarian" {% if role_filter=='librarian' %}selected{% endif %}>Librarian</option>
                         <option value="teacher" {% if role_filter=='teacher' %}selected{% endif %}>Teacher</option>
                     </select>
                 </div>
+                <div>
+                    <label class="ios-label">Full Name *</label>
+                    <input class="ios-input" name="full_name" placeholder="Name" required>
+                </div>
+                <div>
+                    <label class="ios-label">Gender *</label>
+                    <select class="ios-input" name="gender" required>
+                        <option value="">Select</option>
+                        <option value="female">Female</option>
+                        <option value="male">Male</option>
+                    </select>
+                </div>
+            </div>
 
-                <div style="flex:1; min-width:220px;">
-                <label style="font-weight:700; font-size:13px;">Email</label>
-                    <input class="field" name="email" id="emailInput" type="email" placeholder="e.g., johndoe@example.com" required>
-                    <div   div class="muted" style="font-size:12px; margin-top:3px;">
-                        Used for sending credentials.
-                    </div>
+            <div style="display: flex; gap: 20px; align-items: flex-end;">
+                <div style="flex: 1;">
+                    <label class="ios-label">Email Address *</label>
+                    <input class="ios-input" name="email" type="email" placeholder="email@example.com" required>
+                </div>
+                
+                <div id="gradeLevelGroup" style="flex: 1; display: {% if role_filter == 'teacher' %}block{% else %}none{% endif %};">
+                    <label class="ios-label">Assigned Grade</label>
+                    <select class="ios-input" name="grade_level">
+                        <option value="">Select Grade</option>
+                        {% for g in grades %}
+                        <option value="{{ g.id }}">{{ g.name }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
 
-                <div style="display:flex; align-items:flex-end;">
-                    <button class="btn btn-primary" type="submit">Create User</button>
-                </div>
-
-                <!-- Teacher-only fields -->
-                <div id="teacherFields" style="display:{% if role_filter == 'teacher' %}block{% else %}none{% endif %}; margin-top:14px;
-           background:#f0f9ff; border:1px solid #bae6fd; border-radius:12px; padding:14px; width: 100%;">
-                    <div style="font-weight:700; font-size:13px; margin-bottom:10px; color:#0369a1;">
-                        👩‍🏫 Teacher Details
-                    </div>
-                    <div class="row" style="gap:12px; flex-wrap:wrap;">
-                        <!-- Full Name -->
-                        <div style="flex:2; min-width:220px;">
-                            <label style="font-weight:700; font-size:13px;">Full Name *</label>
-                            <input class="field" name="full_name" id="fullNameInput" placeholder="e.g., Joy Cruz"
-                                style="margin-top:4px;" {% if role_filter=='teacher' %}required{% endif %}>
-                            <div class="muted" style="font-size:12px; margin-top:3px;">
-                                Shows on class announcements (e.g., Ms. Joy Cruz).
-                            </div>
-                        </div>
-
-                        <!-- Gender -->
-                        <div style="flex:1; min-width:160px;">
-                            <label style="font-weight:700; font-size:13px;">Gender *</label>
-                            <select class="field" name="gender" id="genderSelect" style="margin-top:4px;" {% if
-                                role_filter=='teacher' %}required{% endif %}>
-                                <option value="">— Select —</option>
-                                <option value="female">Female (Ms.)</option>
-                                <option value="male">Male (Mr.)</option>
-                            </select>
-                        </div>
-
-                        <!-- Grade Level -->
-                        <div style="flex:1; min-width:180px;">
-                            <label style="font-weight:700; font-size:13px;">Assigned Grade Level</label>
-                            <select class="field" name="grade_level" style="margin-top:4px;">
-                                <option value="">— Select Grade —</option>
-                                {% for g in grades %}
-                                <option value="{{ g.id }}">{{ g.name }}</option>
-                                {% endfor %}
-                            </select>
-                        </div>
-                    </div>
-                </div>
+                <button class="ios-btn ios-btn-blue" type="submit" style="white-space: nowrap; height: 48px; padding: 0 32px;">
+                    Create User
+                </button>
             </div>
         </form>
 
         {% if created_user %}
-        <div style="margin-top:14px;" class="success">
-            <div style="font-weight:800; margin-bottom:6px;">User Created Successfully ✅</div>
-            <div><span class="badge">{{ created_user.role|title }}</span></div>
-            <div style="margin-top:8px;"><b>Username:</b> {{ created_user.username }}</div>
-            <div><b>Temporary Password:</b> {{ created_user.password }}</div>
+        <div style="margin-top: 24px; padding: 20px; background: #f0f9ff; border-radius: 16px; border: 1px solid #bae6fd;">
+            <div style="font-weight: 700; color: #0369a1; margin-bottom: 8px;">User Created Successfully</div>
+            <div style="font-size: 14px; color: #0c4a6e;">
+                <b>Username:</b> {{ created_user.username }}<br>
+                <b>Temporary Password:</b> {{ created_user.password }}
+            </div>
         </div>
         {% endif %}
     </div>
     {% endif %}
 
-    <!-- ACCOUNTS LIST CARD -->
-    <div class="card">
-        <div class="filter-tabs">
-            <a href="?role=registrar"
-                class="filter-tab {% if role_filter == 'registrar' %}active{% endif %}">Registrar</a>
-            <a href="?role=cashier" class="filter-tab {% if role_filter == 'cashier' %}active{% endif %}">Cashier</a>
-            <a href="?role=librarian"
-                class="filter-tab {% if role_filter == 'librarian' %}active{% endif %}">Librarian</a>
-            <a href="?role=teacher" class="filter-tab {% if role_filter == 'teacher' %}active{% endif %}">Teacher</a>
-        </div>
-
-        {% if not accounts %}
-        <div class="muted" style="text-align: center; padding: 40px 20px;">
-            <div style="font-size: 32px; margin-bottom: 8px;">📭</div>
-            No accounts found for the role <b>{{ role_filter|title }}</b>.
-        </div>
-        {% else %}
-        <div style="overflow-x:auto;">
-            <table>
-                <thead>
-                    <tr>
-                        <th>Name / Info</th>
-                        <th>Username</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th style="text-align:right;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for a in accounts %}
-                    <tr>
-                        <td>
-                            <div style="font-weight: 600;">
-                                {% if a.role == 'teacher' and a.gender %}
-                                {% if a.gender == 'female' %}Ms.{% else %}Mr.{% endif %}
-                                {% endif %}
-                                {{ a.full_name or "—" }}
-                            </div>
-                            {% if a.role == 'teacher' and a.grade_level %}
-                            <div class="muted" style="margin-top:3px;">Grade: {{ a.grade_level }}</div>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <b>{{ a.username }}</b>
-                        </td>
-                        <td>
-                            <span class="badge" style="text-transform: capitalize;">{{ a.role }}</span>
-                        </td>
-                        <td>
-                            {% if a.status != 'inactive' %}
-                            <span class="status-badge status-active">Active</span>
-                            {% else %}
-                            <span class="status-badge status-inactive">Inactive</span>
-                            {% endif %}
-                        </td>
-                        <td style="text-align:right;">
-                            {% if is_branch_active_status %}
-                            <form method="post"
-                                action="{{ url_for('branch_admin.branch_admin_toggle_account', user_id=a.user_id) }}"
-                                style="display:inline;">
-                                <button type="submit" class="btn btn-sm"
-                                    onclick="return confirm('Toggle status for this account?');">
-                                    {% if a.status != 'inactive' %}Deactivate{% else %}Activate{% endif %}
-                                </button>
-                            </form>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% endif %}
+    <!-- TABS -->
+    <div class="ios-tabs">
+        <a href="?role=registrar" class="ios-tab {% if role_filter == 'registrar' or not role_filter %}active{% endif %}">Registrar</a>
+        <a href="?role=cashier" class="ios-tab {% if role_filter == 'cashier' %}active{% endif %}">Cashier</a>
+        <a href="?role=librarian" class="ios-tab {% if role_filter == 'librarian' %}active{% endif %}">Librarian</a>
+        <a href="?role=teacher" class="ios-tab {% if role_filter == 'teacher' %}active{% endif %}">Teacher</a>
+        <a href="?role=student" class="ios-tab {% if role_filter == 'student' %}active{% endif %}">Student</a>
     </div>
+
+    {% if not accounts %}
+    <div style="text-align: center; padding: 80px 20px; background: #fff; border-radius: 20px;">
+        <div style="font-size: 48px; margin-bottom: 16px;">🔍</div>
+        <div style="font-weight: 600; color: #1d1d1f;">No accounts found</div>
+        <div style="color: #86868b; font-size: 14px;">Try selecting a different role.</div>
+    </div>
+    {% else %}
+    <table class="ios-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>ID / Username</th>
+                <th>Status</th>
+                <th style="text-align: right; padding-right: 20px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for a in accounts %}
+            <tr class="ios-row">
+                <td>
+                    <div style="font-weight: 700; color: #1d1d1f; font-size: 15px;">
+                        {% if a.role != 'student' and a.gender %}
+                            {% if a.gender == 'female' %}Ms.{% else %}Mr.{% endif %}
+                        {% endif %}
+                        {{ a.full_name or "Unnamed User" }}
+                    </div>
+                    <div style="font-size: 13px; color: #86868b; margin-top: 2px;">
+                        {{ a.role|title }} • {{ a.email or 'No email' }}
+                        {% if a.grade_level %} • Grade: {{ a.grade_level }}{% endif %}
+                    </div>
+                </td>
+                <td>
+                    <code style="background: #f4f4f5; padding: 4px 8px; border-radius: 6px; font-weight: 600; font-size: 13px;">
+                        {{ a.username }}
+                    </code>
+                </td>
+                <td>
+                    {% if a.status != 'inactive' %}
+                    <span class="status-badge status-active">Active</span>
+                    {% else %}
+                    <span class="status-badge status-inactive">Inactive</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: right; white-space: nowrap;">
+                    <a href="{{ url_for('branch_admin.branch_admin_edit_account', user_id=a.user_id) if a.role != 'student' else url_for('branch_admin.branch_admin_edit_student_account', account_id=a.account_id) }}" 
+                       class="action-btn action-edit">Edit</a>
+
+                    {% if is_branch_active_status %}
+                    <form method="post" action="{{ url_for('branch_admin.branch_admin_toggle_account', user_id=a.user_id) if a.role != 'student' else '#' }}" style="display:inline;">
+                        <button type="submit" class="action-btn action-toggle" onclick="return confirm('Toggle status?');" {{ 'disabled' if a.role == 'student' }}>
+                            {% if a.role != 'student' %}{% if a.status != 'inactive' %}Deactivate{% else %}Activate{% endif %}{% else %}-{% endif %}
+                        </button>
+                    </form>
+                    <form method="post" action="{{ url_for('branch_admin.branch_admin_delete_account', user_id=a.user_id) if a.role != 'student' else url_for('branch_admin.branch_admin_delete_student_account', account_id=a.account_id) }}" 
+                          style="display:inline;" onsubmit="return confirm('Delete this account?')">
+                        <button type="submit" class="action-btn action-delete">Delete</button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
 
 </div>
 
 <script>
     function toggleTeacherFields(role) {
-        const show = role === 'teacher';
-        document.getElementById('teacherFields').style.display = show ? 'block' : 'none';
-        document.getElementById('fullNameInput').required = show;
-        document.getElementById('genderSelect').required = show;
+        const gradeGroup = document.getElementById('gradeLevelGroup');
+        if (gradeGroup) {
+            gradeGroup.style.display = (role === 'teacher') ? 'block' : 'none';
+        }
     }
 </script>
 {% endblock %}

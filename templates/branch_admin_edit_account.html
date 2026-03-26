@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Edit Account{% endblock %}
+{% block content %}
+<style>
+    :root {
+        --ios-blue: #007aff;
+        --ios-gray: #8e8e93;
+        --ios-light-gray: #f2f2f7;
+    }
+    .ios-container { padding: 40px 20px; max-width: 600px; margin: 0 auto; }
+    .ios-card { background: #fff; border-radius: 20px; padding: 32px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); border: 1px solid rgba(0, 0, 0, 0.02); }
+    .ios-label { font-size: 12px; font-weight: 700; color: #86868b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block; }
+    .ios-input { background: var(--ios-light-gray); border: none; border-radius: 12px; padding: 14px 18px; font-size: 16px; width: 100%; color: #1d1d1f; margin-bottom: 20px; }
+    .ios-input:focus { background: #fff; box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1); outline: none; }
+    .ios-btn { padding: 14px 28px; border-radius: 12px; font-weight: 700; font-size: 16px; border: none; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; width: 100%; margin-top: 10px; }
+    .ios-btn-blue { background: var(--ios-blue); color: #fff; }
+    .ios-btn-gray { background: #e3e3e8; color: #1d1d1f; }
+</style>
+
+<div class="ios-container">
+    <div style="margin-bottom: 32px;">
+        <h1 style="font-size: 28px; font-weight: 800; margin: 0;">Edit Account</h1>
+        <p style="color: var(--ios-gray); margin-top: 4px;">Update details for {{ user.role|title }}</p>
+    </div>
+
+    <form method="post">
+        <div class="ios-card">
+            <label class="ios-label">Full Name</label>
+            <input class="ios-input" name="full_name" value="{{ user.full_name or '' }}" placeholder="Name" required>
+            
+            <label class="ios-label">Email Address</label>
+            <input class="ios-input" name="email" type="email" value="{{ user.email or '' }}" placeholder="email@example.com" required>
+
+            <label class="ios-label">Gender</label>
+            <select class="ios-input" name="gender" required>
+                <option value="">— Select —</option>
+                <option value="female" {% if user.gender == 'female' %}selected{% endif %}>Female</option>
+                <option value="male" {% if user.gender == 'male' %}selected{% endif %}>Male</option>
+            </select>
+
+            {% if user.role == 'teacher' %}
+            <label class="ios-label">Assigned Grade Level</label>
+            <select class="ios-input" name="grade_level">
+                <option value="">— Select Grade —</option>
+                {% for g in grades %}
+                <option value="{{ g.id }}" {% if user.grade_level_id|string == g.id|string %}selected{% endif %}>{{ g.name }}</option>
+                {% endfor %}
+            </select>
+            {% endif %}
+        </div>
+
+        <div style="margin-top: 24px; display: flex; flex-direction: column; gap: 12px;">
+            <button type="submit" class="ios-btn ios-btn-blue">Save Changes</button>
+            <a href="/branch-admin/manage-accounts" class="ios-btn ios-btn-gray" style="text-decoration: none;">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

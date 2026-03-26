@@ -2171,9 +2171,9 @@ def branch_admin_manage_accounts():
             else:
                 cursor.execute("""
                     INSERT INTO users
-                        (branch_id, username, password, role, require_password_change, email)
-                    VALUES (%s, %s, %s, %s, TRUE, %s)
-                """, (branch_id, username, hashed_password, role, user_email))
+                        (branch_id, username, password, role, require_password_change, full_name, gender, email)
+                    VALUES (%s, %s, %s, %s, TRUE, %s, %s, %s)
+                """, (branch_id, username, hashed_password, role, full_name or None, gender or None, user_email))
             created_user = {"username": username, "password": temp_password, "role": role}
 
             db.commit()
@@ -2200,16 +2200,27 @@ def branch_admin_manage_accounts():
                 flash("User created successfully!", "success")
                 role_filter = role
 
-        # ✅ Already correctly scoped by branch_id
-        cursor.execute("""
-            SELECT
-                u.user_id, u.username, u.role, u.full_name, u.gender,
-                COALESCE(g.name, u.grade_level) AS grade_level, u.status
-            FROM users u
-            LEFT JOIN grade_levels g ON u.grade_level_id = g.id
-            WHERE u.branch_id = %s AND u.role = %s
-            ORDER BY u.user_id DESC
-        """, (branch_id, role_filter))
+        # Fetch accounts based on role
+        if role_filter == "student":
+            cursor.execute("""
+                SELECT 
+                    sa.account_id, sa.username, 'student' AS role, e.student_name AS full_name,
+                    e.gender, e.grade_level, sa.is_active, sa.email, e.enrollment_id
+                FROM student_accounts sa
+                JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
+                WHERE sa.branch_id = %s
+                ORDER BY e.student_name ASC
+            """, (branch_id,))
+        else:
+            cursor.execute("""
+                SELECT
+                    u.user_id, u.username, u.role, u.full_name, u.gender,
+                    u.email, COALESCE(g.name, u.grade_level) AS grade_level, u.status
+                FROM users u
+                LEFT JOIN grade_levels g ON u.grade_level_id = g.id
+                WHERE u.branch_id = %s AND u.role = %s
+                ORDER BY u.user_id DESC
+            """, (branch_id, role_filter))
         accounts = cursor.fetchall() or []
 
     except Exception as e:
@@ -2252,3 +2263,99 @@ def branch_admin_toggle_account(user_id):
         db.close()
     
     return redirect(request.referrer or "/branch-admin/manage-accounts")
+@branch_admin_bp.route("/branch-admin/manage-accounts/<int:user_id>/edit", methods=["GET", "POST"])
+def branch_admin_edit_account(user_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        if request.method == "POST":
+            full_name = request.form.get("full_name")
+            email = request.form.get("email")
+            gender = request.form.get("gender")
+            grade_level_id = request.form.get("grade_level")
+            cursor.execute("""
+                UPDATE users SET full_name=%s, email=%s, gender=%s, grade_level_id=%s
+                WHERE user_id=%s AND branch_id=%s
+            """, (full_name, email, gender, grade_level_id or None, user_id, session.get("branch_id")))
+            db.commit()
+            flash("Account updated successfully.", "success")
+            return redirect(url_for("branch_admin.branch_admin_manage_accounts"))
+        cursor.execute("SELECT * FROM users WHERE user_id=%s AND branch_id=%s", (user_id, session.get("branch_id")))
+        user = cursor.fetchone()
+        cursor.execute("SELECT id, name FROM grade_levels WHERE branch_id=%s ORDER BY display_order", (session.get("branch_id"),))
+        grades = cursor.fetchall()
+        return render_template("branch_admin_edit_account.html", user=user, grades=grades)
+    finally:
+        cursor.close()
+        db.close()
+
+@branch_admin_bp.route("/branch-admin/manage-accounts/student/<int:account_id>/edit", methods=["GET", "POST"])
+def branch_admin_edit_student_account(account_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        if request.method == "POST":
+            full_name = request.form.get("full_name")
+            email = request.form.get("email")
+            gender = request.form.get("gender")
+            grade_level = request.form.get("grade_level")
+            cursor.execute("UPDATE student_accounts SET email=%s WHERE account_id=%s AND branch_id=%s", 
+                           (email, account_id, session.get("branch_id")))
+            cursor.execute("""
+                UPDATE enrollments SET student_name=%s, gender=%s, grade_level=%s
+                WHERE enrollment_id = (SELECT enrollment_id FROM student_accounts WHERE account_id=%s)
+            """, (full_name, gender, grade_level, account_id))
+            db.commit()
+            flash("Student account updated successfully.", "success")
+            return redirect(url_for("branch_admin.branch_admin_manage_accounts", role='student'))
+        cursor.execute("""
+            SELECT sa.*, e.student_name AS full_name, e.gender, e.grade_level
+            FROM student_accounts sa
+            JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
+            WHERE sa.account_id=%s AND sa.branch_id=%s
+        """, (account_id, session.get("branch_id")))
+        student = cursor.fetchone()
+        return render_template("branch_admin_edit_student_account.html", student=student)
+    finally:
+        cursor.close()
+        db.close()
+
+@branch_admin_bp.route("/branch-admin/manage-accounts/<int:user_id>/delete", methods=["POST"])
+def branch_admin_delete_account(user_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("DELETE FROM users WHERE user_id=%s AND branch_id=%s", (user_id, session.get("branch_id")))
+        db.commit()
+        flash("Account deleted.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Failed to delete: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+    return redirect(url_for("branch_admin.branch_admin_manage_accounts"))
+
+@branch_admin_bp.route("/branch-admin/manage-accounts/student/<int:account_id>/delete", methods=["POST"])
+def branch_admin_delete_student_account(account_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("DELETE FROM student_accounts WHERE account_id=%s AND branch_id=%s", (account_id, session.get("branch_id")))
+        db.commit()
+        flash("Student account deleted.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Failed to delete student account: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+    return redirect(url_for("branch_admin.branch_admin_manage_accounts", role='student'))
