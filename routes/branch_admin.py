@@ -2319,7 +2319,7 @@ def branch_admin_edit_account(user_id):
             """, (full_name, email, gender, grade_level_id or None, user_id, session.get("branch_id")))
             db.commit()
             flash("Account updated successfully.", "success")
-    return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
+            return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
         cursor.execute("SELECT * FROM users WHERE user_id=%s AND branch_id=%s", (user_id, session.get("branch_id")))
         user = cursor.fetchone()
         cursor.execute("SELECT id, name FROM grade_levels WHERE branch_id=%s ORDER BY display_order", (session.get("branch_id"),))
@@ -2349,7 +2349,7 @@ def branch_admin_edit_student_account(account_id):
             """, (full_name, gender, grade_level, account_id))
             db.commit()
             flash("Student account updated successfully.", "success")
-            return redirect(url_for("branch_admin.branch_admin_manage_accounts", role='student'))
+            return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts", role='student'))
         cursor.execute("""
             SELECT sa.*, e.student_name AS full_name, e.gender, e.grade_level
             FROM student_accounts sa
@@ -2396,4 +2396,4 @@ def branch_admin_delete_student_account(account_id):
     finally:
         cursor.close()
         db.close()
-    return redirect(url_for("branch_admin.branch_admin_manage_accounts", role='student'))
+    return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts", role='student'))
