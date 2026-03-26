@@ -292,11 +292,14 @@
     <input type="hidden" name="tab_switches" id="tabSwitchInput" value="0" />
     <input type="hidden" name="submit_type"  id="submitType" value="manual" />
   
+    {% set mcq_questions = questions | selectattr("question_type", "equalto", "mcq") | list %}
+    {% set tf_questions = questions | selectattr("question_type", "equalto", "truefalse") | list %}
+    {% set match_questions = questions | selectattr("question_type", "equalto", "matching") | list %}
+
     <!-- MCQ Section -->
     <div id="section-mc" class="question-section">
       <div class="section-label">📝 Multiple Choice</div>
       <div class="progress-indicator" id="mc-progress"></div>
-      {% set mcq_questions = questions | selectattr("question_type", "equalto", "mcq") | list %}
       {% for q in mcq_questions %}
       <div class="q-card" id="mc-q{{ loop.index0 }}" style="display:none;">
         <div class="q-meta">
@@ -341,7 +344,6 @@
     <div id="section-tf" class="question-section">
       <div class="section-label">✅ True or False</div>
       <div class="progress-indicator" id="tf-progress"></div>
-      {% set tf_questions = questions | selectattr("question_type", "equalto", "truefalse") | list %}
       {% for q in tf_questions %}
       <div class="q-card" id="tf-q{{ loop.index0 }}" style="display:none;">
         <div class="q-meta">
@@ -386,7 +388,6 @@
     <div id="section-match" class="question-section">
       <div class="section-label">🔗 Matching Type</div>
       <div class="progress-indicator" id="match-progress"></div>
-      {% set match_questions = questions | selectattr("question_type", "equalto", "matching") | list %}
       {% for q in match_questions %}
       <div class="q-card" id="match-q{{ loop.index0 }}" style="display:none;">
         <div class="q-meta">
