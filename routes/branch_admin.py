@@ -2076,6 +2076,8 @@ def branch_admin_manage_accounts():
 
     role_filter = (request.args.get("role") or "registrar").strip().lower()
     created_user = None
+    filter_grade = request.args.get("grade", "")
+    filter_section = request.args.get("section", "")
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -2200,27 +2202,54 @@ def branch_admin_manage_accounts():
                 flash("User created successfully!", "success")
                 role_filter = role
 
+        # Fetch section options for filtering
+        cursor.execute("""
+            SELECT s.section_id, s.section_name, g.name as grade_level_name 
+            FROM sections s 
+            JOIN grade_levels g ON s.grade_level_id = g.id 
+            WHERE s.branch_id = %s 
+            ORDER BY g.display_order, s.section_name
+        """, (branch_id,))
+        section_options = cursor.fetchall() or []
+
         # Fetch accounts based on role
         if role_filter == "student":
-            cursor.execute("""
+            query = """
                 SELECT 
                     sa.account_id, sa.username, 'student' AS role, e.student_name AS full_name,
-                    e.gender, e.grade_level, sa.is_active, sa.email, e.enrollment_id
+                    e.gender, e.grade_level, sa.is_active, sa.email, e.enrollment_id,
+                    s.section_name
                 FROM student_accounts sa
                 JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
+                LEFT JOIN sections s ON e.section_id = s.section_id
                 WHERE sa.branch_id = %s
-                ORDER BY e.student_name ASC
-            """, (branch_id,))
+            """
+            params = [branch_id]
+            if filter_grade:
+                query += " AND e.grade_level = %s"
+                params.append(filter_grade)
+            if filter_section:
+                query += " AND e.section_id = %s"
+                params.append(int(filter_section))
+
+            query += " ORDER BY e.student_name ASC"
+            cursor.execute(query, tuple(params))
         else:
-            cursor.execute("""
+            query = """
                 SELECT
                     u.user_id, u.username, u.role, u.full_name, u.gender,
                     u.email, COALESCE(g.name, u.grade_level) AS grade_level, u.status
                 FROM users u
                 LEFT JOIN grade_levels g ON u.grade_level_id = g.id
                 WHERE u.branch_id = %s AND u.role = %s
-                ORDER BY u.user_id DESC
-            """, (branch_id, role_filter))
+            """
+            params = [branch_id, role_filter]
+            if filter_grade and role_filter == "teacher":
+                query += " AND u.grade_level_id = %s"
+                params.append(int(filter_grade))
+
+            query += " ORDER BY u.user_id DESC"
+            cursor.execute(query, tuple(params))
         accounts = cursor.fetchall() or []
 
     except Exception as e:
@@ -2236,6 +2265,9 @@ def branch_admin_manage_accounts():
         role_filter=role_filter,
         accounts=accounts,
         grades=grades,
+        section_options=section_options,
+        filter_grade=filter_grade,
+        filter_section=filter_section,
         created_user=created_user
     )
 

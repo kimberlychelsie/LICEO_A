@@ -127,6 +127,53 @@
         <a href="?role=student" class="ios-tab {% if role_filter == 'student' %}active{% endif %}">Student</a>
     </div>
 
+    <!-- FILTER BAR -->
+    {% if role_filter in ['student', 'teacher'] %}
+    <div class="ios-card" style="padding: 24px; margin-bottom: 32px; border: 1px solid rgba(0,0,0,0.05);">
+        <form method="get" style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
+            <input type="hidden" name="role" value="{{ role_filter }}">
+            
+            <div style="flex: 1; min-width: 180px;">
+                <label class="ios-label">Filter by Grade</label>
+                <select name="grade" class="ios-input" style="margin-bottom: 0;">
+                    <option value="">All Grade Levels</option>
+                    {% if role_filter == 'student' %}
+                        {# Use unique grades from section options for the list #}
+                        {% set unique_grades = [] %}
+                        {% for s in section_options %}{% if s.grade_level_name not in unique_grades %}{% set _ = unique_grades.append(s.grade_level_name) %}{% endif %}{% endfor %}
+                        {% for gname in unique_grades|sort %}
+                        <option value="{{ gname }}" {% if filter_grade == gname %}selected{% endif %}>{{ gname }}</option>
+                        {% endfor %}
+                    {% else %}
+                        {% for g in grades %}
+                        <option value="{{ g.id }}" {% if filter_grade == g.id|string %}selected{% endif %}>{{ g.name }}</option>
+                        {% endfor %}
+                    {% endif %}
+                </select>
+            </div>
+
+            {% if role_filter == 'student' %}
+            <div style="flex: 1; min-width: 180px;">
+                <label class="ios-label">Filter by Section</label>
+                <select name="section" class="ios-input" style="margin-bottom: 0;">
+                    <option value="">All Sections</option>
+                    {% for s in section_options %}
+                    <option value="{{ s.section_id }}" {% if filter_section == s.section_id|string %}selected{% endif %}>
+                        {{ s.grade_level_name }} - {{ s.section_name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" class="ios-btn ios-btn-blue" style="height: 48px; padding: 0 24px;">Apply</button>
+                <a href="?role={{ role_filter }}" class="ios-btn" style="height: 48px; padding: 0 24px; background: #f2f2f7; color: #1d1d1f; text-decoration: none;">Reset</a>
+            </div>
+        </form>
+    </div>
+    {% endif %}
+
     {% if not accounts %}
     <div style="text-align: center; padding: 80px 20px; background: #fff; border-radius: 20px;">
         <div style="font-size: 48px; margin-bottom: 16px;">🔍</div>
@@ -171,16 +218,16 @@
                     {% endif %}
                 </td>
                 <td style="text-align: right; white-space: nowrap;">
-                    <a href="{{ url_for('branch_admin.branch_admin_edit_account', user_id=a.user_id, role=role_filter) if a.role != 'student' else url_for('branch_admin.branch_admin_edit_student_account', account_id=a.account_id) }}" 
+                    <a href="{{ url_for('branch_admin.branch_admin_edit_account', user_id=a.user_id, role=role_filter, grade=filter_grade, section=filter_section) if a.role != 'student' else url_for('branch_admin.branch_admin_edit_student_account', account_id=a.account_id, role=role_filter, grade=filter_grade, section=filter_section) }}" 
                        class="action-btn action-edit">Edit</a>
 
                     {% if is_branch_active_status %}
-                    <form method="post" action="{{ url_for('branch_admin.branch_admin_toggle_account', user_id=a.user_id, role=role_filter) if a.role != 'student' else '#' }}" style="display:inline;">
+                    <form method="post" action="{{ url_for('branch_admin.branch_admin_toggle_account', user_id=a.user_id, role=role_filter, grade=filter_grade, section=filter_section) if a.role != 'student' else '#' }}" style="display:inline;">
                         <button type="submit" class="action-btn action-toggle" onclick="return confirm('Toggle status?');" {{ 'disabled' if a.role == 'student' }}>
                             {% if a.role != 'student' %}{% if a.status != 'inactive' %}Deactivate{% else %}Activate{% endif %}{% else %}-{% endif %}
                         </button>
                     </form>
-                    <form method="post" action="{{ url_for('branch_admin.branch_admin_delete_account', user_id=a.user_id, role=role_filter) if a.role != 'student' else url_for('branch_admin.branch_admin_delete_student_account', account_id=a.account_id) }}" 
+                    <form method="post" action="{{ url_for('branch_admin.branch_admin_delete_account', user_id=a.user_id, role=role_filter, grade=filter_grade, section=filter_section) if a.role != 'student' else url_for('branch_admin.branch_admin_delete_student_account', account_id=a.account_id, role=role_filter, grade=filter_grade, section=filter_section) }}" 
                           style="display:inline;" onsubmit="return confirm('Delete this account?')">
                         <button type="submit" class="action-btn action-delete">Delete</button>
                     </form>
