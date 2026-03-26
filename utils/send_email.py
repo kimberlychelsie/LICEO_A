@@ -26,9 +26,12 @@ def _send_email_sync(to_email, subject, body):
     msg.set_content(body)
 
     # List of (host, port, use_ssl) to try
+    # Prioritize 587 (STARTTLS) and try googlemail.com which is sometimes less restricted
     configs = [
-        ("smtp.gmail.com", 465, True),   # SSL
-        ("smtp.gmail.com", 587, False),  # STARTTLS
+        ("smtp.googlemail.com", 587, False), # STARTTLS
+        ("smtp.gmail.com", 587, False),      # STARTTLS (alt)
+        ("smtp.googlemail.com", 465, True),  # SSL
+        ("smtp.gmail.com", 465, True),       # SSL (alt)
     ]
 
     last_error = None
@@ -38,7 +41,6 @@ def _send_email_sync(to_email, subject, body):
             
             # Force IPv4 resolution to avoid "Network is unreachable" issues on Railway
             try:
-                # getaddrinfo with AF_INET forces IPv4
                 addr_info = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
                 target_ip = addr_info[0][4][0]
                 print(f"📍 [EMAIL] Resolved {host} to IPv4: {target_ip}")
@@ -48,16 +50,18 @@ def _send_email_sync(to_email, subject, body):
 
             if use_ssl:
                 context = ssl.create_default_context()
-                with smtplib.SMTP_SSL(target_ip, port, timeout=15, context=context) as server:
+                # Increase timeout to 30s
+                with smtplib.SMTP_SSL(target_ip, port, timeout=30, context=context) as server:
                     server.login(smtp_user, smtp_pass)
                     server.send_message(msg)
             else:
-                with smtplib.SMTP(target_ip, port, timeout=15) as server:
+                # Increase timeout to 30s
+                with smtplib.SMTP(target_ip, port, timeout=30) as server:
                     server.starttls()
                     server.login(smtp_user, smtp_pass)
                     server.send_message(msg)
             
-            print(f"✅ [EMAIL] Sent successfully to {to_email} via {port}")
+            print(f"✅ [EMAIL] Sent successfully to {to_email} via {host}:{port}")
             return True
         except Exception as e:
             last_error = e
