@@ -456,7 +456,7 @@
     }
 
     function autoSubmit() {
-        trackingActive = false; // Disable tab switch tracking to prevent false triggers on submit
+        trackingActive = false;
         document.getElementById('submitType').value = 'auto';
         document.getElementById('examForm').submit();
     }
@@ -589,46 +589,122 @@
     else if (tfTotal > 0) showTF(0);
     else if (matchTotal > 0) showMatch(0);
 
-    // ── Tab switch detection (Upgraded to visibilitychange) ──
+    // ══════════════════════════════════════════════════
+    // FIX 1: Tab/Window Switch Detection (UPGRADED)
+    // Detects: tab switches, Alt+Tab, clicking other
+    // windows, minimizing, mobile app switches
+    // ══════════════════════════════════════════════════
     const tabWarning     = document.getElementById('tabWarning');
     const tabCountEl     = document.getElementById('tabCount');
     const resultId       = {{ result_id | int }};
     let tabSwitchCount   = {{ current_tab_switches | int }};
     let trackingActive   = false;
+    let lastSwitchTime   = 0;  // Debounce timestamp
 
     document.getElementById('tabSwitchInput').value = tabSwitchCount;
     tabCountEl.textContent = tabSwitchCount;
 
-    // Wait 2s before tracking to prevent false positives during page load
+    // Wait 2s before tracking to prevent false positives on page load
     setTimeout(() => { trackingActive = true; }, 2000);
 
-    document.addEventListener("visibilitychange", function() {
+    function recordSwitch() {
         if (!trackingActive) return;
 
+        // Debounce: ignore if less than 500ms since last switch
+        const now = Date.now();
+        if (now - lastSwitchTime < 500) return;
+        lastSwitchTime = now;
+
+        tabSwitchCount++;
+        document.getElementById('tabSwitchInput').value = tabSwitchCount;
+        tabCountEl.textContent = tabSwitchCount;
+
+        // Send to server
+        fetch('/student/exams/tab-switch', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ result_id: resultId })
+        }).catch(() => {}); // Silently fail if offline
+    }
+
+    function showWarningBanner() {
+        tabWarning.style.display = 'block';
+        setTimeout(() => { tabWarning.style.display = 'none'; }, 5000);
+    }
+
+    // Method 1: visibilitychange (tab switches, mobile app switches)
+    document.addEventListener("visibilitychange", function() {
         if (document.visibilityState === "hidden") {
-            // User switched tabs or minimized
-            tabSwitchCount++;
-            document.getElementById('tabSwitchInput').value = tabSwitchCount;
-            tabCountEl.textContent = tabSwitchCount;
-            
-            // Send to server
-            fetch('/student/exams/tab-switch', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ result_id: resultId })
-            });
-            
+            recordSwitch();
         } else if (document.visibilityState === "visible") {
-            // User came back
-            tabWarning.style.display = 'block';
-            setTimeout(() => { tabWarning.style.display = 'none'; }, 4000);
+            showWarningBanner();
         }
     });
 
-    // Security
+    // Method 2: window blur/focus (Alt+Tab, clicking other windows)
+    window.addEventListener("blur", function() {
+        recordSwitch();
+    });
+
+    window.addEventListener("focus", function() {
+        if (tabSwitchCount > 0) {
+            showWarningBanner();
+        }
+    });
+
+    // ══════════════════════════════════════════════════
+    // FIX 2 & 3: Submit Validation + Confirmation
+    // Prevents submitting without answering the current
+    // question and shows a confirmation dialog
+    // ══════════════════════════════════════════════════
+    document.getElementById('examForm').addEventListener('submit', function(e) {
+        // Skip validation for auto-submit (timer expired)
+        if (document.getElementById('submitType').value === 'auto') return true;
+
+        // Check if the CURRENT visible question has an answer
+        const visibleCard = document.querySelector('.q-card[style*="display: block"], .q-card[style*="display:block"]');
+        if (visibleCard) {
+            const radio = visibleCard.querySelector('input[type="radio"]:checked');
+            const select = visibleCard.querySelector('select');
+            const hasSelectAnswer = select && select.value && select.value !== '';
+            
+            if (!radio && !hasSelectAnswer) {
+                e.preventDefault();
+                alert('⚠️ Please answer the current question before submitting.');
+                return false;
+            }
+
+            // Save the last answer before submitting
+            if (radio) {
+                saveAnswer(radio.name, radio.value);
+            } else if (hasSelectAnswer) {
+                saveAnswer(select.name, select.value);
+            }
+        }
+
+        // Confirmation dialog
+        const unanswered = total - answeredCount;
+        let msg = `Are you sure you want to submit?\n\n`;
+        msg += `✅ Answered: ${answeredCount} / ${total}\n`;
+        if (unanswered > 0) {
+            msg += `⚠️ Unanswered: ${unanswered}\n\n`;
+            msg += `Unanswered questions will be marked as incorrect.`;
+        }
+
+        if (!confirm(msg)) {
+            e.preventDefault();
+            return false;
+        }
+
+        trackingActive = false; // Disable tracking on submit
+        return true;
+    });
+
+    // ══════════════════════════════════════════════════
+    // Security & Anti-cheat  
+    // ══════════════════════════════════════════════════
     document.addEventListener('contextmenu', e => e.preventDefault());
     
-    // Prevent Selection and Copy/Paste
     document.addEventListener('copy', e => { e.preventDefault(); alert("Copying is disabled!"); });
     document.addEventListener('paste', e => { e.preventDefault(); alert("Pasting is disabled!"); });
     document.addEventListener('cut', e => { e.preventDefault(); });
@@ -640,11 +716,29 @@
             (e.ctrlKey && e.key.toUpperCase() === 'U') ||
             (e.ctrlKey && (e.key.toLowerCase() === 'c' || e.key.toLowerCase() === 'v' || e.key.toLowerCase() === 'x' || e.key.toLowerCase() === 'a'))) return false;
     };
+
+    // Prevent back button
     history.pushState(null, null, location.href);
     window.addEventListener('popstate', function () {
         history.pushState(null, null, location.href);
         alert('You cannot go back during the exam.');
     });
+
+    // Warn before closing/refreshing
+    window.addEventListener('beforeunload', function(e) {
+        if (trackingActive) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    // Fullscreen suggestion on exam start
+    if (!lsGet('fullscreenPrompted') && document.documentElement.requestFullscreen) {
+        lsSet('fullscreenPrompted', 'true');
+        if (confirm('📺 For the best exam experience, would you like to go fullscreen?\n\nThis helps prevent accidental tab switches.')) {
+            document.documentElement.requestFullscreen().catch(() => {});
+        }
+    }
 })();
 </script>
 {% endblock %}
