@@ -203,6 +203,8 @@
                     <div style="font-size: 13px; color: #86868b; margin-top: 2px;">
                         {{ a.role|title }} • {{ a.email or 'No email' }}
                         {% if a.grade_level %} • Grade: {{ a.grade_level }}{% endif %}
+                        {% if a.section_name %} • Section: {{ a.section_name }}{% endif %}
+                        {% if a.sections %} • Sections: {{ a.sections }}{% endif %}
                     </div>
                 </td>
                 <td>
@@ -218,16 +220,16 @@
                     {% endif %}
                 </td>
                 <td style="text-align: right; white-space: nowrap;">
-                    <a href="{{ url_for('branch_admin.branch_admin_edit_account', user_id=a.user_id, role=role_filter, grade=filter_grade, section=filter_section) if a.role != 'student' else url_for('branch_admin.branch_admin_edit_student_account', account_id=a.account_id, role=role_filter, grade=filter_grade, section=filter_section) }}" 
+                    <a href="{{ url_for('branch_admin.branch_admin_edit_account', user_id=a.user_id, role=role_filter) if a.role != 'student' else url_for('branch_admin.branch_admin_edit_student_account', account_id=a.account_id, role=role_filter) }}" 
                        class="action-btn action-edit">Edit</a>
 
                     {% if is_branch_active_status %}
-                    <form method="post" action="{{ url_for('branch_admin.branch_admin_toggle_account', user_id=a.user_id, role=role_filter, grade=filter_grade, section=filter_section) if a.role != 'student' else '#' }}" style="display:inline;">
+                    <form method="post" action="{{ url_for('branch_admin.branch_admin_toggle_account', user_id=a.user_id, role=role_filter) if a.role != 'student' else '#' }}" style="display:inline;">
                         <button type="submit" class="action-btn action-toggle" onclick="return confirm('Toggle status?');" {{ 'disabled' if a.role == 'student' }}>
                             {% if a.role != 'student' %}{% if a.status != 'inactive' %}Deactivate{% else %}Activate{% endif %}{% else %}-{% endif %}
                         </button>
                     </form>
-                    <form method="post" action="{{ url_for('branch_admin.branch_admin_delete_account', user_id=a.user_id, role=role_filter, grade=filter_grade, section=filter_section) if a.role != 'student' else url_for('branch_admin.branch_admin_delete_student_account', account_id=a.account_id, role=role_filter, grade=filter_grade, section=filter_section) }}" 
+                    <form method="post" action="{{ url_for('branch_admin.branch_admin_delete_account', user_id=a.user_id, role=role_filter) if a.role != 'student' else url_for('branch_admin.branch_admin_delete_student_account', account_id=a.account_id, role=role_filter) }}" 
                           style="display:inline;" onsubmit="return confirm('Delete this account?')">
                         <button type="submit" class="action-btn action-delete">Delete</button>
                     </form>

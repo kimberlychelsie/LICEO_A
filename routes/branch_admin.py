@@ -2238,17 +2238,23 @@ def branch_admin_manage_accounts():
             query = """
                 SELECT
                     u.user_id, u.username, u.role, u.full_name, u.gender,
-                    u.email, COALESCE(g.name, u.grade_level) AS grade_level, u.status
+                    u.email, COALESCE(g.name, u.grade_level) AS grade_level, u.status,
+                    STRING_AGG(DISTINCT s.section_name, ', ') AS sections
                 FROM users u
                 LEFT JOIN grade_levels g ON u.grade_level_id = g.id
+                LEFT JOIN section_teachers st ON u.user_id = st.teacher_id
+                LEFT JOIN sections s ON st.section_id = s.section_id
                 WHERE u.branch_id = %s AND u.role = %s
             """
             params = [branch_id, role_filter]
             if filter_grade and role_filter == "teacher":
                 query += " AND u.grade_level_id = %s"
                 params.append(int(filter_grade))
+            if filter_section and role_filter == "teacher":
+                query += " AND EXISTS (SELECT 1 FROM section_teachers st2 WHERE st2.teacher_id = u.user_id AND st2.section_id = %s)"
+                params.append(int(filter_section))
 
-            query += " ORDER BY u.user_id DESC"
+            query += " GROUP BY u.user_id, g.name ORDER BY u.user_id DESC"
             cursor.execute(query, tuple(params))
         accounts = cursor.fetchall() or []
 
@@ -2294,8 +2300,7 @@ def branch_admin_toggle_account(user_id):
         cursor.close()
         db.close()
     
-    role = request.args.get('role', 'registrar')
-    return redirect(url_for("branch_admin.branch_admin_manage_accounts", role=role))
+    return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
 @branch_admin_bp.route("/branch-admin/manage-accounts/<int:user_id>/edit", methods=["GET", "POST"])
 def branch_admin_edit_account(user_id):
     if session.get("role") != "branch_admin":
@@ -2314,8 +2319,7 @@ def branch_admin_edit_account(user_id):
             """, (full_name, email, gender, grade_level_id or None, user_id, session.get("branch_id")))
             db.commit()
             flash("Account updated successfully.", "success")
-            role = request.args.get('role', 'registrar')
-            return redirect(url_for("branch_admin.branch_admin_manage_accounts", role=role))
+    return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
         cursor.execute("SELECT * FROM users WHERE user_id=%s AND branch_id=%s", (user_id, session.get("branch_id")))
         user = cursor.fetchone()
         cursor.execute("SELECT id, name FROM grade_levels WHERE branch_id=%s ORDER BY display_order", (session.get("branch_id"),))
@@ -2374,8 +2378,7 @@ def branch_admin_delete_account(user_id):
     finally:
         cursor.close()
         db.close()
-    role = request.args.get('role', 'registrar')
-    return redirect(url_for("branch_admin.branch_admin_manage_accounts", role=role))
+    return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
 
 @branch_admin_bp.route("/branch-admin/manage-accounts/student/<int:account_id>/delete", methods=["POST"])
 def branch_admin_delete_student_account(account_id):
