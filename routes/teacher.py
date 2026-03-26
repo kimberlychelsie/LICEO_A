@@ -2655,10 +2655,10 @@ def teacher_reschedule():
         """, (enrollment_id, branch_id))
 
         student_row = cur.fetchone()
-        if not student_row or not student_row[0]:
+        if not student_row:
             return jsonify({"error": "Invalid student or branch/year mismatch."}), 403
 
-        student_id = student_row[0]
+        student_id = student_row[0]  # This can be None, which is fine
 
         # 3. Upsert individual_extensions, properly referencing by year
         cur.execute("""
