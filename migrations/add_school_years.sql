@@ -3,7 +3,8 @@
 -- 1. Create the school_years table
 CREATE TABLE IF NOT EXISTS school_years (
     year_id SERIAL PRIMARY KEY,
-    label VARCHAR(9) NOT NULL
+    label VARCHAR(9) NOT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- 2. Add branch_id column to school_years
