@@ -27,8 +27,8 @@ def _send_email_async(to_email, subject, body):
     msg.set_content(body)
 
     try:
-        with smtplib.SMTP(smtp_server, smtp_port, timeout=10) as server:
-            server.starttls()
+        # Switch to SMTP_SSL on port 465 to bypass Railway port 587 blocks
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as server:
             server.login(smtp_user, smtp_pass)
             server.send_message(msg)
         logger.info(f"Email sent successfully to {to_email}")
