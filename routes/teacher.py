@@ -1177,8 +1177,8 @@ def teacher_exam_questions(exam_id):
                     target_exams = [r["exam_id"] for r in cur.fetchall()]
 
                 for t_id in target_exams:
-                    cur.execute("SELECT COALESCE(MAX(order_num),0) FROM exam_questions WHERE exam_id=%s", (t_id,))
-                    max_order_num = cur.fetchone()[0]
+                    cur.execute("SELECT COALESCE(MAX(order_num),0) AS max_o FROM exam_questions WHERE exam_id=%s", (t_id,))
+                    max_order_num = cur.fetchone()["max_o"]
                     for i, (prompt, answer) in enumerate(pairs):
                         cur.execute("""
                             INSERT INTO exam_questions

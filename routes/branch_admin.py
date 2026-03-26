@@ -1387,6 +1387,14 @@ def branch_admin_subject_edit(subject_id):
             flash("Invalid section.", "error")
             return redirect("/branch-admin/subjects")
 
+        # Check if new name already exists for a different subject
+        cursor.execute("SELECT subject_id FROM subjects WHERE LOWER(name) = LOWER(%s)", (new_name,))
+        existing_subject = cursor.fetchone()
+        
+        if existing_subject and existing_subject[0] != subject_id:
+            flash(f"Subject '{new_name}' already exists in the system. To use it, add it as a new subject to your section instead.", "error")
+            return redirect("/branch-admin/subjects")
+
         # In order to allow redefining the section assignment securely, we can drop the old assignments of this subject for THIS branch, and recreate a new single assignment, or just rename the subject itself locally.
         # Let's globally update the subject name, and then replace the section assignment for this branch.
         cursor.execute("UPDATE subjects SET name = %s WHERE subject_id = %s", (new_name, subject_id))
