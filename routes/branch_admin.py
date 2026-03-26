@@ -769,7 +769,7 @@ def branch_admin_grade_levels():
     cursor = db.cursor()
 
     VALID_GRADES = [
-        "Kinder",
+        "Nursery", "Kinder",
         "Grade 1", "Grade 2", "Grade 3",
         "Grade 4", "Grade 5", "Grade 6",
         "Grade 7", "Grade 8", "Grade 9",
