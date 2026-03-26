@@ -231,7 +231,7 @@ def enrollment_detail(enrollment_id):
                 "guardian_name", "guardian_contact", "guardian_email",
                 "father_name", "father_contact", "father_occupation",
                 "mother_name", "mother_contact", "mother_occupation",
-                "previous_school", "school_year", "enroll_type", "remarks",
+                "previous_school", "enroll_type", "remarks",
             ]
             sets = []
             vals = []
@@ -256,9 +256,10 @@ def enrollment_detail(enrollment_id):
             return redirect(f"/registrar/enrollment/{enrollment_id}")
 
         cursor.execute("""
-            SELECT e.*, s.section_name
+            SELECT e.*, s.section_name, sy.label AS school_year_label
             FROM enrollments e
             LEFT JOIN sections s ON s.section_id = e.section_id
+            LEFT JOIN school_years sy ON sy.year_id = e.year_id
             WHERE e.enrollment_id = %s AND e.branch_id = %s
         """, (enrollment_id, branch_id))
         enrollment = cursor.fetchone()
