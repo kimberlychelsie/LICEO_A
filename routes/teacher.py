@@ -240,23 +240,24 @@ def teacher_dashboard():
             year_id = _get_active_school_year(cur, branch_id)
             # ── Announcements for this grade ──
             cur.execute("""
-                SELECT a.announcement_id, a.title, a.body,
-                       a.created_at, u.username AS posted_by,
-                       u.full_name, u.gender
-                FROM teacher_announcements a
-                JOIN users u ON u.user_id = a.teacher_user_id
-                WHERE a.branch_id   = %(branch_id)s
-                  AND (
-                      a.grade_level ILIKE %(grade_full)s
-                      OR a.grade_level ILIKE %(grade_short)s
-                  )
-                ORDER BY a.created_at DESC
-            """, {
-                "branch_id":   branch_id,
-                "grade_full":  grade_full,
-                "grade_short": grade_short,
-                "year_id":     year_id,  
-            })
+    SELECT a.announcement_id, a.title, a.body,
+           a.created_at, u.username AS posted_by,
+           u.full_name, u.gender
+    FROM teacher_announcements a
+    JOIN users u ON u.user_id = a.teacher_user_id
+    WHERE a.branch_id   = %(branch_id)s
+      AND (
+          a.grade_level ILIKE %(grade_full)s
+          OR a.grade_level ILIKE %(grade_short)s
+      )
+      AND a.year_id = %(year_id)s
+    ORDER BY a.created_at DESC
+""", {
+    "branch_id":   branch_id,
+    "grade_full":  grade_full,
+    "grade_short": grade_short,
+    "year_id":     year_id,  
+})
             raw_ann = cur.fetchall() or []
 
             # Build display name: "Ms. Joy Cruz" or "Mr. Juan dela Cruz"
@@ -369,13 +370,11 @@ def teacher_announce():
     body      = (request.form.get("body")  or "").strip()
     grade     = (request.form.get("grade_level") or "").strip()
 
-    # grade comes from hidden field (current selected_grade in dashboard)
     back_url = url_for("teacher.teacher_dashboard") + (f"?grade={grade}" if grade else "")
 
     if not title:
         flash("Announcement title is required.", "error")
         return redirect(back_url)
-
     if not grade:
         flash("Please select your grade level first.", "error")
         return redirect(url_for("teacher.teacher_dashboard"))
@@ -383,15 +382,21 @@ def teacher_announce():
     db  = get_db_connection()
     cur = db.cursor()
     try:
+        # year-safety: get the active school year for this branch
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(back_url)
+
         cur.execute("""
             INSERT INTO teacher_announcements
-                (teacher_user_id, branch_id, grade_level, title, body)
-            VALUES (%s, %s, %s, %s, %s)
+                (teacher_user_id, branch_id, grade_level, title, body, year_id)
+            VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING announcement_id
-        """, (user_id, branch_id, grade, title, body or None))
+        """, (user_id, branch_id, grade, title, body or None, year_id))
         ann_id = cur.fetchone()[0]
 
-        # Send Notifications to students in this grade level
+        # Send notifications only to students enrolled in this year
         import re as _re
         if _re.match(r'^\d+$', grade.strip()):
             grade_short = grade.strip()
@@ -406,6 +411,7 @@ def teacher_announce():
             FROM enrollments e
             JOIN users u ON u.user_id = e.user_id
             WHERE e.branch_id = %s 
+              AND e.year_id = %s
               AND (e.grade_level ILIKE %s OR e.grade_level ILIKE %s)
               AND e.status IN ('approved', 'enrolled')
             UNION
@@ -414,18 +420,21 @@ def teacher_announce():
             JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
             JOIN users u ON u.username = sa.username
             WHERE e.branch_id = %s 
+              AND e.year_id = %s
               AND (e.grade_level ILIKE %s OR e.grade_level ILIKE %s)
               AND e.status IN ('approved', 'enrolled')
-        """, (branch_id, grade_full, grade_short, branch_id, grade_full, grade_short))
+        """, (branch_id, year_id, grade_full, grade_short, branch_id, year_id, grade_full, grade_short))
         students = cur.fetchall()
         if students:
             notif_title = f"New Announcement: {title}"
             notif_msg = f"Your teacher posted a new announcement."
             for s in students:
+                # s[0] for tuple rows, s['user_id'] for dict
+                uid = s[0] if isinstance(s, tuple) else s['user_id']
                 cur.execute("""
                     INSERT INTO student_notifications (student_id, title, message, link)
                     VALUES (%s, %s, %s, %s)
-                """, (s[0], notif_title, notif_msg, f"/student/dashboard"))
+                """, (uid, notif_title, notif_msg, f"/student/dashboard"))
 
         db.commit()
         flash("Announcement posted! Students in your class will see it.", "success")
@@ -446,22 +455,28 @@ def teacher_announce_delete(announcement_id):
         return redirect("/")
 
     user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
     grade   = (request.form.get("grade_level") or "").strip()
     back_url = url_for("teacher.teacher_dashboard") + (f"?grade={grade}" if grade else "")
 
     db  = get_db_connection()
     cur = db.cursor()
     try:
-        # Only allow deleting own announcements
+        # YEAR SAFETY: restrict deletion to current school year!
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(back_url)
+
         cur.execute("""
             DELETE FROM teacher_announcements
-            WHERE announcement_id = %s AND teacher_user_id = %s
-        """, (announcement_id, user_id))
+            WHERE announcement_id = %s AND teacher_user_id = %s AND year_id = %s
+        """, (announcement_id, user_id, year_id))
         db.commit()
         if cur.rowcount:
             flash("Announcement deleted.", "success")
         else:
-            flash("Announcement not found or not yours.", "error")
+            flash("Announcement not found, not yours, or not from this year.", "error")
     except Exception as e:
         db.rollback()
         flash(str(e), "error")
@@ -479,6 +494,7 @@ def teacher_announce_edit(announcement_id):
         return redirect("/")
 
     user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
     grade   = (request.form.get("grade_level") or "").strip()
     title   = (request.form.get("title") or "").strip()
     body    = (request.form.get("body")  or "").strip()
@@ -491,16 +507,22 @@ def teacher_announce_edit(announcement_id):
     db  = get_db_connection()
     cur = db.cursor()
     try:
+        # YEAR SAFETY: restrict edit to current school year!
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(back_url)
+
         cur.execute("""
             UPDATE teacher_announcements
                SET title = %s, body = %s
-             WHERE announcement_id = %s AND teacher_user_id = %s
-        """, (title, body or None, announcement_id, user_id))
+             WHERE announcement_id = %s AND teacher_user_id = %s AND year_id = %s
+        """, (title, body or None, announcement_id, user_id, year_id))
         db.commit()
         if cur.rowcount:
             flash("Announcement updated.", "success")
         else:
-            flash("Announcement not found or not yours.", "error")
+            flash("Announcement not found, not yours, or not from this year.", "error")
     except Exception as e:
         db.rollback()
         flash(str(e), "error")
@@ -517,19 +539,31 @@ def teacher_announce_edit(announcement_id):
 def delete_activity(activity_id):
     if not _require_teacher(): return redirect("/")
     user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
     db = get_db_connection()
     cur = db.cursor()
     try:
         active_tab = request.form.get("active_tab")
-        cur.execute("SELECT activity_id, subject_id FROM activities WHERE activity_id=%s AND teacher_id=%s", (activity_id, user_id))
+        # Year+ownership check
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+        cur.execute("""
+            SELECT a.activity_id, a.subject_id
+            FROM activities a
+            JOIN sections s ON a.section_id = s.section_id
+            WHERE a.activity_id = %s AND a.teacher_id = %s AND s.year_id = %s
+        """, (activity_id, user_id, year_id))
         row = cur.fetchone()
         if not row:
             flash("Activity not found or unauthorized.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
         
+        # subject_id for redirect (works with both RealDictCursor and default)
         subject_id = row['subject_id'] if isinstance(row, dict) else row[1]
-        
-        # Cascade delete
+
+        # Cascade delete only for this activity
         cur.execute("DELETE FROM activity_grades WHERE activity_id=%s", (activity_id,))
         cur.execute("DELETE FROM activity_submissions WHERE activity_id=%s", (activity_id,))
         cur.execute("DELETE FROM student_notifications WHERE link LIKE %s", (f"%/student/activities/{activity_id}%",))
@@ -550,22 +584,34 @@ def delete_activity(activity_id):
 def delete_exam(exam_id):
     if not _require_teacher(): return redirect("/")
     user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
         active_tab = request.form.get("active_tab")
-        cur.execute("SELECT exam_id, exam_type, subject_id FROM exams WHERE exam_id=%s AND teacher_id=%s", (exam_id, user_id))
+        # Year+ownership check
+        cur.execute("""
+            SELECT e.exam_id, e.exam_type, e.subject_id, e.section_id
+            FROM exams e
+            JOIN sections s ON e.section_id = s.section_id
+            WHERE e.exam_id = %s AND e.teacher_id = %s AND s.year_id = %s
+        """, (exam_id, user_id, year_id))
         row = cur.fetchone()
         if not row:
             flash("Not found or unauthorized.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
-            
+
         subject_id = row['subject_id']
-        
-        # Cascade delete
+
+        # Cascade delete only for this exam
         cur.execute("DELETE FROM exam_results WHERE exam_id=%s", (exam_id,))
         cur.execute("DELETE FROM exam_questions WHERE exam_id=%s", (exam_id,))
-        cur.execute("DELETE FROM student_notifications WHERE link LIKE %s", (f"%/student/exams%",))
+        cur.execute("DELETE FROM student_notifications WHERE link = %s", (f"/student/exams/{exam_id}",))
         cur.execute("DELETE FROM exams WHERE exam_id=%s AND teacher_id=%s", (exam_id, user_id))
         db.commit()
         flash("Deleted successfully.", "success")
@@ -590,17 +636,21 @@ def activities():
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
         cur.execute('''
             SELECT a.*, 
-                   s.section_name, 
-                   sub.name AS subject_name,
-                   (SELECT COUNT(*) FROM activity_submissions sub2 WHERE sub2.activity_id = a.activity_id) AS submission_count
+                s.section_name, 
+                sub.name AS subject_name,
+                (SELECT COUNT(*) FROM activity_submissions sub2 WHERE sub2.activity_id = a.activity_id) AS submission_count
             FROM activities a
             JOIN sections s ON a.section_id = s.section_id
             JOIN subjects sub ON a.subject_id = sub.subject_id
-            WHERE a.teacher_id = %s AND a.branch_id = %s
+            WHERE a.teacher_id = %s AND a.branch_id = %s AND s.year_id = %s
             ORDER BY a.created_at DESC
-        ''', (user_id, branch_id))
+        ''', (user_id, branch_id, year_id))
         activities = cur.fetchall()
         
         stats = {
@@ -626,6 +676,11 @@ def create_activity():
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     
     try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+        
         if request.method == "POST":
             title = request.form.get("title", "").strip()
             subject_id = request.form.get("subject_id")
@@ -655,6 +710,15 @@ def create_activity():
                         return redirect(url_for("teacher.create_activity", subject_id=subject_id))
                         
             for section_id in section_ids:
+                cur.execute("""
+                    SELECT 1 FROM section_teachers st
+                    JOIN sections s ON st.section_id = s.section_id
+                    WHERE st.teacher_id = %s AND st.section_id = %s AND s.year_id = %s
+                    """, (user_id, section_id, year_id))
+                if not cur.fetchone():
+                    flash("You do not have permission to add activities to this section/year.", "error")
+                    return redirect(url_for("teacher.create_activity", subject_id=subject_id))
+                
                 cur.execute('''
                     INSERT INTO activities (
                         branch_id, section_id, subject_id, teacher_id, 
@@ -669,17 +733,17 @@ def create_activity():
                 
                 if status == 'Published':
                     cur.execute("""
-                        SELECT DISTINCT u.user_id 
-                        FROM enrollments e 
-                        JOIN users u ON u.user_id = e.user_id 
-                        WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
-                        UNION
-                        SELECT DISTINCT u.user_id
-                        FROM enrollments e
-                        JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
-                        JOIN users u ON u.username = sa.username
-                        WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
-                    """, (section_id, section_id))
+                SELECT DISTINCT u.user_id 
+                FROM enrollments e 
+                    JOIN users u ON u.user_id = e.user_id 
+                    WHERE e.section_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled')
+                    UNION
+                SELECT DISTINCT u.user_id
+                FROM enrollments e
+                JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
+                JOIN users u ON u.username = sa.username
+                WHERE e.section_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled')
+                    """, (section_id, year_id, section_id, year_id))
                     student_users = cur.fetchall()
                     if student_users:
                         notifs = [(su['user_id'], f"New Activity: {title}", f"Your teacher posted a new activity: {title}.", f"/student/activities/{activity_id}") for su in student_users]
@@ -696,15 +760,15 @@ def create_activity():
         
         # GET: fetch sections and subjects for this teacher
         cur.execute('''
-            SELECT s.section_id, s.section_name, g.name AS grade_level_name, 
-                   sub.subject_id, sub.name AS subject_name 
-            FROM section_teachers st
-            JOIN sections s ON st.section_id = s.section_id
-            JOIN grade_levels g ON s.grade_level_id = g.id
-            JOIN subjects sub ON st.subject_id = sub.subject_id
-            WHERE st.teacher_id = %s AND s.branch_id = %s
-            ORDER BY g.display_order, s.section_name, sub.name
-        ''', (user_id, branch_id))
+    SELECT s.section_id, s.section_name, g.name AS grade_level_name, 
+           sub.subject_id, sub.name AS subject_name 
+    FROM section_teachers st
+    JOIN sections s ON st.section_id = s.section_id
+    JOIN grade_levels g ON s.grade_level_id = g.id
+    JOIN subjects sub ON st.subject_id = sub.subject_id
+    WHERE st.teacher_id = %s AND s.branch_id = %s AND s.year_id = %s
+    ORDER BY g.display_order, s.section_name, sub.name
+''', (user_id, branch_id, year_id))
         teacher_assignments = cur.fetchall()
         
     finally:
@@ -734,8 +798,18 @@ def edit_activity(activity_id):
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     
     try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+        
         # Check ownership
-        cur.execute("SELECT * FROM activities WHERE activity_id = %s AND teacher_id = %s", (activity_id, user_id))
+        cur.execute("""
+    SELECT a.* 
+    FROM activities a
+    JOIN sections s ON a.section_id = s.section_id
+    WHERE a.activity_id = %s AND a.teacher_id = %s AND s.year_id = %s
+        """, (activity_id, user_id, year_id))
         activity = cur.fetchone()
         if not activity:
             flash("Activity not found or unauthorized.", "error")
@@ -762,27 +836,27 @@ def edit_activity(activity_id):
                         return redirect(url_for("teacher.edit_activity", activity_id=activity_id))
             
             cur.execute('''
-                UPDATE activities SET
-                    title = %s, category = %s, instructions = %s, max_score = %s, 
-                    due_date = %s, status = %s, allowed_file_types = %s, attachment_path = %s,
-                    grading_period = %s, updated_at = NOW()
-                WHERE activity_id = %s
+            UPDATE activities SET
+                title = %s, category = %s, instructions = %s, max_score = %s, 
+                due_date = %s, status = %s, allowed_file_types = %s, attachment_path = %s,
+                grading_period = %s, updated_at = NOW()
+            WHERE activity_id = %s
             ''', (title, category, instructions, max_score, due_date or None, 
-                  status, allowed_file_types, attachment_path, grading_period, activity_id))
+                status, allowed_file_types, attachment_path, grading_period, activity_id))
                   
             if status == 'Published' and activity['status'] != 'Published':
                 cur.execute("""
-                    SELECT DISTINCT u.user_id 
-                    FROM enrollments e 
-                    JOIN users u ON u.user_id = e.user_id 
-                    WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
-                    UNION
-                    SELECT DISTINCT u.user_id
-                    FROM enrollments e
-                    JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
-                    JOIN users u ON u.username = sa.username
-                    WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
-                """, (activity['section_id'], activity['section_id']))
+    SELECT DISTINCT u.user_id 
+    FROM enrollments e 
+    JOIN users u ON u.user_id = e.user_id 
+    WHERE e.section_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled')
+    UNION
+    SELECT DISTINCT u.user_id
+    FROM enrollments e
+    JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
+    JOIN users u ON u.username = sa.username
+    WHERE e.section_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled')
+""", (activity['section_id'], year_id, activity['section_id'], year_id))
                 student_users = cur.fetchall()
                 if student_users:
                     notifs = [(su['user_id'], f"New Activity: {title}", f"Your teacher posted a new activity: {title}.", f"/student/activities/{activity_id}") for su in student_users]
@@ -811,10 +885,16 @@ def edit_activity(activity_id):
 def activity_submissions(activity_id):
     if not _require_teacher(): return redirect("/")
     user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
     
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+        
         # Get activity context
         cur.execute("SELECT * FROM activities WHERE activity_id = %s AND teacher_id = %s", (activity_id, user_id))
         activity = cur.fetchone()
@@ -1143,6 +1223,7 @@ def teacher_exam_questions(exam_id):
 
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    year_id = _get_active_school_year(cur, branch_id)
 
     if request.method == "POST":
         question_type = request.form.get("question_type", "mcq")
@@ -1167,8 +1248,9 @@ def teacher_exam_questions(exam_id):
             choices = json.dumps({"options": all_answers})
 
             try:
-                cur.execute("SELECT batch_id FROM exams WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s",
-                            (exam_id, user_id, branch_id))
+                cur.execute("SELECT batch_id FROM exams e JOIN sections s ON e.section_id=s.section_id "
+        "WHERE e.exam_id=%s AND e.teacher_id=%s AND e.branch_id=%s AND s.year_id=%s",
+                            (exam_id, user_id, branch_id, year_id))
                 exam_row = cur.fetchone()
                 if not exam_row:
                     flash("Exam not found or unauthorized.", "error")
@@ -1245,8 +1327,8 @@ def teacher_exam_questions(exam_id):
             FROM exams e
             JOIN sections s ON e.section_id = s.section_id
             JOIN subjects sub ON e.subject_id = sub.subject_id
-            WHERE e.exam_id = %s AND e.teacher_id = %s
-        """, (exam_id, user_id))
+            WHERE e.exam_id = %s AND e.teacher_id = %s AND s.year_id = %s
+        """, (exam_id, user_id, year_id))
         exam = cur.fetchone()
         if not exam:
             flash("Exam not found.", "error")
@@ -1281,6 +1363,11 @@ def teacher_exam_publish(exam_id):
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+        
         cur.execute("SELECT COUNT(*) AS cnt FROM exam_questions WHERE exam_id=%s", (exam_id,))
         if cur.fetchone()["cnt"] == 0:
             flash("Cannot publish — add at least 1 question first.", "error")
@@ -1288,9 +1375,14 @@ def teacher_exam_publish(exam_id):
 
         cur.execute("""
             UPDATE exams SET status='published'
-            WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s
-            RETURNING title, section_id, subject_id, exam_type
-        """, (exam_id, user_id, branch_id))
+            FROM sections s        
+            WHERE exams.exam_id=%s 
+                    AND exams.teacher_id=%s 
+                    AND exams.branch_id=%s
+                    AND exams.section_id = s.section_id
+                    AND s.year_id = %s
+            RETURNING exams.title, exams.section_id, exams.subject_id, exams.exam_type
+        """, (exam_id, user_id, branch_id, year_id))
         exam_info = cur.fetchone()
         
         if exam_info:
@@ -1321,10 +1413,21 @@ def teacher_exam_close(exam_id):
     db  = get_db_connection()
     cur = db.cursor()
     try:
+        # Active year enforcement
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
         cur.execute("""
             UPDATE exams SET status='closed'
-            WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s
-        """, (exam_id, user_id, branch_id))
+            FROM sections s
+            WHERE exams.exam_id = %s
+              AND exams.teacher_id = %s
+              AND exams.branch_id = %s
+              AND exams.section_id = s.section_id
+              AND s.year_id = %s
+        """, (exam_id, user_id, branch_id, year_id))
         db.commit()
         flash("Exam closed.", "success")
     except Exception as e:
@@ -1346,9 +1449,20 @@ def toggle_exam_visibility(exam_id):
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        year_id = _get_active_school_year(cur, session.get("branch_id"))
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
         active_tab = request.form.get("active_tab")
         # Check ownership
-        cur.execute("SELECT is_visible, exam_type, subject_id, status, title, section_id FROM exams WHERE exam_id=%s AND teacher_id=%s", (exam_id, user_id))
+        cur.execute("""
+            SELECT exams.is_visible, exams.exam_type, exams.subject_id, exams.status, exams.title, exams.section_id
+            FROM exams
+            JOIN sections s ON exams.section_id = s.section_id
+            WHERE exams.exam_id = %s
+            AND exams.teacher_id = %s
+            AND s.year_id = %s
+        """, (exam_id, user_id, year_id))
         exam = cur.fetchone()
         if not exam:
             flash("Exam/Quiz not found or unauthorized.", "error")
@@ -1420,6 +1534,10 @@ def teacher_quizzes():
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
         cur.execute("""
             SELECT
                 e.exam_id, e.title, e.exam_type, e.duration_mins,
@@ -1433,49 +1551,63 @@ def teacher_quizzes():
             JOIN sections s      ON e.section_id  = s.section_id
             JOIN grade_levels g  ON s.grade_level_id = g.id
             JOIN subjects sub    ON e.subject_id  = sub.subject_id
-            WHERE e.teacher_id = %s AND e.branch_id = %s AND e.exam_type = 'quiz'
+            WHERE e.teacher_id = %s AND e.branch_id = %s AND e.exam_type = 'quiz' AND s.year_id = %s
             ORDER BY e.created_at DESC
-        """, (user_id, branch_id))
+        """, (user_id, branch_id, year_id))
         quizzes = cur.fetchall() or []
         return render_template("teacher_quizzes.html", quizzes=quizzes)
     finally:
         cur.close()
         db.close()
 
-
 @teacher_bp.route("/teacher/quizzes/create", methods=["GET", "POST"])
 def teacher_quiz_create():
     if not _require_teacher():
         return redirect("/")
 
-    user_id   = session.get("user_id")
+    user_id = session.get("user_id")
     branch_id = session.get("branch_id")
 
-    db  = get_db_connection()
+    db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    if request.method == "POST":
-        title         = (request.form.get("title") or "").strip()
-        subject_id    = request.form.get("subject_id")
-        section_ids   = request.form.getlist("section_ids")
-        duration_mins = int(request.form.get("duration_mins", 30))
-        scheduled_start = request.form.get("scheduled_start") or None
-        max_attempts  = int(request.form.get("max_attempts", 1))
-        passing_score = int(request.form.get("passing_score", 60))
-        randomize     = request.form.get("randomize") == "1"
-        instructions  = (request.form.get("instructions") or "").strip() or None
-        grading_period = request.form.get("grading_period")
+    try:
+        # Get year_id ONCE for both GET and POST
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
 
-        if not title or not subject_id or not section_ids:
-            flash("Title, Subject and at least one Section are required.", "error")
-            return redirect(url_for("teacher.teacher_quiz_create", subject_id=subject_id))
+        if request.method == "POST":
+            title = (request.form.get("title") or "").strip()
+            subject_id = request.form.get("subject_id")
+            section_ids = request.form.getlist("section_ids")
+            duration_mins = int(request.form.get("duration_mins", 30))
+            scheduled_start = request.form.get("scheduled_start") or None
+            max_attempts = int(request.form.get("max_attempts", 1))
+            passing_score = int(request.form.get("passing_score", 60))
+            randomize = request.form.get("randomize") == "1"
+            instructions = (request.form.get("instructions") or "").strip() or None
+            grading_period = request.form.get("grading_period")
 
-        import uuid
-        batch_id = str(uuid.uuid4())[:8]
+            if not title or not subject_id or not section_ids:
+                flash("Title, Subject and at least one Section are required.", "error")
+                return redirect(url_for("teacher.teacher_quiz_create", subject_id=subject_id))
 
-        try:
+            import uuid
+            batch_id = str(uuid.uuid4())[:8]
+
             primary_exam_id = None
             for section_id in section_ids:
+                # Validate section is in active year for this branch
+                cur.execute("""
+                    SELECT 1 FROM sections
+                    WHERE section_id=%s AND branch_id=%s AND year_id=%s
+                """, (section_id, branch_id, year_id))
+                if not cur.fetchone():
+                    flash("Invalid section for this school year.", "error")
+                    return redirect(url_for("teacher.teacher_quiz_create", subject_id=subject_id))
+
                 cur.execute("""
                     INSERT INTO exams (
                         branch_id, section_id, subject_id, teacher_id,
@@ -1495,20 +1627,15 @@ def teacher_quiz_create():
                     randomize,
                     instructions, grading_period, batch_id
                 ))
-            exam_id = cur.fetchone()["exam_id"]
+                exam_id = cur.fetchone()["exam_id"]
+                if primary_exam_id is None:
+                    primary_exam_id = exam_id
+
             db.commit()
             flash("Quiz created! Now add your questions.", "success")
-            return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
-        except Exception as e:
-            db.rollback()
-            flash(f"Could not create quiz: {str(e)}", "error")
-            return redirect(url_for("teacher.teacher_quiz_create", subject_id=subject_id))
-        finally:
-            cur.close()
-            db.close()
+            return redirect(url_for("teacher.teacher_exam_questions", exam_id=primary_exam_id))
 
-    # GET — load teacher's section+subject assignments
-    try:
+        # GET: load teacher's active-year section+subject assignments
         cur.execute("""
             SELECT s.section_id, s.section_name, g.name AS grade_level_name,
                    sub.subject_id, sub.name AS subject_name
@@ -1516,18 +1643,22 @@ def teacher_quiz_create():
             JOIN sections s    ON st.section_id = s.section_id
             JOIN grade_levels g ON s.grade_level_id = g.id
             JOIN subjects sub  ON st.subject_id = sub.subject_id
-            WHERE st.teacher_id = %s AND s.branch_id = %s
+            WHERE st.teacher_id = %s AND s.branch_id = %s AND s.year_id = %s
             ORDER BY g.display_order, s.section_name, sub.name
-        """, (user_id, branch_id))
+        """, (user_id, branch_id, year_id))
         teacher_assignments = cur.fetchall() or []
         ph_tz = pytz.timezone("Asia/Manila")
         ph_now = datetime.now(ph_tz)
         min_date = ph_now.strftime("%Y-%m-%d") + "T00:00"
         subject_id = request.args.get("subject_id")
-        return render_template("teacher_quiz_create.html", 
-                             teacher_assignments=teacher_assignments, 
-                             min_date=min_date,
-                             subject_id=subject_id)
+        return render_template("teacher_quiz_create.html",
+                               teacher_assignments=teacher_assignments,
+                               min_date=min_date,
+                               subject_id=subject_id)
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not create quiz: {str(e)}", "error")
+        return redirect(url_for("teacher.teacher_quiz_create"))
     finally:
         cur.close()
         db.close()
@@ -1545,13 +1676,18 @@ def teacher_exam_results(exam_id):
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+        
         cur.execute("""
             SELECT e.*, s.section_name, sub.name AS subject_name
             FROM exams e
             JOIN sections s   ON e.section_id  = s.section_id
             JOIN subjects sub ON e.subject_id  = sub.subject_id
-            WHERE e.exam_id = %s AND e.teacher_id = %s
-        """, (exam_id, user_id))
+            WHERE e.exam_id = %s AND e.teacher_id = %s AND s.year_id = %s
+        """, (exam_id, user_id, year_id))
         exam = cur.fetchone()
         if not exam:
             flash("Exam not found.", "error")
@@ -1608,16 +1744,23 @@ def teacher_exam_question_delete(exam_id, question_id):
         return redirect("/")
 
     user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
     db  = get_db_connection()
     cur = db.cursor()
     try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
         # Fetch question details and batch info
         cur.execute("""
             SELECT q.question_text, q.question_type, e.batch_id 
-            FROM exam_questions q
-            JOIN exams e ON q.exam_id = e.exam_id
-            WHERE q.question_id=%s AND q.exam_id=%s AND e.teacher_id=%s AND e.status='draft'
-        """, (question_id, exam_id, user_id))
+        FROM exam_questions q
+        JOIN exams e ON q.exam_id = e.exam_id
+        JOIN sections s ON e.section_id = s.section_id
+        WHERE q.question_id=%s AND q.exam_id=%s AND e.teacher_id=%s AND e.status='draft'
+          AND e.branch_id = %s AND s.year_id = %s
+        """, (question_id, exam_id, user_id, branch_id, year_id))
         target_q = cur.fetchone()
         
         if not target_q:
@@ -1632,9 +1775,13 @@ def teacher_exam_question_delete(exam_id, question_id):
         if batch_id:
             cur.execute("""
                 DELETE FROM exam_questions 
-                WHERE question_text = %s AND question_type = %s 
-                AND exam_id IN (SELECT exam_id FROM exams WHERE batch_id = %s AND teacher_id = %s)
-            """, (q_text, q_type, batch_id, user_id))
+            WHERE question_text = %s AND question_type = %s 
+            AND exam_id IN (
+                SELECT e.exam_id FROM exams e
+                JOIN sections s ON e.section_id = s.section_id
+                WHERE e.batch_id = %s AND e.teacher_id = %s AND e.branch_id = %s AND s.year_id = %s
+                )
+            """, (q_text, q_type, batch_id, user_id, branch_id, year_id))
             sync_msg = " (synced across batch)"
         else:
             cur.execute("DELETE FROM exam_questions WHERE question_id=%s AND exam_id=%s", (question_id, exam_id))
@@ -1673,11 +1820,17 @@ def teacher_exam_import_questions(exam_id):
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
         # Verify exam belongs to teacher and is still draft
         cur.execute("""
-            SELECT batch_id FROM exams
-            WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s AND status='draft'
-        """, (exam_id, user_id, branch_id))
+            SELECT e.batch_id
+            FROM exams e
+            JOIN sections s ON e.section_id = s.section_id
+            WHERE e.exam_id=%s AND e.teacher_id=%s AND e.branch_id=%s AND e.status='draft' AND s.year_id = %s
+        """, (exam_id, user_id, branch_id, year_id))
         exam_row = cur.fetchone()
         if not exam_row:
             flash("Exam not found or already published.", "error")
@@ -1686,8 +1839,15 @@ def teacher_exam_import_questions(exam_id):
         batch_id = exam_row.get("batch_id")
         target_exams = [exam_id]
         if batch_id:
-            cur.execute("SELECT exam_id FROM exams WHERE batch_id=%s AND teacher_id=%s", (batch_id, user_id))
+            cur.execute("""
+        SELECT e.exam_id
+        FROM exams e
+        JOIN sections s ON e.section_id = s.section_id
+        WHERE e.batch_id=%s AND e.teacher_id=%s AND s.year_id=%s AND e.branch_id=%s
+            """, (batch_id, user_id, year_id, branch_id))
             target_exams = [r["exam_id"] for r in cur.fetchall()]
+        else:
+            target_exams = [exam_id]
 
         ext = os.path.splitext(file.filename)[1].lower()
 
@@ -1826,11 +1986,16 @@ def teacher_exam_question_edit(exam_id, question_id):
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
         # Verify exam ownership + still draft
         cur.execute("""
-            SELECT 1 FROM exams
-            WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s AND status='draft'
-        """, (exam_id, user_id, branch_id))
+            SELECT 1 FROM exams e
+            JOIN sections s ON e.section_id=s.section_id
+            WHERE e.exam_id=%s AND e.teacher_id=%s AND e.branch_id=%s AND e.status='draft' AND s.year_id=%s
+        """, (exam_id, user_id, branch_id, year_id))
         if not cur.fetchone():
             flash("Exam not found or already published.", "error")
             return redirect(url_for("teacher.teacher_exams"))
@@ -1887,9 +2052,13 @@ def teacher_exam_question_edit(exam_id, question_id):
                     SET question_text=%s, question_type=%s, choices=%s,
                         correct_answer=%s, points=%s
                     WHERE question_text=%s AND question_type=%s
-                    AND exam_id IN (SELECT exam_id FROM exams WHERE batch_id=%s AND teacher_id=%s)
+                    AND exam_id IN (
+                    SELECT e.exam_id FROM exams e
+                    JOIN sections s ON e.section_id = s.section_id
+                     WHERE e.batch_id=%s AND e.teacher_id=%s AND e.branch_id=%s AND s.year_id=%s
+                    )        
                 """, (question_text, question_type, choices,
-                      correct_answer, points, orig_text, orig_type, batch_id, user_id))
+                      correct_answer, points, orig_text, orig_type, batch_id, user_id, branch_id, year_id))
                 sync_msg = " (synced across batch)"
             else:
                 cur.execute("""
@@ -1911,8 +2080,8 @@ def teacher_exam_question_edit(exam_id, question_id):
             FROM exams e
             JOIN sections s ON e.section_id = s.section_id
             JOIN subjects sub ON e.subject_id = sub.subject_id
-            WHERE e.exam_id = %s
-        """, (exam_id,))
+            WHERE e.exam_id = %s AND s.year_id = %s
+        """, (exam_id, year_id))
         exam = cur.fetchone()
 
         return render_template("teacher_exam_question_edit.html",
@@ -1938,11 +2107,17 @@ def teacher_exam_reset(exam_id, enrollment_id):
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
         # Verify exam belongs to this teacher and get exam_type
         cur.execute("""
-            SELECT exam_type FROM exams
-            WHERE exam_id=%s AND teacher_id=%s AND branch_id=%s
-        """, (exam_id, user_id, branch_id))
+    SELECT e.exam_type
+    FROM exams e
+    JOIN sections s ON e.section_id = s.section_id
+    WHERE e.exam_id=%s AND e.teacher_id=%s AND e.branch_id=%s AND s.year_id=%s
+""", (exam_id, user_id, branch_id, year_id))
         row = cur.fetchone()
         if not row:
             flash("Item not found or unauthorized.", "error")
@@ -1999,8 +2174,7 @@ def teacher_exam_reset(exam_id, enrollment_id):
 GRADING_PERIODS = ["1st", "2nd", "3rd", "4th"]
 
 
-def _get_teacher_assignments(cur, user_id, branch_id):
-    """Helper: fetch all section+subject assignments for a teacher."""
+def _get_teacher_assignments(cur, user_id, branch_id, year_id):
     cur.execute("""
         SELECT st.section_id, s.section_name, g.name AS grade_level_name,
                st.subject_id, sub.name AS subject_name
@@ -2008,14 +2182,13 @@ def _get_teacher_assignments(cur, user_id, branch_id):
         JOIN sections s      ON st.section_id = s.section_id
         JOIN grade_levels g  ON s.grade_level_id = g.id
         JOIN subjects sub    ON st.subject_id = sub.subject_id
-        WHERE st.teacher_id = %s AND s.branch_id = %s
+        WHERE st.teacher_id = %s AND s.branch_id = %s AND s.year_id = %s
         ORDER BY g.display_order, s.section_name, sub.name
-    """, (user_id, branch_id))
+    """, (user_id, branch_id, year_id))
     return cur.fetchall() or []
 
 
 # ── Grading Weights Setup ─────────────────────────────────────────────────────
-
 @teacher_bp.route("/teacher/grading-weights")
 def grading_weights():
     if not _require_teacher():
@@ -2027,18 +2200,21 @@ def grading_weights():
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        assignments = _get_teacher_assignments(cur, user_id, branch_id)
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
 
-        # Fetch existing weights so we can pre-fill the form
+        assignments = _get_teacher_assignments(cur, user_id, branch_id, year_id)
+
         cur.execute("""
             SELECT section_id, subject_id, grading_period,
                    quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct
             FROM grading_weights
-            WHERE teacher_id = %s
-        """, (user_id,))
+            WHERE teacher_id = %s AND year_id = %s
+        """, (user_id, year_id))
         raw_weights = cur.fetchall() or []
 
-        # Build a quick lookup dict: (section_id, subject_id, period) → row
         weights_map = {}
         for w in raw_weights:
             key = (w['section_id'], w['subject_id'], w['grading_period'])
@@ -2089,6 +2265,10 @@ def grading_weights_set():
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
         targets = [{'section_id': section_id, 'subject_id': subject_id}]
         
         if apply_all == "1":
@@ -2096,27 +2276,27 @@ def grading_weights_set():
                 SELECT st.section_id, st.subject_id
                 FROM section_teachers st
                 JOIN sections s ON st.section_id = s.section_id
-                WHERE st.teacher_id = %s AND s.branch_id = %s
-            """, (user_id, branch_id))
+                WHERE st.teacher_id = %s AND s.branch_id = %s AND s.year_id = %s
+            """, (user_id, branch_id, year_id))
             targets = cur.fetchall()
 
         for t in targets:
             sid = t['section_id']
             subjid = t['subject_id']
             cur.execute("""
-                INSERT INTO grading_weights
-                    (teacher_id, section_id, subject_id, grading_period,
-                     quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct, branch_id)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                ON CONFLICT (teacher_id, section_id, subject_id, grading_period)
-                DO UPDATE SET
-                    quiz_pct          = EXCLUDED.quiz_pct,
-                    exam_pct          = EXCLUDED.exam_pct,
-                    activity_pct      = EXCLUDED.activity_pct,
-                    participation_pct = EXCLUDED.participation_pct,
-                    attendance_pct    = EXCLUDED.attendance_pct
-            """, (user_id, sid, subjid, period,
-                  quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct, branch_id))
+    INSERT INTO grading_weights
+        (teacher_id, section_id, subject_id, grading_period,
+         quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct, branch_id, year_id)
+    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    ON CONFLICT (teacher_id, section_id, subject_id, grading_period, year_id)
+    DO UPDATE SET
+        quiz_pct          = EXCLUDED.quiz_pct,
+        exam_pct          = EXCLUDED.exam_pct,
+        activity_pct      = EXCLUDED.activity_pct,
+        participation_pct = EXCLUDED.participation_pct,
+        attendance_pct    = EXCLUDED.attendance_pct
+""", (user_id, sid, subjid, period,
+      quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct, branch_id, year_id))
         
         db.commit()
         flash(f"Grading weights for {period} Grading saved successfully!", "success")
@@ -2130,68 +2310,80 @@ def grading_weights_set():
     return redirect(url_for("teacher.grading_weights"))
 
 
-def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, period):
+def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, period, year_id):
     """Internal helper to compute grades for all students in a section/subject/period."""
-    # All students in the section
+
+    # All students in the section, year-limited
     cur.execute("""
         SELECT e.enrollment_id, e.student_name
         FROM enrollments e
-        WHERE e.section_id = %s AND e.branch_id = %s AND e.status IN ('approved','enrolled')
+        JOIN sections s ON e.section_id = s.section_id
+        WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s
+              AND e.status IN ('approved','enrolled')
         ORDER BY e.student_name ASC
-    """, (section_id, branch_id))
+    """, (section_id, branch_id, year_id))
     students = cur.fetchall() or []
-    
-    # Grading weights for this period
+
+    # Grading weights for this period (grading_weights.year_id)
     cur.execute("""
         SELECT quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct
         FROM grading_weights
-        WHERE teacher_id=%s AND section_id=%s AND subject_id=%s AND grading_period=%s
-    """, (user_id, section_id, subject_id, period))
+        WHERE teacher_id=%s AND section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+    """, (user_id, section_id, subject_id, period, year_id))
     weights = cur.fetchone()
-    
+
     # --- Fetch scores per student for this period ---
     enrollment_ids = [s['enrollment_id'] for s in students]
     quiz_scores = {}
     exam_scores = {}
+
     if enrollment_ids:
+        # Quiz scores: JOIN exams -> sections for year filter
         cur.execute("""
             SELECT er.enrollment_id,
                    AVG(CASE WHEN er.total_points > 0
                             THEN (er.score / er.total_points * 100) ELSE 0 END) AS avg_pct
             FROM exam_results er
             JOIN exams e ON er.exam_id = e.exam_id
+            JOIN sections s ON e.section_id = s.section_id
             WHERE e.section_id = %s AND e.subject_id = %s
               AND e.exam_type = 'quiz' AND e.grading_period = %s
+              AND s.year_id = %s
               AND er.enrollment_id = ANY(%s)
               AND er.status IN ('submitted', 'auto_submitted')
             GROUP BY er.enrollment_id
-        """, (section_id, subject_id, period, enrollment_ids))
+        """, (section_id, subject_id, period, year_id, enrollment_ids))
         for row in cur.fetchall():
             quiz_scores[row['enrollment_id']] = float(row['avg_pct'] or 0)
 
+        # Exam scores: same pattern as above
         cur.execute("""
             SELECT er.enrollment_id,
                    AVG(CASE WHEN er.total_points > 0
                             THEN (er.score / er.total_points * 100) ELSE 0 END) AS avg_pct
             FROM exam_results er
             JOIN exams e ON er.exam_id = e.exam_id
+            JOIN sections s ON e.section_id = s.section_id
             WHERE e.section_id = %s AND e.subject_id = %s
               AND e.exam_type = 'exam' AND e.grading_period = %s
+              AND s.year_id = %s
               AND er.enrollment_id = ANY(%s)
               AND er.status IN ('submitted', 'auto_submitted')
             GROUP BY er.enrollment_id
-        """, (section_id, subject_id, period, enrollment_ids))
+        """, (section_id, subject_id, period, year_id, enrollment_ids))
         for row in cur.fetchall():
             exam_scores[row['enrollment_id']] = float(row['avg_pct'] or 0)
 
+    # Activities: join to sections for year filter
     activity_scores = {}
     cur.execute("""
         SELECT ag.submission_id, asub.enrollment_id, ag.percentage
         FROM activity_grades ag
         JOIN activity_submissions asub ON ag.submission_id = asub.submission_id
         JOIN activities a ON ag.activity_id = a.activity_id
-        WHERE a.section_id = %s AND a.subject_id = %s AND a.grading_period = %s
-    """, (section_id, subject_id, period))
+        JOIN sections s ON a.section_id = s.section_id
+        WHERE a.section_id = %s AND a.subject_id = %s AND a.grading_period = %s AND s.year_id = %s
+    """, (section_id, subject_id, period, year_id))
     act_raw = cur.fetchall() or []
     act_bucket = {}
     for row in act_raw:
@@ -2200,19 +2392,25 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
     for eid, pcts in act_bucket.items():
         activity_scores[eid] = sum(pcts) / len(pcts)
 
+    # Participation scores: join for year
     participation_scores = {}
     cur.execute("""
-        SELECT enrollment_id, score FROM participation_scores
-        WHERE section_id=%s AND subject_id=%s AND grading_period=%s
-    """, (section_id, subject_id, period))
+        SELECT ps.enrollment_id, ps.score
+        FROM participation_scores ps
+        JOIN sections s ON ps.section_id = s.section_id
+        WHERE ps.section_id = %s AND ps.subject_id = %s AND ps.grading_period = %s AND s.year_id = %s
+    """, (section_id, subject_id, period, year_id))
     for row in cur.fetchall():
         participation_scores[row['enrollment_id']] = float(row['score'] or 0)
 
+    # Attendance scores: join for year
     attendance_scores = {}
     cur.execute("""
-        SELECT enrollment_id, score FROM attendance_scores
-        WHERE section_id=%s AND subject_id=%s AND grading_period=%s
-    """, (section_id, subject_id, period))
+        SELECT at.enrollment_id, at.score
+        FROM attendance_scores at
+        JOIN sections s ON at.section_id = s.section_id
+        WHERE at.section_id = %s AND at.subject_id = %s AND at.grading_period = %s AND s.year_id = %s
+    """, (section_id, subject_id, period, year_id))
     for row in cur.fetchall():
         attendance_scores[row['enrollment_id']] = float(row['score'] or 0)
 
@@ -2224,7 +2422,6 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
         a = activity_scores.get(eid, 0)
         p = participation_scores.get(eid, 0)
         att = attendance_scores.get(eid, 0)
-
         if weights:
             period_grade = (
                 q   * (float(weights['quiz_pct']) / 100) +
@@ -2236,7 +2433,6 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
             period_grade = round(period_grade, 2)
         else:
             period_grade = None
-
         records.append({
             'enrollment_id':   eid,
             'student_name':    s['student_name'],
@@ -2248,8 +2444,6 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
             'period_grade':    period_grade
         })
     return students, weights, records
-
-# ── Class Record ──────────────────────────────────────────────────────────────
 
 @teacher_bp.route("/teacher/class-record/<int:section_id>/<int:subject_id>")
 def class_record(section_id, subject_id):
@@ -2265,39 +2459,46 @@ def class_record(section_id, subject_id):
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        # Verify teacher owns this section+subject
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        # Owner check, for this year:
         cur.execute("""
-            SELECT 1 FROM section_teachers
-            WHERE teacher_id=%s AND section_id=%s AND subject_id=%s
-        """, (user_id, section_id, subject_id))
+            SELECT 1 FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s AND s.year_id=%s
+        """, (user_id, section_id, subject_id, year_id))
         if not cur.fetchone():
             flash("Unauthorized or assignment not found.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
 
-        # Section and subject info
+        # Section/subject context (with year check)
         cur.execute("""
             SELECT s.section_name, g.name AS grade_level_name, sub.name AS subject_name
             FROM sections s
             JOIN grade_levels g ON s.grade_level_id = g.id
             JOIN subjects sub ON sub.subject_id = %s
-            WHERE s.section_id = %s
-        """, (subject_id, section_id))
+            WHERE s.section_id = %s AND s.year_id = %s
+        """, (subject_id, section_id, year_id))
         context = cur.fetchone()
 
-        _, weights, records = _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, period)
+        _, weights, records = _compute_period_grades(
+            cur, user_id, branch_id, section_id, subject_id, period, year_id
+        )
 
         return render_template("teacher_class_record.html",
-                               context=context,
-                               section_id=section_id,
-                               subject_id=subject_id,
-                               records=records,
-                               weights=weights,
-                               period=period,
-                               grading_periods=GRADING_PERIODS)
+            context=context,
+            section_id=section_id,
+            subject_id=subject_id,
+            records=records,
+            weights=weights,
+            period=period,
+            grading_periods=GRADING_PERIODS)
     finally:
         cur.close()
         db.close()
-
 @teacher_bp.route("/teacher/post-grades/<int:section_id>/<int:subject_id>/<string:period>", methods=["POST"])
 def teacher_post_grades(section_id, subject_id, period):
     if not _require_teacher(): return redirect("/")
@@ -2308,12 +2509,23 @@ def teacher_post_grades(section_id, subject_id, period):
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cur.execute("SELECT 1 FROM section_teachers WHERE teacher_id=%s AND section_id=%s AND subject_id=%s", (user_id, section_id, subject_id))
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+        
+        cur.execute("""
+            SELECT 1 FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s AND s.year_id=%s
+        """, (user_id, section_id, subject_id, year_id))
         if not cur.fetchone():
             flash("Unauthorized.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
 
-        _, weights, records = _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, period)
+        _, weights, records = _compute_period_grades(
+            cur, user_id, branch_id, section_id, subject_id, period, year_id
+        )
         if not weights:
             flash(f"Cannot post grades: Weights not set for {period} Grading.", "error")
             return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
@@ -2321,11 +2533,12 @@ def teacher_post_grades(section_id, subject_id, period):
         for r in records:
             if r['period_grade'] is not None:
                 cur.execute("""
-                    INSERT INTO posted_grades (enrollment_id, section_id, subject_id, grading_period, grade, posted_by, posted_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, NOW())
-                    ON CONFLICT (enrollment_id, subject_id, grading_period)
+                    INSERT INTO posted_grades
+                        (enrollment_id, section_id, subject_id, grading_period, grade, posted_by, posted_at, year_id)
+                    VALUES (%s, %s, %s, %s, %s, %s, NOW(), %s)
+                    ON CONFLICT (enrollment_id, subject_id, grading_period, year_id)
                     DO UPDATE SET grade = EXCLUDED.grade, posted_at = NOW(), posted_by = EXCLUDED.posted_by
-                """, (r['enrollment_id'], section_id, subject_id, period, r['period_grade'], user_id))
+                """, (r['enrollment_id'], section_id, subject_id, period, r['period_grade'], user_id, year_id))
         
         db.commit()
         flash(f"Grades for {period} Grading have been posted to the Student Portal!", "success")
@@ -2337,18 +2550,12 @@ def teacher_post_grades(section_id, subject_id, period):
         db.close()
     return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
 
-
-# ── Participation Scores ──────────────────────────────────────────────────────
-
-@teacher_bp.route("/teacher/participation/<int:section_id>/<int:subject_id>/<period>",
-                  methods=["GET", "POST"])
+@teacher_bp.route("/teacher/participation/<int:section_id>/<int:subject_id>/<period>", methods=["GET", "POST"])
 def participation_input(section_id, subject_id, period):
     if not _require_teacher():
         return redirect("/")
-
     user_id   = session.get("user_id")
     branch_id = session.get("branch_id")
-
     if period not in GRADING_PERIODS:
         flash("Invalid grading period.", "error")
         return redirect(url_for("teacher.grading_weights"))
@@ -2356,21 +2563,29 @@ def participation_input(section_id, subject_id, period):
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        # Verify ownership
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        # Verify ownership in current year
         cur.execute("""
-            SELECT 1 FROM section_teachers
-            WHERE teacher_id=%s AND section_id=%s AND subject_id=%s
-        """, (user_id, section_id, subject_id))
+            SELECT 1
+            FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s AND s.year_id=%s
+        """, (user_id, section_id, subject_id, year_id))
         if not cur.fetchone():
             flash("Unauthorized.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
 
-        # Context info
+        # Context info for current year
         cur.execute("""
             SELECT s.section_name, sub.name AS subject_name
-            FROM sections s, subjects sub
-            WHERE s.section_id=%s AND sub.subject_id=%s
-        """, (section_id, subject_id))
+            FROM sections s
+            JOIN subjects sub ON sub.subject_id = %s
+            WHERE s.section_id=%s AND s.year_id=%s
+        """, (subject_id, section_id, year_id))
         ctx = cur.fetchone()
 
         if request.method == "POST":
@@ -2382,11 +2597,11 @@ def participation_input(section_id, subject_id, period):
                         score = max(0.0, min(100.0, float(val or 0)))
                         cur.execute("""
                             INSERT INTO participation_scores
-                                (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, updated_at)
-                            VALUES (%s,%s,%s,%s,%s,%s,NOW())
-                            ON CONFLICT ON CONSTRAINT uq_participation
+                                (teacher_id, enrollment_id, section_id, subject_id, grading_period, year_id, score, updated_at)
+                            VALUES (%s,%s,%s,%s,%s,%s,%s,NOW())
+                            ON CONFLICT (enrollment_id, subject_id, grading_period, year_id)
                             DO UPDATE SET score=EXCLUDED.score, updated_at=NOW()
-                        """, (user_id, eid, section_id, subject_id, period, score))
+                        """, (user_id, eid, section_id, subject_id, period, year_id, score))
                     except (ValueError, IndexError):
                         continue
             db.commit()
@@ -2396,17 +2611,18 @@ def participation_input(section_id, subject_id, period):
                                     subject_id=subject_id,
                                     period=period))
 
-        # GET — load students + existing scores
+        # GET — load current year students + scores
         cur.execute("""
             SELECT e.enrollment_id, e.student_name,
                    COALESCE(ps.score, 0) AS score
             FROM enrollments e
+            JOIN sections s ON e.section_id = s.section_id
             LEFT JOIN participation_scores ps
                 ON ps.enrollment_id = e.enrollment_id
-               AND ps.subject_id = %s AND ps.grading_period = %s
-            WHERE e.section_id = %s AND e.branch_id = %s AND e.status IN ('approved','enrolled')
+               AND ps.subject_id = %s AND ps.grading_period = %s AND ps.year_id = %s
+            WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved','enrolled')
             ORDER BY e.student_name
-        """, (subject_id, period, section_id, branch_id))
+        """, (subject_id, period, year_id, section_id, branch_id, year_id))
         students = cur.fetchall() or []
 
     finally:
@@ -2420,7 +2636,6 @@ def participation_input(section_id, subject_id, period):
 
 
 # ── Attendance Scores ─────────────────────────────────────────────────────────
-
 @teacher_bp.route("/teacher/attendance/<int:section_id>/<int:subject_id>/<period>",
                   methods=["GET", "POST"])
 def attendance_input(section_id, subject_id, period):
@@ -2437,19 +2652,27 @@ def attendance_input(section_id, subject_id, period):
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
         cur.execute("""
-            SELECT 1 FROM section_teachers
-            WHERE teacher_id=%s AND section_id=%s AND subject_id=%s
-        """, (user_id, section_id, subject_id))
+            SELECT 1
+            FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s AND s.year_id=%s
+        """, (user_id, section_id, subject_id, year_id))
         if not cur.fetchone():
             flash("Unauthorized.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
 
         cur.execute("""
             SELECT s.section_name, sub.name AS subject_name
-            FROM sections s, subjects sub
-            WHERE s.section_id=%s AND sub.subject_id=%s
-        """, (section_id, subject_id))
+            FROM sections s
+            JOIN subjects sub ON sub.subject_id = %s
+            WHERE s.section_id=%s AND s.year_id=%s
+        """, (subject_id, section_id, year_id))
         ctx = cur.fetchone()
 
         if request.method == "POST":
@@ -2461,11 +2684,11 @@ def attendance_input(section_id, subject_id, period):
                         score = max(0.0, min(100.0, float(val or 0)))
                         cur.execute("""
                             INSERT INTO attendance_scores
-                                (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, updated_at)
-                            VALUES (%s,%s,%s,%s,%s,%s,NOW())
-                            ON CONFLICT ON CONSTRAINT uq_attendance
+                                (teacher_id, enrollment_id, section_id, subject_id, grading_period, year_id, score, updated_at)
+                            VALUES (%s,%s,%s,%s,%s,%s,%s,NOW())
+                            ON CONFLICT (enrollment_id, subject_id, grading_period, year_id)
                             DO UPDATE SET score=EXCLUDED.score, updated_at=NOW()
-                        """, (user_id, eid, section_id, subject_id, period, score))
+                        """, (user_id, eid, section_id, subject_id, period, year_id, score))
                     except (ValueError, IndexError):
                         continue
             db.commit()
@@ -2479,12 +2702,13 @@ def attendance_input(section_id, subject_id, period):
             SELECT e.enrollment_id, e.student_name,
                    COALESCE(att.score, 0) AS score
             FROM enrollments e
+            JOIN sections s ON e.section_id = s.section_id
             LEFT JOIN attendance_scores att
                 ON att.enrollment_id = e.enrollment_id
-               AND att.subject_id = %s AND att.grading_period = %s
-            WHERE e.section_id = %s AND e.branch_id = %s AND e.status IN ('approved','enrolled')
+               AND att.subject_id = %s AND att.grading_period = %s AND att.year_id = %s
+            WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved','enrolled')
             ORDER BY e.student_name
-        """, (subject_id, period, section_id, branch_id))
+        """, (subject_id, period, year_id, section_id, branch_id, year_id))
         students = cur.fetchall() or []
 
     finally:
@@ -2631,28 +2855,31 @@ def teacher_reschedule():
         except Exception:
             return jsonify({"error": "Invalid date format"}), 400
 
-        # 1. Verify teacher ownership
+        # 1. Verify teacher ownership (filter by current year)
         if item_type == 'activity':
             cur.execute("""
-                SELECT 1 FROM activities 
-                WHERE activity_id = %s AND teacher_id = %s AND branch_id = %s
-            """, (item_id, user_id, branch_id))
+                SELECT 1 FROM activities a
+                JOIN sections s ON a.section_id = s.section_id
+                WHERE a.activity_id = %s AND a.teacher_id = %s AND a.branch_id = %s AND s.year_id = %s
+            """, (item_id, user_id, branch_id, year_id))
         elif item_type in ('exam', 'quiz'):
             cur.execute("""
-                SELECT 1 FROM exams 
-                WHERE exam_id = %s AND teacher_id = %s AND branch_id = %s
-            """, (item_id, user_id, branch_id))
+                SELECT 1 FROM exams e
+                JOIN sections s ON e.section_id = s.section_id
+                WHERE e.exam_id = %s AND e.teacher_id = %s AND e.branch_id = %s AND s.year_id = %s
+            """, (item_id, user_id, branch_id, year_id))
         else:
             return jsonify({"error": "Unknown item_type"}), 400
 
         if not cur.fetchone():
             return jsonify({"error": "Unauthorized item access or item not found."}), 403
 
-        # 2. Verify student enrollment in this branch
+        # 2. Verify student enrollment in this branch AND YEAR
         cur.execute("""
-            SELECT user_id FROM enrollments 
-            WHERE enrollment_id = %s AND branch_id = %s
-        """, (enrollment_id, branch_id))
+            SELECT user_id FROM enrollments e
+            JOIN sections s ON e.section_id = s.section_id
+            WHERE e.enrollment_id = %s AND e.branch_id = %s AND s.year_id = %s
+        """, (enrollment_id, branch_id, year_id))
 
         student_row = cur.fetchone()
         if not student_row:
@@ -2660,23 +2887,23 @@ def teacher_reschedule():
 
         student_id = student_row[0]  # This can be None, which is fine
 
-        # 3. Upsert individual_extensions, properly referencing by year
+        # 3. Upsert individual_extensions, add year_id filter/column!
         cur.execute("""
             SELECT extension_id FROM individual_extensions 
-            WHERE enrollment_id=%s AND item_type=%s AND item_id=%s
-        """, (enrollment_id, item_type, item_id))
+            WHERE enrollment_id=%s AND item_type=%s AND item_id=%s AND year_id=%s
+        """, (enrollment_id, item_type, item_id, year_id))
         
         if cur.fetchone():
             cur.execute("""
                 UPDATE individual_extensions 
                 SET new_due_date=%s 
-                WHERE enrollment_id=%s AND item_type=%s AND item_id=%s
-            """, (new_due_date, enrollment_id, item_type, item_id))
+                WHERE enrollment_id=%s AND item_type=%s AND item_id=%s AND year_id=%s
+            """, (new_due_date, enrollment_id, item_type, item_id, year_id))
         else:
             cur.execute("""
-                INSERT INTO individual_extensions (enrollment_id, item_type, item_id, new_due_date)
-                VALUES (%s, %s, %s, %s)
-            """, (enrollment_id, item_type, item_id, new_due_date))
+                INSERT INTO individual_extensions (enrollment_id, item_type, item_id, new_due_date, year_id)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (enrollment_id, item_type, item_id, new_due_date, year_id))
 
         db.commit()
         return jsonify({"ok": True, "message": "Rescheduled successfully!"})
@@ -2982,6 +3209,14 @@ def api_teacher_add_student():
         grade_row = cur.fetchone()
         grade_level = grade_row['grade_level'] if grade_row else ""
         year_id = grade_row['year_id'] if grade_row else None
+
+        cur.execute("""
+            SELECT 1 FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            WHERE st.teacher_id = %s AND st.section_id = %s AND s.year_id = %s
+        """, (user_id, section_id, year_id))
+        if not cur.fetchone():
+            return jsonify({"error": "Unauthorized section access"}), 403
         
         # Insert minimal late enrollee
         cur.execute("""
@@ -3014,13 +3249,18 @@ def teacher_profile():
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        year_id = _get_active_school_year(cur, teacher['branch_id'])
         cur.execute("""
-            SELECT u.user_id, u.full_name, u.username, u.profile_image,
-                   br.branch_name, br.location
-            FROM users u
-            JOIN branches br ON u.branch_id = br.branch_id
-            WHERE u.user_id = %s
-        """, (user_id,))
+    SELECT sub.name AS subject_name,
+                g.name AS grade_level,
+                s.section_name
+            FROM section_teachers st
+            JOIN subjects sub ON st.subject_id = sub.subject_id
+            JOIN sections s ON st.section_id = s.section_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            WHERE st.teacher_id = %s AND s.year_id = %s
+            ORDER BY g.name, s.section_name, sub.name
+        """, (user_id, year_id))        
         teacher = cur.fetchone()
 
         if not teacher:
