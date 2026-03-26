@@ -1,6 +1,7 @@
 import smtplib
 import ssl
 import socket
+import threading
 from email.message import EmailMessage
 import os
 import logging
@@ -73,5 +74,8 @@ def _send_email_sync(to_email, subject, body):
     return False
 
 def send_email(to_email, subject, body):
-    # Temporarily SYNCHRONOUS to test Railway connection blocks
-    return _send_email_sync(to_email, subject, body)
+    # Re-enable ASYNCHRONOUS so it doesn't block and crash Gunicorn on Railway
+    thread = threading.Thread(target=_send_email_sync, args=(to_email, subject, body))
+    thread.daemon = True
+    thread.start()
+    return True
