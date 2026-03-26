@@ -157,16 +157,6 @@ def get_db_connection():
                 logger.warning(f"Could not migrate individual_extensions table: {e}")
                 conn.rollback()
 
-            try:
-                cur.execute("""
-                    ALTER TABLE individual_extensions 
-                    ALTER COLUMN user_id DROP NOT NULL
-                """)
-                conn.commit()
-            except Exception as e:
-                logger.warning(f"Could not drop NOT NULL on user_id: {e}")
-                conn.rollback()
-
             # ONE-TIME CLEANUP: Delete test Teacher9 accounts directly on boot
             try:
                 cur.execute("DELETE FROM users WHERE role='teacher' AND username ILIKE '%Teacher9%'")

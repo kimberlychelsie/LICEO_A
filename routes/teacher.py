@@ -2674,9 +2674,9 @@ def teacher_reschedule():
             """, (new_due_date, enrollment_id, item_type, item_id))
         else:
             cur.execute("""
-                INSERT INTO individual_extensions (enrollment_id, user_id, item_type, item_id, new_due_date)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (enrollment_id, student_id, item_type, item_id, new_due_date))
+                INSERT INTO individual_extensions (enrollment_id, item_type, item_id, new_due_date)
+                VALUES (%s, %s, %s, %s)
+            """, (enrollment_id, item_type, item_id, new_due_date))
 
         db.commit()
         return jsonify({"ok": True, "message": "Rescheduled successfully!"})
