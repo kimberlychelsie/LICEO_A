@@ -2636,13 +2636,12 @@ def teacher_reschedule():
                 SELECT 1 FROM activities 
                 WHERE activity_id = %s AND teacher_id = %s AND branch_id = %s
             """, (item_id, user_id, branch_id))
-        elif item_type == 'exam':
+        elif item_type in ('exam', 'quiz'):
             cur.execute("""
                 SELECT 1 FROM exams 
                 WHERE exam_id = %s AND teacher_id = %s AND branch_id = %s
             """, (item_id, user_id, branch_id))
         else:
-            # Optional: Handle 'quiz' similarly if needed, or map it to exam
             return jsonify({"error": "Unknown item_type"}), 400
 
         if not cur.fetchone():
