@@ -162,8 +162,9 @@ def teacher_dashboard():
         try:
             year_id = _get_active_school_year(cur, branch_id)
             if not year_id:
-                flash("No active school year.", "error")
-                return redirect(url_for("teacher.teacher_dashboard"))
+                flash("No active school year set. Please inform your branch admin.", "error")
+                # Continue rendering without crashing or looping
+                year_id = 0
             # ── Students ──
             query_str = """
                 SELECT
