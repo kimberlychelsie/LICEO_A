@@ -188,8 +188,11 @@ def registrar_enrollments():
         enrolled_students = cursor.fetchall()
         # ✅ No loop needed — account status already in each row
 
-        cursor.execute("SELECT name FROM grade_levels ORDER BY id")
-        grade_levels = [r["name"] for r in cursor.fetchall()]
+        grade_levels = [
+            "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3", "Grade 4", 
+            "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", 
+            "Grade 11", "Grade 12"
+        ]
         reenrollment_open = any(e["status"] == "open_for_enrollment" for e in enrolled_students)
 
         cursor.execute("""
@@ -660,8 +663,11 @@ def registrar_profile_pictures():
 
         if tab == "students":
             # Get grades for filter
-            cursor.execute("SELECT name FROM grade_levels ORDER BY id")
-            all_grades = [r["name"] for r in cursor.fetchall()]
+            all_grades = [
+                "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3", "Grade 4", 
+                "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", 
+                "Grade 11", "Grade 12"
+            ]
 
             # Get all sections
             cursor.execute("""
@@ -743,8 +749,11 @@ def registrar_students_by_grade():
         grade_filter = request.args.get("grade", "")
         section_filter = request.args.get("section_id", "")
 
-        cursor.execute("SELECT name FROM grade_levels ORDER BY id")
-        all_grades = [r["name"] for r in cursor.fetchall()]
+        all_grades = [
+            "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3", "Grade 4", 
+            "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", 
+            "Grade 11", "Grade 12"
+        ]
 
         cursor.execute("""
             SELECT s.section_id, s.section_name, g.name AS grade_level
