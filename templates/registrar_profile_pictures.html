@@ -126,17 +126,40 @@
   </div>
 
   {% if tab == 'students' %}
-    <!-- Grade level tabs inside Students tab -->
-    <div class="grade-tabs">
-      <a href="?tab=students" class="grade-tab {% if grade_filter == '' %}active{% endif %}">All Grades</a>
-      {% for g in grade_options %}
-      <a href="?tab=students&grade={{ g }}" class="grade-tab {% if grade_filter == g|string %}active{% endif %}">{{ g }}</a>
-      {% endfor %}
-    </div>
-
-    <div class="filter-row">
-      <input type="text" id="searchInput" class="form-input" style="max-width:280px;" placeholder="🔍 Search student name…" oninput="applyFilters()">
-      <span style="margin-left:auto;font-size:0.8rem;color:var(--muted);" id="visibleCount"></span>
+    <!-- Filter Card for Students -->
+    <div class="card" style="margin-bottom: 20px; padding: 16px 20px; border-radius: 12px; background: #f8fafc; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <form method="GET" action="/registrar/profile-pictures" style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            <input type="hidden" name="tab" value="students">
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Grade Level</label>
+                <select name="grade" onchange="this.form.submit()" style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #fff; min-width: 140px; cursor: pointer;">
+                    <option value="">-- All Grades --</option>
+                    {% for g in all_grades %}
+                    <option value="{{ g }}" {% if g == grade_filter %}selected{% endif %}>{{ g }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Section</label>
+                <select name="section_id" onchange="this.form.submit()" {% if not grade_filter %}disabled{% endif %} style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #fff; min-width: 160px; cursor: pointer;">
+                    <option value="">-- All Sections --</option>
+                    {% for s in all_sections %}
+                        {% if not grade_filter or s.grade_level == grade_filter %}
+                        <option value="{{ s.section_id }}" {% if s.section_id|string == section_filter|string %}selected{% endif %}>
+                            {{ s.section_name }}
+                        </option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Search Student</label>
+                <input type="text" id="searchInput" placeholder="Search by name..." oninput="applyFilters()" style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 100%;">
+            </div>
+        </form>
     </div>
 
     <div class="card" style="padding:0;overflow:hidden;">
@@ -196,10 +219,19 @@
     </div>
 
   {% elif tab == 'teachers' %}
-    <div class="filter-row">
-      <input type="text" id="searchInput" class="form-input" style="max-width:280px;" placeholder="🔍 Search teacher name…" oninput="applyFilters()">
-      <span style="margin-left:auto;font-size:0.8rem;color:var(--muted);" id="visibleCount"></span>
+    <!-- Filter Card for Teachers -->
+    <div class="card" style="margin-bottom: 20px; padding: 16px 20px; border-radius: 12px; background: #f8fafc; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Search Teacher</label>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <input type="text" id="searchInput" placeholder="Search by name..." oninput="applyFilters()" style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 100%; max-width: 400px;">
+                    <span style="font-size:0.8rem; color:var(--muted);" id="visibleCount"></span>
+                </div>
+            </div>
+        </div>
     </div>
+
 
     <div class="card" style="padding:0;overflow:hidden;">
       <div class="table-wrap">

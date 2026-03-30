@@ -506,14 +506,35 @@
 
 <!-- ═══ TAB: NEW ENROLLMENTS ═══ -->
 <div class="tab-panel active" id="tab-new">
+
+    <!-- Filter Card for New Enrollments -->
+    <div class="card" style="margin-bottom: 20px; padding: 16px 20px; border-radius: 12px; background: #f8fafc; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Grade Level</label>
+                <select id="newGradeFilter" onchange="filterNew()" style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #fff; min-width: 140px; cursor: pointer;">
+                    <option value="">-- All Grades --</option>
+                    {% for g in grade_levels %}
+                    <option value="{{ g | lower }}">{{ g }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Search Student</label>
+                <input type="text" id="newSearch" placeholder="Search student name..." oninput="filterNew()" style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 100%; max-width: 400px;">
+            </div>
+        </div>
+    </div>
+
     <div class="card">
         <div class="card-header">
             <span>New / Transferee Enrollment Applications</span>
+            <span class="muted-note" id="newCount">{{ new_enrollments | length }} applications</span>
         </div>
         <div style="overflow:auto;">
-            <table>
+            <table id="newEnrollTable">
                 <tr>
-                    <th>ID</th>
+                    <th>Student ID</th>
                     <th>Student Name</th>
                     <th>Grade Level</th>
                     <th>Documents</th>
@@ -522,10 +543,10 @@
                 </tr>
 
                 {% for enrollment in new_enrollments %}
-                <tr>
+                <tr class="new-enroll-row" data-grade="{{ enrollment.grade_level | lower }}" data-name="{{ enrollment.student_name | lower }}">
                     <td>
-                        <span style="font-weight:800;">#{{ enrollment.display_no }}</span>
-                        <div class="muted-note">ID: {{ enrollment.display_no }}</div>
+                        <span style="font-weight:800;">{{ "%04d"|format(enrollment.display_no|default(0)|int) if enrollment.display_no|int else enrollment.enrollment_id }}</span>
+                        <div class="muted-note">ID: {{ "%04d"|format(enrollment.display_no|default(0)|int) if enrollment.display_no|int else enrollment.enrollment_id }}</div>
                     </td>
                     <td>
                         <strong>{{ enrollment.student_name }}</strong>
@@ -556,13 +577,7 @@
                         {% endif %}
                     </td>
 
-                    <!-- ✅ UPDATED Actions column — added View Detail button -->
                     <td>
-                        <a href="/registrar/enrollment/{{ enrollment.enrollment_id }}"
-                           class="btn btn-info btn-sm" style="text-decoration:none; margin-bottom:4px; display:inline-block;">
-                            👁 View
-                        </a>
-
                         {% if enrollment.status == 'pending' %}
                         {% if is_branch_active_status %}
                         <form method="post" action="/registrar/enrollments" style="display:inline;">
@@ -627,17 +642,32 @@
     {% endif %}
     {% endif %}
 
-    <!-- Filter Bar -->
-    <div class="filter-bar">
-        <label>Filter by Grade:</label>
-        <select id="gradeFilter" onchange="filterEnrolled()">
-            <option value="">All Grades</option>
-            {% for g in grade_levels %}
-            <option value="{{ g }}">{{ g }}</option>
-            {% endfor %}
-        </select>
-        <input class="search-input" type="text" id="enrolledSearch" placeholder="Search student name..."
-            oninput="filterEnrolled()">
+    <!-- Filter Card Enrolled -->
+    <div class="card" style="margin-bottom: 20px; padding: 16px 20px; border-radius: 12px; background: #f8fafc; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Grade Level</label>
+                <select id="gradeFilter" onchange="filterEnrolled()" style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #fff; min-width: 140px; cursor: pointer;">
+                    <option value="">-- All Grades --</option>
+                    {% for g in grade_levels %}
+                    <option value="{{ g | lower }}">{{ g }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Section</label>
+                <select id="sectionFilter" onchange="filterEnrolled()" style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #fff; min-width: 160px; cursor: pointer;">
+                    <option value="">-- All Sections --</option>
+                    {% for s in section_options %}
+                    <option value="{{ s.section_name | lower }}">{{ s.section_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Search Student</label>
+                <input type="text" id="enrolledSearch" placeholder="Search student name..." oninput="filterEnrolled()" style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 100%; max-width: 400px;">
+            </div>
+        </div>
     </div>
 
     <div class="card">
@@ -648,6 +678,7 @@
         <div style="overflow:auto;">
             <table id="enrolledTable">
                 <tr>
+                    <th>Student ID</th>
                     <th>Student Name</th>
                     <th>Grade Level</th>
                     <th>Section</th>
@@ -656,7 +687,11 @@
                 </tr>
                 {% for e in enrolled_students %}
                 <tr class="enrolled-row" data-grade="{{ e.grade_level | lower }}"
-                    data-name="{{ e.student_name | lower }}">
+                    data-name="{{ e.student_name | lower }}"
+                    data-section="{{ e.section_name | lower if e.section_name else '' }}">
+                    <td>
+                        <span style="font-weight:800; color: #1e293b;">{{ "%04d"|format(e.display_no|default(0)|int) if e.display_no|int else e.enrollment_id }}</span>
+                    </td>
                     <td>
                         <strong>{{ e.student_name }}</strong>
                         {% if e.gender %}
@@ -683,12 +718,6 @@
                         {% endif %}
                     </td>
                     <td>
-                        <!-- ✅ View detail link -->
-                        <a href="/registrar/enrollment/{{ e.enrollment_id }}"
-                           class="btn btn-info btn-sm" style="text-decoration:none; margin-bottom:6px; display:inline-block;">
-                            👁 View
-                        </a>
-                        <br>
                         {% if not e.has_student_account %}
                         {% if is_branch_active_status %}
                         <button class="btn btn-primary btn-sm" onclick="openCreateModal(
@@ -862,7 +891,44 @@
         if (e.target === this) closeCreateModal();
     });
 
+    // ── Filter: New Enrollments ──
+    function filterNew() {
+        var gradeVal = document.getElementById('newGradeFilter').value;
+        var searchVal = document.getElementById('newSearch').value.toLowerCase();
+        var rows = document.querySelectorAll('#newEnrollTable .new-enroll-row');
+        var visible = 0;
+        rows.forEach(function(row) {
+            var gradeMatch = !gradeVal || row.dataset.grade === gradeVal;
+            var nameMatch = !searchVal || row.dataset.name.includes(searchVal);
+            var show = gradeMatch && nameMatch;
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+        var countEl = document.getElementById('newCount');
+        if (countEl) countEl.textContent = visible + ' applications';
+    }
+
+    // ── Filter: Enrolled Students ──
+    function filterEnrolled() {
+        var gradeVal = document.getElementById('gradeFilter').value;
+        var sectionVal = document.getElementById('sectionFilter').value;
+        var searchVal = document.getElementById('enrolledSearch').value.toLowerCase();
+        var rows = document.querySelectorAll('#enrolledTable .enrolled-row');
+        var visible = 0;
+        rows.forEach(function(row) {
+            var gradeMatch = !gradeVal || row.dataset.grade === gradeVal;
+            var sectionMatch = !sectionVal || row.dataset.section === sectionVal;
+            var nameMatch = !searchVal || row.dataset.name.includes(searchVal);
+            var show = gradeMatch && sectionMatch && nameMatch;
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+        var countEl = document.getElementById('enrolledCount');
+        if (countEl) countEl.textContent = visible + ' students';
+    }
+
     const __rawSections = {{ section_options | tojson | safe }};
+
     const ALL_SECTIONS = __rawSections.map(s => ({
         section_id: s.section_id,
         section_name: s.section_name,

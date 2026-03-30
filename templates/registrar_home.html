@@ -162,46 +162,89 @@
         </a>
     </div>
 
-    <!-- ── QUICK LINKS ── -->
-    <div class="section-title">⚡ Quick Actions</div>
-    <div class="quick-links">
-        <a href="/registrar/enrollments" class="ql-btn ql-primary">📋 Manage Enrollments</a>
-        <a href="/registrar/enrollments#enrolled" class="ql-btn ql-success">🎓 Enrolled Students</a>
-    </div>
-
-    <!-- ── RECENT PENDING PREVIEW ── -->
-    <div class="section-title">🕐 Recent Pending Applications</div>
-    <div class="preview-card">
-        <div class="preview-header">
-            <span>Latest Pending Enrollments</span>
-            <a href="/registrar/enrollments" style="font-size:12px; color:#3b82f6; font-weight:700; text-decoration:none;">View All →</a>
+    <!-- ── ENROLLMENT BY GRADE CHART ── -->
+    <div style="background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,.05); margin-bottom: 24px;">
+        <div style="margin-bottom: 16px;">
+            <h3 style="margin: 0; font-size: 1.1rem; font-weight: 800; color: #1e293b;">Enrollment by Grade</h3>
+            <p style="margin: 2px 0 0; font-size: 0.8rem; color: #64748b;">Current number of enrolled students per grade level</p>
         </div>
-        {% if recent_pending %}
-        <table class="preview-table">
-            <tr>
-                <th>No.</th>
-                <th>Student Name</th>
-                <th>Grade Level</th>
-                <th>Applied</th>
-            </tr>
-            {% for e in recent_pending %}
-            <tr>
-                <td><strong>#{{ e.display_no }}</strong></td>
-                <td>{{ e.student_name }}</td>
-                <td>{{ e.grade_level }}</td>
-                <td style="color:#94a3b8; font-size:12px;">
-                    {{ e.created_at.strftime('%b %d, %Y') if e.created_at else '—' }}
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
-        {% else %}
-        <div class="empty-state">
-            <div class="big">📭</div>
-            No pending enrollment applications.
+        <div style="height: 300px; position: relative;">
+            <canvas id="enrollmentChart"></canvas>
         </div>
-        {% endif %}
     </div>
 
 </div>
+
+<!-- Include Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Parse data from Flask
+        const rawData = {{ enrollment_by_grade | tojson | safe }};
+        
+        // Prepare labels and data
+        const labels = rawData.map(item => item.grade_level || 'Unknown');
+        const data = rawData.map(item => item.student_count);
+        
+        // Context
+        const ctx = document.getElementById('enrollmentChart').getContext('2d');
+        
+        // iPhone-style gradient for bars
+        const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+        gradient.addColorStop(0, '#3b82f6'); // Blue top
+        gradient.addColorStop(1, '#8b5cf6'); // Purple bottom
+
+        new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Enrolled Students',
+                    data: data,
+                    backgroundColor: gradient,
+                    borderRadius: 6, // Rounded bars (iPhone style)
+                    borderSkipped: false,
+                    barPercentage: 0.6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                        titleFont: { size: 13, weight: 'bold' },
+                        bodyFont: { size: 13 },
+                        padding: 10,
+                        cornerRadius: 8,
+                        displayColors: false
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: { display: false, drawBorder: false },
+                        ticks: { font: { size: 11, weight: '600' }, color: '#64748b' }
+                    },
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: '#f1f5f9', drawBorder: false, borderDash: [4, 4] },
+                        ticks: {
+                            precision: 0, // No decimals for student count
+                            font: { size: 11, weight: '600' },
+                            color: '#94a3b8',
+                            stepSize: 1
+                        }
+                    }
+                },
+                animation: {
+                    duration: 1000,
+                    easing: 'easeOutQuart'
+                }
+            }
+        });
+    });
+</script>
+
 {% endblock %}
+

@@ -108,18 +108,39 @@ def get_db_connection():
                 logger.warning(f"Could not migrate school_years table: {e}")
                 conn.rollback()
 
-            # Enrollments year_id migration
+            # Enrollments migrations (Missing columns found)
             try:
                 cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'enrollments'")
                 enr_c = [r[0] for r in cur.fetchall()]
+                
+                # Existing migration logic
                 if 'year_id' not in enr_c:
                     if 'school_year_id' in enr_c:
                         cur.execute("ALTER TABLE enrollments RENAME COLUMN school_year_id TO year_id")
                     else:
                         cur.execute("ALTER TABLE enrollments ADD COLUMN year_id INTEGER")
+                
+                # New required columns for inline editing and details
+                optional_cols = [
+                    ("father_name", "VARCHAR(255)"),
+                    ("mother_name", "VARCHAR(255)"),
+                    ("enroll_type", "VARCHAR(255)"),
+                    ("enroll_date", "DATE"),
+                    ("birthplace", "VARCHAR(255)"),
+                    ("remarks", "TEXT"),
+                    ("father_contact", "VARCHAR(255)"),
+                    ("mother_contact", "VARCHAR(255)"),
+                    ("father_occupation", "VARCHAR(255)"),
+                    ("mother_occupation", "VARCHAR(255)"),
+                    ("school_year", "VARCHAR(255)")
+                ]
+                for col_name, col_type in optional_cols:
+                    if col_name not in enr_c:
+                        cur.execute(f"ALTER TABLE enrollments ADD COLUMN {col_name} {col_type}")
+                
                 conn.commit()
             except Exception as e:
-                logger.warning(f"Could not migrate enrollments year_id: {e}")
+                logger.warning(f"Could not migrate enrollments table: {e}")
                 conn.rollback()
 
             # Sections year_id migration
