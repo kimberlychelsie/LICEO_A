@@ -11,21 +11,41 @@
 .ptab { padding: 8px 20px; border-radius: 20px; font-weight: 700; font-size: 0.9rem; border: 2px solid var(--border); background: var(--bg); color: var(--muted); text-decoration: none; transition: all 0.15s; }
 .ptab:hover { border-color: var(--btn); color: var(--btn); }
 .ptab.active { background: var(--btn); color: #fff; border-color: var(--btn); }
-.weights-bar { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px; margin-bottom: 18px; display: flex; gap: 20px; flex-wrap: wrap; align-items: center; font-size: 0.85rem; }
-.w-item { color: var(--muted); }
-.w-item strong { color: var(--btn); }
-.no-weights { color: #f59e0b; font-size: 0.85rem; }
+
+/* DepEd Info Banner */
+.deped-banner { background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%); border: 1.5px solid #bfdbfe; border-radius: 14px; padding: 16px 20px; margin-bottom: 18px; }
+.deped-banner-title { font-size: 0.95rem; font-weight: 800; color: #1e40af; margin-bottom: 10px; display:flex; align-items:center; gap:8px; }
+.deped-components { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.deped-comp-card { background: white; border: 1.5px solid #e2e8f0; border-radius: 10px; padding: 10px 16px; flex: 1; min-width: 160px; text-align: center; }
+.deped-comp-card .comp-label { font-size: 0.72rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+.deped-comp-card .comp-source { font-size: 0.75rem; color: #94a3b8; margin-top: 2px; }
+.deped-comp-card .comp-weight { font-size: 1.4rem; font-weight: 900; margin-top: 4px; }
+.comp-ww { color: #2563eb; }
+.comp-pt { color: #16a34a; }
+.comp-qa { color: #d97706; }
+.deped-note { font-size: 0.8rem; color: #475569; background: #f8fafc; border-radius: 8px; padding: 8px 12px; border-left: 3px solid #3b82f6; }
+.category-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; margin-left: 8px; }
+.cat-language { background: #dbeafe; color: #1d4ed8; }
+.cat-science_math { background: #d1fae5; color: #065f46; }
+.cat-skills { background: #fef3c7; color: #92400e; }
+
 .cr-table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border); }
 table.cr-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-table.cr-table th { background: var(--card); padding: 12px 14px; text-align: center; font-weight: 700; font-size: 0.8rem; color: var(--muted); text-transform: uppercase; border-bottom: 2px solid var(--border); white-space: nowrap; }
+table.cr-table th { background: var(--card); padding: 12px 14px; text-align: center; font-weight: 700; font-size: 0.78rem; color: var(--muted); text-transform: uppercase; border-bottom: 2px solid var(--border); white-space: nowrap; }
+table.cr-table th small { font-weight: 600; font-size: 0.7rem; color: #94a3b8; }
 table.cr-table td { padding: 11px 14px; border-bottom: 1px solid var(--border); text-align: center; }
 table.cr-table td:first-child { text-align: left; font-weight: 600; }
 table.cr-table tr:hover td { background: var(--hover); }
 .grade-pill { display: inline-block; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 0.9rem; }
 .grade-pass { background: #dcfce7; color: #166534; }
 .grade-fail { background: #fee2e2; color: #991b1b; }
-.grade-none { background: var(--bg); color: var(--muted); font-style: italic; font-size: 0.8rem; }
-.action-links { display: flex; gap: 8px; flex-wrap: wrap; }
+.col-ww { background: #eff6ff; color: #1d4ed8; }
+.col-pt { background: #f0fdf4; color: #166534; }
+.col-qa { background: #fffbeb; color: #b45309; }
+.col-att { color: #94a3b8; font-style: italic; font-size: 0.82rem; }
+.th-ww { color: #2563eb !important; border-bottom-color: #93c5fd !important; border-bottom-width: 3px !important; }
+.th-pt { color: #16a34a !important; border-bottom-color: #86efac !important; border-bottom-width: 3px !important; }
+.th-qa { color: #d97706 !important; border-bottom-color: #fcd34d !important; border-bottom-width: 3px !important; }
 </style>
 {% endblock %}
 
@@ -35,18 +55,26 @@ table.cr-table tr:hover td { background: var(--hover); }
         <div>
             <h1 class="cr-title">📊 Class Record</h1>
             <div class="cr-sub">
-                {{ context.subject_name }} &bull; {{ context.grade_level_name }} / {{ context.section_name }}
+                {{ context.subject_name }}
+                {% if weights and weights.deped_category %}
+                    {% if weights.deped_category == 'language' %}
+                        <span class="category-badge cat-language">Language / Values Subject</span>
+                    {% elif weights.deped_category == 'science_math' %}
+                        <span class="category-badge cat-science_math">Science / Math Subject</span>
+                    {% else %}
+                        <span class="category-badge cat-skills">Skills Subject (EPP/TLE/MAPEH)</span>
+                    {% endif %}
+                {% endif %}
+                &bull; {{ context.grade_level_name }} / {{ context.section_name }}
             </div>
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <a href="{{ url_for('teacher.grading_weights') }}" class="btn btn-secondary btn-sm">⚖️ Back to Weights Setup</a>
-            {% if weights %}
-            <a href="{{ url_for('teacher.participation_input', section_id=section_id, subject_id=subject_id, period=period) }}" class="btn btn-secondary btn-sm">🙋 Participation</a>
-            <a href="{{ url_for('teacher.attendance_input', section_id=section_id, subject_id=subject_id, period=period) }}" class="btn btn-secondary btn-sm">🗓 Attendance</a>
-            <form action="{{ url_for('teacher.teacher_post_grades', section_id=section_id, subject_id=subject_id, period=period) }}" method="POST" style="display:inline;" onsubmit="return confirm('Are you sure you want to post these grades to the student portal? This will overwrite any previously posted grades for this period.');">
+            <a href="javascript:history.back()" class="btn btn-outline-secondary btn-sm" style="margin-right:8px;">⬅️ Back</a>
+            <a href="{{ url_for('teacher.participation_input', section_id=section_id, subject_id=subject_id, period=period) }}" class="btn btn-secondary btn-sm">🙋 Recitation / Participation</a>
+            <a href="{{ url_for('teacher.attendance_input', section_id=section_id, subject_id=subject_id, period=period) }}" class="btn btn-secondary btn-sm">🗓 Attendance Record</a>
+            <form action="{{ url_for('teacher.teacher_post_grades', section_id=section_id, subject_id=subject_id, period=period) }}" method="POST" style="display:inline;" onsubmit="return confirm('Post {{ period }} Grading grades to the student portal? This will overwrite any previously posted grades.');">
                 <button type="submit" class="btn btn-primary btn-sm">🚀 Post Grades to Student Portal</button>
             </form>
-            {% endif %}
         </div>
     </div>
 
@@ -58,22 +86,37 @@ table.cr-table tr:hover td { background: var(--hover); }
         {% endfor %}
     </div>
 
-    <!-- Weights banner -->
+    <!-- DepEd Auto-Grading Info Banner -->
     {% if weights %}
-    <div class="weights-bar">
-        <span style="font-weight:700; color:var(--text);">📐 {{ period }} Weights:</span>
-        <span class="w-item">Quiz <strong>{{ "%0.1f" | format(weights.quiz_pct | float) }}%</strong></span>
-        <span class="w-item">Exam <strong>{{ "%0.1f" | format(weights.exam_pct | float) }}%</strong></span>
-        <span class="w-item">SA Activity <strong>{{ "%0.1f" | format(weights.activity_pct | float) }}%</strong></span>
-        <span class="w-item">Participation <strong>{{ "%0.1f" | format(weights.participation_pct | float) }}%</strong></span>
-        <span class="w-item">Attendance <strong>{{ "%0.1f" | format(weights.attendance_pct | float) }}%</strong></span>
-
-
-    </div>
-    {% else %}
-    <div class="weights-bar">
-        <span class="no-weights">⚠️ No weights set for {{ period }} Grading. Period grade cannot be computed.
-        <a href="{{ url_for('teacher.grading_weights') }}" style="color:var(--btn);">Set weights →</a></span>
+    <div class="deped-banner">
+        <div class="deped-banner-title">
+            📋 DepEd K-12 Grading System (Auto-Applied — DepEd Order No. 8, s. 2015)
+        </div>
+        <div class="deped-components">
+            <div class="deped-comp-card">
+                <div class="comp-label">Written Works (WW)</div>
+                <div class="comp-source">← Your Quiz scores</div>
+                <div class="comp-weight comp-ww">{{ weights.quiz_pct | int }}%</div>
+            </div>
+            <div class="deped-comp-card">
+                <div class="comp-label">Performance Tasks (PT)</div>
+                <div class="comp-source">← Activities + Participation</div>
+                <div class="comp-weight comp-pt">{{ weights.activity_pct | int }}%</div>
+            </div>
+            <div class="deped-comp-card">
+                <div class="comp-label">Quarterly Assessment (QA)</div>
+                <div class="comp-source">← Your Exam scores</div>
+                <div class="comp-weight comp-qa">{{ weights.exam_pct | int }}%</div>
+            </div>
+        </div>
+        <div class="deped-note">
+            💡 <strong>How grades are computed:</strong>
+            Your <strong>Quiz</strong> scores count as Written Works,
+            <strong>Activity + Participation/Recitation</strong> count as Performance Tasks,
+            and your <strong>Exam</strong> as the Quarterly Assessment.
+            Percentages are <strong>automatically set</strong> based on your subject type — no manual setup needed.
+            Attendance is recorded separately and does <strong>not</strong> affect the quarterly grade.
+        </div>
     </div>
     {% endif %}
 
@@ -84,32 +127,33 @@ table.cr-table tr:hover td { background: var(--hover); }
             <thead>
                 <tr>
                     <th style="text-align:left;">Student</th>
-                    <th>📝 Quiz<br><small>avg %</small></th>
-                    <th>📄 Exam<br><small>avg %</small></th>
-                    <th>📁 SA Activity<br><small>avg %</small></th>
-                    <th>🙋 Participation<br><small>/100</small></th>
-                    <th>🗓 Attendance<br><small>/100</small></th>
-                    <th>🏆 Period Grade</th>
+                    <th class="th-ww">📝 Written Works<br><small>Quiz avg %  ·  {{ weights.quiz_pct | int }}%</small></th>
+                    <th class="th-pt">🎯 Performance Tasks<br><small>Activity + Participation  ·  {{ weights.activity_pct | int }}%</small></th>
+                    <th class="th-qa">📄 Quarterly Assessment<br><small>Exam avg %  ·  {{ weights.exam_pct | int }}%</small></th>
+                    <th style="color:#94a3b8;">🗓 Attendance<br><small>Record only</small></th>
+                    <th>🏆 Quarterly Grade</th>
                 </tr>
             </thead>
             <tbody>
                 {% for r in records %}
                 <tr>
                     <td>{{ loop.index }}. {{ r.student_name }}</td>
-                    <td>{{ "%0.1f" | format(r.quiz | float) }}</td>
-                    <td>{{ "%0.1f" | format(r.exam | float) }}</td>
-                    <td>{{ "%0.1f" | format(r.activity | float) }}</td>
-                    <td>{{ "%0.1f" | format(r.participation | float) }}</td>
-                    <td>{{ "%0.1f" | format(r.attendance | float) }}</td>
+                    <td class="col-ww">{{ "%0.1f" | format(r.quiz | float) }}</td>
+                    <td class="col-pt">
+                        {{ "%0.1f" | format(r.pt_score | float) }}
+                        {% if r.activity > 0 and r.participation > 0 %}
+                        <br><small style="color:#94a3b8;">Act: {{ "%0.1f" | format(r.activity|float) }} · Par: {{ "%0.1f" | format(r.participation|float) }}</small>
+                        {% endif %}
+                    </td>
+                    <td class="col-qa">{{ "%0.1f" | format(r.exam | float) }}</td>
+                    <td class="col-att">{{ "%0.1f" | format(r.attendance | float) }}</td>
                     <td>
-
-
-                        {% if r.period_grade is not none %}
-                            <span class="grade-pill {% if r.period_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}">
-                                {{ "%0.1f" | format(r.period_grade | float) }}
+                        {% if r.transmuted_grade is not none %}
+                            <span class="grade-pill {% if r.transmuted_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}">
+                                {{ "%0.2f" | format(r.transmuted_grade | float) }}
                             </span>
                         {% else %}
-                            <span class="grade-pill grade-none">—</span>
+                            <span class="grade-pill" style="background:var(--bg);color:var(--muted);font-style:italic;font-size:0.8rem;">—</span>
                         {% endif %}
                     </td>
                 </tr>

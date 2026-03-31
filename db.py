@@ -153,6 +153,88 @@ def get_db_connection():
             except Exception as e:
                 logger.warning(f"Could not migrate sections year_id: {e}")
                 conn.rollback()
+
+            # ── Grading year_id consistency (posted_grades + sections backfill) ──
+            # The teacher grading flow uses:
+            # - sections.year_id when recomputing grades
+            # - posted_grades(year_id) for ON CONFLICT upserts
+            try:
+                # 1) Ensure posted_grades.year_id exists
+                cur.execute("""
+                    SELECT 1
+                    FROM information_schema.columns
+                    WHERE table_name='posted_grades' AND column_name='year_id'
+                """)
+                has_posted_year = cur.fetchone() is not None
+                if not has_posted_year:
+                    cur.execute("ALTER TABLE posted_grades ADD COLUMN year_id INTEGER")
+
+                # 2) Backfill sections.year_id from enrollments.year_id (best-effort)
+                cur.execute("""
+                    UPDATE sections s
+                    SET year_id = sub.year_id
+                    FROM (
+                        SELECT section_id, MAX(year_id) AS year_id
+                        FROM enrollments
+                        WHERE year_id IS NOT NULL AND year_id <> 0
+                        GROUP BY section_id
+                    ) sub
+                    WHERE s.section_id = sub.section_id
+                      AND (s.year_id IS NULL OR s.year_id = 0)
+                """)
+
+                # 3) Backfill posted_grades.year_id from enrollments.year_id, fallback to sections.year_id
+                cur.execute("""
+                    UPDATE posted_grades pg
+                    SET year_id = e.year_id
+                    FROM enrollments e
+                    WHERE pg.enrollment_id = e.enrollment_id
+                      AND (pg.year_id IS NULL OR pg.year_id = 0)
+                      AND e.year_id IS NOT NULL AND e.year_id <> 0
+                """)
+                cur.execute("""
+                    UPDATE posted_grades pg
+                    SET year_id = s.year_id
+                    FROM sections s
+                    WHERE pg.section_id = s.section_id
+                      AND (pg.year_id IS NULL OR pg.year_id = 0)
+                      AND s.year_id IS NOT NULL AND s.year_id <> 0
+                """)
+
+                # 4) Replace old unique constraint so teacher_post_grades ON CONFLICT works
+                #    routes/teacher.py uses:
+                #    ON CONFLICT (enrollment_id, subject_id, grading_period, year_id)
+                cur.execute("""
+                    SELECT 1
+                    FROM information_schema.table_constraints
+                    WHERE table_name='posted_grades'
+                      AND constraint_name='posted_grades_enrollment_id_subject_id_grading_period_key'
+                """)
+                has_old_unique = cur.fetchone() is not None
+                if has_old_unique:
+                    cur.execute("""
+                        ALTER TABLE posted_grades
+                        DROP CONSTRAINT posted_grades_enrollment_id_subject_id_grading_period_key
+                    """)
+
+                cur.execute("""
+                    SELECT 1
+                    FROM information_schema.table_constraints
+                    WHERE table_name='posted_grades'
+                      AND constraint_name='posted_grades_enrollment_id_subject_id_grading_period_year_id_key'
+                """)
+                has_new_unique = cur.fetchone() is not None
+                if not has_new_unique:
+                    cur.execute("""
+                        ALTER TABLE posted_grades
+                        ADD CONSTRAINT posted_grades_enrollment_id_subject_id_grading_period_year_id_key
+                        UNIQUE (enrollment_id, subject_id, grading_period, year_id)
+                    """)
+
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not ensure posted_grades/year_id consistency: {e}")
+                conn.rollback()
                 
             # student_accounts migration
             try:

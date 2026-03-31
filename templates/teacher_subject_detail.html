@@ -146,13 +146,20 @@
     <div class="subj-header">
         <div>
             <h1 class="subj-title">{{ class_info.subject_name }}</h1>
-            <div class="subj-meta">
+            <div class="subj-meta" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:8px;">
                 <select id="section-filter" onchange="changeSection(this.value)" style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem; font-weight: 600; background: #f8fafc; color: #334155; cursor: pointer; outline: none;">
                     {% for sec in sections %}
                     <option value="{{ sec.section_id }}" {% if sec.section_id == active_section_id %}selected{% endif %}>
                         {{ sec.grade_level_name }} — {{ sec.section_name }}
                     </option>
                     {% endfor %}
+                </select>
+
+                <select id="period-filter" onchange="filterAllTabs(this.value)" style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem; font-weight: 600; background: #eff6ff; color: #1e40af; border-color:#bfdbfe; cursor: pointer; outline: none;">
+                    <option value="1st">1st Grading</option>
+                    <option value="2nd">2nd Grading</option>
+                    <option value="3rd">3rd Grading</option>
+                    <option value="4th">4th Grading</option>
                 </select>
             </div>
         </div>
@@ -174,14 +181,7 @@
     <div id="tab-activities" class="view-tab-content active">
         <div class="header-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:15px;">
             <h1 style="margin:0;">📝 My Activities</h1>
-            <a href="{{ url_for('teacher.create_activity', subject_id=subject_id) }}" class="btn-action" style="background:#2563eb; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; text-decoration:none;">➕ Create Activity</a>
-        </div>
-
-        <div class="filter-tabs">
-            <div class="filter-tab filter-tab-act active" onclick="filterItems('act', '1st', this)">1st Grading</div>
-            <div class="filter-tab filter-tab-act" onclick="filterItems('act', '2nd', this)">2nd Grading</div>
-            <div class="filter-tab filter-tab-act" onclick="filterItems('act', '3rd', this)">3rd Grading</div>
-            <div class="filter-tab filter-tab-act" onclick="filterItems('act', '4th', this)">4th Grading</div>
+            <a href="{{ url_for('teacher.create_activity', subject_id=subject_id) }}" id="btn-create-act" data-base-url="{{ url_for('teacher.create_activity', subject_id=subject_id) }}" class="btn-action" style="background:#2563eb; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; text-decoration:none;">➕ Create Activity</a>
         </div>
 
         <div class="stats-card">
@@ -237,14 +237,7 @@
     <div id="tab-quizzes" class="view-tab-content">
         <div class="header-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:15px;">
             <h1 style="margin:0;">✏️ My Quizzes</h1>
-            <a href="{{ url_for('teacher.teacher_quiz_create', subject_id=subject_id) }}" class="btn-action" style="background:#7c3aed; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; text-decoration:none;">➕ Create Quiz</a>
-        </div>
-
-        <div class="filter-tabs">
-            <div class="filter-tab filter-tab-quiz active" onclick="filterItems('quiz', '1st', this)">1st Grading</div>
-            <div class="filter-tab filter-tab-quiz" onclick="filterItems('quiz', '2nd', this)">2nd Grading</div>
-            <div class="filter-tab filter-tab-quiz" onclick="filterItems('quiz', '3rd', this)">3rd Grading</div>
-            <div class="filter-tab filter-tab-quiz" onclick="filterItems('quiz', '4th', this)">4th Grading</div>
+            <a href="{{ url_for('teacher.teacher_quiz_create', subject_id=subject_id) }}" id="btn-create-quiz" data-base-url="{{ url_for('teacher.teacher_quiz_create', subject_id=subject_id) }}" class="btn-action" style="background:#2563eb; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; text-decoration:none;">➕ Create Quiz</a>
         </div>
 
         <div class="table-card">
@@ -300,14 +293,7 @@
     <div id="tab-exams" class="view-tab-content">
         <div class="header-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:15px;">
             <h1 style="margin:0;">📋 My Exams</h1>
-            <a href="{{ url_for('teacher.teacher_exam_create', subject_id=subject_id) }}" class="btn-action" style="background:#059669; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; text-decoration:none;">➕ Create Exam</a>
-        </div>
-
-        <div class="filter-tabs">
-            <div class="filter-tab filter-tab-exam active" style="border-color:#007bff; color:#007bff; background:#007bff; color:#fff;" onclick="filterItems('exam', '1st', this)">1st Grading</div>
-            <div class="filter-tab filter-tab-exam" onclick="filterItems('exam', '2nd', this)">2nd Grading</div>
-            <div class="filter-tab filter-tab-exam" onclick="filterItems('exam', '3rd', this)">3rd Grading</div>
-            <div class="filter-tab filter-tab-exam" onclick="filterItems('exam', '4th', this)">4th Grading</div>
+            <a href="{{ url_for('teacher.teacher_exam_create', subject_id=subject_id) }}" id="btn-create-exam" data-base-url="{{ url_for('teacher.teacher_exam_create', subject_id=subject_id) }}" class="btn-action" style="background:#2563eb; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; text-decoration:none;">➕ Create Exam</a>
         </div>
 
         <div class="table-card">
@@ -373,56 +359,53 @@
         btn.classList.add('active');
     }
 
-    function filterItems(type, period, el) {
-        // Handle active class for pills
-        const allTabs = el.parentElement.querySelectorAll('.filter-tab');
-        allTabs.forEach(t => {
-            t.classList.remove('active');
-            // reset styles
-            t.style.background = ''; t.style.color = ''; t.style.borderColor = '';
-        });
-        el.classList.add('active');
-        
-        if(type === 'exam') {
-            el.style.background = '#007bff'; el.style.color = '#fff'; el.style.borderColor = '#007bff';
-        }
-
-        // Filter the rows
-        const rows = document.querySelectorAll('.js-' + type + '-row');
-        let visibleCount = 0;
-        
-        rows.forEach(row => {
-            if (period === 'all' || row.dataset.period === period) {
-                row.style.display = type === 'act' ? 'flex' : '';
-                visibleCount++;
-            } else {
-                row.style.display = 'none';
-            }
-        });
-
-        // Toggle Empty state dynamically
-        let listContainer = document.getElementById(type + '-list');
-        if (!listContainer) return;
-        
-        let emptyMsg = document.getElementById('empty-' + type);
-        if (visibleCount === 0) {
-            if (!emptyMsg) {
-                emptyMsg = document.createElement('tr');
-                emptyMsg.id = 'empty-' + type;
-                if(type === 'act') {
-                    emptyMsg = document.createElement('div');
-                    emptyMsg.id = 'empty-' + type;
-                    emptyMsg.className = 'empty-state';
-                    emptyMsg.style.padding = '30px';
-                    emptyMsg.innerHTML = '<p>No items found for this period.</p>';
+    function filterAllTabs(period) {
+        ['act', 'quiz', 'exam'].forEach(type => {
+            const rows = document.querySelectorAll('.js-' + type + '-row');
+            let visibleCount = 0;
+            
+            rows.forEach(row => {
+                if (period === 'all' || row.dataset.period === period) {
+                    row.style.display = type === 'act' ? 'flex' : '';
+                    visibleCount++;
                 } else {
-                    emptyMsg.innerHTML = '<td colspan="9" style="text-align:center; padding:30px; color:#aaa;">No items found for this period.</td>';
+                    row.style.display = 'none';
                 }
-                listContainer.appendChild(emptyMsg);
+            });
+
+            // Update Create Button URL to pass the selected period
+            let createBtn = document.getElementById('btn-create-' + type);
+            if (createBtn) {
+                let baseUrl = createBtn.getAttribute('data-base-url');
+                if (period && period !== 'all') {
+                    createBtn.href = baseUrl + "&period=" + encodeURIComponent(period);
+                } else {
+                    createBtn.href = baseUrl;
+                }
             }
-        } else if (emptyMsg) {
-            emptyMsg.remove();
-        }
+
+            // Toggle Empty state dynamically
+            let listContainer = document.getElementById(type + '-list');
+            if (listContainer) {
+                let emptyMsg = document.getElementById('empty-' + type);
+                if (visibleCount === 0) {
+                    if (!emptyMsg) {
+                        emptyMsg = document.createElement(type === 'act' ? 'div' : 'tr');
+                        emptyMsg.id = 'empty-' + type;
+                        if(type === 'act') {
+                            emptyMsg.className = 'empty-state';
+                            emptyMsg.style.padding = '30px';
+                            emptyMsg.innerHTML = '<p>No items found for this period.</p>';
+                        } else {
+                            emptyMsg.innerHTML = '<td colspan="9" style="text-align:center; padding:30px; color:#aaa;">No items found for this period.</td>';
+                        }
+                        listContainer.appendChild(emptyMsg);
+                    }
+                } else if (emptyMsg) {
+                    emptyMsg.remove();
+                }
+            }
+        });
     }
 
     // Initialize exactly one active filter on load per tab
@@ -437,14 +420,9 @@
             }
         }
 
-        const defaultActs = document.querySelector('.filter-tab-act.active');
-        if (defaultActs) filterItems('act', '1st', defaultActs);
-
-        const defaultQuizzes = document.querySelector('.filter-tab-quiz.active');
-        if (defaultQuizzes) filterItems('quiz', '1st', defaultQuizzes);
-
-        const defaultExams = document.querySelector('.filter-tab-exam.active');
-        if (defaultExams) filterItems('exam', '1st', defaultExams);
+        const qPeriod = urlParams.get('period') || '1st';
+        document.getElementById('period-filter').value = qPeriod;
+        filterAllTabs(qPeriod);
     });
 </script>
 {% endblock %}

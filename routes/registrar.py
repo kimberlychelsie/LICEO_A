@@ -200,9 +200,12 @@ def registrar_enrollments():
                    CONCAT(g.name, ' — ', s.section_name) AS section_display
             FROM sections s
             JOIN grade_levels g ON g.id = s.grade_level_id
+            JOIN school_years sy ON sy.year_id = s.year_id
             WHERE s.branch_id = %s
+              AND sy.branch_id = %s
+              AND sy.is_active = TRUE
             ORDER BY g.name, s.section_name
-        """, (branch_id,))
+        """, (branch_id, branch_id))
         section_options = cursor.fetchall()
 
         is_branch_active_status = is_branch_active(branch_id)

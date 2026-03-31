@@ -250,13 +250,11 @@ def teacher_dashboard():
           a.grade_level ILIKE %(grade_full)s
           OR a.grade_level ILIKE %(grade_short)s
       )
-      AND a.year_id = %(year_id)s
     ORDER BY a.created_at DESC
 """, {
     "branch_id":   branch_id,
     "grade_full":  grade_full,
     "grade_short": grade_short,
-    "year_id":     year_id,  
 })
             raw_ann = cur.fetchall() or []
 
@@ -390,10 +388,10 @@ def teacher_announce():
 
         cur.execute("""
             INSERT INTO teacher_announcements
-                (teacher_user_id, branch_id, grade_level, title, body, year_id)
-            VALUES (%s, %s, %s, %s, %s, %s)
+                (teacher_user_id, branch_id, grade_level, title, body)
+            VALUES (%s, %s, %s, %s, %s)
             RETURNING announcement_id
-        """, (user_id, branch_id, grade, title, body or None, year_id))
+        """, (user_id, branch_id, grade, title, body or None))
         ann_id = cur.fetchone()[0]
 
         # Send notifications only to students enrolled in this year
@@ -470,8 +468,8 @@ def teacher_announce_delete(announcement_id):
 
         cur.execute("""
             DELETE FROM teacher_announcements
-            WHERE announcement_id = %s AND teacher_user_id = %s AND year_id = %s
-        """, (announcement_id, user_id, year_id))
+            WHERE announcement_id = %s AND teacher_user_id = %s
+        """, (announcement_id, user_id))
         db.commit()
         if cur.rowcount:
             flash("Announcement deleted.", "success")
@@ -516,8 +514,8 @@ def teacher_announce_edit(announcement_id):
         cur.execute("""
             UPDATE teacher_announcements
                SET title = %s, body = %s
-             WHERE announcement_id = %s AND teacher_user_id = %s AND year_id = %s
-        """, (title, body or None, announcement_id, user_id, year_id))
+             WHERE announcement_id = %s AND teacher_user_id = %s
+        """, (title, body or None, announcement_id, user_id))
         db.commit()
         if cur.rowcount:
             flash("Announcement updated.", "success")
@@ -2173,11 +2171,92 @@ def teacher_exam_reset(exam_id, enrollment_id):
 
 GRADING_PERIODS = ["1st", "2nd", "3rd", "4th"]
 
+# DepEd Order No. 8, s. 2015 — Fixed weights per subject category
+# Quiz -> Written Works (WW)
+# Activity + Participation -> Performance Tasks (PT)
+# Exam -> Quarterly Assessment (QA)
+DEPED_WEIGHTS = {
+    'language':     {'ww': 0.30, 'pt': 0.50, 'qa': 0.20},  # Filipino, English, AP, EsP
+    'science_math': {'ww': 0.40, 'pt': 0.40, 'qa': 0.20},  # Math, Science
+    'skills':       {'ww': 0.20, 'pt': 0.60, 'qa': 0.20},  # EPP, TLE, MAPEH
+}
+
+def _get_deped_transmuted_grade(initial_grade):
+    """
+    DepEd Order No. 8, s. 2015 — Transmutation Table (Initial 0-100 -> Final 60-100).
+    Returns an integer transmuted grade.
+    """
+    try:
+        x = round(float(initial_grade), 2)
+    except (TypeError, ValueError):
+        return None
+
+    # Clamp to expected range.
+    if x < 0:
+        x = 0
+    if x > 100:
+        x = 100
+
+    # Special case: exact 100.
+    if x >= 100:
+        return 100
+
+    # Each tuple: (min_initial_inclusive, max_initial_inclusive, transmuted_grade)
+    ranges = [
+        (98.40, 99.99, 99),
+        (96.80, 98.39, 98),
+        (95.20, 96.79, 97),
+        (93.60, 95.19, 96),
+        (92.00, 93.59, 95),
+        (90.40, 91.99, 94),
+        (88.80, 90.39, 93),
+        (87.20, 88.79, 92),
+        (85.60, 87.19, 91),
+        (84.00, 85.59, 90),
+        (82.40, 83.99, 89),
+        (80.80, 82.39, 88),
+        (79.20, 80.79, 87),
+        (77.60, 79.19, 86),
+        (76.00, 77.59, 85),
+        (74.40, 75.99, 84),
+        (72.80, 74.39, 83),
+        (71.20, 72.79, 82),
+        (69.60, 71.19, 81),
+        (68.00, 69.59, 80),
+        (66.40, 67.99, 79),
+        (64.80, 66.39, 78),
+        (63.20, 64.79, 77),
+        (61.60, 63.19, 76),
+        (60.00, 61.59, 75),
+        (56.00, 59.99, 74),
+        (52.00, 55.99, 73),
+        (48.00, 51.99, 72),
+        (44.00, 47.99, 71),
+        (40.00, 43.99, 70),
+        (36.00, 39.99, 69),
+        (32.00, 35.99, 68),
+        (28.00, 31.99, 67),
+        (24.00, 27.99, 66),
+        (20.00, 23.99, 65),
+        (16.00, 19.99, 64),
+        (12.00, 15.99, 63),
+        (8.00, 11.99, 62),
+        (4.00, 7.99, 61),
+        (0.00, 3.99, 60),
+    ]
+
+    for min_g, max_g, transmuted in ranges:
+        if min_g <= x <= max_g:
+            return transmuted
+
+    # Fallback: should not happen due to 0-3.99 => 60 range.
+    return 60
+
 
 def _get_teacher_assignments(cur, user_id, branch_id, year_id):
     cur.execute("""
         SELECT st.section_id, s.section_name, g.name AS grade_level_name,
-               st.subject_id, sub.name AS subject_name
+               st.subject_id, sub.name AS subject_name, sub.deped_category
         FROM section_teachers st
         JOIN sections s      ON st.section_id = s.section_id
         JOIN grade_levels g  ON s.grade_level_id = g.id
@@ -2211,8 +2290,8 @@ def grading_weights():
             SELECT section_id, subject_id, grading_period,
                    quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct
             FROM grading_weights
-            WHERE teacher_id = %s AND year_id = %s
-        """, (user_id, year_id))
+            WHERE teacher_id = %s
+        """, (user_id,))
         raw_weights = cur.fetchall() or []
 
         weights_map = {}
@@ -2311,9 +2390,14 @@ def grading_weights_set():
 
 
 def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, period, year_id):
-    """Internal helper to compute grades for all students in a section/subject/period."""
+    """Compute grades using DepEd K-12 auto-weighting.
+    Mapping:  Quiz -> Written Works (WW)
+              Activity + Participation -> Performance Tasks (PT)
+              Exam -> Quarterly Assessment (QA)
+              Attendance -> NOT in grade (record only)
+    """
 
-    # All students in the section, year-limited
+    # All students in the section
     cur.execute("""
         SELECT e.enrollment_id, e.student_name
         FROM enrollments e
@@ -2324,25 +2408,34 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
     """, (section_id, branch_id, year_id))
     students = cur.fetchall() or []
 
-    # Grading weights for this period (grading_weights.year_id)
-    cur.execute("""
-        SELECT quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct
-        FROM grading_weights
-        WHERE teacher_id=%s AND section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
-    """, (user_id, section_id, subject_id, period, year_id))
-    weights = cur.fetchone()
+    # Get subject's DepEd category for auto-weights
+    cur.execute("SELECT deped_category FROM subjects WHERE subject_id = %s", (subject_id,))
+    subj_row = cur.fetchone()
+    category = (subj_row['deped_category'] if subj_row and subj_row.get('deped_category') else 'language')
+    w = DEPED_WEIGHTS.get(category, DEPED_WEIGHTS['language'])
 
-    # --- Fetch scores per student for this period ---
+    # Build a synthetic 'weights' dict for the template (read-only info)
+    weights = {
+        'quiz_pct':          round(w['ww'] * 100, 1),
+        'activity_pct':      round(w['pt'] * 100, 1),
+        'exam_pct':          round(w['qa'] * 100, 1),
+        'participation_pct': 0,
+        'attendance_pct':    0,
+        'deped_category':    category,
+    }
+
     enrollment_ids = [s['enrollment_id'] for s in students]
     quiz_scores = {}
     exam_scores = {}
 
     if enrollment_ids:
-        # Quiz scores: JOIN exams -> sections for year filter
+        # Written Works: Quiz scores
         cur.execute("""
             SELECT er.enrollment_id,
-                   AVG(CASE WHEN er.total_points > 0
-                            THEN (er.score / er.total_points * 100) ELSE 0 END) AS avg_pct
+                   COALESCE(
+                       (SUM(COALESCE(er.score, 0)) / NULLIF(SUM(COALESCE(er.total_points, 0)), 0)) * 100,
+                       0
+                   ) AS ps
             FROM exam_results er
             JOIN exams e ON er.exam_id = e.exam_id
             JOIN sections s ON e.section_id = s.section_id
@@ -2354,13 +2447,15 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
             GROUP BY er.enrollment_id
         """, (section_id, subject_id, period, year_id, enrollment_ids))
         for row in cur.fetchall():
-            quiz_scores[row['enrollment_id']] = float(row['avg_pct'] or 0)
+            quiz_scores[row['enrollment_id']] = float(row['ps'] or 0)
 
-        # Exam scores: same pattern as above
+        # Quarterly Assessment: Exam scores
         cur.execute("""
             SELECT er.enrollment_id,
-                   AVG(CASE WHEN er.total_points > 0
-                            THEN (er.score / er.total_points * 100) ELSE 0 END) AS avg_pct
+                   COALESCE(
+                       (SUM(COALESCE(er.score, 0)) / NULLIF(SUM(COALESCE(er.total_points, 0)), 0)) * 100,
+                       0
+                   ) AS ps
             FROM exam_results er
             JOIN exams e ON er.exam_id = e.exam_id
             JOIN sections s ON e.section_id = s.section_id
@@ -2372,27 +2467,28 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
             GROUP BY er.enrollment_id
         """, (section_id, subject_id, period, year_id, enrollment_ids))
         for row in cur.fetchall():
-            exam_scores[row['enrollment_id']] = float(row['avg_pct'] or 0)
+            exam_scores[row['enrollment_id']] = float(row['ps'] or 0)
 
-    # Activities: join to sections for year filter
+    # Performance Tasks: Activity scores
     activity_scores = {}
     cur.execute("""
-        SELECT ag.submission_id, asub.enrollment_id, ag.percentage
+        SELECT asub.enrollment_id,
+               COALESCE(
+                   (SUM(COALESCE(ag.raw_score, 0)) / NULLIF(SUM(COALESCE(ag.max_score, 0)), 0)) * 100,
+                   0
+               ) AS ps
         FROM activity_grades ag
         JOIN activity_submissions asub ON ag.submission_id = asub.submission_id
         JOIN activities a ON ag.activity_id = a.activity_id
         JOIN sections s ON a.section_id = s.section_id
         WHERE a.section_id = %s AND a.subject_id = %s AND a.grading_period = %s AND s.year_id = %s
+        GROUP BY asub.enrollment_id
     """, (section_id, subject_id, period, year_id))
     act_raw = cur.fetchall() or []
-    act_bucket = {}
     for row in act_raw:
-        eid = row['enrollment_id']
-        act_bucket.setdefault(eid, []).append(float(row['percentage'] or 0))
-    for eid, pcts in act_bucket.items():
-        activity_scores[eid] = sum(pcts) / len(pcts)
+        activity_scores[row['enrollment_id']] = float(row['ps'] or 0)
 
-    # Participation scores: join for year
+    # Participation scores (merged into PT along with activities)
     participation_scores = {}
     cur.execute("""
         SELECT ps.enrollment_id, ps.score
@@ -2403,7 +2499,7 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
     for row in cur.fetchall():
         participation_scores[row['enrollment_id']] = float(row['score'] or 0)
 
-    # Attendance scores: join for year
+    # Attendance scores — fetched as record ONLY, excluded from grade formula
     attendance_scores = {}
     cur.execute("""
         SELECT at.enrollment_id, at.score
@@ -2417,31 +2513,44 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
     records = []
     for s in students:
         eid = s['enrollment_id']
-        q = quiz_scores.get(eid, 0)
-        e2 = exam_scores.get(eid, 0)
-        a = activity_scores.get(eid, 0)
-        p = participation_scores.get(eid, 0)
-        att = attendance_scores.get(eid, 0)
-        if weights:
-            period_grade = (
-                q   * (float(weights['quiz_pct']) / 100) +
-                e2  * (float(weights['exam_pct']) / 100) +
-                a   * (float(weights['activity_pct']) / 100) +
-                p   * (float(weights['participation_pct']) / 100) +
-                att * (float(weights['attendance_pct']) / 100)
-            )
-            period_grade = round(period_grade, 2)
+        ww_score  = quiz_scores.get(eid, 0)          # Written Works
+        qa_score  = exam_scores.get(eid, 0)           # Quarterly Assessment
+        act_score = activity_scores.get(eid, 0)
+        par_score = participation_scores.get(eid, 0)
+        att_score = attendance_scores.get(eid, 0)     # record only
+
+        # Performance Tasks = average of activity and participation (when both exist)
+        if act_score > 0 and par_score > 0:
+            pt_score = (act_score + par_score) / 2
+        elif act_score > 0:
+            pt_score = act_score
+        elif par_score > 0:
+            pt_score = par_score
         else:
-            period_grade = None
+            pt_score = 0
+
+        # DepEd auto-computation
+        period_grade = round(
+            ww_score  * w['ww'] +
+            pt_score  * w['pt'] +
+            qa_score  * w['qa'],
+            2
+        )
+
+        transmuted_grade = _get_deped_transmuted_grade(period_grade)
+
         records.append({
             'enrollment_id':   eid,
             'student_name':    s['student_name'],
-            'quiz':            round(q, 2),
-            'exam':            round(e2, 2),
-            'activity':        round(a, 2),
-            'participation':   round(p, 2),
-            'attendance':      round(att, 2),
-            'period_grade':    period_grade
+            'quiz':            round(ww_score, 2),    # WW
+            'activity':        round(act_score, 2),
+            'participation':   round(par_score, 2),
+            'pt_score':        round(pt_score, 2),    # Combined PT
+            'exam':            round(qa_score, 2),    # QA
+            'attendance':      round(att_score, 2),   # record only
+            'period_grade':    period_grade,
+            'transmuted_grade': transmuted_grade,
+            'deped_category':  category,
         })
     return students, weights, records
 
@@ -2531,14 +2640,14 @@ def teacher_post_grades(section_id, subject_id, period):
             return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
 
         for r in records:
-            if r['period_grade'] is not None:
+            if r.get('transmuted_grade') is not None:
                 cur.execute("""
                     INSERT INTO posted_grades
                         (enrollment_id, section_id, subject_id, grading_period, grade, posted_by, posted_at, year_id)
                     VALUES (%s, %s, %s, %s, %s, %s, NOW(), %s)
                     ON CONFLICT (enrollment_id, subject_id, grading_period, year_id)
                     DO UPDATE SET grade = EXCLUDED.grade, posted_at = NOW(), posted_by = EXCLUDED.posted_by
-                """, (r['enrollment_id'], section_id, subject_id, period, r['period_grade'], user_id, year_id))
+                """, (r['enrollment_id'], section_id, subject_id, period, r['transmuted_grade'], user_id, year_id))
         
         db.commit()
         flash(f"Grades for {period} Grading have been posted to the Student Portal!", "success")
@@ -2597,11 +2706,11 @@ def participation_input(section_id, subject_id, period):
                         score = max(0.0, min(100.0, float(val or 0)))
                         cur.execute("""
                             INSERT INTO participation_scores
-                                (teacher_id, enrollment_id, section_id, subject_id, grading_period, year_id, score, updated_at)
-                            VALUES (%s,%s,%s,%s,%s,%s,%s,NOW())
-                            ON CONFLICT (enrollment_id, subject_id, grading_period, year_id)
+                                (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, updated_at)
+                            VALUES (%s,%s,%s,%s,%s,%s,NOW())
+                            ON CONFLICT (enrollment_id, subject_id, grading_period)
                             DO UPDATE SET score=EXCLUDED.score, updated_at=NOW()
-                        """, (user_id, eid, section_id, subject_id, period, year_id, score))
+                        """, (user_id, eid, section_id, subject_id, period, score))
                     except (ValueError, IndexError):
                         continue
             db.commit()
@@ -2619,10 +2728,10 @@ def participation_input(section_id, subject_id, period):
             JOIN sections s ON e.section_id = s.section_id
             LEFT JOIN participation_scores ps
                 ON ps.enrollment_id = e.enrollment_id
-               AND ps.subject_id = %s AND ps.grading_period = %s AND ps.year_id = %s
+               AND ps.subject_id = %s AND ps.grading_period = %s
             WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved','enrolled')
             ORDER BY e.student_name
-        """, (subject_id, period, year_id, section_id, branch_id, year_id))
+        """, (subject_id, period, section_id, branch_id, year_id))
         students = cur.fetchall() or []
 
     finally:
@@ -2684,11 +2793,11 @@ def attendance_input(section_id, subject_id, period):
                         score = max(0.0, min(100.0, float(val or 0)))
                         cur.execute("""
                             INSERT INTO attendance_scores
-                                (teacher_id, enrollment_id, section_id, subject_id, grading_period, year_id, score, updated_at)
-                            VALUES (%s,%s,%s,%s,%s,%s,%s,NOW())
-                            ON CONFLICT (enrollment_id, subject_id, grading_period, year_id)
+                                (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, updated_at)
+                            VALUES (%s,%s,%s,%s,%s,%s,NOW())
+                            ON CONFLICT (enrollment_id, subject_id, grading_period)
                             DO UPDATE SET score=EXCLUDED.score, updated_at=NOW()
-                        """, (user_id, eid, section_id, subject_id, period, year_id, score))
+                        """, (user_id, eid, section_id, subject_id, period, score))
                     except (ValueError, IndexError):
                         continue
             db.commit()
@@ -2705,10 +2814,10 @@ def attendance_input(section_id, subject_id, period):
             JOIN sections s ON e.section_id = s.section_id
             LEFT JOIN attendance_scores att
                 ON att.enrollment_id = e.enrollment_id
-               AND att.subject_id = %s AND att.grading_period = %s AND att.year_id = %s
+               AND att.subject_id = %s AND att.grading_period = %s
             WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved','enrolled')
             ORDER BY e.student_name
-        """, (subject_id, period, year_id, section_id, branch_id, year_id))
+        """, (subject_id, period, section_id, branch_id, year_id))
         students = cur.fetchall() or []
 
     finally:
@@ -2742,11 +2851,10 @@ def api_teacher_sections():
             return jsonify({"sections": [], "error": "No active school year."})
 
         cur.execute("""
-            SELECT s.section_id, s.section_name, g.name AS grade_level_name, sub.name AS subject_name
+            SELECT DISTINCT s.section_id, s.section_name, g.name AS grade_level_name, g.display_order
             FROM section_teachers st
             JOIN sections s ON st.section_id = s.section_id
             JOIN grade_levels g ON s.grade_level_id = g.id
-            JOIN subjects sub ON st.subject_id = sub.subject_id
             WHERE st.teacher_id = %s
               AND s.branch_id = %s
               AND s.year_id = %s
