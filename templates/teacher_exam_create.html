@@ -56,6 +56,17 @@
                 </div>
             </div>
 
+            <div class="form-group">
+                <label class="form-label">📋 Exam Type <span style="color:red">*</span></label>
+                <select name="exam_type" class="form-select" required id="examTypeSelect" onchange="updateExamTypeHint()">
+                    <option value="exam" selected>📄 Periodical Exam — counts as Quarterly Assessment (QA)</option>
+                    <option value="monthly_exam">📝 Monthly Exam — counts as Written Works (WW)</option>
+                </select>
+                <small id="examTypeHint" style="color:#64748b; margin-top:4px; display:block;">
+                    💡 <strong>Periodical Exam</strong> scores go into <strong>Quarterly Assessment (20%)</strong>.
+                </small>
+            </div>
+
             <div class="grid grid-2">
                 <div class="form-group">
                     <label class="form-label">Scheduled Start <span style="font-weight:400; color:#888;">(optional)</span></label>
@@ -142,5 +153,15 @@
             e.preventDefault(); return false;
         }
     };
+
+    function updateExamTypeHint() {
+        const val = document.getElementById('examTypeSelect').value;
+        const hint = document.getElementById('examTypeHint');
+        if (val === 'monthly_exam') {
+            hint.innerHTML = '💡 <strong>Monthly Exam</strong> scores go into <strong>Written Works (WW)</strong> — same bucket as Quizzes.';
+        } else {
+            hint.innerHTML = '💡 <strong>Periodical Exam</strong> scores go into <strong>Quarterly Assessment (20%)</strong>.';
+        }
+    }
 </script>
 {% endblock %}

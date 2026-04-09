@@ -46,6 +46,12 @@ table.cr-table tr:hover td { background: var(--hover); }
 .th-ww { color: #2563eb !important; border-bottom-color: #93c5fd !important; border-bottom-width: 3px !important; }
 .th-pt { color: #16a34a !important; border-bottom-color: #86efac !important; border-bottom-width: 3px !important; }
 .th-qa { color: #d97706 !important; border-bottom-color: #fcd34d !important; border-bottom-width: 3px !important; }
+
+/* Student name cell */
+.student-cell { display: flex; align-items: center; gap: 10px; min-width: 190px; }
+.student-num { background: #e0e7ff; color: #3730a3; font-size: 0.72rem; font-weight: 800; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.student-name-text { font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+table.cr-table td:first-child { min-width: 230px; }
 </style>
 {% endblock %}
 
@@ -90,32 +96,31 @@ table.cr-table tr:hover td { background: var(--hover); }
     {% if weights %}
     <div class="deped-banner">
         <div class="deped-banner-title">
-            📋 DepEd K-12 Grading System (Auto-Applied — DepEd Order No. 8, s. 2015)
+            📋 DepEd K-12 Grading System — School Policy Applied (DepEd Order No. 8, s. 2015)
         </div>
         <div class="deped-components">
             <div class="deped-comp-card">
                 <div class="comp-label">Written Works (WW)</div>
-                <div class="comp-source">← Your Quiz scores</div>
+                <div class="comp-source">← Quiz + Monthly Exam scores</div>
                 <div class="comp-weight comp-ww">{{ weights.quiz_pct | int }}%</div>
             </div>
             <div class="deped-comp-card">
                 <div class="comp-label">Performance Tasks (PT)</div>
-                <div class="comp-source">← Activities + Participation</div>
+                <div class="comp-source">← Activities + Participation + Attendance</div>
                 <div class="comp-weight comp-pt">{{ weights.activity_pct | int }}%</div>
             </div>
             <div class="deped-comp-card">
                 <div class="comp-label">Quarterly Assessment (QA)</div>
-                <div class="comp-source">← Your Exam scores</div>
+                <div class="comp-source">← Periodical Exam scores</div>
                 <div class="comp-weight comp-qa">{{ weights.exam_pct | int }}%</div>
             </div>
         </div>
         <div class="deped-note">
             💡 <strong>How grades are computed:</strong>
-            Your <strong>Quiz</strong> scores count as Written Works,
-            <strong>Activity + Participation/Recitation</strong> count as Performance Tasks,
-            and your <strong>Exam</strong> as the Quarterly Assessment.
+            <strong>Quiz + Monthly Exam</strong> scores count as Written Works,
+            <strong>Activity + Participation + Attendance</strong> count as Performance Tasks,
+            and your <strong>Periodical Exam</strong> as the Quarterly Assessment.
             Percentages are <strong>automatically set</strong> based on your subject type — no manual setup needed.
-            Attendance is recorded separately and does <strong>not</strong> affect the quarterly grade.
         </div>
     </div>
     {% endif %}
@@ -127,26 +132,31 @@ table.cr-table tr:hover td { background: var(--hover); }
             <thead>
                 <tr>
                     <th style="text-align:left;">Student</th>
-                    <th class="th-ww">📝 Written Works<br><small>Quiz avg %  ·  {{ weights.quiz_pct | int }}%</small></th>
-                    <th class="th-pt">🎯 Performance Tasks<br><small>Activity + Participation  ·  {{ weights.activity_pct | int }}%</small></th>
-                    <th class="th-qa">📄 Quarterly Assessment<br><small>Exam avg %  ·  {{ weights.exam_pct | int }}%</small></th>
-                    <th style="color:#94a3b8;">🗓 Attendance<br><small>Record only</small></th>
+                    <th class="th-ww">📝 Written Works<br><small>Quiz + Monthly Exam  ·  {{ weights.quiz_pct | int }}%</small></th>
+                    <th class="th-pt">🎯 Performance Tasks<br><small>Activity + Participation + Attendance  ·  {{ weights.activity_pct | int }}%</small></th>
+                    <th class="th-qa">📄 Quarterly Assessment<br><small>Periodical Exam  ·  {{ weights.exam_pct | int }}%</small></th>
                     <th>🏆 Quarterly Grade</th>
                 </tr>
             </thead>
             <tbody>
                 {% for r in records %}
                 <tr>
-                    <td>{{ loop.index }}. {{ r.student_name }}</td>
+                    <td>
+                        <div class="student-cell">
+                            <span class="student-num">{{ loop.index }}</span>
+                            <span class="student-name-text" title="{{ r.student_name }}">{{ r.student_name }}</span>
+                        </div>
+                    </td>
                     <td class="col-ww">{{ "%0.1f" | format(r.quiz | float) }}</td>
                     <td class="col-pt">
                         {{ "%0.1f" | format(r.pt_score | float) }}
-                        {% if r.activity > 0 and r.participation > 0 %}
-                        <br><small style="color:#94a3b8;">Act: {{ "%0.1f" | format(r.activity|float) }} · Par: {{ "%0.1f" | format(r.participation|float) }}</small>
-                        {% endif %}
+                        <br><small style="color:#94a3b8;">
+                            {% if r.activity > 0 %}Act: {{ "%0.1f" | format(r.activity|float) }}{% endif %}
+                            {% if r.participation > 0 %} · Par: {{ "%0.1f" | format(r.participation|float) }}{% endif %}
+                            {% if r.attendance > 0 %} · Att: {{ "%0.1f" | format(r.attendance|float) }}{% endif %}
+                        </small>
                     </td>
                     <td class="col-qa">{{ "%0.1f" | format(r.exam | float) }}</td>
-                    <td class="col-att">{{ "%0.1f" | format(r.attendance | float) }}</td>
                     <td>
                         {% if r.transmuted_grade is not none %}
                             <span class="grade-pill {% if r.transmuted_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}">

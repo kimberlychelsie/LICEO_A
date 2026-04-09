@@ -1113,7 +1113,8 @@ def teacher_exam_create():
         title           = (request.form.get("title") or "").strip()
         subject_id      = request.form.get("subject_id")
         section_ids     = request.form.getlist("section_ids")
-        exam_type       = "exam"  # always 'exam' for this route
+        exam_type_raw   = (request.form.get("exam_type") or "exam").strip()
+        exam_type       = exam_type_raw if exam_type_raw in ('exam', 'monthly_exam') else 'exam'
         duration_mins   = int(request.form.get("duration_mins", 60))
         scheduled_start = request.form.get("scheduled_start") or None
         max_attempts    = int(request.form.get("max_attempts", 1))
@@ -2391,10 +2392,10 @@ def grading_weights_set():
 
 def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, period, year_id):
     """Compute grades using DepEd K-12 auto-weighting.
-    Mapping:  Quiz -> Written Works (WW)
-              Activity + Participation -> Performance Tasks (PT)
-              Exam -> Quarterly Assessment (QA)
-              Attendance -> NOT in grade (record only)
+    School policy (client customization):
+      Written Works (WW)      = Quiz scores + Monthly Exam scores
+      Performance Tasks (PT)  = Activities + Participation + Attendance (averaged)
+      Quarterly Assessment (QA) = Periodical Exam scores only
     """
 
     # All students in the section
@@ -2429,7 +2430,7 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
     exam_scores = {}
 
     if enrollment_ids:
-        # Written Works: Quiz scores
+        # Written Works: Quiz + Monthly Exam scores combined
         cur.execute("""
             SELECT er.enrollment_id,
                    COALESCE(
@@ -2440,7 +2441,7 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
             JOIN exams e ON er.exam_id = e.exam_id
             JOIN sections s ON e.section_id = s.section_id
             WHERE e.section_id = %s AND e.subject_id = %s
-              AND e.exam_type = 'quiz' AND e.grading_period = %s
+              AND e.exam_type IN ('quiz', 'monthly_exam') AND e.grading_period = %s
               AND s.year_id = %s
               AND er.enrollment_id = ANY(%s)
               AND er.status IN ('submitted', 'auto_submitted')
@@ -2449,7 +2450,7 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
         for row in cur.fetchall():
             quiz_scores[row['enrollment_id']] = float(row['ps'] or 0)
 
-        # Quarterly Assessment: Exam scores
+        # Quarterly Assessment: Periodical Exam scores ONLY
         cur.execute("""
             SELECT er.enrollment_id,
                    COALESCE(
@@ -2488,7 +2489,7 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
     for row in act_raw:
         activity_scores[row['enrollment_id']] = float(row['ps'] or 0)
 
-    # Participation scores (merged into PT along with activities)
+    # Participation scores (part of PT)
     participation_scores = {}
     cur.execute("""
         SELECT ps.enrollment_id, ps.score
@@ -2499,7 +2500,7 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
     for row in cur.fetchall():
         participation_scores[row['enrollment_id']] = float(row['score'] or 0)
 
-    # Attendance scores — fetched as record ONLY, excluded from grade formula
+    # Attendance scores — now included in PT (school policy)
     attendance_scores = {}
     cur.execute("""
         SELECT at.enrollment_id, at.score
@@ -2513,23 +2514,20 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
     records = []
     for s in students:
         eid = s['enrollment_id']
-        ww_score  = quiz_scores.get(eid, 0)          # Written Works
-        qa_score  = exam_scores.get(eid, 0)           # Quarterly Assessment
+        ww_score  = quiz_scores.get(eid, 0)          # Written Works (Quiz + Monthly Exam)
+        qa_score  = exam_scores.get(eid, 0)           # Quarterly Assessment (Periodical Exam)
         act_score = activity_scores.get(eid, 0)
         par_score = participation_scores.get(eid, 0)
-        att_score = attendance_scores.get(eid, 0)     # record only
+        att_score = attendance_scores.get(eid, 0)     # now part of PT
 
-        # Performance Tasks = average of activity and participation (when both exist)
-        if act_score > 0 and par_score > 0:
-            pt_score = (act_score + par_score) / 2
-        elif act_score > 0:
-            pt_score = act_score
-        elif par_score > 0:
-            pt_score = par_score
-        else:
-            pt_score = 0
+        # Performance Tasks = average of all available: Activity, Participation, Attendance
+        pt_components = []
+        if act_score > 0: pt_components.append(act_score)
+        if par_score > 0: pt_components.append(par_score)
+        if att_score > 0: pt_components.append(att_score)
+        pt_score = sum(pt_components) / len(pt_components) if pt_components else 0
 
-        # DepEd auto-computation
+        # DepEd auto-computation (weights unchanged)
         period_grade = round(
             ww_score  * w['ww'] +
             pt_score  * w['pt'] +
@@ -2542,12 +2540,12 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
         records.append({
             'enrollment_id':   eid,
             'student_name':    s['student_name'],
-            'quiz':            round(ww_score, 2),    # WW
+            'quiz':            round(ww_score, 2),    # WW (Quiz + Monthly Exam)
             'activity':        round(act_score, 2),
             'participation':   round(par_score, 2),
+            'attendance':      round(att_score, 2),   # now part of PT
             'pt_score':        round(pt_score, 2),    # Combined PT
-            'exam':            round(qa_score, 2),    # QA
-            'attendance':      round(att_score, 2),   # record only
+            'exam':            round(qa_score, 2),    # QA (Periodical Exam)
             'period_grade':    period_grade,
             'transmuted_grade': transmuted_grade,
             'deped_category':  category,
@@ -3222,22 +3220,38 @@ def teacher_class_view(subject_id):
 
         quizzes = cur.fetchall() or []
 
-        # ✅ EXAMS (FILTER BY YEAR)
+        # ✅ MONTHLY EXAMS — goes into Written Works (WW)
         cur.execute("""
-            SELECT e.exam_id, e.title, e.scheduled_start, e.status, e.created_at, e.is_visible,
+            SELECT e.exam_id, e.title, e.exam_type, e.scheduled_start, e.status, e.created_at, e.is_visible,
                    e.grading_period, e.duration_mins,
                    (SELECT COUNT(*) FROM exam_questions q WHERE q.exam_id = e.exam_id) AS question_count,
                    (SELECT COUNT(*) FROM exam_results r WHERE r.exam_id = e.exam_id) AS attempt_count
             FROM exams e
             JOIN sections s ON e.section_id = s.section_id
-            WHERE e.teacher_id = %s 
-              AND e.section_id = %s 
-              AND e.subject_id = %s 
-              AND e.exam_type != 'quiz'
+            WHERE e.teacher_id = %s
+              AND e.section_id = %s
+              AND e.subject_id = %s
+              AND e.exam_type = 'monthly_exam'
               AND s.year_id = %s
             ORDER BY e.created_at DESC
         """, (user_id, active_section_id, subject_id, year_id))
+        monthly_exams = cur.fetchall() or []
 
+        # ✅ PERIODICAL EXAMS — goes into Quarterly Assessment (QA)
+        cur.execute("""
+            SELECT e.exam_id, e.title, e.exam_type, e.scheduled_start, e.status, e.created_at, e.is_visible,
+                   e.grading_period, e.duration_mins,
+                   (SELECT COUNT(*) FROM exam_questions q WHERE q.exam_id = e.exam_id) AS question_count,
+                   (SELECT COUNT(*) FROM exam_results r WHERE r.exam_id = e.exam_id) AS attempt_count
+            FROM exams e
+            JOIN sections s ON e.section_id = s.section_id
+            WHERE e.teacher_id = %s
+              AND e.section_id = %s
+              AND e.subject_id = %s
+              AND e.exam_type = 'exam'
+              AND s.year_id = %s
+            ORDER BY e.created_at DESC
+        """, (user_id, active_section_id, subject_id, year_id))
         exams = cur.fetchall() or []
 
         # ✅ STATS (no change)
@@ -3262,6 +3276,13 @@ def teacher_class_view(subject_id):
             'closed': sum(1 for e in exams if e['status'].lower() == 'closed')
         }
 
+        monthly_exam_stats = {
+            'total': len(monthly_exams),
+            'published': sum(1 for e in monthly_exams if e['status'].lower() == 'published'),
+            'drafts': sum(1 for e in monthly_exams if e['status'].lower() == 'draft'),
+            'closed': sum(1 for e in monthly_exams if e['status'].lower() == 'closed')
+        }
+
     finally:
         cur.close()
         db.close()
@@ -3277,9 +3298,11 @@ def teacher_class_view(subject_id):
         activities=activities,
         quizzes=quizzes,
         exams=exams,
+        monthly_exams=monthly_exams,
         act_stats=act_stats,
         quiz_stats=quiz_stats,
         exam_stats=exam_stats,
+        monthly_exam_stats=monthly_exam_stats,
         section_id=active_section_id,
         subject_id=subject_id,
         now=now_naive

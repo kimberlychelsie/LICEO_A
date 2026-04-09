@@ -297,6 +297,54 @@
         </div>
 
         <div class="table-card">
+            <h3 style="margin-top:0; margin-bottom:15px; color:#1d4ed8;">📋 Monthly Exams <span style="font-size:0.85rem; font-weight:normal; color:#64748b;">(Written Works)</span></h3>
+            {% if monthly_exams %}
+            <table class="exam-table table-exam">
+                <thead>
+                    <tr>
+                        <th>Title</th><th>Subject</th><th>Section</th>
+                        <th>Period</th><th>Duration</th><th>Questions</th>
+                        <th>Attempts</th><th>Status</th><th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="monthly-exam-list">
+                {% for e in monthly_exams %}
+                <tr class="js-exam-row" data-period="{{ e.grading_period or 'none' }}">
+                    <td><strong>{{ e.title }}</strong></td>
+                    <td>{{ class_info.subject_name }}</td>
+                    <td>{{ class_info.grade_level_name }} - {{ class_info.section_name }}</td>
+                    <td><span class="badge" style="background:#eef2f7; color:#313b3e;">{{ e.grading_period or 'None' }}</span></td>
+                    <td>{{ e.duration_mins }} min</td>
+                    <td>{{ e.question_count }}</td>
+                    <td>{{ e.attempt_count }}</td>
+                    <td><span class="badge badge-{{ e.status|lower }}">{{ e.status|capitalize }}</span></td>
+                    <td style="white-space:nowrap;">
+                        <form method="POST" action="{{ url_for('teacher.toggle_exam_visibility', exam_id=e.exam_id) }}" style="display:inline;">
+                            <input type="hidden" name="active_tab" value="exams">
+                            <button type="submit" class="btn btn-secondary" style="padding:5px 10px; font-size:12px; background: {{ '#f8f9fa' if e.is_visible else '#fff' }}; border: 1px solid #dee2e6; color: #333;" title="{{ 'Hide' if e.is_visible else 'Show' }}">
+                                {{ '👁️' if e.is_visible else '🙈' }}
+                            </button>
+                        </form>
+                        <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=e.exam_id) }}" class="btn btn-secondary" style="padding:5px 10px; font-size:12px; background:#e2e8f0; color:#475569;">✏️ Edit</a>
+                        <a href="{{ url_for('teacher.teacher_exam_results', exam_id=e.exam_id) }}" class="btn btn-success" style="padding:5px 10px; font-size:12px; background:#22c55e;">📊 Results</a>
+                        <form method="POST" action="{{ url_for('teacher.delete_exam', exam_id=e.exam_id) }}" onsubmit="return confirm('Delete this exam?');" style="display:inline;">
+                            <input type="hidden" name="active_tab" value="exams">
+                            <button type="submit" class="btn" style="padding:5px 10px; font-size:12px; background:#dc3545; color:#fff;">🗑 Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state" style="padding: 30px 20px;">
+                <p>No monthly exams found.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="table-card">
+            <h3 style="margin-top:0; margin-bottom:15px; color:#b45309;">📄 Periodical Exams <span style="font-size:0.85rem; font-weight:normal; color:#64748b;">(Quarterly Assessment)</span></h3>
             {% if exams %}
             <table class="exam-table table-exam">
                 <thead>
@@ -336,9 +384,8 @@
                 </tbody>
             </table>
             {% else %}
-            <div class="empty-state">
-                <div class="big-icon">📭</div>
-                <h3>No exams found</h3>
+            <div class="empty-state" style="padding: 30px 20px;">
+                <p>No periodical exams found.</p>
             </div>
             {% endif %}
         </div>
@@ -403,6 +450,33 @@
                     }
                 } else if (emptyMsg) {
                     emptyMsg.remove();
+                }
+            }
+            
+            // Also handle monthly-exam-list if it's the exam type
+            if (type === 'exam') {
+                let monthlyListContainer = document.getElementById('monthly-exam-list');
+                if (monthlyListContainer) {
+                    let visibleMonthlyCount = 0;
+                    // Note: monthly exams also use js-exam-row class for filtering
+                    // We need to count visible rows inside the monthly list specifically
+                    Array.from(monthlyListContainer.children).forEach(child => {
+                        if (child.style.display !== 'none' && !child.id.startsWith('empty-')) {
+                            visibleMonthlyCount++;
+                        }
+                    });
+                    
+                    let emptyMonthlyMsg = document.getElementById('empty-monthly-exam');
+                    if (visibleMonthlyCount === 0) {
+                        if (!emptyMonthlyMsg) {
+                            emptyMonthlyMsg = document.createElement('tr');
+                            emptyMonthlyMsg.id = 'empty-monthly-exam';
+                            emptyMonthlyMsg.innerHTML = '<td colspan="9" style="text-align:center; padding:30px; color:#aaa;">No items found for this period.</td>';
+                            monthlyListContainer.appendChild(emptyMonthlyMsg);
+                        }
+                    } else if (emptyMonthlyMsg) {
+                        emptyMonthlyMsg.remove();
+                    }
                 }
             }
         });
