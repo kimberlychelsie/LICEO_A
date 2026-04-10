@@ -1,17 +1,20 @@
 import smtplib
 from email.message import EmailMessage
 import os
-import threading
 import ssl
+import traceback
 
-def _send_email_async(to_email, subject, body):
-    # Retrieve from env vars or use the explicitly provided credentials
-    smtp_user = os.environ.get("SMTP_USER", "biticonmr@gmail.com")
-    smtp_pass = os.environ.get("SMTP_PASS", "bjhfwlshpxkcveln")
+def send_email(to_email, subject, body):
+    """
+    Sends email (synchronously for reliability in Railway).
+    """
+
+    smtp_user = os.environ.get("SMTP_USER")
+    smtp_pass = os.environ.get("SMTP_PASS")
 
     if not smtp_user or not smtp_pass:
-        print("[EMAIL] Error: SMTP credentials are not configured!")
-        return
+        print("[EMAIL] ERROR: Missing SMTP_USER or SMTP_PASS environment variables")
+        return False
 
     msg = EmailMessage()
     msg["From"] = f"Liceo LMS <{smtp_user}>"
@@ -19,48 +22,34 @@ def _send_email_async(to_email, subject, body):
     msg["Subject"] = subject
     msg.set_content(body)
 
-    # Some PaaS like Railway have issues with IPv6 for SMTP. We try SSL on 465 first, then STARTTLS on 587
     configs = [
-        ("smtp.gmail.com", 465, True),   # Implicit SSL
-        ("smtp.gmail.com", 587, False),  # Explicit TLS
+        ("smtp.gmail.com", 465, True),
+        ("smtp.gmail.com", 587, False),
     ]
 
     for host, port, use_ssl in configs:
         try:
-            print(f"[EMAIL] Attempting to send via {host}:{port} (SSL: {use_ssl})...")
-            
+            print(f"[EMAIL] Trying {host}:{port} (SSL={use_ssl})")
+
             if use_ssl:
-                # Use a default context for secure SSL connection
                 context = ssl.create_default_context()
-                with smtplib.SMTP_SSL(host, port, timeout=15, context=context) as server:
+                with smtplib.SMTP_SSL(host, port, timeout=20, context=context) as server:
                     server.login(smtp_user, smtp_pass)
                     server.send_message(msg)
             else:
-                with smtplib.SMTP(host, port, timeout=15) as server:
-                    # Identify ourselves, prompt server for supported features
+                with smtplib.SMTP(host, port, timeout=20) as server:
                     server.ehlo()
-                    # Start TLS for security
                     server.starttls(context=ssl.create_default_context())
-                    # Re-identify ourselves over TLS connection
                     server.ehlo()
                     server.login(smtp_user, smtp_pass)
                     server.send_message(msg)
-            
-            print(f"[EMAIL] Successfully sent to {to_email} via {host}:{port}")
-            return  # Success, exit the loop
-            
+
+            print(f"[EMAIL] SUCCESS → Sent to {to_email}")
+            return True
+
         except Exception as e:
-            print(f"[EMAIL] Failed attempt on {host}:{port}: {str(e)}")
-            continue
+            print(f"[EMAIL] FAILED on {host}:{port}")
+            print(traceback.format_exc())
 
-    print(f"[EMAIL] Critical Error: All SMTP attempts failed for {to_email}!")
-
-def send_email(to_email, subject, body):
-    """
-    Sends an email asynchronously using a background thread to prevent UI blocking or WORKER TIMEOUTs.
-    """
-    print(f"[EMAIL] Queuing email to {to_email}...")
-    thread = threading.Thread(target=_send_email_async, args=(to_email, subject, body))
-    thread.daemon = True
-    thread.start()
-    return True
+    print(f"[EMAIL] CRITICAL: All SMTP attempts failed for {to_email}")
+    return False
