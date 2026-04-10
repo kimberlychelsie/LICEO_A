@@ -844,7 +844,9 @@ def registrar_students_by_grade_update(enrollment_id):
         fields = [
             "gender", "dob", "lrn", "email", "contact_number", "address",
             "guardian_name", "guardian_contact", "guardian_email",
-            "father_name", "mother_name", "previous_school", "enroll_type"
+            "father_name", "father_contact", "father_occupation",
+            "mother_name", "mother_contact", "mother_occupation",
+            "previous_school", "enroll_type"
         ]
         
         sets = []
