@@ -1,4 +1,5 @@
 import re as _re
+import re
 from flask import Blueprint, render_template, request, session, redirect, url_for, flash, jsonify
 from db import get_db_connection
 import psycopg2.extras
@@ -32,77 +33,118 @@ def _normalize_grade(grade_str):
     num = m.group(1) if m else None
     return grade_str, (num or grade_str)
 
+
 def parse_docx(file):
-    """Parse questions from a .docx file."""
+    """Parse questions from a .docx file (robust to multi-field/concatenated lines)."""
     questions = []
     document = Document(file)
     current_question = {}
 
+    # All field prefixes, case-insensitive
+    field_patterns = ['question:', 'type:', 'a:', 'b:', 'c:', 'd:', 'answer:', 'points:']
+    regex = re.compile(r'(' + '|'.join(re.escape(f) for f in field_patterns) + r')', re.IGNORECASE)
+
     for para in document.paragraphs:
-        line = para.text.strip()
-        if not line:
+        text = para.text.strip()
+        if not text:
             continue
 
-        if line.lower().startswith('question:'):
-            if current_question:
-                questions.append(current_question)
-                current_question = {}
-            current_question['question_text'] = line.split(':', 1)[1].strip()
-        elif line.lower().startswith('type:'):
-            current_question['question_type'] = line.split(':', 1)[1].strip()
-        elif line.lower().startswith('a:'):
-            current_question['choice_a'] = line.split(':', 1)[1].strip()
-        elif line.lower().startswith('b:'):
-            current_question['choice_b'] = line.split(':', 1)[1].strip()
-        elif line.lower().startswith('c:'):
-            current_question['choice_c'] = line.split(':', 1)[1].strip()
-        elif line.lower().startswith('d:'):
-            current_question['choice_d'] = line.split(':', 1)[1].strip()
-        elif line.lower().startswith('answer:'):
-            current_question['correct_answer'] = line.split(':', 1)[1].strip()
-        elif line.lower().startswith('points:'):
-            current_question['points'] = line.split(':', 1)[1].strip()
+        # Split multi-field lines:
+        # e.g. "Points: 2  Question: Pogi" → ["Points: 2", "Question: Pogi"]
+        parts = [p.strip() for p in regex.split(text) if p.strip()]
+        # Rebuild fields (pattern, value, pattern, value,...)
+        it = iter(parts)
+        buf = []
+        for part in it:
+            if any(part.lower().startswith(f) for f in field_patterns):
+                buf.append(part + " " + next(it, ""))
+            else:
+                buf[-1] += " " + part  # Append left-over text
+
+        for line in buf:
+            line = line.strip()
+            if not line:
+                continue
+            lower = line.lower()
+            if lower.startswith('question:'):
+                if current_question:
+                    questions.append(current_question)
+                    current_question = {}
+                current_question['question_text'] = line.split(':', 1)[1].strip()
+            elif lower.startswith('type:'):
+                current_question['question_type'] = line.split(':', 1)[1].strip()
+            elif lower.startswith('a:'):
+                current_question['choice_a'] = line.split(':', 1)[1].strip()
+            elif lower.startswith('b:'):
+                current_question['choice_b'] = line.split(':', 1)[1].strip()
+            elif lower.startswith('c:'):
+                current_question['choice_c'] = line.split(':', 1)[1].strip()
+            elif lower.startswith('d:'):
+                current_question['choice_d'] = line.split(':', 1)[1].strip()
+            elif lower.startswith('answer:'):
+                current_question['correct_answer'] = line.split(':', 1)[1].strip()
+            elif lower.startswith('points:'):
+                current_question['points'] = line.split(':', 1)[1].strip()
 
     if current_question:
         questions.append(current_question)
 
     return questions
 
-
 def parse_pdf(file):
-    """Parse questions from a .pdf file."""
+    """Parse questions from a .pdf file (robust, handles multi-tag lines!)"""
     questions = []
     current_question = {}
+
+    field_patterns = ['question:', 'type:', 'a:', 'b:', 'c:', 'd:', 'answer:', 'points:']
+    regex = re.compile(r'(' + '|'.join(re.escape(f) for f in field_patterns) + r')', re.IGNORECASE)
 
     with pdfplumber.open(file) as pdf:
         for page in pdf.pages:
             text = page.extract_text()
             if not text:
                 continue
-            for line in text.split('\n'):
-                line = line.strip()
-                if not line:
+            for orig_line in text.split('\n'):
+                orig_line = orig_line.strip()
+                if not orig_line:
                     continue
-
-                if line.lower().startswith('question:'):
-                    if current_question:
-                        questions.append(current_question)
-                        current_question = {}
-                    current_question['question_text'] = line.split(':', 1)[1].strip()
-                elif line.lower().startswith('type:'):
-                    current_question['question_type'] = line.split(':', 1)[1].strip()
-                elif line.lower().startswith('a:'):
-                    current_question['choice_a'] = line.split(':', 1)[1].strip()
-                elif line.lower().startswith('b:'):
-                    current_question['choice_b'] = line.split(':', 1)[1].strip()
-                elif line.lower().startswith('c:'):
-                    current_question['choice_c'] = line.split(':', 1)[1].strip()
-                elif line.lower().startswith('d:'):
-                    current_question['choice_d'] = line.split(':', 1)[1].strip()
-                elif line.lower().startswith('answer:'):
-                    current_question['correct_answer'] = line.split(':', 1)[1].strip()
-                elif line.lower().startswith('points:'):
-                    current_question['points'] = line.split(':', 1)[1].strip()
+                # Split the line into tag-value pairs
+                parts = [p.strip() for p in regex.split(orig_line) if p.strip()]
+                it = iter(parts)
+                buf = []
+                for part in it:
+                    if any(part.lower().startswith(f) for f in field_patterns):
+                        buf.append(part + " " + next(it, ""))
+                    else:
+                        if buf:
+                            buf[-1] += " " + part  # Append left-over text
+                        else:
+                            buf.append(part)
+                # Now process as if individual lines
+                for line in buf:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    lower = line.lower()
+                    if lower.startswith('question:'):
+                        if current_question:
+                            questions.append(current_question)
+                            current_question = {}
+                        current_question['question_text'] = line.split(':', 1)[1].strip()
+                    elif lower.startswith('type:'):
+                        current_question['question_type'] = line.split(':', 1)[1].strip()
+                    elif lower.startswith('a:'):
+                        current_question['choice_a'] = line.split(':', 1)[1].strip()
+                    elif lower.startswith('b:'):
+                        current_question['choice_b'] = line.split(':', 1)[1].strip()
+                    elif lower.startswith('c:'):
+                        current_question['choice_c'] = line.split(':', 1)[1].strip()
+                    elif lower.startswith('d:'):
+                        current_question['choice_d'] = line.split(':', 1)[1].strip()
+                    elif lower.startswith('answer:'):
+                        current_question['correct_answer'] = line.split(':', 1)[1].strip()
+                    elif lower.startswith('points:'):
+                        current_question['points'] = line.split(':', 1)[1].strip()
 
     if current_question:
         questions.append(current_question)
@@ -1798,6 +1840,10 @@ def teacher_exam_question_delete(exam_id, question_id):
     return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
 
 
+import re
+import json
+import os
+
 @teacher_bp.route("/teacher/exams/<int:exam_id>/import-questions", methods=["POST"])
 def teacher_exam_import_questions(exam_id):
     if not _require_teacher():
@@ -1873,11 +1919,30 @@ def teacher_exam_import_questions(exam_id):
         skipped  = 0
         errors   = []
 
+        # Gather pool of all correct answers for matching in this batch
+        matching_answers_pool = [
+            str(q.get('correct_answer', '') or '').strip()
+            for q in questions
+            if (
+                (str(q.get('question_type', '') or '').strip().lower() in ['matching', ''])
+                and str(q.get('correct_answer', '') or '').strip()
+            )
+        ]
+        # Deduplicate, preserve order
+        unique_matching_options = []
+        seen = set()
+        for ans in matching_answers_pool:
+            if ans and ans not in seen:
+                unique_matching_options.append(ans)
+                seen.add(ans)
+
         for i, q in enumerate(questions, start=1):
             question_text  = str(q.get('question_text', '') or '').strip()
             correct_answer = str(q.get('correct_answer', '') or '').strip()
             question_type  = str(q.get('question_type', '') or '').strip().lower()
-            points         = int(q.get('points', 1) or 1)
+            points_raw = str(q.get('points', '')).strip()
+            points_match = re.search(r'\d+', points_raw)
+            points = int(points_match.group()) if points_match else 1
 
             if not question_text or not correct_answer:
                 errors.append(f"Row {i}: Missing question text or correct answer — skipped.")
@@ -1891,12 +1956,30 @@ def teacher_exam_import_questions(exam_id):
             choice_d = str(q.get('choice_d', '') or q.get('option_d', '') or '').strip()
 
             if not question_type:
-                if choice_a and choice_b:
-                    question_type = 'mcq'
+                if all([choice_a, choice_b, choice_c, choice_d]):
+                    if correct_answer.upper() in ('A', 'B', 'C', 'D'):
+                        question_type = 'mcq'
+                        correct_answer = correct_answer.upper()
+                    elif correct_answer == choice_a:
+                        question_type = 'mcq'
+                        correct_answer = 'A'
+                    elif correct_answer == choice_b:
+                        question_type = 'mcq'
+                        correct_answer = 'B'
+                    elif correct_answer == choice_c:
+                        question_type = 'mcq'
+                        correct_answer = 'C'
+                    elif correct_answer == choice_d:
+                        question_type = 'mcq'
+                        correct_answer = 'D'
+                    else:
+                        question_type = 'matching'
                 elif correct_answer.lower() in ('true', 'false'):
                     question_type = 'truefalse'
+                elif any([choice_a, choice_b, choice_c, choice_d]):
+                    question_type = 'matching'
                 else:
-                    question_type = 'mcq'
+                    question_type = 'matching'
 
             # Normalize type
             if question_type in ('multiple choice', 'multiple_choice', 'mcq'):
@@ -1904,24 +1987,25 @@ def teacher_exam_import_questions(exam_id):
             elif question_type in ('true/false', 'truefalse', 'true_false', 'tf'):
                 question_type = 'truefalse'
 
-            # Build choices JSON for MCQ
+            # Build choices JSON for MCQ, Matching, or True/False
             choices = None
             if question_type == 'mcq':
                 if not all([choice_a, choice_b, choice_c, choice_d]):
                     errors.append(f"Row {i}: MCQ missing some choices — skipped.")
                     skipped += 1
                     continue
-                choices = json.dumps({"A": choice_a, "B": choice_b,
-                                      "C": choice_c, "D": choice_d})
-                # Normalize correct answer to uppercase A/B/C/D
+                choices = json.dumps({"A": choice_a, "B": choice_b, "C": choice_c, "D": choice_d})
                 correct_answer = correct_answer.upper()
                 if correct_answer not in ('A', 'B', 'C', 'D'):
                     errors.append(f"Row {i}: MCQ correct answer must be A/B/C/D — skipped.")
                     skipped += 1
                     continue
 
+            elif question_type == 'matching':
+    # Each matching question’s dropdown is just its own answer!
+                choices = json.dumps({"options": [correct_answer]})
+
             elif question_type == 'truefalse':
-                # Normalize True/False
                 if correct_answer.lower() == 'true':
                     correct_answer = 'True'
                 elif correct_answer.lower() == 'false':
