@@ -2078,6 +2078,7 @@ def branch_admin_manage_accounts():
     created_user = None
     filter_grade = request.args.get("grade", "")
     filter_section = request.args.get("section", "")
+    filter_search = request.args.get("search", "").strip()
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -2231,6 +2232,9 @@ def branch_admin_manage_accounts():
             if filter_section:
                 query += " AND e.section_id = %s"
                 params.append(int(filter_section))
+            if filter_search:
+                query += " AND (sa.username ILIKE %s OR e.student_name ILIKE %s)"
+                params.extend([f"%{filter_search}%", f"%{filter_search}%"])
 
             query += " ORDER BY e.student_name ASC"
             cursor.execute(query, tuple(params))
@@ -2253,6 +2257,9 @@ def branch_admin_manage_accounts():
             if filter_section and role_filter == "teacher":
                 query += " AND EXISTS (SELECT 1 FROM section_teachers st2 WHERE st2.teacher_id = u.user_id AND st2.section_id = %s)"
                 params.append(int(filter_section))
+            if filter_search:
+                query += " AND (u.username ILIKE %s OR u.full_name ILIKE %s)"
+                params.extend([f"%{filter_search}%", f"%{filter_search}%"])
 
             query += " GROUP BY u.user_id, g.name ORDER BY u.user_id DESC"
             cursor.execute(query, tuple(params))
@@ -2274,6 +2281,7 @@ def branch_admin_manage_accounts():
         section_options=section_options,
         filter_grade=filter_grade,
         filter_section=filter_section,
+        filter_search=filter_search,
         created_user=created_user
     )
 

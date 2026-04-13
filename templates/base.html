@@ -30,16 +30,20 @@
       --muted: #64748b;
       --border: #e2e8f0;
 
-      --sidebar-w: 240px;
-      --sidebar-bg: #ffffff;
-      --sidebar-dark: #f1f5f9;
-      --sidebar-text: #1e293b;
-      --sidebar-muted: #94a3b8;
-      --sidebar-hover: #eff6ff;
-      --sidebar-active: #1a3a8f;
+      --sidebar-w: 260px;
+      --sidebar-bg: #1a3a8f;
+      /* Deep Blue Matches Image */
+      --sidebar-dark: #142e75;
+      --sidebar-text: #ffffff;
+      --sidebar-muted: rgba(255, 255, 255, 0.6);
+      --sidebar-hover: rgba(255, 255, 255, 0.1);
+      --sidebar-active: #ffffff;
+      --sidebar-active-text: #1a3a8f;
 
-      --topbar-h: 56px;
+      --topbar-h: 60px;
       --topbar-bg: #1a3a8f;
+      /* Restored Blue Topbar */
+      --topbar-text: #ffffff;
 
       --btn: #1a3a8f;
       --btnHover: #142e75;
@@ -80,77 +84,75 @@
       width: var(--sidebar-w);
       height: 100vh;
       background: var(--sidebar-bg);
-      border-right: 1px solid var(--border);
-      box-shadow: 2px 0 12px rgba(0, 0, 0, .06);
+      border-right: none;
       display: flex;
       flex-direction: column;
       z-index: 1100;
-      transition: transform 0.28s cubic-bezier(.4, 0, .2, 1), box-shadow 0.28s;
+      transition: transform 0.3s cubic-bezier(.4, 0, .2, 1), box-shadow 0.3s;
       overflow: hidden;
+      /* Always hidden by default — opens via .open class */
+      transform: translateX(-100%);
+      box-shadow: none;
     }
 
-    /* Hidden by default on mobile, shown on desktop */
-    @media (max-width: 900px) {
-      .sidebar {
-        transform: translateX(-100%);
-        box-shadow: none;
-      }
-
-      .sidebar.open {
-        transform: translateX(0);
-        box-shadow: 4px 0 32px rgba(0, 0, 0, .35);
-      }
-    }
-
-    @media (min-width: 901px) {
-      .sidebar {
-        transform: translateX(0);
-      }
-
-      .sidebar.collapsed {
-        transform: translateX(-100%);
-      }
+    .sidebar.open {
+      transform: translateX(0);
+      box-shadow: 4px 0 32px rgba(0, 0, 0, .35);
     }
 
     /* Brand */
     .sb-brand {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 10px;
-      padding: 16px 18px;
+      justify-content: center;
+      padding: 30px 20px;
       text-decoration: none;
-      border-bottom: 1px solid var(--border);
+      border-bottom: none;
       flex-shrink: 0;
-      background: #fff;
+      text-align: center;
     }
 
     .sb-brand-icon {
-      width: 36px;
-      height: 36px;
-      background: var(--sidebar-active);
-      border-radius: 10px;
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.1rem;
       flex-shrink: 0;
+      /* removed shadowed box for cleaner look */
+      margin-bottom: 15px;
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .sb-brand:hover .sb-brand-icon {
+      transform: scale(1.08);
+    }
+
+    .sb-brand-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
 
     .sb-brand-text {
-      line-height: 1.15;
+      line-height: 1.2;
     }
 
     .sb-brand-name {
-      font-size: 0.92rem;
+      font-size: 1rem;
       font-weight: 800;
-      color: var(--sidebar-active);
-      letter-spacing: -.02em;
+      color: #ffffff;
+      letter-spacing: 0.02em;
     }
 
     .sb-brand-sub {
-      font-size: 0.68rem;
-      color: var(--sidebar-muted);
+      font-size: 0.7rem;
+      color: rgba(255, 255, 255, 0.7);
       font-weight: 500;
+      margin-top: 2px;
     }
 
     /* User info strip */
@@ -192,12 +194,14 @@
       font-weight: 500;
       text-transform: capitalize;
     }
+
     .school-year-badge {
       font-size: 0.7rem;
       color: var(--muted);
       font-weight: 500;
       text-transform: capitalize;
-}
+      margin-top: 2px;
+    }
 
     /* Nav */
     .sb-nav {
@@ -227,38 +231,47 @@
     .sb-link {
       display: flex;
       align-items: center;
-      gap: 11px;
-      padding: 9px 14px;
-      margin: 2px 10px;
+      gap: 12px;
+      padding: 12px 20px;
+      margin: 4px 15px;
       color: var(--sidebar-text);
       text-decoration: none;
-      font-size: 0.88rem;
+      font-size: 0.9rem;
       font-weight: 500;
-      border-radius: 8px;
-      transition: background 0.15s, color 0.15s;
+      border-radius: 0 25px 25px 0;
+      /* Pill style starting from left */
+      margin-left: 0;
+      padding-left: 25px;
+      transition: all 0.3s ease;
       position: relative;
     }
 
     .sb-link:hover {
       background: var(--sidebar-hover);
-      color: var(--sidebar-active);
+      padding-left: 30px;
     }
 
     .sb-link.active {
       background: var(--sidebar-active);
-      color: #fff;
-      font-weight: 600;
+      color: var(--sidebar-active-text);
+      font-weight: 700;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     }
 
-    .sb-link.active::before {
-      display: none;
+    .sb-link.active .sb-icon {
+      transform: scale(1.1);
     }
 
     .sb-icon {
-      font-size: 1.1rem;
+      font-size: 1.15rem;
       flex-shrink: 0;
-      width: 22px;
+      width: 24px;
       text-align: center;
+      transition: transform 0.3s ease;
+    }
+
+    .sb-link:hover .sb-icon {
+      transform: translateX(3px) scale(1.1);
     }
 
     /* Dropdown */
@@ -304,7 +317,7 @@
 
     .sb-dropdown-content {
       display: none;
-      background: #f8faff;
+      background: var(--sidebar-dark);
       border-radius: 8px;
       margin: 0 10px 4px;
     }
@@ -367,7 +380,7 @@
     .topbar {
       position: fixed;
       top: 0;
-      left: var(--sidebar-w);
+      left: 0;
       right: 0;
       height: var(--topbar-h);
       background: var(--topbar-bg);
@@ -377,18 +390,8 @@
       padding: 0 24px;
       gap: 12px;
       z-index: 1000;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, .18);
-      transition: left 0.28s cubic-bezier(.4, 0, .2, 1);
-    }
-
-    @media (max-width: 900px) {
-      .topbar {
-        left: 0;
-      }
-    }
-
-    .topbar.sb-collapsed {
-      left: 0;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .15);
+      color: var(--topbar-text);
     }
 
     /* Hamburger */
@@ -396,9 +399,9 @@
       background: none;
       border: none;
       cursor: pointer;
-      padding: 6px;
+      padding: 8px;
       border-radius: 8px;
-      color: rgba(255, 255, 255, .8);
+      color: var(--topbar-text);
       display: flex;
       flex-direction: column;
       gap: 4px;
@@ -407,13 +410,13 @@
     }
 
     .hamburger:hover {
-      background: rgba(255, 255, 255, .12);
+      background: rgba(255, 255, 255, 0.1);
       color: #fff;
     }
 
     .hamburger span {
       display: block;
-      width: 20px;
+      width: 24px;
       height: 2px;
       background: currentColor;
       border-radius: 2px;
@@ -422,8 +425,8 @@
 
     .topbar-title {
       font-weight: 700;
-      font-size: 1rem;
-      color: #fff;
+      font-size: 1.1rem;
+      color: var(--topbar-text);
       flex: 1;
       white-space: nowrap;
       overflow: hidden;
@@ -457,26 +460,17 @@
        MAIN CONTENT
     ══════════════════════════════════════════ */
     .main-wrap {
-      margin-left: var(--sidebar-w);
+      margin-left: 0;
       margin-top: var(--topbar-h);
       min-height: calc(100vh - var(--topbar-h));
-      transition: margin-left 0.28s cubic-bezier(.4, 0, .2, 1);
-    }
-
-    @media (max-width: 900px) {
-      .main-wrap {
-        margin-left: 0;
-      }
-    }
-
-    .main-wrap.sb-collapsed {
-      margin-left: 0;
+      /* Sidebar is overlay — content always full width */
     }
 
     .page-content {
       padding: 24px 20px 60px;
       max-width: 1280px;
       width: 100%;
+      margin: 0 auto;
       overflow-x: hidden;
     }
 
@@ -494,64 +488,129 @@
     }
 
     /* ══════════════════════════════════════════
-       FLASH MESSAGES
+       FLASH MESSAGES (Toast style)
     ══════════════════════════════════════════ */
     .flash-wrap {
-      margin-bottom: 16px;
+      position: fixed;
+      bottom: 40px;
+      right: 40px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      pointer-events: none;
     }
 
     .flash {
-      padding: 13px 16px;
-      border-radius: var(--radius);
-      margin: 6px 0;
-      background: var(--card);
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow);
-      font-size: 13.5px;
-      font-weight: 500;
+      pointer-events: auto;
+      min-width: 300px;
+      max-width: 450px;
+      padding: 16px 20px;
+      border-radius: 12px;
+      background: #ffffff;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1), 0 4px 10px rgba(0, 0, 0, 0.05);
+      border: 1px solid #e2e8f0;
+      font-size: 14px;
+      font-weight: 600;
+      color: #334155;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 14px;
+      animation: slideInUpToast 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.25) forwards;
+      opacity: 0;
+      transform: translateY(40px);
+      transition: opacity 0.4s, transform 0.4s;
+      position: relative;
+      overflow: hidden;
     }
 
-    .flash.success {
-      border-left: 4px solid var(--success);
-      background: #f0fdf4;
-      color: #166534;
+    /* Animated progress bar */
+    .flash::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 4px;
+      width: 100%;
+      animation: toastProgress 4s linear forwards;
+    }
+
+    @keyframes slideInUpToast {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes toastProgress {
+      from {
+        width: 100%;
+      }
+
+      to {
+        width: 0%;
+      }
+    }
+
+    /* Icon styling via pseudo-element */
+    .flash::before {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      font-size: 16px;
+      flex-shrink: 0;
     }
 
     .flash.success::before {
-      content: '✅';
+      content: '✓';
+      background: #d1fae5;
+      color: #10b981;
+      font-weight: 900;
+      font-size: 18px;
     }
 
-    .flash.error {
-      border-left: 4px solid var(--error);
-      background: #fef2f2;
-      color: #991b1b;
+    .flash.success::after {
+      background: #10b981;
     }
 
     .flash.error::before {
-      content: '❌';
+      content: '✕';
+      background: #fee2e2;
+      color: #ef4444;
+      font-weight: 900;
+      font-size: 18px;
     }
 
-    .flash.info {
-      border-left: 4px solid var(--info);
-      background: #eff6ff;
-      color: #1e40af;
+    .flash.error::after {
+      background: #ef4444;
     }
 
     .flash.info::before {
-      content: 'ℹ️';
+      content: 'i';
+      background: #dbeafe;
+      color: #3b82f6;
+      font-family: serif;
+      font-weight: 900;
+      font-size: 18px;
     }
 
-    .flash.warning {
-      border-left: 4px solid var(--warning);
-      background: #fffbeb;
-      color: #92400e;
+    .flash.info::after {
+      background: #3b82f6;
     }
 
     .flash.warning::before {
-      content: '⚠️';
+      content: '!';
+      background: #fef3c7;
+      color: #f59e0b;
+      font-weight: 900;
+      font-size: 18px;
+    }
+
+    .flash.warning::after {
+      background: #f59e0b;
     }
 
     /* ══════════════════════════════════════════
@@ -984,18 +1043,25 @@
       display: block;
     }
 
-    .profile-dropdown a {
-      display: block;
-      padding: 10px 16px;
+    .profile-dropdown a,
+    .profile-dropdown-link {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
       text-decoration: none;
       color: var(--text);
-      font-size: 0.85rem;
+      font-size: 0.88rem;
       font-weight: 500;
-      transition: background 0.2s;
+      border-radius: 8px;
+      transition: all 0.2s ease;
     }
 
-    .profile-dropdown a:hover {
-      background: #f8fafc;
+    .profile-dropdown a:hover,
+    .profile-dropdown-link:hover {
+      background: #eef2ff;
+      color: #1a3a8f;
+      padding-left: 18px;
     }
   </style>
 
@@ -1023,7 +1089,9 @@
     {% elif session.get('role') == 'teacher' %}{% set dashboard_url = '/teacher' %}
     {% endif %}
     <a class="sb-brand" href="{{ dashboard_url }}">
-      <span class="sb-brand-icon">🎓</span>
+      <span class="sb-brand-icon">
+        <img src="{{ url_for('static', filename='img/spdcss_logo.jpg') }}" alt="SPDCSS Logo">
+      </span>
       <span class="sb-brand-text">
         <span class="sb-brand-name">Liceo LMS</span>
         {% if session.get('branch_name') %}
@@ -1032,51 +1100,6 @@
       </span>
     </a>
 
-    <!-- User strip -->
-    {% if session.get('role') %}
-    {% set role_labels = {
-    'super_admin': 'Super Admin', 'branch_admin': 'Branch Admin',
-    'registrar': 'Registrar', 'cashier': 'Cashier',
-    'librarian': 'Librarian', 'parent': 'Parent',
-    'student': 'Student', 'teacher': 'Teacher'
-    } %}
-    {% set role_raw = session.get('role') %}
-    {% set role_label = role_labels.get(role_raw, role_raw | title) %}
-    {% if session.get('full_name') %}
-    {% set disp = session.get('full_name') %}
-    {% elif session.get('student_name') %}
-    {% set disp = session.get('student_name') %}
-    {% elif session.get('username') %}
-    {% set disp = session.get('username') %}
-    {% else %}
-    {% set disp = role_label %}
-    {% endif %}
-
-    <div class="sb-user">
-      
-      {% if live_profile_image %}
-      <div class="sb-avatar" style="padding:0; overflow:hidden; background:transparent;">
-        <img src="{% if live_profile_image.startswith('http') %}{{ live_profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ live_profile_image) }}{% endif %}" style="width:100%;height:100%;object-fit:cover;">
-      </div>
-      {% else %}
-      <div class="sb-avatar">{{ disp[0] | upper }}</div>
-      {% endif %}
-      <div>
-        <div class="sb-user-name">{{ disp }}</div>
-        <div class="sb-user-role">{{ role_label }}</div>
-        <div>
-          {% if active_school_year %}
-          <div class="school-yer-badge">
-            S.Y. {{ active_school_year }}
-          </div>
-          {% endif %}
-        </div>
-        {% endif %}
-      </div>
-    </div>
-    
-
-    <!-- Navigation -->
     <nav class="sb-nav">
 
       {% if session.get('role') == 'student' %}
@@ -1222,11 +1245,11 @@
       <a class="sb-link {% if request.path == '/librarian' %}active{% endif %}" href="/librarian">
         <span class="sb-icon">🏠</span> Dashboard
       </a>
-      <a class="sb-link {% if '/librarian/books' in request.path %}active{% endif %}"
+      <a class="sb-link {% if request.path == '/librarian/books' or (request.path.startswith('/librarian/books') and 'add' not in request.path and '/edit' not in request.path and '/restock' not in request.path and '/price' not in request.path) %}active{% endif %}"
         href="{{ url_for('librarian.books_inventory') }}">
         <span class="sb-icon">📚</span> Book Inventory
       </a>
-      <a class="sb-link" href="{{ url_for('librarian.book_add') }}">
+      <a class="sb-link {% if '/librarian/books/add' in request.path %}active{% endif %}" href="{{ url_for('librarian.book_add') }}">
         <span class="sb-icon">➕</span> Add Book
       </a>
 
@@ -1239,9 +1262,7 @@
         href="/branch-admin/manage-accounts">
         <span class="sb-icon">👥</span> Manage Accounts
       </a>
-      <a class="sb-link {% if request.path == '/branch-admin/faqs' %}active{% endif %}" href="/branch-admin/faqs">
-        <span class="sb-icon">🤖</span> Manage FAQs
-      </a>
+
       <a class="sb-link {% if '/branch-admin/inventory' in request.path %}active{% endif %}"
         href="/branch-admin/inventory">
         <span class="sb-icon">📦</span> Inventory
@@ -1249,7 +1270,7 @@
 
       {% set acad_active = request.path == '/branch-admin/grade-levels' or request.path == '/branch-admin/sections' or
       request.path == '/branch-admin/subjects' or request.path == '/branch-admin/assign-teachers' or
-      request.path == '/branch-admin/assign-students' or request.path == '/branch_admin/add_year' %} 
+      request.path == '/branch-admin/assign-students' or request.path == '/branch_admin/add_year' %}
       <button class="sb-dropdown-btn {% if acad_active %}open{% endif %}"
         onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
         <div class="sb-left">
@@ -1328,7 +1349,7 @@
       <span></span>
     </button>
 
-    <span class="topbar-title">{% block page_title %}Liceo LMS{% endblock %}</span>
+    <span class="topbar-title" onclick="toggleSidebar()" style="cursor: pointer;">{% block page_title %}Liceo LMS{% endblock %}</span>
 
     <div class="topbar-right">
       {% if session.get('role') == 'student' %}
@@ -1343,7 +1364,8 @@
           <div class="notif-header">
             <span>Notifications</span>
             {% if student_unread_count and student_unread_count > 0 %}
-            <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ student_unread_count }} New</span>
+            <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ student_unread_count }}
+              New</span>
             {% endif %}
           </div>
           <div class="notif-list">
@@ -1364,31 +1386,55 @@
       </div>
       {% endif %}
 
+
+
       {% if session.get('role') %}
       <div class="profile-dropdown-wrapper">
-        <button class="profile-toggle-btn" id="profileBtn" onclick="toggleProfileMenu()">
+        <button class="profile-toggle-btn" id="profileBtn" onclick="toggleProfileMenu()"
+          style="background:none; border:none; cursor:pointer; padding:2px;">
           {% if live_profile_image %}
-          <img src="{% if live_profile_image.startswith('http') %}{{ live_profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ live_profile_image) }}{% endif %}" class="sb-avatar" style="width: 34px; height: 34px; border: 2px solid rgba(255,255,255,0.3); object-fit: cover;">
+          <img
+            src="{% if live_profile_image.startswith('http') %}{{ live_profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ live_profile_image) }}{% endif %}"
+            class="sb-avatar"
+            style="width: 36px; height: 36px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.4);">
           {% else %}
           <div class="sb-avatar"
-            style="width: 34px; height: 34px; font-size: 0.75rem; border: 2px solid rgba(255,255,255,0.3);">
+            style="width: 36px; height: 36px; border-radius: 50%; background: #ffffff; color: #1a3a8f; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; border: 2px solid rgba(255,255,255,0.4);">
             {{ (session.get('full_name') or session.get('student_name') or session.get('username') or 'U')[0] | upper }}
           </div>
           {% endif %}
         </button>
-        <div class="profile-dropdown" id="profileDropdown">
-          <div style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; background: #f8fafc;">
-            <div style="font-weight: 700; font-size: 0.78rem; color: #1e3a8f;">{{ disp }}</div>
-            <div style="font-size: 0.7rem; color: #64748b;">{{ role_label }}</div>
-          </div>
-          {% if session.get('role') == 'student' %}
-          <a href="/student/profile">👤 My Profile</a>
-          {% elif session.get('role') == 'teacher' %}
-          <a href="/teacher/profile">👤 My Profile</a>
-          {% endif %}
-          <a href="/change-password">🔑 Change Password</a>
-          <a href="/logout" style="color: #ef4444; border-top: 1px solid #f1f5f9;">↩ Logout</a>
 
+        <div class="profile-dropdown" id="profileDropdown"
+          style="width: 240px; padding: 12px; border-radius: 15px; background:#fff; border:1px solid #e2e8f0; box-shadow: 0 10px 30px rgba(0,0,0,0.15); position:absolute; right:0; top:100%; margin-top:12px; z-index:2000;">
+          {% set role_labels = {'super_admin': 'Super Admin', 'branch_admin': 'Branch Admin', 'registrar': 'Registrar',
+          'cashier': 'Cashier', 'librarian': 'Librarian', 'parent': 'Parent', 'student': 'Student', 'teacher':
+          'Teacher'} %}
+          {% set role_raw = session.get('role') %}
+          {% set role_label = role_labels.get(role_raw, role_raw | title) %}
+          {% set disp = session.get('full_name') or session.get('student_name') or session.get('username') or 'System
+          User' %}
+
+          <div
+            style="padding: 12px 10px 18px; text-align: center; border-bottom: 2px solid #f1f5f9; margin-bottom: 12px;">
+            <div style="font-weight: 800; font-size: 1.05rem; color: #1a3a8f; margin-bottom: 5px; line-height: 1.2;">{{
+              disp }}</div>
+            <div
+              style="font-size: 0.82rem; color: #1e40af; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; background: #eff6ff; display: inline-block; padding: 5px 14px; border-radius: 12px; margin-top: 4px; border: 1px solid #dbeafe;">
+              {{ role_label }}</div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            {% if session.get('role') == 'student' %}
+            <a href="/student/profile" class="profile-dropdown-link">👤 My Profile</a>
+            {% elif session.get('role') == 'teacher' %}
+            <a href="/teacher/profile" class="profile-dropdown-link">👤 My Profile</a>
+            {% endif %}
+
+            <a href="/change-password" class="profile-dropdown-link">🔑 Change Password</a>
+            <a href="/logout" class="profile-dropdown-link"
+              style="color: #ef4444; border-top: 1px solid #f8fafc; margin-top: 4px; padding-top: 8px;">↩ Logout</a>
+          </div>
         </div>
       </div>
       {% endif %}
@@ -1442,39 +1488,23 @@
     const sidebar = document.getElementById('sidebar');
     const topbar = document.getElementById('topbar');
     const mainWrap = document.getElementById('mainWrap');
-    const overlay = document.getElementById('sbOverlay');
+    const sbOverlayEl = document.getElementById('sbOverlay');
 
-    // On desktop: start open; on mobile: start closed
-    let isOpen = window.innerWidth > 900;
+    // Always start closed as requested by the user
+    let isOpen = false;
 
     function applyState() {
-      const desktop = window.innerWidth > 900;
-      if (desktop) {
-        // Desktop: collapse/expand shifts content
-        if (isOpen) {
-          sidebar.classList.remove('collapsed');
-          topbar.classList.remove('sb-collapsed');
-          mainWrap.classList.remove('sb-collapsed');
-        } else {
-          sidebar.classList.add('collapsed');
-          topbar.classList.add('sb-collapsed');
-          mainWrap.classList.add('sb-collapsed');
-        }
-        overlay.classList.remove('show');
+      if (isOpen) {
+        sidebar.classList.add('open');
+        sbOverlayEl.classList.add('show');
       } else {
-        // Mobile: overlay mode
-        if (isOpen) {
-          sidebar.classList.add('open');
-          overlay.classList.add('show');
-        } else {
-          sidebar.classList.remove('open');
-          overlay.classList.remove('show');
-        }
+        sidebar.classList.remove('open');
+        sbOverlayEl.classList.remove('show');
       }
     }
 
     function toggleSidebar() { isOpen = !isOpen; applyState(); }
-    function closeSidebar() { isOpen = false; applyState(); }
+    function closeSidebar()   { isOpen = false;  applyState(); }
 
     function toggleNotifs() {
       const dropdown = document.getElementById('notifDropdown');
@@ -1535,13 +1565,13 @@
       }
     }
 
-    // On resize, re-evaluate
-    window.addEventListener('resize', () => {
-      isOpen = window.innerWidth > 900;
-      applyState();
-    });
+    // On resize, re-evaluate layout
+    window.addEventListener('resize', applyState);
 
-    applyState();
+    // Sidebar is hidden by CSS default (no .open class) — no applyState() needed on load
+
+    // Sidebar links navigate normally — new page always starts with sidebar hidden.
+    // To close sidebar without navigating, click the dark overlay.
 
     // Restrict date inputs to not allow future dates
     document.addEventListener("DOMContentLoaded", function () {
@@ -1567,142 +1597,171 @@
       position: fixed; top: 0; right: -400px; width: 350px; height: 100vh;
       background: var(--bg); box-shadow: -4px 0 24px rgba(0,0,0,0.15);
       z-index: 2000; transition: right 0.3s ease; display: flex; flex-direction: column;">
-      <div style="padding: 16px 20px; background: var(--topbar-bg); color: #fff; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 1.1rem;">
-          Classlist
-          <button onclick="closeClasslist()" style="background:none; border:none; color:#fff; font-size:1.5rem; cursor:pointer;">&times;</button>
+    <div
+      style="padding: 16px 20px; background: var(--topbar-bg); color: #fff; display: flex; justify-content: space-between; align-items: center; font-weight: 700; font-size: 1.1rem;">
+      Classlist
+      <button onclick="closeClasslist()"
+        style="background:none; border:none; color:#fff; font-size:1.5rem; cursor:pointer;">&times;</button>
+    </div>
+    <div style="padding: 16px 20px; background: var(--card); border-bottom: 1px solid var(--border);">
+      <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+        <select id="clSectionSelect" onchange="fetchClasslist()"
+          style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem;">
+          <option value="">— Select Section —</option>
+        </select>
       </div>
-      <div style="padding: 16px 20px; background: var(--card); border-bottom: 1px solid var(--border);">
-          <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-              <select id="clSectionSelect" onchange="fetchClasslist()" style="flex: 1; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.9rem;">
-                  <option value="">— Select Section —</option>
-              </select>
-          </div>
-          <div id="addStudentWrap" style="display: none; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
-              <div style="font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 6px;">Add Late Enrollee</div>
-              <input type="text" id="newStudentName" placeholder="Student Full Name" style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; margin-bottom: 8px;">
-              <div style="display: flex; gap: 8px;">
-                  <button onclick="submitNewStudent()" style="background: #10b981; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: pointer; flex: 1;">Save</button>
-                  <button onclick="toggleAddStudent()" style="background: #e2e8f0; color: #475569; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer;">Cancel</button>
-              </div>
-          </div>
-          <button id="btnAddStudentBtn" onclick="toggleAddStudent()" style="display: none; width: 100%; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; padding: 8px; border-radius: 8px; font-size: 0.85rem; font-weight: 700; cursor: pointer;">
-              + Add Student
-          </button>
+      <div id="addStudentWrap"
+        style="display: none; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <div style="font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 6px;">Add Late Enrollee</div>
+        <input type="text" id="newStudentName" placeholder="Student Full Name"
+          style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; margin-bottom: 8px;">
+        <div style="display: flex; gap: 8px;">
+          <button onclick="submitNewStudent()"
+            style="background: #10b981; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: pointer; flex: 1;">Save</button>
+          <button onclick="toggleAddStudent()"
+            style="background: #e2e8f0; color: #475569; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer;">Cancel</button>
+        </div>
       </div>
-      <div style="flex: 1; overflow-y: auto; background: var(--card);">
-          <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
-              <thead style="background: #f8fafc; position: sticky; top: 0;">
-                  <tr>
-                      <th style="padding: 10px 16px; border-bottom: 1px solid var(--border); text-align: left; color: var(--muted); font-size: 0.75rem;">#</th>
-                      <th style="padding: 10px 16px; border-bottom: 1px solid var(--border); text-align: left; color: var(--muted); font-size: 0.75rem;">Student Name</th>
-                  </tr>
-              </thead>
-              <tbody id="clTableBody">
-                  <tr><td colspan="2" style="text-align: center; padding: 20px; color: var(--muted);">Select a section to view students</td></tr>
-              </tbody>
-          </table>
-      </div>
+      <button id="btnAddStudentBtn" onclick="toggleAddStudent()"
+        style="display: none; width: 100%; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; padding: 8px; border-radius: 8px; font-size: 0.85rem; font-weight: 700; cursor: pointer;">
+        + Add Student
+      </button>
+    </div>
+    <div style="flex: 1; overflow-y: auto; background: var(--card);">
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+        <thead style="background: #f8fafc; position: sticky; top: 0;">
+          <tr>
+            <th
+              style="padding: 10px 16px; border-bottom: 1px solid var(--border); text-align: left; color: var(--muted); font-size: 0.75rem;">
+              #</th>
+            <th
+              style="padding: 10px 16px; border-bottom: 1px solid var(--border); text-align: left; color: var(--muted); font-size: 0.75rem;">
+              Student Name</th>
+          </tr>
+        </thead>
+        <tbody id="clTableBody">
+          <tr>
+            <td colspan="2" style="text-align: center; padding: 20px; color: var(--muted);">Select a section to view
+              students</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
   <script>
-      function openClasslist(preselectSectionId = null) {
-          document.getElementById('classlistSidebar').style.right = '0';
-          document.getElementById('clOverlay').classList.add('show');
-          
-          if (document.getElementById('clSectionSelect').options.length <= 1) {
-              fetch('/api/teacher/sections')
-                  .then(r => r.json())
-                  .then(data => {
-                      if (data.sections) {
-                          const sel = document.getElementById('clSectionSelect');
-                          sel.innerHTML = '<option value="">— Select Section —</option>';
-                          data.sections.forEach(s => {
-                              sel.innerHTML += `<option value="${s.section_id}">${s.grade_level_name} - ${s.section_name}</option>`;
-                          });
-                          if (preselectSectionId) {
-                              sel.value = preselectSectionId;
-                              fetchClasslist();
-                          }
-                      }
-                  });
-          } else if (preselectSectionId) {
-              document.getElementById('clSectionSelect').value = preselectSectionId;
-              fetchClasslist();
-          }
-      }
-      function closeClasslist() {
-          document.getElementById('classlistSidebar').style.right = '-400px';
-          document.getElementById('clOverlay').classList.remove('show');
-      }
-      function toggleAddStudent() {
-          const wrap = document.getElementById('addStudentWrap');
-          const btn = document.getElementById('btnAddStudentBtn');
-          if (wrap.style.display === 'none') {
-              wrap.style.display = 'block';
-              btn.style.display = 'none';
-          } else {
-              wrap.style.display = 'none';
-              btn.style.display = 'block';
-              document.getElementById('newStudentName').value = '';
-          }
-      }
-      function submitNewStudent() {
-          const sec = document.getElementById('clSectionSelect').value;
-          const name = document.getElementById('newStudentName').value.trim();
-          if (!sec) return alert("Please select a section first.");
-          if (!name) return alert("Please enter a student name.");
-          
-          fetch('/api/teacher/add-student', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ section_id: sec, student_name: name })
-          })
+    function openClasslist(preselectSectionId = null) {
+      document.getElementById('classlistSidebar').style.right = '0';
+      document.getElementById('clOverlay').classList.add('show');
+
+      if (document.getElementById('clSectionSelect').options.length <= 1) {
+        fetch('/api/teacher/sections')
           .then(r => r.json())
           .then(data => {
-              if (data.ok) {
-                  toggleAddStudent();
-                  fetchClasslist();
-              } else {
-                  alert("Error: " + (data.error || "Failed to add student"));
+            if (data.sections) {
+              const sel = document.getElementById('clSectionSelect');
+              sel.innerHTML = '<option value="">— Select Section —</option>';
+              data.sections.forEach(s => {
+                sel.innerHTML += `<option value="${s.section_id}">${s.grade_level_name} - ${s.section_name}</option>`;
+              });
+              if (preselectSectionId) {
+                sel.value = preselectSectionId;
+                fetchClasslist();
               }
-          })
-          .catch(err => alert("Server error"));
+            }
+          });
+      } else if (preselectSectionId) {
+        document.getElementById('clSectionSelect').value = preselectSectionId;
+        fetchClasslist();
       }
-      function fetchClasslist() {
-          const sec = document.getElementById('clSectionSelect').value;
-          const tb = document.getElementById('clTableBody');
-          const addBtn = document.getElementById('btnAddStudentBtn');
-          
-          if (!sec) {
-              tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: var(--muted);">Select a section to view students</td></tr>';
-              addBtn.style.display = 'none';
-              document.getElementById('addStudentWrap').style.display = 'none';
-              return;
+    }
+    function closeClasslist() {
+      document.getElementById('classlistSidebar').style.right = '-400px';
+      document.getElementById('clOverlay').classList.remove('show');
+    }
+    function toggleAddStudent() {
+      const wrap = document.getElementById('addStudentWrap');
+      const btn = document.getElementById('btnAddStudentBtn');
+      if (wrap.style.display === 'none') {
+        wrap.style.display = 'block';
+        btn.style.display = 'none';
+      } else {
+        wrap.style.display = 'none';
+        btn.style.display = 'block';
+        document.getElementById('newStudentName').value = '';
+      }
+    }
+    function submitNewStudent() {
+      const sec = document.getElementById('clSectionSelect').value;
+      const name = document.getElementById('newStudentName').value.trim();
+      if (!sec) return alert("Please select a section first.");
+      if (!name) return alert("Please enter a student name.");
+
+      fetch('/api/teacher/add-student', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ section_id: sec, student_name: name })
+      })
+        .then(r => r.json())
+        .then(data => {
+          if (data.ok) {
+            toggleAddStudent();
+            fetchClasslist();
+          } else {
+            alert("Error: " + (data.error || "Failed to add student"));
           }
-          
-          addBtn.style.display = 'block';
-          tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: var(--muted);">Loading...</td></tr>';
-          
-          fetch('/api/teacher/classlist/' + sec)
-              .then(r => r.json())
-              .then(data => {
-                  if (data.students && data.students.length > 0) {
-                      tb.innerHTML = '';
-                      data.students.forEach((st, i) => {
-                          tb.innerHTML += `<tr>
-                              <td style="padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--muted); min-width:40px; font-size: 0.85rem;">${i+1}</td>
+        })
+        .catch(err => alert("Server error"));
+    }
+    function fetchClasslist() {
+      const sec = document.getElementById('clSectionSelect').value;
+      const tb = document.getElementById('clTableBody');
+      const addBtn = document.getElementById('btnAddStudentBtn');
+
+      if (!sec) {
+        tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: var(--muted);">Select a section to view students</td></tr>';
+        addBtn.style.display = 'none';
+        document.getElementById('addStudentWrap').style.display = 'none';
+        return;
+      }
+
+      addBtn.style.display = 'block';
+      tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: var(--muted);">Loading...</td></tr>';
+
+      fetch('/api/teacher/classlist/' + sec)
+        .then(r => r.json())
+        .then(data => {
+          if (data.students && data.students.length > 0) {
+            tb.innerHTML = '';
+            data.students.forEach((st, i) => {
+              tb.innerHTML += `<tr>
+                              <td style="padding: 12px 16px; border-bottom: 1px solid var(--border); color: var(--muted); min-width:40px; font-size: 0.85rem;">${i + 1}</td>
                               <td style="padding: 12px 16px; border-bottom: 1px solid var(--border); font-weight: 600; color: var(--text);">${st.student_name}</td>
                           </tr>`;
-                      });
-                  } else {
-                      tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: var(--muted);">No students found</td></tr>';
-                  }
-              })
-              .catch(() => {
-                  tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: red;">Error loading classlist</td></tr>';
-              });
-      }
+            });
+          } else {
+            tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: var(--muted);">No students found</td></tr>';
+          }
+        })
+        .catch(() => {
+          tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: red;">Error loading classlist</td></tr>';
+        });
+    }
   </script>
   {% endif %}
+
+  <script>
+    // Auto-dismiss flash messages after 4 seconds
+    document.addEventListener("DOMContentLoaded", function () {
+      const flashes = document.querySelectorAll('.flash');
+      flashes.forEach(flash => {
+        setTimeout(() => {
+          flash.style.opacity = '0';
+          flash.style.transform = 'translateY(40px)';
+          setTimeout(() => flash.remove(), 400);
+        }, 4000);
+      });
+    });
+  </script>
 </body>
 
 </html>

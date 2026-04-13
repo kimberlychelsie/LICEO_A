@@ -9,6 +9,7 @@
     flex-wrap: wrap;
     margin-bottom: 18px;
   }
+
   .summary-chip {
     padding: 8px 16px;
     border-radius: 10px;
@@ -18,9 +19,24 @@
     align-items: center;
     gap: 6px;
   }
-  .chip-total  { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
-  .chip-done   { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
-  .chip-pending{ background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+  .chip-total {
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+  }
+
+  .chip-done {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
+  }
+
+  .chip-pending {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+  }
 
   .filter-row {
     display: flex;
@@ -30,7 +46,9 @@
     margin-bottom: 16px;
   }
 
-  .student-table tbody tr.hidden-row { display: none; }
+  .student-table tbody tr.hidden-row {
+    display: none;
+  }
 
   .section-select {
     width: 100%;
@@ -44,11 +62,15 @@
     transition: border-color 0.15s;
     cursor: pointer;
   }
+
   .section-select:focus {
     outline: none;
     border-color: var(--btn);
   }
-  .section-select option:disabled { color: #94a3b8; }
+
+  .section-select option:disabled {
+    color: #94a3b8;
+  }
 
   .save-row-btn {
     padding: 6px 14px;
@@ -65,11 +87,27 @@
     align-items: center;
     gap: 5px;
   }
-  .save-row-btn:hover { background: var(--btnHover); }
-  .save-row-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-  .save-row-btn.saving { background: #64748b; }
-  .save-row-btn.saved  { background: #16a34a; }
-  .save-row-btn.error  { background: #dc2626; }
+
+  .save-row-btn:hover {
+    background: var(--btnHover);
+  }
+
+  .save-row-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  .save-row-btn.saving {
+    background: #64748b;
+  }
+
+  .save-row-btn.saved {
+    background: #16a34a;
+  }
+
+  .save-row-btn.error {
+    background: #dc2626;
+  }
 
   .row-status {
     font-size: 0.75rem;
@@ -91,6 +129,7 @@
     transition: border-color 0.15s, background 0.15s;
     white-space: nowrap;
   }
+
   .toggle-unassigned.active {
     border-color: #dc2626;
     background: #fef2f2;
@@ -102,7 +141,11 @@
     color: var(--muted);
     margin-top: 2px;
   }
-  .cap-full { color: #dc2626; font-weight: 700; }
+
+  .cap-full {
+    color: #dc2626;
+    font-weight: 700;
+  }
 
   .grade-tabs {
     display: flex;
@@ -110,6 +153,7 @@
     flex-wrap: wrap;
     margin-bottom: 18px;
   }
+
   .grade-tab {
     padding: 7px 16px;
     border-radius: 8px;
@@ -121,8 +165,18 @@
     text-decoration: none;
     transition: all 0.15s;
   }
-  .grade-tab:hover { background: var(--sidebar-hover); color: var(--btn); border-color: var(--btn); }
-  .grade-tab.active { background: var(--btn); color: #fff; border-color: var(--btn); }
+
+  .grade-tab:hover {
+    background: var(--sidebar-hover);
+    color: var(--btn);
+    border-color: var(--btn);
+  }
+
+  .grade-tab.active {
+    background: var(--btn);
+    color: #fff;
+    border-color: var(--btn);
+  }
 </style>
 {% endblock %}
 
@@ -132,7 +186,8 @@
   <!-- Header -->
   <div style="margin-bottom:18px;">
     <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:4px;">🎓 Assign Students to Sections</h2>
-    <p style="color:var(--muted);font-size:0.88rem;">Select a section for each approved student. Saving is instant — no page reload needed.</p>
+    <p style="color:var(--muted);font-size:0.88rem;">Select a section for each approved student. Saving is instant — no
+      page reload needed.</p>
   </div>
 
   <!-- Grade level tabs -->
@@ -159,9 +214,11 @@
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
       {% for sec in sections %}
       {% set is_full = sec.current_count >= sec.capacity %}
-      <div style="padding:8px 14px;border-radius:9px;border:1.5px solid {% if is_full %}#fecaca{% else %}var(--border){% endif %};background:{% if is_full %}#fef2f2{% else %}var(--card){% endif %};">
+      <div
+        style="padding:8px 14px;border-radius:9px;border:1.5px solid {% if is_full %}#fecaca{% else %}var(--border){% endif %};background:{% if is_full %}#fef2f2{% else %}var(--card){% endif %};">
         <div style="font-weight:700;font-size:0.82rem;">{{ sec.section_name }}</div>
-        <div style="font-size:0.73rem;{% if is_full %}color:#dc2626;font-weight:700;{% else %}color:var(--muted);{% endif %}">
+        <div
+          style="font-size:0.73rem;{% if is_full %}color:#dc2626;font-weight:700;{% else %}color:var(--muted);{% endif %}">
           {{ sec.current_count }}/{{ sec.capacity }} {% if is_full %}• Full{% endif %}
         </div>
       </div>
@@ -189,13 +246,14 @@
             <th>#</th>
             <th>Student Name</th>
             <th>Current Section</th>
-            {% if is_branch_active_status %}<th style="min-width:220px;">Assign Section</th><th></th>{% endif %}
+            {% if is_branch_active_status %}<th style="min-width:220px;">Assign Section</th>
+            <th></th>{% endif %}
           </tr>
         </thead>
         <tbody id="studentTbody">
           {% for s in students %}
           <tr data-name="{{ s.student_name | lower }}" data-assigned="{{ '1' if s.section_name else '0' }}"
-              data-enrollment="{{ s.enrollment_id }}">
+            data-enrollment="{{ s.enrollment_id }}">
             <td style="color:var(--muted);font-size:0.8rem;">#{{ s.branch_enrollment_no }}</td>
             <td><strong>{{ s.student_name }}</strong></td>
             <td id="sectionLabel_{{ s.enrollment_id }}">
@@ -213,9 +271,8 @@
                 {% for sec in sections %}
                 {% set is_full = sec.current_count >= sec.capacity %}
                 {% set is_current = (sec.section_id == s.section_id) %}
-                <option value="{{ sec.section_id }}"
-                  {{ 'selected' if is_current else '' }}
-                  {{ 'disabled' if is_full and not is_current else '' }}>
+                <option value="{{ sec.section_id }}" {{ 'selected' if is_current else '' }} {{ 'disabled' if is_full and
+                  not is_current else '' }}>
                   {{ sec.section_name }}
                   {% if is_full and not is_current %}(Full {{ sec.current_count }}/{{ sec.capacity }})
                   {% else %}({{ sec.current_count }}/{{ sec.capacity }}){% endif %}

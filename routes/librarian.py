@@ -38,7 +38,84 @@ END
 def dashboard():
     if not _require_librarian():
         return redirect("/")
-    return render_template("librarian_dashboard.html")
+
+    branch_id = session.get("branch_id")
+    stats = {"total_items": 0, "total_stock": 0, "reserved": 0, "low_stock": 0, "out_stock": 0, "well_stocked": 0}
+    grade_breakdown = []
+    recent_releases = []
+
+    if branch_id:
+        db = get_db_connection()
+        cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            # ── 1. Overall inventory stats ──────────────────────────────
+            try:
+                cur.execute("""
+                    SELECT
+                        COUNT(*)                                                              AS total_items,
+                        COALESCE(SUM(stock_total), 0)                                         AS total_stock,
+                        COALESCE(SUM(reserved_qty), 0)                                        AS reserved,
+                        COUNT(*) FILTER (WHERE (stock_total - reserved_qty) <= 0)             AS out_stock,
+                        COUNT(*) FILTER (WHERE (stock_total - reserved_qty) > 0
+                                          AND (stock_total - reserved_qty) < 10)             AS low_stock,
+                        COUNT(*) FILTER (WHERE (stock_total - reserved_qty) >= 10)            AS well_stocked
+                    FROM inventory_items
+                    WHERE branch_id=%s AND is_active=TRUE AND UPPER(category)='BOOK'
+                """, (branch_id,))
+                row = cur.fetchone()
+                if row:
+                    stats = dict(row)
+            except Exception as e:
+                print(f"[librarian.dashboard] stats query error: {e}")
+
+            # ── 2. Grade-level breakdown ────────────────────────────────
+            try:
+                cur.execute(f"""
+                    SELECT grade_level, COUNT(*) AS book_count,
+                           COALESCE(SUM(stock_total - reserved_qty), 0) AS available
+                    FROM inventory_items
+                    WHERE branch_id=%s AND is_active=TRUE AND UPPER(category)='BOOK'
+                    GROUP BY grade_level
+                    ORDER BY {GRADE_ORDER_SQL}
+                """, (branch_id,))
+                grade_breakdown = cur.fetchall() or []
+            except Exception as e:
+                print(f"[librarian.dashboard] grade_breakdown query error: {e}")
+
+            # ── 3. Recent releases (last 5) ─────────────────────────────
+            try:
+                cur.execute("""
+                    SELECT
+                        br.release_id,
+                        br.created_at,
+                        COALESCE(br.student_name, 'Unknown') AS student_name,
+                        e.branch_enrollment_no,
+                        bri.qty,
+                        ii.item_name AS book_title,
+                        ii.grade_level
+                    FROM book_releases br
+                    JOIN book_release_items bri ON bri.release_id = br.release_id
+                    JOIN inventory_items ii     ON ii.item_id = bri.item_id
+                    LEFT JOIN enrollments e     ON e.enrollment_id = br.enrollment_id
+                    WHERE br.branch_id=%s
+                    ORDER BY br.created_at DESC
+                    LIMIT 5
+                """, (branch_id,))
+                recent_releases = cur.fetchall() or []
+            except Exception as e:
+                print(f"[librarian.dashboard] recent_releases query error: {e}")
+
+        finally:
+            cur.close()
+            db.close()
+
+    return render_template(
+        "librarian_dashboard.html",
+        stats=stats,
+        grade_breakdown=grade_breakdown,
+        recent_releases=recent_releases,
+    )
+
 
 
 @librarian_bp.route("/librarian/books", methods=["GET"])
@@ -53,6 +130,7 @@ def books_inventory():
 
     search = (request.args.get("search") or "").strip()
     grade_filter = (request.args.get("grade") or "").strip()
+    status_filter = (request.args.get("status") or "").strip().lower()  # all | low | out | well
 
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -69,6 +147,15 @@ def books_inventory():
             like = f"%{search}%"
             params.extend([like, like])
 
+        # Status filter (computed via HAVING-style subquery wrapping)
+        status_having = ""
+        if status_filter == "out":
+            status_having = "AND (stock_total - reserved_qty) <= 0"
+        elif status_filter == "low":
+            status_having = "AND (stock_total - reserved_qty) > 0 AND (stock_total - reserved_qty) < 10"
+        elif status_filter == "well":
+            status_having = "AND (stock_total - reserved_qty) >= 10"
+
         where_sql = " AND ".join(where)
 
         cur.execute(f"""
@@ -81,7 +168,7 @@ def books_inventory():
                 stock_total,
                 reserved_qty
             FROM inventory_items
-            WHERE {where_sql}
+            WHERE {where_sql} {status_having}
             ORDER BY
                 {GRADE_ORDER_SQL},
                 COALESCE(size_label,''),
@@ -90,26 +177,23 @@ def books_inventory():
 
         items = cur.fetchall() or []
 
-        # ---- STATS for dashboard cards / low stock alert ----
-        total_items = len(items)
-        total_stock = sum(int(it.get("stock_total") or 0) for it in items)
-        total_reserved = sum(int(it.get("reserved_qty") or 0) for it in items)
-
-        low_stock_count = 0
-        out_stock_count = 0
-        for it in items:
-            available = int(it.get("stock_total") or 0) - int(it.get("reserved_qty") or 0)
-            if available == 0:
-                out_stock_count += 1
-            elif 0 < available < 10:
-                low_stock_count += 1
-
-        stats = {
-            "total_items": total_items,
-            "total_stock": total_stock,
-            "reserved": total_reserved,
-            "low_stock": low_stock_count,
-            "out_stock": out_stock_count
+        # ---- Global STATS (always from full unfiltered set) ----
+        cur.execute("""
+            SELECT
+                COUNT(*)                                                              AS total_items,
+                COALESCE(SUM(stock_total), 0)                                         AS total_stock,
+                COALESCE(SUM(reserved_qty), 0)                                        AS reserved,
+                COUNT(*) FILTER (WHERE (stock_total - reserved_qty) <= 0)             AS out_stock,
+                COUNT(*) FILTER (WHERE (stock_total - reserved_qty) > 0
+                                  AND  (stock_total - reserved_qty) < 10)             AS low_stock,
+                COUNT(*) FILTER (WHERE (stock_total - reserved_qty) >= 10)            AS well_stocked
+            FROM inventory_items
+            WHERE branch_id=%s AND is_active=TRUE AND UPPER(category)='BOOK'
+        """, (branch_id,))
+        stat_row = cur.fetchone()
+        stats = dict(stat_row) if stat_row else {
+            "total_items": 0, "total_stock": 0, "reserved": 0,
+            "low_stock": 0, "out_stock": 0, "well_stocked": 0
         }
 
     finally:
@@ -122,6 +206,7 @@ def books_inventory():
         grades=GRADES,
         search=search,
         grade_filter=grade_filter,
+        status_filter=status_filter,
         stats=stats
     )
 
@@ -553,7 +638,95 @@ def releases():
     )
 
 
+@librarian_bp.route("/librarian/releases/all", methods=["GET"])
+def releases_all():
+    """Full view of all book releases, grouped by student grade level."""
+    if not _require_librarian():
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("No branch assigned.", "error")
+        return redirect("/")
+
+    grade_filter  = (request.args.get("grade")  or "").strip()
+    search_filter = (request.args.get("search") or "").strip()
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        where  = ["br.branch_id = %s"]
+        params = [branch_id]
+
+        if grade_filter:
+            where.append("e.grade_level = %s")
+            params.append(grade_filter)
+
+        if search_filter:
+            where.append("""(
+                LOWER(COALESCE(br.student_name,'')) ILIKE %s
+                OR LOWER(ii.item_name) ILIKE %s
+                OR CAST(e.branch_enrollment_no AS TEXT) ILIKE %s
+            )""")
+            like = f"%{search_filter}%"
+            params.extend([like, like, like])
+
+        where_sql = " AND ".join(where)
+
+        cur.execute(f"""
+            SELECT
+                br.release_id,
+                br.created_at,
+                e.branch_enrollment_no,
+                COALESCE(br.student_name, 'Unknown') AS student_name,
+                e.grade_level AS student_grade,
+                bri.qty,
+                bri.unit_price,
+                ii.item_name AS book_title,
+                COALESCE(ii.size_label,'') AS publisher
+            FROM book_releases br
+            JOIN book_release_items bri ON bri.release_id = br.release_id
+            JOIN inventory_items ii     ON ii.item_id = bri.item_id
+            LEFT JOIN enrollments e     ON e.enrollment_id = br.enrollment_id
+            WHERE {where_sql}
+            ORDER BY
+                CASE COALESCE(e.grade_level,'')
+                    WHEN 'Nursery'  THEN 0 WHEN 'Kinder'  THEN 1
+                    WHEN 'Grade 1'  THEN 2 WHEN 'Grade 2'  THEN 3
+                    WHEN 'Grade 3'  THEN 4 WHEN 'Grade 4'  THEN 5
+                    WHEN 'Grade 5'  THEN 6 WHEN 'Grade 6'  THEN 7
+                    WHEN 'Grade 7'  THEN 8 WHEN 'Grade 8'  THEN 9
+                    WHEN 'Grade 9'  THEN 10 WHEN 'Grade 10' THEN 11
+                    ELSE 99 END,
+                LOWER(COALESCE(br.student_name,'')),
+                br.created_at DESC
+        """, params)
+        releases_rows = cur.fetchall() or []
+
+        cur.execute("SELECT COUNT(*) AS total FROM book_releases br WHERE br.branch_id = %s", (branch_id,))
+        total_row = cur.fetchone()
+        total_releases = int(total_row["total"]) if total_row else 0
+
+    except Exception as e:
+        print(f"[librarian.releases_all] error: {e}")
+        releases_rows = []
+        total_releases = 0
+    finally:
+        cur.close()
+        db.close()
+
+    return render_template(
+        "librarian_releases_all.html",
+        releases=releases_rows,
+        grades=GRADES,
+        grade_filter=grade_filter,
+        search_filter=search_filter,
+        total_releases=total_releases,
+    )
+
+
 @librarian_bp.route("/librarian/books/<int:item_id>/price", methods=["GET", "POST"])
+
 def book_price(item_id):
     if not _require_librarian():
         return redirect("/")

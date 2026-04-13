@@ -1,34 +1,258 @@
 {% extends "base.html" %}
-{% block title %}FAQ{% endblock %}
+{% block title %}FAQ | Frequently Asked Questions{% endblock %}
+
+{% block styles %}
+<style>
+    /* Premium FAQ Styling */
+    :root {
+        --faq-blue: #1e3a8a;
+        --faq-blue-light: #eff6ff;
+        --faq-yellow: #facc15;
+        --faq-text: #1e293b;
+        --faq-muted: #64748b;
+        --faq-border: #e2e8f0;
+        --faq-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .faq-container {
+        max-width: 800px;
+        margin: 40px auto;
+        animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .faq-header {
+        background: white;
+        padding: 40px;
+        border-radius: 20px;
+        box-shadow: var(--faq-shadow);
+        text-align: center;
+        margin-bottom: 30px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .faq-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 5px;
+        background: var(--faq-yellow);
+    }
+
+    .faq-header i {
+        font-size: 3rem;
+        color: var(--faq-blue);
+        margin-bottom: 15px;
+    }
+
+    .faq-header h1 {
+        font-weight: 800;
+        color: var(--faq-blue);
+        margin: 0 0 10px;
+        font-size: 2rem;
+    }
+
+    .faq-header p {
+        color: var(--faq-muted);
+        margin: 0;
+        font-size: 1rem;
+    }
+
+    .faq-section-title {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: var(--faq-blue);
+        margin: 30px 0 15px 15px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .faq-wrapper {
+        background: white;
+        border-radius: 16px;
+        box-shadow: var(--faq-shadow);
+        overflow: hidden;
+        border: 1px solid var(--faq-border);
+        margin-bottom: 30px;
+    }
+
+    .faq-item {
+        border-bottom: 1px solid var(--faq-border);
+    }
+
+    .faq-item:last-child {
+        border-bottom: none;
+    }
+
+    .faq-question {
+        width: 100%;
+        text-align: left;
+        background: white;
+        border: none;
+        padding: 20px 25px;
+        font-weight: 700;
+        font-size: 1.05rem;
+        color: var(--faq-text);
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.2s;
+    }
+
+    .faq-question:hover {
+        background: #f8fafc;
+        color: var(--faq-blue);
+    }
+
+    .faq-icon {
+        color: var(--faq-muted);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        font-size: 1.2rem;
+    }
+
+    .faq-item.active .faq-question {
+        background: var(--faq-blue-light);
+        color: var(--faq-blue);
+    }
+
+    .faq-item.active .faq-icon {
+        transform: rotate(180deg);
+        color: var(--faq-blue);
+    }
+
+    .faq-answer {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        background: white;
+    }
+
+    .faq-answer-inner {
+        padding: 0 25px 25px;
+        color: var(--faq-muted);
+        line-height: 1.7;
+        font-size: 0.95rem;
+    }
+
+    .faq-empty {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 20px;
+        box-shadow: var(--faq-shadow);
+    }
+
+    .faq-empty i {
+        font-size: 3rem;
+        color: var(--faq-muted);
+        opacity: 0.3;
+        margin-bottom: 15px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="card" style="max-width: 720px; margin: 0 auto;">
-  <div class="card-header">❓ Frequently Asked Questions</div>
-  <div style="padding: 1.25rem;">
+<div class="faq-container">
+    <div class="faq-header">
+        <i class="fas fa-headset"></i>
+        <h1>Knowledge Base</h1>
+        <p>Find answers to the most frequently asked questions</p>
+    </div>
+
     {% if general_faqs %}
-    <h3 style="margin: 0 0 0.75rem; font-size: 1rem;">General (all branches)</h3>
-    <ul style="list-style: none; padding: 0; margin: 0 0 1.5rem;">
-      {% for faq in general_faqs %}
-      <li style="border-bottom: 1px solid var(--border); padding: 0.75rem 0;">
-        <strong style="display: block; margin-bottom: 0.25rem;">{{ faq[0] }}</strong>
-        <span style="color: var(--muted); font-size: 0.9rem;">{{ faq[1] }}</span>
-      </li>
-      {% endfor %}
-    </ul>
+    <div class="faq-section-title">
+        <i class="fas fa-globe"></i> General Information
+    </div>
+    <div class="faq-wrapper">
+        {% for faq in general_faqs %}
+        <div class="faq-item">
+            <button class="faq-question">
+                <span>{{ faq[0] }}</span>
+                <i class="fas fa-chevron-down faq-icon"></i>
+            </button>
+            <div class="faq-answer">
+                <div class="faq-answer-inner">
+                    {{ faq[1] }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
     {% endif %}
+
     {% if branch_faqs %}
-    <h3 style="margin: 0 0 0.75rem; font-size: 1rem;">Branch FAQs</h3>
-    <ul style="list-style: none; padding: 0; margin: 0;">
-      {% for faq in branch_faqs %}
-      <li style="border-bottom: 1px solid var(--border); padding: 0.75rem 0;">
-        <strong style="display: block; margin-bottom: 0.25rem;">{{ faq[0] }}</strong>
-        <span style="color: var(--muted); font-size: 0.9rem;">{{ faq[1] }}</span>
-      </li>
-      {% endfor %}
-    </ul>
+    <div class="faq-section-title">
+        <i class="fas fa-map-marker-alt"></i> Specific Branch FAQs
+    </div>
+    <div class="faq-wrapper">
+        {% for faq in branch_faqs %}
+        <div class="faq-item">
+            <button class="faq-question">
+                <span>{{ faq[0] }}</span>
+                <i class="fas fa-chevron-down faq-icon"></i>
+            </button>
+            <div class="faq-answer">
+                <div class="faq-answer-inner">
+                    {{ faq[1] }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
     {% endif %}
+
     {% if not general_faqs and not branch_faqs %}
-    <p style="color: var(--muted); text-align: center; padding: 2rem;">No FAQs available yet.</p>
+    <div class="faq-empty">
+        <i class="fas fa-folder-open"></i>
+        <h3 style="color: var(--faq-text); margin-bottom: 8px;">No FAQs Available</h3>
+        <p style="color: var(--faq-muted); margin: 0;">Check back later for updates to our knowledge base.</p>
+    </div>
     {% endif %}
-  </div>
 </div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const questions = document.querySelectorAll(".faq-question");
+
+        questions.forEach(question => {
+            question.addEventListener("click", function () {
+                const item = this.parentElement;
+                const answer = this.nextElementSibling;
+
+                // Close all other open items
+                document.querySelectorAll(".faq-item.active").forEach(activeItem => {
+                    if (activeItem !== item) {
+                        activeItem.classList.remove("active");
+                        activeItem.querySelector(".faq-answer").style.maxHeight = null;
+                    }
+                });
+
+                // Toggle the clicked item
+                if (item.classList.contains("active")) {
+                    item.classList.remove("active");
+                    answer.style.maxHeight = null;
+                } else {
+                    item.classList.add("active");
+                    answer.style.maxHeight = answer.scrollHeight + "px";
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}

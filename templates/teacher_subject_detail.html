@@ -3,178 +3,411 @@
 
 {% block styles %}
 <style>
-    .subj-wrap {
-        max-width: 1100px;
-        margin: 0 auto;
-        padding: 20px 16px;
+    .subj-wrap { max-width: 1200px; margin: 0 auto; padding: 0 0 56px; }
+
+    /* ── Hero ── */
+    .subj-hero {
+        background: linear-gradient(135deg, #0f2a6b, #1a3a8f, #2250c8);
+        border-radius: 20px;
+        padding: 28px 32px;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(26,58,143,0.28);
     }
 
-    .subj-header {
-        background: #fff;
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 24px 32px;
-        margin-bottom: 24px;
+    .subj-hero::before {
+        content: '';
+        position: absolute;
+        top: -50px; right: -50px;
+        width: 220px; height: 220px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 50%;
+    }
+
+    .subj-hero::after {
+        content: '';
+        position: absolute;
+        bottom: -60px; left: 30%;
+        width: 240px; height: 240px;
+        background: rgba(255,255,255,0.03);
+        border-radius: 50%;
+    }
+
+    .subj-hero-inner {
+        position: relative;
+        z-index: 1;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        flex-wrap: wrap;
+        gap: 16px;
     }
 
-    .subj-title {
-        font-size: 1.8rem;
-        font-weight: 800;
-        color: #1e3a8a;
+    .subj-hero h1 {
+        font-size: 1.7rem;
+        font-weight: 900;
+        color: #fff;
         margin: 0 0 6px;
+        letter-spacing: -0.02em;
     }
 
-    .subj-meta {
-        color: var(--muted);
-        font-weight: 500;
-        font-size: 0.95rem;
+    /* Section selector */
+    .section-select {
+        padding: 7px 12px;
+        border-radius: 10px;
+        border: 1.5px solid rgba(255,255,255,0.2);
+        background: rgba(255,255,255,0.1);
+        backdrop-filter: blur(6px);
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #fff;
+        cursor: pointer;
+        font-family: 'Inter', sans-serif;
+        outline: none;
+        transition: border-color 0.2s;
     }
 
-    /* Tabs */
+    .section-select option { background: #1a3a8f; }
+    .section-select:focus { border-color: rgba(255,255,255,0.5); }
+
+    .btn-manage-cl {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 18px;
+        border-radius: 10px;
+        background: #fff;
+        color: #1a3a8f;
+        font-weight: 700;
+        font-size: 0.9rem;
+        border: none;
+        cursor: pointer;
+        transition: background 0.18s, transform 0.15s;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .btn-manage-cl:hover {
+        background: #e0eaff;
+        transform: translateY(-1px);
+    }
+
+    /* ── Main Tabs ── */
     .view-tabs-wrapper {
-        border-bottom: 1px solid var(--border);
-        margin-bottom: 24px;
         display: flex;
-        gap: 20px;
+        gap: 4px;
+        border-bottom: 2px solid var(--border);
+        margin-bottom: 26px;
+        overflow-x: auto;
+        padding-bottom: 0;
     }
 
     .view-tab-btn {
         background: none;
         border: none;
-        padding: 12px 16px;
-        font-size: 1rem;
+        padding: 12px 22px;
+        font-size: 0.95rem;
         font-weight: 700;
         color: var(--muted);
         border-bottom: 3px solid transparent;
+        margin-bottom: -2px;
         cursor: pointer;
         transition: color 0.2s, border-color 0.2s;
+        white-space: nowrap;
+        font-family: 'Inter', sans-serif;
     }
+
+    .view-tab-btn:hover { color: #1a3a8f; }
 
     .view-tab-btn.active {
-        color: #1e3a8a;
-        border-bottom-color: #1d4ed8;
+        color: #1a3a8f;
+        border-bottom-color: #1a3a8f;
+        background: linear-gradient(to bottom, transparent, rgba(26,58,143,0.04));
+        border-radius: 8px 8px 0 0;
     }
 
-    .view-tab-content {
-        display: none;
+    .view-tab-content { display: none; }
+    .view-tab-content.active { display: block; }
+
+    /* ── Section Header Row ── */
+    .header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 20px;
     }
-    .view-tab-content.active {
-        display: block;
+
+    .header-row h2 {
+        font-size: 1.3rem;
+        font-weight: 800;
+        margin: 0;
+        color: var(--text);
     }
 
-    /* Content Layouts */
-    .header-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:24px; }
-    .header-row h1 { font-size: 1.5rem; font-weight: 800; margin: 0; }
-    
-    .btn { padding:9px 18px; border:none; border-radius:7px; cursor:pointer; font-size:13px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px; transition:.2s; }
-    .btn-primary { background:#007bff; color:#fff; } .btn-primary:hover { background:#0056b3; }
-    .btn-success { background:#28a745; color:#fff; } .btn-success:hover { background:#1e7e34; }
-    .btn-secondary { background:#6c757d; color:#fff; } .btn-secondary:hover { background:#545b62; }
-    .btn-sm { padding: 6px 12px; font-size: 12px; }
+    /* ── Action Buttons ── */
+    .btn-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 18px;
+        border-radius: 10px;
+        font-size: 0.88rem;
+        font-weight: 700;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        transition: all 0.18s;
+        font-family: 'Inter', sans-serif;
+        white-space: nowrap;
+    }
 
-    /* Grading Period Pills */
-    .filter-tabs { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 8px; }
-    .filter-tab { padding: 8px 16px; background: #fff; border: 1px solid #dee2e6; border-radius: 20px; cursor: pointer; font-size: 0.9rem; font-weight: 600; white-space: nowrap; transition: all 0.2s; }
-    .filter-tab:hover { border-color: #007bff; color: #007bff; }
-    .filter-tab.active { background: #007bff; color: #fff; border-color: #007bff; }
+    .btn-act-blue { background: #2563eb; color: #fff; }
+    .btn-act-blue:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
 
-    .filter-tab-act:hover { border-color: #3b82f6; color: #3b82f6; }
-    .filter-tab-act.active { background: #3b82f6; color: #fff; border-color: #3b82f6; }
-    
-    .filter-tab-quiz:hover { border-color: #7c3aed; color: #7c3aed; }
+    .btn-act-purple { background: #7c3aed; color: #fff; }
+    .btn-act-purple:hover { background: #6d28d9; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(124,58,237,0.25); }
+
+    .btn-act-green { background: #059669; color: #fff; }
+    .btn-act-green:hover { background: #047857; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(5,150,105,0.25); }
+
+    .btn-act-gray { background: #e2e8f0; color: #475569; }
+    .btn-act-gray:hover { background: #cbd5e1; transform: translateY(-1px); }
+
+    .btn-act-red { background: #ef4444; color: #fff; }
+    .btn-act-red:hover { background: #dc2626; transform: translateY(-1px); }
+
+    .btn-sm-action {
+        padding: 5px 12px;
+        font-size: 0.8rem;
+        border-radius: 8px;
+    }
+
+    /* ── Filter Period Tabs ── */
+    .filter-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+    }
+
+    .filter-tab {
+        padding: 7px 16px;
+        background: var(--card);
+        border: 2px solid var(--border);
+        border-radius: 999px;
+        cursor: pointer;
+        font-size: 0.86rem;
+        font-weight: 700;
+        white-space: nowrap;
+        transition: all 0.2s;
+        color: var(--muted);
+    }
+
+    .filter-tab:hover { border-color: #1a3a8f; color: #1a3a8f; }
+    .filter-tab-act.active { background: #2563eb; color: #fff; border-color: #2563eb; }
     .filter-tab-quiz.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+    .filter-tab-exam.active { background: #059669; color: #fff; border-color: #059669; }
 
-    /* Activities Cards & Stats */
+    /* ── Stats Card ── */
     .stats-card {
+        background: linear-gradient(135deg, #f8fbff, #f5f0ff);
+        border: 1px solid #e0e8ff;
+        border-radius: 16px;
+        padding: 20px 24px;
+        margin-bottom: 22px;
+        display: flex;
+        gap: 0;
+    }
+
+    .stat-item {
+        text-align: center;
+        flex: 1;
+        padding: 8px 0;
+        position: relative;
+    }
+
+    .stat-item:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        right: 0; top: 20%; bottom: 20%;
+        width: 1px;
+        background: #e0e8ff;
+    }
+
+    .stat-num {
+        font-size: 1.9rem;
+        font-weight: 900;
+        color: #1a3a8f;
+        letter-spacing: -0.03em;
+        line-height: 1;
+    }
+
+    .stat-label {
+        font-size: 0.76rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        margin-top: 4px;
+    }
+
+    /* ── Activity Cards ── */
+    .act-card {
         background: var(--card);
         border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 20px;
-        display: flex;
-        gap: 20px;
-    }
-    .stat-item { text-align: center; flex: 1; }
-    .stat-num { font-size: 1.8rem; font-weight: 800; color: #3b82f6; }
-    .stat-label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; }
-
-    .act-card {
-        background: #fff;
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 12px;
+        border-radius: 14px;
+        padding: 16px 20px;
+        margin-bottom: 10px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        transition: transform 0.15s, box-shadow 0.15s;
+        transition: transform 0.18s, box-shadow 0.18s;
+        gap: 16px;
     }
-    .act-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-    .act-info h4 { margin: 0 0 4px; font-size: 1.1rem; color: var(--text); }
-    .act-meta { font-size: 0.85rem; color: var(--muted); }
-    .act-actions { display: flex; gap: 10px; }
 
-    /* Tables (Quizzes & Exams) */
-    .table-card { background:#fff; border-radius:12px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.07); margin-bottom:20px; overflow-x: auto; }
-    .exam-table { width:100%; border-collapse:collapse; font-size:13px; min-width: 800px; }
-    
-    .exam-table.table-quiz th { background:#f3f0ff; color:#5b21b6; border-bottom:2px solid #e9d5ff; }
-    .exam-table.table-exam th { background:#f8f9fa; color:#555; border-bottom:2px solid #dee2e6; }
-    
-    .exam-table th { padding:10px 12px; text-align:left; font-weight:700; }
-    .exam-table td { padding:10px 12px; border-bottom:1px solid #f0f0f0; vertical-align:middle; }
-    .exam-table tr:hover td { background:#f8f9fa; }
-    
-    .badge { display:inline-block; padding:3px 8px; border-radius:4px; font-size:11px; font-weight:700; }
-    .badge-draft { background:#e9ecef; color:#495057; }
-    .badge-published { background:#dcfce7; color:#166534; }
-    .badge-closed { background:#f8d7da; color:#721c24; }
-    .badge-blue { background:#dbeafe; color:#1d4ed8; }
+    .act-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.07);
+    }
 
-    .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
-    .empty-state .big-icon { font-size: 3.5rem; margin-bottom: 12px; }
+    .act-info h4 {
+        margin: 0 0 4px;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text);
+    }
+
+    .act-meta {
+        font-size: 0.83rem;
+        color: var(--muted);
+        line-height: 1.5;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+    }
+
+    .act-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
+
+    /* badges */
+    .badge {
+        display: inline-flex; align-items: center;
+        padding: 3px 9px;
+        border-radius: 999px;
+        font-size: 0.73rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .badge-draft { background: #f1f5f9; color: #64748b; }
+    .badge-published { background: #dcfce7; color: #166534; }
+    .badge-closed { background: #fee2e2; color: #991b1b; }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+    .badge-purple { background: #ede9fe; color: #6d28d9; }
+
+    /* ── Table Card ── */
+    .table-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        overflow-x: auto;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    }
+
+    .exam-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.88rem;
+        min-width: 800px;
+    }
+
+    .exam-table th {
+        padding: 12px 14px;
+        text-align: left;
+        font-weight: 700;
+        font-size: 0.76rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .table-quiz th { background: linear-gradient(135deg, #f3f0ff, #faf5ff); color: #5b21b6; border-bottom-color: #e9d5ff; }
+    .table-exam th { background: linear-gradient(135deg, #f0fdf4, #f0f9ff); color: #065f46; border-bottom-color: #86efac; }
+
+    .exam-table td {
+        padding: 11px 14px;
+        border-bottom: 1px solid var(--border);
+        vertical-align: middle;
+        color: var(--text);
+    }
+
+    .exam-table tr:last-child td { border-bottom: none; }
+    .exam-table tbody tr { transition: background 0.15s; }
+    .exam-table tbody tr:hover td { background: #f8fbff; }
+
+    /* ── Empty State ── */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--muted);
+    }
+
+    .empty-state .big-icon { font-size: 3.5rem; margin-bottom: 14px; }
+    .empty-state h3 { font-size: 1.1rem; font-weight: 700; color: var(--text); margin: 0 0 6px; }
+    .empty-state p { font-size: 0.9rem; margin: 0; }
+
+    @media (max-width: 640px) {
+        .subj-hero { padding: 22px 18px; }
+        .subj-hero h1 { font-size: 1.3rem; }
+        .act-card { flex-direction: column; align-items: flex-start; }
+        .act-actions { width: 100%; }
+        .stats-card { flex-wrap: wrap; }
+        .stat-item { min-width: 48%; }
+        .stat-item::after { display: none; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="subj-wrap">
-    
-    <div class="subj-header">
-        <div>
-            <h1 class="subj-title">{{ class_info.subject_name }}</h1>
-            <div class="subj-meta">
-                <select id="section-filter" onchange="changeSection(this.value)" style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem; font-weight: 600; background: #f8fafc; color: #334155; cursor: pointer; outline: none;">
-                    {% for sec in sections %}
-                    <option value="{{ sec.section_id }}" {% if sec.section_id == active_section_id %}selected{% endif %}>
-                        {{ sec.grade_level_name }} — {{ sec.section_name }}
-                    </option>
-                    {% endfor %}
-                </select>
+
+    <!-- ── Hero ── -->
+    <div class="subj-hero">
+        <div class="subj-hero-inner">
+            <div>
+                <h1>{{ class_info.subject_name }}</h1>
+                <div style="color:rgba(255,255,255,0.7); font-size:0.9rem; margin-top:4px;">
+                    <select id="section-filter" onchange="changeSection(this.value)" class="section-select">
+                        {% for sec in sections %}
+                        <option value="{{ sec.section_id }}" {% if sec.section_id == active_section_id %}selected{% endif %}>
+                            {{ sec.grade_level_name }} — {{ sec.section_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
             </div>
-        </div>
-        <div>
-            <button onclick="openClasslist('{{ section_id }}')" class="btn-action" style="background:#1e3a8a; color:#fff; border:none; display:flex; align-items:center; gap:8px; padding: 9px 18px; border-radius: 8px; font-weight: 700; cursor: pointer;">
+            <button onclick="openClasslist('{{ section_id }}')" class="btn-manage-cl">
                 🧑‍🎓 Manage Classlist
             </button>
         </div>
     </div>
 
-    <!-- MAIN TABS -->
+    <!-- ── Main Tabs ── -->
     <div class="view-tabs-wrapper">
-        <button id="tab-btn-activities" class="view-tab-btn active" onclick="switchMainTab('activities', this)">Activities</button>
-        <button id="tab-btn-quizzes" class="view-tab-btn" onclick="switchMainTab('quizzes', this)">Quizzes</button>
-        <button id="tab-btn-exams" class="view-tab-btn" onclick="switchMainTab('exams', this)">Exams</button>
+        <button id="tab-btn-activities" class="view-tab-btn active" onclick="switchMainTab('activities', this)">📝 Activities</button>
+        <button id="tab-btn-quizzes" class="view-tab-btn" onclick="switchMainTab('quizzes', this)">✏️ Quizzes</button>
+        <button id="tab-btn-exams" class="view-tab-btn" onclick="switchMainTab('exams', this)">📋 Exams</button>
     </div>
 
-    <!-- ======================= ACTIVITIES TAB ======================= -->
+    <!-- ══════════════ ACTIVITIES TAB ══════════════ -->
     <div id="tab-activities" class="view-tab-content active">
-        <div class="header-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:15px;">
-            <h1 style="margin:0;">📝 My Activities</h1>
-            <a href="{{ url_for('teacher.create_activity', subject_id=subject_id) }}" class="btn-action" style="background:#2563eb; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; text-decoration:none;">➕ Create Activity</a>
+        <div class="header-row">
+            <h2>📝 My Activities</h2>
+            <a href="{{ url_for('teacher.create_activity', subject_id=subject_id) }}" class="btn-action btn-act-blue">➕ Create Activity</a>
         </div>
 
         <div class="filter-tabs">
@@ -185,39 +418,56 @@
         </div>
 
         <div class="stats-card">
-            <div class="stat-item"><div class="stat-num">{{ act_stats.total }}</div><div class="stat-label">Total Activities</div></div>
-            <div class="stat-item"><div class="stat-num">{{ act_stats.published }}</div><div class="stat-label">Published</div></div>
-            <div class="stat-item"><div class="stat-num">{{ act_stats.drafts }}</div><div class="stat-label">Drafts</div></div>
-            <div class="stat-item"><div class="stat-num">{{ act_stats.closed }}</div><div class="stat-label">Closed</div></div>
+            <div class="stat-item">
+                <div class="stat-num">{{ act_stats.total }}</div>
+                <div class="stat-label">Total</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-num" style="color:#16a34a;">{{ act_stats.published }}</div>
+                <div class="stat-label">Published</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-num" style="color:#d97706;">{{ act_stats.drafts }}</div>
+                <div class="stat-label">Drafts</div>
+            </div>
+            <div class="stat-item">
+                <div class="stat-num" style="color:#ef4444;">{{ act_stats.closed }}</div>
+                <div class="stat-label">Closed</div>
+            </div>
         </div>
 
         {% if activities %}
         <div id="act-list">
             {% for act in activities %}
             <div class="act-card js-act-row" data-period="{{ act.grading_period or 'none' }}">
-                <div class="act-info">
+                <div class="act-info" style="flex:1;">
                     <h4>{{ act.title }}</h4>
                     <div class="act-meta">
-                        <strong>{{ act.subject_name }}</strong> ({{ class_info.section_name }}) &bull; Due: {{
-                        act.due_date.strftime('%b %d, %Y %I:%M %p') if act.due_date else 'No timeline' }}
-                        &bull; Max Score: {{ act.max_score }}
-                        &bull; Period: <span class="badge badge-blue">{{ act.grading_period or 'None' }}</span>
-                        &bull; Status: 
-                        <span class="badge badge-{{ act.status|lower }}">{{ act.status }}</span>
+                        <strong style="color:var(--text);">{{ act.subject_name }}</strong>
+                        <span style="color:#e2e8f0;">·</span>
+                        {{ class_info.section_name }}
+                        <span style="color:#e2e8f0;">·</span>
+                        Due: {{ act.due_date.strftime('%b %d, %Y %I:%M %p') if act.due_date else 'No deadline' }}
+                        <span style="color:#e2e8f0;">·</span>
+                        Max: <strong>{{ act.max_score }}</strong>
+                        <span class="badge badge-blue">{{ act.grading_period or 'N/A' }} Grading</span>
+                        {% if act.status == 'Published' %}<span class="badge badge-published">Published</span>
+                        {% elif act.status == 'Draft' %}<span class="badge badge-draft">Draft</span>
+                        {% else %}<span class="badge badge-closed">Closed</span>{% endif %}
                     </div>
                 </div>
                 <div class="act-actions">
                     <form method="POST" action="/teacher/activities/{{ act.activity_id }}/toggle-status" style="display:inline;">
                         <input type="hidden" name="active_tab" value="activities">
-                        <button type="submit" class="btn btn-secondary btn-sm" title="Toggle Status" style="background:none; border:none; font-size: 1.2rem;">
+                        <button type="submit" class="btn-action btn-act-gray btn-sm-action" title="Toggle Status">
                             {% if act.status|lower == 'published' %}👁️{% else %}🙈{% endif %}
                         </button>
                     </form>
-                    <a href="{{ url_for('teacher.edit_activity', activity_id=act.activity_id) }}" class="btn btn-secondary btn-sm" style="background:#e2e8f0; color:#475569;">Edit</a>
-                    <a href="{{ url_for('teacher.activity_submissions', activity_id=act.activity_id) }}" class="btn btn-primary btn-sm" style="background:#3b82f6;">Submissions ({{ act.submission_count }})</a>
+                    <a href="{{ url_for('teacher.edit_activity', activity_id=act.activity_id) }}" class="btn-action btn-act-gray btn-sm-action">✏️ Edit</a>
+                    <a href="{{ url_for('teacher.activity_submissions', activity_id=act.activity_id) }}" class="btn-action btn-act-blue btn-sm-action">📥 Submissions <span style="background:rgba(255,255,255,0.2); padding:1px 6px; border-radius:999px; font-size:0.78rem;">{{ act.submission_count }}</span></a>
                     <form method="POST" action="{{ url_for('teacher.delete_activity', activity_id=act.activity_id) }}" onsubmit="return confirm('Delete this activity?');" style="display:inline;">
                         <input type="hidden" name="active_tab" value="activities">
-                        <button type="submit" class="btn btn-sm" style="background:#dc3545; color:#fff;">🗑 Delete</button>
+                        <button type="submit" class="btn-action btn-act-red btn-sm-action">🗑</button>
                     </form>
                 </div>
             </div>
@@ -226,18 +476,17 @@
         {% else %}
         <div class="empty-state">
             <div class="big-icon">📚</div>
-            <h3>No activities found</h3>
+            <h3>No activities yet</h3>
             <p>You haven't created any activities for this section yet.</p>
         </div>
         {% endif %}
     </div>
 
-
-    <!-- ======================= QUIZZES TAB ======================= -->
+    <!-- ══════════════ QUIZZES TAB ══════════════ -->
     <div id="tab-quizzes" class="view-tab-content">
-        <div class="header-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:15px;">
-            <h1 style="margin:0;">✏️ My Quizzes</h1>
-            <a href="{{ url_for('teacher.teacher_quiz_create', subject_id=subject_id) }}" class="btn-action" style="background:#7c3aed; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; text-decoration:none;">➕ Create Quiz</a>
+        <div class="header-row">
+            <h2>✏️ My Quizzes</h2>
+            <a href="{{ url_for('teacher.teacher_quiz_create', subject_id=subject_id) }}" class="btn-action btn-act-purple">➕ Create Quiz</a>
         </div>
 
         <div class="filter-tabs">
@@ -252,59 +501,61 @@
             <table class="exam-table table-quiz">
                 <thead>
                     <tr>
-                        <th>Title</th><th>Subject</th><th>Section</th>
-                        <th>Period</th><th>Duration</th><th>Questions</th>
-                        <th>Attempts</th><th>Status</th><th>Actions</th>
+                        <th>Title</th>
+                        <th>Section</th>
+                        <th>Period</th>
+                        <th>Duration</th>
+                        <th>Questions</th>
+                        <th>Attempts</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="quiz-list">
                 {% for q in quizzes %}
                 <tr class="js-quiz-row" data-period="{{ q.grading_period or 'none' }}">
                     <td><strong>{{ q.title }}</strong></td>
-                    <td>{{ class_info.subject_name }}</td>
-                    <td>{{ class_info.grade_level_name }} - {{ class_info.section_name }}</td>
-                    <td><span class="badge" style="background:#f3f0ff; color:#7c3aed;">{{ q.grading_period or 'None' }}</span></td>
+                    <td style="color:var(--muted);">{{ class_info.grade_level_name }} - {{ class_info.section_name }}</td>
+                    <td><span class="badge badge-purple">{{ q.grading_period or 'None' }}</span></td>
                     <td>{{ q.duration_mins }} min</td>
                     <td>{{ q.question_count }}</td>
                     <td>{{ q.attempt_count }}</td>
                     <td><span class="badge badge-{{ q.status|lower }}">{{ q.status|capitalize }}</span></td>
                     <td style="white-space:nowrap;">
-                        <form method="POST" action="{{ url_for('teacher.toggle_exam_visibility', exam_id=q.exam_id) }}" style="display:inline;">
-                            <input type="hidden" name="active_tab" value="quizzes">
-                            <button type="submit" class="btn btn-secondary" style="padding:5px 10px; font-size:12px; background: {{ '#f3f0ff' if q.is_visible else '#fff' }}; border: 1px solid #e9d5ff; color: #5b21b6;" title="{{ 'Hide' if q.is_visible else 'Show' }}">
-                                {{ '👁️' if q.is_visible else '🙈' }}
-                            </button>
-                        </form>
-                        <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=q.exam_id) }}" class="btn btn-secondary" style="padding:5px 10px; font-size:12px; background:#e2e8f0; color:#475569;">✏️ Edit</a>
-                        <a href="{{ url_for('teacher.teacher_exam_results', exam_id=q.exam_id) }}" class="btn btn-success" style="padding:5px 10px; font-size:12px; background:#22c55e;">📊 Results</a>
-                        <form method="POST" action="{{ url_for('teacher.delete_exam', exam_id=q.exam_id) }}" onsubmit="return confirm('Delete this quiz?');" style="display:inline;">
-                            <input type="hidden" name="active_tab" value="quizzes">
-                            <button type="submit" class="btn" style="padding:5px 10px; font-size:12px; background:#dc3545; color:#fff;">🗑 Delete</button>
-                        </form>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <form method="POST" action="{{ url_for('teacher.toggle_exam_visibility', exam_id=q.exam_id) }}" style="display:inline;">
+                                <input type="hidden" name="active_tab" value="quizzes">
+                                <button type="submit" class="btn-action btn-act-gray btn-sm-action" title="{{ 'Hide' if q.is_visible else 'Show' }}">
+                                    {{ '👁️' if q.is_visible else '🙈' }}
+                                </button>
+                            </form>
+                            <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=q.exam_id) }}" class="btn-action btn-act-gray btn-sm-action">✏️ Edit</a>
+                            <a href="{{ url_for('teacher.teacher_exam_results', exam_id=q.exam_id) }}" class="btn-action btn-act-green btn-sm-action">📊 Results</a>
+                            <form method="POST" action="{{ url_for('teacher.delete_exam', exam_id=q.exam_id) }}" onsubmit="return confirm('Delete this quiz?');" style="display:inline;">
+                                <input type="hidden" name="active_tab" value="quizzes">
+                                <button type="submit" class="btn-action btn-act-red btn-sm-action">🗑</button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
                 </tbody>
             </table>
             {% else %}
-            <div class="empty-state">
-                <div class="big-icon">📭</div>
-                <h3>No quizzes found</h3>
-            </div>
+            <div class="empty-state"><div class="big-icon">📭</div><h3>No quizzes found</h3></div>
             {% endif %}
         </div>
     </div>
 
-
-    <!-- ======================= EXAMS TAB ======================= -->
+    <!-- ══════════════ EXAMS TAB ══════════════ -->
     <div id="tab-exams" class="view-tab-content">
-        <div class="header-row" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; margin-bottom:15px;">
-            <h1 style="margin:0;">📋 My Exams</h1>
-            <a href="{{ url_for('teacher.teacher_exam_create', subject_id=subject_id) }}" class="btn-action" style="background:#059669; color:#fff; border:none; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; text-decoration:none;">➕ Create Exam</a>
+        <div class="header-row">
+            <h2>📋 My Exams</h2>
+            <a href="{{ url_for('teacher.teacher_exam_create', subject_id=subject_id) }}" class="btn-action btn-act-green">➕ Create Exam</a>
         </div>
 
         <div class="filter-tabs">
-            <div class="filter-tab filter-tab-exam active" style="border-color:#007bff; color:#007bff; background:#007bff; color:#fff;" onclick="filterItems('exam', '1st', this)">1st Grading</div>
+            <div class="filter-tab filter-tab-exam active" onclick="filterItems('exam', '1st', this)">1st Grading</div>
             <div class="filter-tab filter-tab-exam" onclick="filterItems('exam', '2nd', this)">2nd Grading</div>
             <div class="filter-tab filter-tab-exam" onclick="filterItems('exam', '3rd', this)">3rd Grading</div>
             <div class="filter-tab filter-tab-exam" onclick="filterItems('exam', '4th', this)">4th Grading</div>
@@ -315,45 +566,48 @@
             <table class="exam-table table-exam">
                 <thead>
                     <tr>
-                        <th>Title</th><th>Subject</th><th>Section</th>
-                        <th>Period</th><th>Duration</th><th>Questions</th>
-                        <th>Attempts</th><th>Status</th><th>Actions</th>
+                        <th>Title</th>
+                        <th>Section</th>
+                        <th>Period</th>
+                        <th>Duration</th>
+                        <th>Questions</th>
+                        <th>Attempts</th>
+                        <th>Status</th>
+                        <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="exam-list">
                 {% for e in exams %}
                 <tr class="js-exam-row" data-period="{{ e.grading_period or 'none' }}">
                     <td><strong>{{ e.title }}</strong></td>
-                    <td>{{ class_info.subject_name }}</td>
-                    <td>{{ class_info.grade_level_name }} - {{ class_info.section_name }}</td>
-                    <td><span class="badge" style="background:#eef2f7; color:#313b3e;">{{ e.grading_period or 'None' }}</span></td>
+                    <td style="color:var(--muted);">{{ class_info.grade_level_name }} - {{ class_info.section_name }}</td>
+                    <td><span class="badge" style="background:#d1fae5; color:#065f46;">{{ e.grading_period or 'None' }}</span></td>
                     <td>{{ e.duration_mins }} min</td>
                     <td>{{ e.question_count }}</td>
                     <td>{{ e.attempt_count }}</td>
                     <td><span class="badge badge-{{ e.status|lower }}">{{ e.status|capitalize }}</span></td>
                     <td style="white-space:nowrap;">
-                        <form method="POST" action="{{ url_for('teacher.toggle_exam_visibility', exam_id=e.exam_id) }}" style="display:inline;">
-                            <input type="hidden" name="active_tab" value="exams">
-                            <button type="submit" class="btn btn-secondary" style="padding:5px 10px; font-size:12px; background: {{ '#f8f9fa' if e.is_visible else '#fff' }}; border: 1px solid #dee2e6; color: #333;" title="{{ 'Hide' if e.is_visible else 'Show' }}">
-                                {{ '👁️' if e.is_visible else '🙈' }}
-                            </button>
-                        </form>
-                        <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=e.exam_id) }}" class="btn btn-secondary" style="padding:5px 10px; font-size:12px; background:#e2e8f0; color:#475569;">✏️ Edit</a>
-                        <a href="{{ url_for('teacher.teacher_exam_results', exam_id=e.exam_id) }}" class="btn btn-success" style="padding:5px 10px; font-size:12px; background:#22c55e;">📊 Results</a>
-                        <form method="POST" action="{{ url_for('teacher.delete_exam', exam_id=e.exam_id) }}" onsubmit="return confirm('Delete this exam?');" style="display:inline;">
-                            <input type="hidden" name="active_tab" value="exams">
-                            <button type="submit" class="btn" style="padding:5px 10px; font-size:12px; background:#dc3545; color:#fff;">🗑 Delete</button>
-                        </form>
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <form method="POST" action="{{ url_for('teacher.toggle_exam_visibility', exam_id=e.exam_id) }}" style="display:inline;">
+                                <input type="hidden" name="active_tab" value="exams">
+                                <button type="submit" class="btn-action btn-act-gray btn-sm-action" title="{{ 'Hide' if e.is_visible else 'Show' }}">
+                                    {{ '👁️' if e.is_visible else '🙈' }}
+                                </button>
+                            </form>
+                            <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=e.exam_id) }}" class="btn-action btn-act-gray btn-sm-action">✏️ Edit</a>
+                            <a href="{{ url_for('teacher.teacher_exam_results', exam_id=e.exam_id) }}" class="btn-action btn-act-green btn-sm-action">📊 Results</a>
+                            <form method="POST" action="{{ url_for('teacher.delete_exam', exam_id=e.exam_id) }}" onsubmit="return confirm('Delete this exam?');" style="display:inline;">
+                                <input type="hidden" name="active_tab" value="exams">
+                                <button type="submit" class="btn-action btn-act-red btn-sm-action">🗑</button>
+                            </form>
+                        </div>
                     </td>
                 </tr>
                 {% endfor %}
                 </tbody>
             </table>
             {% else %}
-            <div class="empty-state">
-                <div class="big-icon">📭</div>
-                <h3>No exams found</h3>
-            </div>
+            <div class="empty-state"><div class="big-icon">📭</div><h3>No exams found</h3></div>
             {% endif %}
         </div>
     </div>
@@ -361,36 +615,22 @@
 </div>
 
 <script>
-    function changeSection(secId) {
-        window.location.href = "?section=" + secId;
-    }
+    function changeSection(secId) { window.location.href = "?section=" + secId; }
 
     function switchMainTab(tab, btn) {
         document.querySelectorAll('.view-tab-content').forEach(el => el.classList.remove('active'));
         document.querySelectorAll('.view-tab-btn').forEach(el => el.classList.remove('active'));
-        
         document.getElementById('tab-' + tab).classList.add('active');
         btn.classList.add('active');
     }
 
     function filterItems(type, period, el) {
-        // Handle active class for pills
         const allTabs = el.parentElement.querySelectorAll('.filter-tab');
-        allTabs.forEach(t => {
-            t.classList.remove('active');
-            // reset styles
-            t.style.background = ''; t.style.color = ''; t.style.borderColor = '';
-        });
+        allTabs.forEach(t => { t.classList.remove('active'); });
         el.classList.add('active');
-        
-        if(type === 'exam') {
-            el.style.background = '#007bff'; el.style.color = '#fff'; el.style.borderColor = '#007bff';
-        }
 
-        // Filter the rows
         const rows = document.querySelectorAll('.js-' + type + '-row');
         let visibleCount = 0;
-        
         rows.forEach(row => {
             if (period === 'all' || row.dataset.period === period) {
                 row.style.display = type === 'act' ? 'flex' : '';
@@ -400,49 +640,36 @@
             }
         });
 
-        // Toggle Empty state dynamically
         let listContainer = document.getElementById(type + '-list');
         if (!listContainer) return;
-        
         let emptyMsg = document.getElementById('empty-' + type);
         if (visibleCount === 0) {
             if (!emptyMsg) {
-                emptyMsg = document.createElement('tr');
+                emptyMsg = document.createElement(type === 'act' ? 'div' : 'tr');
                 emptyMsg.id = 'empty-' + type;
-                if(type === 'act') {
-                    emptyMsg = document.createElement('div');
-                    emptyMsg.id = 'empty-' + type;
+                if (type === 'act') {
                     emptyMsg.className = 'empty-state';
                     emptyMsg.style.padding = '30px';
                     emptyMsg.innerHTML = '<p>No items found for this period.</p>';
                 } else {
-                    emptyMsg.innerHTML = '<td colspan="9" style="text-align:center; padding:30px; color:#aaa;">No items found for this period.</td>';
+                    emptyMsg.innerHTML = '<td colspan="8" style="text-align:center; padding:30px; color:#94a3b8;">No items found for this period.</td>';
                 }
                 listContainer.appendChild(emptyMsg);
             }
-        } else if (emptyMsg) {
-            emptyMsg.remove();
-        }
+        } else if (emptyMsg) { emptyMsg.remove(); }
     }
 
-    // Initialize exactly one active filter on load per tab
-    document.addEventListener("DOMContentLoaded", function() {
-        // Handle active_tab parameter
+    document.addEventListener("DOMContentLoaded", function () {
         const urlParams = new URLSearchParams(window.location.search);
         const activeTab = urlParams.get('active_tab');
         if (activeTab) {
             const tabBtn = document.getElementById('tab-btn-' + activeTab);
-            if (tabBtn) {
-                switchMainTab(activeTab, tabBtn);
-            }
+            if (tabBtn) switchMainTab(activeTab, tabBtn);
         }
-
         const defaultActs = document.querySelector('.filter-tab-act.active');
         if (defaultActs) filterItems('act', '1st', defaultActs);
-
         const defaultQuizzes = document.querySelector('.filter-tab-quiz.active');
         if (defaultQuizzes) filterItems('quiz', '1st', defaultQuizzes);
-
         const defaultExams = document.querySelector('.filter-tab-exam.active');
         if (defaultExams) filterItems('exam', '1st', defaultExams);
     });

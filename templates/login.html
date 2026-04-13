@@ -50,12 +50,29 @@
         .hero {
             position: relative;
             background: linear-gradient(160deg, #07133a 0%, #0e2260 35%, #1a3a8f 70%, #1a5fa8 100%);
+            background-size: 300% 300%;
+            animation: hero-gradient 8s ease infinite;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 60px 72px;
             overflow: hidden;
+        }
+
+        /* Animation E — slow gradient shift */
+        @keyframes hero-gradient {
+            0% {
+                background-position: 0% 50%;
+            }
+
+            50% {
+                background-position: 100% 50%;
+            }
+
+            100% {
+                background-position: 0% 50%;
+            }
         }
 
         /* Animated mesh circles */
@@ -129,34 +146,104 @@
         }
 
         /* Logo */
-        .logo-ring {
-            width: 96px;
-            height: 96px;
+        .logo-wrap {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            margin: 0 auto 32px;
+        }
+
+        /* Spinning outer ring */
+        .logo-spinner {
+            position: absolute;
+            inset: 0;
             border-radius: 50%;
-            background: rgba(255, 255, 255, .10);
-            border: 2px solid rgba(255, 255, 255, .20);
+            background: conic-gradient(from 0deg,
+                    transparent 0%,
+                    rgba(240, 208, 96, 0.8) 20%,
+                    rgba(255, 255, 255, 0.9) 40%,
+                    rgba(240, 208, 96, 0.8) 60%,
+                    transparent 80%);
+            animation: logo-spin 6s linear infinite;
+            filter: blur(1px);
+        }
+
+        /* Static inner mask to create ring effect */
+        .logo-spinner::after {
+            content: '';
+            position: absolute;
+            inset: 4px;
+            border-radius: 50%;
+            background: #0e2260;
+        }
+
+        .logo-ring {
+            position: absolute;
+            inset: 6px;
+            border-radius: 50%;
+            background: #000;
             backdrop-filter: blur(8px);
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 28px;
             overflow: hidden;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, .3);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, .4), inset 0 1px 1px rgba(255, 255, 255, 0.15);
+            animation: logo-pulse 3s ease-in-out infinite;
         }
 
         .logo-ring img {
-            width: 88%;
-            height: 88%;
-            object-fit: contain;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            position: relative;
+            z-index: 2;
         }
 
+        @keyframes logo-spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes logo-pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 8px 32px rgba(0, 0, 0, .4), 0 0 0 0 rgba(240, 208, 96, 0);
+            }
+
+            50% {
+                box-shadow: 0 8px 40px rgba(0, 0, 0, .5), 0 0 20px 4px rgba(240, 208, 96, 0.2);
+            }
+        }
+
+        /* Animation I — gold bar expands from center */
         .gold-bar {
-            width: 52px;
+            width: 0px;
             height: 3px;
             background: linear-gradient(90deg, transparent, var(--gold-lt), transparent);
             border-radius: 2px;
             margin: 0 auto 18px;
+            animation: gold-expand 1s cubic-bezier(0.4, 0, 0.2, 1) 0.6s forwards;
         }
+
+        @keyframes gold-expand {
+            from {
+                width: 0px;
+                opacity: 0;
+            }
+
+            to {
+                width: 52px;
+                opacity: 1;
+            }
+        }
+
+
 
         .hero-eyebrow {
             font-size: .7rem;
@@ -189,49 +276,11 @@
             font-size: .88rem;
             color: rgba(255, 255, 255, .55);
             line-height: 1.7;
-            margin-bottom: 40px;
+            margin-bottom: 24px;
             font-style: italic;
         }
 
-        /* Feature cards */
-        .features {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
 
-        .feat {
-            background: rgba(255, 255, 255, .07);
-            border: 1px solid rgba(255, 255, 255, .11);
-            border-radius: 14px;
-            padding: 16px 18px;
-            text-align: left;
-            backdrop-filter: blur(4px);
-            transition: background .2s;
-        }
-
-        .feat:hover {
-            background: rgba(255, 255, 255, .11);
-        }
-
-        .feat-icon {
-            font-size: 1.3rem;
-            margin-bottom: 8px;
-            display: block;
-        }
-
-        .feat-title {
-            font-size: .82rem;
-            font-weight: 700;
-            color: #fff;
-            margin-bottom: 3px;
-        }
-
-        .feat-desc {
-            font-size: .72rem;
-            color: rgba(255, 255, 255, .45);
-            line-height: 1.45;
-        }
 
         /* Diocese badge */
         .hero-badge {
@@ -548,44 +597,23 @@
 
             <div class="hero-inner">
                 <!-- Logo -->
-                <div class="logo-ring">
-                    <img src="{{ url_for('static', filename='img/spdcss_logo.webp') }}" alt="SPDCSS Logo">
+                <div class="logo-wrap">
+                    <div class="logo-spinner"></div>
+                    <div class="logo-ring">
+                        <img src="{{ url_for('static', filename='img/spdcss_logo.jpg') }}" alt="SPDCSS Logo">
+                    </div>
                 </div>
 
+                <!-- Animation I: gold bar expands (handled by CSS) -->
                 <div class="gold-bar"></div>
                 <div class="hero-eyebrow">San Pablo Diocesan Catholic Schools System</div>
 
                 <h1 class="hero-title">Liceo <em>Learning</em><br>Management System</h1>
                 <p class="hero-sub">A unified digital platform for students,<br>faculty, and school administrators.</p>
 
-                <!-- Feature cards -->
-                <div class="features">
-                    <div class="feat">
-                        <span class="feat-icon">📋</span>
-                        <div class="feat-title">Enrollment</div>
-                        <div class="feat-desc">Online enrollment & status tracking</div>
-                    </div>
-                    <div class="feat">
-                        <span class="feat-icon">💳</span>
-                        <div class="feat-title">Billing</div>
-                        <div class="feat-desc">Student billing & payment records</div>
-                    </div>
-                    <div class="feat">
-                        <span class="feat-icon">📦</span>
-                        <div class="feat-title">Inventory</div>
-                        <div class="feat-desc">Uniform & supply reservations</div>
-                    </div>
-                    <div class="feat">
-                        <span class="feat-icon">📊</span>
-                        <div class="feat-title">Reports</div>
-                        <div class="feat-desc">Academic & financial reporting</div>
-                    </div>
-                </div>
-
-                <div class="hero-badge">🏫 Multi-Branch School System</div>
             </div>
 
-            <p class="hero-copy">© 2025 Liceo LMS · Powered by SPDCSS</p>
+            <p class="hero-copy">© 2026 Liceo LMS</p>
         </section>
 
         <!-- ══ RIGHT FORM ══ -->

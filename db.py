@@ -15,9 +15,9 @@ def get_db_connection():
     host = os.getenv("DB_HOST", "127.0.0.1")
     port = int(os.getenv("DB_PORT", "5432"))
 
-    database = os.getenv("DB_NAME", "liceo_db")
-    user = os.getenv("DB_USER", "liceo_db")
-    password = os.getenv("DB_PASSWORD", "liceo123")
+    database = os.getenv("DB_NAME", "liceo_db1")
+    user = os.getenv("DB_USER", "liceo_db1")
+    password = os.getenv("DB_PASSWORD", "1234")
 
     try:
         conn = psycopg2.connect(

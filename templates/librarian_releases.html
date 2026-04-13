@@ -1,694 +1,575 @@
 {% extends "base.html" %}
-
-{% block title %}Book Release{% endblock %}
+{% block title %}Book Release | Liceo LMS{% endblock %}
 
 {% block styles %}
 <style>
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+  :root {
+    --blue:       #1e3a8a;
+    --blue-mid:   #2563eb;
+    --blue-light: #bfdbfe;
+    --blue-pale:  #eff6ff;
+    --gold:       #f59e0b;
+    --gold-light: #fef3c7;
+    --green:      #059669;
+    --green-bg:   #d1fae5;
+    --red:        #dc2626;
+    --red-bg:     #fee2e2;
+    --amber:      #d97706;
+    --amber-bg:   #fff3cd;
+    --bg:         #f0f4ff;
+    --surface:    #ffffff;
+    --text:       #1e293b;
+    --muted:      #64748b;
+    --border:     #e2e8f0;
+    --radius:     14px;
+    --ease:       cubic-bezier(0.4,0,0.2,1);
   }
 
-  body {
-    background: #f5f7fa;
-    color: #333;
-  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; background: var(--bg); color: var(--text); }
 
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-  }
+  /* ── Page wrapper ── */
+  .rel-wrap { max-width: 1180px; margin: 0 auto; padding: 26px 20px; }
 
-  header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 18px;
-    padding-bottom: 18px;
-    border-bottom: 2px solid #ddd;
-    gap: 12px;
+  /* ── Top bar ── */
+  .top-bar {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 16px; flex-wrap: wrap; margin-bottom: 24px;
   }
+  .top-bar h1 { font-size: 24px; font-weight: 900; color: var(--blue); display: flex; align-items: center; gap: 10px; }
+  .top-bar p  { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .top-bar-right { display: flex; gap: 10px; flex-shrink: 0; }
 
-  .header-left {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-
-  h1 {
-    font-size: 28px;
-    color: #222;
-  }
-
-  .header-subtitle {
-    font-size: 13px;
-    color: #999;
-  }
-
-  .header-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
+  /* ── Buttons ── */
   .btn {
-    padding: 10px 16px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: #f8f8f8;
-    color: #222;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 14px;
-    font-weight: 500;
-    transition: background 0.2s;
-    white-space: nowrap;
+    padding: 11px 18px; border-radius: 10px; font-size: 13px; font-weight: 700;
+    text-decoration: none; display: inline-flex; align-items: center; gap: 7px;
+    transition: all 0.18s var(--ease); cursor: pointer; border: none; white-space: nowrap;
   }
+  .btn-back    { background: var(--surface); color: var(--text); border: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,.05); }
+  .btn-back:hover    { background: var(--bg); }
+  .btn-primary { background: var(--blue);  color: #fff; box-shadow: 0 4px 10px rgba(30,58,138,.25); }
+  .btn-primary:hover { background: #1d4ed8; transform: translateY(-1px); }
+  .btn-gold    { background: var(--gold-light); color: #78350f; border: 1px solid #fde68a; }
+  .btn-gold:hover    { background: var(--gold); color: #1a0a00; }
 
-  .btn:hover {
-    background: #efefef;
-  }
-
-  .btn-primary {
-    background: #28a745;
-    color: #fff;
-    border-color: #28a745;
-    padding: 12px 24px;
-    font-size: 15px;
-  }
-
-  .btn-primary:hover {
-    background: #218838;
-  }
-
-  .btn-info {
-    background: #007bff;
-    color: #fff;
-    border-color: #007bff;
-  }
-
-  .btn-info:hover {
-    background: #0056b3;
-  }
-
+  /* ── Cards ── */
   .card {
-    background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    padding: 26px;
-    margin-bottom: 20px;
+    background: var(--surface); border-radius: var(--radius);
+    box-shadow: 0 2px 12px rgba(30,58,138,.07);
+    border: 1px solid var(--border); margin-bottom: 20px;
   }
-
-  .form-section {
-    margin-bottom: 28px;
+  .card-header {
+    padding: 18px 24px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
   }
+  .card-header h2 { font-size: 15px; font-weight: 800; color: var(--blue); display: flex; align-items: center; gap: 8px; }
+  .card-body { padding: 24px; }
 
-  .form-section h3 {
-    font-size: 16px;
-    font-weight: 600;
-    color: #222;
-    margin-bottom: 16px;
-    padding-bottom: 10px;
-    border-bottom: 2px solid #eee;
+  /* ── Form fields ── */
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px,1fr)); gap: 18px; margin-bottom: 20px; }
+  .fgroup { display: flex; flex-direction: column; gap: 6px; }
+  .fgroup label { font-size: 11px; font-weight: 800; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+  .fgroup input, .fgroup select {
+    padding: 12px 14px; border-radius: 10px; border: 2px solid var(--border);
+    font-size: 13px; font-weight: 600; color: var(--text); background: var(--bg);
+    outline: none; transition: all 0.18s var(--ease); font-family: inherit;
   }
+  .fgroup input:focus, .fgroup select:focus { border-color: var(--blue-mid); background: #fff; box-shadow: 0 0 0 3px var(--blue-pale); }
+  .fgroup .hint { font-size: 11px; color: var(--muted); }
 
-  .form-row {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 18px;
-    margin-bottom: 16px;
+  /* ── Divider ── */
+  .section-sep { height: 1px; background: var(--bg); margin: 20px 0; }
+
+  /* ── Grade Tabs ── */
+  .grade-tabs-bar {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    padding: 16px 24px 0; border-bottom: 2px solid var(--border);
+    background: #f8faff;
   }
-
-  .form-group {
-    display: flex;
-    flex-direction: column;
+  .grade-tab {
+    padding: 8px 16px; border-radius: 10px 10px 0 0; font-size: 12px; font-weight: 800;
+    cursor: pointer; border: none; background: none; color: var(--muted);
+    transition: all 0.18s var(--ease); border: 1px solid transparent;
+    border-bottom: none; margin-bottom: -2px; line-height: 1;
   }
-
-  label {
-    font-weight: 600;
-    color: #555;
-    font-size: 14px;
-    margin-bottom: 8px;
+  .grade-tab:hover { background: var(--blue-pale); color: var(--blue); }
+  .grade-tab.active {
+    background: var(--surface); color: var(--blue);
+    border-color: var(--border) var(--border) var(--surface) var(--border);
+    box-shadow: 0 -2px 0 var(--blue);
   }
-
-  input,
-  select {
-    padding: 12px 14px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 14px;
-    transition: border-color 0.2s, box-shadow 0.2s;
-    font-family: inherit;
+  .grade-tab .tab-count {
+    margin-left: 5px; background: var(--blue-pale); color: var(--blue);
+    border-radius: 99px; padding: 1px 7px; font-size: 10px;
   }
+  .grade-tab.active .tab-count { background: var(--blue); color: #fff; }
+  .grade-tab.active:hover { background: var(--surface); }
 
-  input:focus,
-  select:focus {
-    outline: none;
-    border-color: #28a745;
-    box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.1);
+  /* ── Search bar inside books section ── */
+  .books-search-bar {
+    padding: 14px 24px; background: var(--surface); border-bottom: 1px solid var(--border);
+    display: flex; gap: 10px; align-items: center;
   }
-
-  .help-text {
-    font-size: 12px;
-    color: #999;
-    margin-top: 4px;
+  .books-search-bar input {
+    flex: 1; padding: 10px 14px; border-radius: 10px; border: 1.5px solid var(--border);
+    font-size: 13px; font-weight: 600; color: var(--text); background: var(--bg);
+    outline: none; transition: all 0.18s var(--ease); font-family: inherit;
   }
+  .books-search-bar input:focus { border-color: var(--blue-mid); background: #fff; box-shadow: 0 0 0 3px var(--blue-pale); }
+  .visible-count-label { font-size: 12px; font-weight: 700; color: var(--muted); white-space: nowrap; }
 
-  .form-actions {
-    display: flex;
-    gap: 12px;
-    margin-top: 22px;
-    padding-top: 16px;
-    border-top: 1px solid #eee;
-  }
+  /* ── Books table ── */
+  .books-scroll { max-height: 380px; overflow-y: auto; }
+  .books-scroll::-webkit-scrollbar { width: 5px; }
+  .books-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-  .form-actions .btn-primary {
-    flex: 1;
-  }
-
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-
-  thead {
-    background: #f8f9fa;
-    border-bottom: 2px solid #ddd;
-  }
-
+  table { width: 100%; border-collapse: collapse; }
+  thead { background: #f0f4ff; position: sticky; top: 0; z-index: 2; }
   th {
-    padding: 12px 8px;
-    text-align: left;
-    font-weight: 600;
-    color: #555;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
+    padding: 10px 14px; font-size: 11px; font-weight: 800; color: var(--muted);
+    text-transform: uppercase; letter-spacing: .06em; text-align: left;
+    border-bottom: 2px solid var(--border); white-space: nowrap;
+  }
+  td { padding: 12px 14px; font-size: 13px; font-weight: 500; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr { transition: background 0.12s; cursor: pointer; }
+  tbody tr:hover { background: var(--blue-pale); }
+  tbody tr.selected-row { background: #dbeafe !important; }
+  tbody tr.selected-row td { font-weight: 700; }
+
+  /* ── Radio styled as checkmark ── */
+  input[type="radio"] { accent-color: var(--blue); width: 16px; height: 16px; cursor: pointer; }
+
+  /* ── Grade separator rows inside table ── */
+  .grade-sep-row td {
+    background: var(--blue); color: #fff; font-size: 11px; font-weight: 800;
+    letter-spacing: .06em; text-transform: uppercase; padding: 7px 14px;
+    border-bottom: none; pointer-events: none;
   }
 
-  td {
-    padding: 12px 8px;
-    border-bottom: 1px solid #eee;
-    vertical-align: middle;
+  /* ── Stock badge ── */
+  .avail-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 800;
+  }
+  .avail-ok  { background: var(--green-bg); color: var(--green); }
+  .avail-low { background: var(--amber-bg); color: var(--amber); }
+  .avail-out { background: var(--red-bg);   color: var(--red); }
+
+  .empty-row td { text-align: center; padding: 40px; color: var(--muted); font-size: 13px; }
+
+  /* ── Submit bar ── */
+  .submit-bar {
+    padding: 18px 24px; border-top: 1px solid var(--border); background: #f8faff;
+    display: flex; gap: 12px; align-items: center; justify-content: flex-end;
   }
 
-  tbody tr {
-    transition: background 0.2s;
-  }
-
-  tbody tr:hover {
-    background: #f9f9f9;
-  }
-
-  .book-title {
-    font-weight: 600;
-    color: #222;
-  }
-
-  .book-info {
-    font-size: 12px;
-    color: #999;
-  }
-
-  .price {
-    color: #28a745;
-    font-weight: 600;
-  }
-
-  .muted {
-    color: #999;
-    font-size: 13px;
-    text-align: center;
-    padding: 32px 16px;
-  }
-
-  .message {
-    padding: 14px 18px;
-    border-radius: 8px;
-    margin-bottom: 18px;
-    font-weight: 500;
-  }
-
-  .message-success {
-    background: #d1e7dd;
-    color: #0f5132;
-    border: 1px solid #badbcc;
-  }
-
-  .message-error {
-    background: #f8d7da;
-    color: #842029;
-    border: 1px solid #f5c2c7;
-  }
-
-  .loading-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(255, 255, 255, 0.8);
-    display: none;
-    justify-content: center;
-    align-items: center;
-    z-index: 9999;
-  }
-
-  .loading-overlay.active {
-    display: flex;
-  }
-
-  .spinner {
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #28a745;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    animation: spin 1s linear infinite;
-  }
-
-  @keyframes spin {
-    0% {
-      transform: rotate(0deg)
-    }
-
-    100% {
-      transform: rotate(360deg)
-    }
-  }
-
-  /* Recent releases modal/panel */
+  /* ── Recent Releases Modal ── */
   .modal-backdrop {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.35);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 9998;
-    padding: 18px;
+    position: fixed; inset: 0; background: rgba(15,23,42,.45);
+    display: none; align-items: center; justify-content: center;
+    z-index: 9998; padding: 20px; backdrop-filter: blur(4px);
   }
-
-  .modal-backdrop.active {
-    display: flex;
-  }
-
+  .modal-backdrop.active { display: flex; }
   .modal {
-    width: min(1100px, 100%);
-    background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.18);
-    overflow: hidden;
+    width: min(1100px,100%); max-height: 90vh; background: var(--surface);
+    border-radius: var(--radius); box-shadow: 0 20px 60px rgba(0,0,0,.2);
+    overflow: hidden; display: flex; flex-direction: column;
   }
-
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 18px;
-    border-bottom: 1px solid #eee;
-    background: #fafafa;
-    gap: 12px;
+  .modal-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 22px; background: var(--blue); flex-shrink: 0;
   }
-
-  .modal-title {
-    font-size: 16px;
-    font-weight: 700;
-    color: #222;
+  .modal-head h3 { font-size: 16px; font-weight: 800; color: #fff; }
+  .modal-close {
+    background: rgba(255,255,255,.15); border: none; color: #fff;
+    border-radius: 8px; padding: 8px 12px; cursor: pointer; font-size: 14px;
+    font-weight: 700; transition: background .15s;
   }
+  .modal-close:hover { background: rgba(255,255,255,.28); }
 
-  .modal-body {
-    padding: 16px 18px;
+  .modal-filter-bar {
+    padding: 14px 22px; border-bottom: 1px solid var(--border); background: #f8faff;
+    display: flex; gap: 10px; flex-wrap: wrap; flex-shrink: 0;
   }
-
-  .modal-actions {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    flex-wrap: wrap;
+  .modal-filter-bar input, .modal-filter-bar select {
+    padding: 9px 13px; border-radius: 10px; border: 1.5px solid var(--border);
+    font-size: 13px; font-weight: 600; color: var(--text); background: #fff;
+    outline: none; transition: border-color .18s; font-family: inherit;
   }
+  .modal-filter-bar input { flex: 1; min-width: 200px; }
+  .modal-filter-bar input:focus, .modal-filter-bar select:focus { border-color: var(--blue-mid); }
 
-  .close-x {
-    border: 1px solid #ddd;
-    background: #fff;
-    border-radius: 10px;
-    padding: 8px 10px;
-    cursor: pointer;
+  /* Grade tabs inside modal */
+  .modal-grade-tabs {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    padding: 12px 22px 0; border-bottom: 2px solid var(--border); flex-shrink: 0;
   }
-
-  .close-x:hover {
-    background: #f2f2f2;
+  .reltab {
+    padding: 7px 14px; border-radius: 8px 8px 0 0; font-size: 11px; font-weight: 800;
+    cursor: pointer; border: 1px solid transparent; border-bottom: none;
+    background: none; color: var(--muted); transition: all .15s; margin-bottom: -2px;
   }
+  .reltab:hover { background: var(--blue-pale); color: var(--blue); }
+  .reltab.active { background: #fff; color: var(--blue); border-color: var(--border) var(--border) #fff; box-shadow: 0 -2px 0 var(--blue); }
 
-  .filter-row {
-    display: flex;
-    gap: 12px;
-    align-items: end;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
+  .modal-body { overflow-y: auto; flex: 1; }
+
+  .modal-table td, .modal-table th { padding: 11px 16px; }
+  .modal-table thead th { background: #f0f4ff; position: sticky; top: 0; z-index: 2; }
+  .modal-table tbody tr { border-bottom: 1px solid #f1f5f9; }
+  .modal-table tbody tr:hover { background: var(--blue-pale); }
+  .modal-empty { text-align: center; padding: 50px; color: var(--muted); font-size: 13px; }
+
+  /* ── Loading overlay ── */
+  .loading-overlay {
+    position: fixed; inset: 0; background: rgba(240,244,255,.85);
+    display: none; align-items: center; justify-content: center;
+    z-index: 9999; backdrop-filter: blur(6px);
   }
+  .loading-overlay.active { display: flex; }
+  .spinner { width: 44px; height: 44px; border-radius: 50%; border: 4px solid var(--blue-pale); border-top-color: var(--blue); animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
-  .filter-row .form-group {
-    min-width: 240px;
-  }
-
-  .tiny {
-    font-size: 12px;
-    color: #888;
+  @media (max-width: 640px) {
+    .top-bar { flex-direction: column; }
+    .form-grid { grid-template-columns: 1fr; }
+    .grade-tabs-bar { padding: 10px 14px 0; }
   }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="spinner"></div>
-</div>
+<div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
 
-<div class="container">
-  <header>
-    <div class="header-left">
+<div class="rel-wrap">
+
+  {# ── Top bar ── #}
+  <div class="top-bar">
+    <div>
       <h1>🧾 Book Release</h1>
-      <div class="header-subtitle">Release books to a student (by Branch Enrollment ID or Student Name)</div>
+      <p>Release books to a student · Books are grouped by grade level</p>
     </div>
-
-    <div class="header-actions">
-      <button type="button" class="btn btn-info" id="openRecentBtn">📋 Recent Releases</button>
-      <a href="{{ url_for('librarian.dashboard') }}" class="btn">⬅ Back</a>
+    <div class="top-bar-right">
+      <button type="button" class="btn btn-gold" id="openRecentBtn">📋 Recent Releases</button>
+      <a href="{{ url_for('librarian.dashboard') }}" class="btn btn-back">← Dashboard</a>
     </div>
-  </header>
+  </div>
 
-  {% if message %}
-  <div class="message message-success">✅ {{ message }}</div>
-  {% endif %}
-  {% if error %}
-  <div class="message message-error">❌ {{ error }}</div>
-  {% endif %}
+  {# ── Flash messages ── #}
+  {% if message %}<div style="background:var(--green-bg);color:#065f46;border:1px solid #6ee7b7;border-radius:10px;padding:12px 18px;margin-bottom:16px;font-weight:700;">✅ {{ message }}</div>{% endif %}
+  {% if error %}<div style="background:var(--red-bg);color:#991b1b;border:1px solid #fca5a5;border-radius:10px;padding:12px 18px;margin-bottom:16px;font-weight:700;">❌ {{ error }}</div>{% endif %}
 
-  <!-- Recent Releases Modal -->
-  <div class="modal-backdrop" id="recentModal">
-    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="recentTitle">
-      <div class="modal-header">
-        <div>
-          <div class="modal-title" id="recentTitle">📋 Recent Releases</div>
-          <div class="tiny">Filter by student grade (requires <code>student_grade</code> on each release row).</div>
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="close-x" id="closeRecentBtn">✖ Close</button>
+  {# ── Release form ── #}
+  {% if is_branch_active_status %}
+  <form method="post" id="releaseForm">
+    {# ─ Step 1: Student ─ #}
+    <div class="card">
+      <div class="card-header">
+        <h2>👤 Step 1 — Student Details</h2>
+      </div>
+      <div class="card-body">
+        <div class="form-grid">
+          <div class="fgroup">
+            <label>🆔 Branch Enrollment ID</label>
+            <input type="text" id="enrollment_id" name="enrollment_id" placeholder="e.g., 1001">
+            <span class="hint">Auto-fills grade filter when entered</span>
+          </div>
+          <div class="fgroup">
+            <label>👤 Student Name (optional)</label>
+            <input type="text" id="student_name" name="student_name" placeholder="Full name">
+          </div>
+          <div class="fgroup">
+            <label>📦 Quantity</label>
+            <input type="number" id="qty" name="qty" value="1" min="1" required>
+          </div>
         </div>
       </div>
+    </div>
 
-      <div class="modal-body">
-        <div class="filter-row">
-          <div class="form-group">
-            <label for="recentGradeFilter">🎓 Filter Student Grade</label>
-            <select id="recentGradeFilter">
-              <option value="">All Grades</option>
-              {% for g in grades %}
-              <option value="{{ g }}">{{ g }}</option>
-              {% endfor %}
-            </select>
-            <div class="help-text">Shows only releases for the selected student grade</div>
-          </div>
+    {# ─ Step 2: Book selection ─ #}
+    <div class="card">
+      <div class="card-header">
+        <h2>📖 Step 2 — Select Book</h2>
+        <span style="font-size:12px;color:var(--muted);font-weight:600;">Click a row to select · books sorted A–Z per grade</span>
+      </div>
 
-          <div class="form-group" style="min-width: 320px;">
-            <label for="recentSearch">🔎 Search</label>
-            <input id="recentSearch" type="text" placeholder="Search student / enrollment / book...">
-            <div class="help-text">Quick search in recent releases list</div>
-          </div>
-        </div>
+      {# ── Grade Tabs ── #}
+      {% set book_grades = books | map(attribute='grade_level') | unique | list %}
+      <div class="grade-tabs-bar" id="bookGradeTabs">
+        <button type="button" class="grade-tab active" data-grade="">
+          📚 All
+          <span class="tab-count" id="tabCount-all">{{ books | length }}</span>
+        </button>
+        {% for g in grades %}
+          {% set cnt = books | selectattr('grade_level', 'equalto', g) | list | length %}
+          {% if cnt > 0 %}
+          <button type="button" class="grade-tab" data-grade="{{ g }}">
+            {{ g }}
+            <span class="tab-count" id="tabCount-{{ g | replace(' ','_') }}">{{ cnt }}</span>
+          </button>
+          {% endif %}
+        {% endfor %}
+      </div>
 
-        {% if releases and releases|length > 0 %}
+      {# ── Search ── #}
+      <div class="books-search-bar">
+        <input type="text" id="bookSearch" placeholder="🔍 Search title or publisher...">
+        <span class="visible-count-label" id="visibleCount">{{ books|length }} books</span>
+      </div>
+
+      {# ── Books scrollable table ── #}
+      <div class="books-scroll">
+        {% if books %}
         <table>
           <thead>
             <tr>
-              <th>Date</th>
-              <th>Branch Enrollment ID</th>
-              <th>Student Name</th>
-              <th>Student Grade</th>
-              <th>Book Details</th>
-              <th>Qty</th>
+              <th style="width:40px;"></th>
+              <th>Book Title</th>
+              <th>Publisher</th>
+              <th style="text-align:right;">Price</th>
+              <th style="text-align:center;">Available</th>
             </tr>
           </thead>
-          <tbody id="recentReleasesBody">
-            {% for r in releases %}
-            <tr data-student-grade="{{ r.student_grade|default('') }}"
-              data-search="{{ (r.branch_enrollment_no ~ ' ' ~ r.student_name ~ ' ' ~ r.book_display)|lower }}">
-              <td>{{ r.created_at }}</td>
-              <td><strong>#{{ r.branch_enrollment_no }}</strong></td>
-              <td>{{ r.student_name }}</td>
-              <td><strong>{{ r.student_grade|default('—') }}</strong></td>
-              <td>{{ r.book_display }}</td>
-              <td><strong>{{ r.qty }}</strong></td>
+          <tbody id="booksTbody">
+            {% set last_grade = namespace(val='') %}
+            {% for b in books %}
+            {% set avail = (b.stock_total or 0) - (b.reserved_qty or 0) %}
+            {# Grade separator row #}
+            {% if b.grade_level != last_grade.val %}
+            {% set last_grade.val = b.grade_level %}
+            <tr class="grade-sep-row" data-grade="{{ b.grade_level }}" data-sep="1">
+              <td colspan="5">🎓 {{ b.grade_level or 'Unassigned' }}</td>
+            </tr>
+            {% endif %}
+            <tr data-grade="{{ b.grade_level }}"
+                data-search="{{ (b.title ~ ' ' ~ b.publisher ~ ' ' ~ b.grade_level) | lower }}"
+                data-avail="{{ avail }}"
+                onclick="selectBook(this, '{{ b.item_id }}')">
+              <td><input type="radio" name="item_id" value="{{ b.item_id }}" id="book_{{ b.item_id }}" required></td>
+              <td style="font-weight:700;">{{ b.title }}</td>
+              <td style="color:var(--muted);">{{ b.publisher or '—' }}</td>
+              <td style="text-align:right;font-weight:800;color:var(--blue);">₱{{ "%.2f"|format(b.price or 0) }}</td>
+              <td style="text-align:center;">
+                {% if avail <= 0 %}
+                  <span class="avail-badge avail-out">🚫 Out</span>
+                {% elif avail < 10 %}
+                  <span class="avail-badge avail-low">⚠️ {{ avail }}</span>
+                {% else %}
+                  <span class="avail-badge avail-ok">✅ {{ avail }}</span>
+                {% endif %}
+              </td>
             </tr>
             {% endfor %}
           </tbody>
         </table>
         {% else %}
-        <div class="muted">📭 No releases recorded yet.</div>
+        <div style="text-align:center;padding:50px;color:var(--muted);font-size:13px;">📭 No books available in inventory.</div>
         {% endif %}
       </div>
+
+      {# ── Submit ── #}
+      <div class="submit-bar">
+        <span id="selectedInfo" style="font-size:13px;color:var(--muted);font-weight:600;flex:1;">No book selected yet</span>
+        <button type="submit" class="btn btn-primary">✅ Record Release</button>
+      </div>
     </div>
-  </div>
-
-  <!-- Release Form -->
-  {% if is_branch_active_status %}
-  <div class="card">
-    <div class="form-section">
-      <h3>📚 Release Books</h3>
-
-      <form method="post" id="releaseForm">
-        <div class="form-row">
-          <div class="form-group">
-            <label for="enrollment_id">🆔 Branch Enrollment ID</label>
-            <input type="text" id="enrollment_id" name="enrollment_id" placeholder="e.g., 1" value="">
-            <div class="help-text">Enter student branch enrollment ID</div>
-          </div>
-
-          <div class="form-group">
-            <label for="student_name">👤 Student Name (Optional)</label>
-            <input type="text" id="student_name" name="student_name" placeholder="Student full name" value="">
-            <div class="help-text">Or search by student name</div>
-          </div>
-
-          <div class="form-group">
-            <label for="qty">📦 Quantity</label>
-            <input type="number" id="qty" name="qty" value="1" min="1" required>
-            <div class="help-text">Number of books to release</div>
-          </div>
-        </div>
-
-        <!-- BOOK FILTER BY GRADE -->
-        <div class="form-row">
-          <div class="form-group">
-            <label for="bookGradeFilter">🎓 Filter Book Grade</label>
-            <select id="bookGradeFilter">
-              <option value="">All Grades</option>
-              {% for g in grades %}
-              <option value="{{ g }}">{{ g }}</option>
-              {% endfor %}
-            </select>
-            <div class="help-text">Auto filter the book list by grade (Nursery → Kinder → Grade 1-10)</div>
-          </div>
-
-          <div class="form-group">
-            <label for="bookSearch">🔎 Search Book</label>
-            <input id="bookSearch" type="text" placeholder="Search title / publisher...">
-            <div class="help-text">Quick search in book list</div>
-          </div>
-        </div>
-
-        <!-- Books Table Selection -->
-        <div class="form-section">
-          <h3>📖 Select Book</h3>
-
-          <div class="books-table-container">
-            {% if books and books|length > 0 %}
-            <table>
-              <thead>
-                <tr>
-                  <th style="width: 40px;"></th>
-                  <th>Grade Level</th>
-                  <th>Publisher</th>
-                  <th>Title</th>
-                  <th>Price</th>
-                </tr>
-              </thead>
-
-              <tbody id="booksTbody">
-                {% for b in books %}
-                <tr data-grade="{{ b.grade_level }}"
-                  data-search="{{ (b.publisher ~ ' ' ~ b.title ~ ' ' ~ b.grade_level)|lower }}">
-                  <td>
-                    <input type="radio" id="book_{{ b.item_id }}" name="item_id" value="{{ b.item_id }}" required>
-                  </td>
-                  <td>{{ b.grade_level }}</td>
-                  <td><strong>{{ b.publisher }}</strong></td>
-                  <td class="book-title">{{ b.title }}</td>
-                  <td class="price">₱{{ "%.2f"|format(b.price or 0) }}</td>
-                </tr>
-                {% endfor %}
-              </tbody>
-            </table>
-            {% else %}
-            <div class="muted">📭 No books available.</div>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <button type="submit" class="btn btn-primary">✅ Record Release</button>
-        </div>
-      </form>
-    </div>
+  </form>
+  {% else %}
+  <div style="background:var(--red-bg);color:#991b1b;border-radius:var(--radius);padding:28px;text-align:center;font-weight:700;">
+    🔒 Branch is inactive — book releases are disabled.
   </div>
   {% endif %}
+
 </div>
 
+{# ── Recent Releases Modal ── #}
+<div class="modal-backdrop" id="recentModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>📋 Recent Book Releases</h3>
+      <button class="modal-close" id="closeRecentBtn">✖ Close</button>
+    </div>
+
+    {# Grade tabs in modal #}
+    <div class="modal-grade-tabs" id="relGradeTabs">
+      <button type="button" class="reltab active" data-grade="">All Grades</button>
+      {% for g in grades %}
+        {% set cnt = releases | selectattr('student_grade', 'equalto', g) | list | length %}
+        {% if cnt > 0 %}
+        <button type="button" class="reltab" data-grade="{{ g }}">{{ g }} <span style="opacity:.6;font-size:10px;">({{ cnt }})</span></button>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <div class="modal-filter-bar">
+      <input type="text" id="recentSearch" placeholder="🔍 Search student / enrollment / book...">
+      <select id="recentGradeFilter">
+        <option value="">All Grades</option>
+        {% for g in grades %}<option value="{{ g }}">{{ g }}</option>{% endfor %}
+      </select>
+    </div>
+
+    <div class="modal-body">
+      {% if releases %}
+      <table class="modal-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Enrollment ID</th>
+            <th>Student Name</th>
+            <th>Grade</th>
+            <th>Book</th>
+            <th style="text-align:center;">Qty</th>
+          </tr>
+        </thead>
+        <tbody id="recentReleasesBody">
+          {% for r in releases %}
+          <tr data-student-grade="{{ r.student_grade | default('') }}"
+              data-search="{{ (r.branch_enrollment_no|string ~ ' ' ~ r.student_name ~ ' ' ~ r.book_display) | lower }}">
+            <td style="color:var(--muted);font-size:12px;">{{ r.created_at.strftime('%b %d, %Y') if r.created_at else '—' }}</td>
+            <td><strong>#{{ r.branch_enrollment_no or '—' }}</strong></td>
+            <td style="font-weight:700;">{{ r.student_name }}</td>
+            <td><span style="background:var(--blue-pale);color:var(--blue);font-size:11px;font-weight:800;padding:3px 10px;border-radius:99px;">{{ r.student_grade | default('—') }}</span></td>
+            <td>{{ r.book_display }}</td>
+            <td style="text-align:center;font-weight:800;color:var(--blue);">{{ r.qty }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="modal-empty">📭 No releases recorded yet.</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
 <script>
-  // Grade order for proper sorting (Nursery → Kinder → Grade 1-10)
-  const gradeOrder = {
-    'Nursery': 0,
-    'Kinder': 1,
-    'Grade 1': 2,
-    'Grade 2': 3,
-    'Grade 3': 4,
-    'Grade 4': 5,
-    'Grade 5': 6,
-    'Grade 6': 7,
-    'Grade 7': 8,
-    'Grade 8': 9,
-    'Grade 9': 10,
-    'Grade 10': 11
-  };
-
-  // Loading overlay on submit
-  const form = document.getElementById('releaseForm');
   const loadingOverlay = document.getElementById('loadingOverlay');
-  form.addEventListener('submit', function () {
-    loadingOverlay.classList.add('active');
+
+  // ── Release form submit ───────────────────────────────────────
+  const releaseForm = document.getElementById('releaseForm');
+  if (releaseForm) {
+    releaseForm.addEventListener('submit', () => loadingOverlay.classList.add('active'));
+  }
+
+  // ── Book row click-to-select ─────────────────────────────────
+  function selectBook(tr, itemId) {
+    document.querySelectorAll('#booksTbody tr.selected-row').forEach(r => r.classList.remove('selected-row'));
+    tr.classList.add('selected-row');
+    const radio = tr.querySelector('input[type="radio"]');
+    if (radio) radio.checked = true;
+
+    const title = tr.querySelector('td:nth-child(2)').textContent.trim();
+    const info  = document.getElementById('selectedInfo');
+    if (info) info.textContent = '✅ Selected: ' + title;
+  }
+
+  // ── Grade Tabs (books) ───────────────────────────────────────
+  let activeGrade = '';
+
+  document.getElementById('bookGradeTabs')?.addEventListener('click', e => {
+    const tab = e.target.closest('.grade-tab');
+    if (!tab) return;
+    document.querySelectorAll('.grade-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    activeGrade = tab.dataset.grade || '';
+    applyBookFilters();
   });
 
-  // Recent Releases modal open/close
-  const recentModal = document.getElementById('recentModal');
-  const openRecentBtn = document.getElementById('openRecentBtn');
-  const closeRecentBtn = document.getElementById('closeRecentBtn');
-
-  openRecentBtn.addEventListener('click', () => recentModal.classList.add('active'));
-  closeRecentBtn.addEventListener('click', () => recentModal.classList.remove('active'));
-  recentModal.addEventListener('click', (e) => {
-    if (e.target === recentModal) recentModal.classList.remove('active');
-  });
-
-  // Book filtering (grade + search)
-  const bookGradeFilter = document.getElementById('bookGradeFilter');
-  const bookSearch = document.getElementById('bookSearch');
-  const booksTbody = document.getElementById('booksTbody');
+  // ── Book search ──────────────────────────────────────────────
+  document.getElementById('bookSearch')?.addEventListener('input', applyBookFilters);
 
   function applyBookFilters() {
-    if (!booksTbody) return;
-
-    const selectedGrade = (bookGradeFilter.value || '').trim();
-    const q = (bookSearch.value || '').trim().toLowerCase();
-
-    // Get all rows and sort them by grade order
-    const rows = [...booksTbody.querySelectorAll('tr')];
+    const q = (document.getElementById('bookSearch')?.value || '').trim().toLowerCase();
+    const rows = document.querySelectorAll('#booksTbody tr');
+    let visible = 0;
 
     rows.forEach(tr => {
-      const trGrade = (tr.dataset.grade || '').trim();
-      const trSearch = (tr.dataset.search || '').trim();
-
-      // Check grade filter
-      const gradeOk = !selectedGrade || trGrade === selectedGrade;
-      // Check search filter
-      const searchOk = !q || trSearch.includes(q);
-
-      tr.style.display = (gradeOk && searchOk) ? '' : 'none';
+      if (tr.dataset.sep) {
+        // Grade separator — show only if matching grade tab
+        const show = !activeGrade || tr.dataset.grade === activeGrade;
+        tr.style.display = show ? '' : 'none';
+        return;
+      }
+      const gradeOk  = !activeGrade || (tr.dataset.grade || '') === activeGrade;
+      const searchOk = !q || (tr.dataset.search || '').includes(q);
+      const show = gradeOk && searchOk;
+      tr.style.display = show ? '' : 'none';
+      if (show) visible++;
     });
 
-    // Sort visible rows by grade order
-    if (!selectedGrade) {
-      rows.sort((a, b) => {
-        const gradeA = a.dataset.grade || '';
-        const gradeB = b.dataset.grade || '';
-        const orderA = gradeOrder[gradeA] ?? 999;
-        const orderB = gradeOrder[gradeB] ?? 999;
-        return orderA - orderB;
-      });
-
-      // Re-append in sorted order
-      rows.forEach(row => {
-        if (row.style.display !== 'none') {
-          booksTbody.appendChild(row);
-        }
-      });
-    }
+    const lbl = document.getElementById('visibleCount');
+    if (lbl) lbl.textContent = visible + ' book' + (visible !== 1 ? 's' : '');
   }
 
-  bookGradeFilter.addEventListener('change', applyBookFilters);
-  bookSearch.addEventListener('input', applyBookFilters);
+  // ── Auto-fill grade filter from enrollment ID ────────────────
+  let gradeFetchTimer = null;
+  document.getElementById('enrollment_id')?.addEventListener('input', e => {
+    clearTimeout(gradeFetchTimer);
+    const val = e.target.value.trim();
+    if (!val) return;
+    gradeFetchTimer = setTimeout(async () => {
+      try {
+        const res  = await fetch(`/librarian/api/student-grade?enrollment_id=${encodeURIComponent(val)}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data?.grade_level) {
+          // Activate matching grade tab
+          activeGrade = data.grade_level;
+          document.querySelectorAll('.grade-tab').forEach(t => {
+            t.classList.toggle('active', (t.dataset.grade || '') === activeGrade);
+          });
+          applyBookFilters();
+          // Sync modal grade filter
+          const sel = document.getElementById('recentGradeFilter');
+          if (sel) { sel.value = data.grade_level; applyRecentFilters(); }
+        }
+      } catch {}
+    }, 450);
+  });
 
-  // Recent releases filtering (student grade + search)
-  const recentGradeFilter = document.getElementById('recentGradeFilter');
-  const recentSearch = document.getElementById('recentSearch');
-  const recentReleasesBody = document.getElementById('recentReleasesBody');
+  // ── Modal open/close ─────────────────────────────────────────
+  const recentModal = document.getElementById('recentModal');
+  document.getElementById('openRecentBtn')?.addEventListener('click', () => recentModal.classList.add('active'));
+  document.getElementById('closeRecentBtn')?.addEventListener('click', () => recentModal.classList.remove('active'));
+  recentModal?.addEventListener('click', e => { if (e.target === recentModal) recentModal.classList.remove('active'); });
+
+  // ── Recent Releases — grade tabs ─────────────────────────────
+  let activeRelGrade = '';
+  document.getElementById('relGradeTabs')?.addEventListener('click', e => {
+    const tab = e.target.closest('.reltab');
+    if (!tab) return;
+    document.querySelectorAll('.reltab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    activeRelGrade = tab.dataset.grade || '';
+    const sel = document.getElementById('recentGradeFilter');
+    if (sel) sel.value = activeRelGrade;
+    applyRecentFilters();
+  });
+
+  document.getElementById('recentGradeFilter')?.addEventListener('change', e => {
+    activeRelGrade = e.target.value;
+    document.querySelectorAll('.reltab').forEach(t => t.classList.toggle('active', (t.dataset.grade || '') === activeRelGrade));
+    applyRecentFilters();
+  });
+  document.getElementById('recentSearch')?.addEventListener('input', applyRecentFilters);
 
   function applyRecentFilters() {
-    if (!recentReleasesBody) return;
-
-    const selectedGrade = (recentGradeFilter.value || '').trim();
-    const q = (recentSearch.value || '').trim().toLowerCase();
-
-    [...recentReleasesBody.querySelectorAll('tr')].forEach(tr => {
-      const trGrade = (tr.dataset.studentGrade || '').trim();
-      const trSearch = (tr.dataset.search || '').trim();
-      const gradeOk = !selectedGrade || trGrade === selectedGrade;
-      const searchOk = !q || trSearch.includes(q);
+    const q = (document.getElementById('recentSearch')?.value || '').trim().toLowerCase();
+    document.querySelectorAll('#recentReleasesBody tr').forEach(tr => {
+      const gradeOk  = !activeRelGrade || (tr.dataset.studentGrade || '') === activeRelGrade;
+      const searchOk = !q || (tr.dataset.search || '').includes(q);
       tr.style.display = (gradeOk && searchOk) ? '' : 'none';
     });
   }
 
-  if (recentGradeFilter) recentGradeFilter.addEventListener('change', applyRecentFilters);
-  if (recentSearch) recentSearch.addEventListener('input', applyRecentFilters);
-
-  // Auto filter by student grade when Enrollment ID is entered
-  const enrollmentInput = document.getElementById('enrollment_id');
-
-  let gradeFetchTimer = null;
-  async function fetchStudentGrade(enrollmentId) {
-    const url = `/librarian/api/student-grade?enrollment_id=${encodeURIComponent(enrollmentId)}`;
-    const res = await fetch(url);
-    if (!res.ok) return null;
-    return await res.json();
-  }
-
-  if (enrollmentInput) {
-    enrollmentInput.addEventListener('input', () => {
-      clearTimeout(gradeFetchTimer);
-      const val = (enrollmentInput.value || '').trim();
-
-      if (!val) return;
-
-      gradeFetchTimer = setTimeout(async () => {
-        try {
-          const data = await fetchStudentGrade(val);
-          if (data && data.grade_level) {
-            bookGradeFilter.value = data.grade_level;
-            if (recentGradeFilter) recentGradeFilter.value = data.grade_level;
-
-            applyBookFilters();
-            applyRecentFilters();
-          }
-        } catch (err) {
-          // silent fail
-        }
-      }, 450);
-    });
-  }
-
-  // Initial apply
+  // ── Init ─────────────────────────────────────────────────────
   applyBookFilters();
-  applyRecentFilters();
 </script>
 {% endblock %}

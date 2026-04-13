@@ -2,100 +2,29 @@
 {% block title %}Sections Management{% endblock %}
 {% block content %}
 <style>
-    .sec-container {
-        max-width: 760px;
+    /* Base settings */
+    body {
+        background: #f5f7fa;
+        color: #333;
+    }
+
+    .ba-container {
+        max-width: 1060px;
         margin: 0 auto;
-        padding: 20px;
+        padding: 24px 20px;
     }
 
-    .sec-card {
-        background: #fff;
-        border: 1px solid #eee;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, .06);
-        margin-bottom: 18px;
+    .header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
     }
 
-    .sec-card h2 {
-        margin: 0 0 14px 0;
-        font-size: 18px;
-    }
-
-    .field {
-        width: 100%;
-        padding: 9px 11px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        font-size: 14px;
-        box-sizing: border-box;
-    }
-
-    .btn {
-        display: inline-block;
-        padding: 8px 14px;
-        border-radius: 8px;
-        border: 1px solid #ddd;
-        background: #f8f8f8;
-        text-decoration: none;
-        color: #222;
-        font-weight: 600;
-        cursor: pointer;
-        font-size: 13px;
-    }
-
-    .btn:hover {
-        background: #efefef;
-    }
-
-    .btn-success {
-        background: #198754;
-        color: #fff;
-        border-color: #198754;
-    }
-
-    .btn-success:hover {
-        background: #157347;
-    }
-
-    .btn-danger {
-        background: #dc3545;
-        color: #fff;
-        border-color: #dc3545;
-    }
-
-    .btn-danger:hover {
-        background: #c82333;
-    }
-
-    .muted {
-        color: #666;
-        font-size: 12px;
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 14px;
-    }
-
-    th {
-        background: #f4f6f9;
-        text-align: left;
-        padding: 9px 12px;
-        font-size: 13px;
-        color: #555;
-        border-bottom: 2px solid #e5e7eb;
-    }
-
-    td {
-        padding: 8px 12px;
-        border-bottom: 1px solid #f0f0f0;
-        vertical-align: middle;
-    }
-
-    tr:last-child td {
-        border-bottom: none;
+    .header-row h1 {
+        margin: 0;
+        font-size: 24px;
+        color: #2c3e50;
     }
 
     .back-link {
@@ -106,111 +35,289 @@
         text-decoration: none;
         font-size: 14px;
         margin-bottom: 14px;
+        font-weight: 600;
     }
 
     .back-link:hover {
         text-decoration: underline;
     }
+
+    /* Split Layout */
+    .two-col {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .col-form {
+        flex: 0 0 350px;
+    }
+
+    .col-table {
+        flex: 1;
+        min-width: 400px;
+    }
+
+    /* Cards */
+    .card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .07);
+        margin-bottom: 20px;
+    }
+
+    .card h2 {
+        margin: 0 0 16px 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: #2c3e50;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 10px;
+    }
+
+    /* Form Elements */
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        color: #334155;
+        margin-bottom: 6px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        box-sizing: border-box;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    }
+
+    /* Buttons */
+    .btn {
+        padding: 10px 18px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: .2s;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: #007bff;
+        color: #fff;
+        width: 100%;
+    }
+
+    .btn-primary:hover {
+        background: #0056b3;
+    }
+
+    .btn-success {
+        background: #10b981;
+        color: #fff;
+    }
+
+    .btn-success:hover {
+        background: #059669;
+    }
+
+    .btn-danger {
+        background: #ef4444;
+        color: #fff;
+    }
+
+    .btn-danger:hover {
+        background: #dc2626;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: #fff;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 11px;
+    }
+
+    /* Alerts */
+    .flash-alert {
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 13px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .flash-success {
+        background: #ecfdf5;
+        color: #065f46;
+        border: 1px solid #10b981;
+    }
+
+    .flash-error {
+        background: #fef2f2;
+        color: #991b1b;
+        border: 1px solid #ef4444;
+    }
+
+    /* Table */
+    .health-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .health-table th {
+        background: #f8fafc;
+        padding: 12px;
+        text-align: left;
+        border-bottom: 2px solid #e2e8f0;
+        color: #475569;
+        font-weight: 700;
+    }
+
+    .health-table td {
+        padding: 12px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+
+    .health-table tr:hover td {
+        background: #f8fafc;
+    }
 </style>
 
-<div class="sec-container">
-    <a class="back-link" href="{{ url_for('branch_admin.dashboard') }}">← Back to Dashboard</a>
-    <h1 style="margin:0 0 18px 0;">🏫 Sections</h1>
+<div class="ba-container">
 
+    <div class="header-row">
+        <h1>🏫 Sections</h1>
+    </div>
+
+    <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
     {% for cat, msg in messages %}
-    <div style="padding:10px 14px; border-radius:9px; margin-bottom:12px;
-        background:{{ '#d1e7dd' if cat=='success' else '#f8d7da' }};
-        color:{{ '#0f5132' if cat=='success' else '#842029' }};
-        border:1px solid {{ '#badbcc' if cat=='success' else '#f5c2c7' }};">
+    <div class="flash-alert {{ 'flash-success' if cat == 'success' else 'flash-error' }}">
+        <span style="font-size:16px;">{{ '✅' if cat == 'success' else '⚠️' }}</span>
         {{ msg }}
     </div>
     {% endfor %}
+    {% endif %}
     {% endwith %}
 
-    <!-- Add Form -->
-    {% if is_branch_active_status %}
-    <div class="sec-card">
-        <h2>➕ Add New Section</h2>
-        <form method="post" action="{{ url_for('branch_admin.branch_admin_sections') }}">
-            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-                <div style="flex:2; min-width:200px;">
-                    <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Section Name
-                        *</label>
-                    <input class="field" type="text" name="section_name" placeholder="e.g. Section A" required>
-                </div>
-                <div style="flex:2; min-width:200px;">
-                    <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Grade Level
-                        *</label>
-                    <select name="grade_level_id" class="field" required>
-                        <option value="">Select Grade Level</option>
-                        {% for g in grades %}
-                        <option value="{{ g.id }}">{{ g.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div style="flex:2; min-width:200px;">
-                    <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">School Year *</label>
-                    <select name="year_id" class="field" required>
-                        <option value="">Select School Year</option>
-                        {% for y in years %}
-                        <option value="{{ y.year_id }}">{{ y.label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div style="flex:1; min-width:100px;">
-                    <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Capacity</label>
-                    <input class="field" type="number" name="capacity" value="50" min="1" required>
-                </div>
-                <div>
-                    <button type="submit" class="btn btn-success">Add Section</button>
-                </div>
+    <div class="two-col">
+        <!-- Add Form -->
+        {% if is_branch_active_status %}
+        <div class="col-form">
+            <div class="card">
+                <h2>➕ Add New Section</h2>
+                <form method="post" action="{{ url_for('branch_admin.branch_admin_sections') }}">
+                    <div class="form-group">
+                        <label>Section Name *</label>
+                        <input class="form-control" type="text" name="section_name" placeholder="e.g. Section A"
+                            required>
+                    </div>
+                    <div class="form-group">
+                        <label>Grade Level *</label>
+                        <select name="grade_level_id" class="form-control" required>
+                            <option value="">Select Grade Level</option>
+                            {% for g in grades %}
+                            <option value="{{ g.id }}">{{ g.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>School Year *</label>
+                        <select name="year_id" class="form-control" required>
+                            <option value="">Select School Year</option>
+                            {% for y in years %}
+                            <option value="{{ y.year_id }}">{{ y.label }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Capacity</label>
+                        <input class="form-control" type="number" name="capacity" value="50" min="1" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Section</button>
+                </form>
             </div>
-        </form>
-    </div>
-    {% endif %}
-
-    <!-- Existing Sections -->
-    <div class="sec-card">
-        <h2>Existing Sections</h2>
-        {% if sections %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Section Name</th>
-                    <th>Grade Level</th>
-                    <th>School Year</th>
-                    <th>Capacity</th>
-                    <th style="min-width:80px;">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for sec in sections %}
-                <tr>
-                    <td>{{ sec.section_name }}</td>
-                    <td>{{ sec.grade_level_name }}</td>
-                    <td>{{ sec.school_year_label }}</td>
-                    <td>{{ sec.capacity }}</td>
-                    <td>
-                        {% if is_branch_active_status %}
-                        <div style="display:flex; gap:6px;">
-                            <button class="btn btn-success" type="button"
-                                onclick='openEditModal({{ sec.section_id }}, {{ sec.section_name | tojson }}, {{ sec.grade_level_id }}, {{ sec.capacity | default(50) }})'>Edit</button>
-                            <form method="post"
-                                action="{{ url_for('branch_admin.branch_admin_section_delete', section_id=sec.section_id) }}"
-                                onsubmit="return confirm('Delete section {{ sec.section_name }}?');">
-                                <button class="btn btn-danger" type="submit">Delete</button>
-                            </form>
-                        </div>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <div class="muted">No sections found. Add one above.</div>
+        </div>
         {% endif %}
+
+        <!-- Existing Sections -->
+        <div class="col-table" {% if not is_branch_active_status %}style="flex: 1 0 100%;" {% endif %}>
+            <div class="card">
+                <h2>📋 Existing Sections</h2>
+                {% if sections %}
+                <table class="health-table">
+                    <thead>
+                        <tr>
+                            <th>Section Name</th>
+                            <th>Grade Level</th>
+                            <th>School Year</th>
+                            <th>Capacity</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for sec in sections %}
+                        <tr>
+                            <td><strong style="color: #1e293b;">{{ sec.section_name }}</strong></td>
+                            <td><strong style="color: #1e293b;">{{ sec.grade_level_name }}</strong></td>
+                            <td style="color: #475569;">{{ sec.school_year_label }}</td>
+                            <td style="color: #475569;">{{ sec.capacity }}</td>
+                            <td style="text-align: right;">
+                                {% if is_branch_active_status %}
+                                <button class="btn btn-sm btn-secondary" type="button"
+                                    onclick='openEditModal({{ sec.section_id }}, {{ sec.section_name | tojson }}, {{ sec.grade_level_id }}, {{ sec.capacity | default(50) }})'>✎
+                                    Edit</button>
+                                <form method="post"
+                                    action="{{ url_for('branch_admin.branch_admin_section_delete', section_id=sec.section_id) }}"
+                                    onsubmit="return confirm('Delete section {{ sec.section_name }}?');"
+                                    style="display:inline;">
+                                    <button class="btn btn-sm btn-danger" type="submit">🗑 Delete</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div style="text-align:center; padding: 30px; color:#94a3b8; font-size: 14px;">No sections found. Add
+                    one.</div>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
 
@@ -219,27 +326,34 @@
     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
     <div
         style="background:#fff; padding:24px; border-radius:12px; width:90%; max-width:400px; box-shadow:0 8px 30px rgba(0,0,0,0.2);">
-        <h2 style="margin:0 0 16px 0; font-size:18px;">✎ Edit Section</h2>
+        <h2
+            style="margin:0 0 16px 0; font-size:16px; font-weight:700; color:#2c3e50; border-bottom:2px solid #007bff; padding-bottom:10px;">
+            ✎ Edit Section</h2>
         <form id="editForm" method="post" action="">
-            <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Section Name *</label>
-            <input class="field" type="text" name="section_name" id="edit_section_name" required
-                style="margin-bottom:12px;">
+            <div class="form-group">
+                <label>Section Name *</label>
+                <input class="form-control" type="text" name="section_name" id="edit_section_name" required>
+            </div>
 
-            <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Grade Level *</label>
-            <select name="grade_level_id" id="edit_grade_level_id" class="field" required style="margin-bottom:12px;">
-                <option value="">Select Grade Level</option>
-                {% for g in grades %}
-                <option value="{{ g.id }}">{{ g.name }}</option>
-                {% endfor %}
-            </select>
+            <div class="form-group">
+                <label>Grade Level *</label>
+                <select name="grade_level_id" id="edit_grade_level_id" class="form-control" required>
+                    <option value="">Select Grade Level</option>
+                    {% for g in grades %}
+                    <option value="{{ g.id }}">{{ g.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
 
-            <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Capacity *</label>
-            <input class="field" type="number" name="capacity" id="edit_capacity" min="1" required
-                style="margin-bottom:20px;">
+            <div class="form-group">
+                <label>Capacity *</label>
+                <input class="form-control" type="number" name="capacity" id="edit_capacity" min="1" required>
+            </div>
 
-            <div style="display:flex; justify-content:flex-end; gap:8px;">
-                <button type="button" class="btn" onclick="closeEditModal()">Cancel</button>
-                <button type="submit" class="btn btn-success">Save Changes</button>
+            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
+                <button type="button" class="btn btn-secondary" style="width:auto;"
+                    onclick="closeEditModal()">Cancel</button>
+                <button type="submit" class="btn btn-success" style="width:auto;">Save Changes</button>
             </div>
         </form>
     </div>

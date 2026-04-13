@@ -3,137 +3,222 @@
 
 {% block styles %}
 <style>
-    .act-wrap {
-        max-width: 1140px;
-        margin: 0 auto;
-    }
+    .act-wrap { max-width: 1140px; margin: 0 auto; padding: 0 0 56px; }
 
-    .act-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+    /* ── Hero ── */
+    .act-hero {
+        background: linear-gradient(135deg, #0f2a6b, #1a3a8f, #2250c8);
+        border-radius: 20px;
+        padding: 28px 32px;
         margin-bottom: 24px;
-        flex-wrap: wrap;
-        gap: 12px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(26,58,143,0.28);
     }
 
-    .act-title {
-        font-size: 1.5rem;
-        font-weight: 800;
+    .act-hero::before {
+        content: '';
+        position: absolute;
+        top: -50px; right: -40px;
+        width: 200px; height: 200px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 50%;
     }
 
+    .act-hero-inner {
+        position: relative;
+        z-index: 1;
+    }
+
+    .act-hero h1 {
+        font-size: 1.65rem;
+        font-weight: 900;
+        color: #fff;
+        margin: 0 0 5px;
+        letter-spacing: -0.02em;
+    }
+
+    .act-hero p {
+        font-size: 0.9rem;
+        color: rgba(255,255,255,0.72);
+        margin: 0;
+    }
+
+    /* ── Stats ── */
     .stats-card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 20px;
+        background: linear-gradient(135deg, #f8fbff, #f5f0ff);
+        border: 1px solid #e0e8ff;
+        border-radius: 16px;
+        padding: 20px 24px;
+        margin-bottom: 22px;
         display: flex;
-        gap: 20px;
+        gap: 0;
     }
 
     .stat-item {
         text-align: center;
         flex: 1;
+        padding: 8px 0;
+        position: relative;
+    }
+
+    .stat-item:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        right: 0; top: 20%; bottom: 20%;
+        width: 1px;
+        background: #e0e8ff;
     }
 
     .stat-num {
-        font-size: 1.8rem;
-        font-weight: 800;
-        color: var(--btn);
+        font-size: 1.9rem;
+        font-weight: 900;
+        color: #1a3a8f;
+        letter-spacing: -0.03em;
+        line-height: 1;
     }
 
     .stat-label {
-        font-size: 0.8rem;
+        font-size: 0.76rem;
         color: var(--muted);
         text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        margin-top: 4px;
     }
 
+    /* ── Filter tabs ── */
+    .filter-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+    }
+
+    .filter-tab {
+        padding: 7px 18px;
+        background: var(--card);
+        border: 2px solid var(--border);
+        border-radius: 999px;
+        cursor: pointer;
+        font-size: 0.86rem;
+        font-weight: 700;
+        white-space: nowrap;
+        color: var(--muted);
+        transition: all 0.2s;
+    }
+
+    .filter-tab:hover { border-color: #2563eb; color: #2563eb; transform: translateY(-1px); }
+    .filter-tab.active { background: #2563eb; color: #fff; border-color: #2563eb; box-shadow: 0 4px 10px rgba(37,99,235,0.25); }
+
+    /* ── Activity Cards ── */
     .act-card {
         background: var(--card);
         border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 12px;
+        border-radius: 14px;
+        padding: 16px 20px;
+        margin-bottom: 10px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        transition: transform 0.15s, box-shadow 0.15s;
+        gap: 16px;
+        transition: transform 0.18s, box-shadow 0.18s;
     }
 
     .act-card:hover {
         transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.07);
+        border-color: #bfdbfe;
     }
 
+    .act-info { flex: 1; }
+
     .act-info h4 {
-        margin: 0 0 4px;
-        font-size: 1.1rem;
+        margin: 0 0 6px;
+        font-size: 1rem;
+        font-weight: 700;
         color: var(--text);
     }
 
     .act-meta {
-        font-size: 0.85rem;
+        font-size: 0.83rem;
         color: var(--muted);
-    }
-
-    .act-actions {
         display: flex;
-        gap: 10px;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        line-height: 1.6;
     }
 
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
-        color: var(--muted);
+    .act-actions { display: flex; gap: 8px; align-items: center; flex-shrink: 0; flex-wrap: wrap; }
+
+    /* ── Buttons ── */
+    .btn-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 7px 14px;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        transition: all 0.18s;
+        font-family: 'Inter', sans-serif;
+        white-space: nowrap;
     }
 
-    .empty-state .big-icon {
-        font-size: 3.5rem;
-        margin-bottom: 12px;
+    .btn-gray { background: #f1f5f9; color: #475569; }
+    .btn-gray:hover { background: #e2e8f0; transform: translateY(-1px); }
+
+    .btn-blue { background: #2563eb; color: #fff; }
+    .btn-blue:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 4px 10px rgba(37,99,235,0.25); }
+
+    .btn-red { background: #fee2e2; color: #dc2626; }
+    .btn-red:hover { background: #fecaca; transform: translateY(-1px); }
+
+    /* ── Badges ── */
+    .badge {
+        display: inline-flex; align-items: center;
+        padding: 3px 9px; border-radius: 999px;
+        font-size: 0.73rem; font-weight: 700;
+    }
+
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-gray { background: #f1f5f9; color: #64748b; }
+    .badge-red { background: #fee2e2; color: #991b1b; }
+    .badge-blue { background: #dbeafe; color: #1d4ed8; }
+
+    /* ── Empty ── */
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .empty-state .big-icon { font-size: 3.5rem; margin-bottom: 14px; }
+    .empty-state h3 { font-size: 1.1rem; font-weight: 700; color: var(--text); margin: 0 0 6px; }
+
+    @media (max-width: 640px) {
+        .act-hero { padding: 22px 18px; }
+        .act-card { flex-direction: column; align-items: flex-start; }
+        .act-actions { width: 100%; }
+        .stats-card { flex-wrap: wrap; }
+        .stat-item { min-width: 48%; }
+        .stat-item::after { display: none; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="act-wrap">
-    <div class="act-header">
-        <div>
-            <h1 class="act-title">📝 My Activities</h1>
-            <p style="color:var(--muted); margin-top:4px;">Manage your class assignments, quizzes, and tasks.</p>
+
+    <!-- ── Hero ── -->
+    <div class="act-hero">
+        <div class="act-hero-inner">
+            <h1>📝 My Activities</h1>
+            <p>Manage your class assignments, tasks, and output-based activities.</p>
         </div>
     </div>
 
-    <!-- Filter Tabs -->
-    <style>
-        .filter-tabs {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
-            overflow-x: auto;
-            padding-bottom: 8px;
-        }
-        .filter-tab {
-            padding: 8px 16px;
-            background: var(--card);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            font-weight: 600;
-            white-space: nowrap;
-            transition: all 0.2s;
-        }
-        .filter-tab:hover {
-            border-color: var(--btn);
-            color: var(--btn);
-        }
-        .filter-tab.active {
-            background: var(--btn);
-            color: #fff;
-            border-color: var(--btn);
-        }
-    </style>
+    <!-- ── Filter Tabs ── -->
     <div class="filter-tabs">
         <div class="filter-tab active" onclick="filterActivities('1st', this)">1st Grading</div>
         <div class="filter-tab" onclick="filterActivities('2nd', this)">2nd Grading</div>
@@ -141,26 +226,27 @@
         <div class="filter-tab" onclick="filterActivities('4th', this)">4th Grading</div>
     </div>
 
-    <!-- Quick Stats -->
+    <!-- ── Quick Stats ── -->
     <div class="stats-card">
         <div class="stat-item">
             <div class="stat-num">{{ stats.total }}</div>
-            <div class="stat-label">Total Activities</div>
+            <div class="stat-label">Total</div>
         </div>
         <div class="stat-item">
-            <div class="stat-num">{{ stats.published }}</div>
+            <div class="stat-num" style="color:#16a34a;">{{ stats.published }}</div>
             <div class="stat-label">Published</div>
         </div>
         <div class="stat-item">
-            <div class="stat-num">{{ stats.drafts }}</div>
+            <div class="stat-num" style="color:#d97706;">{{ stats.drafts }}</div>
             <div class="stat-label">Drafts</div>
         </div>
         <div class="stat-item">
-            <div class="stat-num">{{ stats.closed }}</div>
+            <div class="stat-num" style="color:#ef4444;">{{ stats.closed }}</div>
             <div class="stat-label">Closed</div>
         </div>
     </div>
 
+    <!-- ── Activity List ── -->
     {% if activities %}
     <div id="activitiesList">
         {% for act in activities %}
@@ -168,31 +254,32 @@
             <div class="act-info">
                 <h4>{{ act.title }}</h4>
                 <div class="act-meta">
-                    <strong>{{ act.subject_name }}</strong> ({{ act.section_name }}) &bull; Due: {{
-                    act.due_date.strftime('%b %d, %Y %I:%M %p') if act.due_date else 'No timeline' }}
-                    &bull; Max Score: {{ act.max_score }}
-                    &bull; Period: <span class="badge badge-blue">{{ act.grading_period or 'None' }}</span>
-                    &bull; Status:
+                    <strong style="color:var(--text);">{{ act.subject_name }}</strong>
+                    ({{ act.section_name }})
+                    · Due: {{ act.due_date.strftime('%b %d, %Y %I:%M %p') if act.due_date else 'No deadline' }}
+                    · Max: <strong>{{ act.max_score }}</strong>
+                    <span class="badge badge-blue">{{ act.grading_period or 'None' }} Grading</span>
                     {% if act.status == 'Published' %}<span class="badge badge-green">Published</span>
                     {% elif act.status == 'Draft' %}<span class="badge badge-gray">Draft</span>
                     {% else %}<span class="badge badge-red">Closed</span>{% endif %}
                 </div>
             </div>
             <div class="act-actions">
-                <button onclick="toggleActivityStatus({{ act.activity_id }}, this)" 
-                        class="btn btn-secondary btn-sm toggle-vis-btn" 
-                        title="Toggle Visibility" 
-                        style="padding: 6px 10px;">
+                <button onclick="toggleActivityStatus({{ act.activity_id }}, this)"
+                        class="btn-action btn-gray toggle-vis-btn" title="Toggle Visibility">
                     {% if act.status == 'Published' %}👁️{% else %}🙈{% endif %}
                 </button>
                 <a href="{{ url_for('teacher.edit_activity', activity_id=act.activity_id) }}"
-                    class="btn btn-secondary btn-sm">Edit</a>
+                    class="btn-action btn-gray">✏️ Edit</a>
                 <a href="{{ url_for('teacher.activity_submissions', activity_id=act.activity_id) }}"
-                    class="btn btn-primary btn-sm">Submissions ({{ act.submission_count }})</a>
+                    class="btn-action btn-blue">
+                    📥 Submissions
+                    <span style="background:rgba(255,255,255,0.2); padding:1px 7px; border-radius:999px; font-size:0.76rem;">{{ act.submission_count }}</span>
+                </a>
                 <form method="POST" action="{{ url_for('teacher.delete_activity', activity_id=act.activity_id) }}"
                       onsubmit="return confirm('Delete this activity? All submissions and grades will also be deleted. This cannot be undone.');"
                       style="display:inline;">
-                    <button type="submit" class="btn btn-sm" style="background:#dc3545; color:#fff;">🗑 Delete</button>
+                    <button type="submit" class="btn-action btn-red">🗑</button>
                 </form>
             </div>
         </div>
@@ -202,21 +289,20 @@
     <div class="empty-state">
         <div class="big-icon">📚</div>
         <h3>No activities found</h3>
-        <p>You haven't created any activities yet. Click "Create New Activity" to start.</p>
+        <p>You haven't created any activities yet.</p>
     </div>
     {% endif %}
+
 </div>
 
 <script>
 function filterActivities(period, el) {
-    // Update active tab
     document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
     if (el) el.classList.add('active');
 
-    // Filter items
     const cards = document.querySelectorAll('.act-card');
     let visibleCount = 0;
-    
+
     cards.forEach(card => {
         if (period === 'all' || card.dataset.period === period) {
             card.style.display = 'flex';
@@ -226,14 +312,13 @@ function filterActivities(period, el) {
         }
     });
 
-    // Handle empty state for filter
     let emptyMsg = document.getElementById('filterEmptyMsg');
     if (visibleCount === 0) {
         if (!emptyMsg) {
             emptyMsg = document.createElement('div');
             emptyMsg.id = 'filterEmptyMsg';
             emptyMsg.className = 'empty-state';
-            emptyMsg.innerHTML = '<h3>No activities for this period</h3>';
+            emptyMsg.innerHTML = '<div class="big-icon">📭</div><h3>No activities for this period</h3>';
             const list = document.getElementById('activitiesList');
             if (list) list.appendChild(emptyMsg);
         }
@@ -244,9 +329,7 @@ function filterActivities(period, el) {
 
 document.addEventListener("DOMContentLoaded", function() {
     const activeTab = document.querySelector('.filter-tab.active');
-    if (activeTab) {
-        filterActivities('1st', activeTab);
-    }
+    if (activeTab) filterActivities('1st', activeTab);
 });
 
 async function toggleActivityStatus(activityId, btn) {
@@ -256,25 +339,20 @@ async function toggleActivityStatus(activityId, btn) {
             headers: { 'Content-Type': 'application/json' }
         });
         const result = await response.json();
-        
         if (result.ok) {
-            // Update the icon
             btn.innerHTML = result.new_status === 'Published' ? '👁️' : '🙈';
-            
-            // Update the status badge in the same card
             const card = btn.closest('.act-card');
-            const badge = card.querySelector('.badge:last-child'); // Status is the last badge
-            if (badge) {
+            const badges = card.querySelectorAll('.badge');
+            const statusBadge = badges[badges.length - 1];
+            if (statusBadge) {
                 if (result.new_status === 'Published') {
-                    badge.className = 'badge badge-green';
-                    badge.textContent = 'Published';
+                    statusBadge.className = 'badge badge-green';
+                    statusBadge.textContent = 'Published';
                 } else {
-                    badge.className = 'badge badge-gray';
-                    badge.textContent = 'Draft';
+                    statusBadge.className = 'badge badge-gray';
+                    statusBadge.textContent = 'Draft';
                 }
             }
-            
-            // Optional: Show a quick toast or just let the UI change speak
         } else {
             alert(result.error || "Failed to toggle status");
         }

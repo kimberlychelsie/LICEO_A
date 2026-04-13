@@ -1,207 +1,414 @@
 {% extends "base.html" %}
 {% block title %}Registrar Dashboard{% endblock %}
 {% block styles %}
+<!-- Add Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
-    .reg-wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px; }
-    .reg-title { font-size: 1.5rem; font-weight: 900; color: #1e293b; margin-bottom: 6px; }
-    .reg-sub   { color: #64748b; font-size: 0.88rem; margin-bottom: 28px; }
-
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-        gap: 14px;
-        margin-bottom: 28px;
+    :root {
+        --reg-blue: #1a3a8f;
+        --reg-blue-dark: #142e75;
+        --reg-blue-light: #eff6ff;
+        --reg-yellow: #facc15;
+        --reg-text: #334155;
+        --reg-text-light: #64748b;
+        --reg-border: #e2e8f0;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
     }
 
-    .stat-card {
+    .dashboard-container {
+        max-width: 1050px;
+        margin: 0 auto;
+        padding: 15px;
+        font-family: 'Inter', system-ui, sans-serif;
+    }
+
+    /* Simple Welcome Banner */
+    .welcome-banner {
         background: #fff;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        padding: 20px 18px;
-        box-shadow: 0 2px 8px rgba(0,0,0,.05);
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        text-decoration: none;
-        transition: box-shadow .15s, transform .15s;
-    }
-    .stat-card:hover { box-shadow: 0 6px 18px rgba(0,0,0,.10); transform: translateY(-2px); }
-
-    .stat-icon  { font-size: 1.8rem; line-height: 1; }
-    .stat-num   { font-size: 2rem; font-weight: 900; color: #1e293b; line-height: 1; }
-    .stat-label { font-size: 0.78rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
-
-    .stat-card.blue   { border-left: 4px solid #3b82f6; }
-    .stat-card.green  { border-left: 4px solid #22c55e; }
-    .stat-card.yellow { border-left: 4px solid #f59e0b; }
-    .stat-card.red    { border-left: 4px solid #ef4444; }
-    .stat-card.teal   { border-left: 4px solid #14b8a6; }
-
-    .section-title {
-        font-size: 1rem; font-weight: 800; color: #1e293b;
-        margin: 0 0 12px;
-        display: flex; align-items: center; gap: 8px;
-    }
-
-    .quick-links {
-        display: flex; flex-wrap: wrap; gap: 10px;
-        margin-bottom: 28px;
-    }
-
-    .ql-btn {
-        padding: 10px 18px;
-        border-radius: 10px;
-        font-size: 0.85rem;
-        font-weight: 700;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        transition: all .15s;
-        border: none;
-        cursor: pointer;
-    }
-    .ql-primary  { background: #3b82f6; color: #fff; }
-    .ql-primary:hover  { background: #2563eb; }
-    .ql-success  { background: #22c55e; color: #fff; }
-    .ql-success:hover  { background: #16a34a; }
-    .ql-warning  { background: #f59e0b; color: #fff; }
-    .ql-warning:hover  { background: #d97706; }
-
-    .preview-card {
-        background: #fff;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        box-shadow: 0 2px 8px rgba(0,0,0,.05);
-        overflow: hidden;
-        margin-bottom: 24px;
-    }
-
-    .preview-header {
-        padding: 13px 16px;
-        font-weight: 800;
-        font-size: 0.9rem;
-        border-bottom: 1px solid #e2e8f0;
-        background: #f8fafc;
+        border-left: 4px solid var(--reg-yellow);
+        padding: 16px 20px;
+        border-radius: 8px;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        margin-bottom: 20px;
+        box-shadow: var(--shadow-sm);
+        border: 1px solid var(--reg-border);
     }
 
-    .preview-table { width: 100%; border-collapse: collapse; }
-    .preview-table th, .preview-table td {
-        padding: 10px 14px;
-        border-bottom: 1px solid #f1f5f9;
-        font-size: 13px;
+    .welcome-text h1 {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--reg-blue);
+        margin: 0 0 4px 0;
+    }
+
+    .welcome-text p {
+        font-size: 0.85rem;
+        color: var(--reg-text-light);
+        margin: 0;
+    }
+
+    /* Flash Messages */
+    .toast {
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .toast-success {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+    }
+
+    .toast-error {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fca5a5;
+    }
+
+    /* Main Layout */
+    .main-grid {
+        display: grid;
+        grid-template-columns: 1fr 300px;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+
+    @media (max-width: 850px) {
+        .main-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* Clean Card Style for Sections */
+    .clean-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        border: 1px solid var(--reg-border);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .section-header {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--reg-blue);
+        margin: 0 0 15px 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        border-bottom: 1px solid var(--reg-border);
+        padding-bottom: 10px;
+    }
+
+    /* Unified Actions Grid */
+    .action-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 12px;
+    }
+
+    .action-item {
+        background: var(--reg-blue-light);
+        border: 1px solid transparent;
+        padding: 15px;
+        border-radius: 8px;
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        transition: border-color 0.2s, background-color 0.2s;
+    }
+
+    .action-item:hover {
+        background: #fff;
+        border-color: var(--reg-blue);
+    }
+
+    .action-item.primary {
+        background: var(--reg-blue);
+    }
+
+    .action-item.primary:hover {
+        background: var(--reg-blue-dark);
+    }
+
+    .ai-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .ai-label {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--reg-text-light);
+        text-transform: uppercase;
+    }
+
+    .action-item.primary .ai-label {
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .ai-icon {
+        font-size: 1rem;
+        color: var(--reg-yellow);
+    }
+
+    .ai-val {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--reg-blue);
+        margin-bottom: 6px;
+    }
+
+    .action-item.primary .ai-val {
+        color: var(--reg-yellow);
+    }
+
+    .ai-link {
+        font-size: 0.75rem;
+        color: var(--reg-blue);
+        font-weight: 600;
+    }
+
+    .action-item.primary .ai-link {
+        color: #fff;
+    }
+
+    /* Chart Area */
+    .chart-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .chart-wrapper {
+        width: 100%;
+        height: 180px;
+        position: relative;
+    }
+
+    /* Simple Table */
+    .simple-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.85rem;
+    }
+
+    .simple-table th {
         text-align: left;
+        padding: 10px 12px;
+        color: var(--reg-text-light);
+        border-bottom: 2px solid var(--reg-border);
+        font-weight: 600;
     }
-    .preview-table th {
-        font-size: 11px; font-weight: 800;
-        text-transform: uppercase; letter-spacing: .04em;
-        color: #94a3b8; background: #f8fafc;
-    }
-    .preview-table tr:last-child td { border-bottom: none; }
 
-    .empty-state {
-        text-align: center; padding: 32px 20px;
-        color: #94a3b8; font-size: 0.88rem;
+    .simple-table td {
+        padding: 12px;
+        border-bottom: 1px solid var(--reg-border);
+        color: var(--reg-text);
     }
-    .empty-state .big { font-size: 2rem; margin-bottom: 8px; }
+
+    .simple-table tr:hover {
+        background: var(--reg-blue-light);
+    }
+
+    .status-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        background: var(--reg-yellow);
+        color: var(--reg-blue-dark);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="reg-wrap">
-    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
-        <div>
-            <div class="reg-title">🏫 Registrar Dashboard</div>
-            <div class="reg-sub">Overview of enrollment status and student accounts.</div>
-        </div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <a href="/change-password" class="ql-btn" style="background:#475569; color:#fff;">🔑 Change Password</a>
-            <a href="/logout" class="ql-btn" style="background:#1e293b; color:#fff;">🚪 Logout</a>
-        </div>
-    </div>
+<div class="dashboard-container">
 
+    <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}{% for cat, msg in messages %}
-    <div style="padding:12px 16px; border-radius:10px; margin-bottom:14px;
-        background:{{ '#d1fae5' if cat=='success' else ('#fef9c3' if cat=='warning' else '#fee2e2') }};
-        color:{{ '#065f46' if cat=='success' else ('#854d0e' if cat=='warning' else '#991b1b') }};
-        border:1px solid {{ '#6ee7b7' if cat=='success' else ('#fde68a' if cat=='warning' else '#fca5a5') }};">
+    {% if messages %}
+    {% for cat, msg in messages %}
+    <div class="toast toast-{{ 'success' if cat=='success' else 'error' }}">
         {{ msg }}
     </div>
-    {% endfor %}{% endif %}{% endwith %}
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
 
-    <!-- ── STATS CARDS ── -->
-    <div class="stats-grid">
-        <a href="/registrar/enrollments" class="stat-card blue">
-            <div class="stat-icon">📋</div>
-            <div class="stat-num">{{ pending_count }}</div>
-            <div class="stat-label">Pending Applications</div>
-        </a>
-        <a href="/registrar/enrollments#enrolled" class="stat-card green">
-            <div class="stat-icon">🎓</div>
-            <div class="stat-num">{{ enrolled_count }}</div>
-            <div class="stat-label">Enrolled Students</div>
-        </a>
-        <a href="/registrar/enrollments#enrolled" class="stat-card yellow">
-            <div class="stat-icon">⚠️</div>
-            <div class="stat-num">{{ no_section_count }}</div>
-            <div class="stat-label">No Section Assigned</div>
-        </a>
-        <a href="/registrar/enrollments#enrolled" class="stat-card red">
-            <div class="stat-icon">👤</div>
-            <div class="stat-num">{{ no_account_count }}</div>
-            <div class="stat-label">No Student Account</div>
-        </a>
-        <a href="/registrar/enrollments#enrolled" class="stat-card teal">
-            <div class="stat-icon">🔓</div>
-            <div class="stat-num">{{ reenroll_count }}</div>
-            <div class="stat-label">Open Re-enrollment</div>
-        </a>
-    </div>
-
-    <!-- ── QUICK LINKS ── -->
-    <div class="section-title">⚡ Quick Actions</div>
-    <div class="quick-links">
-        <a href="/registrar/enrollments" class="ql-btn ql-primary">📋 Manage Enrollments</a>
-        <a href="/registrar/enrollments#enrolled" class="ql-btn ql-success">🎓 Enrolled Students</a>
-    </div>
-
-    <!-- ── RECENT PENDING PREVIEW ── -->
-    <div class="section-title">🕐 Recent Pending Applications</div>
-    <div class="preview-card">
-        <div class="preview-header">
-            <span>Latest Pending Enrollments</span>
-            <a href="/registrar/enrollments" style="font-size:12px; color:#3b82f6; font-weight:700; text-decoration:none;">View All →</a>
+    <!-- Very Simple Welcome Banner -->
+    <div class="welcome-banner">
+        <div class="welcome-text">
+            <h1>Welcome, Registrar!</h1>
+            <p>Your overview for today's academic records and enrollments.</p>
         </div>
+        <div style="display: flex; gap: 10px;">
+            <a href="/registrar/profile-pictures"
+                style="font-size: 0.8rem; text-decoration: none; color: var(--reg-blue); border: 1px solid var(--reg-border); padding: 6px 12px; border-radius: 4px;"><i
+                    class="fas fa-camera"></i> Upload User Profiles</a>
+        </div>
+    </div>
+
+    <div class="main-grid">
+        <!-- Quick Actions & Stats -->
+        <div class="clean-card">
+            <div class="section-header">
+                <i class="fas fa-tasks"></i> Quick Reports
+            </div>
+
+            <div class="action-grid">
+                <!-- Action 1 -->
+                <a href="/registrar/enrollments" class="action-item primary">
+                    <div class="ai-top">
+                        <span class="ai-label">Pending Apps</span>
+                        <i class="fas fa-clock ai-icon" style="color: white;"></i>
+                    </div>
+                    <div class="ai-val">{{ pending_count | default(0) }}</div>
+                    <div class="ai-link">Manage →</div>
+                </a>
+
+                <!-- Action 2 -->
+                <a href="/registrar/enrollments#enrolled" class="action-item">
+                    <div class="ai-top">
+                        <span class="ai-label">Enrolled</span>
+                        <i class="fas fa-user-check ai-icon"></i>
+                    </div>
+                    <div class="ai-val">{{ enrolled_count | default(0) }}</div>
+                    <div class="ai-link">View List →</div>
+                </a>
+
+                <!-- Action 3 -->
+                <a href="/registrar/enrollments#enrolled" class="action-item">
+                    <div class="ai-top">
+                        <span class="ai-label">No Section</span>
+                        <i class="fas fa-exclamation-triangle ai-icon"></i>
+                    </div>
+                    <div class="ai-val" style="color: var(--reg-yellow-dark);">{{ no_section_count | default(0) }}</div>
+                    <div class="ai-link">Assign Section →</div>
+                </a>
+
+                <!-- Action 4 -->
+                <a href="/registrar/enrollments#enrolled" class="action-item">
+                    <div class="ai-top">
+                        <span class="ai-label">No Account</span>
+                        <i class="fas fa-user-times ai-icon"></i>
+                    </div>
+                    <div class="ai-val" style="color: #991b1b;">{{ no_account_count | default(0) }}</div>
+                    <div class="ai-link">Generate Acc →</div>
+                </a>
+            </div>
+        </div>
+
+        <!-- Very Simple Chart -->
+        <div class="clean-card chart-box">
+            <div class="section-header" style="width: 100%;">
+                <i class="fas fa-chart-pie"></i> Demographics
+            </div>
+            <div class="chart-wrapper">
+                <canvas id="enrollmentChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Minimal Table -->
+    <div class="clean-card">
+        <div class="section-header" style="justify-content: space-between; border-bottom: none; margin-bottom: 5px;">
+            <span><i class="fas fa-list"></i> Recent Applications</span>
+            <a href="/registrar/enrollments"
+                style="font-size: 0.8rem; color: var(--reg-blue); text-decoration: none;">View All</a>
+        </div>
+
         {% if recent_pending %}
-        <table class="preview-table">
-            <tr>
-                <th>No.</th>
-                <th>Student Name</th>
-                <th>Grade Level</th>
-                <th>Applied</th>
-            </tr>
-            {% for e in recent_pending %}
-            <tr>
-                <td><strong>#{{ e.display_no }}</strong></td>
-                <td>{{ e.student_name }}</td>
-                <td>{{ e.grade_level }}</td>
-                <td style="color:#94a3b8; font-size:12px;">
-                    {{ e.created_at.strftime('%b %d, %Y') if e.created_at else '—' }}
-                </td>
-            </tr>
-            {% endfor %}
-        </table>
+        <div style="overflow-x: auto;">
+            <table class="simple-table">
+                <thead>
+                    <tr>
+                        <th>Enrollment No.</th>
+                        <th>Student Name</th>
+                        <th>Target Grade</th>
+                        <th>Date Submitted</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in recent_pending %}
+                    <tr>
+                        <td style="font-family: monospace; font-weight: 600; color: var(--reg-text-light);">#{{
+                            e.display_no }}</td>
+                        <td style="font-weight: 600; color: var(--reg-blue);">{{ e.student_name }}</td>
+                        <td><span class="status-badge">{{ e.grade_level }}</span></td>
+                        <td style="color: var(--reg-text-light);">{{ e.created_at.strftime('%b %d, %Y - %I:%M %p') if
+                            e.created_at else '' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
         {% else %}
-        <div class="empty-state">
-            <div class="big">📭</div>
-            No pending enrollment applications.
+        <div style="text-align: center; padding: 30px; color: var(--reg-text-light); font-size: 0.9rem;">
+            No pending applications right now.
         </div>
         {% endif %}
     </div>
 
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const ctx = document.getElementById('enrollmentChart').getContext('2d');
+
+        const pendingCount = {{ pending_count | default (0)
+    }};
+    const enrolledCount = {{ enrolled_count | default (0) }};
+    const noSectionCount = {{ no_section_count | default (0) }};
+    const total = pendingCount + enrolledCount + noSectionCount;
+
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: total === 0 ? ['No Data'] : ['Pending', 'Enrolled', 'No Section'],
+            datasets: [{
+                data: total === 0 ? [1] : [pendingCount, enrolledCount, noSectionCount],
+                backgroundColor: total === 0 ? ['#e2e8f0'] : ['#eab308', '#1a3a8f', '#facc15'],
+                borderWidth: 2,
+                borderColor: '#ffffff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '70%',
+            plugins: {
+                legend: {
+                    position: 'right',
+                    labels: {
+                        usePointStyle: true,
+                        boxWidth: 8,
+                        font: { size: 10, family: "'Inter', sans-serif" }
+                    }
+                },
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    padding: 10,
+                    bodyFont: { size: 13 },
+                    displayColors: false,
+                    callbacks: {
+                        label: function (context) {
+                            if (total === 0) return 'No data';
+                            return 'Total: ' + context.raw + ' student(s)';
+                        }
+                    }
+                }
+            }
+        }
+    });
+    });
+</script>
 {% endblock %}

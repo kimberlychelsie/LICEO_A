@@ -3,42 +3,293 @@
 
 {% block styles %}
 <style>
-.gw-wrap { max-width: 1100px; margin: 0 auto; }
-.gw-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
-.gw-title { font-size: 1.5rem; font-weight: 800; }
-.subject-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px; margin-bottom: 16px; }
-.subject-label { font-size: 1rem; font-weight: 700; margin-bottom: 14px; color: var(--text); }
-.period-tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
-.ptab { padding: 5px 14px; border-radius: 20px; font-size: 0.82rem; font-weight: 700; cursor: pointer; border: 2px solid var(--border); background: var(--bg); color: var(--muted); transition: all 0.15s; }
-.ptab.active { background: var(--btn); color: #fff; border-color: var(--btn); }
-.weight-form { display: none; }
-.weight-form.active { display: block; }
-.weight-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 12px; }
-.weight-item label { font-size: 0.8rem; color: var(--muted); display: block; margin-bottom: 4px; font-weight: 600; text-transform: uppercase; }
-.input-with-percent { display: flex; align-items: center; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-.input-with-percent input { flex-grow: 1; padding: 8px; border: none; background: transparent; color: var(--text); font-size: 0.95rem; text-align: center; outline: none; }
-.input-with-percent span { padding: 8px 12px; font-weight: 600; color: var(--muted); background: rgba(0,0,0,0.03); border-left: 1px solid var(--border); }
-.weight-item input:focus { outline: none; }
-.total-display { font-size: 0.85rem; color: var(--muted); margin-bottom: 10px; }
-.total-ok { color: #22c55e; font-weight: 700; }
-.total-bad { color: #ef4444; font-weight: 700; }
-.saved-badge { display: inline-block; background: #dcfce7; color: #166534; border-radius: 6px; font-size: 0.78rem; padding: 2px 10px; font-weight: 600; margin-left: 8px; vertical-align: middle; }
-@media (max-width: 600px) { .weight-grid { grid-template-columns: repeat(2, 1fr); } }
+    .gw-wrap { max-width: 1100px; margin: 0 auto; padding: 0 0 56px; }
+
+    /* ── Hero ── */
+    .gw-hero {
+        background: linear-gradient(135deg, #0f2a6b, #1a3a8f, #1e50d0);
+        border-radius: 20px;
+        padding: 28px 32px;
+        margin-bottom: 28px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(26,58,143,0.28);
+    }
+
+    .gw-hero::before {
+        content: '';
+        position: absolute;
+        top: -60px; right: -40px;
+        width: 230px; height: 230px;
+        background: rgba(255,255,255,0.05);
+        border-radius: 50%;
+    }
+
+    .gw-hero-inner {
+        position: relative;
+        z-index: 1;
+    }
+
+    .gw-hero h1 {
+        font-size: 1.7rem;
+        font-weight: 900;
+        color: #fff;
+        margin: 0 0 6px;
+        letter-spacing: -0.02em;
+    }
+
+    .gw-hero p {
+        font-size: 0.92rem;
+        color: rgba(255,255,255,0.72);
+        margin: 0;
+    }
+
+    .gw-hero p strong { color: #93c5fd; }
+
+    /* ── Subject Cards ── */
+    .subject-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 24px 26px;
+        margin-bottom: 18px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        transition: box-shadow 0.2s;
+    }
+
+    .subject-card:hover {
+        box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+    }
+
+    .subject-label {
+        font-size: 1rem;
+        font-weight: 800;
+        margin-bottom: 16px;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .subject-label .subject-meta {
+        font-weight: 400;
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+
+    .subject-label .btn-class-record {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #1a3a8f, #2563eb);
+        color: #fff;
+        font-size: 0.82rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: opacity 0.18s, transform 0.15s;
+    }
+
+    .subject-label .btn-class-record:hover {
+        opacity: 0.88;
+        transform: translateY(-1px);
+    }
+
+    /* ── Period Tabs ── */
+    .period-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+
+    .ptab {
+        padding: 7px 16px;
+        border-radius: 999px;
+        font-size: 0.84rem;
+        font-weight: 700;
+        cursor: pointer;
+        border: 2px solid var(--border);
+        background: var(--bg);
+        color: var(--muted);
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .ptab:hover {
+        border-color: #1a3a8f;
+        color: #1a3a8f;
+        transform: translateY(-1px);
+    }
+
+    .ptab.active {
+        background: linear-gradient(135deg, #1a3a8f, #2563eb);
+        color: #fff;
+        border-color: transparent;
+        box-shadow: 0 4px 10px rgba(26,58,143,0.25);
+    }
+
+    .saved-badge {
+        display: inline-flex;
+        align-items: center;
+        background: #dcfce7;
+        color: #166534;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        padding: 1px 8px;
+        font-weight: 700;
+    }
+
+    /* ── Weight Form ── */
+    .weight-form { display: none; }
+    .weight-form.active { display: block; }
+
+    .weight-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 14px;
+        margin-bottom: 14px;
+    }
+
+    .weight-item label {
+        font-size: 0.78rem;
+        color: var(--muted);
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .input-with-percent {
+        display: flex;
+        align-items: center;
+        background: #f8fafc;
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        transition: border-color 0.18s, box-shadow 0.18s;
+    }
+
+    .input-with-percent:focus-within {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59,130,246,.1);
+    }
+
+    .input-with-percent input {
+        flex-grow: 1;
+        padding: 9px 10px;
+        border: none;
+        background: transparent;
+        color: var(--text);
+        font-size: 1rem;
+        text-align: center;
+        outline: none;
+        font-family: 'Inter', sans-serif;
+        font-weight: 700;
+    }
+
+    .input-with-percent span {
+        padding: 9px 12px;
+        font-weight: 700;
+        color: var(--muted);
+        background: rgba(0,0,0,0.03);
+        border-left: 1px solid var(--border);
+        font-size: 0.9rem;
+    }
+
+    .total-display {
+        font-size: 0.86rem;
+        color: var(--muted);
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 600;
+    }
+
+    .total-ok { color: #16a34a; font-weight: 800; }
+    .total-bad { color: #dc2626; font-weight: 800; }
+
+    .gw-form-footer {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .btn-save-weights {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 22px;
+        border-radius: 10px;
+        background: linear-gradient(135deg, #1a3a8f, #2563eb);
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.9rem;
+        border: none;
+        cursor: pointer;
+        transition: opacity 0.18s, transform 0.15s;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .btn-save-weights:hover {
+        opacity: 0.88;
+        transform: translateY(-1px);
+    }
+
+    .apply-all-label {
+        font-size: 0.88rem;
+        color: var(--text);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .apply-all-label input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: #1a3a8f;
+    }
+
+    /* ── Empty State ── */
+    .gw-empty {
+        text-align: center;
+        padding: 64px 20px;
+        color: var(--muted);
+    }
+
+    .gw-empty .big-icon { font-size: 3.5rem; margin-bottom: 14px; }
+    .gw-empty h3 { font-size: 1.1rem; font-weight: 700; color: var(--text); margin: 0 0 8px; }
+
+    @media (max-width: 640px) {
+        .weight-grid { grid-template-columns: repeat(2, 1fr); }
+        .gw-hero { padding: 22px 18px; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="gw-wrap">
-    <div class="gw-header">
-        <div>
-            <h1 class="gw-title">⚖️ Grading Weights</h1>
-            <p style="color:var(--muted); margin-top:4px;">Set component percentages per subject per grading period. Must total exactly <strong>100%</strong>.</p>
+
+    <!-- ── Hero ── -->
+    <div class="gw-hero">
+        <div class="gw-hero-inner">
+            <h1>⚖️ Grading Weights</h1>
+            <p>Set component percentages per subject per grading period. Must total exactly <strong>100%</strong> to save.</p>
         </div>
     </div>
 
     {% if not assignments %}
-    <div style="text-align:center; padding:60px; color:var(--muted);">
-        <div style="font-size:3rem;">📭</div>
+    <div class="gw-empty">
+        <div class="big-icon">📭</div>
         <h3>No subjects assigned yet</h3>
         <p>Contact your branch admin to assign you to a section and subject.</p>
     </div>
@@ -49,20 +300,23 @@
     {% set sid = asgn.section_id %}
     {% set subjid = asgn.subject_id %}
     {% set card_id = 'card_' ~ sid ~ '_' ~ subjid %}
+
     <div class="subject-card">
         <div class="subject-label">
             📖 {{ asgn.subject_name }}
-            <span style="font-weight:400; color:var(--muted); font-size:0.9rem;">— {{ asgn.grade_level_name }} / {{ asgn.section_name }}</span>
-            <a href="{{ url_for('teacher.class_record', section_id=sid, subject_id=subjid) }}" class="btn btn-sm btn-secondary" style="margin-left:12px;">📊 Class Record</a>
+            <span class="subject-meta">— {{ asgn.grade_level_name }} / {{ asgn.section_name }}</span>
+            <a href="{{ url_for('teacher.class_record', section_id=sid, subject_id=subjid) }}" class="btn-class-record">
+                📊 Class Record
+            </a>
         </div>
 
         <!-- Period tabs -->
         <div class="period-tabs" id="tabs_{{ card_id }}">
             {% for period in grading_periods %}
+            {% set w = weights_map.get((sid, subjid, period)) %}
             <div class="ptab {% if loop.first %}active{% endif %}"
                  onclick="switchPeriod('{{ card_id }}', '{{ period }}')">
                 {{ period }} Grading
-                {% set w = weights_map.get((sid, subjid, period)) %}
                 {% if w %}<span class="saved-badge">✓ Set</span>{% endif %}
             </div>
             {% endfor %}
@@ -71,10 +325,8 @@
         <!-- Weight forms per period -->
         {% for period in grading_periods %}
         {% set w = weights_map.get((sid, subjid, period)) %}
-        <div class="weight-form {% if loop.first %}active{% endif %}"
-             id="form_{{ card_id }}_{{ period }}">
-            <form method="POST" action="{{ url_for('teacher.grading_weights_set') }}"
-                  onsubmit="return validateWeights(this)">
+        <div class="weight-form {% if loop.first %}active{% endif %}" id="form_{{ card_id }}_{{ period }}">
+            <form method="POST" action="{{ url_for('teacher.grading_weights_set') }}" onsubmit="return validateWeights(this)">
                 <input type="hidden" name="section_id" value="{{ sid }}">
                 <input type="hidden" name="subject_id" value="{{ subjid }}">
                 <input type="hidden" name="grading_period" value="{{ period }}">
@@ -97,7 +349,7 @@
                         </div>
                     </div>
                     <div class="weight-item">
-                        <label>📁 SA Activity</label>
+                        <label>📁 Activity</label>
                         <div class="input-with-percent">
                             <input type="number" name="activity_pct" min="0" max="100" step="0.5"
                                    value="{{ w.activity_pct | default(0) }}" oninput="updateTotal(this)" required>
@@ -123,30 +375,31 @@
                 </div>
 
                 <div class="total-display" id="total_{{ card_id }}_{{ period }}">
-                    Total: <span class="total-val">{{ (w.quiz_pct|float + w.exam_pct|float + w.activity_pct|float + w.participation_pct|float + w.attendance_pct|float) | round(1) if w else '0.0' }}</span>% 
+                    Total: <span class="total-val">{{ (w.quiz_pct|float + w.exam_pct|float + w.activity_pct|float + w.participation_pct|float + w.attendance_pct|float) | round(1) if w else '0.0' }}</span>%
                     {% set tot = (w.quiz_pct|float + w.exam_pct|float + w.activity_pct|float + w.participation_pct|float + w.attendance_pct|float) if w else 0 %}
                     {% if w and (tot - 100.0)|abs < 0.01 %}
-                    <span class="total-ok">✓ OK</span>
+                    <span class="total-ok">✓ OK — ready to save</span>
                     {% elif w %}
                     <span class="total-bad">✗ Must equal 100%</span>
                     {% endif %}
                 </div>
 
-                <div style="display:flex; align-items:center; gap:16px;">
-                    <button type="submit" class="btn btn-primary btn-sm">💾 Save {{ period }} Weights</button>
+                <div class="gw-form-footer">
+                    <button type="submit" class="btn-save-weights">💾 Save {{ period }} Weights</button>
                     {% if outer_loop.first %}
-                    <label style="font-size:0.9rem; color:var(--text); cursor:pointer;">
-                        <input type="checkbox" name="apply_all_subjects" value="1" style="margin-right:4px;" onchange="syncWeights(this, '{{ period }}')">
+                    <label class="apply-all-label">
+                        <input type="checkbox" name="apply_all_subjects" value="1"
+                               onchange="syncWeights(this, '{{ period }}')">
                         Apply to ALL my subjects for {{ period }} Grading
                     </label>
                     {% endif %}
                 </div>
-
             </form>
         </div>
         {% endfor %}
     </div>
     {% endfor %}
+
 </div>
 
 <script>
@@ -162,7 +415,6 @@ function updateTotal(input) {
     const inputs = form.querySelectorAll('input[type="number"]');
     let total = 0;
     inputs.forEach(i => total += parseFloat(i.value || 0));
-    const formId = form.id || '';
     const totalDiv = form.querySelector('.total-display');
     if (totalDiv) {
         const val = totalDiv.querySelector('.total-val');
@@ -170,7 +422,7 @@ function updateTotal(input) {
         let badge = totalDiv.querySelector('.total-badge');
         if (!badge) { badge = document.createElement('span'); badge.className = 'total-badge'; totalDiv.appendChild(badge); }
         if (Math.abs(total - 100) < 0.01) {
-            badge.className = 'total-badge total-ok'; badge.textContent = '✓ OK';
+            badge.className = 'total-badge total-ok'; badge.textContent = '✓ OK — ready to save';
         } else {
             badge.className = 'total-badge total-bad'; badge.textContent = '✗ Must equal 100%';
         }
@@ -190,15 +442,8 @@ function validateWeights(form) {
 
 function syncWeights(checkbox, period) {
     if (!checkbox.checked) return;
-    
-    // Get the source form (the one with the checkbox)
     const sourceForm = checkbox.closest('form');
-    
-    // Validate the weights first
-    if (!validateWeights(sourceForm)) {
-        checkbox.checked = false; // Uncheck if validation fails
-        return;
-    }
+    if (!validateWeights(sourceForm)) { checkbox.checked = false; return; }
 
     const quiz = sourceForm.querySelector('input[name="quiz_pct"]').value;
     const exam = sourceForm.querySelector('input[name="exam_pct"]').value;
@@ -206,34 +451,24 @@ function syncWeights(checkbox, period) {
     const participation = sourceForm.querySelector('input[name="participation_pct"]').value;
     const attendance = sourceForm.querySelector('input[name="attendance_pct"]').value;
 
-    // Find all other forms for the same period
     const allForms = document.querySelectorAll(`form input[name="grading_period"][value="${period}"]`);
-    
     allForms.forEach(hiddenInput => {
         const targetForm = hiddenInput.closest('form');
-        if (targetForm === sourceForm) return; // skip self
-        
+        if (targetForm === sourceForm) return;
         targetForm.querySelector('input[name="quiz_pct"]').value = quiz;
         targetForm.querySelector('input[name="exam_pct"]').value = exam;
         targetForm.querySelector('input[name="activity_pct"]').value = activity;
         targetForm.querySelector('input[name="participation_pct"]').value = participation;
         targetForm.querySelector('input[name="attendance_pct"]').value = attendance;
-        
-        // Update the visual total indicator on the target form
         const anyInput = targetForm.querySelector('input[name="quiz_pct"]');
         if (anyInput) updateTotal(anyInput);
     });
 
-    // Auto-save the form
     const btn = sourceForm.querySelector('button[type="submit"]');
-    if (btn) {
-        btn.innerHTML = '⏳ Saving All...';
-        btn.disabled = true;
-    }
+    if (btn) { btn.innerHTML = '⏳ Saving All...'; btn.disabled = true; }
     sourceForm.submit();
 }
 
-// Initialize totals on load
 document.querySelectorAll('.weight-item input').forEach(i => updateTotal(i));
 </script>
 {% endblock %}

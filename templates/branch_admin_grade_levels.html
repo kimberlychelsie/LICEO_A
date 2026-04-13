@@ -2,110 +2,29 @@
 {% block title %}Grade Levels{% endblock %}
 {% block content %}
 <style>
-    .gl-container {
-        max-width: 760px;
+    /* Base settings */
+    body {
+        background: #f5f7fa;
+        color: #333;
+    }
+
+    .ba-container {
+        max-width: 1060px;
         margin: 0 auto;
-        padding: 20px;
+        padding: 24px 20px;
     }
 
-    .gl-card {
-        background: #fff;
-        border: 1px solid #eee;
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, .06);
-        margin-bottom: 18px;
+    .header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
     }
 
-    .gl-card h2 {
-        margin: 0 0 14px 0;
-        font-size: 18px;
-    }
-
-    .field {
-        width: 100%;
-        padding: 9px 11px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        font-size: 14px;
-        box-sizing: border-box;
-    }
-
-    .btn {
-        display: inline-block;
-        padding: 8px 14px;
-        border-radius: 8px;
-        border: 1px solid #ddd;
-        background: #f8f8f8;
-        text-decoration: none;
-        color: #222;
-        font-weight: 600;
-        cursor: pointer;
-        font-size: 13px;
-    }
-
-    .btn:hover {
-        background: #efefef;
-    }
-
-    .btn-primary {
-        background: #007bff;
-        color: #fff;
-        border-color: #007bff;
-    }
-
-    .btn-primary:hover {
-        background: #0056b3;
-    }
-
-    .btn-success {
-        background: #198754;
-        color: #fff;
-        border-color: #198754;
-    }
-
-    .btn-success:hover {
-        background: #157347;
-    }
-
-    .btn-danger {
-        background: #dc3545;
-        color: #fff;
-        border-color: #dc3545;
-    }
-
-    .btn-danger:hover {
-        background: #c82333;
-    }
-
-    .muted {
-        color: #666;
-        font-size: 12px;
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 14px;
-    }
-
-    th {
-        background: #f4f6f9;
-        text-align: left;
-        padding: 9px 12px;
-        font-size: 13px;
-        color: #555;
-        border-bottom: 2px solid #e5e7eb;
-    }
-
-    td {
-        padding: 8px 10px;
-        border-bottom: 1px solid #f0f0f0;
-        vertical-align: middle;
-    }
-
-    tr:last-child td {
-        border-bottom: none;
+    .header-row h1 {
+        margin: 0;
+        font-size: 24px;
+        color: #2c3e50;
     }
 
     .back-link {
@@ -116,122 +35,340 @@
         text-decoration: none;
         font-size: 14px;
         margin-bottom: 14px;
+        font-weight: 600;
     }
 
     .back-link:hover {
         text-decoration: underline;
     }
 
-    input[type=number] {
-        width: 70px;
+    /* Split Layout */
+    .two-col {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .col-form {
+        flex: 0 0 350px;
+    }
+
+    .col-table {
+        flex: 1;
+        min-width: 400px;
+    }
+
+    /* Cards */
+    .card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .07);
+        margin-bottom: 20px;
+    }
+
+    .card h2 {
+        margin: 0 0 16px 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: #2c3e50;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 10px;
+    }
+
+    /* Form Elements */
+    .form-group {
+        margin-bottom: 16px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        color: #334155;
+        margin-bottom: 6px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: #007bff;
+        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+    }
+
+    /* Buttons */
+    .btn {
+        padding: 10px 18px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition: .2s;
+        text-decoration: none;
+    }
+
+    .btn-primary {
+        background: #007bff;
+        color: #fff;
+        width: 100%;
+    }
+
+    .btn-primary:hover {
+        background: #0056b3;
+    }
+
+    .btn-success {
+        background: #10b981;
+        color: #fff;
+    }
+
+    .btn-success:hover {
+        background: #059669;
+    }
+
+    .btn-danger {
+        background: #ef4444;
+        color: #fff;
+    }
+
+    .btn-danger:hover {
+        background: #dc2626;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: #fff;
+    }
+
+    .btn-secondary:hover {
+        background: #5a6268;
+    }
+
+
+    .btn-sm {
+        padding: 6px 12px;
+        font-size: 11px;
+    }
+
+    /* Alerts */
+    .flash-alert {
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 13px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .flash-success {
+        background: #ecfdf5;
+        color: #065f46;
+        border: 1px solid #10b981;
+    }
+
+    .flash-error {
+        background: #fef2f2;
+        color: #991b1b;
+        border: 1px solid #ef4444;
+    }
+
+    /* Table */
+    .health-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .health-table th {
+        background: #f8fafc;
+        padding: 12px;
+        text-align: left;
+        border-bottom: 2px solid #e2e8f0;
+        color: #475569;
+        font-weight: 700;
+    }
+
+    .health-table td {
+        padding: 12px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+
+    .health-table tr:hover td {
+        background: #f8fafc;
     }
 </style>
 
-<div class="gl-container">
-    <a class="back-link" href="{{ url_for('branch_admin.dashboard') }}">← Back to Dashboard</a>
-    <h1 style="margin:0 0 18px 0;">📚 Grade Levels</h1>
+<div class="ba-container">
+
+    <div class="header-row">
+        <h1>📚 Grade Levels</h1>
+    </div>
 
     <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
     {% for cat, msg in messages %}
-    <div style="padding:10px 14px; border-radius:9px; margin-bottom:12px;
-        background:{{ '#d1e7dd' if cat=='success' else '#f8d7da' }};
-        color:{{ '#0f5132' if cat=='success' else '#842029' }};
-        border:1px solid {{ '#badbcc' if cat=='success' else '#f5c2c7' }};">
+    <div class="flash-alert {{ 'flash-success' if cat == 'success' else 'flash-error' }}">
+        <span style="font-size:16px;">{{ '✅' if cat == 'success' else '⚠️' }}</span>
         {{ msg }}
     </div>
     {% endfor %}
+    {% endif %}
     {% endwith %}
 
-    <!-- Add Form -->
-    {% if is_branch_active_status %}
-    <div class="gl-card">
-        <h2>➕ Add Grade Level</h2>
-        <form method="post" action="{{ url_for('branch_admin.branch_admin_grade_levels') }}">
-            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end;">
-                <div style="flex:2; min-width:180px;">
-                    <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Name *</label>
-                    <select class="field" name="name" required>
-                        <option value="">Select Grade Level</option>
-                        <option value="Nursery">Nursery</option>
-                        <option value="Kinder">Kinder</option>
-                        <option value="Grade 1">Grade 1</option>
-                        <option value="Grade 2">Grade 2</option>
-                        <option value="Grade 3">Grade 3</option>
-                        <option value="Grade 4">Grade 4</option>
-                        <option value="Grade 5">Grade 5</option>
-                        <option value="Grade 6">Grade 6</option>
-                        <option value="Grade 7">Grade 7</option>
-                        <option value="Grade 8">Grade 8</option>
-                        <option value="Grade 9">Grade 9</option>
-                        <option value="Grade 10">Grade 10</option>
-                        <option value="Grade 11">Grade 11</option>
-                        <option value="Grade 12">Grade 12</option>
-                    </select>
-                </div>
-                <div style="min-width:80px;">
-                    <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Order *</label>
-                    <input class="field" name="display_order" type="number" min="1" placeholder="1" required
-                        style="width:80px;">
-                </div>
-                <div style="flex:3; min-width:200px;">
-                    <label class="muted" style="font-weight:700; display:block; margin-bottom:4px;">Description</label>
-                    <input class="field" name="description" placeholder="Optional description">
-                </div>
-                <div>
-                    <button type="submit" class="btn btn-primary">Add</button>
-                </div>
+    <div class="two-col">
+        <!-- Add Form -->
+        {% if is_branch_active_status %}
+        <div class="col-form">
+            <div class="card">
+                <h2>➕ Add Grade Level</h2>
+                <form method="post" action="{{ url_for('branch_admin.branch_admin_grade_levels') }}">
+                    <div class="form-group">
+                        <label>Name *</label>
+                        <select class="form-control" name="name" required>
+                            <option value="">Select Grade Level</option>
+                            <option value="Nursery">Nursery</option>
+                            <option value="Kinder">Kinder</option>
+                            <option value="Grade 1">Grade 1</option>
+                            <option value="Grade 2">Grade 2</option>
+                            <option value="Grade 3">Grade 3</option>
+                            <option value="Grade 4">Grade 4</option>
+                            <option value="Grade 5">Grade 5</option>
+                            <option value="Grade 6">Grade 6</option>
+                            <option value="Grade 7">Grade 7</option>
+                            <option value="Grade 8">Grade 8</option>
+                            <option value="Grade 9">Grade 9</option>
+                            <option value="Grade 10">Grade 10</option>
+                            <option value="Grade 11">Grade 11</option>
+                            <option value="Grade 12">Grade 12</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Order *</label>
+                        <input class="form-control" name="display_order" type="number" min="1" placeholder="1" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Description</label>
+                        <input class="form-control" name="description" placeholder="Optional description">
+                    </div>
+                    <button type="submit" class="btn btn-primary">Add Grade Level</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Table -->
+        <div class="col-table" {% if not is_branch_active_status %}style="flex: 1 0 100%;" {% endif %}>
+            <div class="card">
+                <h2>📋 Existing Grade Levels</h2>
+                {% if grades %}
+                <table class="health-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">Order</th>
+                            <th>Name</th>
+                            <th>Description</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for g in grades %}
+                        <tr>
+                            <td><strong style="color: #1e293b;">{{ g[2] }}</strong></td>
+                            <td><strong style="color: #1e293b;">{{ g[1] }}</strong></td>
+                            <td style="color: #475569;">{{ g[3] or '<em style="color:#94a3b8;">None</em>'|safe }}</td>
+                            <td style="text-align: right;">
+                                {% if is_branch_active_status %}
+                                <button class="btn btn-sm btn-secondary"
+                                    onclick='openEditModal({{ g[0] }}, {{ g[2] }}, {{ g[1]|tojson }}, {{ (g[3] or "")|tojson }})'>
+                                    ✎ Edit
+                                </button>
+                                <form
+                                    action="{{ url_for('branch_admin.branch_admin_grade_level_delete', grade_id=g[0]) }}"
+                                    method="post" style="display:inline;"
+                                    onsubmit="return confirm('Delete grade level {{ g[1] }}?');">
+                                    <button class="btn btn-sm btn-danger" type="submit">🗑 Delete</button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div style="text-align:center; padding: 30px; color:#94a3b8; font-size: 14px;">No grade levels found.
+                    Add one.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal"
+    style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
+    <div
+        style="background:#fff; padding:24px; border-radius:12px; width:90%; max-width:400px; box-shadow:0 8px 30px rgba(0,0,0,0.2);">
+        <h2
+            style="margin:0 0 16px 0; font-size:16px; font-weight:700; color:#2c3e50; border-bottom:2px solid #007bff; padding-bottom:10px;">
+            ✎ Edit Grade Level</h2>
+        <form id="editForm" method="post" action="">
+            <div class="form-group">
+                <label>Order *</label>
+                <input type="number" name="edit_display_order" id="edit_display_order" class="form-control" min="1"
+                    required>
+            </div>
+            <div class="form-group">
+                <label>Name *</label>
+                <input type="text" name="edit_name" id="edit_name" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <input type="text" name="edit_description" id="edit_description" class="form-control"
+                    placeholder="Optional description">
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top: 20px;">
+                <button type="button" class="btn btn-secondary" style="width:auto;"
+                    onclick="closeEditModal()">Cancel</button>
+                <button type="submit" class="btn btn-success" style="width:auto;">Save Changes</button>
             </div>
         </form>
     </div>
-    {% endif %}
+</div>
 
-    <!-- Table -->
-    <div class="gl-card">
-        <h2>Existing Grade Levels</h2>
-        {% if grades %}
-        <table>
-            <thead>
-                <tr>
-                    <th>Order</th>
-                    <th>Name</th>
-                    <th>Description</th>
-                    <th style="min-width:140px;">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for g in grades %}
-                <tr>
-                    <form action="{{ url_for('branch_admin.branch_admin_grade_level_edit', grade_id=g[0]) }}"
-                        method="post">
-                        <td><input type="number" name="edit_display_order" value="{{ g[2] }}" min="1" required
-                                class="field" style="width:70px;" {% if not is_branch_active_status %}readonly{% endif
-                                %}></td>
-                        <td><input name="edit_name" value="{{ g[1] }}" required class="field" {% if not
-                                is_branch_active_status %}readonly{% endif %}></td>
-                        <td><input name="edit_description" value="{{ g[3] or '' }}" class="field" {% if not
-                                is_branch_active_status %}readonly{% endif %}></td>
-                        <td style="white-space:nowrap;">
-                            {% if is_branch_active_status %}
-                            <button class="btn btn-success" type="submit">Save</button>
-                            {% endif %}
-                    </form>
-                    &nbsp;
-                    {% if is_branch_active_status %}
-                    <form action="{{ url_for('branch_admin.branch_admin_grade_level_delete', grade_id=g[0]) }}"
-                        method="post" style="display:inline;"
-                        onsubmit="return confirm('Delete grade level {{ g[1] }}?');">
-                        <button class="btn btn-danger" type="submit">Delete</button>
-                    </form>
-                    {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        {% else %}
-        <div class="muted">No grade levels found. Add one above.</div>
-        {% endif %}
-    </div>
+<script>
+    function openEditModal(gradeId, order, name, description) {
+        var baseUrl = "{{ url_for('branch_admin.branch_admin_grade_level_edit', grade_id=999999) }}";
+        var finalUrl = baseUrl.replace('999999', gradeId);
+
+        document.getElementById('editForm').action = finalUrl;
+        document.getElementById('edit_display_order').value = order;
+        document.getElementById('edit_name').value = name;
+        document.getElementById('edit_description').value = description;
+        document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+</script>
 </div>
 {% endblock %}

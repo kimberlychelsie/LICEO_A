@@ -1,218 +1,391 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Account Created - Registrar</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
     <style>
-        .credentials-modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
+        :root {
+            --reg-blue: #1e3a8a;
+            --reg-blue-dark: #1e3a8a;
+            --reg-blue-light: #eff6ff;
+            --reg-yellow: #facc15;
+            --reg-yellow-dark: #eab308;
+            --reg-yellow-soft: #fef9c3;
+            --reg-text: #1e293b;
+            --reg-muted: #64748b;
+            --reg-surface: #ffffff;
+            --reg-border: #e2e8f0;
+            --reg-shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            z-index: 1000;
+            color: var(--reg-text);
         }
 
-        .credentials-content {
-            background: white;
-            padding: 40px;
-            border-radius: 10px;
-            max-width: 600px;
-            width: 90%;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        .auth-container {
+            width: 100%;
+            max-width: 650px;
+            padding: 20px;
+            box-sizing: border-box;
+            animation: slideUp 0.5s ease-out;
         }
 
-        .credentials-title {
-            color: #10b981;
-            font-size: 24px;
-            font-weight: bold;
-            margin-bottom: 20px;
-            text-align: center;
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
-        .credentials-box {
-            background-color: #fef3c7;
-            border: 3px solid #f59e0b;
+        .premium-card {
+            background: var(--reg-surface);
+            border-radius: 24px;
+            box-shadow: var(--reg-shadow-lg);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .card-header {
+            background: var(--reg-blue);
             padding: 30px;
-            border-radius: 8px;
-            margin: 20px 0;
+            text-align: center;
+            position: relative;
         }
 
-        .credential-item {
-            margin: 15px 0;
-            padding: 10px;
-            background: white;
-            border-radius: 5px;
+        .card-header::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--reg-yellow);
+        }
+
+        .success-icon {
+            width: 64px;
+            height: 64px;
+            background: var(--reg-yellow);
+            color: var(--reg-blue);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            margin: 0 auto 15px;
+            box-shadow: 0 4px 15px rgba(250, 204, 21, 0.3);
+            border: 4px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .card-title {
+            color: white;
+            font-weight: 800;
+            font-size: 1.5rem;
+            margin: 0;
+            letter-spacing: -0.02em;
+        }
+
+        .card-body {
+            padding: 40px;
+        }
+
+        .student-context {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--reg-border);
+        }
+
+        .student-name {
+            font-weight: 800;
+            font-size: 1.2rem;
+            color: var(--reg-blue);
+            margin-bottom: 4px;
+        }
+
+        .enrollment-id {
+            color: var(--reg-muted);
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .credentials-grid {
+            display: grid;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .credential-box {
+            background: #f8fafc;
+            border: 2px dashed var(--reg-border);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .credential-box:hover {
+            border-color: var(--reg-blue);
+            background: var(--reg-blue-light);
+        }
+
+        .credential-info {
+            flex-grow: 1;
         }
 
         .credential-label {
-            font-weight: bold;
-            color: #92400e;
-            font-size: 14px;
-            margin-bottom: 5px;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            font-weight: 800;
+            color: var(--reg-muted);
+            letter-spacing: 0.05em;
+            margin-bottom: 8px;
         }
 
         .credential-value {
-            font-size: 20px;
-            font-family: 'Courier New', monospace;
-            color: #b45309;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--reg-text);
+            /* Prevent long text overlapping */
             word-break: break-all;
         }
 
-        .warning-section {
-            background-color: #fee2e2;
-            border: 2px solid #ef4444;
+        .btn-copy {
+            background: white;
+            color: var(--reg-blue);
+            border: 1px solid var(--reg-border);
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+            flex-shrink: 0;
+            margin-left: 15px;
+        }
+
+        .btn-copy:hover {
+            border-color: var(--reg-blue);
+            color: white;
+            background: var(--reg-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.15);
+        }
+
+        .btn-copy.copied {
+            background: #10b981;
+            border-color: #10b981;
+            color: white;
+        }
+
+        .alert-banner {
+            background: #fffbeb;
+            color: #92400e;
             padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
+            border-radius: 16px;
+            border: 1px solid #fcd34d;
+            margin-bottom: 30px;
         }
 
-        .warning-title {
-            font-weight: bold;
-            color: #991b1b;
-            font-size: 16px;
+        .alert-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
             margin-bottom: 10px;
+            color: #b45309;
         }
 
-        .warning-text {
-            color: #7f1d1d;
+        .alert-banner ul {
+            margin: 0;
+            padding-left: 20px;
+            font-size: 0.9rem;
             line-height: 1.6;
         }
 
-        .copy-btn {
-            background-color: #3b82f6;
-            color: white;
-            padding: 8px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-top: 10px;
+        .alert-banner li {
+            margin-bottom: 5px;
         }
 
-        .copy-btn:hover {
-            background-color: #2563eb;
-        }
-
-        .action-buttons {
+        .action-area {
             text-align: center;
-            margin-top: 30px;
-        }
-
-        .btn {
-            display: inline-block;
-            text-decoration: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            font-weight: bold;
-            font-size: 16px;
-            transition: background 0.2s;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
         }
 
         .btn-primary {
-            background-color: #007bff;
-            color: #ffffff;
-            border: 1px solid #0056b3;
+            background: var(--reg-blue);
+            color: white;
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1rem;
         }
 
         .btn-primary:hover {
-            background-color: #0056b3;
+            background: #142861;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(30, 58, 138, 0.3);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--reg-text);
+            text-decoration: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            border: 2px solid var(--reg-border);
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1rem;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--reg-muted);
+            background: #f8fafc;
+        }
+
+        @media (max-width: 600px) {
+            .card-body { padding: 25px; }
+            .credential-box { flex-direction: column; align-items: stretch; text-align: center; }
+            .btn-copy { width: 100%; margin: 15px 0 0 0; }
+            .action-area { flex-direction: column; }
         }
     </style>
 </head>
 
 <body>
 
-    <div class="credentials-modal">
-        <div class="credentials-content">
-            <div class="credentials-title">
-                ✓ {{ account_type|title }} Account Created Successfully!
+    <div class="auth-container">
+        <div class="premium-card">
+            <div class="card-header">
+                <div class="success-icon">
+                    <i class="fas fa-check"></i>
+                </div>
+                <h1 class="card-title">{{ account_type|title }} Account Generated</h1>
             </div>
 
-            <div style="text-align: center; color: #6b7280; margin-bottom: 20px;">
-                <strong>Student:</strong> {{ student_name }}<br>
-                <strong>Enrollment ID:</strong> {{ enrollment_id }}
-            </div>
-
-            <div class="credentials-box">
-                <div class="credential-item">
-                    <div class="credential-label">USERNAME</div>
-                    <div class="credential-value" id="username">{{ username }}</div>
-                    <button class="copy-btn" onclick="copyToClipboard('username', event)">Copy Username</button>
+            <div class="card-body">
+                <div class="student-context">
+                    <div class="student-name">{{ student_name }}</div>
+                    <div class="enrollment-id">Record Ref: #{{ enrollment_id }}</div>
                 </div>
 
-                <div class="credential-item">
-                    <div class="credential-label">TEMPORARY PASSWORD</div>
-                    <div class="credential-value" id="password">{{ password }}</div>
-                    <button class="copy-btn" onclick="copyToClipboard('password', event)">Copy Password</button>
-                </div>
-            </div>
+                <div class="credentials-grid">
+                    <!-- Username Box -->
+                    <div class="credential-box">
+                        <div class="credential-info">
+                            <div class="credential-label">System Username</div>
+                            <div class="credential-value" id="username">{{ username }}</div>
+                        </div>
+                        <button class="btn-copy" onclick="copyToClipboard('username', this)" title="Copy Username">
+                            <i class="far fa-copy"></i>
+                        </button>
+                    </div>
 
-            <div class="warning-section">
-                <div class="warning-title">⚠️ IMPORTANT INSTRUCTIONS</div>
-                <div class="warning-text">
-                    <ul style="margin: 10px 0; padding-left: 20px;">
-                        <li><strong>Share these credentials with the {{ account_type }}</strong> via secure messenger
-                        </li>
-                        <li>The user will be <strong>required to change this password</strong> on first login</li>
-                        <li>These credentials will <strong>not be shown again</strong> - save them now</li>
-                        <li>The temporary password is randomly generated for security</li>
-                        {% if account_type == 'parent' %}
-                        <li>The parent can use this account to monitor their child's enrollment and billing</li>
-                        {% else %}
-                        <li>The student can use this account to view enrollment details and billing information</li>
-                        {% endif %}
+                    <!-- Password Box -->
+                    <div class="credential-box">
+                        <div class="credential-info">
+                            <div class="credential-label">Temporary Password</div>
+                            <div class="credential-value" id="password">{{ password }}</div>
+                        </div>
+                        <button class="btn-copy" onclick="copyToClipboard('password', this)" title="Copy Password">
+                            <i class="far fa-copy"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="alert-banner">
+                    <div class="alert-header">
+                        <i class="fas fa-exclamation-triangle"></i> Security Protocol Notice
+                    </div>
+                    <ul>
+                        <li><strong>Share immediately:</strong> Provide these credentials to the {{ account_type }} via secure means.</li>
+                        <li><strong>One-time view:</strong> This password cannot be retrieved again after you leave this page.</li>
+                        <li><strong>Forced reset:</strong> The user will be required to create a new password on their first login.</li>
                     </ul>
                 </div>
-            </div>
 
-            <div class="action-buttons">
-                <a href="/registrar/enrollments" class="btn btn-primary" onclick="window.onbeforeunload=null;">⬅ Back to Enrollments</a>
+                <div class="action-area">
+                    <a href="/registrar/enrollments" class="btn-primary" onclick="window.onbeforeunload=null;">
+                        <i class="fas fa-arrow-left"></i> Return to Dashboard
+                    </a>
+                    <button class="btn-secondary" onclick="window.print()">
+                        <i class="fas fa-print"></i> Print Details
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        function copyToClipboard(elementId, event) {
-            const element = document.getElementById(elementId);
-            const text = element.textContent;
+        function copyToClipboard(elementId, btnElement) {
+            const text = document.getElementById(elementId).textContent;
 
             navigator.clipboard.writeText(text).then(() => {
-                const btn = event.target;
-                const originalText = btn.textContent;
-                btn.textContent = 'Copied!';
-                btn.style.backgroundColor = '#10b981';
-
+                const icon = btnElement.querySelector('i');
+                
+                // Visual feedback
+                btnElement.classList.add('copied');
+                icon.className = 'fas fa-check';
+                
                 setTimeout(() => {
-                    btn.textContent = originalText;
-                    btn.style.backgroundColor = '#3b82f6';
+                    btnElement.classList.remove('copied');
+                    icon.className = 'far fa-copy';
                 }, 2000);
             }).catch(err => {
-                alert('Failed to copy: ' + err);
+                alert('Failed to copy to clipboard: ' + err);
             });
         }
 
-        // Warning removed from standard nav
+        // Prevent warning when officially exiting
         document.querySelectorAll('a').forEach(link => {
             link.addEventListener('click', function () {
                 window.onbeforeunload = null;
             });
         });
 
+        // Warn if they try to close the tab without saving
         window.onbeforeunload = function () {
             return "Have you saved the credentials? They won't be shown again.";
         };
-
-        // Print functionality
-        function printCredentials() {
-            window.print();
-        }
     </script>
-
 </body>
 
 </html>

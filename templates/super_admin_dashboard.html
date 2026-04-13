@@ -2,222 +2,567 @@
 {% block title %}Super Admin Dashboard{% endblock %}
 {% block content %}
 <style>
-    .sa-container { max-width: 1060px; margin: 0 auto; padding: 24px 20px; }
+    .sa-container {
+        max-width: 1060px;
+        margin: 0 auto;
+        padding: 24px 20px;
+    }
 
     .header-row {
-        display: flex; align-items: center; justify-content: space-between;
-        flex-wrap: wrap; gap: 12px; margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 24px;
     }
-    .header-row h1 { margin: 0; font-size: 24px; }
 
-    /* ── stat cards ── */
-    .stats-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
-    .stat-card {
-        flex: 1; min-width: 160px;
-        background: #fff; border-radius: 12px;
-        padding: 20px 22px;
-        box-shadow: 0 2px 8px rgba(0,0,0,.07);
-        border-left: 4px solid #007bff;
+    .header-row h1 {
+        margin: 0;
+        font-size: 24px;
     }
-    .stat-card.green  { border-left-color: #28a745; }
-    .stat-card.orange { border-left-color: #fd7e14; }
-    .stat-card.purple { border-left-color: #6f42c1; }
-    .stat-card.teal   { border-left-color: #20c997; }
-    .stat-num  { font-size: 32px; font-weight: 800; color: #1a1a2e; line-height: 1; }
-    .stat-sub  { font-size: 12px; color: #888; margin-top: 2px; }
-    .stat-label{ font-size: 13px; font-weight: 700; color: #444; margin-top: 8px; }
+
+    /* ── dashboard top layout ── */
+    .dashboard-top {
+        display: flex;
+        gap: 24px;
+        margin-bottom: 32px;
+        align-items: stretch;
+    }
+
+    .dash-left {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .dash-right {
+        width: 340px;
+    }
+
+    /* ── consolidated summary card ── */
+    .summary-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+        border: 1px solid rgba(0, 0, 0, 0.03);
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .summary-card h2 {
+        margin: 0 0 20px 0;
+        font-size: 16px;
+        font-weight: 800;
+        color: #1a1a2e;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    @keyframes fillup {
+        from {
+            stroke-dashoffset: 188.5;
+        }
+    }
+
+    /* ── unified system chart ── */
+    .unified-chart-wrap {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .donut-container {
+        position: relative;
+        width: 180px;
+        height: 180px;
+        margin: 0 auto 20px auto;
+    }
+
+    .donut-svg {
+        width: 100%;
+        height: 100%;
+        transform: rotate(-90deg);
+    }
+
+    .donut-slice {
+        fill: none;
+        stroke-width: 18;
+        stroke-linecap: butt;
+        /* clean cut for segments */
+        transition: stroke-width 0.3s, filter 0.3s;
+        cursor: pointer;
+    }
+
+    .donut-slice:hover {
+        stroke-width: 22;
+        filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.1));
+    }
+
+    .donut-center {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        pointer-events: none;
+        width: 120px;
+    }
+
+    .dc-val {
+        display: block;
+        font-size: 24px;
+        font-weight: 900;
+        color: #1a1a2e;
+        line-height: 1;
+    }
+
+    .dc-label {
+        display: block;
+        font-size: 10px;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 4px;
+    }
+
+    .dc-sub {
+        display: block;
+        font-size: 9px;
+        color: #94a3b8;
+        margin-top: 2px;
+    }
+
+    .chart-legend {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #475569;
+    }
+
+    .l-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 2px;
+        flex-shrink: 0;
+    }
+
+    /* Responsive */
+    @media (max-width: 950px) {
+        .dashboard-top {
+            flex-direction: column;
+        }
+
+        .dash-right {
+            width: 100%;
+        }
+    }
 
     /* ── two-col layout ── */
-    .two-col { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 24px; }
-    .two-col > * { flex: 1; min-width: 280px; }
+    .two-col {
+        display: flex;
+        gap: 20px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+    }
+
+    .two-col>* {
+        flex: 1;
+        min-width: 280px;
+    }
 
     /* ── cards ── */
     .card {
-        background: #fff; border-radius: 12px;
+        background: #fff;
+        border-radius: 12px;
         padding: 22px 24px;
-        box-shadow: 0 2px 8px rgba(0,0,0,.07);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .07);
     }
+
     .card h2 {
-        margin: 0 0 16px 0; font-size: 16px; font-weight: 700;
-        color: #2c3e50; border-bottom: 2px solid #007bff;
+        margin: 0 0 16px 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: #2c3e50;
+        border-bottom: 2px solid #007bff;
         padding-bottom: 8px;
     }
 
     /* ── alerts ── */
     .alert-item {
-        display: flex; align-items: flex-start; gap: 10px;
-        padding: 10px 12px; border-radius: 8px;
-        margin-bottom: 8px; font-size: 13px;
+        display: flex;
+        align-items: flex-start;
+        gap: 10px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        font-size: 13px;
     }
-    .alert-red    { background: #fff5f5; border: 1px solid #fed7d7; color: #c53030; }
-    .alert-yellow { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
-    .alert-green  { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
-    .alert-icon   { font-size: 16px; margin-top: 1px; flex-shrink: 0; }
-    .alert-names  { font-size: 12px; color: inherit; opacity: .8; margin-top: 3px; }
+
+    .alert-red {
+        background: #fff5f5;
+        border: 1px solid #fed7d7;
+        color: #c53030;
+    }
+
+    .alert-yellow {
+        background: #fffbeb;
+        border: 1px solid #fde68a;
+        color: #92400e;
+    }
+
+    .alert-green {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        color: #166534;
+    }
+
+    .alert-icon {
+        font-size: 16px;
+        margin-top: 1px;
+        flex-shrink: 0;
+    }
+
+    .alert-names {
+        font-size: 12px;
+        color: inherit;
+        opacity: .8;
+        margin-top: 3px;
+    }
 
     /* ── quick actions ── */
     .qa-btn {
-        display: flex; align-items: center; gap: 10px;
-        width: 100%; padding: 12px 16px; margin-bottom: 10px;
-        background: #f8f9fa; border: 1.5px solid #e9ecef;
-        border-radius: 9px; font-size: 14px; font-weight: 600;
-        color: #1a1a2e; text-decoration: none; cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 12px 16px;
+        margin-bottom: 10px;
+        background: #f8f9fa;
+        border: 1.5px solid #e9ecef;
+        border-radius: 9px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #1a1a2e;
+        text-decoration: none;
+        cursor: pointer;
         transition: background .15s, border-color .15s;
     }
-    .qa-btn:hover { background: #e9f0ff; border-color: #007bff; color: #007bff; }
-    .qa-btn .qa-icon { font-size: 18px; }
+
+    .qa-btn:hover {
+        background: #e9f0ff;
+        border-color: #007bff;
+        color: #007bff;
+    }
+
+    .qa-btn .qa-icon {
+        font-size: 18px;
+    }
 
     /* ── health table ── */
-    .health-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    .health-table th {
-        background: #f8f9fa; padding: 10px 12px; text-align: left;
-        border-bottom: 2px solid #dee2e6; color: #555; font-weight: 700;
+    .health-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
     }
-    .health-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; vertical-align: middle; }
-    .health-table tr:hover td { background: #f8f9fa; }
+
+    /* Animation for the chart appearing */
+    .donut-slice {
+        animation: sliceReveal 1s ease-out forwards;
+    }
+
+    @keyframes sliceReveal {
+        from {
+            opacity: 0;
+            stroke-width: 0;
+        }
+
+        to {
+            opacity: 1;
+            stroke-width: 18;
+        }
+    }
+
+    .health-table th {
+        background: #f8f9fa;
+        padding: 10px 12px;
+        text-align: left;
+        border-bottom: 2px solid #dee2e6;
+        color: #555;
+        font-weight: 700;
+    }
+
+    .health-table td {
+        padding: 10px 12px;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: middle;
+    }
+
+    .health-table tr:hover td {
+        background: #f8f9fa;
+    }
 
     .badge {
-        display: inline-block; padding: 3px 8px; border-radius: 4px;
-        font-size: 11px; font-weight: 700; white-space: nowrap;
+        display: inline-block;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
     }
-    .badge-success { background: #d4edda; color: #155724; }
-    .badge-warning { background: #fff3cd; color: #856404; }
-    .badge-danger  { background: #f8d7da; color: #721c24; }
+
+    .badge-success {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .badge-warning {
+        background: #fff3cd;
+        color: #856404;
+    }
+
+    .badge-danger {
+        background: #f8d7da;
+        color: #721c24;
+    }
 
     .btn {
-        padding: 9px 18px; border: none; border-radius: 7px; cursor: pointer;
-        font-size: 13px; font-weight: 700; text-decoration: none;
-        display: inline-flex; align-items: center; gap: 6px; transition: .2s;
+        padding: 9px 18px;
+        border: none;
+        border-radius: 7px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: .2s;
     }
-    .btn-primary   { background: #007bff; color: #fff; }
-    .btn-primary:hover { background: #0056b3; }
-    .btn-secondary { background: #6c757d; color: #fff; }
-    .btn-secondary:hover { background: #545b62; }
+
+    .btn-primary {
+        background: #007bff;
+        color: #fff;
+    }
+
+    .btn-primary:hover {
+        background: #0056b3;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: #fff;
+    }
+
+    .btn-secondary:hover {
+        background: #545b62;
+    }
+
+    /* Flash Alerts */
+    .flash-alert {
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 14px;
+        border: 1px solid transparent;
+        font-weight: 500;
+    }
+
+    .flash-success {
+        background: #d1e7dd;
+        color: #0f5132;
+        border-color: #badbcc;
+    }
+
+    .flash-error {
+        background: #f8d7da;
+        color: #842029;
+        border-color: #f5c2c7;
+    }
 </style>
 
 <div class="sa-container">
 
-    <!-- Header -->
-    <div class="header-row">
-        <h1>🔐 Super Admin</h1>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <a href="/super-admin/faqs"    class="btn btn-secondary">💬 FAQs</a>
-            <a href="/change-password"     class="btn btn-secondary">🔑 Change Password</a>
-            <a href="{{ url_for('auth.logout') }}" class="btn" style="background:#fee2e2; color:#b91c1c;">🚪 Logout</a>
-        </div>
-    </div>
+
 
     <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}{% for cat, msg in messages %}
-    <div style="padding:12px 16px; border-radius:8px; margin-bottom:14px;
-        background:{{ '#d1e7dd' if cat=='success' else '#f8d7da' }};
-        color:{{ '#0f5132' if cat=='success' else '#842029' }};
-        border:1px solid {{ '#badbcc' if cat=='success' else '#f5c2c7' }};">
+    <div class="flash-alert {{ 'flash-success' if cat == 'success' else 'flash-error' }}">
         {{ msg }}
     </div>
     {% endfor %}{% endif %}
     {% endwith %}
 
-    <!-- ── Stat Cards ── -->
-    <div class="stats-row">
-        <div class="stat-card">
-            <div class="stat-num">{{ total_branches }}</div>
-            <div class="stat-label">🏢 Branches</div>
-            <div class="stat-sub">{{ active_branches }} active</div>
-        </div>
-        <div class="stat-card green">
-            <div class="stat-num">{{ total_students }}</div>
-            <div class="stat-label">👥 Total Enrollments</div>
-            <div class="stat-sub">all branches</div>
-        </div>
-        <div class="stat-card orange">
-            <div class="stat-num">{{ total_pending }}</div>
-            <div class="stat-label">⏳ Pending</div>
-            <div class="stat-sub">awaiting approval</div>
-        </div>
-        <div class="stat-card purple">
-            <div class="stat-num">{{ total_staff }}</div>
-            <div class="stat-label">👤 Active Staff</div>
-            <div class="stat-sub">all roles</div>
-        </div>
-    </div>
+    <!-- ── Dashboard Top Section ── -->
+    {% set branch_percent = (active_branches / total_branches * 100)|round|int if total_branches > 0 else 0 %}
+    {% set pending_percent = (total_pending / total_students * 100)|round|int if total_students > 0 else 0 %}
+    {% set success_percent = 100 - pending_percent if total_students > 0 else 100 %}
 
-    <!-- ── Alerts + Quick Actions ── -->
-    <div class="two-col">
+    <div class="dashboard-top">
 
-        <!-- Alerts -->
-        <div class="card">
-            <h2>⚠️ Alerts &amp; Issues</h2>
+        <!-- Left: Alerts & Quick Actions -->
+        <div class="dash-left">
 
-            {% if not missing_code and not missing_admin and not inactive_branches %}
-            <div class="alert-item alert-green">
-                <span class="alert-icon">✅</span>
-                <div>All systems look good. No issues detected.</div>
+            <!-- Quick Actions (Stacked horizontally for better space usage) -->
+            <div class="card" style="padding: 16px;">
+                <h2 style="font-size: 14px; margin-bottom: 12px; border-bottom: none; padding: 0;">⚡ Quick Actions</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                    <a href="{{ url_for('super_admin.super_admin_branches') }}" class="qa-btn"
+                        style="padding: 8px 12px; margin: 0;">
+                        <span style="font-size: 16px;">🏢</span>
+                        <span style="font-size: 12px;">Branches</span>
+                    </a>
+                    <a href="{{ url_for('super_admin.superadmin_faqs') }}" class="qa-btn"
+                        style="padding: 8px 12px; margin: 0;">
+                        <span style="font-size: 16px;">💬</span>
+                        <span style="font-size: 12px;">FAQs</span>
+                    </a>
+                    <a href="/change-password" class="qa-btn" style="padding: 8px 12px; margin: 0;">
+                        <span style="font-size: 16px;">🔑</span>
+                        <span style="font-size: 12px;">Password</span>
+                    </a>
+                </div>
             </div>
-            {% endif %}
 
-            {% if missing_code %}
-            <div class="alert-item alert-red">
-                <span class="alert-icon">🔴</span>
-                <div>
-                    <strong>{{ missing_code|length }} branch{{ 'es' if missing_code|length > 1 else '' }} missing branch code</strong>
-                    <div class="alert-names">
-                        {% for b in missing_code %}· {{ b.branch_name }}{% if not loop.last %}, {% endif %}{% endfor %}
+            <!-- Alerts -->
+            <div class="card" style="flex: 1;">
+                <h2>⚠️ Alerts &amp; Issues</h2>
+                {% if not missing_code and not missing_admin and not inactive_branches %}
+                <div class="alert-item alert-green">
+                    <span class="alert-icon">✅</span>
+                    <div>All systems look good. No issues detected.</div>
+                </div>
+                {% endif %}
+
+                <div style="max-height: 180px; overflow-y: auto;">
+                    {% if missing_code %}
+                    <div class="alert-item alert-red">
+                        <span class="alert-icon">🔴</span>
+                        <div>
+                            <strong>{{ missing_code|length }} missing branch code</strong>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if missing_admin %}
+                    <div class="alert-item alert-yellow">
+                        <span class="alert-icon">🟡</span>
+                        <div>
+                            <strong>{{ missing_admin|length }} with no admin account</strong>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if inactive_branches %}
+                    <div class="alert-item alert-yellow">
+                        <span class="alert-icon">🟡</span>
+                        <div>
+                            <strong>{{ inactive_branches|length }} inactive branches</strong>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Consolidated Report Summary -->
+        <div class="dash-right">
+            <div class="summary-card">
+                <h2>📈 System Overview</h2>
+
+                <div class="unified-chart-wrap">
+                    <div class="donut-container">
+                        <svg class="donut-svg" viewBox="0 0 100 100">
+                            <!-- Background Track -->
+                            <circle cx="50" cy="50" r="40" stroke="#f1f5f9" stroke-width="18" fill="none"></circle>
+
+                            {% set total_population = total_branches + total_students + total_staff %}
+                            {% set circum = 2 * 3.14159 * 40 %}
+
+                            {% if total_population > 0 %}
+                            {# Branch slice #}
+                            {% set branch_size = (total_branches / total_population * circum) %}
+                            <circle class="donut-slice" cx="50" cy="50" r="40" stroke="#007bff" stroke-width="18"
+                                stroke-dasharray="{{ branch_size }} {{ circum }}" stroke-dashoffset="0"
+                                onmouseover="updateDonut('Branches', '{{ total_branches }}', '{{ active_branches }} Active')"
+                                onmouseout="resetDonut()"></circle>
+
+                            {# Student slice (Success) #}
+                            {% set success_count = total_students - total_pending %}
+                            {% set student_size = (success_count / total_population * circum) %}
+                            <circle class="donut-slice" cx="50" cy="50" r="40" stroke="#1a2e5a" stroke-width="18"
+                                stroke-dasharray="{{ student_size }} {{ circum }}"
+                                stroke-dashoffset="-{{ branch_size }}"
+                                onmouseover="updateDonut('Students', '{{ success_count }}', 'Processed')"
+                                onmouseout="resetDonut()"></circle>
+
+                            {# Pending slice #}
+                            {% set pending_size = (total_pending / total_population * circum) %}
+                            <circle class="donut-slice" cx="50" cy="50" r="40" stroke="#f59e0b" stroke-width="18"
+                                stroke-dasharray="{{ pending_size }} {{ circum }}"
+                                stroke-dashoffset="-{{ branch_size + student_size }}"
+                                onmouseover="updateDonut('Pending', '{{ total_pending }}', 'Awaiting Action')"
+                                onmouseout="resetDonut()"></circle>
+
+                            {# Staff slice #}
+                            {% set staff_size = (total_staff / total_population * circum) %}
+                            <circle class="donut-slice" cx="50" cy="50" r="40" stroke="#10b981" stroke-width="18"
+                                stroke-dasharray="{{ staff_size }} {{ circum }}"
+                                stroke-dashoffset="-{{ branch_size + student_size + pending_size }}"
+                                onmouseover="updateDonut('Staff', '{{ total_staff }}', 'Active Personnel')"
+                                onmouseout="resetDonut()"></circle>
+                            {% endif %}
+                        </svg>
+
+                        <div class="donut-center" id="donutData">
+                            <span class="dc-val">{{ total_population }}</span>
+                            <span class="dc-label">Total Data</span>
+                            <span class="dc-sub">System-wide</span>
+                        </div>
+                    </div>
+
+                    <div class="chart-legend">
+                        <div class="legend-item">
+                            <span class="l-dot" style="background:#007bff;"></span>
+                            Branches
+                        </div>
+                        <div class="legend-item">
+                            <span class="l-dot" style="background:#1a2e5a;"></span>
+                            Success
+                        </div>
+                        <div class="legend-item">
+                            <span class="l-dot" style="background:#f59e0b;"></span>
+                            Pending
+                        </div>
+                        <div class="legend-item">
+                            <span class="l-dot" style="background:#10b981;"></span>
+                            Staff
+                        </div>
                     </div>
                 </div>
-            </div>
-            {% endif %}
 
-            {% if missing_admin %}
-            <div class="alert-item alert-yellow">
-                <span class="alert-icon">🟡</span>
-                <div>
-                    <strong>{{ missing_admin|length }} branch{{ 'es' if missing_admin|length > 1 else '' }} with no admin account</strong>
-                    <div class="alert-names">
-                        {% for b in missing_admin %}· {{ b.branch_name }}{% if not loop.last %}, {% endif %}{% endfor %}
-                    </div>
+                <div
+                    style="margin-top: 24px; padding-top: 15px; border-top: 1px solid #f1f5f9; font-size: 11px; color: #94a3b8; text-align: center;">
+                    Hover segments for details
                 </div>
             </div>
-            {% endif %}
-
-            {% if inactive_branches %}
-            <div class="alert-item alert-yellow">
-                <span class="alert-icon">🟡</span>
-                <div>
-                    <strong>{{ inactive_branches|length }} inactive branch{{ 'es' if inactive_branches|length > 1 else '' }}</strong>
-                    <div class="alert-names">
-                        {% for b in inactive_branches %}· {{ b.branch_name }}{% if not loop.last %}, {% endif %}{% endfor %}
-                    </div>
-                </div>
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- Quick Actions -->
-        <div class="card">
-            <h2>⚡ Quick Actions</h2>
-            <a href="{{ url_for('super_admin.super_admin_branches') }}" class="qa-btn">
-                <span class="qa-icon">🏢</span>
-                <div>
-                    <div>Manage Branches</div>
-                    <div style="font-size:11px; font-weight:400; color:#888;">Create, edit, activate/deactivate</div>
-                </div>
-            </a>
-            <a href="{{ url_for('super_admin.superadmin_faqs') }}" class="qa-btn">
-                <span class="qa-icon">💬</span>
-                <div>
-                    <div>Manage FAQs</div>
-                    <div style="font-size:11px; font-weight:400; color:#888;">General chatbot FAQ entries</div>
-                </div>
-            </a>
-            <a href="/change-password" class="qa-btn">
-                <span class="qa-icon">🔑</span>
-                <div>
-                    <div>Change Password</div>
-                    <div style="font-size:11px; font-weight:400; color:#888;">Update your super admin password</div>
-                </div>
-            </a>
         </div>
 
     </div>
@@ -282,4 +627,25 @@
     </div>
 
 </div>
+
+<script>
+    const donutData = document.getElementById('donutData');
+    const defaultVal = "{{ total_branches + total_students + total_staff }}";
+    const defaultLabel = "Total Overview";
+    const defaultSub = "System Vitality";
+
+    function updateDonut(label, val, sub) {
+        if (!donutData) return;
+        donutData.querySelector('.dc-val').textContent = val;
+        donutData.querySelector('.dc-label').textContent = label;
+        donutData.querySelector('.dc-sub').textContent = sub;
+    }
+
+    function resetDonut() {
+        if (!donutData) return;
+        donutData.querySelector('.dc-val').textContent = defaultVal;
+        donutData.querySelector('.dc-label').textContent = defaultLabel;
+        donutData.querySelector('.dc-sub').textContent = defaultSub;
+    }
+</script>
 {% endblock %}

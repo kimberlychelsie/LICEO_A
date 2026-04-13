@@ -1,325 +1,671 @@
 {% extends "base.html" %}
-{% block title %}Assign Teachers{% endblock %}
+{% block title %}Assign Teachers | Liceo LMS{% endblock %}
 
 {% block styles %}
 <style>
-  .step-pill {
-    display: inline-flex;
+  :root {
+    --primary-h: 224;
+    --primary-s: 70%;
+    --primary-l: 33%;
+    --primary: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
+    --primary-light: hsl(var(--primary-h), var(--primary-s), 95%);
+    --primary-border: hsl(var(--primary-h), var(--primary-s), 85%);
+    
+    --success: hsl(142, 69%, 45%);
+    --success-light: hsl(142, 69%, 96%);
+    --warning: hsl(38, 92%, 50%);
+    --warning-light: hsl(38, 92%, 96%);
+    --error: hsl(0, 84%, 60%);
+    --error-light: hsl(0, 84%, 97%);
+    
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --bg-main: #f8fafc;
+    --card-bg: #ffffff;
+    --border-color: #e2e8f0;
+    
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Container */
+  .assignment-container {
+    max-width: 1200px;
+    margin: 30px auto;
+    padding: 0 20px;
+  }
+
+  /* Page Header */
+  .page-header {
+    margin-bottom: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .header-content h1 {
+    font-size: 1.85rem;
+    font-weight: 800;
+    color: var(--primary);
+    margin-bottom: 6px;
+    letter-spacing: -0.02em;
+  }
+
+  .header-content p {
+    color: var(--text-muted);
+    font-size: 0.95rem;
+  }
+
+  /* Stepper / Assignment Area */
+  .assignment-section {
+    display: grid;
+    grid-template-columns: 350px 1fr;
+    gap: 30px;
+    margin-bottom: 50px;
+  }
+
+  /* Step Cards */
+  .step-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    transition: var(--transition);
+    padding: 30px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .step-card.active {
+    border-color: var(--primary-border);
+    box-shadow: var(--shadow-md);
+  }
+
+  .step-card.dimmed {
+    opacity: 0.5;
+    pointer-events: none;
+    filter: grayscale(0.5);
+  }
+
+  .step-label {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--primary);
+  }
+
+  .step-number {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
+    display: flex;
     align-items: center;
     justify-content: center;
-    width: 28px; height: 28px;
-    border-radius: 50%;
-    background: var(--btn);
-    color: #fff;
-    font-weight: 800;
-    font-size: 0.8rem;
-    flex-shrink: 0;
+    font-size: 0.7rem;
   }
-  .step-box {
-    border: 1.5px solid var(--border);
-    border-radius: 12px;
-    padding: 18px 20px;
-    margin-bottom: 16px;
-    background: var(--card);
-    transition: border-color 0.2s, box-shadow 0.2s;
-  }
-  .step-box.active {
-    border-color: var(--btn);
-    box-shadow: 0 0 0 3px rgba(26,58,143,.08);
-  }
-  .step-box.dimmed {
-    opacity: 0.45;
-    pointer-events: none;
-  }
+
   .step-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 20px;
+  }
+
+  /* Inputs & Filters */
+  .modern-select {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    background: white;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    transition: var(--transition);
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 16px;
+  }
+
+  .modern-select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-light);
+  }
+
+  .search-box {
+    position: relative;
+    margin-bottom: 20px;
+  }
+
+  .search-box input {
+    width: 100%;
+    padding: 12px 16px 12px 45px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-color);
+    font-size: 0.95rem;
+  }
+
+  .search-box .icon {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+  }
+
+  /* Teacher Info Chip */
+  .teacher-info-card {
+    background: var(--primary-light);
+    border: 1px solid var(--primary-border);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    margin-top: 20px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-weight: 700;
-    font-size: 0.95rem;
-    margin-bottom: 12px;
-    color: var(--text);
+    gap: 12px;
   }
-  .subject-card {
+
+  .teacher-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: var(--primary);
+    color: white;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+
+  .teacher-details {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .teacher-name {
+    font-weight: 700;
+    color: var(--primary);
+    font-size: 0.95rem;
+  }
+
+  .teacher-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+  }
+
+  /* Subjects Grid */
+  .subjects-container {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    min-height: 400px;
+  }
+
+  .subjects-header {
+    padding: 24px 30px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fafafa;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  }
+
+  .subjects-header-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+
+  .selection-toolbar {
+    display: flex;
     gap: 10px;
-    padding: 10px 12px;
-    border-radius: 10px;
-    border: 1.5px solid var(--border);
-    cursor: pointer;
-    background: var(--card);
-    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
-    width: 100%;
+    align-items: center;
   }
-  .subject-card:hover {
-    border-color: var(--btn);
-    box-shadow: 0 0 0 2px rgba(26,58,143,.1);
+
+  .subjects-body {
+    padding: 30px;
+    flex: 1;
+    max-height: 600px;
+    overflow-y: auto;
   }
-  .subject-card.assigned-me {
-    border-color: #16a34a;
-    background: #f0fdf4;
-    cursor: not-allowed;
-    opacity: 0.85;
+
+  .grade-divider {
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin: 30px 0 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
-  .subject-card.assigned-other {
-    border-color: #d97706;
-    background: #fffbeb;
+
+  .grade-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-color);
   }
+
+  .grade-divider:first-child {
+    margin-top: 0;
+  }
+
   .subjects-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
   }
-  .grade-group-label {
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: .08em;
-    text-transform: uppercase;
-    color: var(--muted);
-    padding: 4px 0 6px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 8px;
-    margin-top: 4px;
-  }
-  .toolbar-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-  }
-  .selected-badge {
-    margin-left: auto;
-    background: var(--btn);
-    color: #fff;
-    padding: 3px 12px;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    font-weight: 700;
-  }
-  .subjects-scroll {
-    max-height: 420px;
-    overflow-y: auto;
-    padding-right: 4px;
-  }
-  .teacher-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: #eff6ff;
-    color: var(--btn);
-    border: 1px solid #bfdbfe;
-    border-radius: 999px;
-    padding: 4px 12px;
-    font-size: 0.83rem;
-    font-weight: 600;
-    margin-top: 8px;
-  }
-  .assign-btn {
-    background: #16a34a;
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    padding: 11px 28px;
-    font-size: 0.95rem;
-    font-weight: 700;
+
+  /* Subject Card */
+  .subject-item {
+    position: relative;
+    padding: 20px;
+    border-radius: var(--radius-md);
+    border: 1.5px solid var(--border-color);
+    background: white;
     cursor: pointer;
-    transition: background 0.15s, transform 0.1s;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .assign-btn:hover:not(:disabled) { background: #15803d; transform: translateY(-1px); }
-  .assign-btn:disabled { background: #94a3b8; cursor: not-allowed; transform: none; }
-  .legend {
+    transition: var(--transition);
     display: flex;
-    gap: 14px;
-    flex-wrap: wrap;
-    font-size: 0.78rem;
-    color: var(--muted);
-    margin-bottom: 10px;
+    flex-direction: column;
+    gap: 12px;
   }
-  .legend-dot {
-    width: 10px; height: 10px;
-    border-radius: 50%;
-    display: inline-block;
-    margin-right: 4px;
+
+  .subject-item:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-2px);
   }
-  .remove-btn {
-    font-size: 0.75rem;
+
+  .subject-item.selected {
+    border-color: var(--primary);
+    background: var(--primary-light);
+  }
+
+  .subject-item.assigned-to-self {
+    background: var(--success-light);
+    border-color: var(--success);
+    cursor: default;
+    opacity: 0.7;
+  }
+
+  .subject-item.assigned-to-other {
+    background: var(--warning-light);
+    border-color: var(--warning);
+  }
+
+  .subject-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .section-tag {
+    font-size: 0.7rem;
+    font-weight: 800;
     padding: 3px 8px;
     border-radius: 6px;
-    border: 1px solid #dc2626;
-    color: #dc2626;
-    background: none;
-    cursor: pointer;
-    transition: background 0.15s;
+    background: #f1f5f9;
+    color: #475569;
+    text-transform: uppercase;
   }
-  .remove-btn:hover { background: #fef2f2; }
+
+  .subject-name {
+    font-weight: 700;
+    color: var(--text-main);
+    font-size: 1rem;
+  }
+
+  .status-badge {
+    align-self: flex-start;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 999px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .status-unassigned { background: #f1f5f9; color: #64748b; }
+  .status-other { background: var(--warning-light); color: var(--warning); border: 1px solid hsl(38, 92%, 90%); }
+  .status-self { background: var(--success-light); color: var(--success); border: 1px solid hsl(142, 69%, 92%); }
+
+  /* Table Section */
+  .records-section {
+    margin-top: 60px;
+  }
+
+  .section-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--text-main);
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .modern-table-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+  }
+
+  .table-toolbar {
+    padding: 20px 24px;
+    background: #fafafa;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 15px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th {
+    background: #f8fafc;
+    padding: 16px 24px;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--border-color);
+  }
+
+  td {
+    padding: 16px 24px;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-main);
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: #fcfcfc; }
+
+  .teacher-cell {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .avatar-sm {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.8rem;
+  }
+
+  .actions-cell {
+    text-align: right;
+  }
+
+  /* Buttons */
+  .btn {
+    padding: 10px 20px;
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: var(--transition);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: none;
+    text-decoration: none;
+  }
+
+  .btn-primary { background: var(--primary); color: white; }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,58,143,0.3); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  .btn-outline { background: white; border: 1.5px solid var(--border-color); color: var(--text-main); }
+  .btn-outline:hover { border-color: var(--text-muted); background: var(--bg-main); }
+
+  .btn-danger { background: var(--error-light); color: var(--error); }
+  .btn-danger:hover { background: var(--error); color: white; }
+
+  .btn-sm { padding: 6px 14px; font-size: 0.75rem; }
+
+  /* Empty States */
+  .empty-state {
+    text-align: center;
+    padding: 60px 40px;
+    color: var(--text-muted);
+  }
+
+  .empty-state i { font-size: 3rem; margin-bottom: 20px; opacity: 0.3; }
+
+  @media (max-width: 1024px) {
+    .assignment-section { grid-template-columns: 1fr; }
+  }
 </style>
 {% endblock %}
 
 {% block content %}
-<div style="max-width:1100px;">
-
-  <!-- Page header -->
-  <div style="margin-bottom:20px;">
-    <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:4px;">👨‍🏫 Assign Teachers to Subjects</h2>
-    <p style="color:var(--muted);font-size:0.88rem;">Pick a teacher, then select which section–subject pairs to assign them to.</p>
-  </div>
+<div class="assignment-container">
+  
+  <header class="page-header">
+    <div class="header-content">
+      <h1>Teacher Assignment</h1>
+      <p>Manage and assign teaching loads across sections and subjects.</p>
+    </div>
+  </header>
 
   {% if is_branch_active_status %}
-  <!-- ══ ASSIGNMENT FORM ══ -->
-  <div class="card" style="margin-bottom:24px;">
-    <div style="font-weight:800;font-size:1rem;margin-bottom:18px;display:flex;align-items:center;gap:8px;">
-      📋 New Assignment
-    </div>
+  <div class="assignment-section">
+    <!-- Sidebar: Steps -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+      
+      <!-- STEP 1: Teacher Selection -->
+      <div class="step-card active" id="step1Card">
+        <div class="step-label">
+          <span class="step-number">1</span> Explore Staff
+        </div>
+        <div class="step-title">Select a Teacher</div>
+        <select id="teacherSelect" class="modern-select" onchange="loadTeacherSubjects()">
+          <option value="">— Choose Teacher —</option>
+          {% for teacher in teachers %}
+          <option value="{{ teacher.user_id }}">{{ teacher.full_name or teacher.username }}</option>
+          {% endfor %}
+        </select>
 
-    <!-- STEP 1 -->
-    <div class="step-box active" id="stepBox1">
-      <div class="step-title">
-        <span class="step-pill">1</span>
-        Choose a Teacher
+        <div id="teacherProfileArea" style="display: none;">
+          <div class="teacher-info-card">
+            <div class="teacher-avatar" id="teacherAvatar">T</div>
+            <div class="teacher-details">
+              <div class="teacher-name" id="teacherProfileName">Teacher Name</div>
+              <div class="teacher-meta" id="teacherProfileRole">Branch Faculty</div>
+            </div>
+          </div>
+        </div>
       </div>
-      <select id="teacherSelect" class="form-select" style="max-width:420px;" onchange="loadTeacherSubjects()">
-        <option value="">— Select a teacher —</option>
-        {% for teacher in teachers %}
-        <option value="{{ teacher.user_id }}">{{ teacher.full_name or teacher.username }}</option>
-        {% endfor %}
-      </select>
-      <div id="teacherChip" style="display:none;">
-        <div class="teacher-chip" id="teacherChipText"></div>
-      </div>
-    </div>
 
-    <!-- STEP 2 -->
-    <div class="step-box dimmed" id="stepBox2">
-      <div class="step-title">
-        <span class="step-pill">2</span>
-        Filter &amp; Search <span style="font-weight:500;color:var(--muted);font-size:0.8rem;">(optional)</span>
-      </div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <select id="gradeFilterAssign" class="form-select" style="max-width:200px;" onchange="filterSubjects()">
+      <!-- STEP 2: Filtering -->
+      <div class="step-card dimmed" id="step2Card">
+        <div class="step-label">
+          <span class="step-number">2</span> Refine Search
+        </div>
+        <div class="step-title">Filter Subjects</div>
+        
+        <div class="search-box">
+          <span class="icon">🔍</span>
+          <input type="text" id="subjectSearch" placeholder="Type module or room..." oninput="filterSubjects()">
+        </div>
+
+        <select id="gradeFilterAssign" class="modern-select" onchange="filterSubjects()">
           <option value="">All Grade Levels</option>
           {% for grade in grade_options %}
           <option value="{{ grade.id }}">{{ grade.name }}</option>
           {% endfor %}
         </select>
-        <input type="text" id="subjectSearch" class="form-input" style="max-width:300px;"
-          placeholder="🔍 Search subject or section…" oninput="filterSubjects()">
       </div>
+
+      <!-- Save Column -->
+      <div id="saveActionArea" style="display: none;">
+        <div class="step-card active" style="background: var(--primary); color: white; border: none;">
+          <div class="step-label" style="color: rgba(255,255,255,0.7);">
+             Ready to Proceed
+          </div>
+          <div class="step-title" style="color: white; margin-bottom: 24px;">Finalize Load</div>
+          <p style="font-size: 0.85rem; margin-bottom: 24px; opacity: 0.9;">Assign the selected subjects to the active teacher profile.</p>
+          <button class="btn" id="assignBtn" disabled onclick="submitAssignment()" 
+                  style="width: 100%; background: white; color: var(--primary); justify-content: center; height: 50px; font-size: 1rem;">
+            Confirm Assignment
+          </button>
+          <div id="assignStatus" style="margin-top: 15px; text-align: center; font-size: 0.8rem; font-weight: 700;"></div>
+        </div>
+      </div>
+
     </div>
 
-    <!-- STEP 3 -->
-    <div class="step-box dimmed" id="stepBox3">
-      <div class="step-title">
-        <span class="step-pill">3</span>
-        Select Subjects to Assign
+    <!-- Main: Subjects Grid -->
+    <div class="subjects-container">
+      <div class="subjects-header">
+        <div class="subjects-header-title">
+          <span>📚</span> 
+          <span>Assignable Subjects</span>
+          <span id="selectedCountBadge" class="section-tag" style="background: var(--primary); color: white; display: none;">0 Selected</span>
+        </div>
+        
+        <div class="selection-toolbar" id="selectToolbar" style="display: none;">
+          <button class="btn btn-outline btn-sm" onclick="selectAll()">Select All Unassigned</button>
+          <button class="btn btn-outline btn-sm" onclick="deselectAll()">Clear</button>
+        </div>
       </div>
 
-      <!-- Legend -->
-      <div class="legend">
-        <span><span class="legend-dot" style="background:#16a34a;"></span> Already assigned to this teacher</span>
-        <span><span class="legend-dot" style="background:#d97706;"></span> Assigned to another teacher</span>
-        <span><span class="legend-dot" style="background:#cbd5e1;"></span> Unassigned</span>
+      <div class="subjects-body" id="subjectsContainer">
+        <div class="empty-state">
+          <i>👨‍🏫</i>
+          <p>Please select a teacher from the list to view and manage their teaching assignments.</p>
+        </div>
       </div>
-
-      <!-- Toolbar -->
-      <div class="toolbar-row" id="selectToolbar" style="display:none;">
-        <button type="button" class="btn btn-secondary btn-sm" onclick="selectAll()">✓ Select All Unassigned</button>
-        <button type="button" class="btn btn-secondary btn-sm" onclick="deselectAll()">✗ Clear</button>
-        <span class="selected-badge" id="selectedCount">0 selected</span>
-      </div>
-
-      <!-- Subject cards -->
-      <div class="subjects-scroll" id="subjectsContainer">
-        <p style="color:var(--muted);text-align:center;padding:32px 0;font-size:0.9rem;">
-          ⬆️ Select a teacher in Step 1 to see their assignable subjects.
-        </p>
-      </div>
-    </div>
-
-    <!-- Save button -->
-    <div style="margin-top:4px;display:flex;align-items:center;gap:14px;">
-      <button class="assign-btn" id="assignBtn" disabled onclick="submitAssignment()">
-        ✅ Save Assignments
-      </button>
-      <span id="assignStatus" style="font-size:0.88rem;"></span>
     </div>
   </div>
   {% endif %}
 
-  <!-- ══ CURRENT ASSIGNMENTS TABLE ══ -->
-  <div class="card">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
-      <div style="font-weight:800;font-size:1rem;">📊 Current Assignments</div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <label style="font-size:0.82rem;color:var(--muted);">Filter by grade:</label>
-        <select id="tableGradeFilter" class="form-select" style="width:170px;" onchange="filterByGrade()">
-          <option value="">All Grades</option>
+  <!-- Records Table -->
+  <section class="records-section">
+    <div class="section-title">
+      <span>📊 Current Load Masterlist</span>
+      <div style="font-size: 0.8rem; font-weight: 600; color: var(--text-muted); display: flex; align-items: center; gap: 15px;">
+        <span style="display: flex; align-items: center; gap: 5px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: var(--success);"></span> Assigned</span>
+        <span style="display: flex; align-items: center; gap: 5px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: var(--error);"></span> Empty</span>
+      </div>
+    </div>
+
+    <div class="modern-table-card">
+      <div class="table-toolbar">
+        <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">View by Grade:</label>
+        <select id="tableGradeFilter" class="modern-select" style="width: 200px; padding: 8px 12px; font-size: 0.85rem;" onchange="filterByGrade()">
+          <option value="">All Records</option>
           {% for grade in grade_options %}
           <option value="{{ grade.id }}" {% if grade.id|string==grade_filter %}selected{% endif %}>{{ grade.name }}</option>
           {% endfor %}
         </select>
       </div>
-    </div>
 
-    <div class="table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Grade</th>
-            <th>Section</th>
-            <th>Subject</th>
-            <th>Assigned Teacher</th>
-            <th>Status</th>
-            {% if is_branch_active_status %}<th></th>{% endif %}
+            <th>Level & Section</th>
+            <th>Subject Name</th>
+            <th>Faculty Member</th>
+            <th style="width: 150px;">Status</th>
+            {% if is_branch_active_status %}<th style="width: 100px;"></th>{% endif %}
           </tr>
         </thead>
         <tbody>
           {% if assignments %}
-          {% for a in assignments %}
-          <tr>
-            <td><strong>{{ a.grade_level_name }}</strong></td>
-            <td>{{ a.section_name }}</td>
-            <td>{{ a.subject_name }}</td>
-            <td>
-              {% if a.teacher_full_name %}
-              <span style="font-weight:600;color:#166534;">{{ a.teacher_full_name }}</span>
-              <span style="color:var(--muted);font-size:0.78rem;"> ({{ a.teacher_username }})</span>
-              {% else %}
-              <span style="color:var(--muted);font-style:italic;">—</span>
+            {% for a in assignments %}
+            <tr>
+              <td>
+                <div style="font-weight: 700; color: var(--text-main);">{{ a.grade_level_name }}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">Section: {{ a.section_name }}</div>
+              </td>
+              <td>
+                <div style="font-weight: 600;">{{ a.subject_name }}</div>
+              </td>
+              <td>
+                {% if a.teacher_full_name %}
+                <div class="teacher-cell">
+                  <div class="avatar-sm">{{ a.teacher_full_name[0] | upper }}</div>
+                  <div>
+                    <div style="font-weight: 700; color: var(--primary);">{{ a.teacher_full_name }}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">@{{ a.teacher_username }}</div>
+                  </div>
+                </div>
+                {% else %}
+                <span style="color: var(--text-muted); font-style: italic; font-size: 0.85rem;">Position Vacant</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if a.teacher_full_name %}
+                <span class="status-badge status-self" style="width: fit-content;">● Assigned</span>
+                {% else %}
+                <span class="status-badge status-unassigned" style="width: fit-content; background: #fff1f2; color: var(--error);">● Unassigned</span>
+                {% endif %}
+              </td>
+              {% if is_branch_active_status %}
+              <td class="actions-cell">
+                {% if a.teacher_full_name %}
+                <button class="btn btn-danger btn-sm" 
+                        onclick="removeAssignment({{ a.section_teacher_id }}, '{{ a.teacher_full_name }}', '{{ a.section_name }}', '{{ a.subject_name }}')">
+                  Release
+                </button>
+                {% endif %}
+              </td>
               {% endif %}
-            </td>
-            <td>
-              {% if a.teacher_full_name %}
-              <span class="badge badge-green">✓ Assigned</span>
-              {% else %}
-              <span class="badge badge-red">Unassigned</span>
-              {% endif %}
-            </td>
-            {% if is_branch_active_status %}
-            <td>
-              {% if a.teacher_full_name %}
-              <button class="remove-btn"
-                onclick="removeAssignment({{ a.section_teacher_id }}, '{{ a.teacher_full_name }}', '{{ a.section_name }}', '{{ a.subject_name }}')">
-                Remove
-              </button>
-              {% endif %}
-            </td>
-            {% endif %}
-          </tr>
-          {% endfor %}
+            </tr>
+            {% endfor %}
           {% else %}
-          <tr>
-            <td colspan="6" style="text-align:center;color:var(--muted);padding:32px;">No assignments yet.</td>
-          </tr>
+            <tr>
+              <td colspan="5">
+                <div class="empty-state">
+                  <p>No assignment records found for this branch.</p>
+                </div>
+              </td>
+            </tr>
           {% endif %}
         </tbody>
       </table>
     </div>
-  </div>
+  </section>
 
 </div>
 
@@ -332,50 +678,59 @@
     selectedTeacherId = select.value;
     const teacherName = select.options[select.selectedIndex].text;
 
-    const box2 = document.getElementById('stepBox2');
-    const box3 = document.getElementById('stepBox3');
+    const card1 = document.getElementById('step1Card');
+    const card2 = document.getElementById('step2Card');
+    const profileArea = document.getElementById('teacherProfileArea');
+    const saveArea = document.getElementById('saveActionArea');
     const container = document.getElementById('subjectsContainer');
     const toolbar = document.getElementById('selectToolbar');
-    const chip = document.getElementById('teacherChip');
-    const chipText = document.getElementById('teacherChipText');
-
+    
     deselectAll();
     document.getElementById('gradeFilterAssign').value = '';
     document.getElementById('subjectSearch').value = '';
     updateCount();
 
     if (!selectedTeacherId) {
-      box2.className = 'step-box dimmed';
-      box3.className = 'step-box dimmed';
-      container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:32px 0;font-size:0.9rem;">⬆️ Select a teacher in Step 1 to see their assignable subjects.</p>';
+      card1.classList.add('active');
+      card2.classList.add('dimmed');
+      profileArea.style.display = 'none';
+      saveArea.style.display = 'none';
+      container.innerHTML = `
+        <div class="empty-state">
+          <i>👨‍🏫</i>
+          <p>Please select a teacher from the list to view and manage their teaching assignments.</p>
+        </div>`;
       toolbar.style.display = 'none';
-      chip.style.display = 'none';
-      document.getElementById('assignBtn').disabled = true;
       return;
     }
 
-    chip.style.display = 'block';
-    chipText.innerHTML = '👤 ' + teacherName.trim();
-    box2.className = 'step-box active';
-    box3.className = 'step-box active';
+    // Update Profile UI
+    profileArea.style.display = 'block';
+    document.getElementById('teacherProfileName').textContent = teacherName.trim();
+    document.getElementById('teacherAvatar').textContent = teacherName.trim()[0].toUpperCase();
+    
+    card1.classList.remove('active');
+    card2.classList.remove('dimmed');
+    card2.classList.add('active');
+    saveArea.style.display = 'block';
 
-    container.innerHTML = '<p style="text-align:center;padding:28px 0;color:var(--muted);">⏳ Loading subjects…</p>';
+    container.innerHTML = '<div class="empty-state"><i>⏳</i><p>Fetching subject workload...</p></div>';
 
     fetch(`/branch-admin/api/get-all-subjects/${selectedTeacherId}`)
-      .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+      .then(r => r.json())
       .then(data => {
         if (data.success && data.subjects.length > 0) {
           allSubjects = data.subjects;
           renderSubjects(allSubjects);
           toolbar.style.display = 'flex';
         } else {
-          container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:28px 0;">No subjects found for this branch.</p>';
+          container.innerHTML = '<div class="empty-state"><i>🔍</i><p>No subjects found available for this campus.</p></div>';
           allSubjects = [];
           toolbar.style.display = 'none';
         }
       })
       .catch(() => {
-        container.innerHTML = '<p style="color:#dc2626;text-align:center;padding:28px 0;">❌ Error loading subjects. Please try again.</p>';
+        container.innerHTML = '<div class="empty-state"><i>❌</i><p>Failed to load data. Please refresh.</p></div>';
         toolbar.style.display = 'none';
       });
   }
@@ -383,7 +738,7 @@
   function renderSubjects(subjects) {
     const container = document.getElementById('subjectsContainer');
     if (subjects.length === 0) {
-      container.innerHTML = '<p style="color:var(--muted);text-align:center;padding:28px 0;">No subjects match your filter.</p>';
+      container.innerHTML = '<div class="empty-state"><i>🔎</i><p>No modules match your current search/filter.</p></div>';
       updateCount();
       return;
     }
@@ -396,45 +751,61 @@
 
     let html = '';
     Object.entries(grouped).forEach(([grade, items]) => {
-      html += `<div class="grade-group-label">📚 ${grade}</div><div class="subjects-grid" style="margin-bottom:16px;">`;
+      html += `<div class="grade-divider">${grade}</div><div class="subjects-grid">`;
       items.forEach(s => {
-        let cardClass = 'subject-card';
-        let badge = '';
+        let itemClass = 'subject-item';
+        let statusHtml = '';
         let disabled = '';
+        
         if (s.is_assigned_to_this_teacher) {
-          cardClass += ' assigned-me';
-          badge = '<span class="badge badge-green" style="font-size:0.7rem;margin-top:4px;">✓ Yours</span>';
+          itemClass += ' assigned-to-self';
+          statusHtml = '<div class="status-badge status-self">● Already Yours</div>';
           disabled = 'disabled checked';
         } else if (s.is_currently_assigned) {
-          cardClass += ' assigned-other';
-          badge = `<span class="badge badge-yellow" style="font-size:0.7rem;margin-top:4px;">⚠ ${s.current_teacher_name}</span>`;
+          itemClass += ' assigned-to-other';
+          statusHtml = `<div class="status-badge status-other">● Occupied (${s.current_teacher_name})</div>`;
         } else {
-          badge = '<span style="font-size:0.7rem;color:var(--muted);margin-top:2px;">○ Unassigned</span>';
+          statusHtml = '<div class="status-badge status-unassigned">○ Available</div>';
         }
+
         html += `
-          <label class="${cardClass}" for="subj_${s.subject_id}_${s.section_id}" style="cursor:${disabled ? 'not-allowed' : 'pointer'}">
-            <input class="subject-cb" type="checkbox"
-              id="subj_${s.subject_id}_${s.section_id}"
-              value="${s.subject_id}"
-              data-section-id="${s.section_id}"
-              data-grade="${s.grade_level_name}"
-              data-grade-id="${s.grade_level_id}"
-              data-section="${s.section_name}"
-              data-subject="${s.subject_name}"
-              ${disabled}
-              onchange="updateCount()"
-              style="margin-top:2px;flex-shrink:0;">
-            <div>
-              <div style="font-weight:600;font-size:0.88rem;">${s.section_name}</div>
-              <div style="color:var(--muted);font-size:0.8rem;">${s.subject_name}</div>
-              ${badge}
+          <div class="${itemClass}" onclick="toggleSubject('${s.subject_id}_${s.section_id}')" id="item_${s.subject_id}_${s.section_id}">
+            <input type="checkbox" class="subject-cb" 
+                   id="cb_${s.subject_id}_${s.section_id}"
+                   value="${s.subject_id}"
+                   data-section-id="${s.section_id}"
+                   data-section="${s.section_name}"
+                   data-subject="${s.subject_name}"
+                   ${disabled} 
+                   style="display:none;" 
+                   onchange="updateCardUI('${s.subject_id}_${s.section_id}')">
+            <div class="subject-meta">
+              <span class="section-tag">${s.section_name}</span>
+              ${statusHtml}
             </div>
-          </label>`;
+            <div class="subject-name">${s.subject_name}</div>
+          </div>`;
       });
       html += '</div>';
     });
 
     container.innerHTML = html;
+    updateCount();
+  }
+
+  function toggleSubject(id) {
+    const cb = document.getElementById('cb_'+id);
+    if (!cb.disabled) {
+      cb.checked = !cb.checked;
+      updateCardUI(id);
+    }
+  }
+
+  function updateCardUI(id) {
+    const cb = document.getElementById('cb_'+id);
+    const item = document.getElementById('item_'+id);
+    if (cb.checked) item.classList.add('selected');
+    else item.classList.remove('selected');
     updateCount();
   }
 
@@ -450,18 +821,30 @@
   }
 
   function selectAll() {
-    document.querySelectorAll('.subject-cb:not([disabled])').forEach(cb => cb.checked = true);
-    updateCount();
+    document.querySelectorAll('.subject-cb:not([disabled])').forEach(cb => {
+      cb.checked = true;
+      updateCardUI(cb.id.replace('cb_', ''));
+    });
   }
 
   function deselectAll() {
-    document.querySelectorAll('.subject-cb:not([disabled])').forEach(cb => cb.checked = false);
-    updateCount();
+    document.querySelectorAll('.subject-cb:not([disabled])').forEach(cb => {
+      cb.checked = false;
+      updateCardUI(cb.id.replace('cb_', ''));
+    });
   }
 
   function updateCount() {
     const count = document.querySelectorAll('.subject-cb:not([disabled]):checked').length;
-    document.getElementById('selectedCount').textContent = count + ' selected';
+    const badge = document.getElementById('selectedCountBadge');
+    
+    if (count > 0) {
+      badge.style.display = 'block';
+      badge.textContent = count + ' Selected';
+    } else {
+      badge.style.display = 'none';
+    }
+
     document.getElementById('assignBtn').disabled = count === 0;
     document.getElementById('assignStatus').textContent = '';
   }
@@ -472,15 +855,13 @@
 
     const subjectIds = Array.from(checked).map(cb => parseInt(cb.value));
     const sectionIds = Array.from(checked).map(cb => parseInt(cb.dataset.sectionId));
-    const preview = Array.from(checked).map(cb => `• ${cb.dataset.section} — ${cb.dataset.subject}`).join('\n');
-
-    if (!confirm(`Assign teacher to ${subjectIds.length} subject(s)?\n\n${preview}`)) return;
+    
+    if (!confirm(`Are you sure you want to assign these ${subjectIds.length} subjects to the selected teacher?`)) return;
 
     const btn = document.getElementById('assignBtn');
     const status = document.getElementById('assignStatus');
     btn.disabled = true;
-    btn.innerHTML = '⏳ Saving…';
-    status.textContent = '';
+    btn.innerHTML = '⚡ Processing...';
 
     fetch('/branch-admin/assign-teachers-bulk', {
       method: 'POST',
@@ -490,19 +871,18 @@
       .then(r => r.json())
       .then(data => {
         if (data.success) {
-          status.innerHTML = `<span style="color:#16a34a;font-weight:600;">✅ ${data.count} subject(s) assigned!</span>`;
-          btn.innerHTML = '✅ Save Assignments';
-          setTimeout(() => location.reload(), 900);
+          status.innerHTML = `<span style="color: white; background: var(--success); padding: 5px 15px; border-radius: 5px;">✅ Load assigned successfully!</span>`;
+          setTimeout(() => location.reload(), 1000);
         } else {
-          status.innerHTML = `<span style="color:#dc2626;">❌ ${data.message}</span>`;
+          status.innerHTML = `<span style="color: #ffcccc;">❌ ${data.message}</span>`;
           btn.disabled = false;
-          btn.innerHTML = '✅ Save Assignments';
+          btn.innerHTML = 'Confirm Assignment';
         }
       })
       .catch(() => {
-        status.innerHTML = '<span style="color:#dc2626;">❌ Network error. Try again.</span>';
+        status.innerHTML = '<span style="color: white;">❌ Network issue.</span>';
         btn.disabled = false;
-        btn.innerHTML = '✅ Save Assignments';
+        btn.innerHTML = 'Confirm Assignment';
       });
   }
 
@@ -514,7 +894,7 @@
   }
 
   function removeAssignment(sectionTeacherId, teacherName, sectionName, subjectName) {
-    if (!confirm(`Remove ${teacherName} from ${sectionName} — ${subjectName}?`)) return;
+    if (!confirm(`Do you wish to release ${teacherName} from their duties in ${subjectName} (${sectionName})?`)) return;
     fetch('/branch-admin/remove-teacher-assignment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -523,9 +903,9 @@
       .then(r => r.json())
       .then(data => {
         if (data.success) location.reload();
-        else alert('Error: ' + (data.message || 'Could not remove assignment.'));
+        else alert('Error: ' + data.message);
       })
-      .catch(() => alert('Network error. Please try again.'));
+      .catch(() => alert('Network error.'));
   }
 </script>
 {% endblock %}

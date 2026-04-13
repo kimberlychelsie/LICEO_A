@@ -1,216 +1,644 @@
 {% extends "base.html" %}
-{% block title %}Branch Admin{% endblock %}
+{% block title %}Branch Dashboard | Liceo LMS{% endblock %}
 
 {% block content %}
 <style>
-    :root {
-        --ios-blue: #007aff;
-        --ios-gray: #8e8e93;
-        --ios-light-gray: #f2f2f7;
+  :root {
+    /* Midnight Emerald Palette */
+    --primary: #312e81;
+    /* Indigo */
+    --primary-light: #e0e7ff;
+    --accent: #10b981;
+    /* Emerald */
+    --accent-light: #dcfce7;
+
+    --bg-main: #f8fafc;
+    --card-bg: #ffffff;
+    --text-main: #1a1a2e;
+    --text-muted: #64748b;
+    --border-color: rgba(0, 0, 0, 0.05);
+
+    --radius-lg: 20px;
+    --radius-md: 12px;
+    --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.04);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  body {
+    background: var(--bg-main);
+    color: var(--text-main);
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  .sa-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 30px 20px;
+  }
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .header-row h1 {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    letter-spacing: -0.02em;
+  }
+
+  .header-row p {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin-top: 4px;
+  }
+
+  /* ── Premium Cards ── */
+  .card {
+    background: var(--card-bg);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    box-shadow: var(--shadow-soft);
+    border: 1px solid var(--border-color);
+    transition: var(--transition);
+    position: relative;
+    margin-bottom: 24px;
+  }
+
+  .card h2 {
+    margin: 0 0 20px 0;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--bg-main);
+  }
+
+  /* ── Quick Actions ── */
+  .actions-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 12px;
+  }
+
+  .ios-btn {
+    padding: 14px 16px;
+    border-radius: var(--radius-md);
+    font-weight: 700;
+    font-size: 13px;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-main);
+    color: var(--text-main);
+  }
+
+  .ios-btn:hover {
+    background: var(--primary);
+    color: #fff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(49, 46, 129, 0.2);
+  }
+
+  .ios-btn-blue {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+  }
+
+  .ios-btn-blue:hover {
+    background: #1e1b4b;
+  }
+
+  /* ── Donuts & Charts ── */
+  .summary-card {
+    padding: 30px;
+    margin-bottom: 0;
+  }
+
+  .donut-container {
+    position: relative;
+    width: 170px;
+    height: 170px;
+    margin: 0 auto 16px auto;
+  }
+
+  .donut-svg {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+
+  .donut-slice {
+    fill: none;
+    stroke-width: 16;
+    stroke-linecap: round;
+    transition: var(--transition);
+    cursor: pointer;
+  }
+
+  .donut-slice:hover {
+    stroke-width: 20;
+    filter: drop-shadow(0 0 8px rgba(0, 0, 0, 0.1));
+  }
+
+  .donut-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+  }
+
+  .dc-val {
+    display: block;
+    font-size: 24px;
+    font-weight: 900;
+    color: var(--primary);
+    line-height: 1;
+  }
+
+  .dc-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-top: 4px;
+    letter-spacing: 0.1em;
+  }
+
+  .chart-legend {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+
+  .l-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+
+  /* ── Announcement Composer UI ── */
+  .announcement-form-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 32px;
+  }
+
+  .ios-label {
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    display: block;
+    margin-bottom: 8px;
+    letter-spacing: 0.05em;
+  }
+
+  .ios-input {
+    width: 100%;
+    padding: 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    font-size: 14px;
+    color: var(--text-main);
+    outline: none;
+    transition: var(--transition);
+  }
+
+  .ios-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px var(--primary-light);
+  }
+
+  .preview-container {
+    padding: 24px;
+    background: #f8fafc;
+    border-radius: var(--radius-md);
+    border: 2px dashed #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    position: relative;
+  }
+
+  .preview-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 9px;
+    font-weight: 800;
+    background: var(--primary);
+    color: #fff;
+    padding: 4px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  .preview-card-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 16px;
+    background: #fff;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+  }
+
+  .preview-img-wrap {
+    width: 66px;
+    height: 50px;
+    border-radius: 8px;
+    background: #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  #pImg {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* ── Data Table Styling ── */
+  .modern-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 8px;
+  }
+
+  .modern-table th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 800;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--bg-main);
+    letter-spacing: 0.05em;
+  }
+
+  .modern-table td {
+    padding: 16px;
+    font-size: 14px;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+  }
+
+  .table-img {
+    width: 60px;
+    height: 45px;
+    object-fit: cover;
+    border-radius: 8px;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+  }
+
+  .btn-action {
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+
+  .btn-stop {
+    background: #fee2e2;
+    color: #b91c1c;
+  }
+
+  /* Custom Scrollbar for Graphs */
+  .custom-scroll::-webkit-scrollbar {
+    height: 6px;
+  }
+
+  .custom-scroll::-webkit-scrollbar-track {
+    background: var(--bg-main);
+    border-radius: 10px;
+  }
+
+  .custom-scroll::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 10px;
+  }
+
+  @media (max-width: 950px) {
+    .announcement-form-grid {
+      grid-template-columns: 1fr;
     }
 
-    .ios-container { padding: 40px 20px; max-width: 1100px; margin: 0 auto; }
-    .ios-card { background: #fff; border-radius: 20px; padding: 32px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); margin-bottom: 32px; border: 1px solid rgba(0, 0, 0, 0.02); }
-    .ios-heading { font-size: 32px; font-weight: 800; color: #1d1d1f; margin-bottom: 8px; display: flex; align-items: center; gap: 12px; }
-    .ios-sub-heading { font-size: 16px; color: var(--ios-gray); margin-bottom: 40px; }
-    
-    .ios-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 32px; }
-    
-    .stat-card { background: #fff; padding: 24px; border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); border: 1px solid rgba(0,0,0,0.02); display: flex; flex-direction: column; }
-    .stat-label { font-size: 12px; font-weight: 700; color: #86868b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-    .stat-value { font-size: 32px; font-weight: 800; color: #1d1d1f; }
-    .stat-subtext { font-size: 13px; color: var(--ios-gray); margin-top: 4px; }
-
-    .ios-btn { padding: 14px 28px; border-radius: 12px; font-weight: 700; font-size: 16px; border: none; cursor: pointer; transition: all 0.2s; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
-    .ios-btn-blue { background: var(--ios-blue); color: #fff; }
+    .analytics-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
 </style>
 
-<div class="ios-container">
-    <div class="header" style="margin-bottom: 32px;">
-        <div>
-            <h1 class="ios-heading">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="var(--ios-blue)" style="margin-right: 8px;">
-                    <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
-                </svg>
-                Dashboard
-            </h1>
-            <p class="ios-sub-heading">Welcome back, Branch Administrator</p>
-        </div>
-        <div class="header-actions">
-            <!-- Add any global actions here -->
-        </div>
+<div class="sa-container">
+  <div class="header-row">
+    <div>
+      <h1>
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="var(--primary)">
+          <path d="M12 2L1 21h22L12 2zm0 3.45L19.15 19H4.85L12 5.45zM11 16h2v2h-2v-2zm0-7h2v5h-2V9z" />
+        </svg>
+        Branch Admin
+      </h1>
     </div>
+  </div>
 
-    <!-- STATS GRID -->
-    <div class="ios-grid">
-        <div class="stat-card">
-            <span class="stat-label">👥 Branch Staff</span>
-            <span class="stat-value">{{ metrics.total_staff }}</span>
-            <span class="stat-subtext">Active team members</span>
-        </div>
-        
-        <div class="stat-card">
-            <span class="stat-label">🎓 Total Students</span>
-            <span class="stat-value">{{ metrics.total_students or 0 }}</span>
-            <span class="stat-subtext">Enrolled this term</span>
-        </div>
+  {% set t_staff = metrics.total_staff|default(0)|int + metrics.total_teachers|default(0)|int %}
+  {% set t_students = metrics.total_enrolled|default(0)|int %}
+  {% set total_population = t_staff + t_students %}
 
-        <div class="stat-card">
-            <span class="stat-label">⚖️ Account Status</span>
-            <span class="stat-value">{% if is_branch_active_status %}Active{% else %}Inactive{% endif %}</span>
-            <span class="stat-subtext">Branch operational status</span>
+  <!-- 1. Publish Update (TOP) -->
+  <div class="card">
+    <h2>📢 Publish Announcement</h2>
+    <div class="announcement-form-grid">
+      {% if is_branch_active_status %}
+      <form method="post" action="{{ url_for('branch_admin.dashboard') }}" enctype="multipart/form-data"
+        id="announceForm">
+        <input type="hidden" name="add_announcement" value="1">
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div>
+            <label class="ios-label">Headline *</label>
+            <input class="ios-input" name="announcement_title" id="inTitle" placeholder="Update summary..." required>
+          </div>
+          <div>
+            <label class="ios-label">Graphic Asset (Optional)</label>
+            <input type="file" name="announcement_photo" id="inImg" class="ios-input" accept="image/*">
+          </div>
+          <div style="grid-column: 1 / -1;">
+            <label class="ios-label">Detailed Message</label>
+            <textarea class="ios-input" name="announcement_message" id="inMsg" placeholder="Full broadcast details..."
+              style="min-height:80px;"></textarea>
+          </div>
+          <button class="ios-btn-blue ios-btn" type="submit" style="padding: 14px; width:100%;">Publish
+            Broadcast</button>
         </div>
+      </form>
+      {% else %}
+      <div class="alert-item alert-yellow">Release system locked for current branch status.</div>
+      {% endif %}
+
+      <!-- Live Preview -->
+      <div class="preview-container">
+        <span class="preview-badge">LIVE PREVIEW</span>
+        <div style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase;">Real-time
+          Look</div>
+        <div class="preview-card-item">
+          <div class="preview-img-wrap">
+            <img id="pImg" src="" style="display:none;">
+            <span id="pIcon" style="font-size: 20px;">📰</span>
+          </div>
+          <div style="flex:1; overflow: hidden;">
+            <div id="pTitle"
+              style="font-weight: 800; font-size: 14px; color: var(--primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              Your Headline</div>
+            <div id="pMsg"
+              style="font-size: 11px; color: var(--text-muted); margin-top: 3px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+              Enter details to preview the broadcast...</div>
+          </div>
+        </div>
+        <div style="font-size: 10px; color: var(--text-muted); text-align: center; margin-top: auto;">Matches official
+          history list aesthetic.</div>
+      </div>
     </div>
+  </div>
 
-    <!-- CHARTS SECTION -->
-    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 32px;">
-        <div class="ios-card" style="margin-bottom: 0;">
-            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 20px;">📊 Enrollment by Grade Level</h3>
-            <div style="height: 300px;">
-                <canvas id="gradeChart"></canvas>
-            </div>
-        </div>
-        <div class="ios-card" style="margin-bottom: 0;">
-            <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 20px;">🍩 Status Breakdown</h3>
-            <div style="height: 300px;">
-                <canvas id="statusChart"></canvas>
-            </div>
-        </div>
+  <!-- 2. Quick Management (FOLLOWS) -->
+  <div class="card">
+    <h2>⚡ Quick Management</h2>
+    <div class="actions-grid">
+      <a href="{{ url_for('branch_admin.branch_admin_inventory') }}" class="ios-btn"><span>📦</span> Inventory</a>
+      <a href="{{ url_for('branch_admin.branch_admin_manage_accounts') }}" class="ios-btn"><span>👥</span> Accounts</a>
+      <a href="{{ url_for('branch_admin.branch_admin_sections') }}" class="ios-btn"><span>🏫</span> Sections</a>
+      <a href="{{ url_for('branch_admin.branch_admin_subjects') }}" class="ios-btn"><span>📘</span> Subjects</a>
+      <a href="{{ url_for('branch_admin.branch_admin_grade_levels') }}" class="ios-btn"><span>🎓</span> Grades</a>
+      <a href="/branch_admin/add_year" class="ios-btn"><span>📅</span> Year</a>
+      <a href="{{ url_for('branch_admin.branch_admin_assign_teachers') }}" class="ios-btn"><span>👩‍🏫</span>
+        Teachers</a>
+      <a href="{{ url_for('branch_admin.branch_admin_assign_students') }}" class="ios-btn"><span>🧑‍🎓</span>
+        Students</a>
+      <a href="{{ url_for('branch_admin.branch_admin_faqs') }}" class="ios-btn"><span>💬</span> FAQs</a>
     </div>
+  </div>
 
-    <!-- ANNOUNCEMENTS -->
-    <div class="ios-card">
-        <h2 style="font-size: 20px; font-weight: 700; margin-bottom: 8px;">📢 Homepage Announcements</h2>
-        <p style="color: var(--ios-gray); font-size: 14px; margin-bottom: 24px;">
-            Visible to all branches on the main homepage.
-        </p>
-
-        {% if is_branch_active_status %}
-        <form method="post" action="{{ url_for('branch_admin.dashboard') }}" enctype="multipart/form-data" style="display: flex; flex-direction: column; gap: 16px;">
-            <input type="hidden" name="add_announcement" value="1">
-            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 16px;">
-                <div>
-                    <label class="ios-label">Title *</label>
-                    <input class="ios-input" name="announcement_title" placeholder="Enrollment is open" required>
-                </div>
-                <div>
-                    <label class="ios-label">Message</label>
-                    <input class="ios-input" name="announcement_message" placeholder="Short description for the homepage">
-                </div>
-            </div>
-            
-            <div style="display: flex; gap: 20px; align-items: flex-end;">
-                <div style="flex: 1;">
-                    <label class="ios-label">📷 Photo (optional)</label>
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <input type="file" name="announcement_photo" class="ios-input" style="padding: 10px;" 
-                               accept="image/png,image/jpeg,image/gif,image/webp" onchange="previewPhoto(this)">
-                        <span id="photoPreviewWrap" style="display:none;">
-                            <img id="photoPreview" src="" alt="preview" style="height:44px; width:64px; object-fit:cover; border-radius:8px;">
-                        </span>
-                    </div>
-                </div>
-                <button class="ios-btn ios-btn-blue" type="submit" style="height: 44px; white-space: nowrap;">
-                    Add to Homepage
-                </button>
-            </div>
-        </form>
-        {% endif %}
-
-        {% if announcements_list %}
-        <div style="margin-top: 32px; border-top: 1px solid #f2f2f7; padding-top: 24px;">
-            <h4 style="font-size: 14px; color: var(--ios-gray); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Current Announcements</h4>
-            <div style="display: flex; flex-direction: column; gap: 12px;">
-                {% for a in announcements_list %}
-                <div style="display: flex; align-items: center; gap: 16px; padding: 12px; background: #fafafa; border-radius: 12px;">
-                    {% if a.image_url %}
-                    <img src="{{ a.image_url }}" alt="photo" style="width:60px; height:40px; object-fit:cover; border-radius:6px; border: 1px solid #eee;">
-                    {% else %}
-                    <div style="width:60px; height:40px; background: #eee; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 18px;">📢</div>
-                    {% endif %}
-                    
-                    <div style="flex: 1;">
-                        <div style="font-weight: 700; color: #1d1d1f;">{{ a.title }}</div>
-                        <div style="font-size: 13px; color: #86868b;">{{ a.message[:80] if a.message else '' }}</div>
-                    </div>
-                    
-                    {% if is_branch_active_status and a.is_active %}
-                    <form method="post" action="{{ url_for('branch_admin.announcement_hide', announcement_id=a.id) }}">
-                        <button type="submit" class="ios-btn" style="width: auto; padding: 6px 12px; font-size: 13px; background: #e3e3e8;">Hide</button>
-                    </form>
-                    {% endif %}
-                </div>
-                {% endfor %}
-            </div>
+  <!-- 3. Insights Grid -->
+  <div class="analytics-grid"
+    style="display: grid; grid-template-columns: 1fr 1fr 0.8fr; gap: 24px; margin-bottom: 24px;">
+    <!-- Enrollment by Grade -->
+    <div class="card" style="margin-bottom:0;">
+      <h2>📈 Enrollment by Grade</h2>
+      <div style="height: 240px; position: relative;">
+        {% if metrics.grade_stats %}
+        <div style="width: 100%; overflow-x: auto; height: 100%;" class="custom-scroll">
+          <div style="height: 100%; min-width: {{ (metrics.grade_stats|length * 60)|default(400) }}px;">
+            <canvas id="gradeChart"></canvas>
+          </div>
+        </div>
+        {% else %}
+        <div
+          style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.5;">
+          <span style="font-size: 32px;">📊</span>
+          <p style="font-size: 11px; font-weight: 700;">No Grade Data</p>
         </div>
         {% endif %}
+      </div>
     </div>
+
+    <!-- Retention Funnel -->
+    <div class="card" style="margin-bottom:0;">
+      <h2>🍩 Application Funnel</h2>
+      <div style="height: 240px;">
+        {% if metrics.status_stats %}
+        <canvas id="statusChart"></canvas>
+        {% else %}
+        <div
+          style="height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.5;">
+          <span style="font-size: 32px;">🍩</span>
+          <p style="font-size: 11px; font-weight: 700;">No Funnel Data</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Population Mix -->
+    <div class="card summary-card">
+      <h2>📊 Population</h2>
+      <div class="donut-container">
+        <svg class="donut-svg" viewBox="0 0 100 100">
+          {% if total_population == 0 %}
+          <circle cx="50" cy="50" r="40" fill="none" stroke="#f1f5f9" stroke-width="16"></circle>
+          {% else %}
+          {% set circum = 2 * 3.14159 * 40 %}
+          {% set student_size = (t_students / total_population * circum) %}
+          <circle class="donut-slice" cx="50" cy="50" r="40" stroke="var(--primary)"
+            stroke-dasharray="{{ student_size }} {{ circum }}" stroke-dashoffset="0"
+            onmouseover="updateDonut('Students', '{{ t_students }}', 'Enrolled')" onmouseout="resetDonut()"></circle>
+          <circle class="donut-slice" cx="50" cy="50" r="40" stroke="var(--accent)"
+            stroke-dasharray="{{ circum - student_size }} {{ circum }}" stroke-dashoffset="-{{ student_size }}"
+            onmouseover="updateDonut('Staff', '{{ t_staff }}', 'Personnel')" onmouseout="resetDonut()"></circle>
+          {% endif %}
+        </svg>
+        <div class="donut-center" id="donutData">
+          <span class="dc-val">{{ total_population }}</span>
+          <span class="dc-label">Total</span>
+        </div>
+      </div>
+      <div class="chart-legend">
+        <div class="legend-item"><span class="l-dot" style="background:var(--primary);"></span> Students</div>
+        <div class="legend-item"><span class="l-dot" style="background:var(--accent);"></span> Staff</div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    function previewPhoto(input) {
-        const wrap = document.getElementById('photoPreviewWrap');
-        const img = document.getElementById('photoPreview');
-        if (input.files && input.files[0]) {
-            img.src = URL.createObjectURL(input.files[0]);
-            wrap.style.display = 'inline';
-        } else {
-            wrap.style.display = 'none';
+  const primaryColor = '#312e81';
+  const accentColor = '#10b981';
+  const errorColor = '#ef4444';
+
+  const origVal = "{{ total_population }}";
+  function updateDonut(label, val, sub) {
+    document.getElementById('donutData').innerHTML = `
+            <span class="dc-val" style="color:var(--primary)">${val}</span>
+            <span class="dc-label">${label}</span>
+        `;
+  }
+  function resetDonut() {
+    document.getElementById('donutData').innerHTML = `
+            <span class="dc-val" style="color:var(--primary)">${origVal}</span>
+            <span class="dc-label">Total</span>
+        `;
+  }
+
+  const gradeStats = {{ metrics.grade_stats | tojson | safe }};
+  const statusStats = {{ metrics.status_stats | tojson | safe }};
+
+  if (gradeStats && gradeStats.length > 0) {
+    const ctxG = document.getElementById('gradeChart').getContext('2d');
+    new Chart(ctxG, {
+      type: 'bar',
+      data: {
+        labels: gradeStats.map(i => i.grade_level || 'N/A'),
+        datasets: [{
+          label: 'Students',
+          data: gradeStats.map(i => i.count),
+          backgroundColor: primaryColor,
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: '#f1f5f9' } },
+          x: { grid: { display: false } }
         }
-    }
+      }
+    });
+  }
 
-    // Chart.js Configuration
-    const gradeStats = {{ metrics.grade_stats | tojson | safe }};
-    const statusStats = {{ metrics.status_stats | tojson | safe }};
+  if (statusStats && statusStats.length > 0) {
+    const ctxS = document.getElementById('statusChart').getContext('2d');
+    new Chart(ctxS, {
+      type: 'doughnut',
+      data: {
+        labels: statusStats.map(i => String(i.status).toUpperCase()),
+        datasets: [{
+          data: statusStats.map(i => i.count),
+          backgroundColor: statusStats.map((s, idx) => {
+            const st = String(s.status).toUpperCase();
+            if (st === 'APPROVED') return primaryColor;
+            if (st === 'PENDING') return accentColor;
+            if (st === 'REJECTED') return errorColor;
+            return idx % 2 === 0 ? '#1e1b4b' : '#334155';
+          }),
+          borderWidth: 0
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        cutout: '75%',
+        plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, padding: 15, font: { weight: 'bold', size: 10 } } } }
+      }
+    });
+  }
 
-    if (gradeStats && gradeStats.length > 0) {
-        const ctxGrade = document.getElementById('gradeChart').getContext('2d');
-        new Chart(ctxGrade, {
-            type: 'bar',
-            data: {
-                labels: gradeStats.map(item => item.grade_level || 'N/A'),
-                datasets: [{
-                    label: 'Enrolled Students',
-                    data: gradeStats.map(item => item.count),
-                    backgroundColor: '#007aff',
-                    borderRadius: 8
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true, grid: { color: '#f2f2f7' } }, x: { grid: { display: false } } }
-            }
-        });
-    }
+  // Live Preview Logic
+  const inTitle = document.getElementById('inTitle');
+  const inMsg = document.getElementById('inMsg');
+  const inImg = document.getElementById('inImg');
 
-    if (statusStats && statusStats.length > 0) {
-        const ctxStatus = document.getElementById('statusChart').getContext('2d');
-        new Chart(ctxStatus, {
-            type: 'doughnut',
-            data: {
-                labels: statusStats.map(item => String(item.status).toUpperCase()),
-                datasets: [{
-                    data: statusStats.map(item => item.count),
-                    backgroundColor: statusStats.map(s => {
-                        const st = String(s.status).toUpperCase();
-                        if (st === 'APPROVED') return '#34c759';
-                        if (st === 'PENDING') return '#ff9500';
-                        if (st === 'REJECTED') return '#ff3b30';
-                        return '#8e8e93';
-                    }),
-                    borderWidth: 0
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '75%',
-                plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } }
-            }
-        });
-    }
+  const pTitle = document.getElementById('pTitle');
+  const pMsg = document.getElementById('pMsg');
+  const pImg = document.getElementById('pImg');
+  const pIcon = document.getElementById('pIcon');
+
+  if (inTitle) {
+    inTitle.addEventListener('input', (e) => {
+      pTitle.innerText = e.target.value || "Your Headline";
+    });
+    inMsg.addEventListener('input', (e) => {
+      pMsg.innerText = e.target.value || "Enter details to preview the broadcast...";
+    });
+    inImg.addEventListener('change', function () {
+      const file = this.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          pImg.src = e.target.result;
+          pImg.style.display = 'block';
+          pIcon.style.display = 'none';
+        }
+        reader.readAsDataURL(file);
+      } else {
+        pImg.src = '';
+        pImg.style.display = 'none';
+        pIcon.style.display = 'block';
+      }
+    });
+  }
 </script>
 {% endblock %}

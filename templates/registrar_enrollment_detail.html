@@ -2,406 +2,650 @@
 {% block title %}Enrollment Detail{% endblock %}
 {% block styles %}
 <style>
-    .det-wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px; }
-    .det-title { font-size: 1.3rem; font-weight: 900; color: #1e293b; margin-bottom: 4px; }
-    .det-sub   { color: #64748b; font-size: 0.85rem; margin-bottom: 24px; }
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 
-    .section-card {
-        background: #fff;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        overflow: hidden;
-        margin-bottom: 16px;
-        box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    :root {
+        --reg-blue: #1e3a8a;
+        --reg-blue-light: #eff6ff;
+        --reg-blue-soft: #dbeafe;
+        --reg-yellow: #facc15;
+        --reg-yellow-dark: #ca8a04;
+        --reg-yellow-soft: #fefce8;
+        --reg-text-main: #0f172a;
+        --reg-text-muted: #64748b;
+        --reg-border: #e2e8f0;
+        --reg-surface: #ffffff;
+        --reg-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        --reg-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+        --reg-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
+        --reg-radius: 16px;
     }
-    .section-head {
-        background: #f8fafc;
-        border-bottom: 1px solid #e2e8f0;
-        padding: 10px 16px;
-        font-size: 11px;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: .06em;
-        color: #475569;
-    }
-    .section-body {
-        padding: 16px;
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-        gap: 14px;
-    }
-    .det-field label {
-        font-size: 10.5px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: .05em;
-        color: #94a3b8;
-        display: block;
-        margin-bottom: 3px;
-    }
-    .det-field input,
-    .det-field select,
-    .det-field textarea {
-        width: 100%;
-        padding: 7px 2px;
-        border: 1.5px solid transparent;
-        border-radius: 6px;
-        font-size: 13.5px;
-        font-weight: 600;
-        color: #1e293b;
-        background: transparent;
-        box-sizing: border-box;
-        transition: border-color .2s, background .2s;
-        cursor: text;
-    }
-    .det-field input:hover,
-    .det-field select:hover,
-    .det-field textarea:hover {
-        border-color: #e2e8f0;
-        background: #f8fafc;
-    }
-    .det-field input:focus,
-    .det-field select:focus,
-    .det-field textarea:focus {
-        outline: none;
-        border-color: #3b82f6;
-        background: #fff;
-        box-shadow: 0 0 0 3px rgba(59,130,246,.12);
-    }
-    .det-field textarea { resize: vertical; min-height: 60px; }
 
-    .badge {
-        display: inline-block;
-        padding: 4px 12px;
-        border-radius: 999px;
-        font-size: 12px;
-        font-weight: 700;
+    body {
+        background-color: #f8fafc;
+        font-family: 'Plus Jakarta Sans', sans-serif;
     }
-    .badge-pending  { background:#eff6ff; color:#1d4ed8; }
-    .badge-approved { background:#f0fdf4; color:#166534; }
-    .badge-rejected { background:#fef2f2; color:#991b1b; }
-    .badge-enrolled { background:#f0fdfa; color:#0f766e; }
 
-    .doc-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-        gap: 12px;
-        padding: 16px;
+    .detail-wrapper {
+        max-width: 950px;
+        margin: 0 auto;
+        padding: 30px 20px 80px 20px;
+        /* bottom padding for sticky bar */
+        animation: fadeSlideUp 0.4s ease-out;
     }
-    .doc-card {
-        border: 1.5px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 14px;
-        background: #f8fafc;
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-    .doc-card .doc-icon { font-size: 1.8rem; }
-    .doc-card .doc-name { font-size: 12px; font-weight: 700; color: #1e293b; word-break: break-word; }
-    .doc-card a {
-        display: inline-flex; align-items: center; gap: 5px;
-        background: #1d4ed8; color: #fff; border-radius: 8px;
-        padding: 6px 12px; font-size: 12px; font-weight: 700;
-        text-decoration: none; width: fit-content;
-    }
-    .doc-card a:hover { background: #1e40af; }
 
+    @keyframes fadeSlideUp {
+        from {
+            opacity: 0;
+            transform: translateY(15px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Action Bar */
     .action-bar {
-        display: flex; gap: 10px; flex-wrap: wrap;
-        margin-bottom: 20px; align-items: center;
-    }
-    .btn {
-        padding: 9px 18px; border-radius: 9px; font-size: 13px;
-        font-weight: 700; text-decoration: none; display: inline-flex;
-        align-items: center; gap: 6px; border: none; cursor: pointer;
-        transition: filter .15s, opacity .2s;
-    }
-    .btn:hover { filter: brightness(.93); }
-    .btn-back    { background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; }
-    .btn-success { background: #16a34a; color: #fff; }
-    .btn-danger  { background: #dc2626; color: #fff; }
-    .btn-save  {
-        background: #1d4ed8; color: #fff;
-        padding: 12px 32px; font-size: 14px;
-        border-radius: 10px; width: 100%;
-        justify-content: center;
-    }
-    .btn-save:disabled {
-        background: #cbd5e1; color: #94a3b8;
-        cursor: not-allowed;
-        filter: none;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 24px;
     }
 
-    .save-bar {
-        position: sticky; bottom: 0;
+    .action-stack {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    /* Profile Header */
+    .profile-header {
+        background: var(--reg-surface);
+        padding: 30px 35px;
+        border-radius: var(--reg-radius);
+        box-shadow: var(--reg-shadow-sm);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .profile-header::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        height: 100%;
+        width: 6px;
+        background: linear-gradient(180deg, var(--reg-blue) 0%, var(--reg-yellow) 100%);
+    }
+
+    .profile-title {
+        font-size: 1.6rem;
+        font-weight: 800;
+        color: var(--reg-text-main);
+        letter-spacing: -0.02em;
+        margin-bottom: 8px;
+    }
+
+    .profile-sub {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: var(--reg-text-muted);
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+
+    /* Status Badges */
+    .badge-modern {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+    }
+
+    .badge-modern i {
+        font-size: 0.8rem;
+    }
+
+    .bg-pending {
+        background: #fef9c3;
+        color: #a16207;
+    }
+
+    .bg-approved {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .bg-rejected {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .bg-enrolled {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    /* Elegant Buttons */
+    .btn-elegant {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 18px;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid transparent;
+        text-decoration: none;
+    }
+
+    .btn-elegant:active {
+        transform: scale(0.97);
+    }
+
+    .btn-view-modern {
+        background: var(--reg-surface);
+        border-color: var(--reg-border);
+        color: var(--reg-text-main);
+        box-shadow: var(--reg-shadow-sm);
+    }
+
+    .btn-view-modern:hover {
+        background: #f8fafc;
+        border-color: #cbd5e1;
+        color: var(--reg-blue);
+    }
+
+    .btn-check-modern {
+        background: #ecfdf5;
+        color: #059669;
+        border-color: #a7f3d0;
+    }
+
+    .btn-check-modern:hover {
+        background: #10b981;
+        color: white;
+        box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+    }
+
+    .btn-cross-modern {
+        background: #fef2f2;
+        color: #dc2626;
+        border-color: #fecaca;
+    }
+
+    .btn-cross-modern:hover {
+        background: #ef4444;
+        color: white;
+        box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2);
+    }
+
+    .btn-primary {
+        background: var(--reg-blue);
+        color: white;
+        box-shadow: var(--reg-shadow-md);
+    }
+
+    .btn-primary:hover:not(:disabled) {
+        background: var(--reg-blue-dark);
+        box-shadow: var(--reg-shadow-lg);
+    }
+
+    .btn-primary:disabled {
+        background: #cbd5e1;
+        color: #f1f5f9;
+        cursor: not-allowed;
+        box-shadow: none;
+        transform: none;
+    }
+
+    /* Forms */
+    .data-card {
+        background: var(--reg-surface);
+        border-radius: var(--reg-radius);
+        box-shadow: var(--reg-shadow-sm);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        margin-bottom: 24px;
+        overflow: hidden;
+    }
+
+    .data-header {
+        background: rgba(248, 250, 252, 0.5);
+        border-bottom: 1px solid var(--reg-border);
+        padding: 16px 24px;
+        font-size: 0.85rem;
+        font-weight: 800;
+        color: var(--reg-text-main);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .data-header i {
+        color: var(--reg-blue);
+    }
+
+    .data-body {
+        padding: 24px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 20px;
+    }
+
+    .data-field label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--reg-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
+    }
+
+    .premium-input {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--reg-border);
+        border-radius: 10px;
+        font-family: inherit;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--reg-text-main);
+        transition: all 0.2s;
+        background: #f8fafc;
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.01);
+        box-sizing: border-box;
+    }
+
+    .premium-input:focus {
+        outline: none;
+        border-color: var(--reg-blue);
+        background: var(--reg-surface);
+        box-shadow: 0 0 0 3px var(--reg-blue-light);
+    }
+
+    .premium-input:read-only {
+        background: var(--reg-border);
+        color: var(--reg-text-muted);
+        border-color: transparent;
+        cursor: not-allowed;
+    }
+
+    .premium-input:disabled {
+        background: var(--reg-border);
+        cursor: not-allowed;
+    }
+
+    /* Document Showcase */
+    .doc-showcase {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 16px;
+        padding: 24px;
+    }
+
+    .doc-item {
+        background: #f8fafc;
+        border: 1px solid var(--reg-border);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.2s;
+    }
+
+    .doc-item:hover {
         background: #fff;
-        border-top: 1px solid #e2e8f0;
-        padding: 14px 16px;
-        border-radius: 0 0 14px 14px;
-        box-shadow: 0 -2px 8px rgba(0,0,0,.05);
-        margin-top: 8px;
+        border-color: var(--reg-blue-soft);
+        box-shadow: var(--reg-shadow-sm);
+        transform: translateY(-2px);
+    }
+
+    /* Floating Save Bar */
+    .floating-save-bar {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        padding: 16px 24px;
+        border-radius: 20px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        width: 100%;
+        max-width: 900px;
+        justify-content: space-between;
+    }
+
+    .floating-save-text {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--reg-text-muted);
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="det-wrap">
+<div class="detail-wrapper">
 
-    <!-- ── Back + Actions ── -->
+    <!-- Top Action Bar -->
     <div class="action-bar">
-        <a href="/registrar/enrollments" class="btn btn-back">← Back to Enrollments</a>
-        {% if enrollment.status == 'pending' %}
-        <form method="post" action="/registrar/enrollments" style="display:inline;">
-            <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
-            <button name="action" value="approved" class="btn btn-success">✅ Approve</button>
-        </form>
-        <form method="post" action="/registrar/enrollments" style="display:inline;">
-            <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
-            <button name="action" value="rejected" class="btn btn-danger"
-                onclick="return confirm('Reject this enrollment?')">❌ Reject</button>
-        </form>
-        {% endif %}
+
+        <div class="action-stack">
+            {% if enrollment.status == 'pending' %}
+            <form method="post" action="/registrar/enrollments" style="display:inline;">
+                <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
+                <button name="action" value="approved" class="btn-elegant btn-check-modern"><i
+                        class="fas fa-check-circle"></i> Approve Registration</button>
+            </form>
+            <form method="post" action="/registrar/enrollments" style="display:inline;">
+                <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
+                <button name="action" value="rejected" class="btn-elegant btn-cross-modern"
+                    onclick="return confirm('Reject this enrollment?')"><i class="fas fa-times-circle"></i> Deny
+                    Registration</button>
+            </form>
+            {% endif %}
+        </div>
     </div>
 
-    <div class="det-title">📋 Enrollment Detail</div>
-    <div class="det-sub">
-        #{{ enrollment.branch_enrollment_no }} ·
-        {% if enrollment.status == 'pending' %}
-        <span class="badge badge-pending">⏳ Pending</span>
-        {% elif enrollment.status == 'approved' %}
-        <span class="badge badge-approved">✅ Approved</span>
-        {% elif enrollment.status == 'rejected' %}
-        <span class="badge badge-rejected">❌ Rejected</span>
-        {% else %}
-        <span class="badge badge-enrolled">🎓 {{ enrollment.status | title }}</span>
-        {% endif %}
+    <!-- Profile Overview -->
+    <div class="profile-header">
+        <div class="profile-title">Enrollment Record Detail</div>
+        <div class="profile-sub">
+            <span style="font-family: monospace; font-weight: 800; color: var(--reg-blue);">REF: #{{
+                enrollment.branch_enrollment_no }}</span>
+            <span style="color: var(--reg-border);">|</span>
+            {% if enrollment.status == 'pending' %}
+            <div class="badge-modern bg-pending"><i class="fas fa-clock"></i> In Review</div>
+            {% elif enrollment.status == 'approved' %}
+            <div class="badge-modern bg-approved"><i class="fas fa-check-circle"></i> Approved</div>
+            {% elif enrollment.status == 'rejected' %}
+            <div class="badge-modern bg-rejected"><i class="fas fa-times-circle"></i> Rejected</div>
+            {% else %}
+            <div class="badge-modern bg-enrolled"><i class="fas fa-graduation-cap"></i> {{ enrollment.status | title }}
+            </div>
+            {% endif %}
+        </div>
     </div>
 
-    <!-- ═══ EDITABLE FORM ═══ -->
+    <!-- MAIN FORM -->
     <form id="enrollmentForm" method="post" action="/registrar/enrollment/{{ enrollment.enrollment_id }}">
 
-    <!-- ── Enrollment Info ── -->
-    <div class="section-card">
-        <div class="section-head">📝 Enrollment Info</div>
-        <div class="section-body">
-            <div class="det-field">
-                <label>Enrollment Type</label>
-                <select name="enroll_type" class="track-change">
-                    <option value="">— Select —</option>
-                    {% for t in ['New', 'Transferee', 'Old', 'Returnee'] %}
-                    <option value="{{ t }}" {{ 'selected' if enrollment.enroll_type == t }}>{{ t }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="det-field">
-                <label>Enrollment Date</label>
-                <input type="date" name="enroll_date" class="track-change"
-                    value="{{ enrollment.enroll_date.strftime('%Y-%m-%d') if enrollment.enroll_date else '' }}" readonly
-                    style="background:#f1f5f9; cursor:default;">
-            </div>
-            <div class="det-field">
-                <label>Remarks</label>
-                <input type="text" name="remarks" class="track-change"
-                    value="{{ enrollment.remarks or '' }}" placeholder="—">
-            </div>
-        </div>
-    </div>
-
-    <!-- ── Student Details ── -->
-    <div class="section-card">
-        <div class="section-head">🎓 Student Details</div>
-        <div class="section-body">
-            <div class="det-field">
-                <label>Full Name</label>
-                <input type="text" name="student_name" class="track-change"
-                    value="{{ enrollment.student_name or '' }}" required>
-            </div>
-            <div class="det-field">
-                <label>Grade Level</label>
-                <select name="grade_level" class="track-change" required>
-                    <option value="">— Select —</option>
-                    {% for g in ['Nursery','Kinder','Grade 1','Grade 2','Grade 3','Grade 4','Grade 5','Grade 6','Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'] %}
-                    <option value="{{ g }}" {{ 'selected' if enrollment.grade_level == g }}>{{ g }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div class="det-field">
-                <label>Sex</label>
-                <select name="gender" class="track-change">
-                    <option value="">— Select —</option>
-                    <option value="Male"   {{ 'selected' if enrollment.gender == 'Male' }}>Male</option>
-                    <option value="Female" {{ 'selected' if enrollment.gender == 'Female' }}>Female</option>
-                </select>
-            </div>
-            <div class="det-field">
-                <label>Birthday</label>
-                <input type="date" name="dob" class="track-change"
-                    value="{{ enrollment.dob.strftime('%Y-%m-%d') if enrollment.dob else '' }}">
-            </div>
-            <div class="det-field">
-                <label>Birthplace</label>
-                <input type="text" name="birthplace" class="track-change"
-                    value="{{ enrollment.birthplace or '' }}" placeholder="—">
-            </div>
-            <div class="det-field">
-                <label>LRN</label>
-                <input type="text" name="lrn" class="track-change"
-                    value="{{ enrollment.lrn or '' }}" placeholder="—">
-            </div>
-            <div class="det-field" style="grid-column: span 2;">
-                <label>Address</label>
-                <input type="text" name="address" class="track-change"
-                    value="{{ enrollment.address or '' }}" placeholder="—">
-            </div>
-            <div class="det-field">
-                <label>Contact Number</label>
-                <input type="text" name="contact_number" class="track-change"
-                    value="{{ enrollment.contact_number or '' }}" placeholder="—">
-            </div>
-            <div class="det-field">
-                <label>Email</label>
-                <input type="email" name="email" class="track-change"
-                    value="{{ enrollment.email or '' }}" placeholder="—">
-            </div>
-            <div class="det-field">
-                <label>Section</label>
-                <input type="text" readonly
-                    value="{{ enrollment.section_name or '⚠ Not assigned' }}"
-                    style="background:#f1f5f9; cursor:default; {{ 'color:#cbd5e1; font-style:italic;' if not enrollment.section_name }}">
+        <!-- Block 1: Enrollment Info -->
+        <div class="data-card">
+            <div class="data-header"><i class="fas fa-info-circle"></i> Academic Tracking</div>
+            <div class="data-body">
+                <div class="data-field">
+                    <label>Enrollment Type</label>
+                    <div style="position:relative;">
+                        <select name="enroll_type" class="premium-input track-change">
+                            <option value="">— Select Category —</option>
+                            {% for t in ['New', 'Transferee', 'Old', 'Returnee'] %}
+                            <option value="{{ t }}" {{ 'selected' if enrollment.enroll_type==t }}>{{ t }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="data-field">
+                    <label>Submission Date</label>
+                    <input type="date" name="enroll_date" class="premium-input track-change"
+                        value="{{ enrollment.enroll_date.strftime('%Y-%m-%d') if enrollment.enroll_date else '' }}"
+                        readonly>
+                </div>
+                <div class="data-field">
+                    <label>Administrative Remarks</label>
+                    <input type="text" name="remarks" class="premium-input track-change"
+                        value="{{ enrollment.remarks or '' }}" placeholder="Enter any notes here...">
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- ── Parent / Guardian ── -->
-    <div class="section-card">
-        <div class="section-head">👨‍👩‍👧 Parent / Guardian</div>
-        <div class="section-body">
-            <div class="det-field">
-                <label>Father's Name</label>
-                <input type="text" name="father_name" class="track-change"
-                    value="{{ enrollment.father_name or '' }}" placeholder="—">
-            </div>
-            <div class="det-field">
-                <label>Father's Contact</label>
-                <input type="text" name="father_contact" class="track-change"
-                    value="{{ enrollment.father_contact or '' }}" placeholder="—">
-            </div>
-            <div class="det-field">
-                <label>Father's Occupation</label>
-                <input type="text" name="father_occupation" class="track-change"
-                    value="{{ enrollment.father_occupation or '' }}" placeholder="—">
-            </div>
-            <div class="det-field">
-                <label>Mother's Name</label>
-                <input type="text" name="mother_name" class="track-change"
-                    value="{{ enrollment.mother_name or '' }}" placeholder="—">
-            </div>
-            <div class="det-field">
-                <label>Mother's Contact</label>
-                <input type="text" name="mother_contact" class="track-change"
-                    value="{{ enrollment.mother_contact or '' }}" placeholder="—">
-            </div>
-            <div class="det-field">
-                <label>Mother's Occupation</label>
-                <input type="text" name="mother_occupation" class="track-change"
-                    value="{{ enrollment.mother_occupation or '' }}" placeholder="—">
-            </div>
-            <div class="det-field">
-                <label>Guardian Name</label>
-                <input type="text" name="guardian_name" class="track-change"
-                    value="{{ enrollment.guardian_name or '' }}" placeholder="—">
-            </div>
-            <div class="det-field">
-                <label>Guardian Contact</label>
-                <input type="text" name="guardian_contact" class="track-change"
-                    value="{{ enrollment.guardian_contact or '' }}" placeholder="—">
-            </div>
-            <div class="det-field">
-                <label>Guardian Email</label>
-                <input type="email" name="guardian_email" class="track-change"
-                    value="{{ enrollment.guardian_email or '' }}" placeholder="—">
+        <!-- Block 2: Student Details -->
+        <div class="data-card">
+            <div class="data-header"><i class="fas fa-user-graduate"></i> Identity & Background</div>
+            <div class="data-body">
+                <div class="data-field" style="grid-column: span 2;">
+                    <label>Official Full Name</label>
+                    <input type="text" name="student_name" class="premium-input track-change"
+                        value="{{ enrollment.student_name or '' }}" required>
+                </div>
+                <div class="data-field">
+                    <label>Grade Level Placed</label>
+                    <select name="grade_level" class="premium-input track-change" required>
+                        <option value="">— Select Target Level —</option>
+                        {% set grades = ['Nursery','Kinder','Grade 1','Grade 2','Grade 3','Grade 4','Grade 5','Grade 6','Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'] %}
+                        {% for g in grades %}
+                        <option value="{{ g }}" {{ 'selected' if enrollment.grade_level==g }}>{{ g }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="data-field">
+                    <label>Sex Identfier</label>
+                    <select name="gender" class="premium-input track-change">
+                        <option value="">— Unspecified —</option>
+                        <option value="Male" {{ 'selected' if enrollment.gender=='Male' }}>Male</option>
+                        <option value="Female" {{ 'selected' if enrollment.gender=='Female' }}>Female</option>
+                    </select>
+                </div>
+                <div class="data-field">
+                    <label>Date of Birth</label>
+                    <input type="date" name="dob" class="premium-input track-change"
+                        value="{{ enrollment.dob.strftime('%Y-%m-%d') if enrollment.dob else '' }}">
+                </div>
+                <div class="data-field">
+                    <label>Place of Birth</label>
+                    <input type="text" name="birthplace" class="premium-input track-change"
+                        value="{{ enrollment.birthplace or '' }}" placeholder="e.g. Manila, Philippines">
+                </div>
+                <div class="data-field">
+                    <label>Learner Reference Number (LRN)</label>
+                    <input type="text" name="lrn" class="premium-input track-change" value="{{ enrollment.lrn or '' }}"
+                        placeholder="12-digit number">
+                </div>
+                <div class="data-field" style="grid-column: 1 / -1;">
+                    <label>Primary Residential Address</label>
+                    <input type="text" name="address" class="premium-input track-change"
+                        value="{{ enrollment.address or '' }}" placeholder="Full address line">
+                </div>
+                <div class="data-field">
+                    <label>Personal Contact No.</label>
+                    <input type="text" name="contact_number" class="premium-input track-change"
+                        value="{{ enrollment.contact_number or '' }}" placeholder="Mobile/Landline">
+                </div>
+                <div class="data-field">
+                    <label>Email Address</label>
+                    <input type="email" name="email" class="premium-input track-change"
+                        value="{{ enrollment.email or '' }}" placeholder="student@example.com">
+                </div>
+                <div class="data-field">
+                    <label>Current Section Assigned</label>
+                    <input type="text" readonly class="premium-input"
+                        value="{{ enrollment.section_name or '⚠ Not assigned yet' }}">
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- ── Previous School ── -->
-    <div class="section-card">
-        <div class="section-head">🏫 Previous School</div>
-        <div class="section-body">
-            <div class="det-field">
-                <label>Last School Attended</label>
-                <input type="text" name="previous_school" class="track-change"
-                    value="{{ enrollment.previous_school or '' }}" placeholder="—">
-            </div>
-            <div class="det-field">
-                <label>School Year</label>
-                <input type="text" readonly
-                    value="{{ enrollment.school_year_label or '—' }}"
-                    style="background:#f1f5f9; cursor:default;">
+        <!-- Block 3: Guardian Details -->
+        <div class="data-card">
+            <div class="data-header"><i class="fas fa-users"></i> Parental & Guardian Information</div>
+            <div class="data-body">
+                <div class="data-field">
+                    <label>Father's Name</label>
+                    <input type="text" name="father_name" class="premium-input track-change"
+                        value="{{ enrollment.father_name or '' }}">
+                </div>
+                <div class="data-field">
+                    <label>Father's Contact</label>
+                    <input type="text" name="father_contact" class="premium-input track-change"
+                        value="{{ enrollment.father_contact or '' }}">
+                </div>
+                <div class="data-field">
+                    <label>Father's Occupation</label>
+                    <input type="text" name="father_occupation" class="premium-input track-change"
+                        value="{{ enrollment.father_occupation or '' }}">
+                </div>
+
+                <div class="data-field">
+                    <label>Mother's Name</label>
+                    <input type="text" name="mother_name" class="premium-input track-change"
+                        value="{{ enrollment.mother_name or '' }}">
+                </div>
+                <div class="data-field">
+                    <label>Mother's Contact</label>
+                    <input type="text" name="mother_contact" class="premium-input track-change"
+                        value="{{ enrollment.mother_contact or '' }}">
+                </div>
+                <div class="data-field">
+                    <label>Mother's Occupation</label>
+                    <input type="text" name="mother_occupation" class="premium-input track-change"
+                        value="{{ enrollment.mother_occupation or '' }}">
+                </div>
+
+                <div class="data-field">
+                    <label>Guardian / Emergency Contact Name</label>
+                    <input type="text" name="guardian_name" class="premium-input track-change"
+                        value="{{ enrollment.guardian_name or '' }}">
+                </div>
+                <div class="data-field">
+                    <label>Guardian Contact No.</label>
+                    <input type="text" name="guardian_contact" class="premium-input track-change"
+                        value="{{ enrollment.guardian_contact or '' }}">
+                </div>
+                <div class="data-field">
+                    <label>Guardian Email</label>
+                    <input type="email" name="guardian_email" class="premium-input track-change"
+                        value="{{ enrollment.guardian_email or '' }}">
+                </div>
             </div>
         </div>
-    </div>
 
-    <!-- ── Save Button ── -->
-    <div class="save-bar">
-        <button type="submit" id="saveBtn" class="btn btn-save" disabled>
-            💾 Save Changes
-        </button>
-    </div>
+        <!-- Block 4: Previous School -->
+        <div class="data-card">
+            <div class="data-header"><i class="fas fa-university"></i> Academic History</div>
+            <div class="data-body">
+                <div class="data-field" style="grid-column: span 2;">
+                    <label>Last School Attended</label>
+                    <input type="text" name="previous_school" class="premium-input track-change"
+                        value="{{ enrollment.previous_school or '' }}">
+                </div>
+                <div class="data-field">
+                    <label>Target School Year</label>
+                    <input type="text" readonly class="premium-input" value="{{ enrollment.school_year_label or '—' }}">
+                </div>
+            </div>
+        </div>
+
+        <!-- Sticky Floating Save Bar -->
+        <div class="floating-save-bar" id="stickySaveContainer"
+            style="opacity: 0.8; pointer-events: none; transition: opacity 0.3s;">
+            <div class="floating-save-text" id="saveHint">No modifications detected.</div>
+            <button type="submit" id="saveBtn" class="btn-elegant btn-primary" disabled style="padding: 12px 30px;">
+                <i class="fas fa-save"></i> Save Global Changes
+            </button>
+        </div>
 
     </form>
 
-    <!-- ── Documents (read-only, outside the form) ── -->
-    <div class="section-card" style="margin-top: 16px;">
-        <div class="section-head">📂 Submitted Documents</div>
+    <!-- Block 5: Documents Array -->
+    <div class="data-card">
+        <div class="data-header"><i class="fas fa-folder-open"></i> Uploaded Documents Verification</div>
         {% if documents %}
-        <div class="doc-grid">
+        <div class="doc-showcase">
             {% for doc in documents %}
             {% set ext = doc.file_name.rsplit('.', 1)[-1].lower() if doc.file_name else '' %}
-            <div class="doc-card">
-                <div class="doc-icon">
-                    {% if ext == 'pdf' %}📕{% elif ext in ['jpg','jpeg','png'] %}🖼️{% else %}📄{% endif %}
+
+            {% set icon_class = 'fa-file-alt' %}
+            {% if ext == 'pdf' %}{% set icon_class = 'fa-file-pdf' %}
+            {% elif ext in ['jpg','jpeg','png'] %}{% set icon_class = 'fa-file-image' %}
+            {% endif %}
+
+            <div class="doc-item">
+                <div style="display:flex; align-items:center; gap: 12px;">
+                    <div
+                        style="background: var(--reg-blue-light); color: var(--reg-blue); width: 40px; height: 40px; border-radius: 10px; display:flex; align-items:center; justify-content:center; font-size: 1.2rem;">
+                        <i class="fas {{ icon_class }}"></i>
+                    </div>
+                    <div>
+                        <div
+                            style="font-weight: 700; color: var(--reg-text-main); font-size: 0.9rem; word-break: break-all; max-width: 150px;">
+                            {{ doc.doc_type or doc.file_name }}</div>
+                        <div
+                            style="font-size: 0.75rem; color: var(--reg-text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">
+                            {{ ext }} Format</div>
+                    </div>
                 </div>
-                <div class="doc-name">{{ doc.doc_type or doc.file_name }}</div>
-                <div style="font-size:11px; color:#94a3b8;">{{ ext.upper() }} file</div>
-                <a href="{{ doc.file_path }}" target="_blank">👁 View</a>
+                <a href="{{ doc.file_path }}" target="_blank" class="btn-elegant btn-view-modern"
+                    style="padding: 6px 12px; font-size: 0.8rem;"><i class="fas fa-external-link-alt"></i> Verify</a>
             </div>
             {% endfor %}
         </div>
         {% else %}
-        <div style="padding:20px; color:#94a3b8; text-align:center;">📭 No documents submitted.</div>
+        <div style="padding:40px; text-align:center;">
+            <i class="fas fa-folder-minus"
+                style="font-size: 2.5rem; color: var(--reg-border); margin-bottom: 10px;"></i>
+            <div style="color:var(--reg-text-muted); font-weight:600;">No credentials submitted for verification.</div>
+        </div>
         {% endif %}
     </div>
 
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('enrollmentForm');
-    const saveBtn = document.getElementById('saveBtn');
-    const fields = form.querySelectorAll('.track-change');
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.getElementById('enrollmentForm');
+        const saveBtn = document.getElementById('saveBtn');
+        const saveContainer = document.getElementById('stickySaveContainer');
+        const saveHint = document.getElementById('saveHint');
+        const fields = form.querySelectorAll('.track-change');
 
-    // Store original values
-    const originals = new Map();
-    fields.forEach(f => {
-        originals.set(f.name, f.value);
-    });
+        const originals = new Map();
+        fields.forEach(f => originals.set(f.name, f.value));
 
-    function checkChanges() {
-        let changed = false;
-        fields.forEach(f => {
-            if (f.value !== originals.get(f.name)) {
-                changed = true;
+        function checkChanges() {
+            let changed = false;
+            fields.forEach(f => {
+                if (f.value !== originals.get(f.name)) changed = true;
+            });
+
+            saveBtn.disabled = !changed;
+            if (changed) {
+                saveContainer.style.opacity = '1';
+                saveContainer.style.pointerEvents = 'auto';
+                saveHint.textContent = 'Unsaved changes ready.';
+                saveHint.style.color = '#ca8a04'; // Yellow dark
+            } else {
+                saveContainer.style.opacity = '0.8';
+                saveContainer.style.pointerEvents = 'none';
+                saveHint.textContent = 'No modifications detected.';
+                saveHint.style.color = 'var(--reg-text-muted)';
             }
-        });
-        saveBtn.disabled = !changed;
-    }
+        }
 
-    fields.forEach(f => {
-        f.addEventListener('input', checkChanges);
-        f.addEventListener('change', checkChanges);
+        fields.forEach(f => {
+            f.addEventListener('input', checkChanges);
+            f.addEventListener('change', checkChanges);
+        });
     });
-});
 </script>
 {% endblock %}

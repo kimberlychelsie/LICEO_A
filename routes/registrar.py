@@ -646,8 +646,12 @@ def registrar_profile_pictures():
 
         if tab == "students":
             # Get grades for filter
-            cursor.execute("SELECT DISTINCT grade_level FROM enrollments WHERE branch_id = %s ORDER BY grade_level", (branch_id,))
-            grade_options = [r["grade_level"] for r in cursor.fetchall() if r["grade_level"]]
+            cursor.execute("SELECT DISTINCT grade_level FROM enrollments WHERE branch_id = %s", (branch_id,))
+            raw_grades = [r["grade_level"] for r in cursor.fetchall() if r["grade_level"]]
+            
+            # Sort grades logically
+            grade_order = ['Nursery','Kinder','Grade 1','Grade 2','Grade 3','Grade 4','Grade 5','Grade 6','Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12']
+            grade_options = sorted(raw_grades, key=lambda x: grade_order.index(x) if x in grade_order else 99)
 
             query = """
                 SELECT e.enrollment_id, e.branch_enrollment_no, e.student_name, e.grade_level, 
@@ -660,7 +664,17 @@ def registrar_profile_pictures():
             if grade_filter:
                 query += " AND e.grade_level = %s"
                 params.append(grade_filter)
-            query += " ORDER BY e.student_name"
+            
+            # Sort by Logical Grade Level then by Student Name
+            query += """
+                ORDER BY CASE e.grade_level
+                    WHEN 'Nursery' THEN 1 WHEN 'Kinder' THEN 2 WHEN 'Grade 1' THEN 3
+                    WHEN 'Grade 2' THEN 4 WHEN 'Grade 3' THEN 5 WHEN 'Grade 4' THEN 6
+                    WHEN 'Grade 5' THEN 7 WHEN 'Grade 6' THEN 8 WHEN 'Grade 7' THEN 9
+                    WHEN 'Grade 8' THEN 10 WHEN 'Grade 9' THEN 11 WHEN 'Grade 10' THEN 12
+                    WHEN 'Grade 11' THEN 13 WHEN 'Grade 12' THEN 14 ELSE 99
+                END, e.student_name
+            """
             
             cursor.execute(query, tuple(params))
             students = cursor.fetchall()

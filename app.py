@@ -36,7 +36,7 @@ def check_branch_active_status():
                 elif role == 'cashier':
                     fallback = url_for('cashier.dashboard')
                 elif role == 'registrar':
-                    fallback = url_for('registrar.dashboard')
+                    fallback = url_for('registrar.registrar_home')
                 elif role == 'teacher':
                     fallback = url_for('teacher.teacher_dashboard')
                 elif role == 'student':
