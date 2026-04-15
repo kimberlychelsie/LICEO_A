@@ -3,74 +3,37 @@
 
 {% block styles %}
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-
     .td-wrap {
-        max-width: 1200px;
+        max-width: 1140px;
         margin: 0 auto;
-        padding: 0 16px 64px;
+        padding: 24px 16px 64px;
     }
 
-    /* ── Hero Banner ── */
-    .td-hero {
-        background: linear-gradient(135deg, #0f2a6b 0%, #1a3a8f 45%, #1e4bb8 100%);
-        border-radius: 20px;
-        padding: 32px 36px;
-        margin-bottom: 28px;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 8px 32px rgba(26, 58, 143, 0.3);
-    }
-
-    .td-hero::before {
-        content: '';
-        position: absolute;
-        top: -60px; right: -60px;
-        width: 260px; height: 260px;
-        background: rgba(255,255,255,0.05);
-        border-radius: 50%;
-    }
-
-    .td-hero::after {
-        content: '';
-        position: absolute;
-        bottom: -80px; left: 40%;
-        width: 320px; height: 320px;
-        background: rgba(255,255,255,0.04);
-        border-radius: 50%;
-    }
-
-    .td-hero-content {
-        position: relative;
-        z-index: 1;
+    /* ── Header ── */
+    .td-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
         flex-wrap: wrap;
-        gap: 20px;
+        gap: 12px;
+        margin-bottom: 24px;
     }
 
-    .td-hero-left h1 {
-        font-size: 1.8rem;
-        font-weight: 900;
-        color: #ffffff;
-        margin: 0 0 6px;
-        letter-spacing: -0.02em;
-    }
-
-    .td-hero-left .td-sub {
-        font-size: 0.95rem;
-        color: rgba(255,255,255,0.75);
+    .td-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--text);
         margin: 0;
     }
 
-    .td-hero-left .td-sub strong {
-        color: #93c5fd;
-        font-weight: 700;
+    .td-sub {
+        font-size: 0.9rem;
+        color: var(--muted);
+        margin-top: 2px;
     }
 
-    /* Grade Controls */
-    .td-controls {
+    /* ── Grade picker ── */
+    .grade-form {
         display: flex;
         align-items: center;
         gap: 10px;
@@ -80,311 +43,178 @@
     .grade-select {
         padding: 9px 14px;
         border-radius: 10px;
-        border: 1.5px solid rgba(255,255,255,0.2);
-        background: rgba(255,255,255,0.1);
-        backdrop-filter: blur(8px);
-        font-size: 0.9rem;
-        color: #fff;
-        min-width: 170px;
-        cursor: pointer;
-        transition: border-color 0.2s, background 0.2s;
-        font-family: 'Inter', sans-serif;
-    }
-
-    .grade-select option {
-        background: #1a3a8f;
-        color: #fff;
-    }
-
-    .grade-select:focus {
-        outline: none;
-        border-color: rgba(255,255,255,0.5);
-        background: rgba(255,255,255,0.15);
+        border: 1px solid var(--border);
+        background: var(--card);
+        font-size: 0.94rem;
+        color: var(--text);
+        min-width: 180px;
     }
 
     .btn-apply {
         padding: 9px 18px;
         border-radius: 10px;
-        background: rgba(255,255,255,0.18);
+        background: var(--btn);
         color: #fff;
         font-weight: 700;
-        font-size: 0.88rem;
-        border: 1.5px solid rgba(255,255,255,0.3);
+        font-size: 0.9rem;
+        border: none;
         cursor: pointer;
         transition: background 0.18s, transform 0.15s;
-        text-decoration: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        backdrop-filter: blur(8px);
-        font-family: 'Inter', sans-serif;
     }
 
     .btn-apply:hover {
-        background: rgba(255,255,255,0.28);
+        background: var(--btnHover);
         transform: translateY(-1px);
     }
 
-    .btn-apply-solid {
-        background: #ffffff;
-        color: #1a3a8f;
-        border-color: #fff;
-    }
-
-    .btn-apply-solid:hover {
-        background: #e0eaff;
-        transform: translateY(-1px);
-    }
-
-    .grade-locked-badge {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background: rgba(255,255,255,0.15);
-        border: 1.5px solid rgba(255,255,255,0.3);
-        border-radius: 10px;
-        padding: 9px 16px;
-        font-weight: 700;
-        font-size: 0.9rem;
-        color: #fff;
-        backdrop-filter: blur(8px);
-    }
-
-    .grade-locked-badge .locked-sub {
-        font-size: 0.72rem;
-        font-weight: 500;
-        color: rgba(255,255,255,0.6);
-    }
-
-    /* ── Stats Grid ── */
+    /* ── Stats ── */
     .stat-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-        gap: 16px;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 14px;
         margin-bottom: 28px;
     }
 
     .stat-card {
         background: var(--card);
         border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 20px 22px;
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.04);
-        transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .stat-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-    }
-
-    .stat-card::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0;
-        width: 4px; height: 100%;
-        border-radius: 4px 0 0 4px;
-    }
-
-    .stat-icon {
-        font-size: 1.6rem;
-        margin-bottom: 10px;
-        line-height: 1;
+        border-radius: 14px;
+        padding: 18px 20px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
     }
 
     .stat-card .num {
-        font-size: 2.2rem;
+        font-size: 2rem;
         font-weight: 900;
         line-height: 1;
         margin-bottom: 4px;
-        letter-spacing: -0.03em;
     }
 
     .stat-card .lbl {
-        font-size: 0.78rem;
+        font-size: 0.8rem;
         color: var(--muted);
         font-weight: 600;
         text-transform: uppercase;
-        letter-spacing: .05em;
+        letter-spacing: .04em;
     }
 
-    .stat-blue::before { background: #2563eb; }
-    .stat-blue .num { color: #2563eb; }
-
-    .stat-green::before { background: #16a34a; }
-    .stat-green .num { color: #16a34a; }
-
-    .stat-orange::before { background: #d97706; }
-    .stat-orange .num { color: #d97706; }
-
-    .stat-purple::before { background: #7c3aed; }
-    .stat-purple .num { color: #7c3aed; }
-
-    .stat-teal::before { background: #0891b2; }
-    .stat-teal .num { color: #0891b2; }
-
-    .stat-rose::before { background: #e11d48; }
-    .stat-rose .num { color: #e11d48; }
-
-    /* ── Section Cards ── */
-    .section-card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 18px;
-        padding: 26px 28px;
-        margin-bottom: 22px;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    .stat-blue .num {
+        color: #2563eb;
     }
 
-    .section-card-title {
-        font-size: 1rem;
-        font-weight: 800;
-        color: var(--text);
-        margin: 0 0 20px;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+    .stat-green .num {
+        color: #16a34a;
     }
 
-    .section-card-title .title-badge {
-        background: linear-gradient(135deg, #dbeafe, #ede9fe);
-        color: #1e3a8a;
-        border-radius: 8px;
-        padding: 3px 10px;
-        font-size: 0.76rem;
-        font-weight: 700;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
+    .stat-orange .num {
+        color: #d97706;
     }
 
-    /* ── My Sections Table ── */
-    .td-table-wrap {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        overflow: hidden;
+    .stat-purple .num {
+        color: #7c3aed;
     }
 
-    .td-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 0.9rem;
+    .stat-teal .num {
+        color: #0891b2;
     }
 
-    .td-table thead th {
-        background: linear-gradient(135deg, #f0f4ff, #f5f0ff);
-        color: #1e3a8a;
-        font-weight: 700;
-        font-size: 0.76rem;
-        text-transform: uppercase;
-        letter-spacing: .06em;
-        padding: 13px 18px;
-        text-align: left;
-        border-bottom: 1px solid #e0e8ff;
-    }
-
-    .td-table tbody tr {
-        border-bottom: 1px solid var(--border);
-        transition: background 0.15s;
-    }
-
-    .td-table tbody tr:last-child { border-bottom: none; }
-    .td-table tbody tr:hover { background: #f8fbff; }
-
-    .td-table td {
-        padding: 13px 18px;
-        color: var(--text);
-        vertical-align: middle;
-    }
-
-    .td-table .subject-chip {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        background: #f0f4ff;
-        color: #1a3a8f;
-        border-radius: 8px;
-        padding: 5px 12px;
-        font-size: 0.84rem;
-        font-weight: 600;
+    .stat-gray .num {
+        color: var(--muted);
     }
 
     /* ── Announcements ── */
+    .ann-section {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 24px;
+        margin-bottom: 28px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, .05);
+    }
+
+    .ann-section-title {
+        font-size: 1.05rem;
+        font-weight: 800;
+        color: var(--text);
+        margin: 0 0 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* post form */
     .ann-form {
         display: flex;
         flex-direction: column;
         gap: 10px;
-        margin-bottom: 24px;
+        margin-bottom: 22px;
     }
 
-    .ann-input, .ann-textarea {
+    .ann-input,
+    .ann-textarea {
         width: 100%;
-        padding: 11px 15px;
+        padding: 10px 14px;
         border-radius: 10px;
-        border: 1.5px solid var(--border);
-        background: #f8fafc;
+        border: 1px solid var(--border);
+        background: var(--bg, #f9fafb);
         color: var(--text);
-        font-size: 0.92rem;
-        font-family: 'Inter', sans-serif;
+        font-size: 0.93rem;
+        font-family: inherit;
         box-sizing: border-box;
-        transition: border-color 0.18s, box-shadow 0.18s;
+        transition: border-color 0.18s;
     }
 
-    .ann-input:focus, .ann-textarea:focus {
+    .ann-input:focus,
+    .ann-textarea:focus {
         outline: none;
         border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59,130,246,.1);
-        background: #fff;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, .12);
     }
 
     .ann-textarea {
         resize: vertical;
-        min-height: 84px;
+        min-height: 80px;
     }
 
     .btn-post {
         align-self: flex-end;
-        padding: 10px 24px;
+        padding: 10px 22px;
         border-radius: 10px;
-        background: linear-gradient(135deg, #1a3a8f, #3b5bdb);
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
         color: #fff;
         font-weight: 700;
         font-size: 0.9rem;
         border: none;
         cursor: pointer;
         transition: opacity 0.18s, transform 0.15s;
-        font-family: 'Inter', sans-serif;
     }
 
-    .btn-post:hover { opacity: 0.88; transform: translateY(-1px); }
+    .btn-post:hover {
+        opacity: 0.88;
+        transform: translateY(-1px);
+    }
 
+    /* list */
     .ann-divider {
         border: none;
         border-top: 1px solid var(--border);
-        margin: 0 0 20px;
+        margin: 0 0 16px;
     }
 
     .ann-list {
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 12px;
     }
 
     .ann-card {
         background: linear-gradient(135deg, #f0f9ff 0%, #eef2ff 100%);
         border: 1px solid #c7d2fe;
-        border-left: 4px solid #4f46e5;
-        border-radius: 14px;
-        padding: 16px 18px;
+        border-left: 4px solid #6366f1;
+        border-radius: 12px;
+        padding: 14px 16px;
         position: relative;
-        transition: transform 0.15s, box-shadow 0.15s;
-    }
-
-    .ann-card:hover {
-        transform: translateX(4px);
-        box-shadow: 0 4px 16px rgba(99,102,241,0.1);
     }
 
     .ann-card-head {
@@ -403,98 +233,226 @@
 
     .ann-card-meta {
         font-size: 0.78rem;
-        color: #64748b;
-        margin-bottom: 6px;
+        color: #4b5563;
+        margin-bottom: 4px;
     }
 
     .ann-card-body {
         font-size: 0.9rem;
         color: #374151;
         white-space: pre-wrap;
-        line-height: 1.6;
+        line-height: 1.55;
     }
 
-    .btn-del-ann, .btn-edit-ann {
+    .btn-del-ann {
         background: none;
         border: none;
         cursor: pointer;
-        font-size: 0.95rem;
-        padding: 5px 8px;
-        border-radius: 8px;
+        font-size: 1rem;
+        color: #ef4444;
+        padding: 4px 8px;
+        border-radius: 6px;
         transition: background 0.15s;
         flex-shrink: 0;
     }
 
-    .btn-del-ann { color: #ef4444; }
-    .btn-del-ann:hover { background: #fee2e2; }
-    .btn-edit-ann { color: #3b82f6; }
-    .btn-edit-ann:hover { background: #dbeafe; }
+    .btn-del-ann:hover {
+        background: #fee2e2;
+    }
 
+    .btn-edit-ann {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+        color: #3b82f6;
+        padding: 4px 8px;
+        border-radius: 6px;
+        transition: background 0.15s;
+        flex-shrink: 0;
+    }
+
+    .btn-edit-ann:hover {
+        background: #dbeafe;
+    }
+
+    /* inline edit form */
     .ann-edit-form {
         display: none;
         flex-direction: column;
         gap: 8px;
-        margin-top: 12px;
+        margin-top: 10px;
         border-top: 1px dashed #c7d2fe;
-        padding-top: 12px;
+        padding-top: 10px;
     }
 
-    .ann-edit-form.open { display: flex; }
+    .ann-edit-form.open {
+        display: flex;
+    }
 
-    .ann-edit-actions { display: flex; gap: 8px; }
+    .ann-edit-actions {
+        display: flex;
+        gap: 8px;
+    }
 
     .btn-save-ann {
         padding: 7px 18px;
         border-radius: 8px;
-        background: linear-gradient(135deg, #1a3a8f, #3b5bdb);
+        background: linear-gradient(135deg, #3b82f6, #6366f1);
         color: #fff;
         font-weight: 700;
         font-size: 0.85rem;
         border: none;
         cursor: pointer;
+        transition: opacity .18s;
+    }
+
+    .btn-save-ann:hover {
+        opacity: .85;
     }
 
     .btn-cancel-ann {
         padding: 7px 16px;
         border-radius: 8px;
-        background: #f1f5f9;
+        background: #f3f4f6;
         color: #374151;
         font-weight: 600;
         font-size: 0.85rem;
-        border: 1px solid var(--border);
+        border: 1px solid #e5e7eb;
         cursor: pointer;
     }
 
     .ann-empty {
         text-align: center;
-        padding: 32px;
+        padding: 28px;
         color: var(--muted);
         font-size: 0.9rem;
     }
 
-    /* ── Set Grade Prompt ── */
+    /* ── Table ── */
+    .td-table-wrap {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, .05);
+    }
+
+    .td-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.93rem;
+    }
+
+    .td-table thead th {
+        background: #f0f4ff;
+        color: #1a2e5a;
+        font-weight: 700;
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: .06em;
+        padding: 13px 16px;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .td-table tbody tr {
+        border-bottom: 1px solid var(--border);
+        transition: background 0.15s;
+    }
+
+    .td-table tbody tr:last-child {
+        border-bottom: none;
+    }
+
+    .td-table tbody tr:hover {
+        background: #f8faff;
+    }
+
+    .td-table td {
+        padding: 12px 16px;
+        color: var(--text);
+        vertical-align: middle;
+    }
+
+    /* ── Badges ── */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .badge-green {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    .badge-red {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .badge-yellow {
+        background: #fef9c3;
+        color: #92400e;
+    }
+
+    .badge-blue {
+        background: #dbeafe;
+        color: #1d4ed8;
+    }
+
+    .badge-purple {
+        background: #ede9fe;
+        color: #6d28d9;
+    }
+
+    .badge-gray {
+        background: #f3f4f6;
+        color: #6b7280;
+    }
+
+    /* ── Empty state ── */
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: var(--muted);
+    }
+
+    .empty-state .big-icon {
+        font-size: 3.5rem;
+        margin-bottom: 12px;
+    }
+
+    .empty-state h3 {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0 0 6px;
+        color: var(--text);
+    }
+
+    .empty-state p {
+        font-size: 0.93rem;
+        margin: 0;
+    }
+
+    /* ── Set grade prompt ── */
     .set-grade-box {
-        background: linear-gradient(135deg, #eff6ff, #eef2ff);
+        background: linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%);
         border: 1.5px solid #bfdbfe;
-        border-radius: 18px;
-        padding: 40px 32px;
+        border-radius: 14px;
+        padding: 32px;
         text-align: center;
         margin-bottom: 28px;
     }
 
-    .set-grade-box .hero-icon {
-        font-size: 3.5rem;
-        margin-bottom: 14px;
-        animation: floatBounce 3s ease-in-out infinite;
-    }
-
-    @keyframes floatBounce {
-        0%, 100% { transform: translateY(0); }
-        50% { transform: translateY(-8px); }
-    }
-
     .set-grade-box h3 {
-        font-size: 1.2rem;
+        font-size: 1.15rem;
         font-weight: 800;
         color: #1e3a8a;
         margin: 0 0 8px;
@@ -503,121 +461,22 @@
     .set-grade-box p {
         color: #3b5bdb;
         font-size: 0.93rem;
-        margin: 0 0 20px;
+        margin: 0 0 18px;
     }
 
-    /* ── Classlist Slide-over ── */
-    .classlist-overlay {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: rgba(15,23,42,0.5);
-        z-index: 2000;
-        backdrop-filter: blur(2px);
-    }
+    @media (max-width: 600px) {
+        .td-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
 
-    .classlist-overlay.open { display: flex; justify-content: flex-end; }
+        .stat-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
 
-    .classlist-panel {
-        background: #fff;
-        width: 420px;
-        max-width: 100vw;
-        height: 100vh;
-        overflow-y: auto;
-        box-shadow: -8px 0 40px rgba(0,0,0,0.2);
-        animation: slideInRight 0.3s cubic-bezier(.4,0,.2,1);
-        display: flex;
-        flex-direction: column;
-    }
-
-    @keyframes slideInRight {
-        from { transform: translateX(100%); }
-        to { transform: translateX(0); }
-    }
-
-    .classlist-head {
-        background: linear-gradient(135deg, #0f2a6b, #1a3a8f);
-        padding: 24px 20px;
-        color: #fff;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-shrink: 0;
-    }
-
-    .classlist-head h3 { font-size: 1.1rem; font-weight: 800; margin: 0; }
-    .classlist-head .cl-sub { font-size: 0.8rem; color: rgba(255,255,255,0.7); margin-top: 2px; }
-
-    .classlist-close {
-        background: rgba(255,255,255,0.15);
-        border: none;
-        color: #fff;
-        width: 34px; height: 34px;
-        border-radius: 50%;
-        cursor: pointer;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.1rem;
-        transition: background 0.15s;
-    }
-
-    .classlist-close:hover { background: rgba(255,255,255,0.25); }
-
-    .classlist-body { flex: 1; padding: 20px; }
-
-    .student-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 14px;
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        margin-bottom: 8px;
-        transition: background 0.15s;
-    }
-
-    .student-row:hover { background: #f8fbff; }
-
-    .student-num-cl {
-        background: linear-gradient(135deg, #dbeafe, #ede9fe);
-        color: #1e40af;
-        font-size: 0.75rem;
-        font-weight: 800;
-        border-radius: 50%;
-        width: 28px; height: 28px;
-        display: flex; align-items: center; justify-content: center;
-        flex-shrink: 0;
-    }
-
-    .student-info-cl .name-cl {
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: var(--text);
-    }
-
-    .student-info-cl .email-cl {
-        font-size: 0.76rem;
-        color: var(--muted);
-        margin-top: 1px;
-    }
-
-    /* badge chips */
-    .chip-badge {
-        display: inline-flex; align-items: center; gap: 4px;
-        padding: 3px 10px; border-radius: 999px;
-        font-size: 0.75rem; font-weight: 700;
-    }
-    .chip-green { background: #dcfce7; color: #15803d; }
-    .chip-red { background: #fee2e2; color: #b91c1c; }
-    .chip-yellow { background: #fef9c3; color: #854d0e; }
-    .chip-blue { background: #dbeafe; color: #1d4ed8; }
-    .chip-purple { background: #ede9fe; color: #6d28d9; }
-    .chip-gray { background: #f1f5f9; color: #64748b; }
-
-    @media (max-width: 640px) {
-        .td-hero { padding: 24px 20px; }
-        .td-hero-left h1 { font-size: 1.4rem; }
-        .stat-grid { grid-template-columns: repeat(2, 1fr); }
-        .classlist-panel { width: 100vw; }
+        .btn-post {
+            align-self: stretch;
+        }
     }
 </style>
 {% endblock %}
@@ -625,324 +484,297 @@
 {% block content %}
 <div class="td-wrap">
 
-    <!-- ── Hero Banner ── -->
-    <div class="td-hero">
-        <div class="td-hero-content">
-            <div class="td-hero-left">
-                <h1>👩‍🏫 Teacher Dashboard</h1>
-                <p class="td-sub">
-                    {% if selected_grade %}
-                        Viewing class: <strong>{{ selected_grade }}</strong>
-                        {% if selected_section_id %}— filtered by section{% endif %}
-                    {% else %}
-                        Welcome back! Select your grade level to view your class roster.
-                    {% endif %}
-                </p>
-            </div>
-
-            <div class="td-controls">
-                <!-- Grade: Admin-assigned (locked) -->
-                {% if teacher_grade %}
-                <div class="grade-locked-badge">
-                    📌 {{ teacher_grade }}
-                    <span class="locked-sub">assigned by admin</span>
-                </div>
-                <!-- Section picker for admin-assigned grade -->
-                <form method="get" action="/teacher">
-                    <select name="section_id" class="grade-select" onchange="this.form.submit()">
-                        <option value="">— All My Sections —</option>
-                        {% set ns = namespace(printed=[]) %}
-                        {% for a in teacher_assignments %}
-                        {% if a.grade_level_name == teacher_grade and a.section_id not in ns.printed %}
-                        <option value="{{ a.section_id }}" {% if selected_section_id==a.section_id %}selected{% endif %}>{{ a.section_name }}</option>
-                        {% set _ = ns.printed.append(a.section_id) %}
-                        {% endif %}
-                        {% endfor %}
-                    </select>
-                </form>
-
+    <!-- Header -->
+    <div class="td-header">
+        <div>
+            <h1 class="td-title">👩‍🏫 Teacher Dashboard</h1>
+            <div class="td-sub">
+                {% if selected_grade %}
+                Viewing class: <strong>{{ selected_grade }}</strong>
                 {% else %}
-                <!-- No assigned grade — teacher picks -->
-                <form method="get" action="/teacher" class="td-controls" style="margin:0; padding:0;">
-                    <select name="grade" class="grade-select" onchange="this.form.submit()">
-                        <option value="">— Select Grade —</option>
-                        {% for g in grade_levels %}
-                        <option value="{{ g }}" {% if g==selected_grade %}selected{% endif %}>{{ g }}</option>
-                        {% endfor %}
-                    </select>
-
-                    {% if selected_grade %}
-                    <select name="section_id" class="grade-select" onchange="this.form.submit()">
-                        <option value="">— All My Sections —</option>
-                        {% set ns = namespace(printed=[]) %}
-                        {% for a in teacher_assignments %}
-                        {% if a.grade_level_name == selected_grade and a.section_id not in ns.printed %}
-                        <option value="{{ a.section_id }}" {% if selected_section_id==a.section_id %}selected{% endif %}>{{ a.section_name }}</option>
-                        {% set _ = ns.printed.append(a.section_id) %}
-                        {% endif %}
-                        {% endfor %}
-                    </select>
-                    {% endif %}
-                </form>
-
-                {% if selected_grade and selected_grade != teacher_grade %}
-                <form method="post" action="/teacher/set-grade">
-                    <input type="hidden" name="grade_level" value="{{ selected_grade }}">
-                    {% if is_branch_active_status %}
-                    <button type="submit" class="btn-apply btn-apply-solid">📌 Save Grade</button>
-                    {% else %}
-                    <button type="button" class="btn-apply" disabled style="opacity:0.55; cursor:not-allowed;">📌 Save Grade</button>
-                    {% endif %}
-                </form>
+                Select your grade level to view your class roster.
                 {% endif %}
-                {% endif %}
-
-                <!-- My Classlist Button -->
-                <button onclick="openClasslist()" class="btn-apply btn-apply-solid">
-                    🧑‍🎓 My Classlist
-                </button>
             </div>
         </div>
+
+        <!-- Grade picker / locked badge -->
+        {% if teacher_grade %}
+        <!-- Grade assigned by Branch Admin — LOCKED -->
+        <div style="
+            display:flex; align-items:center; gap:8px;
+            background: linear-gradient(135deg,#dbeafe,#ede9fe);
+            border: 1.5px solid #a5b4fc;
+            border-radius: 10px;
+            padding: 9px 16px;
+            font-weight: 700;
+            font-size: 0.92rem;
+            color: #1e3a8a;
+        ">
+            📌 {{ teacher_grade }}
+            <span style="font-size:0.72rem; font-weight:500; color:#6b7280;">assigned by admin</span>
+        </div>
+        {% else %}
+        <!-- No assigned grade — teacher can pick -->
+        <form method="get" action="/teacher" class="grade-form">
+            <select name="grade" class="grade-select" onchange="this.form.submit()">
+                <option value="">— Select Grade —</option>
+                {% for g in grade_levels %}
+                <option value="{{ g }}" {% if g==selected_grade %}selected{% endif %}>{{ g }}</option>
+                {% endfor %}
+            </select>
+
+            {% if selected_grade %}
+            <select name="section_id" class="grade-select" onchange="this.form.submit()">
+                <option value="">— All My Sections —</option>
+                {% set ns = namespace(printed=[]) %}
+                {% for a in teacher_assignments %}
+                {% if a.grade_level_name == selected_grade and a.section_id not in ns.printed %}
+                <option value="{{ a.section_id }}" {% if selected_section_id==a.section_id %}selected{% endif %}>{{
+                    a.section_name }}</option>
+                {% set _ = ns.printed.append(a.section_id) %}
+                {% endif %}
+                {% endfor %}
+            </select>
+            {% endif %}
+        </form>
+
+        <!-- Save grade -->
+        {% if selected_grade and selected_grade != teacher_grade %}
+        <form method="post" action="/teacher/set-grade">
+            <input type="hidden" name="grade_level" value="{{ selected_grade }}">
+            {% if is_branch_active_status %}
+            <button type="submit" class="btn-apply">📌 Save as my grade</button>
+            {% else %}
+            <button type="button" class="btn-apply" disabled style="opacity:0.6; cursor:not-allowed;">📌 Save as my
+                grade (View Only)</button>
+            {% endif %}
+        </form>
+        {% endif %}
+
+        <!-- Add Section Picker if admin assigned grade -->
+        {% if teacher_grade %}
+        <form method="get" action="/teacher" class="grade-form">
+            <select name="section_id" class="grade-select" onchange="this.form.submit()">
+                <option value="">— All My Sections —</option>
+                {% set ns = namespace(printed=[]) %}
+                {% for a in teacher_assignments %}
+                {% if a.grade_level_name == teacher_grade and a.section_id not in ns.printed %}
+                <option value="{{ a.section_id }}" {% if selected_section_id==a.section_id %}selected{% endif %}>{{
+                    a.section_name }}</option>
+                {% set _ = ns.printed.append(a.section_id) %}
+                {% endif %}
+                {% endfor %}
+            </select>
+        </form>
+        {% endif %}
+
+        {% endif %}
+        
+        <!-- My Classlist Button -->
+        <button onclick="openClasslist()" class="btn-apply" style="background: var(--text); color: white; display: flex; align-items: center; gap: 6px;">
+            🧑‍🎓 My Classlist
+        </button>
     </div>
 
-    <!-- ── No grade selected prompt ── -->
-    {% if not selected_grade and not teacher_grade %}
+    {% if not selected_grade %}
+    <!-- No grade selected -->
+    {% if not teacher_grade %}
+    <!-- No grade assigned by admin — let teacher pick -->
     <div class="set-grade-box">
-        <div class="hero-icon">🎓</div>
+        <div style="font-size:3rem; margin-bottom:10px;">🎓</div>
         <h3>Select Your Grade Level</h3>
         <p>Choose the grade level you're handling from the dropdown above to view your class roster.</p>
-        <form method="post" action="/teacher/set-grade" style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-            <select name="grade_level" class="grade-select" style="border-color:#1a3a8f; color:#1a3a8f; background:#f0f4ff;">
+        <form method="post" action="/teacher/set-grade"
+            style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+            <select name="grade_level" class="grade-select">
                 <option value="">— Choose Grade —</option>
                 {% for g in grade_levels %}
                 <option value="{{ g }}">{{ g }}</option>
                 {% endfor %}
             </select>
             {% if is_branch_active_status %}
-            <button type="submit" style="padding:9px 22px; border-radius:10px; background:var(--btn); color:#fff; font-weight:700; border:none; cursor:pointer; font-family:'Inter',sans-serif;">📌 Set &amp; View Class</button>
+            <button type="submit" class="btn-apply">📌 Set &amp; View Class</button>
             {% else %}
-            <button type="button" disabled style="padding:9px 22px; border-radius:10px; background:#94a3b8; color:#fff; font-weight:700; border:none; cursor:not-allowed; font-family:'Inter',sans-serif;">📌 View Only</button>
+            <button type="button" class="btn-apply" disabled style="opacity:0.6; cursor:not-allowed;">📌 Set &amp; View
+                Class (View Only)</button>
             {% endif %}
         </form>
     </div>
     {% endif %}
 
-    {% if selected_grade %}
+    {% else %}
 
-    <!-- ── Stats Grid ── -->
-    <div class="stat-grid">
-        <div class="stat-card stat-blue">
-            <div class="stat-icon">👥</div>
-            <div class="num">{{ stats.total }}</div>
-            <div class="lbl">Total Students</div>
-        </div>
-        <div class="stat-card stat-green">
-            <div class="stat-icon">✅</div>
-            <div class="num">{{ stats.cleared }}</div>
-            <div class="lbl">Billing Cleared</div>
-        </div>
-        <div class="stat-card stat-orange">
-            <div class="stat-icon">💳</div>
-            <div class="num">{{ stats.pending_bill }}</div>
-            <div class="lbl">Pending Payment</div>
-        </div>
-        <div class="stat-card stat-purple">
-            <div class="stat-icon">📦</div>
-            <div class="num">{{ stats.claimed }}</div>
-            <div class="lbl">Items Claimed</div>
-        </div>
-        <div class="stat-card stat-teal">
-            <div class="stat-icon">🕐</div>
-            <div class="num">{{ stats.reserved }}</div>
-            <div class="lbl">Reservation Pending</div>
-        </div>
-        <div class="stat-card stat-rose">
-            <div class="stat-icon">📭</div>
-            <div class="num">{{ stats.no_reservation }}</div>
-            <div class="lbl">No Reservation</div>
-        </div>
-    </div>
 
-    {% if teacher_assignments %}
-    <!-- ── My Sections & Subjects ── -->
-    <div class="section-card">
-        <p class="section-card-title">
-            📘 My Sections &amp; Subjects
-            <span class="title-badge">{{ teacher_assignments|length }} assignment{% if teacher_assignments|length != 1 %}s{% endif %}</span>
-        </p>
-        <div class="td-table-wrap">
-            <table class="td-table">
-                <thead>
-                    <tr>
-                        <th>Grade / Section</th>
-                        <th>Subject</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% set ns = namespace(last_section='') %}
-                    {% for a in teacher_assignments %}
-                    {% set label = a.grade_level_name ~ ' — ' ~ a.section_name %}
-                    {% if label != ns.last_section %}
-                    {% if ns.last_section %}
-                    <tr><td colspan="2"><hr style="border:none;border-top:1px dashed #e5e7eb;margin:2px 0;"></td></tr>
-                    {% endif %}
-                    {% set ns.last_section = label %}
-                    <tr>
-                        <td><strong style="color:#1e3a8a;">{{ label }}</strong></td>
-                        <td><span class="subject-chip">📖 {{ a.subject_name }}</span></td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td style="color:var(--muted); padding-left:32px;">{{ a.section_name }}</td>
-                        <td><span class="subject-chip">📖 {{ a.subject_name }}</span></td>
-                    </tr>
-                    {% endif %}
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-    {% endif %}
-
-    <!-- ── Announcements ── -->
-    <div class="section-card">
-        <p class="section-card-title">
-            📢 Class Announcements
-            <span class="title-badge">{{ selected_grade }}</span>
-        </p>
-
-        {% if is_branch_active_status %}
-        <form method="post" action="/teacher/announce" class="ann-form">
-            <input type="hidden" name="grade_level" value="{{ selected_grade }}">
-            <input type="text" name="title" class="ann-input" placeholder="📌  Title (e.g. Quiz Tomorrow — Chapter 3)" maxlength="150" required>
-            <textarea name="body" class="ann-textarea" placeholder="Optional — add details about the assignment, topics to review, reminders, etc." maxlength="2000"></textarea>
-            <button type="submit" class="btn-post">📤 Post Announcement</button>
-        </form>
-        {% endif %}
-
-        <hr class="ann-divider">
-
-        {% if announcements %}
-        <div class="ann-list">
-            {% for a in announcements %}
-            <div class="ann-card" id="ann-card-{{ a.announcement_id }}">
-                <div id="ann-view-{{ a.announcement_id }}">
-                    <div class="ann-card-head">
-                        <div style="flex:1;">
-                            <div class="ann-card-title">{{ a.title }}</div>
-                            <div class="ann-card-meta">
-                                👩‍🏫 {{ a.display_name }} &nbsp;·&nbsp;
-                                {{ a.created_at.strftime('%b %d, %Y %I:%M %p') if a.created_at else '' }}
-                            </div>
-                        </div>
-                        {% if is_branch_active_status %}
-                        <div style="display:flex; gap:4px; flex-shrink:0;">
-                            <button type="button" class="btn-edit-ann"
-                                data-id="{{ a.announcement_id }}"
-                                data-title="{{ a.title | e }}"
-                                data-body="{{ (a.body or '') | e }}"
-                                onclick="openEditAnn(this)" title="Edit">✏️</button>
-                            <form method="post" action="/teacher/announce/{{ a.announcement_id }}/delete"
-                                onsubmit="return confirm('Delete this announcement?')" style="margin:0;">
-                                <input type="hidden" name="grade_level" value="{{ selected_grade }}">
-                                <button type="submit" class="btn-del-ann" title="Delete">🗑</button>
-                            </form>
-                        </div>
-                        {% endif %}
-                    </div>
-                    {% if a.body %}
-                    <div class="ann-card-body">{{ a.body }}</div>
-                    {% endif %}
+            <!-- ════ STATS ════ -->
+            <div class="stat-grid">
+                <div class="stat-card stat-blue">
+                    <div class="num">{{ stats.total }}</div>
+                    <div class="lbl">Total Students</div>
                 </div>
+                <div class="stat-card stat-green">
+                    <div class="num">{{ stats.cleared }}</div>
+                    <div class="lbl">Billing Cleared</div>
+                </div>
+                <div class="stat-card stat-orange">
+                    <div class="num">{{ stats.pending_bill }}</div>
+                    <div class="lbl">Pending Payment</div>
+                </div>
+                <div class="stat-card stat-purple">
+                    <div class="num">{{ stats.claimed }}</div>
+                    <div class="lbl">Items Claimed</div>
+                </div>
+                <div class="stat-card stat-teal">
+                    <div class="num">{{ stats.reserved }}</div>
+                    <div class="lbl">Reservation Pending</div>
+                </div>
+                <div class="stat-card stat-gray">
+                    <div class="num">{{ stats.no_reservation }}</div>
+                    <div class="lbl">No Reservation</div>
+                </div>
+            </div>
 
-                <form method="post" action="/teacher/announce/{{ a.announcement_id }}/edit"
-                    class="ann-edit-form" id="ann-edit-{{ a.announcement_id }}">
+            {% if teacher_assignments %}
+            <!-- ════ MY SECTIONS & SUBJECTS ════ -->
+            <div class="ann-section" style="margin-top: 18px;">
+                <p class="ann-section-title">📘 My Sections &amp; Subjects</p>
+                <div class="td-table-wrap">
+                    <table class="td-table">
+                        <thead>
+                            <tr>
+                                <th>Grade / Section</th>
+                                <th>Subject</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set ns = namespace(last_section='') %}
+                            {% for a in teacher_assignments %}
+                            {% set label = a.grade_level_name ~ ' — ' ~ a.section_name %}
+                            {% if label != ns.last_section %}
+                            {% if ns.last_section %}
+                            <tr>
+                                <td colspan="2">
+                                    <hr style="border:none;border-top:1px dashed #e5e7eb;margin:4px 0;">
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% set ns.last_section = label %}
+                            <tr>
+                                <td><strong>{{ label }}</strong></td>
+                                <td><span style="color:var(--text); font-weight:600;">{{ a.subject_name }}</span></td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td class="muted">{{ a.section_name }}</td>
+                                <td><span style="color:var(--text); font-weight:600;">{{ a.subject_name }}</span></td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- ════ ANNOUNCEMENTS ════ -->
+            <div class="ann-section">
+                <p class="ann-section-title">📢 Class Announcements — {{ selected_grade }}</p>
+
+                <!-- Post form -->
+                {% if is_branch_active_status %}
+                <form method="post" action="/teacher/announce" class="ann-form">
                     <input type="hidden" name="grade_level" value="{{ selected_grade }}">
-                    <input type="text" name="title" class="ann-input" id="ann-edit-title-{{ a.announcement_id }}" maxlength="150" required placeholder="Title">
-                    <textarea name="body" class="ann-textarea" id="ann-edit-body-{{ a.announcement_id }}" maxlength="2000" placeholder="Optional details..." style="min-height:70px;"></textarea>
-                    <div class="ann-edit-actions">
-                        <button type="submit" class="btn-save-ann">💾 Save Changes</button>
-                        <button type="button" class="btn-cancel-ann" data-id="{{ a.announcement_id }}" onclick="closeEditAnn(this)">✕ Cancel</button>
-                    </div>
+                    <input type="text" name="title" class="ann-input"
+                        placeholder="📌  Title (e.g. Quiz Tomorrow — Chapter 3)" maxlength="150" required>
+                    <textarea name="body" class="ann-textarea"
+                        placeholder="Optional — add details about the assignment, topics to review, reminders, etc."
+                        maxlength="2000"></textarea>
+                    <button type="submit" class="btn-post">📤 Post Announcement</button>
                 </form>
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div class="ann-empty">
-            📭 No announcements for {{ selected_grade }} yet.{% if is_branch_active_status %} Post your first one above!{% endif %}
-        </div>
-        {% endif %}
-    </div>
+                {% endif %}
 
-    {% endif %}
-</div>
+                <hr class="ann-divider">
 
-<!-- ── Classlist Slide-over Panel ── -->
-<div class="classlist-overlay" id="classlistOverlay" onclick="handleOverlayClick(event)">
-    <div class="classlist-panel">
-        <div class="classlist-head">
-            <div>
-                <h3>🧑‍🎓 My Classlist</h3>
-                <div class="cl-sub">
-                    {% if selected_grade %}{{ selected_grade }}{% else %}All Students{% endif %}
+                <!-- List -->
+                {% if announcements %}
+                <div class="ann-list">
+                    {% for a in announcements %}
+                    <div class="ann-card" id="ann-card-{{ a.announcement_id }}">
+
+                        <!-- View mode -->
+                        <div id="ann-view-{{ a.announcement_id }}">
+                            <div class="ann-card-head">
+                                <div style="flex:1;">
+                                    <div class="ann-card-title">{{ a.title }}</div>
+                                    <div class="ann-card-meta">
+                                        👩‍🏫 {{ a.display_name }} &nbsp;&middot;&nbsp;
+                                        {{ a.created_at.strftime('%b %d, %Y %I:%M %p') if a.created_at else '' }}
+                                    </div>
+                                </div>
+                                <!-- Edit & Delete buttons -->
+                                {% if is_branch_active_status %}
+                                <div style="display:flex; gap:4px; flex-shrink:0;">
+                                    <button type="button" class="btn-edit-ann" data-id="{{ a.announcement_id }}"
+                                        data-title="{{ a.title | e }}" data-body="{{ (a.body or '') | e }}"
+                                        onclick="openEditAnn(this)" title="Edit">✏️</button>
+                                    <form method="post" action="/teacher/announce/{{ a.announcement_id }}/delete"
+                                        onsubmit="return confirm('Delete this announcement?')" style="margin:0;">
+                                        <input type="hidden" name="grade_level" value="{{ selected_grade }}">
+                                        <button type="submit" class="btn-del-ann" title="Delete">🗑</button>
+                                    </form>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% if a.body %}
+                            <div class="ann-card-body">{{ a.body }}</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Inline edit form (hidden by default) -->
+                        <form method="post" action="/teacher/announce/{{ a.announcement_id }}/edit"
+                            class="ann-edit-form" id="ann-edit-{{ a.announcement_id }}">
+                            <input type="hidden" name="grade_level" value="{{ selected_grade }}">
+                            <input type="text" name="title" class="ann-input"
+                                id="ann-edit-title-{{ a.announcement_id }}" maxlength="150" required
+                                placeholder="Title">
+                            <textarea name="body" class="ann-textarea" id="ann-edit-body-{{ a.announcement_id }}"
+                                maxlength="2000" placeholder="Optional details..." style="min-height:70px;"></textarea>
+                            <div class="ann-edit-actions">
+                                <button type="submit" class="btn-save-ann">💾 Save Changes</button>
+                                <button type="button" class="btn-cancel-ann" data-id="{{ a.announcement_id }}"
+                                    onclick="closeEditAnn(this)">
+                                    ✕ Cancel
+                                </button>
+                            </div>
+                        </form>
+
+                    </div>
+                    {% endfor %}
                 </div>
-            </div>
-            <button class="classlist-close" onclick="closeClasslist()">✕</button>
-        </div>
-        <div class="classlist-body">
-            {% if students %}
-            {% for s in students %}
-            <div class="student-row">
-                <div class="student-num-cl">{{ loop.index }}</div>
-                <div class="student-info-cl" style="flex:1;">
-                    <div class="name-cl">{{ s.display_name }}</div>
-                    {% if s.email %}
-                    <div class="email-cl">{{ s.email }}</div>
-                    {% endif %}
-                </div>
-                <!-- Billing status chip -->
-                {% if s.billing_status == 'cleared' %}
-                <span class="chip-badge chip-green">✓ Cleared</span>
-                {% elif s.billing_status == 'pending' %}
-                <span class="chip-badge chip-yellow">⏳ Pending</span>
                 {% else %}
-                <span class="chip-badge chip-gray">—</span>
+                <div class="ann-empty">
+                    📭 No announcements yet for {{ selected_grade }}. Post your first one above!
+                </div>
                 {% endif %}
             </div>
-            {% endfor %}
-            {% else %}
-            <div style="text-align:center; padding:40px; color:var(--muted);">
-                <div style="font-size:3rem; margin-bottom:12px;">👥</div>
-                <h3 style="margin:0 0 6px; color:var(--text);">No students yet</h3>
-                <p style="font-size:0.9rem; margin:0;">Students will appear here once enrolled.</p>
-            </div>
-            {% endif %}
-        </div>
-    </div>
+
+
+
+    {% endif %}
+
 </div>
 
 <script>
-    function openClasslist() {
-        document.getElementById('classlistOverlay').classList.add('open');
-        document.body.style.overflow = 'hidden';
-    }
-
-    function closeClasslist() {
-        document.getElementById('classlistOverlay').classList.remove('open');
-        document.body.style.overflow = '';
-    }
-
-    function handleOverlayClick(e) {
-        if (e.target === document.getElementById('classlistOverlay')) closeClasslist();
-    }
-
     function openEditAnn(btn) {
         var id = btn.dataset.id;
+        var title = btn.dataset.title;
+        var body = btn.dataset.body;
+
+        // Hide view, show form
         document.getElementById('ann-view-' + id).style.display = 'none';
+
         var form = document.getElementById('ann-edit-' + id);
-        document.getElementById('ann-edit-title-' + id).value = btn.dataset.title;
-        document.getElementById('ann-edit-body-' + id).value = btn.dataset.body;
+        document.getElementById('ann-edit-title-' + id).value = title;
+        document.getElementById('ann-edit-body-' + id).value = body;
         form.classList.add('open');
         document.getElementById('ann-edit-title-' + id).focus();
     }
@@ -950,6 +782,7 @@
     function closeEditAnn(btn) {
         var id = btn.dataset.id;
         document.getElementById('ann-edit-' + id).classList.remove('open');
+        // Restore view
         document.getElementById('ann-view-' + id).style.display = '';
     }
 </script>
