@@ -156,11 +156,7 @@
             <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
             <button name="action" value="approved" class="btn btn-success">✅ Approve</button>
         </form>
-        <form method="post" action="/registrar/enrollments" style="display:inline;">
-            <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
-            <button name="action" value="rejected" class="btn btn-danger"
-                onclick="return confirm('Reject this enrollment?')">❌ Reject</button>
-        </form>
+        <a href="#reject" class="btn btn-danger">❌ Reject</a>
         {% endif %}
     </div>
 
@@ -351,6 +347,33 @@
     </div>
 
     </form>
+
+    <!-- ── Reject w/ Reason (required) ── -->
+    {% if enrollment.status == 'pending' %}
+    <div class="section-card" id="reject" style="margin-top: 16px; border-color:#fecaca;">
+        <div class="section-head" style="background:#fef2f2; border-bottom-color:#fecaca; color:#991b1b;">
+            ❌ Reject Enrollment (Reason Required)
+        </div>
+        <div style="padding:16px;">
+            <form method="post" action="/registrar/enrollments" onsubmit="return confirm('Reject this enrollment? This will require a reason.');">
+                <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
+                <input type="hidden" name="action" value="rejected">
+                <div class="det-field" style="margin-bottom:12px;">
+                    <label>Rejection Reason</label>
+                    <textarea name="rejection_reason" required placeholder="Type the reason for rejection..."></textarea>
+                </div>
+                <button type="submit" class="btn btn-danger">Submit Rejection</button>
+            </form>
+        </div>
+    </div>
+    {% elif enrollment.status == 'rejected' and enrollment.rejection_reason %}
+    <div class="section-card" style="margin-top: 16px; border-color:#fecaca;">
+        <div class="section-head" style="background:#fef2f2; border-bottom-color:#fecaca; color:#991b1b;">
+            ❌ Rejection Reason
+        </div>
+        <div style="padding:16px; color:#1e293b; white-space:pre-wrap;">{{ enrollment.rejection_reason }}</div>
+    </div>
+    {% endif %}
 
     <!-- ── Documents (read-only, outside the form) ── -->
     <div class="section-card" style="margin-top: 16px;">

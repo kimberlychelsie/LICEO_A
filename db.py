@@ -132,7 +132,9 @@ def get_db_connection():
                     ("mother_contact", "VARCHAR(255)"),
                     ("father_occupation", "VARCHAR(255)"),
                     ("mother_occupation", "VARCHAR(255)"),
-                    ("school_year", "VARCHAR(255)")
+                    ("school_year", "VARCHAR(255)"),
+                    ("rejection_reason", "TEXT"),
+                    ("rejected_at", "TIMESTAMP")
                 ]
                 for col_name, col_type in optional_cols:
                     if col_name not in enr_c:

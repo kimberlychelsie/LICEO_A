@@ -115,15 +115,35 @@ def registrar_enrollments():
         if request.method == "POST":
             enrollment_id = request.form.get("enrollment_id")
             action = request.form.get("action")
+            rejection_reason = (request.form.get("rejection_reason") or "").strip()
 
             if not enrollment_id or action not in ("approved", "rejected"):
                 flash("Invalid action.", "error")
                 return redirect("/registrar/enrollments")
 
-            cursor.execute("""
-                UPDATE enrollments SET status=%s
-                WHERE enrollment_id=%s AND branch_id=%s
-            """, (action, enrollment_id, branch_id))
+            # Reject must include a reason (so registrar can justify why).
+            if action == "rejected" and not rejection_reason:
+                flash("Please provide a rejection reason.", "error")
+                return redirect(f"/registrar/enrollment/{enrollment_id}#reject")
+
+            if action == "rejected":
+                cursor.execute(
+                    """
+                    UPDATE enrollments
+                    SET status=%s, rejection_reason=%s, rejected_at=NOW()
+                    WHERE enrollment_id=%s AND branch_id=%s
+                    """,
+                    (action, rejection_reason, enrollment_id, branch_id),
+                )
+            else:
+                cursor.execute(
+                    """
+                    UPDATE enrollments
+                    SET status=%s, rejection_reason=NULL, rejected_at=NULL
+                    WHERE enrollment_id=%s AND branch_id=%s
+                    """,
+                    (action, enrollment_id, branch_id),
+                )
 
             if cursor.rowcount == 0:
                 db.rollback()
