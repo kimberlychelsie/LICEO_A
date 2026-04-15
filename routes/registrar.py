@@ -538,6 +538,15 @@ def create_parent_account(enrollment_id):
             """, (parent_id, enrollment_id))
             db.commit()
 
+            cursor.execute("""
+                SELECT username
+                FROM student_accounts
+                WHERE enrollment_id=%s
+            """, (enrollment_id,))
+            sturow = cursor.fetchone()
+            student_username = sturow["username"] if sturow else None
+            student_temp_password = request.form.get("student_temp_password")
+
             # ─────── SEND EMAIL WITH CREDENTIALS ───────
             parent_email = enrollment.get("guardian_email") or enrollment.get("email")
             if parent_email:
@@ -549,6 +558,9 @@ Your parent account has been created.
 
 Username: {username}
 Temporary Password: {temp_password}
+
+Student LMS Username: {student_username or '[See Registrar]'}
+Temporary Password: {student_temp_password or '[See Registrar or previous email]'}
 
 You can log in at: https://liceolms.up.railway.app/
 

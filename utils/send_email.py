@@ -1,33 +1,25 @@
-import requests
-import os
+import smtplib
+from email.message import EmailMessage
 
 def send_email(to_email, subject, body):
-    api_key = os.environ.get("RESEND_API_KEY")
+    gmail_user = "biticonmr@gmail.com"
+    gmail_pass = "ohny yttw tgwq dayg"  
 
-    if not api_key:
-        print("[EMAIL] ERROR: Missing RESEND_API_KEY")
-        return False
+    from_email = "LiceoLMS <biticonmr@gmail.com>"  
 
     try:
-        response = requests.post(
-            "https://api.resend.com/emails",
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json"
-            },
-            json={
-                "from": "Liceo LMS <onboarding@resend.dev>",
-                "to": [to_email],
-                "subject": subject,
-                "text": body
-            },
-            timeout=10
-        )
+        msg = EmailMessage()
+        msg["Subject"] = subject
+        msg["From"] = from_email
+        msg["To"] = to_email
+        msg.set_content(body)
 
-        print("🔥 EMAIL STATUS:", response.status_code)
-        print("🔥 EMAIL RESPONSE:", response.text)
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+            smtp.login(gmail_user, gmail_pass)
+            smtp.send_message(msg)
 
-        return response.ok
+        print("🔥 EMAIL STATUS: SENT (SMTP)")
+        return True
 
     except Exception as e:
         print("🔥 EMAIL ERROR:", str(e))
