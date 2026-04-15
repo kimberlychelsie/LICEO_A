@@ -1,620 +1,418 @@
 {% extends "base.html" %}
-
-{% block title %}Reservation RES-{{ "%04d" | format(header[0]) }}{% endblock %}
+{% block title %}Reservation Details - REF-{{ "%05d"|format(header[0]) }}{% endblock %}
+{% block page_title %}🔍 Reservation Detail{% endblock %}
 
 {% block styles %}
 <style>
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
-  body {
-    background: #f5f7fa;
-    color: #333;
-  }
-
-  .container {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 20px;
-  }
-
-  header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-    padding-bottom: 18px;
-    border-bottom: 2px solid #ddd;
-    flex-wrap: wrap;
-    gap: 12px;
-  }
-
-  h1 {
-    font-size: 26px;
-    color: #222;
-  }
-
-  .header-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-  }
-
-  .card {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    padding: 22px;
-    margin-bottom: 18px;
-  }
-
-  .card h2 {
-    font-size: 17px;
-    font-weight: 700;
-    margin-bottom: 14px;
-    color: #222;
-  }
-
-  .card h3 {
-    font-size: 15px;
-    font-weight: 700;
-    margin-bottom: 12px;
-    color: #444;
-  }
-
-  .info-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
-    margin-bottom: 14px;
-  }
-
-  .info-item {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .info-label {
-    font-size: 11px;
-    color: #999;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 3px;
-  }
-
-  .info-value {
-    font-size: 15px;
-    color: #222;
-    font-weight: 500;
-  }
-
-  .status-badge {
-    display: inline-block;
-    padding: 5px 14px;
-    border-radius: 20px;
-    font-size: 13px;
-    font-weight: 700;
-  }
-
-  .status-reserved {
-    background: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeaa7;
-  }
-
-  .status-paid {
-    background: #cfe2ff;
-    color: #084298;
-    border: 1px solid #b6d4fe;
-  }
-
-  .status-claimed {
-    background: #d1e7dd;
-    color: #0f5132;
-    border: 1px solid #badbcc;
-  }
-
-  .status-cancelled {
-    background: #f8d7da;
-    color: #842029;
-    border: 1px solid #f5c2c7;
-  }
-
-  .user-type-badge {
-    display: inline-block;
-    padding: 4px 10px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 700;
-    margin-left: 6px;
-    vertical-align: middle;
-  }
-
-  .user-type-student {
-    background: #e3f2fd;
-    color: #1565c0;
-    border: 1px solid #90caf9;
-  }
-
-  .user-type-parent {
-    background: #f3e5f5;
-    color: #7b1fa2;
-    border: 1px solid #ce93d8;
-  }
-
-  .parent-info-box {
-    background: #f3e5f5;
-    border-left: 4px solid #7b1fa2;
-    padding: 12px 16px;
-    border-radius: 8px;
-    margin-top: 14px;
-    font-size: 13px;
-  }
-
-  .parent-info-box strong {
-    color: #7b1fa2;
-  }
-
-  /* Category tabs */
-  .category-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 14px;
-    flex-wrap: wrap;
-  }
-
-  .tab-btn {
-    padding: 7px 16px;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-    background: #f8f8f8;
-    color: #555;
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-    transition: all 0.15s;
-    cursor: pointer;
-  }
-
-  .tab-btn:hover {
-    background: #efefef;
-  }
-
-  .tab-btn.active {
-    background: #1a2e5a;
-    color: #fff;
-    border-color: #1a2e5a;
-  }
-
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    font-size: 14px;
-  }
-
-  thead {
-    background: #f8f9fa;
-    border-bottom: 2px solid #ddd;
-  }
-
-  th {
-    padding: 11px 14px;
-    text-align: left;
-    font-weight: 600;
-    color: #555;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-
-  td {
-    padding: 11px 14px;
-    border-bottom: 1px solid #eee;
-    vertical-align: middle;
-  }
-
-  tbody tr:hover {
-    background: #f9f9f9;
-  }
-
-  .total-row {
-    background: #f8f9fa;
-    font-weight: 700;
-    border-top: 2px solid #ddd;
-  }
-
-  .total-row td {
-    padding: 13px 14px;
-  }
-
-  .grand-total-row {
-    background: #1a2e5a;
-    color: #fff;
-    font-weight: 700;
-  }
-
-  .grand-total-row td {
-    padding: 13px 14px;
-    color: #fff;
-  }
-
-  .btn {
-    padding: 9px 16px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: #f8f8f8;
-    color: #222;
-    cursor: pointer;
-    font-size: 13.5px;
-    font-weight: 600;
-    transition: all 0.15s;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .btn:hover {
-    background: #efefef;
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  }
-
-  .btn-primary {
-    background: #2563eb;
-    color: #fff;
-    border-color: #2563eb;
-  }
-
-  .btn-primary:hover {
-    background: #1d4ed8;
-  }
-
-  .btn-success {
-    background: #16a34a;
-    color: #fff;
-    border-color: #16a34a;
-  }
-
-  .btn-success:hover {
-    background: #15803d;
-  }
-
-  .btn-danger {
-    background: #dc2626;
-    color: #fff;
-    border-color: #dc2626;
-  }
-
-  .btn-danger:hover {
-    background: #b91c1c;
-  }
-
-  .btn-info {
-    background: #0891b2;
-    color: #fff;
-    border-color: #0891b2;
-  }
-
-  .btn-info:hover {
-    background: #0e7490;
-  }
-
-  .actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 16px;
-    flex-wrap: wrap;
-  }
-
-  form {
-    display: inline;
-  }
-
-  .alert {
-    padding: 12px 16px;
-    border-radius: 8px;
-    margin-bottom: 14px;
-    font-size: 13px;
-    border-left: 4px solid;
-  }
-
-  .alert-info {
-    background: #eff6ff;
-    color: #1e40af;
-    border-color: #3b82f6;
-  }
-
-  .alert-success {
-    background: #f0fdf4;
-    color: #166534;
-    border-color: #16a34a;
-  }
-
-  .alert-warning {
-    background: #fffbeb;
-    color: #92400e;
-    border-color: #d97706;
-  }
-
-  @media (max-width: 600px) {
-    .info-grid {
-      grid-template-columns: 1fr 1fr;
+    :root {
+        --cashier-primary: #1e3a8a;
+        --cashier-accent: #3b82f6;
+        --cashier-success: #10b981;
+        --cashier-pending: #f59e0b;
+        --cashier-danger: #ef4444;
+        --cashier-bg: #f8fafc;
+        --cashier-card: #ffffff;
+        --cashier-text: #0f172a;
+        --cashier-muted: #64748b;
+        --cashier-border: #e2e8f0;
+        --cashier-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
 
-    .actions {
-      flex-direction: column;
+    body {
+        background-color: var(--cashier-bg);
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     }
 
-    .actions button,
-    .actions a,
-    .actions form {
-      width: 100%;
+    .detail-container {
+        max-width: 1000px;
+        margin: 0 auto;
+        padding: 32px 20px 64px;
     }
-  }
+
+    .header-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .header-nav h1 {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: var(--cashier-primary);
+        letter-spacing: -0.02em;
+    }
+
+    /* ── Progress Stepper ── */
+    .stepper-wrap {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 40px;
+        position: relative;
+        padding: 0 40px;
+    }
+    .stepper-wrap::before {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 60px;
+        right: 60px;
+        height: 2px;
+        background: var(--cashier-border);
+        z-index: 1;
+    }
+    .step-item {
+        position: relative;
+        z-index: 2;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        width: 100px;
+    }
+    .step-circle {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid var(--cashier-border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        color: var(--cashier-muted);
+        transition: all 0.3s;
+    }
+    .step-label {
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: var(--cashier-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .step-item.active .step-circle { border-color: var(--cashier-accent); color: var(--cashier-accent); box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+    .step-item.completed .step-circle { background: var(--cashier-success); border-color: var(--cashier-success); color: #fff; }
+    .step-item.completed .step-label { color: var(--cashier-success); }
+    .step-item.active .step-label { color: var(--cashier-accent); }
+
+    /* ── Cards ── */
+    .premium-card {
+        background: var(--cashier-card);
+        border: 1px solid var(--cashier-border);
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: var(--cashier-shadow);
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .premium-card::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+        background: transparent;
+    }
+    .card-accent-blue::after { background: var(--cashier-accent); }
+    .card-accent-green::after { background: var(--cashier-success); }
+
+    .card-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--cashier-primary);
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    /* ── Info Grid ── */
+    .info-strip {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 24px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid var(--cashier-border);
+        margin-bottom: 24px;
+    }
+
+    .info-cell { display: flex; flex-direction: column; gap: 4px; }
+    .info-cell .label { font-size: 0.7rem; font-weight: 800; color: var(--cashier-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .info-cell .value { font-size: 1rem; font-weight: 700; color: var(--cashier-text); }
+
+    /* ── Parent Highlight ── */
+    .source-box {
+        background: #fbfcfe;
+        border: 1px solid var(--cashier-border);
+        border-radius: 16px;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    .source-icon { font-size: 1.5rem; background: #fff; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 12px; border: 1px solid var(--cashier-border); }
+
+    /* ── Items Table ── */
+    .item-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .item-table th { text-align: left; padding: 12px 16px; font-size: 0.75rem; font-weight: 800; color: var(--cashier-muted); text-transform: uppercase; border-bottom: 2px solid var(--cashier-border); }
+    .item-table td { padding: 16px; border-bottom: 1px solid var(--cashier-border); vertical-align: middle; }
+
+    .img-box { width: 56px; height: 56px; border-radius: 12px; background: #f8fafc; border: 1px solid var(--cashier-border); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    .img-box img { width: 100%; height: 100%; object-fit: contain; }
+
+    .total-well {
+        margin-top: 24px;
+        padding: 24px;
+        background: #fbfcfe;
+        border-radius: 20px;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        gap: 32px;
+        border: 1px solid var(--cashier-border);
+    }
+
+    /* ── Action Buttons ── */
+    .action-group { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+    .btn-action {
+        padding: 14px 24px;
+        border-radius: 12px;
+        font-weight: 800;
+        font-size: 0.9rem;
+        border: none;
+        cursor: pointer;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    .btn-go { background: var(--cashier-primary); color: #fff; box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2); }
+    .btn-go:hover { background: #1e40af; transform: translateY(-2px); box-shadow: 0 6px 16px rgba(30, 58, 138, 0.3); }
+    .btn-stop { background: #fff; color: var(--cashier-danger); border: 1px solid var(--cashier-danger); }
+    .btn-stop:hover { background: var(--cashier-danger); color: #fff; transform: translateY(-2px); }
+    .btn-neut { background: #f1f5f9; color: var(--cashier-muted); }
+
+    .alert-banner {
+        padding: 16px 24px;
+        border-radius: 16px;
+        margin-bottom: 24px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        border: 1px solid transparent;
+    }
+    .alert-info { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+    .alert-success { background: #d1fae5; color: #065f46; border-color: #a7f3d0; }
+</style>
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container">
-  <header>
-    <h1>📋 Reservation RES-{{ "%04d" | format(header[0]) }}</h1>
-    <div class="header-actions">
-      <a href="{{ url_for('cashier.export_reservation_detail_csv', reservation_id=header[0]) }}"
-         class="btn"
-         style="background:#16a34a; color:#fff; border-color:#16a34a; font-weight:700;"
-         title="Download this reservation as CSV (opens in Excel)">
-        ⬇ Download CSV
-      </a>
-      <a href="{{ url_for('cashier.cashier_reservations') }}" class="btn">⬅ Back to List</a>
-    </div>
-  </header>
+<div class="detail-container">
 
-  {#
-  header indexes:
-  [0] reservation_id [1] username [2] student_user_id
-  [3] grade_level [4] full_name [5] grade_level(fallback)
-  [6] strand [7] status [8] created_at
-  [9] reserved_by_role [10] parent_name [11] relationship
-  #}
-
-  <!-- ── Reservation Info ── -->
-  <div class="card">
-    <h2>Student Information</h2>
-
-    <div class="info-grid">
-      <div class="info-item">
-        <span class="info-label">Student ID</span>
-        <span class="info-value">{{ header[1] or '-' }}</span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">Full Name</span>
-        <span class="info-value">{{ header[4] or '-' }}</span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">Grade Level</span>
-        <span class="info-value">{{ header[5] or header[3] or '-' }}</span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">Reserved By</span>
-        <span class="info-value">
-          {% if header|length > 9 and header[9] == 'parent' %}
-          <span class="user-type-badge user-type-parent">👨‍👩‍👧 Parent</span>
-          {% else %}
-          <span class="user-type-badge user-type-student">👨‍🎓 Student</span>
-          {% endif %}
-        </span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">Status</span>
-        <span class="status-badge status-{{ header[7]|lower }}">{{ header[7] }}</span>
-      </div>
-      <div class="info-item">
-        <span class="info-label">Date Created</span>
-        <span class="info-value">{{ header[8].strftime('%Y-%m-%d %H:%M') if header[8] else '-' }}</span>
-      </div>
+    <div class="header-nav">
+        <h1>🔍 Reservation REF-{{ "%05d"|format(header[0]) }}</h1>
+        <div style="display: flex; gap: 12px;">
+            <a href="{{ url_for('cashier.export_reservation_detail_csv', reservation_id=header[0]) }}" class="btn-action btn-neut" style="color: var(--cashier-primary); border: 1px solid var(--cashier-border);">
+                <span>⬇ CSV Export</span>
+            </a>
+            <a href="{{ url_for('cashier.cashier_reservations') }}" class="btn-action btn-neut">⬅ Back</a>
+        </div>
     </div>
 
-    {% if header|length > 9 and header[9] == 'parent' %}
-    <div class="parent-info-box">
-      <strong>👨‍👩‍👧 Reserved by Parent</strong>
-      <div style="margin-top: 10px; display: flex; flex-direction: column; gap: 6px;">
-        {% if header|length > 10 and header[10] %}
-        <div>
-          <span
-            style="font-size:11px; color:#9c4dc4; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">Parent
-            Name</span><br>
-          <strong>{{ header[10] }}</strong>
+    {% set st = header[7]|upper %}
+    {% if st != 'CANCELLED' %}
+    <!-- Progress Stepper -->
+    <div class="stepper-wrap">
+        <div class="step-item {% if st == 'RESERVED' %}active{% else %}completed{% endif %}">
+            <div class="step-circle">{% if st == 'RESERVED' %}1{% else %}✓{% endif %}</div>
+            <span class="step-label">Reserved</span>
         </div>
-        {% endif %}
-        {% if header|length > 11 and header[11] %}
-        <div>
-          <span
-            style="font-size:11px; color:#9c4dc4; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">Relationship</span><br>
-          {{ header[11] }}
+        <div class="step-item {% if st == 'PAID' %}active{% elif st == 'CLAIMED' %}completed{% endif %}">
+            <div class="step-circle">{% if st == 'PAID' %}2{% elif st == 'CLAIMED' %}✓{% else %}2{% endif %}</div>
+            <span class="step-label">Settled</span>
         </div>
-        {% endif %}
-        <div style="margin-top:4px; padding-top:10px; border-top: 1px solid #ddb3ec;">
-          <span
-            style="font-size:11px; color:#9c4dc4; font-weight:700; text-transform:uppercase; letter-spacing:0.05em;">For
-            Student</span><br>
-          <strong style="font-size:15px; color:#3b0764;">
-            {{ header[4] or header[1] or '-' }}
-          </strong>
-          {% if header[5] or header[3] %}
-          <span style="margin-left:8px; background:#e9d5f9; color:#7b1fa2; padding:2px 8px;
-                       border-radius:10px; font-size:12px; font-weight:600;">
-            {{ header[5] or header[3] }}
-          </span>
-          {% endif %}
+        <div class="step-item {% if st == 'CLAIMED' %}completed{% endif %}">
+            <div class="step-circle">{% if st == 'CLAIMED' %}✓{% else %}3{% endif %}</div>
+            <span class="step-label">Claimed</span>
         </div>
-      </div>
-    </div>
-    {% endif %}
-  </div>
-
-  <!-- ── Items ── -->
-  <div class="card">
-    <h2>📦 Reserved Items</h2>
-
-    {% if categories and categories|length > 1 %}
-    <div class="category-tabs">
-      {% for cat in categories %}
-      <a href="?category={{ cat }}" class="tab-btn {% if selected_category == cat %}active{% endif %}">
-        {% if cat == 'UNIFORM' %}👕{% elif cat == 'BOOK' %}📚{% else %}📦{% endif %}
-        {{ cat|title }}
-      </a>
-      {% endfor %}
     </div>
     {% endif %}
 
-    {% if items %}
-    <table>
-      <thead>
-        <tr>
-          <th>Item Name</th>
-          <th>Qty</th>
-          {% if selected_category == 'BOOK' %}
-          <th>📚 Publisher</th>
-          {% elif selected_category == 'UNIFORM' %}
-          <th>📐 Size</th>
-          {% else %}
-          <th>Size / Publisher</th>
-          {% endif %}
-          <th style="text-align:right;">Unit Price</th>
-          <th style="text-align:right;">Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for it in items %}
-        {# it: [0]=item_name [1]=qty [2]=size_label [3]=unit_price [4]=line_total [5]=category [6]=image_url #}
-        {% set item_cat = (it[5] or selected_category or '') | upper %}
-        <tr>
-          <td>
-            <div style="display: flex; align-items: center; gap: 10px;">
-              {% if item_cat == 'UNIFORM' %}
-              {% if it[6] %}
-              <div
-                style="width: 90px; height: 90px; border-radius: 8px; overflow: hidden; flex-shrink: 0; border: 1px solid #e2e8f0; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                <img src="{{ it[6] }}" alt="{{ it[0] }}"
-                  style="width: 100%; height: 100%; object-fit: contain; display: block; background: #f8fafc;">
-              </div>
-              {% else %}
-              <div
-                style="width: 90px; height: 90px; border-radius: 8px; flex-shrink: 0; background: #f1f5f9; display: flex; align-items: center; justify-content: center; color: #cbd5e1; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-                <span style="font-size: 36px;">👕</span>
-              </div>
-              {% endif %}
-              {% endif %}
-              <strong>{{ it[0] }}</strong>
+    <!-- Student & Source Card -->
+    <div class="premium-card card-accent-blue">
+        <div class="card-title">👤 Reference Details</div>
+        
+        <div class="info-strip">
+            <div class="info-cell">
+                <span class="label">Student Name</span>
+                <span class="value">{{ header[4] or '-' }}</span>
             </div>
-          </td>
-          <td style="text-align:center;">{{ it[1] }}</td>
-          <td style="text-align:center;">
-            {% if it[2] %}
-            {% if item_cat == 'BOOK' %}
-            {# Publisher — blue pill #}
-            <span style="background:#dbeafe; color:#1d4ed8; padding:3px 10px;
-                             border-radius:12px; font-size:12px; font-weight:600;
-                             border:1px solid #bfdbfe;">{{ it[2] }}</span>
-            {% elif item_cat == 'UNIFORM' %}
-            {# Size — grey pill #}
-            <span style="background:#f0f0f0; color:#444; padding:3px 10px;
-                             border-radius:12px; font-size:12px; font-weight:700;
-                             border:1px solid #ddd; letter-spacing:0.05em;">{{ it[2] }}</span>
-            {% else %}
-            <span style="background:#f0f0f0; padding:3px 8px; border-radius:4px;
-                             font-size:12px;">{{ it[2] }}</span>
-            {% endif %}
-            {% else %}
-            <span style="color:#bbb;">—</span>
-            {% endif %}
-          </td>
-          <td style="text-align:right;">₱{{ '%.2f'|format(it[3] or 0) }}</td>
-          <td style="text-align:right;"><strong>₱{{ '%.2f'|format(it[4] or 0) }}</strong></td>
-        </tr>
-        {% endfor %}
-        <tr class="total-row">
-          <td colspan="4" style="text-align:right;">
-            {% if categories and categories|length > 1 %}
-            {{ selected_category|title }} Subtotal:
-            {% else %}
-            TOTAL:
-            {% endif %}
-          </td>
-          <td style="text-align:right;">₱{{ '%.2f'|format(total or 0) }}</td>
-        </tr>
-        {% if categories and categories|length > 1 %}
-        <tr class="grand-total-row">
-          <td colspan="4" style="text-align:right;">GRAND TOTAL (All Items):</td>
-          <td style="text-align:right;">₱{{ '%.2f'|format(grand_total or 0) }}</td>
-        </tr>
+            <div class="info-cell">
+                <span class="label">Student ID</span>
+                <span class="value">{{ header[1] or '-' }}</span>
+            </div>
+            <div class="info-cell">
+                <span class="label">Current Level</span>
+                <span class="value">{{ header[5] or header[3] or '-' }}</span>
+            </div>
+            <div class="info-cell" style="text-align: right;">
+                <span class="label">Final Status</span>
+                <div style="font-weight: 900; color: var(--cashier-primary); font-size: 1.1rem;">
+                    {{ header[7] }}
+                </div>
+            </div>
+        </div>
+
+        <div class="source-box">
+            <div class="source-icon">
+                {% if header[9] == 'parent' %}👨‍👩‍👧{% else %}👨‍🎓{% endif %}
+            </div>
+            <div>
+                <div style="font-size: 0.7rem; font-weight: 800; color: var(--cashier-muted); text-transform: uppercase; letter-spacing: 0.05em;">Originating Actor</div>
+                <div style="font-weight: 700; color: var(--cashier-primary);">
+                    {% if header[9] == 'parent' %}
+                        Parent Request: <span style="color: var(--cashier-text);">{{ header[10] }} ({{ header[11] }})</span>
+                    {% else %}
+                        Student Self-Reservation
+                    {% endif %}
+                </div>
+            </div>
+            <div style="margin-left: auto; text-align: right;">
+                <div style="font-size: 0.7rem; font-weight: 800; color: var(--cashier-muted); text-transform: uppercase;">Registration Date</div>
+                <div style="font-weight: 700;">{{ header[8].strftime('%b %d, %Y %I:%M %p') if header[8] else '-' }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Items Card -->
+    <div class="premium-card">
+        <div class="card-title">📦 Itemized Inventory Selection</div>
+
+        {% if items %}
+        <table class="item-table">
+            <thead>
+                <tr>
+                    <th>Item Description</th>
+                    <th>Category</th>
+                    <th style="text-align: center;">Qty</th>
+                    <th>Variant / Pub</th>
+                    <th style="text-align: right;">Total Price</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for it in items %}
+                {% set item_cat = (it[5] or selected_category or '') | upper %}
+                <tr>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 16px;">
+                            <div class="img-box">
+                                {% if it[6] %}<img src="{{ it[6] }}" alt="">{% else %}<span style="font-size: 1.5rem;">{% if item_cat == 'BOOK' %}📚{% else %}👕{% endif %}</span>{% endif %}
+                            </div>
+                            <div style="font-weight: 700;">{{ it[0] }}</div>
+                        </div>
+                    </td>
+                    <td><span style="font-size: 0.7rem; font-weight: 800; color: var(--cashier-muted);">{{ item_cat }}</span></td>
+                    <td style="text-align: center; font-weight: 800; color: var(--cashier-primary);">{{ it[1] }}</td>
+                    <td>
+                        {% if it[2] %}
+                        <span style="background: #f1f5f9; padding: 4px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; color: var(--cashier-primary);">{{ it[2] }}</span>
+                        {% else %}
+                        <span style="color: #cbd5e1">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right; font-weight: 900; color: var(--cashier-text);">₱{{ '%.2f'|format(it[4] or 0) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div class="total-well">
+            <div style="text-align: right;">
+                <div style="font-size: 0.7rem; font-weight: 800; color: var(--cashier-muted); text-transform: uppercase; letter-spacing: 0.1em;">Final Payable Amount</div>
+                <div style="font-size: 1.75rem; font-weight: 900; color: var(--cashier-primary);">₱{{ '%.2f'|format(grand_total or total or 0) }}</div>
+            </div>
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 48px; color: var(--cashier-muted);">
+            No items found in this section.
+        </div>
         {% endif %}
-      </tbody>
-    </table>
-    {% else %}
-    <div style="text-align:center; padding:30px; color:#999;">
-      📭 No items found for this reservation.
-    </div>
-    {% endif %}
-  </div>
-
-  <!-- ── Actions ── -->
-  <div class="card">
-    <h3>⚡ Actions</h3>
-
-    {% if header[7] == 'RESERVED' %}
-    <div class="alert alert-info">
-      ℹ️ Reservation is pending payment. Collect payment then mark as PAID.
-    </div>
-    {% if is_branch_active_status %}
-    <div class="actions">
-      <form method="post" action="{{ url_for('cashier.cashier_mark_paid', reservation_id=header[0]) }}">
-        <button class="btn btn-success" type="submit">✅ Mark as PAID</button>
-      </form>
-      <form method="post" action="{{ url_for('cashier.cashier_cancel_reservation', reservation_id=header[0]) }}">
-        <button class="btn btn-danger" type="submit" onclick="return confirm('Cancel this reservation?')">❌ Cancel
-          Reservation</button>
-      </form>
-    </div>
-    {% endif %}
-
-    {% elif header[7] == 'PAID' %}
-    <div class="alert alert-info">
-      ℹ️ Payment received. Student/Parent can now claim the items.
-    </div>
-    {% if is_branch_active_status %}
-    <div class="actions">
-      <form method="post" action="{{ url_for('cashier.cashier_mark_claimed', reservation_id=header[0]) }}">
-        <button class="btn btn-success" type="submit">🎉 Mark as CLAIMED</button>
-      </form>
-      <form method="post" action="{{ url_for('cashier.cashier_cancel_reservation', reservation_id=header[0]) }}">
-        <button class="btn btn-danger" type="submit" onclick="return confirm('Cancel this reservation?')">❌ Cancel
-          Reservation</button>
-      </form>
-    </div>
-    {% endif %}
-
-    {% elif header[7] == 'CLAIMED' %}
-    <div class="alert alert-success">
-      ✅ Completed — items have been claimed.
-    </div>
-    <div class="actions">
-      <a href="{{ url_for('cashier.reservation_receipt', reservation_id=header[0]) }}" class="btn btn-primary"
-        target="_blank">🖨️ Print Receipt</a>
-      <button class="btn btn-info" onclick="window.print()">📄 Print Page</button>
     </div>
 
-    {% elif header[7] == 'CANCELLED' %}
-    <div class="alert alert-warning">
-      ⚠️ This reservation has been cancelled.
+    <!-- Management Actions -->
+    <div class="premium-card" style="border-top: 4px solid var(--cashier-accent);">
+        <div class="card-title">⚡ Administrative Console</div>
+
+        {% if header[7] == 'RESERVED' %}
+            <div class="alert-banner alert-info" style="background: #fffbeb; color: #92400e; border-color: #fde68a;">
+                <span>ℹ️</span> Reservation is currently <strong>PENDING PAYMENT</strong>. Verify collection before releasing items.
+            </div>
+            {% if is_branch_active_status %}
+            <div class="action-group">
+                <form method="post" action="{{ url_for('cashier.cashier_mark_paid', reservation_id=header[0]) }}">
+                    <button class="btn-action btn-go" type="submit" style="background: var(--cashier-success); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
+                        ✅ Mark as FULLY PAID
+                    </button>
+                </form>
+                <form method="post" action="{{ url_for('cashier.cashier_cancel_reservation', reservation_id=header[0]) }}">
+                    <button class="btn-action btn-stop" type="submit" onclick="return confirm('Immediately cancel this reservation?')">
+                        ❌ Cancel Booking
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+
+        {% elif header[7] == 'PAID' %}
+            <div class="alert-banner alert-info" style="background: #e0f2fe; color: #0369a1; border-color: #7dd3fc;">
+                <span>🚚</span> Payment verified. Waiting for student/parent to <strong>CLAIM</strong> items in person.
+            </div>
+            {% if is_branch_active_status %}
+            <div class="action-group">
+                <form method="post" action="{{ url_for('cashier.cashier_mark_claimed', reservation_id=header[0]) }}">
+                    <button class="btn-action btn-go" type="submit" style="background: var(--cashier-primary);">
+                        🎉 Mark as CLAIMED
+                    </button>
+                </form>
+                <form method="post" action="{{ url_for('cashier.cashier_cancel_reservation', reservation_id=header[0]) }}">
+                    <button class="btn-action btn-stop" type="submit" onclick="return confirm('Cancel reservation and initiate refund process?')">
+                        ❌ Void Transaction
+                    </button>
+                </form>
+            </div>
+            {% endif %}
+
+        {% elif header[7] == 'CLAIMED' %}
+            <div class="alert-banner alert-success">
+                <span>✅</span> Transaction cycle <strong>COMPLETED</strong>. All items have been turned over.
+            </div>
+            <div class="action-group">
+                <a href="{{ url_for('cashier.reservation_receipt', reservation_id=header[0]) }}" class="btn-action btn-go" target="_blank">
+                    🖨️ View Official Receipt
+                </a>
+                <button class="btn-action btn-neut" onclick="window.print()">
+                    📄 Print Summary
+                </button>
+            </div>
+
+        {% elif header[7] == 'CANCELLED' %}
+            <div class="alert-banner" style="background: #f1f5f9; color: var(--cashier-muted); border: 1px solid var(--cashier-border);">
+                <span>🚫</span> This reservation has been <strong>VOIDED/CANCELLED</strong>. No further actions allowed.
+            </div>
+        {% endif %}
     </div>
-    {% endif %}
-  </div>
 
 </div>
 {% endblock %}

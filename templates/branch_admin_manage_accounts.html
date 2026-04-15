@@ -1,311 +1,419 @@
 {% extends "base.html" %}
-{% block title %}Manage Accounts{% endblock %}
+{% block title %}Account Management – Liceo LMS{% endblock %}
 
 {% block styles %}
 <style>
-    /* Base settings */
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+    :root {
+        --ma-primary: #1e3a8a;
+        --ma-accent: #3b82f6;
+        --ma-bg: #f8fafc;
+        --ma-card: #ffffff;
+        --ma-border: #e2e8f0;
+        --ma-text: #0f172a;
+        --ma-muted: #64748b;
+        --ma-success: #10b981;
+        --ma-warning: #f59e0b;
+        --ma-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        --ma-shadow-hover: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+
     body {
-        background: #f5f7fa;
-        color: #333;
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background-color: var(--ma-bg);
+        font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
-    .ba-container {
-        max-width: 1200px;
+    .ma-container {
+        padding: 40px 32px;
+        max-width: 1400px;
         margin: 0 auto;
-        padding: 24px 20px;
     }
 
-    .header-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 24px;
-        flex-wrap: wrap;
-        gap: 16px;
+    .ma-header {
+        margin-bottom: 40px;
     }
 
-    .header-row h1 {
-        margin: 0;
-        font-size: 24px;
-        color: #2c3e50;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+    .ma-header h1 {
+        font-size: 2.5rem;
+        font-weight: 900;
+        color: var(--ma-primary);
+        letter-spacing: -0.04em;
+        margin-bottom: 8px;
     }
 
-    /* Cards */
-    .card {
-        background: #fff;
-        border-radius: 12px;
+    .ma-header p {
+        color: var(--ma-muted);
+        font-weight: 600;
+        font-size: 1.05rem;
+    }
+
+    /* ── Analytics Grid ── */
+    .analytics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 24px;
+        margin-bottom: 40px;
+    }
+
+    .stat-mini-card {
+        background: var(--ma-card);
+        border: 1px solid var(--ma-border);
+        border-radius: 24px;
         padding: 24px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, .07);
+        box-shadow: var(--ma-shadow);
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s ease;
+    }
+
+    .stat-mini-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; height: 4px;
+        background: linear-gradient(90deg, var(--ma-primary), var(--ma-accent));
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .stat-mini-card:hover {
+        transform: translateY(-6px);
+        box-shadow: var(--ma-shadow-hover);
+        border-color: var(--ma-accent);
+    }
+
+    .stat-mini-card:hover::before {
+        opacity: 1;
+    }
+
+    .stat-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .stat-mini-label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--ma-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .stat-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        background: #eff6ff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        color: var(--ma-primary);
+    }
+
+    .stat-mini-value {
+        font-size: 2rem;
+        font-weight: 900;
+        color: var(--ma-text);
+        letter-spacing: -0.02em;
+    }
+
+    /* ── Action Section ── */
+    .action-card {
+        background: var(--ma-card);
+        border: 1px solid var(--ma-border);
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: var(--ma-shadow);
+        margin-bottom: 40px;
+    }
+
+    .action-card h2 {
+        font-size: 1.25rem;
+        font-weight: 850;
+        color: var(--ma-text);
         margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
     }
 
-    .card h2 {
-        margin: 0 0 20px 0;
-        font-size: 18px;
-        font-weight: 700;
-        color: #2c3e50;
-        border-bottom: 2px solid #007bff;
-        padding-bottom: 10px;
-    }
-
-    /* Form Elements */
-    .form-group {
-        margin-bottom: 16px;
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 24px;
+        margin-bottom: 24px;
     }
 
     .form-group label {
         display: block;
-        font-size: 13px;
-        font-weight: 700;
-        color: #475569;
-        margin-bottom: 8px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--ma-muted);
+        text-transform: uppercase;
+        margin-bottom: 10px;
+        margin-left: 4px;
     }
 
     .form-control {
         width: 100%;
-        padding: 12px 14px;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-        font-size: 14px;
+        padding: 14px 18px;
+        border-radius: 14px;
+        border: 1.5px solid var(--ma-border);
         font-family: inherit;
-        transition: all 0.2s;
-        background: #f8fafc;
+        font-weight: 600;
+        color: var(--ma-text);
+        font-size: 0.95rem;
+        transition: all 0.2s ease;
+        background: #fcfcfc;
+        box-sizing: border-box;
     }
 
     .form-control:focus {
-        outline: none;
+        border-color: var(--ma-accent);
         background: #fff;
-        border-color: #007bff;
-        box-shadow: 0 0 0 4px rgba(0, 123, 255, 0.1);
-    }
-
-    /* Buttons */
-    .btn {
-        padding: 12px 20px;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 600;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        transition: .2s;
-        text-decoration: none;
-    }
-
-    .btn-primary {
-        background: #007bff;
-        color: #fff;
-    }
-
-    .btn-primary:hover {
-        background: #0056b3;
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
         transform: translateY(-1px);
     }
 
-    .btn-secondary {
-        background: #e2e8f0;
-        color: #1e293b;
-    }
-
-    .btn-secondary:hover {
-        background: #cbd5e1;
-    }
-
-    .btn-danger {
-        background: #fee2e2;
-        color: #b91c1c;
-    }
-
-    .btn-danger:hover {
-        background: #fecaca;
-    }
-
-    .btn-warning {
-        background: #fef3c7;
-        color: #b45309;
-    }
-
-    .btn-warning:hover {
-        background: #fde68a;
-    }
-
-    .btn-sm {
-        padding: 8px 14px;
-        font-size: 12px;
-    }
-
-    /* Tabs */
-    .filter-tabs {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        margin-bottom: 24px;
-        background: #e2e8f0;
-        padding: 6px;
-        border-radius: 10px;
-        width: fit-content;
-    }
-
-    .filter-tab {
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: 600;
-        text-decoration: none;
-        color: #475569;
-        transition: all 0.2s;
-    }
-
-    .filter-tab:hover {
-        color: #1e293b;
-        background: #cbd5e1;
-    }
-
-    .filter-tab.active {
-        background: #fff;
-        color: #007bff;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    }
-
-    /* Table */
-    .health-table-wrapper {
-        overflow-x: auto;
-    }
-
-    .health-table {
+    .btn-submit {
+        background: var(--ma-primary);
+        color: #fff;
+        border: none;
+        font-weight: 800;
+        cursor: pointer;
+        height: 52px;
         width: 100%;
-        border-collapse: collapse;
-        font-size: 14px;
-        min-width: 800px;
+        border-radius: 14px;
+        transition: all 0.2s ease;
+        font-size: 1rem;
     }
 
-    .health-table th {
-        background: #f8fafc;
-        padding: 16px;
-        text-align: left;
-        border-bottom: 2px solid #e2e8f0;
-        color: #64748b;
-        font-weight: 700;
-        text-transform: uppercase;
-        font-size: 12px;
-        letter-spacing: 0.5px;
+    .btn-submit:hover {
+        background: var(--ma-accent);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
     }
 
-    .health-table td {
-        padding: 16px;
-        border-bottom: 1px solid #f1f5f9;
-        vertical-align: middle;
+    /* ── Navigation Tabs ── */
+    .nav-tabs-wrapper {
+        display: inline-flex;
+        gap: 8px;
+        padding: 8px;
+        background: #f1f5f9;
+        border-radius: 20px;
+        margin-bottom: 32px;
+        border: 1px solid var(--ma-border);
     }
 
-    .health-table tr:hover td {
-        background: #f8fafc;
+    .nav-tab {
+        padding: 10px 24px;
+        border-radius: 14px;
+        font-size: 0.95rem;
+        font-weight: 800;
+        text-decoration: none;
+        color: var(--ma-muted);
+        transition: all 0.2s ease;
     }
 
-    /* Badges */
-    .badge {
-        display: inline-block;
-        padding: 6px 12px;
-        border-radius: 999px;
-        font-size: 12px;
-        font-weight: 700;
-    }
+    .nav-tab:hover { background: rgba(255,255,255,0.6); color: var(--ma-text); }
+    .nav-tab.active { background: #fff; color: var(--ma-primary); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--ma-border); }
 
-    .badge-active {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    .badge-inactive {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-
-    .badge-role {
-        background: #e2e8f0;
-        color: #334155;
-        padding: 4px 8px;
-        border-radius: 6px;
-        font-size: 11px;
-        font-weight: 700;
-        letter-spacing: 0.5px;
-    }
-
-    /* Grid layouts */
-    .form-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    /* ── Table & Search ── */
+    .search-filter-bar {
+        background: var(--ma-card);
+        border: 1px solid var(--ma-border);
+        border-radius: 24px;
+        padding: 24px;
+        margin-bottom: 24px;
+        display: flex;
+        flex-wrap: wrap;
         gap: 20px;
-        align-items: end;
+        align-items: flex-end;
+        box-shadow: var(--ma-shadow);
     }
 
-    .user-meta {
-        font-size: 13px;
-        color: #64748b;
-        margin-top: 6px;
+    .table-mount {
+        background: var(--ma-card);
+        border: 1px solid var(--ma-border);
+        border-radius: 24px;
+        box-shadow: var(--ma-shadow);
+        overflow: hidden;
+    }
+
+    .modern-table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 900px; }
+    .modern-table th {
+        padding: 20px 24px;
+        background: #f8fafc;
+        font-size: 0.75rem;
+        font-weight: 850;
+        color: var(--ma-muted);
+        text-transform: uppercase;
+        border-bottom: 2px solid var(--ma-border);
+        text-align: left;
+        letter-spacing: 0.05em;
+    }
+
+    .modern-table td {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--ma-border);
+        vertical-align: middle;
+        transition: background-color 0.2s ease;
+    }
+
+    .modern-table tbody tr {
+        transition: transform 0.2s ease, background-color 0.2s ease;
+    }
+
+    .modern-table tbody tr:hover td {
+        background-color: #f1f5f9;
+    }
+
+    .modern-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .user-profile-cell { display: flex; align-items: center; gap: 16px; }
+    .user-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        background: #eff6ff;
+        color: var(--ma-primary);
         display: flex;
         align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 1.25rem;
+        border: 1px solid #dbeafe;
     }
 
-    .user-name {
-        font-weight: 700;
-        color: #1e293b;
-        font-size: 16px;
-    }
+    .user-name { font-weight: 900; color: var(--ma-text); font-size: 1.05rem; margin-bottom: 4px; }
+    .user-email { font-size: 0.85rem; font-weight: 600; color: var(--ma-muted); display: flex; align-items: center; gap: 6px; }
 
-    .username-display {
-        background: #f1f5f9;
-        padding: 8px 12px;
-        border-radius: 8px;
-        font-weight: 600;
-        font-size: 14px;
-        color: #0f172a;
-        font-family: inherit;
-        display: inline-block;
-        border: 1px solid #e2e8f0;
+    .badge-status {
+        padding: 8px 16px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 850;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .badge-status::before {
+        content: '';
+        display: block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+    }
+    .badge-active { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .badge-active::before { background: #10b981; }
+    .badge-inactive { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .badge-inactive::before { background: #ef4444; }
+
+    .btn-action-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1.5px solid var(--ma-border);
+        background: #fff;
+        color: var(--ma-muted);
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+    .btn-action-icon:hover { background: var(--ma-primary); color: #fff; transform: translateY(-2px); border-color: var(--ma-primary); box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+    .btn-delete:hover { background: #ef4444; border-color: #ef4444; color: #fff; }
+
+    /* ── Success Banner ── */
+    .success-banner {
+        background: #f0fdf4;
+        border: 1px solid #bbf7d0;
+        padding: 24px;
+        border-radius: 20px;
+        margin-top: 24px;
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+        box-shadow: var(--ma-shadow);
+        animation: slideDown 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="ba-container">
-    <div class="header-row">
-        <h1>👥 Manage Accounts</h1>
+<div class="ma-container">
+    <div class="ma-header">
+        <h1>Account Inventory</h1>
+        <p>Managing personnel and accessibility for <strong>{{ session.get('branch_name', 'Main Campus') }}</strong></p>
     </div>
 
-    <!-- CREATE USERS CARD -->
-    {% if is_branch_active_status %}
-    <div class="card">
-        <h2>➕ Create {{ (role_filter or 'Registrar')|title }} User</h2>
+    <!-- Analytics Overview -->
+    <div class="analytics-grid">
+        <div class="stat-mini-card">
+            <div class="stat-header">
+                <span class="stat-mini-label">Total Accounts</span>
+                <div class="stat-icon">👥</div>
+            </div>
+            <div class="stat-mini-value" id="total-count-display">--</div>
+        </div>
+        <div class="stat-mini-card">
+            <div class="stat-header">
+                <span class="stat-mini-label">Teachers</span>
+                <div class="stat-icon">👨‍🏫</div>
+            </div>
+            <div class="stat-mini-value" id="teacher-count-display">--</div>
+        </div>
+        <div class="stat-mini-card">
+            <div class="stat-header">
+                <span class="stat-mini-label">Students</span>
+                <div class="stat-icon">🎓</div>
+            </div>
+            <div class="stat-mini-value" id="student-count-display">--</div>
+        </div>
+        <div class="stat-mini-card">
+            <div class="stat-header">
+                <span class="stat-mini-label">Admin Staff</span>
+                <div class="stat-icon">💼</div>
+            </div>
+            <div class="stat-mini-value" id="staff-count-display">--</div>
+        </div>
+    </div>
 
+    <!-- Create Account Section -->
+    {% if is_branch_active_status %}
+    <div class="action-card">
+        <h2><span>➕</span> Provision New {{ (role_filter or 'Registrar')|title }} Access</h2>
         <form method="post" action="{{ url_for('branch_admin.branch_admin_manage_accounts') }}">
-            <div class="form-grid" style="margin-bottom: 20px;">
-                <div class="form-group" style="margin: 0;">
-                    <label>Assigned Role</label>
-                    <select class="form-control" name="role" required id="roleSelect"
-                        onchange="toggleTeacherFields(this.value)">
-                        <option value="registrar" {% if role_filter=='registrar' %}selected{% endif %}>Registrar
-                        </option>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Assigned Directive</label>
+                    <select class="form-control" name="role" required onchange="window.location.href='?role='+this.value">
+                        <option value="registrar" {% if role_filter=='registrar' %}selected{% endif %}>Registrar</option>
                         <option value="cashier" {% if role_filter=='cashier' %}selected{% endif %}>Cashier</option>
-                        <option value="librarian" {% if role_filter=='librarian' %}selected{% endif %}>Librarian
-                        </option>
-                        <option value="teacher" {% if role_filter=='teacher' %}selected{% endif %}>Teacher</option>
+                        <option value="librarian" {% if role_filter=='librarian' %}selected{% endif %}>Librarian</option>
+                        <option value="teacher" {% if role_filter=='teacher' %}selected{% endif %}>Academic Teacher</option>
                     </select>
                 </div>
-                <div class="form-group" style="margin: 0;">
-                    <label>Full Name *</label>
-                    <input type="text" class="form-control" name="full_name" placeholder="E.g. Juan Dela Cruz" required>
+                <div class="form-group">
+                    <label>Full Legal Name</label>
+                    <input type="text" class="form-control" name="full_name" placeholder="E.g. Alexander Pierce" required>
                 </div>
-                <div class="form-group" style="margin: 0;">
-                    <label>Gender *</label>
+                <div class="form-group">
+                    <label>Gender Profile</label>
                     <select class="form-control" name="gender" required>
                         <option value="">Select Gender</option>
                         <option value="female">Female</option>
@@ -314,15 +422,14 @@
                 </div>
             </div>
 
-            <div class="form-grid">
-                <div class="form-group" style="margin: 0; flex: 2;">
-                    <label>Email Address *</label>
-                    <input class="form-control" name="email" type="email" placeholder="juan@example.com" required>
+            <div class="form-row">
+                <div class="form-group" style="flex: 2;">
+                    <label>Verification Email</label>
+                    <input class="form-control" name="email" type="email" placeholder="example@domain.com" required>
                 </div>
-
-                <div class="form-group" id="gradeLevelGroup"
-                    style="margin: 0; display: {% if role_filter == 'teacher' %}block{% else %}none{% endif %}; flex: 1;">
-                    <label>Assigned Grade</label>
+                {% if role_filter == 'teacher' %}
+                <div class="form-group" style="flex: 1;">
+                    <label>Academic Grade Assignment</label>
                     <select class="form-control" name="grade_level">
                         <option value="">Select Grade Level</option>
                         {% for g in grades %}
@@ -330,175 +437,144 @@
                         {% endfor %}
                     </select>
                 </div>
-
-                <div class="form-group" style="margin: 0; align-self: flex-end;">
-                    <button class="btn btn-primary" type="submit" style="width: 100%;">✅ Create Account</button>
+                {% endif %}
+                <div class="form-group" style="align-self: flex-end;">
+                    <button class="btn-submit" type="submit">
+                        <span style="display: flex; align-items: center; justify-content: center; gap: 8px;">✅ Initialize Account</span>
+                    </button>
                 </div>
             </div>
         </form>
 
         {% if created_user %}
-        <div
-            style="margin-top: 24px; padding: 16px 20px; background: #eff6ff; border-radius: 12px; border: 1px solid #bfdbfe; display: flex; gap: 16px; align-items: center;">
-            <div style="font-size: 32px;">✅</div>
+        <div class="success-banner">
+            <div style="font-size: 2.5rem;">🎉</div>
             <div>
-                <div style="font-weight: 700; color: #1e3a8a; margin-bottom: 4px; font-size: 15px;">Account Successfully
-                    Created!</div>
-                <div style="font-size: 14px; color: #1e40af;">
-                    Please save these credentials:<br>
-                    <div
-                        style="margin-top: 8px; background: rgba(255,255,255,0.7); padding: 8px 12px; border-radius: 6px; display: inline-block;">
-                        <strong>Username:</strong> {{ created_user.username }} &nbsp;|&nbsp;
-                        <strong>Temporary Password:</strong> {{ created_user.password }}
-                    </div>
+                <div style="font-weight: 850; color: #166534; font-size: 1.1rem; margin-bottom: 8px;">Account Generation Successful!</div>
+                <div style="background: #ffffff; padding: 12px 20px; border-radius: 14px; border: 1px solid #bbf7d0; display: inline-block;">
+                    <span style="color: var(--ma-muted); font-size: 0.8rem; font-weight: 800;">USERNAME</span>
+                    <strong style="color: var(--ma-text); font-family: 'JetBrains Mono', monospace; font-size: 1rem; margin: 0 12px;">{{ created_user.username }}</strong>
+                    <span style="color: var(--ma-muted); font-size: 0.8rem; font-weight: 800; margin-left: 12px;">TEMP KEY</span>
+                    <strong style="color: var(--ma-primary); font-family: 'JetBrains Mono', monospace; font-size: 1rem; margin-left: 12px;">{{ created_user.password }}</strong>
                 </div>
+                <p style="margin-top: 12px; color: #15803d; font-size: 0.85rem; font-weight: 600;">Please secure these credentials. This window is your only visual confirmation of the temporary key.</p>
             </div>
         </div>
         {% endif %}
     </div>
     {% endif %}
 
-    <!-- TABS -->
-    <div class="filter-tabs">
-        <a href="?role=registrar"
-            class="filter-tab {% if role_filter == 'registrar' or not role_filter %}active{% endif %}">Registrar</a>
-        <a href="?role=cashier" class="filter-tab {% if role_filter == 'cashier' %}active{% endif %}">Cashier</a>
-        <a href="?role=librarian" class="filter-tab {% if role_filter == 'librarian' %}active{% endif %}">Librarian</a>
-        <a href="?role=teacher" class="filter-tab {% if role_filter == 'teacher' %}active{% endif %}">Teacher</a>
-        <a href="?role=student" class="filter-tab {% if role_filter == 'student' %}active{% endif %}">Student</a>
+    <!-- Account Navigation -->
+    <div class="nav-tabs-wrapper">
+        <a href="?role=registrar" class="nav-tab {% if role_filter == 'registrar' or not role_filter %}active{% endif %}">Registrars</a>
+        <a href="?role=cashier" class="nav-tab {% if role_filter == 'cashier' %}active{% endif %}">Cashiers</a>
+        <a href="?role=librarian" class="nav-tab {% if role_filter == 'librarian' %}active{% endif %}">Librarians</a>
+        <a href="?role=teacher" class="nav-tab {% if role_filter == 'teacher' %}active{% endif %}">Teachers</a>
+        <a href="?role=student" class="nav-tab {% if role_filter == 'student' %}active{% endif %}">Students</a>
     </div>
 
-    <!-- FILTER BAR -->
-    <div class="card" style="padding: 20px;">
-        <form id="filter-form" class="form-grid" style="gap: 16px;" method="GET">
-            <input type="hidden" id="current-role" name="role" value="{{ role_filter }}">
-
-            <div class="form-group" style="margin:0;">
-                <label>Search</label>
-                <div style="display: flex; gap: 8px;">
-                    <input type="text" id="filter-search" name="search" class="form-control"
-                        placeholder="Search name or ID..." value="{{ filter_search }}">
-                    <button type="submit" class="btn btn-primary" style="padding: 12px 16px;">🔍</button>
-                </div>
+    <!-- Search & Filters -->
+    <form method="get" class="search-filter-bar" id="filter-form">
+        <input type="hidden" name="role" value="{{ role_filter }}">
+        <div class="form-group" style="flex: 2; min-width: 300px;">
+            <label>Search Registry</label>
+            <div style="position: relative;">
+                <input type="text" name="search" class="form-control" placeholder="Search by name, ID or username..." value="{{ filter_search }}">
             </div>
-
-            {% if role_filter in ['student', 'teacher'] %}
-            <div class="form-group" style="margin:0;">
-                <label>Filter by Grade</label>
-                <select id="filter-grade" name="grade" class="form-control">
-                    <option value="">All Grade Levels</option>
-                    {% if role_filter == 'student' %}
+        </div>
+        {% if role_filter in ['student', 'teacher'] %}
+        <div class="form-group">
+            <label>Grade Filter</label>
+            <select name="grade" class="form-control" onchange="this.form.submit()">
+                <option value="">All Levels</option>
+                {% if role_filter == 'student' %}
                     {% set unique_grades = [] %}
-                    {% for s in section_options %}{% if s.grade_level_name not in unique_grades %}{% set _ =
-                    unique_grades.append(s.grade_level_name) %}{% endif %}{% endfor %}
+                    {% for s in section_options %}{% if s.grade_level_name not in unique_grades %}{% set _ = unique_grades.append(s.grade_level_name) %}{% endif %}{% endfor %}
                     {% for gname in unique_grades|sort %}
                     <option value="{{ gname }}" {% if filter_grade==gname %}selected{% endif %}>{{ gname }}</option>
                     {% endfor %}
-                    {% else %}
+                {% else %}
                     {% for g in grades %}
-                    <option value="{{ g.id }}" {% if filter_grade==g.id|string %}selected{% endif %}>{{ g.name }}
-                    </option>
+                    <option value="{{ g.id }}" {% if filter_grade==g.id|string %}selected{% endif %}>{{ g.name }}</option>
                     {% endfor %}
-                    {% endif %}
-                </select>
-            </div>
-
-            <div class="form-group" style="margin:0;">
-                <label>Filter by Section</label>
-                <select id="filter-section" name="section" class="form-control">
-                    <option value="">All Sections</option>
-                    {% for s in section_options %}
-                    <option value="{{ s.section_id }}" data-grade-id="{{ s.grade_level_id }}"
-                        data-grade-name="{{ s.grade_level_name }}" {% if filter_section==s.section_id|string
-                        %}selected{% endif %}>
-                        {{ s.grade_level_name }} - {{ s.section_name }}
-                    </option>
-                    {% endfor %}
-                </select>
-            </div>
-            {% endif %}
-
-
-        </form>
-    </div>
-
-    <div class="card" style="padding: 0; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: none;">
-        <div id="no-accounts-view"
-            style="display: {% if not accounts %}block{% else %}none{% endif %}; text-align: center; padding: 60px 20px;">
-            <div style="font-size: 40px; margin-bottom: 16px;">🔍</div>
-            <div style="font-weight: 700; font-size: 18px; color: #334155;">No Accounts Found</div>
-            <div style="color: #64748b; font-size: 14px; margin-top: 8px;">Try modifying your search or filters above.
-            </div>
+                {% endif %}
+            </select>
         </div>
+        <div class="form-group">
+            <label>Section Filter</label>
+            <select name="section" class="form-control" onchange="this.form.submit()">
+                <option value="">All Sections</option>
+                {% for s in section_options %}
+                <option value="{{ s.section_id }}" {% if filter_section==s.section_id|string %}selected{% endif %}>
+                    {{ s.grade_level_name }} - {{ s.section_name }}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="form-group">
+            <button type="submit" class="btn-submit" style="width: 64px; padding: 0; display: flex; align-items: center; justify-content: center;">🔍</button>
+        </div>
+    </form>
 
-        <div class="health-table-wrapper" style="display: {% if accounts %}block{% else %}none{% endif %};"
-            id="accounts-table-container">
-            <table id="accounts-table" class="health-table">
+    <!-- Results Table -->
+    <div class="table-mount">
+        {% if accounts %}
+        <div style="overflow-x: auto;">
+            <table class="modern-table">
                 <thead>
                     <tr>
-                        <th>Account Details</th>
-                        <th>Identifier (ID/Username)</th>
-                        <th>Status</th>
-                        <th style="min-width: 250px;">Actions</th>
+                        <th>User Profile</th>
+                        <th>Identifier Domain</th>
+                        <th>Access Status</th>
+                        <th style="text-align: right;">Registry Actions</th>
                     </tr>
                 </thead>
-                <tbody id="accounts-table-body">
+                <tbody>
                     {% for a in accounts %}
                     <tr>
                         <td>
-                            <div class="user-name">
-                                {% if a.role != 'student' and a.gender %}
-                                {% if a.gender == 'female' %}Ms.{% else %}Mr.{% endif %}
-                                {% endif %}
-                                {{ a.full_name or "Unnamed User" }}
+                            <div class="user-profile-cell">
+                                <div class="user-avatar">
+                                    {{ (a.full_name or 'U')[0]|upper }}
+                                </div>
+                                <div class="user-info">
+                                    <div class="user-name">{{ a.full_name or "Unnamed User" }}</div>
+                                    <div class="user-email">
+                                        <span>✉️ {{ a.email or 'No email recorded' }}</span>
+                                        {% if a.grade_level %}<span style="opacity: 0.5;">•</span> <span>🎓 {{ a.grade_level }}</span>{% endif %}
+                                    </div>
+                                </div>
                             </div>
-                            <div class="user-meta">
-                                <span class="badge-role">{{ a.role|title }}</span>
-                                {% if a.email %}<span>✉️ {{ a.email }}</span>{% endif %}
-                                {% if a.grade_level %}<span>🎓 Grade: {{ a.grade_level }}</span>{% endif %}
-                                {% if a.section_name %}<span>🏫 Section: {{ a.section_name }}</span>{% endif %}
-                                {% if a.sections %}<span>🏫 Sections: {{ a.sections }}</span>{% endif %}
-                            </div>
                         </td>
                         <td>
-                            <div class="username-display">{{ a.username }}</div>
+                            <span style="font-family: 'JetBrains Mono', monospace; font-weight: 800; color: var(--ma-primary); background: #f1f5f9; padding: 6px 12px; border-radius: 8px;">
+                                {{ a.username }}
+                            </span>
                         </td>
                         <td>
-                            {% if a.role == 'student' %}
-                            {% if a.is_active %}
-                            <span class="badge badge-active">Active</span>
-                            {% else %}
-                            <span class="badge badge-inactive">Inactive</span>
-                            {% endif %}
-                            {% else %}
-                            {% if a.status != 'inactive' %}
-                            <span class="badge badge-active">Active</span>
-                            {% else %}
-                            <span class="badge badge-inactive">Inactive</span>
-                            {% endif %}
-                            {% endif %}
+                            {% set is_active = (a.is_active if a.role == 'student' else a.status != 'inactive') %}
+                            <span class="badge-status {{ 'badge-active' if is_active else 'badge-inactive' }}">
+                                {{ 'Verified Active' if is_active else 'Access Suspended' }}
+                            </span>
                         </td>
-                        <td>
-                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
-                                <a href="{{ url_for('branch_admin.branch_admin_edit_account', user_id=a.user_id, role=role_filter) if a.role != 'student' else url_for('branch_admin.branch_admin_edit_student_account', account_id=a.account_id, role=role_filter) }}"
-                                    class="btn btn-sm btn-secondary">✏️ Edit</a>
-
+                        <td style="text-align: right;">
+                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                <a href="{{ url_for('branch_admin.branch_admin_edit_account', user_id=a.user_id, role=role_filter) if a.role != 'student' else url_for('branch_admin.branch_admin_edit_student_account', account_id=a.account_id, role=role_filter) }}" 
+                                   class="btn-action-icon" title="Edit Profile">✏️</a>
+                                
                                 {% if is_branch_active_status %}
-                                <form method="post"
-                                    action="{{ url_for('branch_admin.branch_admin_toggle_account', user_id=a.user_id, role=role_filter) if a.role != 'student' else '#' }}"
-                                    style="margin: 0;">
-                                    <button type="submit" class="btn btn-sm btn-warning"
-                                        onclick="return confirm('Toggle status?');" {{ 'disabled' if a.role=='student'
-                                        }}>
-                                        {% if a.role != 'student' %}{% if a.status != 'inactive' %}🔒 Disable{% else %}✅
-                                        Enable{% endif %}{% else %}🔒 Disable{% endif %}
-                                    </button>
-                                </form>
-                                <form method="post"
-                                    action="{{ url_for('branch_admin.branch_admin_delete_account', user_id=a.user_id, role=role_filter) if a.role != 'student' else url_for('branch_admin.branch_admin_delete_student_account', account_id=a.account_id, role=role_filter) }}"
-                                    style="margin: 0;" onsubmit="return confirm('Delete this account completely?')">
-                                    <button type="submit" class="btn btn-sm btn-danger">🗑️ Delete</button>
-                                </form>
+                                    {% if a.role != 'student' %}
+                                    <form method="post" action="{{ url_for('branch_admin.branch_admin_toggle_account', user_id=a.user_id, role=role_filter) }}" style="margin:0;">
+                                        <button type="submit" class="btn-action-icon" onclick="return confirm('Change access state for this user?')" title="{{ 'Suspend' if is_active else 'Restore' }}">
+                                            {{ '🔒' if is_active else '🔓' }}
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    <form method="post" action="{{ url_for('branch_admin.branch_admin_delete_account', user_id=a.user_id, role=role_filter) if a.role != 'student' else url_for('branch_admin.branch_admin_delete_student_account', account_id=a.account_id, role=role_filter) }}" 
+                                          style="margin:0;" onsubmit="return confirm('Permanent deletion cannot be undone. Proceed?')">
+                                        <button type="submit" class="btn-action-icon btn-delete" title="Purge Record">🗑️</button>
+                                    </form>
                                 {% endif %}
                             </div>
                         </td>
@@ -507,67 +583,29 @@
                 </tbody>
             </table>
         </div>
+        {% else %}
+        <div style="text-align: center; padding: 100px 48px; color: var(--ma-muted);">
+            <div style="font-size: 5rem; margin-bottom: 32px; opacity: 0.5;">📁</div>
+            <h3 style="font-weight: 900; color: var(--ma-primary); font-size: 1.5rem; margin-bottom: 12px;">Zero Matches Detected</h3>
+            <p style="font-weight: 600; font-size: 1.1rem;">The registry contains no records matching your current active filters.</p>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    const roleFilter = "{{ role_filter }}";
-    const editBaseUrl = "{{ url_for('branch_admin.branch_admin_edit_account', user_id=8888) }}";
-    const editStudentBaseUrl = "{{ url_for('branch_admin.branch_admin_edit_student_account', account_id=8888) }}";
-    const toggleBaseUrl = "{{ url_for('branch_admin.branch_admin_toggle_account', user_id=8888) }}";
-    const deleteBaseUrl = "{{ url_for('branch_admin.branch_admin_delete_account', user_id=8888) }}";
-    const deleteStudentBaseUrl = "{{ url_for('branch_admin.branch_admin_delete_student_account', account_id=8888) }}";
-    const isBranchActive = {{ 'true' if is_branch_active_status else 'false' }};
-
-    function toggleTeacherFields(role) {
-        const gradeGroup = document.getElementById('gradeLevelGroup');
-        if (gradeGroup) {
-            gradeGroup.style.display = (role === 'teacher') ? 'block' : 'none';
-        }
-    }
-
-    const gradeSelect = document.getElementById('filter-grade');
-    const sectionSelect = document.getElementById('filter-section');
-    const filterForm = document.getElementById('filter-form');
-
-    if (gradeSelect && sectionSelect) {
-        gradeSelect.addEventListener('change', () => {
-            sectionSelect.value = "";
-            filterForm.submit();
-        });
-        sectionSelect.addEventListener('change', () => {
-            filterForm.submit();
-        });
-    }
-
-    function updateSectionOptions() {
-        if (!gradeSelect || !sectionSelect) return;
-        const selectedGrade = gradeSelect.value;
-        const sections = sectionSelect.querySelectorAll('option');
-
-        let firstVisible = null;
-        sections.forEach(opt => {
-            if (opt.value === "") {
-                opt.style.display = "block";
-                return;
-            }
-            const gradeId = opt.getAttribute('data-grade-id');
-            const gradeName = opt.getAttribute('data-grade-name');
-            const matches = (roleFilter === 'student' ? gradeName === selectedGrade : gradeId === selectedGrade);
-
-            if (!selectedGrade || matches) {
-                opt.style.display = "block";
-                if (!firstVisible) firstVisible = opt;
-            } else {
-                opt.style.display = "none";
-            }
-        });
-    }
-
-    if (gradeSelect) {
-        updateSectionOptions();
-    }
+    document.addEventListener('DOMContentLoaded', function() {
+        // Calculate Mini Stats from table data
+        const role = "{{ role_filter or 'registrar' }}";
+        const count = {{ accounts|length }};
+        
+        document.getElementById('total-count-display').innerText = count;
+        
+        // Contextual mapping for role labels
+        const statValue = document.getElementById(role + '-count-display') || document.getElementById('staff-count-display');
+        if(statValue) statValue.innerText = count;
+    });
 </script>
 {% endblock %}

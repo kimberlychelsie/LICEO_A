@@ -1,377 +1,242 @@
-{% extends "base.html" %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reservation Receipt - REF-{{ "%05d"|format(header[0]) }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --receipt-bg: #fff;
+            --receipt-text: #0f172a;
+            --receipt-muted: #64748b;
+            --receipt-accent: #1e3a8a;
+            --receipt-border: #e2e8f0;
+        }
 
-{% block title %}Reservation Receipt #{{ header[0] }}{% endblock %}
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-{% block styles %}
-<style>
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-
-    body {
-        background: #f5f7fa;
-        color: #222;
-    }
-
-    .container {
-        max-width: 700px;
-        margin: 0 auto;
-        padding: 24px 20px;
-    }
-
-    .receipt-card {
-        background: white;
-        border-radius: 14px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        padding: 36px 40px;
-    }
-
-    .receipt-header {
-        text-align: center;
-        border-bottom: 2px dashed #ddd;
-        padding-bottom: 20px;
-        margin-bottom: 22px;
-    }
-
-    .receipt-header h1 {
-        font-size: 20px;
-        font-weight: 800;
-        color: #1a2e5a;
-        letter-spacing: 0.03em;
-    }
-
-    .receipt-header .branch {
-        font-size: 14px;
-        color: #666;
-        margin-top: 4px;
-    }
-
-    .receipt-header .receipt-no {
-        font-size: 13px;
-        color: #888;
-        margin-top: 8px;
-    }
-
-    .badge {
-        display: inline-block;
-        padding: 4px 14px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 700;
-        margin-top: 8px;
-    }
-
-    .badge-claimed {
-        background: #d1e7dd;
-        color: #0f5132;
-        border: 1px solid #badbcc;
-    }
-
-    .section {
-        margin-bottom: 22px;
-    }
-
-    .section-title {
-        font-size: 11px;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: #999;
-        margin-bottom: 10px;
-    }
-
-    .info-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-    }
-
-    .info-item .lbl {
-        font-size: 11px;
-        color: #aaa;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-
-    .info-item .val {
-        font-size: 14px;
-        color: #222;
-        font-weight: 500;
-        margin-top: 2px;
-    }
-
-    .parent-box {
-        background: #f3e5f5;
-        border-left: 3px solid #7b1fa2;
-        border-radius: 8px;
-        padding: 12px 14px;
-        font-size: 13px;
-        margin-top: 8px;
-    }
-
-    table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 13px;
-    }
-
-    thead tr th {
-        padding: 9px 10px;
-        text-align: left;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: #666;
-        background: #f8f9fa;
-        border-bottom: 2px solid #eee;
-    }
-
-    tbody tr td {
-        padding: 10px;
-        border-bottom: 1px solid #f0f0f0;
-        vertical-align: middle;
-    }
-
-    .size-pill {
-        display: inline-block;
-        padding: 2px 8px;
-        border-radius: 10px;
-        font-size: 11px;
-        font-weight: 600;
-    }
-
-    .size-uniform {
-        background: #f0f0f0;
-        color: #444;
-        border: 1px solid #ddd;
-    }
-
-    .size-book {
-        background: #dbeafe;
-        color: #1d4ed8;
-        border: 1px solid #bfdbfe;
-    }
-
-    .total-row td {
-        padding: 12px 10px;
-        border-top: 2px solid #ddd;
-        font-weight: 700;
-        font-size: 15px;
-    }
-
-    .receipt-footer {
-        text-align: center;
-        border-top: 2px dashed #ddd;
-        padding-top: 18px;
-        margin-top: 24px;
-        font-size: 12px;
-        color: #999;
-    }
-
-    .no-print {
-        display: flex;
-        gap: 10px;
-        justify-content: center;
-        margin-top: 20px;
-        flex-wrap: wrap;
-    }
-
-    .btn {
-        padding: 9px 18px;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        background: #f8f8f8;
-        color: #222;
-        cursor: pointer;
-        font-size: 13.5px;
-        font-weight: 600;
-        text-decoration: none;
-        transition: all 0.15s;
-    }
-
-    .btn:hover {
-        background: #efefef;
-    }
-
-    .btn-primary {
-        background: #1a2e5a;
-        color: #fff;
-        border-color: #1a2e5a;
-    }
-
-    .btn-primary:hover {
-        background: #14254a;
-    }
-
-    @media print {
         body {
-            background: white;
+            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            background: #f1f5f9;
+            color: var(--receipt-text);
+            padding: 40px 20px;
+            line-height: 1.5;
         }
 
         .no-print {
-            display: none !important;
+            max-width: 800px;
+            margin: 0 auto 24px;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
         }
 
-        .receipt-card {
-            box-shadow: none;
-            border-radius: 0;
+        .btn {
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 700;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            font-size: 0.9rem;
         }
-    }
-</style>
-{% endblock %}
 
-{% block content %}
+        .btn-print { background: var(--receipt-accent); color: #fff; box-shadow: 0 4px 12px rgba(30,58,138,0.2); }
+        .btn-print:hover { transform: translateY(-1px); background: #1e40af; }
+        .btn-back { background: #fff; color: var(--receipt-muted); border: 1px solid var(--receipt-border); }
 
-{#
-header indexes (reservation_receipt route):
-[0] reservation_id [1] username [2] student_grade_level
-[3] status [4] created_at [5] claimed_at
-[6] branch_name [7] reserved_by_role
-[8] parent_name [9] relationship
-[10] student_name (if available from LATERAL join)
-#}
+        .receipt-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: var(--receipt-bg);
+            border-radius: 24px;
+            box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+            overflow: hidden;
+            position: relative;
+        }
 
-<div class="container">
-    <div class="receipt-card">
+        /* ── Header ── */
+        .receipt-header {
+            padding: 48px 48px 32px;
+            text-align: center;
+            border-bottom: 1px solid var(--receipt-border);
+        }
+        .brand-name { font-size: 1.75rem; font-weight: 800; color: var(--receipt-accent); letter-spacing: -0.02em; }
+        .brand-sub { font-size: 0.9rem; color: var(--receipt-muted); font-weight: 600; margin-top: 4px; }
+        .receipt-label {
+            margin-top: 24px;
+            display: inline-block;
+            padding: 6px 16px;
+            background: #f1f5f9;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--receipt-accent);
+        }
 
+        /* ── Banner ── */
+        .status-banner {
+            background: #f0fdf4;
+            padding: 24px;
+            text-align: center;
+            border-bottom: 1px solid #dcfce7;
+        }
+        .ref-no { font-size: 1.25rem; font-weight: 800; color: #166534; }
+        .claim-date { font-size: 0.85rem; color: #15803d; font-weight: 600; margin-top: 4px; }
+
+        /* ── Details Grid ── */
+        .details-section {
+            padding: 48px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+        .info-cell { display: flex; flex-direction: column; gap: 4px; }
+        .info-cell .label { font-size: 0.7rem; font-weight: 800; color: var(--receipt-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+        .info-cell .value { font-size: 1rem; font-weight: 700; }
+
+        /* ── Parent Highlight ── */
+        .actor-highlight {
+            margin: 0 48px 32px;
+            padding: 20px;
+            background: #fbfcfe;
+            border-radius: 16px;
+            border: 1px solid var(--receipt-border);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-size: 0.9rem;
+        }
+
+        /* ── Table Area ── */
+        .items-section { padding: 0 48px 48px; }
+        .items-table { width: 100%; border-collapse: collapse; }
+        .items-table th { text-align: left; padding: 12px 16px; font-size: 0.7rem; font-weight: 800; color: var(--receipt-muted); text-transform: uppercase; border-bottom: 2px solid var(--receipt-border); }
+        .items-table td { padding: 16px; border-bottom: 1px solid var(--receipt-border); vertical-align: middle; }
+        .items-table .total-row td { border-bottom: none; border-top: 2px solid var(--receipt-border); padding-top: 24px; }
+
+        .badge-cat { font-size: 0.7rem; font-weight: 800; padding: 4px 8px; border-radius: 6px; background: #f1f5f9; color: var(--receipt-muted); }
+
+        /* ── Footer ── */
+        .receipt-footer {
+            padding: 48px;
+            text-align: center;
+            border-top: 1px solid var(--receipt-border);
+            background: #fbfcfe;
+        }
+        .signature-line { margin-top: 48px; display: inline-block; border-top: 2px solid var(--receipt-text); padding-top: 8px; min-width: 240px; font-weight: 800; }
+
+        @media print {
+            .no-print { display: none; }
+            body { background: #fff; padding: 0; }
+            .receipt-container { box-shadow: none; border: 1px solid #000; border-radius: 0; max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="no-print">
+        <button onclick="window.print()" class="btn btn-print">🖨️ Print Receipt</button>
+        <a href="{{ url_for('cashier.cashier_reservation_view', reservation_id=header[0]) }}" class="btn btn-back">⬅ Back to Profile</a>
+    </div>
+
+    <div class="receipt-container">
         <!-- Header -->
         <div class="receipt-header">
-            <h1>🏫 {{ header[6] or 'Liceo de Majayjay' }}</h1>
-            <p class="branch">Official Reservation Receipt</p>
-            <p class="receipt-no">Reservation #{{ header[0] }} &nbsp;·&nbsp;
-                Claimed: {{ header[5].strftime('%B %d, %Y %I:%M %p') if header[5] else (header[4].strftime('%B %d, %Y')
-                if header[4] else '—') }}
-            </p>
-            <span class="badge badge-claimed">✅ CLAIMED</span>
+            <div class="brand-name">{{ header[6] or 'Liceo de Majayjay' }}</div>
+            <div class="brand-sub">Inventory Fulfillment Center</div>
+            <div class="receipt-label">Reservation Acceptance Proof</div>
         </div>
 
-        <!-- Student Info -->
-        <div class="section">
-            <div class="section-title">Student Information</div>
-            <div class="info-grid">
-                <div class="info-item">
-                    <div class="lbl">Student ID / Username</div>
-                    <div class="val">{{ header[1] or '—' }}</div>
-                </div>
-                <div class="info-item">
-                    <div class="lbl">Student Name</div>
-                    <div class="val">
-                        {% if header|length > 10 and header[10] %}
-                        {{ header[10] }}
-                        {% else %}
-                        {{ header[1] or '—' }}
-                        {% endif %}
-                    </div>
-                </div>
-                <div class="info-item">
-                    <div class="lbl">Grade Level</div>
-                    <div class="val">{{ header[2] or '—' }}</div>
-                </div>
-                <div class="info-item">
-                    <div class="lbl">Reserved By</div>
-                    <div class="val">
-                        {% if header[7] == 'parent' %}👨‍👩‍👧 Parent{% else %}👨‍🎓 Student{% endif %}
-                    </div>
-                </div>
-            </div>
-
-            {% if header[7] == 'parent' and header[8] %}
-            <div class="parent-box" style="margin-top: 12px;">
-                <strong style="color:#7b1fa2;">👨‍👩‍👧 Reserved by Parent</strong><br>
-                <div style="margin-top:6px;">
-                    <span style="font-size:11px;color:#9c4dc4;font-weight:700;text-transform:uppercase;">Parent
-                        Name</span><br>
-                    <strong>{{ header[8] }}</strong>
-                </div>
-                {% if header[9] %}
-                <div style="margin-top:4px;">
-                    <span
-                        style="font-size:11px;color:#9c4dc4;font-weight:700;text-transform:uppercase;">Relationship</span><br>
-                    {{ header[9] }}
-                </div>
-                {% endif %}
-            </div>
-            {% endif %}
+        <!-- Banner -->
+        <div class="status-banner">
+            <div class="ref-no">REF-{{ "%05d"|format(header[0]) }}</div>
+            <div class="claim-date">Processed: {{ header[5].strftime('%B %d, %Y - %I:%M %p') if header[5] else 'Pending Full Fulfillment' }}</div>
         </div>
 
-        <!-- Items -->
-        <div class="section">
-            <div class="section-title">Reserved Items</div>
+        <!-- Meta Details -->
+        <div class="details-section">
+            <div class="info-cell">
+                <span class="label">Primary Student</span>
+                <span class="value">{{ header[10] or header[1] or '—' }}</span>
+            </div>
+            <div class="info-cell">
+                <span class="label">Student ID</span>
+                <span class="value">#{{ header[1] or '—' }}</span>
+            </div>
+            <div class="info-cell">
+                <span class="label">Reference Level</span>
+                <span class="value">{{ header[2] or '—' }}</span>
+            </div>
+            <div class="info-cell">
+                <span class="label">Request Status</span>
+                <span class="value" style="color: #166534;">✅ FULFILLED</span>
+            </div>
+        </div>
 
-            {# Detect which categories are present in items #}
-            {% set ns = namespace(has_book=false, has_uniform=false) %}
-            {% for it in items %}
-            {% if (it[5] or '') | upper == 'BOOK' %}{% set ns.has_book = true %}{% endif %}
-            {% if (it[5] or '') | upper == 'UNIFORM' %}{% set ns.has_uniform = true %}{% endif %}
-            {% endfor %}
+        <div class="actor-highlight">
+            <span style="font-size: 1.5rem;">{% if header[7] == 'parent' %}👨‍👩‍👧{% else %}👨‍🎓{% endif %}</span>
+            <div>
+                <div style="font-size: 0.7rem; font-weight: 800; color: var(--receipt-muted); text-transform: uppercase;">Request Originator</div>
+                <div style="font-weight: 700;">
+                    {% if header[7] == 'parent' %}
+                        Parent: {{ header[8] }} ({{ header[9] }})
+                    {% else %}
+                        Student Self-Request
+                    {% endif %}
+                </div>
+            </div>
+        </div>
 
-            <table>
+        <div class="items-section">
+            <table class="items-table">
                 <thead>
                     <tr>
-                        <th>Item</th>
-                        <th style="text-align:center;">Qty</th>
-                        {% if ns.has_book and not ns.has_uniform %}
-                        <th>📚 Publisher</th>
-                        {% elif ns.has_uniform and not ns.has_book %}
-                        <th>📐 Size</th>
-                        {% else %}
-                        <th>Publisher / Size</th>
-                        {% endif %}
-                        <th style="text-align:right;">Unit Price</th>
-                        <th style="text-align:right;">Total</th>
+                        <th>Selection Item</th>
+                        <th style="text-align: center;">Qty</th>
+                        <th>Specification</th>
+                        <th style="text-align: right;">Valuation</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for it in items %}
-                    {# it: [0]=item_name [1]=qty [2]=display_label [3]=unit_price [4]=line_total [5]=category #}
-                    {% set cat = (it[5] or '') | upper %}
                     <tr>
-                        <td><strong>{{ it[0] }}</strong></td>
-                        <td style="text-align:center;">{{ it[1] }}</td>
+                        <td>
+                            <div style="font-weight: 700;">{{ it[0] }}</div>
+                            <span class="badge-cat">{{ (it[5] or '')|upper }}</span>
+                        </td>
+                        <td style="text-align: center; font-weight: 800;">{{ it[1] }}</td>
                         <td>
                             {% if it[2] %}
-                            {% if cat == 'BOOK' %}
-                            <span class="size-pill size-book">{{ it[2] }}</span>
-                            {% elif cat == 'UNIFORM' %}
-                            <span class="size-pill size-uniform">{{ it[2] }}</span>
+                                <span style="font-size: 0.85rem; font-weight: 600; color: var(--receipt-accent);">{{ it[2] }}</span>
                             {% else %}
-                            <span class="size-pill size-uniform">{{ it[2] }}</span>
-                            {% endif %}
-                            {% else %}
-                            <span style="color:#bbb;">—</span>
+                                <span style="color: #cbd5e1;">—</span>
                             {% endif %}
                         </td>
-                        <td style="text-align:right;">₱{{ '%.2f'|format(it[3] or 0) }}</td>
-                        <td style="text-align:right;"><strong>₱{{ '%.2f'|format(it[4] or 0) }}</strong></td>
+                        <td style="text-align: right; font-weight: 800;">₱{{ '%.2f'|format(it[4] or 0) }}</td>
                     </tr>
                     {% endfor %}
                     <tr class="total-row">
-                        <td colspan="4" style="text-align:right; color:#1a2e5a;">GRAND TOTAL</td>
-                        <td style="text-align:right; color:#1a2e5a;">₱{{ '%.2f'|format(total or 0) }}</td>
+                        <td colspan="3" style="text-align: right; font-weight: 800; color: var(--receipt-muted); text-transform: uppercase; font-size: 0.75rem;">Total Value Delivered</td>
+                        <td style="text-align: right; font-size: 1.5rem; font-weight: 900; color: var(--receipt-accent);">₱{{ '%.2f'|format(total or 0) }}</td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
-
-        <!-- Footer -->
         <div class="receipt-footer">
-            <p>Thank you for your payment!</p>
-            <p style="margin-top:24px;">_______________________________</p>
-            <p>Authorized Signature</p>
-        </div>
+            <p style="font-weight: 600;">Inventory movement confirmed and verified.</p>
+            <p style="font-size: 0.7rem; color: var(--receipt-muted); margin-top: 4px;">This serves as official proof of item turnover.</p>
 
-        <!-- Actions -->
-        <div class="no-print" style="margin-top:24px;">
-            <button onclick="window.print()" class="btn btn-primary">🖨️ Print Receipt</button>
-            <a href="{{ url_for('cashier.cashier_reservation_view', reservation_id=header[0]) }}" class="btn">⬅ Back to
-                Reservation</a>
+            <div style="margin-top: 48px;">
+                <div class="signature-line">Fulfillment Officer</div>
+            </div>
         </div>
-
     </div>
-</div>
-{% endblock %}
+
+</body>
+</html>

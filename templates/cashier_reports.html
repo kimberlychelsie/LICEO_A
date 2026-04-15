@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Financial Report{% endblock %}
+
+{% block styles %}
+<style>
+    :root {
+        --report-primary: #1e3a8a;
+        --report-accent: #3b82f6;
+        --report-bg: #f8fafc;
+        --report-card: #ffffff;
+        --report-border: #e2e8f0;
+        --report-text: #0f172a;
+        --report-muted: #64748b;
+        --report-success: #10b981;
+        --report-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+    }
+
+    .report-wrap {
+        padding: 40px;
+        max-width: 1400px;
+        margin: 0 auto;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    /* ── Header ── */
+    .report-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-end;
+        margin-bottom: 40px;
+    }
+
+    .header-info h1 {
+        font-size: 2.25rem;
+        font-weight: 800;
+        color: var(--report-text);
+        letter-spacing: -0.02em;
+        margin-bottom: 8px;
+    }
+
+    .header-info p {
+        color: var(--report-muted);
+        font-weight: 500;
+    }
+
+    /* ── Quick Stats Grid ── */
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+
+    .stat-card {
+        background: var(--report-card);
+        padding: 32px;
+        border-radius: 24px;
+        border: 1px solid var(--report-border);
+        box-shadow: var(--report-shadow);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; height: 4px;
+    }
+
+    .stat-collection::before { background: var(--report-success); }
+    .stat-volume::before { background: var(--report-accent); }
+
+    .stat-label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--report-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 12px;
+    }
+
+    .stat-value {
+        font-size: 2.25rem;
+        font-weight: 900;
+        color: var(--report-text);
+    }
+
+    /* ── Date Logic ── */
+    .date-selector-card {
+        background: var(--report-card);
+        padding: 24px 32px;
+        border-radius: 24px;
+        border: 1px solid var(--report-border);
+        box-shadow: var(--report-shadow);
+        margin-bottom: 32px;
+        display: flex;
+        align-items: center;
+        gap: 24px;
+    }
+
+    .form-label {
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: var(--report-muted);
+    }
+
+    .date-input {
+        padding: 10px 16px;
+        border-radius: 10px;
+        border: 1.5px solid var(--report-border);
+        font-family: inherit;
+        font-weight: 600;
+        color: var(--report-text);
+        background: #fbfcfe;
+    }
+
+    .btn-generate {
+        padding: 10px 24px;
+        background: var(--report-primary);
+        color: #fff;
+        border-radius: 10px;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-generate:hover {
+        background: #1e40af;
+        transform: translateY(-1px);
+    }
+
+    /* ── Table Section ── */
+    .data-card {
+        background: var(--report-card);
+        border-radius: 24px;
+        border: 1px solid var(--report-border);
+        box-shadow: var(--report-shadow);
+        overflow: hidden;
+    }
+
+    .data-table-header {
+        padding: 24px 32px;
+        background: #fbfcfe;
+        border-bottom: 1px solid var(--report-border);
+    }
+
+    .data-table-header h2 {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--report-primary);
+    }
+
+    .table-wrapper { overflow-x: auto; }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    th {
+        padding: 20px 24px;
+        background: #f8fafc;
+        font-size: 0.7rem;
+        font-weight: 800;
+        color: var(--report-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 2px solid var(--report-border);
+    }
+
+    td {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--report-border);
+        font-size: 0.935rem;
+        font-weight: 500;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fbfcfe; }
+
+    .receipt-pill {
+        display: inline-block;
+        padding: 4px 10px;
+        background: #eff6ff;
+        color: #1e40af;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.75rem;
+    }
+
+    .method-badge {
+        padding: 4px 12px;
+        background: #f1f5f9;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--report-muted);
+        text-transform: uppercase;
+    }
+
+    .btn-view {
+        padding: 8px 16px;
+        border-radius: 8px;
+        border: 1px solid var(--report-border);
+        text-decoration: none;
+        color: var(--report-text);
+        font-weight: 700;
+        font-size: 0.8rem;
+        transition: all 0.2s;
+    }
+
+    .btn-view:hover { background: #f1f5f9; border-color: var(--report-accent); }
+
+    .empty-state {
+        padding: 80px;
+        text-align: center;
+        color: var(--report-muted);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="report-wrap">
+    
+    <div class="report-header">
+        <div class="header-info">
+            <h1>Daily Financial Report</h1>
+            <p>Auditing collections and transactions for the branch.</p>
+        </div>
+        <a href="{{ url_for('cashier.dashboard') }}" style="color: var(--report-muted); text-decoration: none; font-weight: 700;">⬅ Return to Console</a>
+    </div>
+
+    <!-- Date selector -->
+    <form method="POST" class="date-selector-card">
+        <span class="form-label">Reviewing reports for:</span>
+        <input type="date" name="report_date" class="date-input" value="{{ report_date }}">
+        <button type="submit" class="btn-generate">🔄 Refresh Report</button>
+        <div style="margin-left: auto;">
+            <button type="button" onclick="window.print()" class="btn-generate" style="background: var(--report-success);">🖨️ Print Report</button>
+        </div>
+    </form>
+
+    <!-- Summary stats -->
+    <div class="summary-grid">
+        <div class="stat-card stat-collection">
+            <div class="stat-label">Total Cash Collected</div>
+            <div class="stat-value">₱{{ "%.2f"|format(summary.total_collected) }}</div>
+        </div>
+        <div class="stat-card stat-volume">
+            <div class="stat-label">Transaction Volume</div>
+            <div class="stat-value">{{ summary.transaction_count }}</div>
+        </div>
+    </div>
+
+    <!-- Details table -->
+    <div class="data-card">
+        <div class="data-table-header">
+            <h2>Detailed Transaction Logs</h2>
+        </div>
+        
+        {% if payments %}
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>OR Number</th>
+                        <th>Student Name</th>
+                        <th>Level</th>
+                        <th>Account</th>
+                        <th>Mode</th>
+                        <th>Collection</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in payments %}
+                    <tr>
+                        <td><span class="receipt-pill">{{ p.receipt_number }}</span></td>
+                        <td>
+                            <div style="font-weight: 700; color: var(--report-text);">{{ p.student_name }}</div>
+                            <div style="font-size: 0.75rem; color: var(--report-muted);">{{ p.payment_date.strftime('%I:%M %p') }}</div>
+                        </td>
+                        <td>Grade {{ p.grade_level }}</td>
+                        <td>#{{ p.branch_enrollment_no }}</td>
+                        <td><span class="method-badge">{{ p.payment_method|title }}</span></td>
+                        <td><strong style="color: var(--report-primary);">₱{{ "%.2f"|format(p.amount) }}</strong></td>
+                        <td>
+                            <a href="{{ url_for('cashier.print_receipt', payment_id=p.payment_id) }}" class="btn-view">View OR</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div style="font-size: 3rem; margin-bottom: 16px;">📊</div>
+            <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--report-text);">Zero Transactions for this date</h3>
+            <p style="margin-top: 8px;">Selected date: {{ report_date }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

@@ -3,270 +3,523 @@
 {% block title %}{{ child.student_name }} - Details{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header">{{ child.student_name }} - Enrollment Details</div>
+<style>
+    .detail-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+    }
+    .detail-title h1 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin: 0;
+        color: var(--text);
+    }
+    .detail-title p {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-top: 4px;
+    }
 
-    <!-- Student Information -->
-    <div style="margin-bottom: 2rem; padding: 1rem; background: #f9fafb; border-radius: 6px;">
-        <h3 style="margin-bottom: 1rem;">Student Information</h3>
-        <div class="grid grid-2">
-            <div>
-                <p><strong>Enrollment ID:</strong> #{{ child.branch_enrollment_no }}</p>
-                <p><strong>Name:</strong> {{ child.student_name }}</p>
-                <p><strong>Grade Level:</strong> {{ child.grade_level }}</p>
-                <p><strong>Gender:</strong> {{ child.gender }}</p>
-                <p><strong>Date of Birth:</strong> {{ child.dob }}</p>
-            </div>
-            <div>
-                <p><strong>Branch:</strong> {{ child.branch_name }}</p>
-                <p><strong>Location:</strong> {{ child.location }}</p>
-                <p><strong>Contact:</strong> {{ child.contact_number }}</p>
-                <p><strong>Previous School:</strong> {{ child.previous_school or 'N/A' }}</p>
-            </div>
-        </div>
+    .profile-card {
+        background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+        border-radius: 16px;
+        padding: 30px;
+        color: white;
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        box-shadow: 0 10px 25px rgba(37,99,235,0.15);
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .profile-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.2);
+        backdrop-filter: blur(8px);
+        border: 2px solid rgba(255,255,255,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        font-weight: 800;
+        flex-shrink: 0;
+    }
+
+    .profile-info {
+        flex: 1;
+        z-index: 1;
+    }
+
+    .profile-name {
+        font-size: 1.8rem;
+        font-weight: 800;
+        margin: 0 0 4px 0;
+        letter-spacing: -0.02em;
+    }
+    
+    .profile-meta {
+        font-size: 1rem;
+        opacity: 0.9;
+        font-weight: 500;
+        display: flex;
+        gap: 16px;
+        flex-wrap: wrap;
+    }
+
+    .status-badge-lg {
+        position: absolute;
+        top: 30px;
+        right: 30px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 800;
+        font-size: 0.85rem;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        background: rgba(255,255,255,0.95);
+        color: #1e3a8a;
+    }
+    .status-badge-lg.approved { color: #16a34a; }
+    .status-badge-lg.rejected { color: #dc2626; }
+    .status-badge-lg.pending { color: #d97706; }
+
+    .content-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+
+    @media (max-width: 900px) {
+        .content-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .info-card {
+        background: var(--card);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        overflow: hidden;
+    }
+
+    .info-card-header {
+        padding: 16px 20px;
+        font-weight: 700;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 1.1rem;
+        color: var(--text);
+    }
+    
+    .info-card-body {
+        padding: 20px;
+    }
+
+    .data-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .data-item-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: var(--muted);
+        letter-spacing: 0.05em;
+        font-weight: 600;
+        margin-bottom: 4px;
+    }
+
+    .data-item-value {
+        font-size: 1rem;
+        color: var(--text);
+        font-weight: 600;
+    }
+
+    .modern-table-container {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .modern-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+
+    .modern-table th {
+        background: #f8fafc;
+        text-align: left;
+        padding: 12px 16px;
+        color: var(--muted);
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        font-weight: 700;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .modern-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
+        font-weight: 500;
+    }
+
+    .modern-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .empty-message {
+        padding: 30px;
+        text-align: center;
+        color: var(--muted);
+        font-style: italic;
+        background: #f8fafc;
+        border-radius: 12px;
+    }
+
+    .doc-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: #f1f5f9;
+        color: #2563eb;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background 0.2s;
+        margin-bottom: 8px;
+        width: 100%;
+    }
+    
+    .doc-link:hover {
+        background: #e2e8f0;
+    }
+
+    .score-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+
+</style>
+
+<div class="detail-header">
+    <div class="detail-title">
+        <h1>Student Profile</h1>
+        <p>Comprehensive academic and enrollment details</p>
     </div>
-
-    <!-- Enrollment Status -->
-    <div style="margin-bottom: 2rem;">
-        <h3 style="margin-bottom: 0.5rem;">Enrollment Status</h3>
-        {% if child.status == 'approved' %}
-        <span class="badge badge-approved">Approved</span>
-        {% elif child.status == 'rejected' %}
-        <span class="badge badge-rejected">Rejected</span>
-        {% else %}
-        <span class="badge badge-pending">Pending Review</span>
-        {% endif %}
-        <p style="margin-top: 0.5rem; color: #6b7280;">
-            Submitted on: {{ child.created_at.strftime('%B %d, %Y') }}
-        </p>
-    </div>
-
-    <!-- Guardian Information -->
-    <div style="margin-bottom: 2rem; padding: 1rem; background: #f9fafb; border-radius: 6px;">
-        <h3 style="margin-bottom: 1rem;">Guardian Information</h3>
-        <p><strong>Name:</strong> {{ child.guardian_name }}</p>
-        <p><strong>Contact:</strong> {{ child.guardian_contact }}</p>
-        <p><strong>Address:</strong> {{ child.address }}</p>
-    </div>
-
-    <!-- Documents -->
-    <div style="margin-bottom: 2rem;">
-        <h3 style="margin-bottom: 1rem;">Uploaded Documents</h3>
-        {% if documents %}
-        <ul style="list-style: none; padding: 0;">
-            {% for doc in documents %}
-            <li style="margin-bottom: 0.5rem;">
-                <a href="{{ doc.file_path }}" target="_blank" style="color: #2563eb;">
-                    📄 {{ doc.file_name }}
-                </a>
-            </li>
-            {% endfor %}
-        </ul>
-        {% else %}
-        <p style="color: #6b7280;">No documents uploaded</p>
-        {% endif %}
-    </div>
-
-    <!-- Books -->
-    <div style="margin-bottom: 2rem;">
-        <h3 style="margin-bottom: 1rem;">Books Ordered</h3>
-        {% if books %}
-        <div class="table-responsive">
-        <table style="width:100%;border-radius:6px;">
-            <thead>
-                <tr>
-                    <th>Book Name</th>
-                    <th>Quantity</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for book in books %}
-                <tr>
-                    <td>{{ book.book_name }}</td>
-                    <td>{{ book.quantity }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        </div>
-        {% else %}
-        <p style="color: #6b7280;">No books ordered</p>
-        {% endif %}
-    </div>
-
-    <!-- Uniforms -->
-    <div style="margin-bottom: 2rem;">
-        <h3 style="margin-bottom: 1rem;">Uniforms Ordered</h3>
-        {% if uniforms %}
-        <div class="table-responsive">
-        <table style="width:100%;border-radius:6px;">
-            <thead>
-                <tr>
-                    <th>Type</th>
-                    <th>Size</th>
-                    <th>Quantity</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for uniform in uniforms %}
-                <tr>
-                    <td>{{ uniform.uniform_type }}</td>
-                    <td>{{ uniform.size }}</td>
-                    <td>{{ uniform.quantity }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-        </div>
-        {% else %}
-        <p style="color: #6b7280;">No uniforms ordered</p>
-        {% endif %}
-    </div>
-
-    <div class="card" style="margin-bottom: 2rem;">
-        <div class="card-header" style="background: #2563eb; color: #fff; border-radius: 6px 6px 0 0; font-weight:bold;">
-            <span style="font-size:1.2em;">📝</span> Activities & Project Scores
-        </div>
-        <div class="table-responsive" style="padding:1rem;">
-            {% if activity_scores %}
-            <table class="striped" style="width:100%;border-radius:6px;">
-                <thead>
-                    <tr style="background:#f1f5f9;">
-                        <th>Subject</th>
-                        <th>Activity</th>
-                        <th>Date</th>
-                        <th>Score</th>
-                        <th>%</th>
-                        <th>Remarks</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for a in activity_scores %}
-                    <tr>
-                        <td>{{ a.subject_name }}</td>
-                        <td>{{ a.activity_title }}</td>
-                        <td>{{ a.due_date.strftime('%b %d %Y') if a.due_date else '' }}</td>
-                        <td>{{ a.raw_score }}</td>
-                        <td>{{ a.percentage }}</td>
-                        <td>
-                            {% if a.remarks %}
-                            <span class="badge badge-info" style="background:#0ea5e9;color:white;border-radius:12px;">{{ a.remarks }}</span>
-                            {% else %}
-                            <span class="muted" style="color:#64748b;">-</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="muted" style="color:#64748b;padding:1rem;">No graded activities yet.</div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Quiz Scores (SEPARATED) -->
-    <div class="card" style="margin-bottom: 2rem;">
-        <div class="card-header" style="background: #0ea5e9; color: #fff; border-radius: 6px 6px 0 0; font-weight:bold;">
-            <span style="font-size:1.2em;">📝</span> Quiz Scores
-        </div>
-        <div class="table-responsive" style="padding:1rem;">
-            {% if quiz_scores %}
-            <table class="striped" style="width:100%;border-radius:6px;">
-                <thead>
-                    <tr style="background:#f1f5f9;">
-                        <th>Subject</th>
-                        <th>Title</th>
-                        <th>Date</th>
-                        <th>Score</th>
-                        <th>Total Points</th>
-                        <th>Status</th>
-                        <th>Passing</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for q in quiz_scores %}
-                    <tr>
-                        <td>{{ q.subject_name }}</td>
-                        <td>{{ q.exam_title }}</td>
-                        <td>{{ q.submitted_at.strftime('%b %d %Y') if q.submitted_at else '' }}</td>
-                        <td>{{ q.score }}</td>
-                        <td>{{ q.total_points }}</td>
-                        <td>
-                            <span class="badge badge-{{ q.result_status|lower }}" style="background:#f59e42;color:#fff;border-radius:12px;">
-                                {{ q.result_status|capitalize }}
-                            </span>
-                        </td>
-                        <td>
-                            {% if (q.score or 0) >= (q.passing_score or 75) %}
-                                <span style="color:#166534;font-weight:bold;">Passed</span>
-                            {% else %}
-                                <span style="color:#991b1b;font-weight:bold;">Failed</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="muted" style="color:#64748b;padding:1rem;">No quiz scores yet.</div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Exam Scores (SEPARATED) -->
-    <div class="card" style="margin-bottom: 2rem;">
-        <div class="card-header" style="background: #eab308; color: #fff; border-radius: 6px 6px 0 0; font-weight:bold;">
-            <span style="font-size:1.2em;">🧑‍🏫</span> Exam Scores
-        </div>
-        <div class="table-responsive" style="padding:1rem;">
-            {% if exam_scores %}
-            <table class="striped" style="width:100%;border-radius:6px;">
-                <thead>
-                    <tr style="background:#f1f5f9;">
-                        <th>Subject</th>
-                        <th>Title</th>
-                        <th>Date</th>
-                        <th>Score</th>
-                        <th>Total Points</th>
-                        <th>Status</th>
-                        <th>Passing</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for e in exam_scores %}
-                    <tr>
-                        <td>{{ e.subject_name }}</td>
-                        <td>{{ e.exam_title }}</td>
-                        <td>{{ e.submitted_at.strftime('%b %d %Y') if e.submitted_at else '' }}</td>
-                        <td>{{ e.score }}</td>
-                        <td>{{ e.total_points }}</td>
-                        <td>
-                            <span class="badge badge-{{ e.result_status|lower }}" style="background:#f59e42;color:#fff;border-radius:12px;">
-                                {{ e.result_status|capitalize }}
-                            </span>
-                        </td>
-                        <td>
-                            {% if (e.score or 0) >= (e.passing_score or 75) %}
-                                <span style="color:#166534;font-weight:bold;">Passed</span>
-                            {% else %}
-                                <span style="color:#991b1b;font-weight:bold;">Failed</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-            {% else %}
-            <div class="muted" style="color:#64748b;padding:1rem;">No exam scores yet.</div>
-            {% endif %}
-        </div>
-    </div>
-
-    <!-- Actions -->
-    <div style="display: flex; gap: 1rem;">
-        <a href="{{ url_for('parent.child_bills', enrollment_id=child.enrollment_id) }}" class="btn btn-primary">View Billing</a>
-        <a href="{{ url_for('parent.dashboard') }}" class="btn btn-secondary">⬅ Back</a>
+    <div style="display: flex; gap: 12px;">
+        <a href="{{ url_for('parent.dashboard') }}" class="btn btn-secondary">⬅ Back to Dashboard</a>
+        <a href="{{ url_for('parent.child_bills', enrollment_id=child.enrollment_id) }}" class="btn btn-primary">💳 View Billing</a>
     </div>
 </div>
+
+<div class="profile-card">
+    <div class="profile-avatar">
+        {{ child.student_name[0]|upper }}
+    </div>
+    <div class="profile-info">
+        <h2 class="profile-name">{{ child.student_name }}</h2>
+        <div class="profile-meta">
+            <span>🎓 Grade {{ child.grade_level }}</span>
+            <span>📍 {{ child.branch_name }} ({{ child.location }})</span>
+            <span>🆔 #{{ child.branch_enrollment_no }}</span>
+        </div>
+    </div>
+    
+    {% if child.status == 'approved' %}
+    <div class="status-badge-lg approved">✓ Officially Enrolled</div>
+    {% elif child.status == 'rejected' %}
+    <div class="status-badge-lg rejected">✕ Rejected</div>
+    {% else %}
+    <div class="status-badge-lg pending">⧗ Pending Review</div>
+    {% endif %}
+</div>
+
+<div class="content-grid">
+    <!-- LEFT COLUMN -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+        <div class="info-card">
+            <div class="info-card-header" style="background: #f8fafc;">
+                👤 Personal Information
+            </div>
+            <div class="info-card-body data-grid">
+                <div>
+                    <div class="data-item-label">Gender</div>
+                    <div class="data-item-value">{{ child.gender }}</div>
+                </div>
+                <div>
+                    <div class="data-item-label">Date of Birth</div>
+                    <div class="data-item-value">{{ child.dob }}</div>
+                </div>
+                <div>
+                    <div class="data-item-label">Contact Number</div>
+                    <div class="data-item-value">{{ child.contact_number }}</div>
+                </div>
+                <div>
+                    <div class="data-item-label">Previous School</div>
+                    <div class="data-item-value">{{ child.previous_school or 'N/A' }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-card">
+            <div class="info-card-header" style="background: #f8fafc;">
+                👨‍👩‍👦 Guardian Information
+            </div>
+            <div class="info-card-body data-grid" style="grid-template-columns: 1fr;">
+                <div>
+                    <div class="data-item-label">Guardian Name</div>
+                    <div class="data-item-value">{{ child.guardian_name }}</div>
+                </div>
+                <div>
+                    <div class="data-item-label">Contact Number</div>
+                    <div class="data-item-value">{{ child.guardian_contact }}</div>
+                </div>
+                <div>
+                    <div class="data-item-label">Home Address</div>
+                    <div class="data-item-value">{{ child.address }}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-card">
+            <div class="info-card-header" style="background: #f8fafc;">
+                📄 Uploaded Documents
+            </div>
+            <div class="info-card-body">
+                {% if documents %}
+                    <div style="display: flex; flex-direction: column;">
+                        {% for doc in documents %}
+                        <a href="{{ doc.file_path }}" target="_blank" class="doc-link">
+                            <span style="font-size: 1.2rem;">📎</span> {{ doc.file_name }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="empty-message">No documents have been uploaded yet.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div style="display: flex; flex-direction: column; gap: 24px;">
+        <div class="info-card">
+            <div class="info-card-header" style="background: #eef2ff; color: #4f46e5;">
+                📚 Books Ordered
+            </div>
+            <div class="info-card-body">
+                {% if books %}
+                <div class="modern-table-container">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>Book Name</th>
+                                <th style="text-align: right;">Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for book in books %}
+                            <tr>
+                                <td>{{ book.book_name }}</td>
+                                <td style="text-align: right; font-weight: 700;">{{ book.quantity }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-message">No books ordered.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="info-card">
+            <div class="info-card-header" style="background: #f0fdf4; color: #16a34a;">
+                👕 Uniforms Ordered
+            </div>
+            <div class="info-card-body">
+                {% if uniforms %}
+                <div class="modern-table-container">
+                    <table class="modern-table">
+                        <thead>
+                            <tr>
+                                <th>Uniform Type</th>
+                                <th>Size</th>
+                                <th style="text-align: right;">Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for uniform in uniforms %}
+                            <tr>
+                                <td>{{ uniform.uniform_type }}</td>
+                                <td><span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-weight: 700;">{{ uniform.size }}</span></td>
+                                <td style="text-align: right; font-weight: 700;">{{ uniform.quantity }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="empty-message">No uniforms ordered.</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ======================= SCORES SECTION ======================= -->
+
+<div class="info-card" style="margin-bottom: 24px;">
+    <div class="info-card-header" style="background: #eff6ff; color: #2563eb; font-size: 1.2rem;">
+        📝 Activities & Project Scores
+    </div>
+    {% if activity_scores %}
+    <div class="modern-table-container" style="border: none; border-top: 1px solid var(--border); border-radius: 0 0 16px 16px;">
+        <table class="modern-table">
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Activity</th>
+                    <th>Date</th>
+                    <th style="text-align: center;">Score</th>
+                    <th style="text-align: center;">%</th>
+                    <th style="text-align: right;">Remarks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for a in activity_scores %}
+                <tr>
+                    <td><span style="font-weight: 700; color: #1e3a8a;">{{ a.subject_name }}</span></td>
+                    <td>{{ a.activity_title }}</td>
+                    <td>{{ a.due_date.strftime('%b %d, %Y') if a.due_date else '' }}</td>
+                    <td style="text-align: center;"><span style="font-weight: 800; font-size: 1.1rem;">{{ a.raw_score }}</span></td>
+                    <td style="text-align: center;">{{ a.percentage }}%</td>
+                    <td style="text-align: right;">
+                        {% if a.remarks %}
+                        <span class="score-badge" style="background: #e0f2fe; color: #0284c7;">{{ a.remarks }}</span>
+                        {% else %}
+                        <span style="color: #cbd5e1;">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-message" style="background: #fff; border-radius: 0 0 16px 16px;">No graded activities available yet.</div>
+    {% endif %}
+</div>
+
+<div class="info-card" style="margin-bottom: 24px;">
+    <div class="info-card-header" style="background: #fefce8; color: #ca8a04; font-size: 1.2rem;">
+        🎯 Quiz Scores
+    </div>
+    {% if quiz_scores %}
+    <div class="modern-table-container" style="border: none; border-top: 1px solid var(--border); border-radius: 0 0 16px 16px;">
+        <table class="modern-table">
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Quiz Title</th>
+                    <th>Date</th>
+                    <th style="text-align: center;">Score</th>
+                    <th style="text-align: center;">Status</th>
+                    <th style="text-align: right;">Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for q in quiz_scores %}
+                <tr>
+                    <td><span style="font-weight: 700;">{{ q.subject_name }}</span></td>
+                    <td>{{ q.exam_title }}</td>
+                    <td>{{ q.submitted_at.strftime('%b %d, %Y') if q.submitted_at else '' }}</td>
+                    <td style="text-align: center;">
+                        <span style="font-weight: 800; font-size: 1.1rem;">{{ q.score }}</span> <span style="color:var(--muted); font-size:0.8rem;">/ {{ q.total_points }}</span>
+                    </td>
+                    <td style="text-align: center;">
+                        <span class="score-badge" style="background: #f1f5f9; color: #475569; text-transform: uppercase; font-size: 0.7rem;">{{ q.result_status }}</span>
+                    </td>
+                    <td style="text-align: right;">
+                        {% if (q.score or 0) >= (q.passing_score or 75) %}
+                            <span class="score-badge" style="background: #dcfce7; color: #166534;">Passed</span>
+                        {% else %}
+                            <span class="score-badge" style="background: #fee2e2; color: #991b1b;">Failed</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-message" style="background: #fff; border-radius: 0 0 16px 16px;">No quiz scores available yet.</div>
+    {% endif %}
+</div>
+
+<div class="info-card" style="margin-bottom: 40px;">
+    <div class="info-card-header" style="background: #fdf2f8; color: #be185d; font-size: 1.2rem;">
+        🎓 Exam Scores
+    </div>
+    {% if exam_scores %}
+    <div class="modern-table-container" style="border: none; border-top: 1px solid var(--border); border-radius: 0 0 16px 16px;">
+        <table class="modern-table">
+            <thead>
+                <tr>
+                    <th>Subject</th>
+                    <th>Exam Title</th>
+                    <th>Date</th>
+                    <th style="text-align: center;">Score</th>
+                    <th style="text-align: center;">Status</th>
+                    <th style="text-align: right;">Result</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for e in exam_scores %}
+                <tr>
+                    <td><span style="font-weight: 700;">{{ e.subject_name }}</span></td>
+                    <td>{{ e.exam_title }}</td>
+                    <td>{{ e.submitted_at.strftime('%b %d, %Y') if e.submitted_at else '' }}</td>
+                    <td style="text-align: center;">
+                        <span style="font-weight: 800; font-size: 1.1rem;">{{ e.score }}</span> <span style="color:var(--muted); font-size:0.8rem;">/ {{ e.total_points }}</span>
+                    </td>
+                    <td style="text-align: center;">
+                        <span class="score-badge" style="background: #f1f5f9; color: #475569; text-transform: uppercase; font-size: 0.7rem;">{{ e.result_status }}</span>
+                    </td>
+                    <td style="text-align: right;">
+                        {% if (e.score or 0) >= (e.passing_score or 75) %}
+                            <span class="score-badge" style="background: #dcfce7; color: #166534;">Passed</span>
+                        {% else %}
+                            <span class="score-badge" style="background: #fee2e2; color: #991b1b;">Failed</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="empty-message" style="background: #fff; border-radius: 0 0 16px 16px;">No exam scores available yet.</div>
+    {% endif %}
+</div>
+
 {% endblock %}

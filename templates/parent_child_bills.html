@@ -3,119 +3,299 @@
 {% block title %}{{ child.student_name }} - Billing{% endblock %}
 
 {% block content %}
-<div class="card">
-    <div class="card-header">{{ child.student_name }} - Billing Information</div>
+<style>
+    .billing-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+    }
+    .billing-title h1 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin: 0;
+        color: var(--text);
+    }
+    .billing-title p {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-top: 4px;
+    }
 
-    <!-- Student Basic Info -->
-    <div style="margin-bottom: 2rem; padding: 1rem; background: #f9fafb; border-radius: 6px;">
-        <p><strong>Student:</strong> {{ child.student_name }}</p>
-        <p><strong>Enrollment ID:</strong> #{{ child.branch_enrollment_no }}</p>
-        <p><strong>Grade Level:</strong> {{ child.grade_level }}</p>
+    .info-card {
+        background: var(--card);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        overflow: hidden;
+        margin-bottom: 24px;
+    }
+
+    .info-card-header {
+        padding: 16px 20px;
+        font-weight: 700;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 1.1rem;
+        color: var(--text);
+    }
+    
+    .info-card-body {
+        padding: 24px;
+    }
+
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+
+    .summary-item {
+        background: #f8fafc;
+        padding: 16px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+    }
+
+    .summary-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        color: var(--muted);
+        letter-spacing: 0.05em;
+        font-weight: 700;
+        margin-bottom: 4px;
+    }
+
+    .summary-value {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--text);
+    }
+
+    .breakdown-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.95rem;
+    }
+
+    .breakdown-row:last-child {
+        border-bottom: none;
+    }
+
+    .breakdown-label {
+        color: var(--muted);
+        font-weight: 500;
+    }
+
+    .breakdown-value {
+        font-weight: 700;
+        color: var(--text);
+    }
+
+    .modern-table-container {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+    }
+
+    .modern-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+
+    .modern-table th {
+        background: #f8fafc;
+        text-align: left;
+        padding: 12px 16px;
+        color: var(--muted);
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        font-weight: 700;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .modern-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
+        font-weight: 500;
+    }
+
+    .modern-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .status-badge-lg {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-weight: 800;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .status-badge-lg.paid { background: #dcfce7; color: #166534; }
+    .status-badge-lg.partial { background: #fef3c7; color: #b45309; }
+    .status-badge-lg.unpaid { background: #fee2e2; color: #991b1b; }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        background: white;
+        border-radius: 16px;
+        border: 1px dashed var(--border);
+    }
+
+    .empty-state h3 {
+        font-size: 1.25rem;
+        color: var(--text);
+        margin-bottom: 8px;
+    }
+
+    .empty-state p {
+        color: var(--muted);
+        margin-bottom: 24px;
+    }
+</style>
+
+<div class="billing-header">
+    <div class="billing-title">
+        <h1>Billing Dashboard</h1>
+        <p>Manage accounts and payment history for <strong style="color:var(--text);">{{ child.student_name }}</strong></p>
     </div>
+    <div style="display: flex; gap: 12px;">
+        <a href="{{ url_for('parent.dashboard') }}" class="btn btn-secondary">⬅ Back</a>
+        <a href="{{ url_for('parent.child_detail', enrollment_id=child.enrollment_id) }}" class="btn btn-primary">📄 View Details</a>
+    </div>
+</div>
 
-    {% if bill %}
-    <!-- Bill Details -->
-    <h3 style="margin-bottom: 1rem;">Bill Breakdown</h3>
-    <table style="margin-bottom: 2rem;">
-        <tr>
-            <td>Tuition Fee</td>
-            <td class="text-right">₱{{ "%.2f"|format(bill.tuition_fee) }}</td>
-        </tr>
-        <tr>
-            <td>Book Fee</td>
-            <td class="text-right">₱{{ "%.2f"|format(bill.books_fee) }}</td>
-        </tr>
-        <tr>
-            <td>Uniform Fee</td>
-            <td class="text-right">₱{{ "%.2f"|format(bill.uniform_fee) }}</td>
-        </tr>
-        {% if bill.other_fees > 0 %}
-        <tr>
-            <td>Other Fees</td>
-            <td class="text-right">₱{{ "%.2f"|format(bill.other_fees) }}</td>
-        </tr>
-        {% endif %}
-        <tr style="font-weight: bold; border-top: 2px solid #333;">
-            <td>Total Amount</td>
-            <td class="text-right">₱{{ "%.2f"|format(bill.total_amount) }}</td>
-        </tr>
-        <tr style="font-weight: bold;">
-            <td>Amount Paid</td>
-            <td class="text-right" style="color: #10b981;">₱{{ "%.2f"|format(bill.amount_paid) }}</td>
-        </tr>
-        <tr style="font-weight: bold; font-size: 1.1rem;">
-            <td>Balance</td>
-            <td class="text-right" style="color: {{ 'green' if bill.balance == 0 else '#ef4444' }};">
-                ₱{{ "%.2f"|format(bill.balance) }}
-            </td>
-        </tr>
-    </table>
+<div class="info-card">
+    <div class="info-card-header" style="background: #f8fafc;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+            🎓 Student Information
+        </div>
+        <span style="font-size: 0.85rem; color: var(--muted); font-weight: 500;">
+            Grade: <strong>{{ child.grade_level }}</strong> &nbsp;|&nbsp; ID: <strong>#{{ child.branch_enrollment_no }}</strong>
+        </span>
+    </div>
+</div>
 
-    <div style="margin-bottom: 2rem;">
-        <strong>Payment Status:</strong>
-        {% if bill.status == 'paid' %}
-        <span class="badge badge-paid">Fully Paid</span>
-        {% elif bill.status == 'partial' %}
-        <span class="badge badge-partial">Partially Paid</span>
-        {% else %}
-        <span class="badge badge-unpaid">Unpaid</span>
-        {% endif %}
+{% if bill %}
+<div class="summary-grid" style="margin-bottom: 24px;">
+    <div class="summary-item" style="border-left: 4px solid #3b82f6;">
+        <div class="summary-label">Total Amount Due</div>
+        <div class="summary-value">₱{{ "{:,.2f}".format(bill.total_amount) }}</div>
+    </div>
+    <div class="summary-item" style="border-left: 4px solid #16a34a;">
+        <div class="summary-label">Total Paid</div>
+        <div class="summary-value" style="color: #16a34a;">₱{{ "{:,.2f}".format(bill.amount_paid) }}</div>
+    </div>
+    <div class="summary-item" style="border-left: 4px solid {% if bill.balance > 0 %}#dc2626{% else %}#10b981{% endif %};">
+        <div class="summary-label">Remaining Balance</div>
+        <div class="summary-value" style="color: {% if bill.balance > 0 %}#dc2626{% else %}#10b981{% endif %};">
+            ₱{{ "{:,.2f}".format(bill.balance) }}
+        </div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 24px; margin-bottom: 24px;">
+    <!-- Bill Breakdown -->
+    <div class="info-card" style="margin-bottom: 0;">
+        <div class="info-card-header" style="background: #eff6ff; color: #2563eb;">
+            <div>🧾 Assessment Breakdown</div>
+            {% if bill.status == 'paid' %}
+            <span class="status-badge-lg paid">Fully Paid</span>
+            {% elif bill.status == 'partial' %}
+            <span class="status-badge-lg partial">Partially Paid</span>
+            {% else %}
+            <span class="status-badge-lg unpaid">Unpaid</span>
+            {% endif %}
+        </div>
+        <div class="info-card-body" style="padding: 16px 24px;">
+            <div class="breakdown-row">
+                <span class="breakdown-label">Tuition Fee</span>
+                <span class="breakdown-value">₱{{ "{:,.2f}".format(bill.tuition_fee) }}</span>
+            </div>
+            <div class="breakdown-row">
+                <span class="breakdown-label">Books Fee</span>
+                <span class="breakdown-value">₱{{ "{:,.2f}".format(bill.books_fee) }}</span>
+            </div>
+            <div class="breakdown-row">
+                <span class="breakdown-label">Uniform Fee</span>
+                <span class="breakdown-value">₱{{ "{:,.2f}".format(bill.uniform_fee) }}</span>
+            </div>
+            {% if bill.other_fees > 0 %}
+            <div class="breakdown-row">
+                <span class="breakdown-label">Other Fees</span>
+                <span class="breakdown-value">₱{{ "{:,.2f}".format(bill.other_fees) }}</span>
+            </div>
+            {% endif %}
+            <div class="breakdown-row" style="margin-top: 8px; border-top: 2px solid var(--border); padding-top: 16px; font-size: 1.1rem;">
+                <span class="breakdown-label" style="font-weight: 700; color: var(--text);">Overall Total</span>
+                <span class="breakdown-value" style="color: #2563eb; font-weight: 800;">₱{{ "{:,.2f}".format(bill.total_amount) }}</span>
+            </div>
+        </div>
     </div>
 
     <!-- Payment History -->
-    <h3 style="margin-bottom: 1rem;">Payment History</h3>
-    {% if payments %}
-    <table>
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Amount</th>
-                <th>Method</th>
-                <th>Reference</th>
-                <th>Received By</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for payment in payments %}
-            <tr>
-                <td>{{ payment.payment_date.strftime('%Y-%m-%d %H:%M') }}</td>
-                <td>₱{{ "%.2f"|format(payment.amount) }}</td>
-                <td>{{ payment.payment_method|title }}</td>
-                <td>{{ payment.reference_number or '-' }}</td>
-                <td>{{ payment.received_by_name }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p style="color: #6b7280;">No payments recorded yet</p>
-    {% endif %}
-
-    {% if bill.balance > 0 %}
-    <div style="margin-top: 2rem; padding: 1rem; background: #fef3c7; border-radius: 6px;">
-        <p style="color: #92400e; font-weight: 500;">
-            Please contact the cashier at the school to make a payment.
-        </p>
-    </div>
-    {% endif %}
-
-    {% else %}
-    <!-- No Bill Created -->
-    <div style="text-align: center; padding: 3rem;">
-        <p style="font-size: 1.2rem; color: #6b7280; margin-bottom: 1rem;">
-            No bill has been created yet for this enrollment.
-        </p>
-        <p style="color: #6b7280;">
-            The cashier will create a bill once the enrollment is processed.
-        </p>
-    </div>
-    {% endif %}
-
-    <!-- Actions -->
-    <div style="margin-top: 2rem; display: flex; gap: 1rem;">
-        <a href="{{ url_for('parent.child_detail', enrollment_id=child.enrollment_id) }}" class="btn btn-secondary">View
-            Enrollment Details</a>
-        <a href="{{ url_for('parent.dashboard') }}" class="btn btn-secondary">⬅ Back</a>
+    <div class="info-card" style="margin-bottom: 0;">
+        <div class="info-card-header" style="background: #f8fafc;">
+            💳 Payment History
+        </div>
+        <div class="info-card-body" style="padding: 0;">
+            {% if payments %}
+            <div class="modern-table-container" style="border: none; border-radius: 0;">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Amount</th>
+                            <th>Method</th>
+                            <th>Reference</th>
+                            <th>Received By</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for payment in payments %}
+                        <tr>
+                            <td>{{ payment.payment_date.strftime('%b %d, %Y %I:%M %p') }}</td>
+                            <td style="font-weight: 700; color: #16a34a;">₱{{ "{:,.2f}".format(payment.amount) }}</td>
+                            <td><span style="background: #f1f5f9; padding: 2px 8px; border-radius: 6px; font-weight: 600; font-size: 0.8rem; text-transform: uppercase;">{{ payment.payment_method }}</span></td>
+                            <td>{{ payment.reference_number or '-' }}</td>
+                            <td style="font-size: 0.85rem; color: var(--muted);"><span style="color:var(--text);font-weight:600;">{{ payment.received_by_name }}</span></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div style="padding: 40px 20px; text-align: center; color: var(--muted); font-style: italic;">
+                No payment transactions recorded yet.
+            </div>
+            {% endif %}
+        </div>
+        {% if bill.balance > 0 %}
+        <div style="background: #fefce8; border-top: 1px solid #fef08a; padding: 16px; text-align: center; color: #a16207; font-size: 0.9rem; font-weight: 600;">
+            ⚠️ Please contact the cashier at the school to make a payment. Online payments are not yet fully processed here.
+        </div>
+        {% endif %}
     </div>
 </div>
+
+{% else %}
+<div class="empty-state">
+    <div style="font-size: 3rem; opacity: 0.5; margin-bottom: 16px;">🧾</div>
+    <h3>No bill has been generated yet</h3>
+    <p>The cashier will create an official assessment bill once the enrollment details are fully processed.</p>
+</div>
+{% endif %}
+
 {% endblock %}

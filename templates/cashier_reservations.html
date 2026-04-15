@@ -1,492 +1,494 @@
 {% extends "base.html" %}
-
-{% block title %}Cashier - Reservations{% endblock %}
+{% block title %}Item Reservations{% endblock %}
+{% block page_title %}📋 Reservations{% endblock %}
 
 {% block styles %}
 <style>
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
-  body {
-    background: #f5f7fa;
-    color: #333;
-  }
+    :root {
+        --cashier-primary: #1e3a8a;
+        --cashier-accent: #3b82f6;
+        --cashier-success: #10b981;
+        --cashier-pending: #f59e0b;
+        --cashier-bg: #f8fafc;
+        --cashier-card: #ffffff;
+        --cashier-text: #0f172a;
+        --cashier-muted: #64748b;
+        --cashier-border: #e2e8f0;
+        --cashier-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
 
-  .container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 20px;
-  }
+    body {
+        background-color: var(--cashier-bg);
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
 
-  header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-    padding-bottom: 18px;
-    border-bottom: 2px solid #ddd;
-  }
+    .reservations-container {
+        max-width: 1440px;
+        margin: 0 auto;
+        padding: 32px 20px 64px;
+    }
 
-  h1 {
-    font-size: 26px;
-    color: #222;
-  }
+    .header-flex {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
 
-  .btn {
-    padding: 9px 16px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: #f8f8f8;
-    color: #222;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 13.5px;
-    font-weight: 500;
-    transition: background 0.15s;
-  }
+    .title-group h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        color: var(--cashier-primary);
+        letter-spacing: -0.02em;
+    }
 
-  .btn:hover {
-    background: #efefef;
-  }
+    .btn-back {
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        background: #f1f5f9;
+        color: var(--cashier-muted);
+    }
 
-  .card {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    padding: 20px;
-    margin-bottom: 20px;
-  }
+    /* ── Analytics Section ── */
+    .analytics-row {
+        display: grid;
+        grid-template-columns: 1.2fr 1.8fr;
+        gap: 24px;
+        margin-bottom: 32px;
+    }
 
-  /* Stats */
-  .stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 12px;
-    margin-bottom: 20px;
-  }
+    @media (max-width: 950px) {
+        .analytics-row { grid-template-columns: 1fr; }
+    }
 
-  .stat-box {
-    background: white;
-    border-radius: 8px;
-    padding: 16px;
-    text-align: center;
-    border-left: 4px solid #007bff;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04);
-  }
+    .analytics-card {
+        background: #fff;
+        border: 1px solid var(--cashier-border);
+        border-radius: 24px;
+        padding: 24px;
+        box-shadow: var(--cashier-shadow);
+    }
 
-  .stat-box .num {
-    font-size: 26px;
-    font-weight: 700;
-    color: #222;
-  }
+    .analytics-card h2 {
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--cashier-primary);
+        margin-bottom: 20px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
 
-  .stat-box .lbl {
-    font-size: 12px;
-    color: #999;
-    margin-top: 4px;
-  }
+    .chart-container {
+        position: relative;
+        height: 220px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
 
-  /* Filter bar */
-  .filter-bar {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 14px;
-    margin-bottom: 20px;
-  }
+    .analytics-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+    }
 
-  .filter-group {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-  }
+    .stat-pill {
+        padding: 16px;
+        background: #fbfcfe;
+        border-radius: 16px;
+        border: 1px solid var(--cashier-border);
+    }
 
-  .filter-group label {
-    font-weight: 600;
-    color: #555;
-    font-size: 13px;
-  }
+    .stat-pill-label {
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: var(--cashier-muted);
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
 
-  .filter-group select,
-  .filter-group input {
-    padding: 9px 12px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: white;
-    font-size: 13.5px;
-    color: #333;
-  }
+    .stat-pill-value {
+        font-size: 1.25rem;
+        font-weight: 900;
+        color: var(--cashier-text);
+    }
 
-  /* Table */
-  table {
-    border-collapse: collapse;
-    width: 100%;
-    font-size: 14px;
-  }
+    /* ── Filter Card ── */
+    .filter-card {
+        background: #fbfcfe;
+        border: 1px solid var(--cashier-border);
+        border-radius: 24px;
+        padding: 24px;
+        margin-bottom: 32px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 20px;
+        align-items: end;
+    }
 
-  thead {
-    background: #f8f9fa;
-    border-bottom: 2px solid #ddd;
-  }
+    .filter-group { display: flex; flex-direction: column; gap: 8px; }
+    .filter-label { font-size: 0.75rem; font-weight: 800; color: var(--cashier-muted); text-transform: uppercase; }
+    .filter-control {
+        padding: 12px 16px;
+        border-radius: 12px;
+        border: 1px solid var(--cashier-border);
+        background: #fff;
+        font-family: inherit;
+        font-weight: 600;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+    .filter-control:focus { border-color: var(--cashier-accent); outline: none; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
 
-  th {
-    padding: 11px 14px;
-    text-align: left;
-    font-weight: 600;
-    color: #555;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
+    /* ── Table Styling ── */
+    .data-table-wrap {
+        background: #fff;
+        border: 1px solid var(--cashier-border);
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: var(--cashier-shadow);
+    }
 
-  td {
-    padding: 12px 14px;
-    border-bottom: 1px solid #eee;
-    vertical-align: middle;
-  }
+    .modern-table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+    .modern-table th {
+        background: #fbfcfe;
+        padding: 16px 24px;
+        text-align: left;
+        font-size: 0.7rem;
+        font-weight: 800;
+        color: var(--cashier-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid var(--cashier-border);
+    }
+    .modern-table td { padding: 16px 24px; border-bottom: 1px solid var(--cashier-border); font-size: 0.9rem; vertical-align: middle; }
+    .modern-table tr:last-child td { border-bottom: none; }
+    .modern-table tr:hover { background: #f8fafc; }
 
-  tbody tr:hover {
-    background: #f9f9f9;
-  }
+    .reservation-id { font-family: monospace; font-weight: 800; color: var(--cashier-primary); font-size: 0.85rem; }
 
-  tbody tr.hidden {
-    display: none;
-  }
+    /* Badges */
+    .badge-status {
+        display: inline-flex;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+    .badge-reserved { background: #fffbeb; color: #92400e; }
+    .badge-paid { background: #dbeafe; color: #1e40af; }
+    .badge-claimed { background: #d1fae5; color: #065f46; }
+    .badge-cancelled { background: #fef2f2; color: #991b1b; }
 
-  .parent-row {
-    background: #fef9f3;
-  }
+    .badge-role {
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        margin-top: 4px;
+        display: inline-block;
+    }
+    .role-student { background: #e0e7ff; color: #3730a3; }
+    .role-parent { background: #fae8ff; color: #86198f; }
 
-  .student-row {
-    background: #f0f8ff;
-  }
+    .cat-pill { font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 6px; margin-right: 4px; }
+    .cat-book { background: #dcfce7; color: #166534; }
+    .cat-uniform { background: #f0f9ff; color: #0369a1; }
 
-  /* Badges */
-  .status-badge {
-    display: inline-block;
-    padding: 4px 12px;
-    border-radius: 20px;
-    font-size: 11px;
-    font-weight: 700;
-    white-space: nowrap;
-  }
+    .action-btn {
+        padding: 8px 16px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        color: var(--cashier-primary);
+        text-decoration: none;
+        font-weight: 800;
+        font-size: 0.8rem;
+        transition: all 0.2s;
+    }
+    .action-btn:hover { background: var(--cashier-primary); color: #fff; transform: translateY(-1px); }
 
-  .status-reserved {
-    background: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeaa7;
-  }
+    .tr-hidden { display: none !important; }
 
-  .status-paid {
-    background: #cfe2ff;
-    color: #084298;
-    border: 1px solid #b6d4fe;
-  }
-
-  .status-claimed {
-    background: #d1e7dd;
-    color: #0f5132;
-    border: 1px solid #badbcc;
-  }
-
-  .status-cancelled {
-    background: #f8d7da;
-    color: #842029;
-    border: 1px solid #f5c2c7;
-  }
-
-  .badge-parent {
-    display: inline-block;
-    padding: 3px 8px;
-    border-radius: 10px;
-    font-size: 10px;
-    font-weight: 700;
-    background: #f3e5f5;
-    color: #7b1fa2;
-    border: 1px solid #ce93d8;
-    margin-left: 4px;
-    white-space: nowrap;
-  }
-
-  .badge-cat {
-    display: inline-block;
-    padding: 2px 6px;
-    border-radius: 6px;
-    font-size: 10px;
-    font-weight: 700;
-    background: #e2e8f0;
-    color: #475569;
-    margin-top: 4px;
-  }
-
-  .badge-cat.b-book {
-    background: #dcfce7;
-    color: #166534;
-  }
-
-  .badge-cat.b-uniform {
-    background: #e0e7ff;
-    color: #3730a3;
-  }
-
-  .action-link {
-    color: #2563eb;
-    text-decoration: none;
-    font-weight: 600;
-    padding: 5px 10px;
-    border-radius: 6px;
-    transition: background 0.15s;
-    white-space: nowrap;
-  }
-
-  .action-link:hover {
-    background: #eff6ff;
-  }
-
-  .student-sub {
-    font-size: 11px;
-    color: #999;
-    margin-top: 2px;
-  }
-
-  .empty-state {
-    text-align: center;
-    padding: 48px 20px;
-    color: #999;
-  }
-
-  .empty-icon {
-    font-size: 44px;
-    margin-bottom: 10px;
-  }
-
-  #noFilterResults {
-    text-align: center;
-    padding: 30px;
-    color: #999;
-    display: none;
-  }
+    .btn-export {
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+        background: #10b981;
+        color: #fff;
+    }
+    .btn-export:hover { background: #059669; transform: translateY(-2px); }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container">
-  <header>
-    <h1>📋 Reservations</h1>
-    <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-      <a href="{{ url_for('cashier.export_reservations_csv') }}"
-         class="btn"
-         style="background:#16a34a; color:#fff; border-color:#16a34a; font-weight:700;"
-         title="Download all reservations as CSV (opens in Excel)">
-        ⬇ Export CSV
-      </a>
-      <a href="{{ url_for('cashier.dashboard') }}" class="btn">⬅ Back</a>
-    </div>
-  </header>
+<div class="reservations-container">
 
-  {% if rows and rows|length > 0 %}
+    <div class="header-flex">
+        <div class="title-group">
+            <h1>📋 Item Reservations</h1>
+            <p style="color: var(--cashier-muted); font-weight: 600;">Managing student and parent item bookings</p>
+        </div>
+        <div style="display: flex; gap: 12px;">
+            <a href="{{ url_for('cashier.dashboard') }}" class="btn-back">⬅ Return to Console</a>
+        </div>
+    </div>
 
-  <!-- Stats -->
-  <div class="stats">
-    <div class="stat-box">
-      <div class="num">{{ rows|length }}</div>
-      <div class="lbl">Total</div>
-    </div>
-    <div class="stat-box" style="border-left-color:#ffc107;">
-      <div class="num">{{ rows|selectattr(7, 'equalto', 'RESERVED')|list|length }}</div>
-      <div class="lbl">Reserved</div>
-    </div>
-    <div class="stat-box" style="border-left-color:#17a2b8;">
-      <div class="num">{{ rows|selectattr(7, 'equalto', 'PAID')|list|length }}</div>
-      <div class="lbl">Paid</div>
-    </div>
-    <div class="stat-box" style="border-left-color:#28a745;">
-      <div class="num">{{ rows|selectattr(7, 'equalto', 'CLAIMED')|list|length }}</div>
-      <div class="lbl">Claimed</div>
-    </div>
-  </div>
-
-  <!-- Filters (client-side) -->
-  <div class="card filter-bar">
-    <div class="filter-group">
-      <label>👤 Reserved By</label>
-      <select id="fUserType" onchange="applyFilters()">
-        <option value="">All (Students &amp; Parents)</option>
-        <option value="student">👨‍🎓 Students Only</option>
-        <option value="parent">👨‍👩‍👧 Parents Only</option>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label>📦 Item Type</label>
-      <select id="fItemType" onchange="applyFilters()">
-        <option value="">All Types</option>
-        <option value="BOOK">📕 Books</option>
-        <option value="UNIFORM">👕 Uniforms</option>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label>📊 Status</label>
-      <select id="fStatus" onchange="applyFilters()">
-        <option value="">All statuses</option>
-        <option value="RESERVED">Reserved</option>
-        <option value="PAID">Paid</option>
-        <option value="CLAIMED">Claimed</option>
-        <option value="CANCELLED">Cancelled</option>
-      </select>
-    </div>
-    <div class="filter-group">
-      <label>🎓 Grade Level</label>
-      <select id="fGrade" onchange="applyFilters()">
-        <option value="">All grades</option>
-        <option value="Nursery">Nursery</option>
-        <option value="Kinder">Kinder</option>
-        {% for i in range(1, 13) %}
-        <option value="Grade {{ i }}">Grade {{ i }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="filter-group">
-      <label>🔍 Search Name</label>
-      <input type="text" id="fSearch" placeholder="Student name..." oninput="applyFilters()">
-    </div>
-    <div class="filter-group">
-      <label>🔢 Reservation No.</label>
-      <input type="text" id="fResId" placeholder="e.g. 1, 2, 0045..." oninput="applyFilters()">
-    </div>
-  </div>
-
-  <!-- Table -->
-  <div class="card">
-    <table id="resTable">
-      <thead>
-        <tr>
-          <th>Reservation ID</th>
-          <th>Student</th>
-          <th>Grade</th>
-          <th>Reserved By</th>
-          <th>Status</th>
-          <th>Date</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody id="resBody">
-        {% for r in rows %}
-        {#
-        r[0]=reservation_id r[1]=username r[2]=student_user_id
-        r[3]=student_grade r[4]=full_name r[5]=grade_level
-        r[6]=strand r[7]=status r[8]=created_at
-        r[9]=reserved_by_role r[10]=parent_name r[11]=relationship
-        r[12]=item_categories
-        #}
-        {% set role = (r[9] if r|length > 9 else 'student') or 'student' %}
-        {% set grade = (r[5] or r[3] or '') %}
-        {% set status = (r[7] or '') %}
-        {% set fullname = (r[4] or r[1] or '') %}
-        {% set categories = (r[12] if r|length > 12 else '') or '' %}
-
-        <tr class="{{ 'parent-row' if role == 'parent' else 'student-row' }}" data-role="{{ role }}"
-          data-status="{{ status|upper }}" data-grade="{{ grade }}" data-name="{{ fullname|lower }}"
-          data-categories="{{ categories|upper }}" data-resid="{{ r[0] }}">
-          <td>
-            <div style="font-weight: 800; font-size: 13px; color: #0c2461; margin-bottom: 4px;">RES-{{ "%04d" |
-              format(r[0]) }}</div>
-            {% if 'BOOK' in categories|upper %}
-            <span class="badge-cat b-book">📕 BOOK</span>
-            {% endif %}
-            {% if 'UNIFORM' in categories|upper %}
-            <span class="badge-cat b-uniform">👕 UNIFORM</span>
-            {% endif %}
-          </td>
-          <td>
-            <div><strong>{{ fullname or '-' }}</strong></div>
-            <div class="student-sub">{{ r[1] or '' }}</div>
-          </td>
-          <td>{{ grade or '-' }}</td>
-          <td>
-            {% if role == 'parent' %}
-            <div>{{ r[10] or '-' }}</div>
-            <span class="badge-parent">👨‍👩‍👧 Parent</span>
-            <div class="student-sub">
-              {{ r[11] or 'Guardian' }} of {{ fullname or '-' }}
+    {% if rows %}
+    <!-- Analytics Section -->
+    <div class="analytics-row" style="grid-template-columns: 1.5fr 1fr;">
+        <!-- Chart Area -->
+        <div class="analytics-card" style="display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <h2 style="align-self: flex-start;">📊 Reservation Summary Analytics</h2>
+            <div class="chart-container" style="width: 100%; max-width: 400px; height: 280px;">
+                <canvas id="resStatusChart"></canvas>
+                <div style="position: absolute; text-align: center; pointer-events: none;">
+                    <div id="resTotal" style="font-size: 2.5rem; font-weight: 900; color: var(--cashier-primary);">0</div>
+                    <div style="font-size: 0.75rem; font-weight: 800; color: var(--cashier-muted); text-transform: uppercase; letter-spacing: 0.1em;">Total Registry</div>
+                </div>
             </div>
-            {% else %}
-            👨‍🎓 Student
-            {% endif %}
-          </td>
-          <td>
-            <span class="status-badge status-{{ status|lower }}">{{ status }}</span>
-          </td>
-          <td>{{ r[8].strftime('%Y-%m-%d %H:%M') if r[8] else '-' }}</td>
-          <td>
-            <a href="{{ url_for('cashier.cashier_reservation_view', reservation_id=r[0]) }}" class="action-link">View
-              →</a>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-    <div id="noFilterResults">
-      🔍 No reservations match the selected filters.
-    </div>
-  </div>
+            <div style="display: flex; gap: 20px; margin-top: 24px; flex-wrap: wrap; justify-content: center;">
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700;">
+                    <span style="width: 12px; height: 12px; border-radius: 3px; background: #f59e0b;"></span> Reserved
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700;">
+                    <span style="width: 12px; height: 12px; border-radius: 3px; background: #3b82f6;"></span> Paid
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700;">
+                    <span style="width: 12px; height: 12px; border-radius: 3px; background: #10b981;"></span> Claimed
+                </div>
+                <div style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; font-weight: 700;">
+                    <span style="width: 12px; height: 12px; border-radius: 3px; background: #ef4444;"></span> Cancelled
+                </div>
+            </div>
+        </div>
 
-  {% else %}
-  <div class="card">
-    <div class="empty-state">
-      <div class="empty-icon">📭</div>
-      <h3>No Reservations Yet</h3>
-      <p>There are no student or parent reservations at the moment.</p>
+        <!-- Quick Actions Only -->
+        <div class="analytics-card" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: #fbfcfe; border-style: dashed;">
+            <div style="font-size: 3rem; margin-bottom: 20px;">📂</div>
+            <h2 style="margin-bottom: 8px;">Quick Export</h2>
+            <p style="font-size: 0.9rem; color: var(--cashier-muted); margin-bottom: 32px; font-weight: 600;">Download the complete reservation list as a CSV file for manual auditing or external reporting.</p>
+            
+            <a href="{{ url_for('cashier.export_reservations_csv') }}" class="btn-export" style="width: 100%; justify-content: center; padding: 18px; font-size: 1rem;">
+                <span>⬇ Download Registry (CSV)</span>
+            </a>
+        </div>
     </div>
-  </div>
-  {% endif %}
+
+    <!-- Filter Console -->
+    <div class="filter-card">
+        <div class="filter-group">
+            <label class="filter-label">👤 Reservation Actor</label>
+            <select id="fUserType" class="filter-control" onchange="applyFilters()">
+                <option value="">All Actors</option>
+                <option value="student">👨‍🎓 Students Only</option>
+                <option value="parent">👨‍👩‍👧 Parents Only</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">📦 Category</label>
+            <select id="fItemType" class="filter-control" onchange="applyFilters()">
+                <option value="">All Categories</option>
+                <option value="BOOK">📕 Books</option>
+                <option value="UNIFORM">👕 Uniforms</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">📊 Status</label>
+            <select id="fStatus" class="filter-control" onchange="applyFilters()">
+                <option value="">All Statuses</option>
+                <option value="RESERVED">Reserved</option>
+                <option value="PAID">Paid</option>
+                <option value="CLAIMED">Claimed</option>
+                <option value="CANCELLED">Cancelled</option>
+            </select>
+        </div>
+        <div class="filter-group">
+            <label class="filter-label">🎓 Academic Level</label>
+            <select id="fGrade" class="filter-control" onchange="applyFilters()">
+                <option value="">All Levels</option>
+                <option value="Nursery">Nursery</option>
+                <option value="Kinder">Kinder</option>
+                {% for i in range(1, 13) %}
+                <option value="Grade {{ i }}">Grade {{ i }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="filter-group" style="grid-column: span 1.5;">
+            <label class="filter-label">🔍 Quick Search</label>
+            <input type="text" id="fSearch" class="filter-control" placeholder="Search by name or reservation #..." oninput="applyFilters()">
+        </div>
+    </div>
+
+    <div class="data-table-wrap">
+        <div class="table-responsive">
+            <table class="modern-table">
+                <thead>
+                    <tr>
+                        <th>Ref # & Items</th>
+                        <th>Student Details</th>
+                        <th>Academic Level</th>
+                        <th>Reservation Source</th>
+                        <th>Status</th>
+                        <th>Timestamp</th>
+                        <th style="text-align: right;">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="resBody">
+                    {% for r in rows %}
+                    {% set role = (r[9] if r|length > 9 else 'student') or 'student' %}
+                    {% set grade = (r[5] or r[3] or '') %}
+                    {% set status = (r[7] or '') %}
+                    {% set fullname = (r[4] or r[1] or '') %}
+                    {% set categories = (r[12] if r|length > 12 else '') or '' %}
+
+                    <tr data-role="{{ role }}" data-status="{{ status|upper }}" data-grade="{{ grade }}" data-name="{{ fullname|lower }}" data-categories="{{ categories|upper }}" data-resid="{{ r[0] }}">
+                        <td>
+                            <div class="reservation-id">REF-{{ "%05d"|format(r[0]) }}</div>
+                            <div style="margin-top: 4px;">
+                                {% if 'BOOK' in categories|upper %}<span class="cat-pill cat-book">BOOK</span>{% endif %}
+                                {% if 'UNIFORM' in categories|upper %}<span class="cat-pill cat-uniform">UNIFORM</span>{% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-weight: 800; color: var(--cashier-primary);">{{ fullname or '-' }}</div>
+                            <div style="font-size: 0.75rem; color: var(--cashier-muted); font-weight: 600;">{{ r[1] or '' }}</div>
+                        </td>
+                        <td>
+                            <span style="font-weight: 700; color: var(--cashier-text);">{{ grade or '-' }}</span>
+                        </td>
+                        <td>
+                            {% if role == 'parent' %}
+                                <div style="font-weight: 700;">{{ r[10] or '-' }}</div>
+                                <span class="badge-role role-parent">Parent Entry</span>
+                            {% else %}
+                                <span class="badge-role role-student">Student Entry</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge-status badge-{{ status|lower }}">{{ status }}</span>
+                        </td>
+                        <td>
+                            <div style="font-size: 0.85rem; font-weight: 600;">{{ r[8].strftime('%Y-%m-%d') if r[8] else '-' }}</div>
+                            <div style="font-size: 0.75rem; color: var(--cashier-muted);">{{ r[8].strftime('%I:%M %p') if r[8] else '-' }}</div>
+                        </td>
+                        <td style="text-align: right;">
+                            <a href="{{ url_for('cashier.cashier_reservation_view', reservation_id=r[0]) }}" class="action-btn">Manage →</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div id="noFilterResults" style="text-align: center; padding: 64px 32px; color: var(--cashier-muted); display: none;">
+            <div style="font-size: 3rem; margin-bottom: 20px;">🕵️‍♂️</div>
+            <h3 style="font-weight: 800; color: var(--cashier-primary);">No matching records</h3>
+            <p>Adjust your search criteria or filters to find what you're looking for.</p>
+        </div>
+    </div>
+    {% else %}
+    <div style="text-align: center; padding: 96px 32px; background: #fff; border-radius: 24px; border: 1px dashed var(--cashier-border);">
+        <div style="font-size: 4rem; margin-bottom: 24px;">📭</div>
+        <h3 style="font-weight: 800; color: var(--cashier-primary);">Reservation Registry Empty</h3>
+        <p>No student or parent reservations have been logged in the system yet.</p>
+    </div>
+    {% endif %}
 
 </div>
 {% endblock %}
 
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  function applyFilters() {
-    const fRole     = (document.getElementById('fUserType')?.value || '').toLowerCase();
-    const fStatus   = (document.getElementById('fStatus')?.value || '').toUpperCase();
-    const fGrade    = (document.getElementById('fGrade')?.value || '').toLowerCase().trim();
-    const fSearch   = (document.getElementById('fSearch')?.value || '').toLowerCase().trim();
-    const fItemType = (document.getElementById('fItemType')?.value || '').toUpperCase().trim();
-    // Reservation number: strip leading zeros and non-digits for flexible matching
-    const fResIdRaw = (document.getElementById('fResId')?.value || '').trim();
-    const fResId    = fResIdRaw.replace(/\D/g, '');  // keep digits only (handles "RES-0001", "1", "45")
+    document.addEventListener('DOMContentLoaded', function() {
+        // ── Reservation Status Graph ──
+        const resCount = {{ rows|selectattr(7, 'equalto', 'RESERVED')|list|length }};
+        const paidCount = {{ rows|selectattr(7, 'equalto', 'PAID')|list|length }};
+        const claimCount = {{ rows|selectattr(7, 'equalto', 'CLAIMED')|list|length }};
+        const cancCount = {{ rows|selectattr(7, 'equalto', 'CANCELLED')|list|length }};
+        
+        const resTotalEl = document.getElementById('resTotal');
+        if (resTotalEl) resTotalEl.innerText = {{ rows|length }};
 
-    const rows = document.querySelectorAll('#resBody tr');
-    let visible = 0;
-
-    rows.forEach(function (row) {
-      const role       = (row.dataset.role || '').toLowerCase();
-      const status     = (row.dataset.status || '').toUpperCase();
-      const grade      = (row.dataset.grade || '').toLowerCase().trim();
-      const name       = (row.dataset.name || '').toLowerCase();
-      const categories = (row.dataset.categories || '').toUpperCase();
-      const resId      = (row.dataset.resid || '').toString();
-
-      const okRole     = !fRole     || role === fRole;
-      const okStatus   = !fStatus   || status === fStatus;
-      const okGrade    = !fGrade    || grade === fGrade;
-      const okSearch   = !fSearch   || name.includes(fSearch);
-      const okItemType = !fItemType || categories.includes(fItemType);
-      // Match if the typed digits appear anywhere in the reservation ID number
-      const okResId    = !fResId    || resId === fResId || resId.padStart(4,'0').includes(fResId.padStart(1,'0'));
-
-      if (okRole && okStatus && okGrade && okSearch && okItemType && okResId) {
-        row.classList.remove('hidden');
-        visible++;
-      } else {
-        row.classList.add('hidden');
-      }
+        const ctx = document.getElementById('resStatusChart')?.getContext('2d');
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Reserved', 'Paid', 'Claimed', 'Cancelled'],
+                    datasets: [{
+                        data: [resCount, paidCount, claimCount, cancCount],
+                        backgroundColor: ['#f59e0b', '#3b82f6', '#10b981', '#ef4444'],
+                        borderWidth: 5,
+                        borderColor: '#ffffff',
+                        hoverOffset: 15
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '80%',
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.label}: ${context.raw}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
     });
 
-    const noRes = document.getElementById('noFilterResults');
-    if (noRes) noRes.style.display = visible === 0 ? 'block' : 'none';
-  }
+    function applyFilters() {
+        const fRole     = (document.getElementById('fUserType')?.value || '').toLowerCase();
+        const fStatus   = (document.getElementById('fStatus')?.value || '').toUpperCase();
+        const fGrade    = (document.getElementById('fGrade')?.value || '').toLowerCase().trim();
+        const fSearch   = (document.getElementById('fSearch')?.value || '').toLowerCase().trim();
+        const fItemType = (document.getElementById('fItemType')?.value || '').toUpperCase().trim();
+        
+        const rows = document.querySelectorAll('#resBody tr');
+        let visible = 0;
+
+        rows.forEach(function (row) {
+            const role       = (row.dataset.role || '').toLowerCase();
+            const status     = (row.dataset.status || '').toUpperCase();
+            const grade      = (row.dataset.grade || '').toLowerCase().trim();
+            const name       = (row.dataset.name || '').toLowerCase();
+            const categories = (row.dataset.categories || '').toUpperCase();
+            const resId      = (row.dataset.resid || '').toString();
+
+            const okRole     = !fRole     || role === fRole;
+            const okStatus   = !fStatus   || status === fStatus;
+            const okGrade    = !fGrade    || grade === fGrade;
+            const okSearch   = !fSearch   || name.includes(fSearch) || resId.includes(fSearch);
+            const okItemType = !fItemType || categories.includes(fItemType);
+
+            if (okRole && okStatus && okGrade && okSearch && okItemType) {
+                row.classList.remove('tr-hidden');
+                visible++;
+            } else {
+                row.classList.add('tr-hidden');
+            }
+        });
+
+        const noRes = document.getElementById('noFilterResults');
+        if (noRes) noRes.style.display = visible === 0 ? 'block' : 'none';
+    }
 </script>
 {% endblock %}

@@ -1,262 +1,289 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
+{% block title %}Create Bill - #{{ enrollment.branch_enrollment_no }}{% endblock %}
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Create Bill</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+{% block styles %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f4f4;
-            padding: 20px;
-        }
+    :root {
+        --cashier-primary: #1e3a8a;
+        --cashier-accent: #3b82f6;
+        --cashier-success: #10b981;
+        --cashier-pending: #f59e0b;
+        --cashier-bg: #f8fafc;
+        --cashier-card: #ffffff;
+        --cashier-text: #0f172a;
+        --cashier-muted: #64748b;
+        --cashier-border: #e2e8f0;
+        --cashier-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
 
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-        }
+    body {
+        background-color: var(--cashier-bg);
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
 
-        h1 {
-            color: #333;
-            margin-bottom: 20px;
-        }
+    .create-bill-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 32px 20px 64px;
+    }
 
-        .info-card {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 30px;
-        }
+    .premium-card {
+        background: var(--cashier-card);
+        border: 1px solid var(--cashier-border);
+        border-radius: 24px;
+        padding: 40px;
+        box-shadow: var(--cashier-shadow);
+    }
 
-        .info-row {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-        }
+    .page-title {
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: var(--cashier-primary);
+        margin-bottom: 32px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
 
-        .info-row strong {
-            color: #555;
-        }
+    /* ── Info Bar ── */
+    .student-bar {
+        background: #fbfcfe;
+        border-radius: 16px;
+        padding: 24px;
+        border: 1px solid var(--cashier-border);
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 20px;
+        margin-bottom: 40px;
+    }
 
-        .form-group {
-            margin-bottom: 20px;
-        }
+    .bar-item { display: flex; flex-direction: column; gap: 4px; }
+    .bar-item .lbl { font-size: 0.7rem; font-weight: 800; color: var(--cashier-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .bar-item .val { font-size: 0.95rem; font-weight: 700; color: var(--cashier-text); }
 
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #333;
-        }
+    /* ── Form Section ── */
+    .fee-section {
+        margin-bottom: 32px;
+    }
 
-        input[type="number"] {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 16px;
-        }
+    .fee-section h3 {
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--cashier-primary);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-        input[type="number"]:focus {
-            outline: none;
-            border-color: #007bff;
-        }
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+    }
 
-        .items-list {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin-bottom: 10px;
-        }
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
 
-        .items-list ul {
-            list-style: none;
-            padding-left: 0;
-        }
+    .form-label {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--cashier-text);
+    }
 
-        .items-list li {
-            padding: 5px 0;
-        }
+    .form-input {
+        padding: 14px 16px;
+        border-radius: 12px;
+        border: 1px solid var(--cashier-border);
+        font-family: inherit;
+        font-weight: 700;
+        font-size: 1rem;
+        background: #fbfcfe;
+        transition: all 0.2s;
+    }
 
-        .total-display {
-            background: #007bff;
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            margin: 30px 0;
-        }
+    .form-input:focus {
+        outline: none;
+        border-color: var(--cashier-accent);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        background: #fff;
+    }
 
-        .total-display .label {
-            font-size: 14px;
-            opacity: 0.9;
-        }
+    .reserved-items-well {
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        border-radius: 12px;
+        padding: 12px 16px;
+        margin-bottom: 12px;
+        font-size: 0.85rem;
+    }
 
-        .total-display .amount {
-            font-size: 36px;
-            font-weight: bold;
-            margin-top: 10px;
-        }
+    .reserved-items-well ul {
+        list-style: none;
+        margin-top: 8px;
+        color: #0369a1;
+        font-weight: 600;
+    }
 
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-        }
+    /* ── Total Well ── */
+    .total-well {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        color: #fff;
+        padding: 32px;
+        border-radius: 20px;
+        text-align: center;
+        margin: 40px 0;
+        box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.2);
+    }
 
-        .btn-primary {
-            background: #28a745;
-            color: white;
-        }
+    .total-well .lbl { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.9; }
+    .total-well .amt { font-size: 3rem; font-weight: 900; margin-top: 8px; }
 
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-            text-decoration: none;
-            display: inline-block;
-        }
+    /* ── Actions ── */
+    .action-flex {
+        display: flex;
+        gap: 12px;
+    }
 
-        .actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 30px;
-        }
+    .btn-create {
+        flex: 2;
+        padding: 16px;
+        border-radius: 12px;
+        background: var(--cashier-success);
+        color: #fff;
+        border: none;
+        font-weight: 800;
+        font-size: 1rem;
+        cursor: pointer;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        transition: all 0.2s;
+    }
 
-        .flash {
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 5px;
-        }
+    .btn-create:hover { background: #059669; transform: translateY(-2px); }
 
-        .flash-error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-    </style>
-    <script>
-        function calculateTotal() {
-            const tuition = parseFloat(document.getElementById('tuition_fee').value) || 0;
-            const books = parseFloat(document.getElementById('books_fee').value) || 0;
-            const uniform = parseFloat(document.getElementById('uniform_fee').value) || 0;
-            const other = parseFloat(document.getElementById('other_fees').value) || 0;
+    .btn-cancel {
+        flex: 1;
+        padding: 16px;
+        border-radius: 12px;
+        background: #f1f5f9;
+        color: var(--cashier-muted);
+        text-decoration: none;
+        font-weight: 800;
+        text-align: center;
+        transition: all 0.2s;
+    }
 
-            const total = tuition + books + uniform + other;
-            document.getElementById('total_amount').innerText = '₱' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        }
-        window.onload = function () {
-            calculateTotal();
-        };
-    </script>
-</head>
+    .btn-cancel:hover { background: #e2e8f0; }
 
-<body>
-    <div class="container">
-        <h1>📝 Create Bill</h1>
+    @media (max-width: 600px) {
+        .form-grid { grid-template-columns: 1fr; }
+    }
+</style>
 
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        {% for category, message in messages %}
-        <div class="flash flash-{{ category }}">{{ message }}</div>
-        {% endfor %}
-        {% endif %}
-        {% endwith %}
+<script>
+    function calculateTotal() {
+        const tuition = parseFloat(document.getElementById('tuition_fee').value) || 0;
+        const books = parseFloat(document.getElementById('books_fee').value) || 0;
+        const uniform = parseFloat(document.getElementById('uniform_fee').value) || 0;
+        const other = parseFloat(document.getElementById('other_fees').value) || 0;
 
-        <div class="info-card">
-            <h3>Student Information</h3>
-            <div class="info-row">
-                <span><strong>Enrollment ID:</strong></span>
-                <span>#{{ enrollment.branch_enrollment_no }}</span>
+        const total = tuition + books + uniform + other;
+        document.getElementById('total_amount_display').innerText = '₱' + total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+    window.onload = calculateTotal;
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="create-bill-container">
+    <div class="premium-card">
+        <h1 class="page-title">📝 Official Bill Creation</h1>
+
+        <div class="student-bar">
+            <div class="bar-item">
+                <span class="lbl">Enrollment Ref</span>
+                <span class="val">#{{ enrollment.branch_enrollment_no }}</span>
             </div>
-            <div class="info-row">
-                <span><strong>Student Name:</strong></span>
-                <span>{{ enrollment.student_name }}</span>
+            <div class="bar-item">
+                <span class="lbl">Student Name</span>
+                <span class="val">{{ enrollment.student_name }}</span>
             </div>
-            <div class="info-row">
-                <span><strong>Grade Level:</strong></span>
-                <span>Grade {{ enrollment.grade_level }}</span>
+            <div class="bar-item">
+                <span class="lbl">Academic Level</span>
+                <span class="val">Grade {{ enrollment.grade_level }}</span>
             </div>
-            <div class="info-row">
-                <span><strong>Guardian:</strong></span>
-                <span>{{ enrollment.guardian_name }}</span>
-            </div>
-            <div class="info-row">
-                <span><strong>Branch:</strong></span>
-                <span>{{ enrollment.branch_name }}</span>
+            <div class="bar-item">
+                <span class="lbl">Branch</span>
+                <span class="val">{{ enrollment.branch_name }}</span>
             </div>
         </div>
 
-        <form method="POST" onsubmit="return confirm('Create this bill?');">
-            <div class="form-group">
-                <label for="tuition_fee">Tuition Fee (₱)</label>
-                <input type="number" id="tuition_fee" name="tuition_fee" step="0.01" min="0" value="0"
-                    oninput="calculateTotal()" required>
+        <form method="POST" onsubmit="return confirm('Authorize the creation of this billing statement?');">
+            <div class="fee-section">
+                <h3>💰 Fee Configuration</h3>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label" for="tuition_fee">Tuition & Mandatory Fees (₱)</label>
+                        <input type="number" id="tuition_fee" name="tuition_fee" class="form-input" step="0.01" min="0" value="0" oninput="calculateTotal()" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label" for="other_fees">Misc. / Incidentals (₱)</label>
+                        <input type="number" id="other_fees" name="other_fees" class="form-input" step="0.01" min="0" value="0" oninput="calculateTotal()">
+                    </div>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="books_fee">Books Fee (₱)</label>
+            <div class="fee-section">
+                <h3>📚 Textbooks & Materials</h3>
                 {% if books %}
-                <div class="items-list">
-                    <strong>Reserved Books:</strong>
+                <div class="reserved-items-well">
+                    <strong>Reserved Items Found:</strong>
                     <ul>
                         {% for book in books %}
-                        <li>• {{ book.book_name }} (Qty: {{ book.quantity }})</li>
+                        <li>• {{ book.book_name }} (x{{ book.quantity }})</li>
                         {% endfor %}
                     </ul>
                 </div>
                 {% endif %}
-                <input type="number" id="books_fee" name="books_fee" step="0.01" min="0"
-                    value="{{ books_total|default(0) }}" oninput="calculateTotal()" required>
+                <div class="form-group">
+                    <label class="form-label" for="books_fee">Books Total Amount (₱)</label>
+                    <input type="number" id="books_fee" name="books_fee" class="form-input" step="0.01" min="0" value="{{ books_total|default(0) }}" oninput="calculateTotal()" required>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="uniform_fee">Uniform Fee (₱)</label>
+            <div class="fee-section">
+                <h3>👕 Uniforms & Apparel</h3>
                 {% if uniforms %}
-                <div class="items-list">
-                    <strong>Reserved Uniforms:</strong>
-                    <ul>
+                <div class="reserved-items-well" style="background: #fdf2f8; border-color: #fbcfe8;">
+                    <strong style="color: #9d174d;">Reserved Apparel Found:</strong>
+                    <ul style="color: #9d174d;">
                         {% for uniform in uniforms %}
-                        <li>• {{ uniform.uniform_type }} - Size {{ uniform.size }} (Qty: {{ uniform.quantity }})</li>
+                        <li>• {{ uniform.uniform_type }} - Size {{ uniform.size }} (x{{ uniform.quantity }})</li>
                         {% endfor %}
                     </ul>
                 </div>
                 {% endif %}
-                <input type="number" id="uniform_fee" name="uniform_fee" step="0.01" min="0"
-                    value="{{ uniform_total|default(0) }}" oninput="calculateTotal()" required>
+                <div class="form-group">
+                    <label class="form-label" for="uniform_fee">Uniform Total Amount (₱)</label>
+                    <input type="number" id="uniform_fee" name="uniform_fee" class="form-input" step="0.01" min="0" value="{{ uniform_total|default(0) }}" oninput="calculateTotal()" required>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="other_fees">Other Fees (₱)</label>
-                <input type="number" id="other_fees" name="other_fees" step="0.01" min="0" value="0"
-                    oninput="calculateTotal()">
-                <small style="color: #666; display: block; margin-top: 5px;">e.g., ID card, lab fees, etc.</small>
+            <div class="total-well">
+                <div class="lbl">Statement Total Amount</div>
+                <div class="amt" id="total_amount_display">₱0.00</div>
             </div>
 
-            <div class="total-display">
-                <div class="label">TOTAL AMOUNT</div>
-                <div class="amount" id="total_amount">₱0.00</div>
-            </div>
-
-            <div class="actions">
-                <button type="submit" class="btn btn-primary">✅ Create Bill</button>
-                <a href="/cashier" class="btn btn-secondary">❌ Cancel</a>
+            <div class="action-flex">
+                <button type="submit" class="btn-create">✅ Issue Billing Statement</button>
+                <a href="/cashier" class="btn-cancel">Cancel</a>
             </div>
         </form>
     </div>
-</body>
-
-</html>
+</div>
+{% endblock %}

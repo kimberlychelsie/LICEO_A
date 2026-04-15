@@ -3,50 +3,203 @@
 {% block title %}Link Child{% endblock %}
 
 {% block content %}
-<div style="max-width: 600px; margin: 2rem auto;">
-    <div class="card">
-        <div class="card-header">Add Child to Your Account</div>
+<style>
+    .link-child-container {
+        max-width: 600px;
+        margin: 2rem auto;
+    }
 
-        <div style="margin-bottom: 1.5rem; padding: 1rem; background: #dbeafe; border-radius: 6px;">
-            <p style="color: #1e40af; margin-bottom: 0.5rem;"><strong>Note:</strong></p>
-            <p style="color: #1e40af;">You need your child's Enrollment ID to link them to your account. This ID was
-                provided when the enrollment was submitted.</p>
+    .form-card {
+        background: var(--card);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+        overflow: hidden;
+    }
+
+    .form-card-header {
+        background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+        color: white;
+        padding: 24px 30px;
+        text-align: center;
+    }
+
+    .form-card-header h2 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin: 0 0 4px 0;
+    }
+
+    .form-card-header p {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        margin: 0;
+    }
+
+    .form-card-body {
+        padding: 30px;
+    }
+
+    .info-alert {
+        background: #eff6ff;
+        border-left: 4px solid #3b82f6;
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 24px;
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+    }
+
+    .info-icon {
+        color: #3b82f6;
+        font-size: 1.25rem;
+        line-height: 1;
+    }
+
+    .info-text p {
+        margin: 0;
+        color: #1e3a8a;
+        font-size: 0.9rem;
+        line-height: 1.5;
+    }
+
+    .form-group-modern {
+        margin-bottom: 20px;
+    }
+
+    .form-label-modern {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .form-control-modern {
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 0.95rem;
+        border: 2px solid var(--border);
+        border-radius: 10px;
+        background: #f8fafc;
+        color: var(--text);
+        transition: all 0.2s ease;
+        font-family: inherit;
+    }
+
+    .form-control-modern:focus {
+        outline: none;
+        border-color: #3b82f6;
+        background: #fff;
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+
+    .form-control-modern::placeholder {
+        color: #94a3b8;
+    }
+
+    .form-hint {
+        display: block;
+        font-size: 0.8rem;
+        color: var(--muted);
+        margin-top: 6px;
+        font-weight: 500;
+    }
+
+    .btn-submit {
+        width: 100%;
+        padding: 14px;
+        font-size: 1rem;
+        font-weight: 700;
+        border-radius: 10px;
+        background: #3b82f6;
+        border: none;
+        color: white;
+        margin-top: 10px;
+        cursor: pointer;
+        transition: background 0.2s, transform 0.1s;
+    }
+
+    .btn-submit:hover {
+        background: #2563eb;
+    }
+
+    .btn-submit:active {
+        transform: scale(0.98);
+    }
+
+    .btn-cancel {
+        display: block;
+        text-align: center;
+        width: 100%;
+        padding: 14px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--muted);
+        background: transparent;
+        border: none;
+        text-decoration: none;
+        margin-top: 8px;
+        border-radius: 10px;
+        transition: background 0.2s, color 0.2s;
+    }
+
+    .btn-cancel:hover {
+        background: #f1f5f9;
+        color: var(--text);
+    }
+</style>
+
+<div class="link-child-container">
+    <div class="form-card">
+        <div class="form-card-header">
+            <h2>🔗 Link Your Child</h2>
+            <p>Connect your child's enrollment to your account</p>
         </div>
 
-        <form method="post">
-            <div class="form-group">
-                <label class="form-label">Branch *</label>
-                <select name="branch_id" class="form-control" required>
-                    <option value="">Select Branch</option>
-                    {% for b in branches %}
-                    <option value="{{ b.branch_id }}">{{ b.branch_name }}</option>
-                    {% endfor %}
-                </select>
+        <div class="form-card-body">
+            <div class="info-alert">
+                <div class="info-icon">ℹ️</div>
+                <div class="info-text">
+                    <p><strong>Enrollment ID Required:</strong> You need your child's Enrollment ID to link them to your account. This specific ID was provided to you when their enrollment was processed at the branch.</p>
+                </div>
             </div>
 
-            <div class="form-group">
-                <label class="form-label">Branch Enrollment ID *</label>
-                <input type="number" name="enrollment_id" class="form-control"
-                    placeholder="Enter branch enrollment ID (e.g. 1)" required>
-                <small style="color: #6b7280;">The specific ID assigned by your branch</small>
-            </div>
+            <form method="post">
+                <div class="form-group-modern">
+                    <label class="form-label-modern">Branch <span style="color: #ef4444;">*</span></label>
+                    <select name="branch_id" class="form-control-modern" required>
+                        <option value="" disabled selected>Select the enrolled branch</option>
+                        {% for b in branches %}
+                        <option value="{{ b.branch_id }}">{{ b.branch_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-            <div class="form-group">
-                <label class="form-label">Relationship *</label>
-                <select name="relationship" class="form-control" required>
-                    <option value="">Select relationship</option>
-                    <option value="father">Father</option>
-                    <option value="mother">Mother</option>
-                    <option value="guardian">Guardian</option>
-                    <option value="other">Other</option>
-                </select>
-            </div>
+                <div class="form-group-modern">
+                    <label class="form-label-modern">Branch Enrollment ID <span style="color: #ef4444;">*</span></label>
+                    <input type="number" name="enrollment_id" class="form-control-modern" placeholder="e.g. 1" required>
+                    <span class="form-hint">The numeric branch-specific identifier.</span>
+                </div>
 
-            <div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
-                <button type="submit" class="btn btn-primary">Link Child</button>
-                <a href="{{ url_for('parent.dashboard') }}" class="btn btn-secondary">Cancel</a>
-            </div>
-        </form>
+                <div class="form-group-modern">
+                    <label class="form-label-modern">Your Relationship <span style="color: #ef4444;">*</span></label>
+                    <select name="relationship" class="form-control-modern" required>
+                        <option value="" disabled selected>How are you related?</option>
+                        <option value="father">Father</option>
+                        <option value="mother">Mother</option>
+                        <option value="guardian">Guardian</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn-submit">Securely Link Child</button>
+                <a href="{{ url_for('parent.dashboard') }}" class="btn-cancel">Cancel and Return Base</a>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

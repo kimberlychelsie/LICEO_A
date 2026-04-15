@@ -1,66 +1,234 @@
 {% extends "base.html" %}
-{% block title %}Search Student{% endblock %}
-{% block page_title %}🔍 Search Student{% endblock %}
+{% block title %}Search Students - Cashier Console{% endblock %}
+{% block page_title %}🔍 Student Search{% endblock %}
+
+{% block styles %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+    :root {
+        --cashier-primary: #1e3a8a;
+        --cashier-accent: #3b82f6;
+        --cashier-success: #10b981;
+        --cashier-pending: #f59e0b;
+        --cashier-bg: #f8fafc;
+        --cashier-card: #ffffff;
+        --cashier-text: #0f172a;
+        --cashier-muted: #64748b;
+        --cashier-border: #e2e8f0;
+
+        --cashier-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+    }
+
+    body {
+        background-color: var(--cashier-bg);
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+
+    .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 32px 20px;
+    }
+
+    .search-section {
+        background: #fff;
+        border: 1px solid var(--cashier-border);
+        border-radius: 24px;
+        padding: 32px;
+        margin-bottom: 32px;
+        box-shadow: var(--cashier-shadow);
+    }
+
+    .search-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--cashier-primary);
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .search-form {
+        display: flex;
+        gap: 12px;
+    }
+
+    .search-input {
+        flex: 1;
+        padding: 14px 20px;
+        border-radius: 12px;
+        border: 1px solid var(--cashier-border);
+        font-size: 1rem;
+        font-family: inherit;
+        transition: all 0.2s;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--cashier-accent);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+    }
+
+    .btn-search {
+        background: var(--cashier-primary);
+        color: #fff;
+        padding: 14px 28px;
+        border-radius: 12px;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .btn-search:hover {
+        background: #1e40af;
+        transform: translateY(-2px);
+    }
+
+    .btn-cancel {
+        background: #f1f5f9;
+        color: var(--cashier-muted);
+        padding: 14px 24px;
+        border-radius: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .btn-cancel:hover { background: #e2e8f0; }
+
+    /* Results Table */
+    .results-container {
+        background: #fff;
+        border: 1px solid var(--cashier-border);
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: var(--cashier-shadow);
+    }
+
+    .results-header {
+        padding: 24px 32px;
+        border-bottom: 1px solid var(--cashier-border);
+        background: #fbfcfe;
+        font-weight: 800;
+        color: var(--cashier-primary);
+    }
+
+    .modern-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .modern-table th {
+        background: #fbfcfe;
+        padding: 16px 32px;
+        text-align: left;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--cashier-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid var(--cashier-border);
+    }
+
+    .modern-table td {
+        padding: 16px 32px;
+        border-bottom: 1px solid var(--cashier-border);
+        font-size: 0.95rem;
+    }
+
+    .modern-table tbody tr:hover { background: #f8fafc; }
+
+    /* Badges */
+    .badge-status {
+        display: inline-flex;
+        padding: 6px 12px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .badge-paid { background: #d1fae5; color: #065f46; }
+    .badge-partial { background: #dbeafe; color: #1e40af; }
+    .badge-pending { background: #fff3c4; color: #92400e; }
+    .badge-none { background: #f1f5f9; color: #475569; }
+
+    .btn-sm {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .btn-pay { background: var(--cashier-primary); color: #fff; }
+    .btn-pay:hover { background: #1e40af; transform: translateY(-1px); }
+    .btn-view { background: #f1f5f9; color: var(--cashier-primary); border: 1px solid var(--cashier-border); }
+    .btn-view:hover { background: #e2e8f0; }
+</style>
+{% endblock %}
 
 {% block content %}
-<div style="max-width:1000px;">
+<div class="container">
 
-    <div class="card">
-        <form method="POST" style="display:flex; gap:10px; flex-wrap:wrap;">
-            <input type="text" name="search_query" class="form-input"
-                placeholder="Enter Enrollment ID or Student Name..." value="{{ search_query }}" required autofocus
-                style="flex:1; min-width:220px;">
-            <button type="submit" class="btn btn-primary">🔍 Search</button>
-            <a href="/cashier" class="btn btn-secondary">✕ Cancel</a>
+    <div class="search-section">
+        <h2 class="search-title">🔍 Student Registry Search</h2>
+        <form method="POST" class="search-form">
+            <input type="text" name="search_query" class="search-input"
+                placeholder="Search by ID or Student Name..." value="{{ search_query }}" required autofocus>
+            <button type="submit" class="btn-search">Search</button>
+            <a href="/cashier" class="btn-cancel">Cancel</a>
         </form>
-        <p style="margin-top:10px; color:var(--muted); font-size:0.82rem;">
-            💡 Search by exact Branch Enrollment ID (e.g. 1) or partial student name.
+        <p style="margin-top:16px; color:var(--muted); font-size:0.85rem; font-weight: 500;">
+            💡 Entering the numeric branch ID will perform an exact match. Names support partial matches.
         </p>
     </div>
 
     {% if search_query %}
-    {% if results %}
-    <div class="card" style="padding:0; overflow:hidden;">
-        <div style="padding:14px 20px; border-bottom:1px solid var(--border); font-weight:700;">
-            Results ({{ results|length }})
+    <div class="results-container">
+        <div class="results-header">
+            Search Results for "{{ search_query }}" ({{ results|length }})
         </div>
-        <div class="table-wrap" style="border:none; border-radius:0;">
-            <table>
+        {% if results %}
+        <div style="overflow-x: auto;">
+            <table class="modern-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
+                        <th>Enrollment No.</th>
                         <th>Student Name</th>
-                        <th>Grade</th>
-                        <th>Guardian</th>
-                        <th>Bill Status</th>
-                        <th>Balance</th>
-                        <th>Actions</th>
+                        <th>Level</th>
+                        <th>Status</th>
+                        <th>Outstanding Balance</th>
+                        <th style="text-align: right;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for e in results %}
                     <tr>
-                        <td>#{{ e.branch_enrollment_no }}</td>
-                        <td><strong>{{ e.student_name }}</strong></td>
-                        <td>Grade {{ e.grade_level }}</td>
-                        <td>{{ e.guardian_name or '—' }}</td>
+                        <td><strong style="color: var(--cashier-muted);">#{{ e.branch_enrollment_no }}</strong></td>
+                        <td><strong style="color: var(--cashier-primary);">{{ e.student_name }}</strong></td>
+                        <td><span style="font-weight: 600;">Grade {{ e.grade_level }}</span></td>
                         <td>
-                            {% if not e.bill_id %}<span class="badge badge-gray">No Bill</span>
-                            {% elif e.bill_status == 'paid' %}<span class="badge badge-green">✓ Paid</span>
-                            {% elif e.bill_status == 'partial' %}<span class="badge badge-blue">Partial</span>
-                            {% else %}<span class="badge badge-red">Pending</span>{% endif %}
+                            {% if not e.bill_id %}<span class="badge-status badge-none">No Bill Items</span>
+                            {% elif e.bill_status == 'paid' %}<span class="badge-status badge-paid">Fully Settled</span>
+                            {% elif e.bill_status == 'partial' %}<span class="badge-status badge-partial">Partial Payment</span>
+                            {% else %}<span class="badge-status badge-pending">Pending Bill</span>{% endif %}
                         </td>
-                        <td>{% if e.balance %}₱{{ "%.2f"|format(e.balance) }}{% else %}—{% endif %}</td>
                         <td>
-                            <div style="display:flex; gap:6px;">
+                            {% if e.balance %}<strong style="color: #b91c1c;">₱{{ "{:,.2f}".format(e.balance) }}</strong>{% else %}<span style="color: var(--cashier-muted); font-size: 0.85rem;">—</span>{% endif %}
+                        </td>
+                        <td style="text-align: right;">
+                            <div style="display:flex; gap:8px; justify-content: flex-end;">
                                 {% if not e.bill_id %}
-                                <a href="/cashier/create-bill/{{ e.enrollment_id }}" class="btn btn-primary btn-sm">📝
-                                    Create Bill</a>
+                                <a href="/cashier/create-bill/{{ e.enrollment_id }}" class="btn-sm btn-pay">📝 Create Bill</a>
                                 {% else %}
-                                <a href="/cashier/bill/{{ e.bill_id }}" class="btn btn-secondary btn-sm">👁 View</a>
+                                <a href="/cashier/bill/{{ e.bill_id }}" class="btn-sm btn-view">👁 View History</a>
                                 {% if e.bill_status != 'paid' %}
-                                <a href="/cashier/process-payment/{{ e.bill_id }}" class="btn btn-primary btn-sm">💵
-                                    Pay</a>
+                                <a href="/cashier/process-payment/{{ e.bill_id }}" class="btn-sm btn-pay">💵 Process Payment</a>
                                 {% endif %}{% endif %}
                             </div>
                         </td>
@@ -69,14 +237,20 @@
                 </tbody>
             </table>
         </div>
+        {% else %}
+        <div style="text-align:center; padding:64px 32px; color:var(--cashier-muted);">
+            <div style="font-size: 3rem; margin-bottom: 16px;">🔍</div>
+            <h3 style="font-weight: 800; color: var(--cashier-primary);">No Matches Found</h3>
+            <p>We couldn't find any students matching "<strong>{{ search_query }}</strong>".</p>
+        </div>
+        {% endif %}
     </div>
-    {% else %}
-    <div class="card" style="text-align:center; padding:40px; color:var(--muted);">
-        😕 No results found for "<strong>{{ search_query }}</strong>"
-    </div>
-    {% endif %}
     {% endif %}
 
-    <a href="/cashier" class="btn btn-secondary" style="margin-top:8px;">⬅ Back to Dashboard</a>
+    <div style="margin-top: 24px;">
+        <a href="/cashier" style="color: var(--cashier-muted); text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 8px;">
+            ⬅ Return to Console
+        </a>
+    </div>
 </div>
-{% endblock %}
+{% endblock %}

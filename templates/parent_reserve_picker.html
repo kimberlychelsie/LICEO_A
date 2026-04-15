@@ -1,53 +1,156 @@
 {% extends "base.html" %}
 {% block title %}Reserve Items — Select Child{% endblock %}
-{% block page_title %}Reserve Items{% endblock %}
 
 {% block content %}
-<div style="max-width:600px;">
+<style>
+    .picker-container {
+        max-width: 600px;
+        margin: 2rem auto;
+    }
 
-    <div class="card">
-        <div class="card-header">🛒 Select Child to Reserve For</div>
-        <p style="color:var(--muted); font-size:0.9rem; margin-bottom:18px;">
-            You have multiple linked children. Choose which child's reservation you want to manage:
-        </p>
+    .form-card {
+        background: var(--card);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+        overflow: hidden;
+    }
 
-        <div style="display:flex; flex-direction:column; gap:10px;">
+    .form-card-header {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        padding: 24px 30px;
+        text-align: center;
+    }
+
+    .form-card-header h2 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin: 0 0 4px 0;
+    }
+
+    .form-card-header p {
+        font-size: 0.9rem;
+        opacity: 0.9;
+        margin: 0;
+    }
+
+    .form-card-body {
+        padding: 30px;
+        background: #f8fafc;
+    }
+
+    .child-select-btn {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 16px 20px;
+        text-decoration: none;
+        color: var(--text);
+        margin-bottom: 12px;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+
+    .child-select-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(16, 185, 129, 0.1);
+        border-color: #10b981;
+    }
+
+    .child-avatar-mini {
+        width: 48px;
+        height: 48px;
+        background: linear-gradient(135deg, #10b981, #047857);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 800;
+        font-size: 1.2rem;
+        flex-shrink: 0;
+        box-shadow: 0 4px 8px rgba(16, 185, 129, 0.2);
+    }
+
+    .child-info-mini {
+        flex: 1;
+    }
+
+    .child-name-mini {
+        font-weight: 800;
+        font-size: 1.1rem;
+        color: var(--text);
+        margin-bottom: 2px;
+    }
+
+    .child-meta-mini {
+        font-size: 0.8rem;
+        color: var(--muted);
+        font-weight: 500;
+    }
+
+    .child-arrow {
+        color: #10b981;
+        font-size: 1.2rem;
+        font-weight: 800;
+        transition: transform 0.2s ease;
+    }
+
+    .child-select-btn:hover .child-arrow {
+        transform: translateX(4px);
+    }
+
+    .btn-cancel {
+        display: block;
+        text-align: center;
+        width: 100%;
+        padding: 14px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--muted);
+        background: transparent;
+        border: none;
+        text-decoration: none;
+        margin-top: 16px;
+        border-radius: 10px;
+        transition: background 0.2s, color 0.2s;
+    }
+
+    .btn-cancel:hover {
+        background: #f1f5f9;
+        color: var(--text);
+    }
+</style>
+
+<div class="picker-container">
+    <div class="form-card">
+        <div class="form-card-header">
+            <h2>🛒 Select Child</h2>
+            <p>Choose which child's reservation you want to manage</p>
+        </div>
+
+        <div class="form-card-body">
             {% for child in children %}
-            <a href="{{ url_for('student.student_reservation', enrollment_id=child.enrollment_id) }}" style="
-           display:flex; align-items:center; gap:14px;
-           background: linear-gradient(135deg,#f0f4ff,#eef2ff);
-           border: 1px solid #c7d2fe;
-           border-left: 4px solid #6366f1;
-           border-radius: 14px;
-           padding: 16px 20px;
-           text-decoration: none;
-           color: var(--text);
-           transition: transform 0.15s, box-shadow 0.15s;
-         " onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 18px rgba(99,102,241,.18)'"
-                onmouseout="this.style.transform='';this.style.boxShadow=''">
-                <div style="
-          width:44px; height:44px;
-          background:linear-gradient(135deg,#6366f1,#7c3aed);
-          border-radius:50%;
-          display:flex; align-items:center; justify-content:center;
-          color:#fff; font-weight:800; font-size:1.1rem;
-          flex-shrink:0;">
+            <a href="{{ url_for('student.student_reservation', enrollment_id=child.enrollment_id) }}" class="child-select-btn">
+                <div class="child-avatar-mini">
                     {{ child.student_name[0] | upper }}
                 </div>
-                <div>
-                    <div style="font-weight:700; font-size:0.97rem;">{{ child.student_name }}</div>
-                    <div style="font-size:0.8rem; color:var(--muted);">Grade {{ child.grade_level }} · Enrollment #{{
-                        child.enrollment_id }}</div>
+                <div class="child-info-mini">
+                    <div class="child-name-mini">{{ child.student_name }}</div>
+                    <div class="child-meta-mini">Grade {{ child.grade_level }} &nbsp;&bull;&nbsp; Enrollment #{{ child.enrollment_id }}</div>
                 </div>
-                <span style="margin-left:auto; color:#6366f1; font-size:1.1rem;">→</span>
+                <span class="child-arrow">→</span>
             </a>
             {% endfor %}
+
+            <a href="{{ url_for('parent.dashboard') }}" class="btn-cancel">
+                ← Back to Dashboard
+            </a>
         </div>
     </div>
-
-    <a href="{{ url_for('parent.dashboard') }}" class="btn btn-secondary" style="margin-top:8px;">
-        ← Back to Dashboard
-    </a>
-
 </div>
 {% endblock %}

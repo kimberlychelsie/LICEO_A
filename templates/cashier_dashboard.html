@@ -4,136 +4,437 @@
 
 {% block styles %}
 <style>
-    .stat-card-colored {
-        color: #fff;
-        padding: 22px 20px;
-        border-radius: 14px;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, .12);
-        transition: transform 0.2s;
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+    :root {
+        --cashier-primary: #1e3a8a;
+        --cashier-accent: #3b82f6;
+        --cashier-success: #10b981;
+        --cashier-pending: #f59e0b;
+        --cashier-total: #6366f1;
+        --cashier-bg: #f8fafc;
+        --cashier-card: #ffffff;
+        --cashier-text: #0f172a;
+        --cashier-muted: #64748b;
+        --cashier-border: #e2e8f0;
+
+        --cashier-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        --cashier-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
     }
 
-    .stat-card-colored:hover {
-        transform: translateY(-3px);
+    body {
+        background-color: var(--cashier-bg);
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     }
 
-    .stat-card-colored h3 {
-        font-size: 0.72rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: .07em;
-        opacity: .88;
-        margin-bottom: 10px;
+    .dashboard-wrap {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 24px 20px 64px;
     }
 
-    .stat-card-colored .val {
+    /* ── Header Section ── */
+    .dashboard-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 32px;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .welcome-text h1 {
         font-size: 2rem;
+        font-weight: 800;
+        color: var(--cashier-primary);
+        margin-bottom: 4px;
+        letter-spacing: -0.02em;
+    }
+
+    .welcome-text p {
+        color: var(--cashier-muted);
+        font-size: 1rem;
+        font-weight: 500;
+    }
+
+    /* ── Analytics Section ── */
+    .analytics-section {
+        display: grid;
+        grid-template-columns: 1fr 1.5fr;
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+
+    @media (max-width: 900px) {
+        .analytics-section { grid-template-columns: 1fr; }
+    }
+
+    .analytics-card {
+        background: var(--cashier-card);
+        border: 1px solid var(--cashier-border);
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: var(--cashier-shadow);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .analytics-card h2 {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--cashier-primary);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 200px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .chart-stats {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        margin-top: 20px;
+    }
+
+    .mini-stat {
+        padding: 12px;
+        background: #fbfcfe;
+        border-radius: 12px;
+        border: 1px solid var(--cashier-border);
+    }
+
+    .mini-stat-label {
+        font-size: 0.65rem;
+        font-weight: 800;
+        color: var(--cashier-muted);
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+
+    .mini-stat-value {
+        font-size: 1.1rem;
         font-weight: 900;
-        line-height: 1;
-        margin-bottom: 6px;
+        color: var(--cashier-text);
     }
 
-    .stat-card-colored p {
-        font-size: 0.78rem;
-        opacity: .82;
+    .kpi-label { font-size: 0.8rem; font-weight: 700; color: var(--cashier-muted); text-transform: uppercase; }
+    .kpi-sub { font-size: 0.85rem; font-weight: 600; color: var(--cashier-muted); margin-top: 4px; }
+
+    /* ── Quick Actions ── */
+    .action-row {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 32px;
+        flex-wrap: wrap;
     }
 
-    .collected {
-        background: linear-gradient(135deg, #667eea, #764ba2);
+    .btn-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        text-decoration: none;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
     }
 
-    .pending-c {
-        background: linear-gradient(135deg, #f093fb, #f5576c);
+    .btn-search {
+        background: var(--cashier-primary);
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
     }
 
-    .enroll-c {
-        background: linear-gradient(135deg, #4facfe, #00f2fe);
+    .btn-search:hover {
+        background: #1e40af;
+        transform: translateY(-2px);
+    }
+
+    .btn-history {
+        background: #fff;
+        color: var(--cashier-primary);
+        border: 1px solid var(--cashier-border);
+    }
+
+    .btn-history:hover {
+        background: #f1f5f9;
+        transform: translateY(-2px);
+    }
+
+    /* ── Data Section ── */
+    .data-container {
+        background: var(--cashier-card);
+        border: 1px solid var(--cashier-border);
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: var(--cashier-shadow);
+    }
+
+    .data-header {
+        padding: 24px 32px;
+        border-bottom: 1px solid var(--cashier-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #fbfcfe;
+    }
+
+    .data-header h2 {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--cashier-primary);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    .modern-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 900px;
+    }
+
+    .modern-table th {
+        background: #fbfcfe;
+        padding: 16px 32px;
+        text-align: left;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--cashier-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid var(--cashier-border);
+    }
+
+    .modern-table td {
+        padding: 16px 32px;
+        font-size: 0.95rem;
+        color: var(--cashier-text);
+        border-bottom: 1px solid var(--cashier-border);
+        vertical-align: middle;
+    }
+
+    .modern-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .modern-table tbody tr:hover {
+        background-color: #f8fafc;
+    }
+
+    .student-info { display: flex; flex-direction: column; }
+    .student-name { font-weight: 700; color: var(--cashier-primary); }
+    .student-id { font-size: 0.75rem; color: var(--cashier-muted); font-weight: 600; }
+
+    /* Badges */
+    .badge-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+
+    .badge-paid { background: #d1fae5; color: #065f46; }
+    .badge-partial { background: #dbeafe; color: #1e40af; }
+    .badge-pending { background: #fff3c4; color: #92400e; }
+    .badge-none { background: #f1f5f9; color: #475569; }
+
+    .btn-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        transition: all 0.2s;
+        font-size: 1rem;
+        border: 1px solid var(--cashier-border);
+        background: #fff;
+        color: var(--cashier-muted);
+    }
+
+    .btn-icon:hover {
+        background: var(--cashier-primary);
+        color: #fff;
+        transform: scale(1.1);
+        border-color: var(--cashier-primary);
+    }
+
+    .btn-pay {
+        background: #ecfdf5;
+        color: #059669;
+        border-color: #bbf7d0;
+    }
+
+    .btn-pay:hover { background: #059669; color: #fff; border-color: #059669; }
+
+    @media (max-width: 768px) {
+        .dashboard-header { flex-direction: column; align-items: flex-start; }
+        .analytics-section { grid-template-columns: 1fr; }
+        .action-row { flex-direction: column; }
+        .btn-action { width: 100%; justify-content: center; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div style="max-width:1200px;">
+<div class="dashboard-wrap">
 
-    <!-- Stats row -->
-    <div class="grid grid-3" style="margin-bottom:24px;">
-        <div class="stat-card-colored collected">
-            <h3>Today's Collection</h3>
-            <div class="val">₱{{ "%.2f"|format(today_summary.total_collected) }}</div>
-            <p>{{ today_summary.payment_count }} transactions</p>
+    <!-- Header -->
+    <div class="dashboard-header">
+        <div class="welcome-text">
+            <h1>Cashier Console</h1>
+            <p>Managing financial records for <strong>{{ session.get('branch_name', 'Main Campus') }}</strong></p>
         </div>
-        <div class="stat-card-colored pending-c">
-            <h3>Pending Bills</h3>
-            <div class="val">{{ pending_count }}</div>
-            <p>Awaiting payment</p>
+        <div class="status-indicator" style="background: #fff; padding: 10px 20px; border-radius: 12px; border: 1px solid var(--cashier-border); display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--cashier-primary);">
+            <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--cashier-success); display: block; animation: pulse 2s infinite;"></span>
+            System Online
         </div>
-        <div class="stat-card-colored enroll-c">
-            <h3>Total Enrollments</h3>
-            <div class="val">{{ enrollments|length }}</div>
-            <p>In this branch</p>
+    </div>
+
+    <!-- Analytics Section -->
+    <div class="analytics-section">
+        <!-- Collection Card -->
+        <div class="analytics-card" style="border-left: 4px solid var(--cashier-success);">
+            <h2>💰 Today's Highlights</h2>
+            <div style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
+                <div class="mini-stat-label">Revenue Collected Today</div>
+                <div style="font-size: 2.25rem; font-weight: 900; color: var(--cashier-text); margin: 4px 0;">
+                    ₱{{ "{:,.2f}".format(today_summary.total_collected) }}
+                </div>
+                <div class="kpi-sub">{{ today_summary.payment_count }} transactions processed since morning.</div>
+            </div>
+            <div class="mini-stat" style="margin-top: 16px; background: #ecfdf5; border-color: #d1fae5;">
+                <span class="mini-stat-label" style="color: #059669;">Daily Target Status</span>
+                <div style="font-size: 0.85rem; font-weight: 700; color: #065f46;">Collections are active and synchronized.</div>
+            </div>
+        </div>
+
+        <!-- Billing Chart Card -->
+        <div class="analytics-card">
+            <h2>📊 Billing Health Overview</h2>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; flex: 1;">
+                <div class="chart-container">
+                    <canvas id="billingChart"></canvas>
+                    <div style="position: absolute; text-align: center; pointer-events: none;">
+                        <div id="chartTotal" style="font-size: 1.5rem; font-weight: 900; color: var(--cashier-primary);">0</div>
+                        <div style="font-size: 0.6rem; font-weight: 800; color: var(--cashier-muted); text-transform: uppercase;">Students</div>
+                    </div>
+                </div>
+                <div class="chart-stats">
+                    <div class="mini-stat">
+                        <div class="mini-stat-label">Pending/Partial</div>
+                        <div class="mini-stat-value" style="color: var(--cashier-pending);">{{ pending_count }}</div>
+                    </div>
+                    <div class="mini-stat">
+                        <div class="mini-stat-label">Fully Settled</div>
+                        <div class="mini-stat-value" style="color: var(--cashier-success);">{{ enrollments|selectattr('bill_status', 'equalto', 'paid')|list|length }}</div>
+                    </div>
+                    <div class="mini-stat" style="grid-column: span 2;">
+                        <div class="mini-stat-label">Total Active Enrollments</div>
+                        <div class="mini-stat-value">{{ enrollments|length }}</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <!-- Quick Actions -->
-    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:24px;">
-        <a href="/cashier/search" class="btn btn-primary">🔍 Search Student</a>
-        <a href="/cashier/reservations" class="btn btn-secondary">📚 Reservations</a>
+    <div class="action-row">
+        <a href="/cashier/search" class="btn-action btn-search">
+            <span>🔍 Search Student</span>
+        </a>
+        <a href="/cashier/reservations" class="btn-action btn-history">
+            <span>📚 Reservations</span>
+        </a>
+        <a href="/cashier/payment-history" class="btn-action btn-history">
+            <span>📜 Payment History</span>
+        </a>
+        <a href="/cashier/reports" class="btn-action btn-history">
+            <span>📊 Daily Reports</span>
+        </a>
     </div>
 
-    <!-- Billing Table -->
-    <div class="card" style="padding:0; overflow:hidden;">
-        <div style="padding:18px 20px; border-bottom:1px solid var(--border); font-weight:800; font-size:1rem;">
-            📋 Enrollments &amp; Billing
+    <!-- Enrollments Table -->
+    <div class="data-container">
+        <div class="data-header">
+            <h2>📋 Billing & Settlement Registry</h2>
         </div>
-
-        {% if enrollments %}
-        <div class="table-wrap" style="border:none; border-radius:0;">
-            <table>
+        <div class="table-responsive">
+            <table class="modern-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
-                        <th>Student Name</th>
-                        <th>Grade</th>
-                        <th>Guardian</th>
-                        <th>Bill Status</th>
-                        <th>Balance</th>
-                        <th>Actions</th>
+                        <th>Student & ID</th>
+                        <th>Grade Level</th>
+                        <th>Status</th>
+                        <th>Outstanding</th>
+                        <th style="text-align: right;">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for e in enrollments %}
                     <tr>
-                        <td style="color:var(--muted); font-size:0.82rem;"><strong>#{{ e.branch_enrollment_no
-                                }}</strong></td>
-                        <td><strong>{{ e.student_name }}</strong></td>
-                        <td>{{ e.grade_level }}</td>
-                        <td>{{ e.guardian_name or '—' }}</td>
+                        <td>
+                            <div class="student-info">
+                                <span class="student-name">{{ e.student_name }}</span>
+                                <span class="student-id">ENRL-{{ e.branch_enrollment_no }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span style="font-weight: 600; color: var(--cashier-muted);">{{ e.grade_level }}</span>
+                        </td>
                         <td>
                             {% if not e.bill_id %}
-                            <span class="badge badge-gray">No Bill</span>
+                                <span class="badge-status badge-none">No Bill Generated</span>
                             {% elif e.bill_status == 'paid' %}
-                            <span class="badge badge-green">✓ Paid</span>
+                                <span class="badge-status badge-paid">Settled</span>
                             {% elif e.bill_status == 'partial' %}
-                            <span class="badge badge-blue">Partial</span>
+                                <span class="badge-status badge-partial">Partial</span>
                             {% else %}
-                            <span class="badge badge-red">Pending</span>
+                                <span class="badge-status badge-pending">Payment Due</span>
                             {% endif %}
                         </td>
                         <td>
-                            {% if e.balance %}<strong>₱{{ "%.2f"|format(e.balance) }}</strong>{% else %}—{% endif %}
+                            {% if e.balance %}
+                                <span style="font-weight: 800; color: #b91c1c;">₱{{ "{:,.2f}".format(e.balance) }}</span>
+                            {% else %}
+                                <span style="color: var(--cashier-muted); font-size: 0.85rem;">No Balance</span>
+                            {% endif %}
                         </td>
-                        <td>
-                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <td style="text-align: right;">
+                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
                                 {% if not e.bill_id %}
-                                {% if is_branch_active_status %}
-                                <a href="/cashier/create-bill/{{ e.enrollment_id }}" class="btn btn-primary btn-sm">📝
-                                    Create Bill</a>
-                                {% endif %}
+                                    {% if is_branch_active_status %}
+                                        <a href="/cashier/create-bill/{{ e.enrollment_id }}" class="btn-action btn-search" style="padding: 8px 16px; font-size: 0.8rem; border-radius: 8px;">
+                                            Create Bill
+                                        </a>
+                                    {% endif %}
                                 {% else %}
-                                <a href="/cashier/bill/{{ e.bill_id }}" class="btn btn-secondary btn-sm">👁 View</a>
-                                {% if e.bill_status != 'paid' and is_branch_active_status %}
-                                <a href="/cashier/process-payment/{{ e.bill_id }}" class="btn btn-primary btn-sm">💵
-                                    Pay</a>
-                                {% endif %}
+                                    <a href="/cashier/bill/{{ e.bill_id }}" class="btn-icon" title="View Statement">👁</a>
+                                    {% if e.bill_status != 'paid' and is_branch_active_status %}
+                                        <a href="/cashier/process-payment/{{ e.bill_id }}" class="btn-icon btn-pay" title="Process Payment">💵</a>
+                                    {% endif %}
                                 {% endif %}
                             </div>
                         </td>
@@ -142,12 +443,68 @@
                 </tbody>
             </table>
         </div>
-        {% else %}
-        <div style="text-align:center; padding:48px 20px; color:var(--muted);">
-            📭 No enrollments found for this branch.
+        {% if not enrollments %}
+        <div style="text-align: center; padding: 64px 32px; color: var(--cashier-muted);">
+            <div style="font-size: 4rem; margin-bottom: 24px;">📭</div>
+            <h3 style="font-weight: 800; color: var(--cashier-primary); margin-bottom: 8px;">No Records Found</h3>
+            <p>There are no active enrollments to display/bill currently.</p>
         </div>
         {% endif %}
     </div>
 
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // ── Billing Status Analytics ──
+    const paidCount = {{ enrollments|selectattr('bill_status', 'equalto', 'paid')|list|length }};
+    const partCount = {{ enrollments|selectattr('bill_status', 'equalto', 'partial')|list|length }};
+    const pendCount = {{ enrollments|selectattr('bill_status', 'equalto', 'pending')|list|length }};
+    const noBillCount = {{ enrollments|rejectattr('bill_status')|list|length }};
+    
+    const chartTotalEl = document.getElementById('chartTotal');
+    if (chartTotalEl) chartTotalEl.innerText = {{ enrollments|length }};
+
+    const ctx = document.getElementById('billingChart')?.getContext('2d');
+    if (ctx) {
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Settled', 'Partial', 'Pending', 'No Bill'],
+                datasets: [{
+                    data: [paidCount, partCount, pendCount, noBillCount],
+                    backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#e2e8f0'],
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '75%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ` ${context.label}: ${context.raw}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+
+<style>
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+</style>
 {% endblock %}

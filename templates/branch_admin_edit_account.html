@@ -1,58 +1,207 @@
 {% extends "base.html" %}
-{% block title %}Edit Account{% endblock %}
-{% block content %}
-<style>
-    :root {
-        --ios-blue: #007aff;
-        --ios-gray: #8e8e93;
-        --ios-light-gray: #f2f2f7;
-    }
-    .ios-container { padding: 40px 20px; max-width: 600px; margin: 0 auto; }
-    .ios-card { background: #fff; border-radius: 20px; padding: 32px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04); border: 1px solid rgba(0, 0, 0, 0.02); }
-    .ios-label { font-size: 12px; font-weight: 700; color: #86868b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block; }
-    .ios-input { background: var(--ios-light-gray); border: none; border-radius: 12px; padding: 14px 18px; font-size: 16px; width: 100%; color: #1d1d1f; margin-bottom: 20px; }
-    .ios-input:focus { background: #fff; box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1); outline: none; }
-    .ios-btn { padding: 14px 28px; border-radius: 12px; font-weight: 700; font-size: 16px; border: none; cursor: pointer; transition: all 0.2s; display: inline-flex; align-items: center; justify-content: center; width: 100%; margin-top: 10px; }
-    .ios-btn-blue { background: var(--ios-blue); color: #fff; }
-    .ios-btn-gray { background: #e3e3e8; color: #1d1d1f; }
-</style>
+{% block title %}Edit User Account – Liceo LMS{% endblock %}
 
-<div class="ios-container">
-    <div style="margin-bottom: 32px;">
-        <h1 style="font-size: 28px; font-weight: 800; margin: 0;">Edit Account</h1>
-        <p style="color: var(--ios-gray); margin-top: 4px;">Update details for {{ user.role|title }}</p>
+{% block styles %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+    :root {
+        --ma-primary: #1e3a8a;
+        --ma-accent: #3b82f6;
+        --ma-bg: #f8fafc;
+        --ma-card: #ffffff;
+        --ma-border: #e2e8f0;
+        --ma-text: #0f172a;
+        --ma-muted: #64748b;
+        --ma-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    body {
+        background-color: var(--ma-bg);
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .edit-container {
+        padding: 60px 24px;
+        max-width: 600px;
+        margin: 0 auto;
+    }
+
+    .edit-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .edit-header h1 {
+        font-size: 2rem;
+        font-weight: 900;
+        color: var(--ma-primary);
+        letter-spacing: -0.03em;
+        margin-bottom: 8px;
+    }
+
+    .edit-header p {
+        color: var(--ma-muted);
+        font-weight: 600;
+        font-size: 1rem;
+    }
+
+    .premium-card {
+        background: var(--ma-card);
+        border: 1px solid var(--ma-border);
+        border-radius: 28px;
+        padding: 40px;
+        box-shadow: var(--ma-shadow);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .premium-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 6px;
+        background: linear-gradient(90deg, var(--ma-primary), var(--ma-accent));
+    }
+
+    .form-group {
+        margin-bottom: 24px;
+    }
+
+    .form-group label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 850;
+        color: var(--ma-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 10px;
+        margin-left: 4px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 16px 20px;
+        border-radius: 16px;
+        border: 2px solid var(--ma-border);
+        font-family: inherit;
+        font-weight: 600;
+        color: var(--ma-text);
+        font-size: 1rem;
+        transition: all 0.2s;
+        background: #fdfdfd;
+        box-sizing: border-box;
+    }
+
+    .form-control:focus {
+        border-color: var(--ma-accent);
+        background: #fff;
+        outline: none;
+        box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.1);
+    }
+
+    .btn-submit {
+        width: 100%;
+        padding: 18px;
+        border-radius: 18px;
+        border: none;
+        background: var(--ma-primary);
+        color: #fff;
+        font-size: 1rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        margin-top: 12px;
+        box-shadow: 0 4px 6px rgba(30, 58, 138, 0.2);
+    }
+
+    .btn-submit:hover {
+        background: #1e40af;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px rgba(30, 58, 138, 0.3);
+    }
+
+    .btn-cancel {
+        display: block;
+        text-align: center;
+        margin-top: 24px;
+        color: var(--ma-muted);
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.9rem;
+        transition: color 0.2s;
+    }
+
+    .btn-cancel:hover {
+        color: var(--ma-primary);
+    }
+
+    .role-badge {
+        display: inline-block;
+        padding: 6px 14px;
+        background: #eff6ff;
+        color: var(--ma-primary);
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        margin-bottom: 24px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="edit-container">
+    <div class="edit-header">
+        <h1>Refine Credentials</h1>
+        <p>Administrative update for <strong>{{ user.full_name }}</strong></p>
     </div>
 
-    <form method="post" action="{{ url_for('branch_admin.branch_admin_edit_account', user_id=user.user_id, role=request.args.get('role', 'registrar')) }}">
-        <div class="ios-card">
-            <label class="ios-label">Full Name</label>
-            <input class="ios-input" name="full_name" value="{{ user.full_name or '' }}" placeholder="Name" required>
-            
-            <label class="ios-label">Email Address</label>
-            <input class="ios-input" name="email" type="email" value="{{ user.email or '' }}" placeholder="email@example.com" required>
+    <div class="premium-card">
+        <div style="text-align: center;">
+            <div class="role-badge">{{ user.role }} Account</div>
+        </div>
 
-            <label class="ios-label">Gender</label>
-            <select class="ios-input" name="gender" required>
-                <option value="">— Select —</option>
-                <option value="female" {% if user.gender == 'female' %}selected{% endif %}>Female</option>
-                <option value="male" {% if user.gender == 'male' %}selected{% endif %}>Male</option>
-            </select>
+        <form method="post" action="{{ url_for('branch_admin.branch_admin_edit_account', user_id=user.user_id, role=request.args.get('role', 'registrar')) }}">
+            <div class="form-group">
+                <label>Full Legal Name</label>
+                <input class="form-control" name="full_name" value="{{ user.full_name or '' }}" placeholder="Enter full name" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Verification Email</label>
+                <input class="form-control" name="email" type="email" value="{{ user.email or '' }}" placeholder="email@domain.com" required>
+            </div>
+
+            <div class="form-group">
+                <label>Gender Profile</label>
+                <select class="form-control" name="gender" required>
+                    <option value="">— Select Gender —</option>
+                    <option value="female" {% if user.gender == 'female' %}selected{% endif %}>Female</option>
+                    <option value="male" {% if user.gender == 'male' %}selected{% endif %}>Male</option>
+                </select>
+            </div>
 
             {% if user.role == 'teacher' %}
-            <label class="ios-label">Assigned Grade Level</label>
-            <select class="ios-input" name="grade_level">
-                <option value="">— Select Grade —</option>
-                {% for g in grades %}
-                <option value="{{ g.id }}" {% if user.grade_level_id|string == g.id|string %}selected{% endif %}>{{ g.name }}</option>
-                {% endfor %}
-            </select>
+            <div class="form-group">
+                <label>Academic Grade Assignment</label>
+                <select class="form-control" name="grade_level">
+                    <option value="">— Unassigned —</option>
+                    {% for g in grades %}
+                    <option value="{{ g.id }}" {% if user.grade_level_id|string == g.id|string %}selected{% endif %}>{{ g.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
             {% endif %}
-        </div>
 
-        <div style="margin-top: 24px; display: flex; flex-direction: column; gap: 12px;">
-            <button type="submit" class="ios-btn ios-btn-blue">Save Changes</button>
-            <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role=request.args.get('role', 'registrar')) }}" class="ios-btn ios-btn-gray" style="text-decoration: none;">Cancel</a>
-        </div>
-    </form>
+            <button type="submit" class="btn-submit">Push Update to Registry</button>
+        </form>
+    </div>
+
+    <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role=request.args.get('role', 'registrar')) }}" class="btn-cancel">
+        ← Return to Account Inventory
+    </a>
 </div>
 {% endblock %}
