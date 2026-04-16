@@ -371,13 +371,21 @@
         <!-- Grade Level Filters for Students -->
         <div class="grade-tabs">
             <a href="?tab=students" class="grade-tab {% if not grade_filter %}active{% endif %}">All Levels</a>
-            {% for g in grade_options %}
+            {% for g in all_grades %}
             <a href="?tab=students&grade={{ g }}" class="grade-tab {% if grade_filter == g|string %}active{% endif %}">{{ g }}</a>
             {% endfor %}
         </div>
 
         <!-- Search Bar -->
         <div class="filter-bar">
+            <!-- Section Filter -->
+            <select class="search-input" style="max-width:200px; padding-left:12px;" onchange="window.location.href='?tab=students&grade={{ grade_filter }}&section_id=' + this.value;">
+                <option value="">All Sections</option>
+                {% for sec in all_sections %}
+                <option value="{{ sec.section_id }}" {% if section_filter == sec.section_id|string %}selected{% endif %}>{{ sec.section_name }} ({{ sec.grade_level }})</option>
+                {% endfor %}
+            </select>
+
             <div class="search-input-wrapper">
                 <i class="fas fa-search"></i>
                 <input type="text" id="searchInput" class="search-input" placeholder="Search by student name..." oninput="applyFilters()">

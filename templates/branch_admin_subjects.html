@@ -254,6 +254,20 @@
                             {% endfor %}
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label>DepEd Category *</label>
+                        <select name="deped_category" class="form-control" required>
+                            <option value="language">Language / Values (WW 30%, PT 50%, QA 20%)</option>
+                            <option value="science_math">Science / Math (WW 40%, PT 40%, QA 20%)</option>
+                            <option value="skills">Skills (WW 20%, PT 60%, QA 20%)</option>
+                        </select>
+                    </div>
+                    <div style="font-size: 11.5px; color: #64748b; margin-bottom: 16px; line-height: 1.4;">
+                        <strong>Guide:</strong><br>
+                        • <strong>Language/Values:</strong> Filipino, English, AP, EsP, Religion / Values Education<br>
+                        • <strong>Science/Math:</strong> Science, Mathematics<br>
+                        • <strong>Skills:</strong> EPP, TLE, MAPEH, Computer / ICT
+                    </div>
                     <button type="submit" class="btn btn-primary">Add Subject</button>
                 </form>
             </div>
@@ -276,7 +290,16 @@
                     <tbody>
                         {% for subj in subjects %}
                         <tr>
-                            <td><strong style="color: #1e293b;">{{ subj.name }}</strong></td>
+                            <td>
+                                <strong style="color: #1e293b;">{{ subj.name }}</strong>
+                                {% if subj.deped_category == 'science_math' %}
+                                <span style="display:inline-block; margin-left:8px; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700; background:#d1fae5; color:#065f46;">Science / Math</span>
+                                {% elif subj.deped_category == 'skills' %}
+                                <span style="display:inline-block; margin-left:8px; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700; background:#fef3c7; color:#92400e;">Skills Subject</span>
+                                {% else %}
+                                <span style="display:inline-block; margin-left:8px; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700; background:#dbeafe; color:#1d4ed8;">Language / Values</span>
+                                {% endif %}
+                            </td>
                             <td style="color: #475569;">
                                 {% if subject_to_sections.get(subj.subject_id) %}
                                 {% for item in subject_to_sections[subj.subject_id] %}
@@ -290,7 +313,7 @@
                                 {% if is_branch_active_status %}
                                 {% set current_section_id = subject_first_section.get(subj.subject_id, '') %}
                                 <button class="btn btn-sm btn-secondary" type="button"
-                                    onclick='openEditModal({{ subj.subject_id }}, {{ subj.name | tojson }}, "{{ current_section_id }}")'>✎
+                                    onclick='openEditModal({{ subj.subject_id }}, {{ subj.name | tojson }}, "{{ current_section_id }}", "{{ subj.deped_category }}")'>✎
                                     Edit</button>
                                 <form method="post"
                                     action="{{ url_for('branch_admin.branch_admin_subject_delete', subject_id=subj.subject_id) }}"
@@ -337,6 +360,21 @@
                 </select>
             </div>
 
+            <div class="form-group">
+                <label>DepEd Category *</label>
+                <select name="deped_category" id="edit_deped_category" class="form-control" required>
+                    <option value="language">Language / Values (WW 30%, PT 50%, QA 20%)</option>
+                    <option value="science_math">Science / Math (WW 40%, PT 40%, QA 20%)</option>
+                    <option value="skills">Skills (WW 20%, PT 60%, QA 20%)</option>
+                </select>
+            </div>
+            <div style="font-size: 11.5px; color: #64748b; margin-bottom: 20px; line-height: 1.4;">
+                <strong>Guide:</strong><br>
+                • <strong>Language/Values:</strong> Filipino, English, AP, EsP, Religion / Values Education<br>
+                • <strong>Science/Math:</strong> Science, Mathematics<br>
+                • <strong>Skills:</strong> EPP, TLE, MAPEH, Computer / ICT
+            </div>
+
             <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
                 <button type="button" class="btn btn-secondary" style="width:auto;"
                     onclick="closeEditModal()">Cancel</button>
@@ -347,10 +385,11 @@
 </div>
 
 <script>
-    function openEditModal(subjectId, name, sectionId) {
+    function openEditModal(subjectId, name, sectionId, category) {
         document.getElementById('editForm').action = '/branch-admin/subjects/' + subjectId + '/edit';
         document.getElementById('edit_name').value = name;
         document.getElementById('edit_section_id').value = sectionId;
+        document.getElementById('edit_deped_category').value = category || 'language';
         document.getElementById('editModal').style.display = 'flex';
     }
 

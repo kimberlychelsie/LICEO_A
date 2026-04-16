@@ -553,13 +553,39 @@
                 var icon = '📄';
                 if (ext === 'pdf') icon = '📕';
                 else if (['jpg','jpeg','png','webp'].includes(ext)) icon = '🖼️';
+
+                var filePath = doc.file_path || '';
+                var viewPath = filePath;
+
+                // For PDF: force inline view using Cloudinary flag (no auto-download)
+                if (ext === 'pdf' && filePath.includes('/upload/')) {
+                    viewPath = filePath.replace('/upload/', '/upload/fl_attachment:false/');
+                }
+
                 var card = document.createElement('div');
                 card.className = 'doc-card';
+
+                var actionButtons = '';
+                if (ext === 'pdf') {
+                    actionButtons = `
+                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                            <a href="${viewPath}" target="_blank" rel="noopener" style="background:#1d4ed8;">
+                                👁 View
+                            </a>
+                            <a href="${filePath}" target="_blank" rel="noopener" download style="background:#475569;">
+                                ⬇ Download
+                            </a>
+                        </div>`;
+                } else {
+                    actionButtons = `<a href="${viewPath}" target="_blank" rel="noopener">👁 View / Download</a>`;
+                }
+
                 card.innerHTML = `
                     <div class="doc-icon">${icon}</div>
                     <div class="doc-name">${doc.file_name || 'Unnamed file'}</div>
                     <div class="doc-type">${ext.toUpperCase()} file</div>
-                    <a href="${doc.file_path}" target="_blank" rel="noopener">👁 View / Download</a>`;
+                    ${actionButtons}
+                `;
                 grid.appendChild(card);
             });
         }

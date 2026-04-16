@@ -1216,6 +1216,7 @@ def branch_admin_subjects():
     if request.method == "POST":
         name = (request.form.get("name") or "").strip()
         section_id_raw = request.form.get("section_id")
+        deped_category = request.form.get("deped_category", "language")
 
         try:
             section_id = int(section_id_raw)
@@ -1237,11 +1238,11 @@ def branch_admin_subjects():
 
             # create subject if not exists
             cursor.execute("""
-                INSERT INTO subjects (name)
-                VALUES (%s)
-                ON CONFLICT (name) DO NOTHING
+                INSERT INTO subjects (name, deped_category)
+                VALUES (%s, %s)
+                ON CONFLICT (name) DO UPDATE SET deped_category = EXCLUDED.deped_category
                 RETURNING subject_id
-            """, (name,))
+            """, (name, deped_category))
             res = cursor.fetchone()
             if res and res.get("subject_id"):
                 subject_id = res["subject_id"]
@@ -1275,7 +1276,7 @@ def branch_admin_subjects():
 
     # ✅ only show subjects used by this branch
     cursor.execute("""
-        SELECT DISTINCT sub.subject_id, sub.name
+        SELECT DISTINCT sub.subject_id, sub.name, sub.deped_category
         FROM subjects sub
         JOIN section_teachers st ON st.subject_id = sub.subject_id
         JOIN sections s ON s.section_id = st.section_id
@@ -1368,6 +1369,7 @@ def branch_admin_subject_edit(subject_id):
     branch_id = session.get("branch_id")
     new_name = (request.form.get("name") or "").strip()
     section_id_raw = request.form.get("section_id")
+    deped_category = request.form.get("deped_category", "language")
 
     try:
         section_id = int(section_id_raw)
@@ -1396,8 +1398,8 @@ def branch_admin_subject_edit(subject_id):
             return redirect("/branch-admin/subjects")
 
         # In order to allow redefining the section assignment securely, we can drop the old assignments of this subject for THIS branch, and recreate a new single assignment, or just rename the subject itself locally.
-        # Let's globally update the subject name, and then replace the section assignment for this branch.
-        cursor.execute("UPDATE subjects SET name = %s WHERE subject_id = %s", (new_name, subject_id))
+        # Let's globally update the subject name and category, and then replace the section assignment for this branch.
+        cursor.execute("UPDATE subjects SET name = %s, deped_category = %s WHERE subject_id = %s", (new_name, deped_category, subject_id))
         
         cursor.execute("""
             DELETE FROM section_teachers st

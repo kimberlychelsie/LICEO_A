@@ -69,6 +69,16 @@ def registrar_home():
             LIMIT 5
         """, (branch_id,))
         recent_pending = cursor.fetchall()
+        
+        # ✅ Enrollment by Grade for Chart
+        cursor.execute("""
+            SELECT grade_level, COUNT(*) AS student_count
+            FROM enrollments
+            WHERE branch_id = %s AND status IN ('enrolled', 'approved', 'open_for_enrollment')
+            GROUP BY grade_level
+            ORDER BY grade_level
+        """, (branch_id,))
+        enrollment_by_grade = cursor.fetchall()
 
         return render_template(
             "registrar_home.html",
@@ -78,6 +88,7 @@ def registrar_home():
             reenroll_count   = stats["reenroll_count"],
             no_account_count = no_account_count,
             recent_pending   = recent_pending,
+            enrollment_by_grade = enrollment_by_grade,
         )
     finally:
         cursor.close()
@@ -104,15 +115,35 @@ def registrar_enrollments():
         if request.method == "POST":
             enrollment_id = request.form.get("enrollment_id")
             action = request.form.get("action")
+            rejection_reason = (request.form.get("rejection_reason") or "").strip()
 
             if not enrollment_id or action not in ("approved", "rejected"):
                 flash("Invalid action.", "error")
                 return redirect("/registrar/enrollments")
 
-            cursor.execute("""
-                UPDATE enrollments SET status=%s
-                WHERE enrollment_id=%s AND branch_id=%s
-            """, (action, enrollment_id, branch_id))
+            # Reject must include a reason (so registrar can justify why).
+            if action == "rejected" and not rejection_reason:
+                flash("Please provide a rejection reason.", "error")
+                return redirect(f"/registrar/enrollment/{enrollment_id}#reject")
+
+            if action == "rejected":
+                cursor.execute(
+                    """
+                    UPDATE enrollments
+                    SET status=%s, rejection_reason=%s, rejected_at=NOW()
+                    WHERE enrollment_id=%s AND branch_id=%s
+                    """,
+                    (action, rejection_reason, enrollment_id, branch_id),
+                )
+            else:
+                cursor.execute(
+                    """
+                    UPDATE enrollments
+                    SET status=%s, rejection_reason=NULL, rejected_at=NULL
+                    WHERE enrollment_id=%s AND branch_id=%s
+                    """,
+                    (action, enrollment_id, branch_id),
+                )
 
             if cursor.rowcount == 0:
                 db.rollback()
@@ -177,7 +208,11 @@ def registrar_enrollments():
         enrolled_students = cursor.fetchall()
         # ✅ No loop needed — account status already in each row
 
-        grade_levels = sorted(set(e["grade_level"] for e in enrolled_students if e.get("grade_level")))
+        grade_levels = [
+            "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3", "Grade 4", 
+            "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", 
+            "Grade 11", "Grade 12"
+        ]
         reenrollment_open = any(e["status"] == "open_for_enrollment" for e in enrolled_students)
 
         cursor.execute("""
@@ -185,9 +220,12 @@ def registrar_enrollments():
                    CONCAT(g.name, ' — ', s.section_name) AS section_display
             FROM sections s
             JOIN grade_levels g ON g.id = s.grade_level_id
+            JOIN school_years sy ON sy.year_id = s.year_id
             WHERE s.branch_id = %s
+              AND sy.branch_id = %s
+              AND sy.is_active = TRUE
             ORDER BY g.name, s.section_name
-        """, (branch_id,))
+        """, (branch_id, branch_id))
         section_options = cursor.fetchall()
 
         is_branch_active_status = is_branch_active(branch_id)
@@ -520,6 +558,15 @@ def create_parent_account(enrollment_id):
             """, (parent_id, enrollment_id))
             db.commit()
 
+            cursor.execute("""
+                SELECT username
+                FROM student_accounts
+                WHERE enrollment_id=%s
+            """, (enrollment_id,))
+            sturow = cursor.fetchone()
+            student_username = sturow["username"] if sturow else None
+            student_temp_password = request.form.get("student_temp_password")
+
             # ─────── SEND EMAIL WITH CREDENTIALS ───────
             parent_email = enrollment.get("guardian_email") or enrollment.get("email")
             if parent_email:
@@ -531,6 +578,9 @@ Your parent account has been created.
 
 Username: {username}
 Temporary Password: {temp_password}
+
+Student LMS Username: {student_username or '[See Registrar]'}
+Temporary Password: {student_temp_password or '[See Registrar or previous email]'}
 
 You can log in at: https://liceolms.up.railway.app/
 
@@ -639,19 +689,30 @@ def registrar_profile_pictures():
         # GET request
         tab = request.args.get("tab", "students")
         grade_filter = request.args.get("grade", "")
+        section_filter = request.args.get("section_id", "")
 
         students = []
         teachers = []
-        grade_options = []
+        all_grades = []
+        all_sections = []
 
         if tab == "students":
             # Get grades for filter
-            cursor.execute("SELECT DISTINCT grade_level FROM enrollments WHERE branch_id = %s", (branch_id,))
-            raw_grades = [r["grade_level"] for r in cursor.fetchall() if r["grade_level"]]
-            
-            # Sort grades logically
-            grade_order = ['Nursery','Kinder','Grade 1','Grade 2','Grade 3','Grade 4','Grade 5','Grade 6','Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12']
-            grade_options = sorted(raw_grades, key=lambda x: grade_order.index(x) if x in grade_order else 99)
+            all_grades = [
+                "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3", "Grade 4", 
+                "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", 
+                "Grade 11", "Grade 12"
+            ]
+
+            # Get all sections
+            cursor.execute("""
+                SELECT s.section_id, s.section_name, g.name AS grade_level
+                FROM sections s
+                JOIN grade_levels g ON g.id = s.grade_level_id
+                WHERE s.branch_id = %s
+                ORDER BY g.id, s.section_name
+            """, (branch_id,))
+            all_sections = cursor.fetchall()
 
             query = """
                 SELECT e.enrollment_id, e.branch_enrollment_no, e.student_name, e.grade_level, 
@@ -661,10 +722,14 @@ def registrar_profile_pictures():
                 WHERE e.branch_id = %s AND e.status IN ('enrolled', 'approved', 'open_for_enrollment')
             """
             params = [branch_id]
+            
             if grade_filter:
                 query += " AND e.grade_level = %s"
                 params.append(grade_filter)
-            
+            if section_filter:
+                query += " AND e.section_id = %s"
+                params.append(section_filter)
+
             # Sort by Logical Grade Level then by Student Name
             query += """
                 ORDER BY CASE e.grade_level
@@ -696,7 +761,9 @@ def registrar_profile_pictures():
             "registrar_profile_pictures.html",
             tab=tab,
             grade_filter=grade_filter,
-            grade_options=grade_options,
+            section_filter=section_filter,
+            all_grades=all_grades,
+            all_sections=all_sections,
             students=students,
             teachers=teachers
         )
@@ -704,6 +771,151 @@ def registrar_profile_pictures():
     finally:
         cursor.close()
         db.close()
+
+
+# ══════════════════════════════════════════
+# STUDENTS BY GRADE
+# ══════════════════════════════════════════
+
+@registrar_bp.route("/registrar/students-by-grade", methods=["GET"])
+def registrar_students_by_grade():
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("Missing branch in session. Please login again.", "error")
+        return redirect("/logout")
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        grade_filter = request.args.get("grade", "")
+        section_filter = request.args.get("section_id", "")
+
+        all_grades = [
+            "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3", "Grade 4", 
+            "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", 
+            "Grade 11", "Grade 12"
+        ]
+
+        cursor.execute("""
+            SELECT s.section_id, s.section_name, g.name AS grade_level
+            FROM sections s
+            JOIN grade_levels g ON g.id = s.grade_level_id
+            WHERE s.branch_id = %s
+            ORDER BY g.id, s.section_name
+        """, (branch_id,))
+        all_sections = cursor.fetchall()
+
+        query = """
+            SELECT e.*, s.section_name,
+                   COALESCE(
+                       json_agg(
+                           json_build_object(
+                               'file_name', d.file_name,
+                               'file_path', d.file_path,
+                               'document_type', d.doc_type
+                           )
+                       ) FILTER (WHERE d.doc_id IS NOT NULL),
+                       '[]'
+                   ) AS documents
+            FROM enrollments e
+            LEFT JOIN sections s ON s.section_id = e.section_id
+            LEFT JOIN enrollment_documents d ON d.enrollment_id = e.enrollment_id
+            WHERE e.branch_id = %s 
+              AND e.status IN ('enrolled', 'approved', 'open_for_enrollment')
+        """
+        params = [branch_id]
+
+        if grade_filter:
+            query += " AND e.grade_level = %s"
+            params.append(grade_filter)
+            if section_filter:
+                query += " AND e.section_id = %s"
+                params.append(section_filter)
+
+        query += """
+            GROUP BY e.enrollment_id, s.section_name
+            ORDER BY e.grade_level ASC, s.section_name ASC NULLS LAST, e.student_name ASC
+        """
+
+        cursor.execute(query, tuple(params))
+        students_raw = cursor.fetchall()
+        
+        students = []
+        for e in students_raw:
+            e = dict(e)
+            if isinstance(e["documents"], str):
+                e["documents"] = json.loads(e["documents"])
+            students.append(e)
+
+        return render_template(
+            "registrar_students_by_grade.html",
+            students=students,
+            all_grades=all_grades,
+            all_sections=all_sections,
+            grade_filter=grade_filter,
+            section_filter=section_filter
+        )
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Registrar students by grade error: {str(e)}")
+        flash("Something went wrong.", "error")
+        return redirect("/registrar")
+    finally:
+        cursor.close()
+        db.close()
+
+
+@registrar_bp.route("/registrar/students-by-grade/update/<int:enrollment_id>", methods=["POST"])
+def registrar_students_by_grade_update(enrollment_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("Missing branch in session.", "error")
+        return redirect("/logout")
+
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        # Fields to update based on the inline form
+        fields = [
+            "gender", "dob", "lrn", "email", "contact_number", "address",
+            "guardian_name", "guardian_contact", "guardian_email",
+            "father_name", "father_contact", "father_occupation",
+            "mother_name", "mother_contact", "mother_occupation",
+            "previous_school", "enroll_type"
+        ]
+        
+        sets = []
+        vals = []
+        for f in fields:
+            raw = request.form.get(f)
+            if raw is not None:
+                val = raw.strip() or None
+                sets.append(f"{f} = %s")
+                vals.append(val)
+
+        if sets:
+            final_vals = vals + [enrollment_id, branch_id]
+            sql = f"UPDATE enrollments SET {', '.join(sets)} WHERE enrollment_id = %s AND branch_id = %s"
+            
+            cursor.execute(sql, final_vals)
+            db.commit()
+            flash("Student details updated successfully!", "success")
+            
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Inline update error (Enrollment ID: {enrollment_id}): {str(e)}")
+        flash("Error updating details. Please try again.", "error")
+    finally:
+        cursor.close()
+        db.close()
+        
+    return redirect(request.referrer or "/registrar/students-by-grade")
 
 
 # ══════════════════════════════════════════

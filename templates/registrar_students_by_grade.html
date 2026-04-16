@@ -1,0 +1,668 @@
+{% extends "base.html" %}
+{% block title %}Students by Grade & Section{% endblock %}
+
+{% block styles %}
+<style>
+    .header-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+        gap: 15px;
+    }
+    
+    .filter-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: var(--shadow);
+    }
+    
+    .filters-row {
+        display: flex;
+        gap: 20px;
+        align-items: flex-end;
+        flex-wrap: wrap;
+    }
+    
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 200px;
+    }
+    
+    .filter-group label {
+        font-weight: 700;
+        font-size: 0.85rem;
+        color: var(--muted);
+    }
+    
+    .search-input, .filter-select {
+        padding: 9px 12px;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.9rem;
+        outline: none;
+    }
+    .search-input:focus, .filter-select:focus {
+        border-color: var(--btn);
+    }
+    
+    .table-container {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow-x: auto;
+        box-shadow: var(--shadow);
+    }
+
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    th, td {
+        padding: 12px 16px;
+        text-align: left;
+        border-bottom: 1px solid var(--border);
+        font-size: 0.9rem;
+    }
+
+    th {
+        background: #f8fafc;
+        font-weight: 700;
+        color: var(--muted);
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+    }
+
+    .row-main {
+        cursor: pointer;
+        transition: background 0.15s;
+    }
+    .row-main:hover {
+        background: #f1f5f9;
+    }
+
+    .row-expanded {
+        background: #f8fafc;
+        border-bottom: 2px solid #cbd5e1;
+    }
+
+    .details-row {
+        display: none;
+        background: #f8fafc;
+    }
+    
+    .details-row.show {
+        display: table-row;
+    }
+    
+    .details-container {
+        padding: 20px;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 24px;
+        border-bottom: 2px solid #cbd5e1;
+    }
+
+    .detail-section h4 {
+        margin: 0 0 10px 0;
+        font-size: 0.95rem;
+        color: var(--btn);
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 6px;
+    }
+
+    .detail-grid {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 8px 12px;
+        font-size: 0.85rem;
+    }
+    
+    .detail-grid strong {
+        color: var(--muted);
+    }
+    
+    .docs-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .doc-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 12px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        border-radius: 6px;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.85rem;
+        border: 1px solid #bfdbfe;
+        transition: all 0.15s;
+    }
+    
+    .doc-link:hover {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+    
+    /* Toggle Icon */
+    .icon-toggle {
+        display: inline-block;
+        transition: transform 0.2s;
+        font-size: 0.8rem;
+    }
+    .row-main.active .icon-toggle {
+        transform: rotate(180deg);
+    }
+
+    .empty-state {
+        padding: 40px;
+        text-align: center;
+        color: var(--muted);
+        font-size: 0.95rem;
+    }
+
+    /* Editable Inputs */
+    .detail-input {
+        width: 100%;
+        padding: 6px 10px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        font-size: 0.85rem;
+        font-family: inherit;
+        background: #fff;
+        transition: border-color 0.15s;
+    }
+    .detail-input:focus {
+        border-color: var(--btn);
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(26, 58, 143, 0.1);
+    }
+    .btn-save {
+        margin-top: 15px;
+        width: 100%;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+    }
+    .btn-save:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none !important;
+        box-shadow: none !important;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="padding: 16px 20px 12px; background: #fff; border-bottom: 1px solid #e2e8f0;">
+    <h2 style="margin: 0; font-size: 1.15rem; font-weight: 900; color: #1e293b;">Students by Grade &amp; Section</h2>
+    <p style="margin: 2px 0 0; color: #94a3b8; font-size: 0.8rem;">Select a grade to filter, view, and export student data</p>
+</div>
+
+<div class="filter-card">
+    <form method="GET" action="/registrar/students-by-grade">
+        <div class="filters-row">
+            <div class="filter-group">
+                <label>Grade Level</label>
+                <select name="grade" class="filter-select" onchange="this.form.submit()">
+                    <option value="">-- Select Grade --</option>
+                    {% for g in all_grades %}
+                    <option value="{{ g }}" {% if g == grade_filter %}selected{% endif %}>{{ g }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group">
+                <label>Section</label>
+                <select name="section_id" class="filter-select" id="sectionSelect" onchange="this.form.submit()" {% if not grade_filter %}disabled{% endif %}>
+                    <option value="">-- All Sections --</option>
+                    {% for s in all_sections %}
+                        {% if not grade_filter or s.grade_level == grade_filter %}
+                        <option value="{{ s.section_id }}" {% if s.section_id|string == section_filter|string %}selected{% endif %}>
+                            {{ s.section_name }}
+                        </option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="filter-group" style="flex: 1;">
+                <label>Search Student</label>
+                <input type="text" id="searchInput" class="search-input" placeholder="Search by name or ID..." onkeyup="filterTable()">
+            </div>
+            
+        </div>
+    </form>
+</div>
+
+{% if grade_filter %}
+<div style="padding: 12px 20px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+    <span style="font-size: 0.8rem; color: #64748b; font-weight: 600;">Export {{ grade_filter }}{% if section_filter %} &mdash; {{ all_sections | selectattr('section_id', 'equalto', section_filter|int) | map(attribute='section_name') | first }}{% endif %}:</span>
+    <button onclick="exportToExcel()" style="
+        display: inline-flex; align-items: center; gap: 7px;
+        padding: 8px 16px; border-radius: 10px; border: none; cursor: pointer;
+        background: linear-gradient(135deg, #16a34a, #15803d);
+        color: #fff; font-weight: 700; font-size: 0.83rem;
+        box-shadow: 0 2px 6px rgba(22,163,74,0.3); transition: all 0.2s;
+    " onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='';">
+        📊 Excel <span style="font-size:0.7rem; opacity:0.8;">per section</span>
+    </button>
+    <button onclick="exportToPDF()" style="
+        display: inline-flex; align-items: center; gap: 7px;
+        padding: 8px 16px; border-radius: 10px; border: none; cursor: pointer;
+        background: linear-gradient(135deg, #dc2626, #b91c1c);
+        color: #fff; font-weight: 700; font-size: 0.83rem;
+        box-shadow: 0 2px 6px rgba(220,38,38,0.3); transition: all 0.2s;
+    " onmouseover="this.style.transform='translateY(-1px)';" onmouseout="this.style.transform='';">
+        📄 PDF
+    </button>
+</div>
+{% endif %}
+
+<div class="table-container">
+    {% if not grade_filter %}
+    <div class="empty-state">
+        <span style="font-size: 2rem; display: block; margin-bottom: 10px;">👆</span>
+        Please select a <strong>Grade Level</strong> above to view students.
+    </div>
+    {% elif students|length == 0 %}
+    <div class="empty-state">
+        No enrolled students found for this grade and section.
+    </div>
+    {% else %}
+    <table id="studentsTable">
+        <thead>
+            <tr>
+                <th>Student ID</th>
+                <th>Full Name</th>
+                <th>Grade</th>
+                <th>Section</th>
+                <th>Status</th>
+                <th style="text-align: right;">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in students %}
+            <!-- Main Row -->
+            <tr class="row-main" onclick="toggleRow('details-{{ s.enrollment_id }}', this)">
+                <td class="search-col font-weight-bold">
+                    {% if s.branch_enrollment_no %}
+                        {{ "%04d"|format(s.branch_enrollment_no|int) }}
+                    {% else %}
+                        {{ s.enrollment_id }}
+                    {% endif %}
+                </td>
+                <td class="search-col" style="font-weight: 700; color: var(--text);">{{ s.student_name }}</td>
+                <td>{{ s.grade_level }}</td>
+                <td>
+                    {% if s.section_name %}
+                        <span class="badge badge-gray">{{ s.section_name }}</span>
+                    {% else %}
+                        <span class="badge badge-yellow" style="background: transparent; border: 1px solid #f59e0b;">Unassigned</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if s.status == 'approved' %}
+                        <span class="badge badge-green">Approved</span>
+                    {% elif s.status == 'open_for_enrollment' %}
+                        <span class="badge badge-yellow">Re-Enrollment Open</span>
+                    {% else %}
+                        <span class="badge badge-blue">Enrolled</span>
+                    {% endif %}
+                </td>
+                <td style="text-align: right;">
+                    <button type="button" class="btn btn-secondary btn-sm" style="background:#f1f5f9; color:var(--text); border:1px solid var(--border);" onclick="event.stopPropagation(); toggleRow('details-{{ s.enrollment_id }}', this.closest('.row-main'))">
+                        View Details <span class="icon-toggle" style="margin-left: 2px;">▼</span>
+                    </button>
+                </td>
+            </tr>
+            
+            <!-- Details / Accordion Row -->
+            <tr id="details-{{ s.enrollment_id }}" class="details-row">
+                <td colspan="6" style="padding: 0;">
+                    <form method="POST" action="/registrar/students-by-grade/update/{{ s.enrollment_id }}" class="edit-form" oninput="checkChanges('{{ s.enrollment_id }}')">
+                        <div class="details-container">
+                            <div class="detail-section">
+                                <h4>Personal & Contact Information</h4>
+                                <div class="detail-grid">
+                                    <strong>Gender:</strong> 
+                                    <select name="gender" class="detail-input">
+                                        <option value="" {% if not s.gender %}selected{% endif %}>N/A</option>
+                                        <option value="Male" {% if s.gender == 'Male' %}selected{% endif %}>Male</option>
+                                        <option value="Female" {% if s.gender == 'Female' %}selected{% endif %}>Female</option>
+                                        <option value="Other" {% if s.gender == 'Other' %}selected{% endif %}>Other</option>
+                                    </select>
+
+                                    <strong>DOB:</strong> <input type="date" name="dob" class="detail-input" value="{{ s.dob or '' }}">
+                                    <strong>LRN:</strong> <input type="text" name="lrn" class="detail-input" value="{{ s.lrn or '' }}">
+                                    <strong>Email:</strong> <input type="email" name="email" class="detail-input" value="{{ s.email or '' }}">
+                                    <strong>Contact:</strong> <input type="text" name="contact_number" class="detail-input" value="{{ s.contact_number or '' }}">
+                                    <strong>Address:</strong> <textarea name="address" class="detail-input" rows="2">{{ s.address or '' }}</textarea>
+                                </div>
+                            </div>
+
+                            <div class="detail-section">
+                                <h4>Guardian Information</h4>
+                                <div class="detail-grid">
+                                    <strong>Guardian:</strong> <input type="text" name="guardian_name" class="detail-input" value="{{ s.guardian_name or '' }}">
+                                    <strong>Contact:</strong> <input type="text" name="guardian_contact" class="detail-input" value="{{ s.guardian_contact or '' }}">
+                                    <strong>Email:</strong> <input type="email" name="guardian_email" class="detail-input" value="{{ s.guardian_email or '' }}">
+                                    <strong>Father:</strong> <input type="text" name="father_name" class="detail-input" value="{{ s.father_name or '' }}">
+                                    <strong>Father Contact:</strong> <input type="text" name="father_contact" class="detail-input" value="{{ s.father_contact or '' }}">
+                                    <strong>Father Occupation:</strong> <input type="text" name="father_occupation" class="detail-input" value="{{ s.father_occupation or '' }}" placeholder="—">
+                                    <strong>Mother:</strong> <input type="text" name="mother_name" class="detail-input" value="{{ s.mother_name or '' }}">
+                                    <strong>Mother Contact:</strong> <input type="text" name="mother_contact" class="detail-input" value="{{ s.mother_contact or '' }}">
+                                    <strong>Mother Occupation:</strong> <input type="text" name="mother_occupation" class="detail-input" value="{{ s.mother_occupation or '' }}" placeholder="—">
+                                </div>
+                            </div>
+
+                            <div class="detail-section">
+                                <h4>Submitted Documents</h4>
+                                <div class="docs-list">
+                                    {% if s.documents and s.documents|length > 0 %}
+                                        {% for doc in s.documents %}
+                                        <a href="{{ doc.file_path }}" target="_blank" class="doc-link">
+                                            📄 {{ doc.document_type|replace('_', ' ')|title }}
+                                        </a>
+                                        {% endfor %}
+                                    {% else %}
+                                        <span style="color: var(--muted); font-size: 0.85rem;">No documents submitted.</span>
+                                    {% endif %}
+                                    
+                                    <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--border);">
+                                        <div class="detail-grid" style="margin-bottom: 15px;">
+                                            <strong>Prev School:</strong> <input type="text" name="previous_school" class="detail-input" value="{{ s.previous_school or '' }}">
+                                            <strong>Type:</strong> 
+                                            <select name="enroll_type" class="detail-input">
+                                                <option value="New" {% if s.enroll_type == 'New' %}selected{% endif %}>New</option>
+                                                <option value="Transferee" {% if s.enroll_type == 'Transferee' %}selected{% endif %}>Transferee</option>
+                                                <option value="Continuing" {% if s.enroll_type == 'Continuing' %}selected{% endif %}>Continuing</option>
+                                                <option value="Returning" {% if s.enroll_type == 'Returning' %}selected{% endif %}>Returning</option>
+                                            </select>
+                                        </div>
+                                        
+                                        <button type="submit" id="save-btn-{{ s.enrollment_id }}" class="btn btn-primary btn-save" disabled>
+                                            💾 Save Changes
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- SheetJS for Excel -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- jsPDF for PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+<script>
+    // Embed the raw student data as JSON for easy exporting
+    const studentsData = {{ students | tojson | safe }};
+    const currentGrade = "{{ grade_filter }}";
+    const currentSectionId = "{{ section_filter }}";
+    const currentSectionName = document.getElementById('sectionSelect') ? document.getElementById('sectionSelect').options[document.getElementById('sectionSelect').selectedIndex]?.text?.trim() : "";
+
+    function toggleRow(rowId, trElement) {
+        const detailsRow = document.getElementById(rowId);
+        if (detailsRow.classList.contains('show')) {
+            detailsRow.classList.remove('show');
+            trElement.classList.remove('active', 'row-expanded');
+        } else {
+            detailsRow.classList.add('show');
+            trElement.classList.add('active', 'row-expanded');
+        }
+    }
+
+    function checkChanges(enrollmentId) {
+        const detailsRow = document.getElementById(`details-${enrollmentId}`);
+        const form = detailsRow.querySelector('form');
+        const saveBtn = document.getElementById(`save-btn-${enrollmentId}`);
+        const inputs = form.querySelectorAll('input, select, textarea');
+        
+        let hasChanges = false;
+        inputs.forEach(input => {
+            if (input.type === 'checkbox' || input.type === 'radio') {
+                if (input.checked !== input.defaultChecked) hasChanges = true;
+            } else if (input.tagName === 'SELECT') {
+                // For select, we check against the initially selected option
+                const options = input.options;
+                for (let i = 0; i < options.length; i++) {
+                    if (options[i].defaultSelected !== options[i].selected) {
+                        hasChanges = true;
+                        break;
+                    }
+                }
+            } else {
+                if (input.value !== input.defaultValue) hasChanges = true;
+            }
+        });
+        
+        saveBtn.disabled = !hasChanges;
+    }
+
+    function filterTable() {
+        const filter = document.getElementById('searchInput').value.toLowerCase();
+        const table = document.getElementById('studentsTable');
+        const mainRows = table.getElementsByClassName('row-main');
+        
+        for (let i = 0; i < mainRows.length; i++) {
+            const tr = mainRows[i];
+            const cols = tr.getElementsByClassName('search-col');
+            let textValue = "";
+            for (let j = 0; j < cols.length; j++) {
+                textValue += cols[j].textContent || cols[j].innerText;
+            }
+            
+            const detailsId = tr.getAttribute('onclick').match(/'([^']+)'/)[1];
+            const detailsRow = document.getElementById(detailsId);
+            
+            if (textValue.toLowerCase().indexOf(filter) > -1) {
+                tr.style.display = "";
+                // If it was expanded, keep the details hidden while filtering or re-show?
+                // Let's just keep details row hidden but toggle state removed
+                tr.classList.remove('active', 'row-expanded');
+                detailsRow.classList.remove('show');
+                detailsRow.style.display = ""; // Reset inline display
+            } else {
+                tr.style.display = "none";
+                detailsRow.style.display = "none"; // Hard hide details row
+            }
+        }
+    }
+
+    // ══ Export to Excel — Multi-sheet (one per section + All) ══
+    function exportToExcel() {
+        if (!studentsData || studentsData.length === 0) {
+            alert("No data to export! Please select a Grade Level first.");
+            return;
+        }
+
+        const workbook = XLSX.utils.book_new();
+
+        // Helper: build a flat row from student object
+        function buildRow(s) {
+            const dispNo = s.branch_enrollment_no ? String(s.branch_enrollment_no).padStart(4, '0') : String(s.enrollment_id);
+            let docsStr = "";
+            if (s.documents && Array.isArray(s.documents)) {
+                docsStr = s.documents.map(d => d.document_type).join(", ");
+            }
+            return {
+                "Student ID": dispNo,
+                "Full Name": s.student_name || "",
+                "Grade Level": s.grade_level || "",
+                "Section": s.section_name || "Unassigned",
+                "Status": s.status || "",
+                "Gender": s.gender || "",
+                "Date of Birth": s.dob || "",
+                "Place of Birth": s.birthplace || "",
+                "LRN": s.lrn || "",
+                "Email": s.email || "",
+                "Contact No.": s.contact_number || "",
+                "Address": s.address || "",
+                "Enrollment Type": s.enroll_type || "",
+                "Previous School": s.previous_school || "",
+                "Guardian Name": s.guardian_name || "",
+                "Guardian Contact": s.guardian_contact || "",
+                "Guardian Email": s.guardian_email || "",
+                "Father's Name": s.father_name || "",
+                "Father's Contact": s.father_contact || "",
+                "Father's Occupation": s.father_occupation || "",
+                "Mother's Name": s.mother_name || "",
+                "Mother's Contact": s.mother_contact || "",
+                "Mother's Occupation": s.mother_occupation || "",
+                "Submitted Documents": docsStr
+            };
+        }
+
+        // Column widths
+        const wscols = [
+            {wch:12},{wch:28},{wch:14},{wch:20},{wch:14},{wch:10},
+            {wch:14},{wch:20},{wch:15},{wch:25},{wch:15},{wch:30},
+            {wch:15},{wch:28},{wch:22},{wch:16},{wch:25},
+            {wch:22},{wch:16},{wch:22},{wch:22},{wch:16},{wch:22},{wch:35}
+        ];
+
+        // Group by section
+        const sectionMap = {};
+        studentsData.forEach(s => {
+            const sec = s.section_name || "Unassigned";
+            if (!sectionMap[sec]) sectionMap[sec] = [];
+            sectionMap[sec].push(s);
+        });
+
+        // Create one sheet per section
+        Object.keys(sectionMap).sort().forEach(secName => {
+            const rows = sectionMap[secName].map(s => buildRow(s));
+            const ws = XLSX.utils.json_to_sheet(rows);
+            ws['!cols'] = wscols;
+            // Sheet name max 31 chars, strip invalid chars
+            const sheetName = secName.replace(/[\/\\\?\*\[\]]/g, '').substring(0, 31);
+            XLSX.utils.book_append_sheet(workbook, ws, sheetName);
+        });
+
+        // Create an "All" summary sheet
+        const allRows = studentsData.map(s => buildRow(s));
+        const wsAll = XLSX.utils.json_to_sheet(allRows);
+        wsAll['!cols'] = wscols;
+        XLSX.utils.book_append_sheet(workbook, wsAll, "All Students");
+
+        let fileName = "Students";
+        if (currentGrade) fileName += `_${currentGrade.replace(/\s+/g, '_')}`;
+        fileName += ".xlsx";
+
+        XLSX.writeFile(workbook, fileName);
+    }
+
+    // ══ Export to PDF — per section ══
+    function exportToPDF() {
+        if (!studentsData || studentsData.length === 0) {
+            alert("No data to export! Please select a Grade Level first.");
+            return;
+        }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('landscape');
+
+        // Group by section
+        const sectionMap = {};
+        studentsData.forEach(s => {
+            const sec = s.section_name || "Unassigned";
+            if (!sectionMap[sec]) sectionMap[sec] = [];
+            sectionMap[sec].push(s);
+        });
+
+        const sections = Object.keys(sectionMap).sort();
+        const generatedOn = `Generated: ${new Date().toLocaleDateString('en-PH', {year:'numeric',month:'long',day:'numeric'})}`;
+        const headerColor = [26, 58, 143];
+
+        sections.forEach((secName, secIdx) => {
+            if (secIdx > 0) doc.addPage('a4', 'landscape');
+
+            const gradeLabel = currentGrade || "All Grades";
+            doc.setFontSize(15);
+            doc.setFont(undefined, 'bold');
+            doc.text(`${gradeLabel} — Section: ${secName}`, 14, 15);
+            doc.setFont(undefined, 'normal');
+            doc.setFontSize(9);
+            doc.text(generatedOn, 14, 21);
+
+            const students = sectionMap[secName];
+            const tableColumn = [
+                "ID", "Full Name", "Gender", "DOB", "LRN",
+                "Contact", "Guardian", "Father", "Mother",
+                "Prev. School", "Enroll Type", "Status"
+            ];
+
+            const tableRows = students.map(s => {
+                const dispNo = s.branch_enrollment_no ? String(s.branch_enrollment_no).padStart(4,'0') : String(s.enrollment_id);
+                return [
+                    dispNo,
+                    s.student_name || "",
+                    s.gender || "",
+                    s.dob || "",
+                    s.lrn || "",
+                    s.contact_number || s.guardian_contact || "",
+                    s.guardian_name || "",
+                    s.father_name || "",
+                    s.mother_name || "",
+                    s.previous_school || "",
+                    s.enroll_type || "",
+                    s.status || ""
+                ];
+            });
+
+            doc.autoTable({
+                head: [tableColumn],
+                body: tableRows,
+                startY: 26,
+                theme: 'grid',
+                headStyles: { fillColor: headerColor, fontSize: 8, fontStyle: 'bold' },
+                styles: { fontSize: 7.5, cellPadding: 2.5, overflow: 'linebreak' },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                columnStyles: {
+                    0: {cellWidth: 12},
+                    1: {cellWidth: 38},
+                    2: {cellWidth: 14},
+                    3: {cellWidth: 18},
+                    4: {cellWidth: 22},
+                    5: {cellWidth: 24},
+                    6: {cellWidth: 30},
+                    7: {cellWidth: 28},
+                    8: {cellWidth: 28},
+                    9: {cellWidth: 30},
+                    10: {cellWidth: 20},
+                    11: {cellWidth: 18}
+                },
+                foot: [[`Total: ${students.length} students`, '', '', '', '', '', '', '', '', '', '', '']],
+                footStyles: { fillColor: [241, 245, 249], fontStyle: 'bold', fontSize: 8 }
+            });
+        });
+
+        let fileName = "Students";
+        if (currentGrade) fileName += `_${currentGrade.replace(/\s+/g, '_')}`;
+        fileName += ".pdf";
+        doc.save(fileName);
+    }
+</script>
+{% endblock %}

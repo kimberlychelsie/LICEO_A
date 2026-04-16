@@ -250,13 +250,25 @@
                 <div class="form-group">
                     <label class="form-label">📅 Grading Period <span style="color:#ef4444">*</span></label>
                     <select name="grading_period" class="form-select" required>
+                        {% set p = request.args.get('period', '') %}
                         <option value="">— Select Grading Period —</option>
-                        <option value="1st">1st Grading</option>
-                        <option value="2nd">2nd Grading</option>
-                        <option value="3rd">3rd Grading</option>
-                        <option value="4th">4th Grading</option>
+                        <option value="1st" {% if p == '1st' %}selected{% endif %}>1st Grading</option>
+                        <option value="2nd" {% if p == '2nd' %}selected{% endif %}>2nd Grading</option>
+                        <option value="3rd" {% if p == '3rd' %}selected{% endif %}>3rd Grading</option>
+                        <option value="4th" {% if p == '4th' %}selected{% endif %}>4th Grading</option>
                     </select>
                 </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">📋 Exam Type <span style="color:red">*</span></label>
+                <select name="exam_type" class="form-select" required id="examTypeSelect" onchange="updateExamTypeHint()">
+                    <option value="exam" selected>📄 Periodical Exam — counts as Quarterly Assessment (QA)</option>
+                    <option value="monthly_exam">📝 Monthly Exam — counts as Written Works (WW)</option>
+                </select>
+                <small id="examTypeHint" style="color:#64748b; margin-top:4px; display:block;">
+                    💡 <strong>Periodical Exam</strong> scores go into <strong>Quarterly Assessment (20%)</strong>.
+                </small>
             </div>
 
             <div class="grid grid-2">
@@ -344,5 +356,15 @@
             e.preventDefault(); return false;
         }
     };
+
+    function updateExamTypeHint() {
+        const val = document.getElementById('examTypeSelect').value;
+        const hint = document.getElementById('examTypeHint');
+        if (val === 'monthly_exam') {
+            hint.innerHTML = '💡 <strong>Monthly Exam</strong> scores go into <strong>Written Works (WW)</strong> — same bucket as Quizzes.';
+        } else {
+            hint.innerHTML = '💡 <strong>Periodical Exam</strong> scores go into <strong>Quarterly Assessment (20%)</strong>.';
+        }
+    }
 </script>
 {% endblock %}

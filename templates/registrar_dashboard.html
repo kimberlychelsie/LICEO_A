@@ -576,6 +576,201 @@
         </a>
     </div>
 
+    .btn-cross-modern {
+        background: #fef2f2;
+        color: #dc2626;
+        border-color: #fecaca;
+    }
+
+    .btn-cross-modern:hover {
+        background: #ef4444;
+        color: white;
+        box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2);
+    }
+
+    .btn-account-modern {
+        background: var(--reg-blue-light);
+        color: var(--reg-blue);
+        border-color: var(--reg-blue-soft);
+    }
+
+    .btn-account-modern:hover {
+        background: var(--reg-blue);
+        color: white;
+        box-shadow: 0 4px 10px rgba(30, 58, 138, 0.2);
+    }
+
+    .action-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .btn-create-acc {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 800;
+        font-size: 0.85rem;
+        cursor: pointer;
+        border: 1px solid transparent;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        text-decoration: none;
+        width: 100%;
+        text-align: left;
+    }
+
+    .btn-create-acc.student {
+        background: #EFF6FF;
+        color: #1D4ED8;
+        border-color: #BFDBFE;
+    }
+
+    .btn-create-acc.student:hover {
+        background: #1D4ED8;
+        color: white;
+        box-shadow: 0 4px 10px rgba(29, 78, 216, 0.2);
+    }
+
+    .btn-create-acc.parent {
+        background: #FDF4FF;
+        color: #A21CAF;
+        border-color: #F5D0FE;
+    }
+
+    .btn-create-acc.parent:hover {
+        background: #A21CAF;
+        color: white;
+        box-shadow: 0 4px 10px rgba(162, 28, 175, 0.2);
+    }
+
+    .acc-linked {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 800;
+        font-size: 0.85rem;
+        background: #F0FDF4;
+        color: #15803D;
+        border: 1px solid #BBF7D0;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    /* Alert Banner Refinement */
+    .status-banner {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 24px;
+        border-radius: var(--reg-radius);
+        margin-bottom: 24px;
+        box-shadow: var(--reg-shadow-sm);
+        border: 1px solid transparent;
+        animation: fadeSlideUp 0.4s ease-out;
+    }
+
+    .status-banner.is-open {
+        background: #fefce8;
+        border-color: #fef08a;
+    }
+
+    .status-banner.is-closed {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+    }
+
+    /* Modal Polish */
+    .glass-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(4px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .glass-overlay.visible {
+        display: flex;
+        opacity: 1;
+    }
+
+    .glass-modal {
+        background: var(--reg-surface);
+        width: 100%;
+        max-width: 520px;
+        border-radius: 20px;
+        padding: 30px;
+        box-shadow: var(--reg-shadow-lg);
+        transform: scale(0.95);
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+    }
+
+    .glass-overlay.visible .glass-modal {
+        transform: scale(1);
+    }
+
+    .doc-showcase {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 12px;
+        margin-top: 20px;
+    }
+
+    .doc-item {
+        background: #f8fafc;
+        border: 1px solid var(--reg-border);
+        border-radius: 12px;
+        padding: 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: all 0.2s;
+    }
+
+    .doc-item:hover {
+        background: #fff;
+        border-color: var(--reg-blue-soft);
+        box-shadow: var(--reg-shadow-sm);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="enrollments-wrapper">
+
+    <!-- Header -->
+    <div class="premium-header">
+        <div class="header-text">
+            <h2>Enrollment Processing</h2>
+            <p>Process applications, manage records, and organize student demographics efficiently.</p>
+        </div>
+
+    </div>
+
+    <!-- Segmented Navigation -->
+    <div class="segment-control">
+        <a href="#new" class="segment-btn active" id="btn-tab-new" onclick="selectTab('new', this); return false;">
+            <i class="fas fa-inbox"></i> New Enrollments
+            <span class="pill-count">{{ new_enrollments | length }}</span>
+        </a>
+        <a href="#enrolled" class="segment-btn" id="btn-tab-enrolled"
+            onclick="selectTab('enrolled', this); return false;">
+            <i class="fas fa-user-check"></i> Enrolled Students
+            <span class="pill-count">{{ enrolled_students | length }}</span>
+        </a>
+    </div>
+
     <!-- ─────────────────────────────────────────────── -->
     <!-- TAB 1: NEW ENROLLMENTS -->
     <!-- ─────────────────────────────────────────────── -->
@@ -583,6 +778,16 @@
         <div class="table-surface">
             <div class="toolbar">
                 <span class="toolbar-title">Applicant Queue</span>
+                <div class="filter-group" style="margin-left: auto;">
+                    <select class="premium-input" id="newGradeFilter" onchange="runNewFilter()">
+                        <option value="">All Academic Levels</option>
+                        {% for g in grade_levels %}
+                        <option value="{{ g }}">{{ g }}</option>
+                        {% endfor %}
+                    </select>
+                    <input class="premium-input" type="text" id="newSearch" placeholder="Search by name..."
+                        oninput="runNewFilter()" style="width: 250px;">
+                </div>
             </div>
 
             <div style="overflow-x: auto;">
@@ -598,7 +803,8 @@
                     </thead>
                     <tbody>
                         {% for e in new_enrollments %}
-                        <tr>
+                        <tr class="new-enroll-row" data-grade="{{ e.grade_level | lower }}"
+                            data-name="{{ e.student_name | lower }}">
                             <td>
                                 <div class="identity">
                                     <span class="id-tag">#{{ e.display_no }}</span>
@@ -614,7 +820,148 @@
                                     <i class="fas fa-folder-open" style="color: var(--reg-yellow-dark);"></i> {{
                                     e.documents | length }} Files
                                 </button>
-                                {% else %}
+                                <tr id="new-details-{{ e.enrollment_id }}" class="new-details-row" style="display:none;">
+                    <td colspan="5" style="background:#f8fafc; padding:0;">
+                        <div style="padding:16px 18px; border-top:1px solid var(--border);">
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;">
+                                <div style="font-weight:900; color:#1e293b;">Student Details</div>
+                                <button type="button" class="btn btn-sm" onclick="toggleNewDetails('{{ e.enrollment_id }}')"
+                                    style="background:#f1f5f9; color:#475569; border:1px solid var(--border);">Hide</button>
+                            </div>
+
+                            <form method="post" action="/registrar/enrollment/{{ e.enrollment_id }}" class="new-details-form">
+                                <div style="display:grid; grid-template-columns: 1.2fr 1.2fr 1fr; gap:14px;">
+                                    <!-- Personal & Contact -->
+                                    <div style="background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px;">
+                                        <div style="font-weight:800; color:#1e3a8a; margin-bottom:10px;">Personal & Contact Information</div>
+
+                                        <div class="form-row" style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Gender:</div>
+                                            <select name="gender" class="track-change" style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px; background:#fff;">
+                                                <option value="">ÔÇö</option>
+                                                <option value="Male" {{ 'selected' if e.gender == 'Male' }}>Male</option>
+                                                <option value="Female" {{ 'selected' if e.gender == 'Female' }}>Female</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-row" style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">DOB:</div>
+                                            <input type="date" name="dob" class="track-change" value="{{ e.dob.strftime('%Y-%m-%d') if e.dob else '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+
+                                        <div class="form-row" style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">LRN:</div>
+                                            <input type="text" name="lrn" class="track-change" value="{{ e.lrn or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+
+                                        <div class="form-row" style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Email:</div>
+                                            <input type="email" name="email" class="track-change" value="{{ e.email or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+
+                                        <div class="form-row" style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Contact:</div>
+                                            <input type="text" name="contact_number" class="track-change" value="{{ e.contact_number or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+
+                                        <div class="form-row" style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:start;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted); padding-top:8px;">Address:</div>
+                                            <textarea name="address" class="track-change" rows="2"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px; resize:vertical;">{{ e.address or '' }}</textarea>
+                                        </div>
+                                    </div>
+
+                                    <!-- Guardian -->
+                                    <div style="background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px;">
+                                        <div style="font-weight:800; color:#1e3a8a; margin-bottom:10px;">Guardian Information</div>
+
+                                        <div class="form-row" style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Guardian:</div>
+                                            <input type="text" name="guardian_name" class="track-change" value="{{ e.guardian_name or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div class="form-row" style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Contact:</div>
+                                            <input type="text" name="guardian_contact" class="track-change" value="{{ e.guardian_contact or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div class="form-row" style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Email:</div>
+                                            <input type="email" name="guardian_email" class="track-change" value="{{ e.guardian_email or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+
+                                        <div style="height:10px;"></div>
+
+                                        <div class="form-row" style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Father:</div>
+                                            <input type="text" name="father_name" class="track-change" value="{{ e.father_name or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div class="form-row" style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Father Contact:</div>
+                                            <input type="text" name="father_contact" class="track-change" value="{{ e.father_contact or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div class="form-row" style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Mother:</div>
+                                            <input type="text" name="mother_name" class="track-change" value="{{ e.mother_name or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div class="form-row" style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Mother Contact:</div>
+                                            <input type="text" name="mother_contact" class="track-change" value="{{ e.mother_contact or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Documents -->
+                                    <div style="background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px;">
+                                        <div style="font-weight:800; color:#1e3a8a; margin-bottom:10px;">Submitted Documents</div>
+                                        {% if e.documents and e.documents | length > 0 %}
+                                            <div style="display:flex; flex-direction:column; gap:8px;">
+                                                {% for doc in e.documents %}
+                                                    <a href="{{ doc.file_path }}" target="_blank" rel="noopener"
+                                                       style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 10px; border:1px solid var(--border); border-radius:10px; text-decoration:none; color:#0f172a; background:#f8fafc;">
+                                                        <span style="font-weight:700; font-size:0.86rem;">{{ doc.document_type or doc.file_name }}</span>
+                                                        <span style="font-size:0.78rem; color:var(--muted);">View</span>
+                                                    </a>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <div class="muted-note">No documents</div>
+                                        {% endif %}
+
+                                        <div style="margin-top:12px; display:grid; grid-template-columns: 90px 1fr; gap:10px; align-items:center;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Prev School:</div>
+                                            <input type="text" name="previous_school" class="track-change" value="{{ e.previous_school or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div style="margin-top:8px; display:grid; grid-template-columns: 90px 1fr; gap:10px; align-items:center;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Type:</div>
+                                            <select name="enroll_type" class="track-change" style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px; background:#fff;">
+                                                <option value="">ÔÇö</option>
+                                                {% for t in ['New', 'Transferee', 'Old', 'Returnee'] %}
+                                                <option value="{{ t }}" {{ 'selected' if e.enroll_type == t }}>{{ t }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+                                        <button type="submit" class="btn btn-primary btn-sm save-inline-btn" disabled
+                                            style="margin-top:12px; width:100%; justify-content:center; background:#8aa0c8; border:none;">
+                                            ­ƒÆ¥ Save Changes
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                        {% else %}
                                 <span class="sub-info"><i class="fas fa-minus"></i> Missing Docs</span>
                                 {% endif %}
                             </td>
@@ -886,6 +1233,37 @@
 </div>
 {% endblock %}
 
+<!-- Reject Reason Modal -->
+<div id="rejectModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:9999; padding:24px;">
+    <div style="max-width:520px; margin:60px auto; background:#fff; border-radius:14px; border:1px solid var(--border); box-shadow:0 20px 60px rgba(0,0,0,0.25); overflow:hidden;">
+        <div style="padding:14px 16px; background:#fef2f2; border-bottom:1px solid #fecaca; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+            <div style="font-weight:900; color:#991b1b;">Reject Enrollment</div>
+            <button type="button" class="btn btn-sm" onclick="closeRejectModal()" style="background:#fff; color:#991b1b; border:1px solid #fecaca;">Ô£ò</button>
+        </div>
+        <div style="padding:16px;">
+            <div style="font-size:0.85rem; color:var(--muted); margin-bottom:10px;">
+                Student: <strong id="rejectStudentName"></strong>
+            </div>
+            <form method="post" action="/registrar/enrollments" onsubmit="return confirm('Reject this enrollment? This will require a reason.');">
+                <input type="hidden" name="enrollment_id" id="rejectEnrollmentId" value="">
+                <input type="hidden" name="action" value="rejected">
+                <label style="font-size:0.8rem; font-weight:800; color:#475569; display:block; margin-bottom:6px;">Reason (required)</label>
+                <textarea
+                    name="rejection_reason"
+                    id="rejectReason"
+                    required
+                    rows="4"
+                    style="width:100%; border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; font-size:0.9rem; resize:vertical;"
+                    placeholder="Type the reason for rejection..."
+                ></textarea>
+                <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
+                    <button type="button" class="btn btn-sm" onclick="closeRejectModal()" style="background:#f1f5f9; color:#475569; border:1px solid var(--border);">Cancel</button>
+                    <button type="submit" class="btn btn-danger btn-sm">Submit Rejection</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% block scripts %}
 <script>
     // Tab Segment Logic
@@ -904,12 +1282,84 @@
         }
     });
 
+    
+function toggleNewDetails(enrollmentId, btn) {
+    const row = document.getElementById('new-details-' + enrollmentId);
+    if (!row) return;
+    const isOpen = row.style.display !== 'none';
+    row.style.display = isOpen ? 'none' : '';
+    if (btn) btn.innerHTML = isOpen ? '<i class="fas fa-id-card"></i> Profile / Edit' : '<i class="fas fa-times"></i> Set Form';
+}
+
+// Enable inline save button only when changes exist (per expanded form)
+document.addEventListener('input', function(e) {
+    const form = e.target.closest?.('.new-details-form');
+    if (!form) return;
+    const btn = form.querySelector('.save-inline-btn');
+    if (!btn) return;
+
+    if (!form.__originals) {
+        form.__originals = {};
+        form.querySelectorAll('.track-change').forEach(function (el) {
+            form.__originals[el.name] = el.value;
+        });
+    }
+    
+    let changed = false;
+    form.querySelectorAll('.track-change').forEach(function (el) {
+        if (el.value !== form.__originals[el.name]) {
+            changed = true;
+        }
+    });
+    
+    btn.disabled = !changed;
+    btn.style.background = changed ? 'var(--reg-blue)' : '#8aa0c8';
+    btn.style.cursor = changed ? 'pointer' : 'not-allowed';
+});
+
     // Roster Filtering
+    function runNewFilter() {
+        const grade = document.getElementById('newGradeFilter').value.toLowerCase();
+        const search = document.getElementById('newSearch').value.toLowerCase();
+        const rows = document.querySelectorAll('.new-enroll-row');
+        
+        rows.forEach(r => {
+            const matchG = (!grade || r.dataset.grade === grade);
+            const matchS = (!search || r.dataset.name.includes(search));
+            const shouldShow = matchG && matchS;
+            r.style.display = shouldShow ? '' : 'none';
+        });
+    }
+
     function runFilter() {
         const grade = document.getElementById('rosterGrade').value.toLowerCase();
         const search = document.getElementById('rosterSearch').value.toLowerCase();
         const rows = document.querySelectorAll('.roster-row');
         let vis = 0;
+
+        rows.forEach(r => {
+            const matchG = (!grade || r.dataset.grade === grade);
+            const matchS = (!search || r.dataset.name.includes(search));
+            const shouldShow = matchG && matchS;
+            r.style.display = shouldShow ? '' : 'none';
+            if (shouldShow) vis++;
+        });
+
+        document.getElementById('rosterCountBox').textContent = vis + ' Record(s)';
+    }
+
+function openRejectModal(enrollmentId, studentName) {
+    const modal = document.getElementById('rejectModal');
+    document.getElementById('rejectEnrollmentId').value = enrollmentId;
+    document.getElementById('rejectStudentName').textContent = studentName || '';
+    const reason = document.getElementById('rejectReason');
+    reason.value = '';
+    modal.style.display = 'block';
+    setTimeout(() => reason.focus(), 0);
+}
+function closeRejectModal() {
+    document.getElementById('rejectModal').style.display = 'none';
+}
 
         rows.forEach(r => {
             const matchG = (!grade || r.dataset.grade === grade);

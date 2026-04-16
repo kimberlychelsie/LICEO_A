@@ -1,0 +1,399 @@
+<div
+    style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+    <h2 style="margin:0;">Enrollments</h2>
+    <a href="/registrar" class="btn btn-secondary btn-sm">← Back to Dashboard</a>
+</div>
+
+<!-- ═══ TABS ═══ -->
+<div class="tab-bar">
+    <a class="tab-btn active" href="#" onclick="switchTab('new',this); return false;">
+        📋 New Enrollments
+        <span class="tab-count">{{ new_enrollments | length }}</span>
+    </a>
+    <a class="tab-btn" href="#enrolled" id="tab-enrolled-btn" onclick="switchTab('enrolled',this); return false;">
+        🎓 Enrolled Students
+        <span class="tab-count">{{ enrolled_students | length }}</span>
+    </a>
+</div>
+
+<!-- ═══ TAB: NEW ENROLLMENTS ═══ -->
+<div class="tab-panel active" id="tab-new">
+
+    <!-- Filter Card for New Enrollments -->
+    <div class="card" style="margin-bottom: 20px; padding: 16px 20px; border-radius: 12px; background: #f8fafc; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Grade Level</label>
+                <select id="newGradeFilter" onchange="filterNew()" style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #fff; min-width: 140px; cursor: pointer;">
+                    <option value="">-- All Grades --</option>
+                    {% for g in grade_levels %}
+                    <option value="{{ g | lower }}">{{ g }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Search Student</label>
+                <input type="text" id="newSearch" placeholder="Search student name..." oninput="filterNew()" style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 100%; max-width: 400px;">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span>New / Transferee Enrollment Applications</span>
+            <span class="muted-note" id="newCount">{{ new_enrollments | length }} applications</span>
+        </div>
+        <div style="overflow:auto;">
+            <table id="newEnrollTable">
+                <tr>
+                    <th>Student ID</th>
+                    <th>Student Name</th>
+                    <th>Grade Level</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+
+                {% for enrollment in new_enrollments %}
+                <tr class="new-enroll-row" data-grade="{{ enrollment.grade_level | lower }}" data-name="{{ enrollment.student_name | lower }}">
+                    <td>
+                        <span style="font-weight:800;">{{ "%04d"|format(enrollment.display_no|default(0)|int) if enrollment.display_no|int else enrollment.enrollment_id }}</span>
+                        <div class="muted-note">ID: {{ "%04d"|format(enrollment.display_no|default(0)|int) if enrollment.display_no|int else enrollment.enrollment_id }}</div>
+                    </td>
+                    <td>
+                        <strong>{{ enrollment.student_name }}</strong>
+                        {% if enrollment.gender %}
+                        <div class="muted-note">{{ enrollment.gender }}</div>
+                        {% endif %}
+                    </td>
+                    <td>{{ enrollment.grade_level }}</td>
+
+                    <td>
+                        {% if enrollment.status == 'approved' %}
+                        <span class="badge badge-approved">✅ Approved</span>
+                        {% elif enrollment.status == 'rejected' %}
+                        <span class="badge badge-rejected">❌ Rejected</span>
+                        {% else %}
+                        <span class="badge badge-pending">⏳ Pending</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if enrollment.status == 'pending' %}
+                        {% if is_branch_active_status %}
+                        <button
+                            type="button"
+                            class="btn btn-primary btn-sm"
+                            onclick="toggleNewDetails('{{ enrollment.enrollment_id }}', this)"
+                        >👁 View Details</button>
+                        <form method="post" action="/registrar/enrollments" style="display:inline;">
+                            <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
+                            <button name="action" value="approved" class="btn btn-success btn-sm">✅ Approve</button>
+                        </form>
+                        <button
+                            type="button"
+                            class="btn btn-danger btn-sm"
+                            onclick="openRejectModal('{{ enrollment.enrollment_id }}', '{{ enrollment.student_name|e }}')"
+                        >❌ Reject</button>
+                        {% else %}
+                        <span class="muted-note">Actions disabled (Archive Mode)</span>
+                        {% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr id="new-details-{{ enrollment.enrollment_id }}" class="new-details-row" style="display:none;">
+                    <td colspan="5" style="background:#f8fafc; padding:0;">
+                        <div style="padding:16px 18px; border-top:1px solid var(--border);">
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;">
+                                <div style="font-weight:900; color:#1e293b;">Student Details</div>
+                                <button type="button" class="btn btn-sm" onclick="toggleNewDetails('{{ enrollment.enrollment_id }}')"
+                                    style="background:#f1f5f9; color:#475569; border:1px solid var(--border);">Hide</button>
+                            </div>
+
+                            <form method="post" action="/registrar/enrollment/{{ enrollment.enrollment_id }}" class="new-details-form">
+                                <div style="display:grid; grid-template-columns: 1.2fr 1.2fr 1fr; gap:14px;">
+                                    <!-- Personal & Contact -->
+                                    <div style="background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px;">
+                                        <div style="font-weight:800; color:#1e3a8a; margin-bottom:10px;">Personal & Contact Information</div>
+
+                                        <div class="form-row" style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Gender:</div>
+                                            <select name="gender" class="track-change" style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px; background:#fff;">
+                                                <option value="">—</option>
+                                                <option value="Male" {{ 'selected' if enrollment.gender == 'Male' }}>Male</option>
+                                                <option value="Female" {{ 'selected' if enrollment.gender == 'Female' }}>Female</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-row" style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">DOB:</div>
+                                            <input type="date" name="dob" class="track-change" value="{{ enrollment.dob.strftime('%Y-%m-%d') if enrollment.dob else '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+
+                                        <div class="form-row" style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">LRN:</div>
+                                            <input type="text" name="lrn" class="track-change" value="{{ enrollment.lrn or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+
+                                        <div class="form-row" style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Email:</div>
+                                            <input type="email" name="email" class="track-change" value="{{ enrollment.email or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+
+                                        <div class="form-row" style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Contact:</div>
+                                            <input type="text" name="contact_number" class="track-change" value="{{ enrollment.contact_number or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+
+                                        <div class="form-row" style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:start;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted); padding-top:8px;">Address:</div>
+                                            <textarea name="address" class="track-change" rows="2"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px; resize:vertical;">{{ enrollment.address or '' }}</textarea>
+                                        </div>
+                                    </div>
+
+                                    <!-- Guardian -->
+                                    <div style="background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px;">
+                                        <div style="font-weight:800; color:#1e3a8a; margin-bottom:10px;">Guardian Information</div>
+
+                                        <div class="form-row" style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Guardian:</div>
+                                            <input type="text" name="guardian_name" class="track-change" value="{{ enrollment.guardian_name or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div class="form-row" style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Contact:</div>
+                                            <input type="text" name="guardian_contact" class="track-change" value="{{ enrollment.guardian_contact or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div class="form-row" style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Email:</div>
+                                            <input type="email" name="guardian_email" class="track-change" value="{{ enrollment.guardian_email or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+
+                                        <div style="height:10px;"></div>
+
+                                        <div class="form-row" style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Father:</div>
+                                            <input type="text" name="father_name" class="track-change" value="{{ enrollment.father_name or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div class="form-row" style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Father Contact:</div>
+                                            <input type="text" name="father_contact" class="track-change" value="{{ enrollment.father_contact or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div class="form-row" style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Mother:</div>
+                                            <input type="text" name="mother_name" class="track-change" value="{{ enrollment.mother_name or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div class="form-row" style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Mother Contact:</div>
+                                            <input type="text" name="mother_contact" class="track-change" value="{{ enrollment.mother_contact or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Documents -->
+                                    <div style="background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px;">
+                                        <div style="font-weight:800; color:#1e3a8a; margin-bottom:10px;">Submitted Documents</div>
+                                        {% if enrollment.documents and enrollment.documents | length > 0 %}
+                                            <div style="display:flex; flex-direction:column; gap:8px;">
+                                                {% for doc in enrollment.documents %}
+                                                    <a href="{{ doc.file_path }}" target="_blank" rel="noopener"
+                                                       style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 10px; border:1px solid var(--border); border-radius:10px; text-decoration:none; color:#0f172a; background:#f8fafc;">
+                                                        <span style="font-weight:700; font-size:0.86rem;">{{ doc.document_type or doc.file_name }}</span>
+                                                        <span style="font-size:0.78rem; color:var(--muted);">View</span>
+                                                    </a>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <div class="muted-note">No documents</div>
+                                        {% endif %}
+
+                                        <div style="margin-top:12px; display:grid; grid-template-columns: 90px 1fr; gap:10px; align-items:center;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Prev School:</div>
+                                            <input type="text" name="previous_school" class="track-change" value="{{ enrollment.previous_school or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div style="margin-top:8px; display:grid; grid-template-columns: 90px 1fr; gap:10px; align-items:center;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Type:</div>
+                                            <select name="enroll_type" class="track-change" style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px; background:#fff;">
+                                                <option value="">—</option>
+                                                {% for t in ['New', 'Transferee', 'Old', 'Returnee'] %}
+                                                <option value="{{ t }}" {{ 'selected' if enrollment.enroll_type == t }}>{{ t }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+                                        <button type="submit" class="btn btn-primary btn-sm save-inline-btn" disabled
+                                            style="margin-top:12px; width:100%; justify-content:center; background:#8aa0c8; border:none;">
+                                            💾 Save Changes
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr class="empty-row">
+                    <td colspan="5">No new enrollment applications yet.</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Reason Modal -->
+<div id="rejectModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:9999; padding:24px;">
+    <div style="max-width:520px; margin:60px auto; background:#fff; border-radius:14px; border:1px solid var(--border); box-shadow:0 20px 60px rgba(0,0,0,0.25); overflow:hidden;">
+        <div style="padding:14px 16px; background:#fef2f2; border-bottom:1px solid #fecaca; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+            <div style="font-weight:900; color:#991b1b;">Reject Enrollment</div>
+            <button type="button" class="btn btn-sm" onclick="closeRejectModal()" style="background:#fff; color:#991b1b; border:1px solid #fecaca;">✕</button>
+        </div>
+        <div style="padding:16px;">
+            <div style="font-size:0.85rem; color:var(--muted); margin-bottom:10px;">
+                Student: <strong id="rejectStudentName"></strong>
+            </div>
+            <form method="post" action="/registrar/enrollments" onsubmit="return confirm('Reject this enrollment? This will require a reason.');">
+                <input type="hidden" name="enrollment_id" id="rejectEnrollmentId" value="">
+                <input type="hidden" name="action" value="rejected">
+                <label style="font-size:0.8rem; font-weight:800; color:#475569; display:block; margin-bottom:6px;">Reason (required)</label>
+                <textarea
+                    name="rejection_reason"
+                    id="rejectReason"
+                    required
+                    rows="4"
+                    style="width:100%; border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; font-size:0.9rem; resize:vertical;"
+                    placeholder="Type the reason for rejection..."
+                ></textarea>
+                <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
+                    <button type="button" class="btn btn-sm" onclick="closeRejectModal()" style="background:#f1f5f9; color:#475569; border:1px solid var(--border);">Cancel</button>
+                    <button type="submit" class="btn btn-danger btn-sm">Submit Rejection</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleNewDetails(enrollmentId, btn) {
+    const row = document.getElementById('new-details-' + enrollmentId);
+    if (!row) return;
+    const isOpen = row.style.display !== 'none';
+    row.style.display = isOpen ? 'none' : '';
+    if (btn) btn.textContent = isOpen ? '👁 View Details' : 'Hide Details';
+}
+
+function openRejectModal(enrollmentId, studentName) {
+    const modal = document.getElementById('rejectModal');
+    document.getElementById('rejectEnrollmentId').value = enrollmentId;
+    document.getElementById('rejectStudentName').textContent = studentName || '';
+    const reason = document.getElementById('rejectReason');
+    reason.value = '';
+    modal.style.display = 'block';
+    setTimeout(() => reason.focus(), 0);
+}
+function closeRejectModal() {
+    const modal = document.getElementById('rejectModal');
+    modal.style.display = 'none';
+}
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closeRejectModal();
+});
+document.getElementById('rejectModal')?.addEventListener('click', function(e) {
+    if (e.target === this) closeRejectModal();
+});
+
+// Enable inline save button only when changes exist (per expanded form)
+document.addEventListener('input', function(e) {
+    const form = e.target.closest?.('.new-details-form');
+    if (!form) return;
+    const btn = form.querySelector('.save-inline-btn');
+    if (!btn) return;
+
+    if (!form.__originals) {
+        form.__originals = {};
+        form.querySelectorAll('.track-change').forEach(function (el) {
+            form.__originals[el.name] = el.value;
+        });
+    }
+    let changed = false;
+    form.querySelectorAll('.track-change').forEach(function (el) {
+        if ((form.__originals[el.name] ?? '') !== el.value) changed = true;
+    });
+    btn.disabled = !changed;
+    btn.style.background = changed ? '#1d4ed8' : '#8aa0c8';
+});
+</script>
+
+<!-- ═══ TAB: ENROLLED STUDENTS ═══ -->
+<div class="tab-panel" id="tab-enrolled">
+
+    <!-- Toggle Banner -->
+    {% if is_branch_active_status %}
+    {% if reenrollment_open %}
+    <div class="toggle-banner open-state">
+        <div class="tg-left">
+            <strong>🔓 Re-Enrollment is OPEN</strong>
+            <span>Students can currently log in and re-enroll for the next school year.</span>
+        </div>
+        <form method="post" action="/registrar/toggle-reenrollment">
+            <input type="hidden" name="action" value="close">
+            <button type="submit" class="btn btn-danger btn-sm"
+                onclick="return confirm('Close re-enrollment for ALL students?')">
+                🔒 Close Re-Enrollment
+            </button>
+        </form>
+    </div>
+    {% else %}
+    <div class="toggle-banner closed-state">
+        <div class="tg-left">
+            <strong>🔒 Re-Enrollment is CLOSED</strong>
+            <span>Students cannot re-enroll yet. Click Open to allow all enrolled students to
+                re-enroll.</span>
+        </div>
+        <form method="post" action="/registrar/toggle-reenrollment">
+            <input type="hidden" name="action" value="open">
+            <button type="submit" class="btn btn-warning btn-sm"
+                onclick="return confirm('Open re-enrollment for ALL enrolled students?')">
+                🔓 Open Re-Enrollment for All
+            </button>
+        </form>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Filter Card Enrolled -->
+    <div class="card" style="margin-bottom: 20px; padding: 16px 20px; border-radius: 12px; background: #f8fafc; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Grade Level</label>
+                <select id="gradeFilter" onchange="filterEnrolled()" style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #fff; min-width: 140px; cursor: pointer;">
+                    <option value="">-- All Grades --</option>
+                    {% for g in grade_levels %}
+                    <option value="{{ g | lower }}">{{ g }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Section</label>
+                <select id="sectionFilter" onchange="filterEnrolled()" style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #fff; min-width: 160px; cursor: pointer;">
+                    <option value="">-- All Sections --</option>
+                    {% for s in section_options %}
+                    <option value="{{ s.section_name | lower }}">{{ s.section_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Search Student</label>
+                <input type="text" id="enrolledSearch" placeholder="Search student name..." oninput="filterEnrolled()" style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 100%; max-width: 400px;">
+            </div>
+        </div>

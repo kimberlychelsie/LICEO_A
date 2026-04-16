@@ -359,12 +359,10 @@
                 <button name="action" value="approved" class="btn-elegant btn-check-modern"><i
                         class="fas fa-check-circle"></i> Approve Registration</button>
             </form>
-            <form method="post" action="/registrar/enrollments" style="display:inline;">
-                <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
-                <button name="action" value="rejected" class="btn-elegant btn-cross-modern"
-                    onclick="return confirm('Reject this enrollment?')"><i class="fas fa-times-circle"></i> Deny
-                    Registration</button>
-            </form>
+            <button type="button" class="btn-elegant btn-cross-modern"
+                onclick="openRejectModal('{{ enrollment.enrollment_id }}', '{{ enrollment.student_name|e }}')">
+                <i class="fas fa-times-circle"></i> Deny Registration
+            </button>
             {% endif %}
         </div>
     </div>
@@ -611,7 +609,51 @@
 
 </div>
 
+<!-- Reject Reason Modal -->
+<div id="rejectModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:9999; padding:24px;">
+    <div style="max-width:520px; margin:100px auto; background:#fff; border-radius:14px; border:1px solid var(--reg-border); box-shadow:0 20px 60px rgba(0,0,0,0.25); overflow:hidden;">
+        <div style="padding:14px 16px; background:#fef2f2; border-bottom:1px solid #fecaca; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+            <div style="font-weight:900; color:#991b1b;">Reject Enrollment</div>
+            <button type="button" onclick="closeRejectModal()" style="background:#fff; color:#991b1b; border:1px solid #fecaca; border-radius: 4px; cursor:pointer;"><i class="fas fa-times"></i></button>
+        </div>
+        <div style="padding:16px;">
+            <div style="font-size:0.85rem; color:var(--reg-text-muted); margin-bottom:10px;">
+                Student: <strong id="rejectStudentName"></strong>
+            </div>
+            <form method="post" action="/registrar/enrollments" onsubmit="return confirm('Reject this enrollment? This will require a reason.');">
+                <input type="hidden" name="enrollment_id" id="rejectEnrollmentId" value="">
+                <input type="hidden" name="action" value="rejected">
+                <label style="font-size:0.8rem; font-weight:800; color:#475569; display:block; margin-bottom:6px;">Reason (required)</label>
+                <textarea
+                    name="rejection_reason"
+                    id="rejectReason"
+                    required
+                    rows="4"
+                    style="width:100%; border:1.5px solid var(--reg-border); border-radius:10px; padding:10px 12px; font-size:0.9rem; resize:vertical; box-sizing:border-box;"
+                    placeholder="Type the reason for rejection..."
+                ></textarea>
+                <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
+                    <button type="button" class="btn-elegant btn-view-modern" onclick="closeRejectModal()">Cancel</button>
+                    <button type="submit" class="btn-elegant" style="background:#dc2626; color:white;">Submit Rejection</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
+    function openRejectModal(enrollmentId, studentName) {
+        document.getElementById('rejectEnrollmentId').value = enrollmentId;
+        document.getElementById('rejectStudentName').textContent = studentName || '';
+        document.getElementById('rejectReason').value = '';
+        document.getElementById('rejectModal').style.display = 'block';
+        setTimeout(() => document.getElementById('rejectReason').focus(), 0);
+    }
+
+    function closeRejectModal() {
+        document.getElementById('rejectModal').style.display = 'none';
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         const form = document.getElementById('enrollmentForm');
         const saveBtn = document.getElementById('saveBtn');
