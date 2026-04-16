@@ -3500,3 +3500,38 @@ def teacher_profile():
     finally:
         cur.close()
         db.close()
+
+@teacher_bp.route("/teacher/my-schedule")
+def teacher_schedules():
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    branch_id = session["branch_id"]
+    teacher_id = session["user_id"]  # assuming logged-in teacher
+
+    # -- Find all active years for the branch
+    cursor.execute("""
+        SELECT year_id FROM school_years 
+        WHERE is_active = TRUE AND branch_id = %s
+        ORDER BY label DESC
+    """, (branch_id,))
+    active_years = [row["year_id"] for row in cursor.fetchall()]
+
+    schedules = []
+    if active_years:
+        # -- Get teacher's schedules for active years only
+        cursor.execute("""
+            SELECT s.*, subj.name AS subject_name, sec.section_name AS section_name, 
+                   y.label AS year_label
+            FROM schedules s
+            JOIN subjects subj ON s.subject_id = subj.subject_id
+            JOIN sections sec ON s.section_id = sec.section_id
+            JOIN school_years y ON s.year_id = y.year_id
+            WHERE s.branch_id = %s AND s.teacher_id = %s
+              AND s.year_id = ANY(%s)
+            ORDER BY y.label DESC, sec.section_name, subj.name, s.day_of_week, s.start_time
+        """, (branch_id, teacher_id, active_years))
+        schedules = cursor.fetchall()
+
+    cursor.close(); db.close()
+
+    return render_template("teacher_schedules.html", schedules=schedules)

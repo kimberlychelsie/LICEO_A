@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}My Class Schedule{% endblock %}
+
+{% block content %}
+<h1 class="mt-4 mb-3">My Class Schedule</h1>
+
+{% if schedules and schedules|length > 0 %}
+<div class="schedule-table-wrapper">
+  <div class="schedule-table">
+    <!-- Header: Days -->
+    <div class="header-cell time-cell"></div>
+    {% for day_abbr in ['Mon','Tue','Wed','Thu','Fri'] %}
+      <div class="header-cell">{{ day_abbr }}</div>
+    {% endfor %}
+
+    {# Define time slots (30-min steps for flexibility) #}
+    {% set times = [
+      '7:00','7:30','8:00','8:30','9:00','9:30','10:00','10:30','11:00','11:30',
+      '12:00','12:30','1:00','1:30','2:00','2:30','3:00','3:30','4:00','4:30',
+      '5:00','5:30','6:00'
+    ] %}
+
+    {# Render time rows and grid cells #}
+    {% for t in times %}
+      <div class="time-cell">{{ t }}</div>
+      {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday'] %}
+        <div class="slot-cell" data-day="{{ day }}" data-time="{{ t }}"></div>
+      {% endfor %}
+    {% endfor %}
+
+    {# Render class blocks absolutely positioned #}
+    {% for sched in schedules %}
+      {% set col = {'Monday':1,'Tuesday':2,'Wednesday':3,'Thursday':4,'Friday':5}[sched.day_of_week] %}
+      {% set row_start = ((sched.start_time.hour-7)*2)+(sched.start_time.minute//30)+2 %}
+      {% set row_end = ((sched.end_time.hour-7)*2)+(sched.end_time.minute//30)+2 %}
+      <div class="class-block color-{{ col }}"
+           style="grid-column:{{ col+1 }};grid-row:{{ row_start }} / {{ row_end }};">
+        <b>{{ sched.subject_name }}</b><br>
+        <span style="font-size:smaller; font-style:italic;">
+          {{ sched.teacher_name }}<br>
+        </span>
+        <span style="font-size:smaller">
+          {{ sched.room }}
+        </span>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% else %}
+  <div class="alert alert-info mt-4">
+    No class schedule found{{ school_year_label and " for " + school_year_label or "" }}.
+  </div>
+{% endif %}
+
+<style>
+.schedule-table-wrapper {
+  overflow-x: auto;
+  padding-bottom: 12px;
+}
+.schedule-table {
+  display: grid;
+  grid-template-columns: 80px repeat(5, 180px); /* time + 5 days */
+  grid-auto-rows: 38px;
+  background: #f6fff6;
+  border-radius: 18px;
+  min-width: 1050px;
+  min-height: 600px;
+  position: relative;
+}
+/* The time column will stick on horizontal scroll! */
+.time-cell {
+  position: sticky;
+  left: 0;
+  z-index: 4;
+  background: #f9fff7;
+  border-right: 1px solid #d3f3d3;
+  font-weight: bold;
+  padding: 6px;
+  text-align: right;
+  font-size: 13px;
+}
+/* Makes the top-left corner cell also sticky and on top */
+.header-cell.time-cell {
+  z-index: 5;
+  background: #f6fff6;
+}
+
+.header-cell {
+  font-weight: bold;
+  background: #e5f8eb;
+  border-bottom: 1px solid #d3f3d3;
+  padding: 8px 0;
+  text-align: center;
+}
+.slot-cell {
+  border: 1px solid #f3f5ff;
+  min-height: 38px;
+}
+.class-block {
+  position: absolute;
+  z-index: 3;
+  min-width: 160px;
+  background: #e7eeff;
+  border-left: 6px solid #6facff;
+  border-radius: 9px;
+  margin: 2px;
+  padding: 7px 8px;
+  font-size: 14px;
+  box-shadow: 0 2px 8px #daeefa5a;
+  max-width: 95%;
+  overflow-wrap: break-word;
+}
+
+.color-1 { background: #e8f3ff; border-left-color: #6ba2ff; }
+.color-2 { background: #e8ffe8; border-left-color: #48cf6b; }
+.color-3 { background: #f7e5ff; border-left-color: #d37aff; }
+.color-4 { background: #ffefef; border-left-color: #ff8383; }
+.color-5 { background: #e4fff5; border-left-color: #29cab0; }
+
+@media (max-width: 800px) {
+  .schedule-table { min-width: 630px; }
+  .class-block { min-width: 90px; font-size: 12px; }
+  .header-cell, .slot-cell, .time-cell { font-size: 11px; }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% block title %}Registrar – Schedules{% endblock %}
+
+{% block content %}
+<h1 class="mb-4">Class Schedules</h1>
+
+<form method="post" class="card shadow-sm border-0 mb-4" style="max-width:1100px;margin:auto; padding:22px 34px 22px 34px; border-radius:14px;" id="addForm">
+    <h3 class="mb-3">Add Schedule</h3>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label">Section / Subject / Teacher</label>
+            <select name="combo" class="form-select" required>
+                <option value="">-- Select --</option>
+                {% for c in combinations %}
+                <option value="{{c.section_id}}|{{c.subject_id}}|{{c.teacher_id}}">
+                    [{{c.year_id}}] {{c.section_name}} — {{c.subject_name}} ({{c.teacher_name}})
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Day</label>
+            <select name="day_of_week" class="form-select" required>
+                <option value="">-- Day --</option>
+                {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday'] %}
+                <option value="{{day}}">{{day}}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Start</label>
+            <input type="time" name="start_time" class="form-control" required min="07:00" max="18:00">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">End</label>
+            <input type="time" name="end_time" class="form-control" required min="07:00" max="18:00">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Room</label>
+            <input type="text" name="room" maxlength="32" class="form-control" placeholder="Rm 201" required>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">School Year</label>
+            <select name="year_id" class="form-select" required>
+                <option value="">-- Year --</option>
+                {% for sy in school_years %}
+                <option value="{{sy.year_id}}">{{sy.label}}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <span id="add-time-error" style="display:none; color:#c00; font-size:14px; margin-top:8px;">Start time must be before end time.</span>
+    <button class="btn btn-success mt-4 px-4" type="submit">Add Schedule</button>
+</form>
+
+<div class="table-responsive" style="max-width:1200px;margin:auto;">
+<table class="table table-striped table-bordered align-middle rounded shadow-sm" style="margin-top:18px;">
+    <thead class="table-light">
+        <tr>
+            <th>School Year</th>
+            <th>Section</th>
+            <th>Subject</th>
+            <th>Teacher</th>
+            <th>Day</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Room</th>
+            <th style="width:108px;">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for sched in schedules %}
+        <tr>
+            <td>{{sched.year_label}}</td>
+            <td>{{sched.section_name}}</td>
+            <td>{{sched.subject_name}}</td>
+            <td>{{sched.teacher_name}}</td>
+            <td>{{sched.day_of_week}}</td>
+            <td>{{ sched.start_time.strftime('%H:%M') }}</td>
+            <td>{{ sched.end_time.strftime('%H:%M') }}</td>
+            <td>{{sched.room}}</td>
+            <td>
+                <button type="button"
+                        class="btn btn-sm btn-outline-primary mb-1"
+                        onclick="openEditModal({{sched.schedule_id}})">Edit</button>
+                <form method="post"
+                      action="{{ url_for('registrar.delete_schedule', schedule_id=sched.schedule_id) }}"
+                      style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this schedule?');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger mb-1">Delete</button>
+                </form>
+                <!-- Hidden data for modal population -->
+                <span id="sched-data-{{sched.schedule_id}}" style="display:none;">{
+                    "schedule_id": "{{sched.schedule_id}}",
+                    "section_id": "{{sched.section_id}}",
+                    "subject_id": "{{sched.subject_id}}",
+                    "teacher_id": "{{sched.teacher_id}}",
+                    "day_of_week": "{{sched.day_of_week}}",
+                    "start_time": "{{sched.start_time.strftime('%H:%M')}}",
+                    "end_time": "{{sched.end_time.strftime('%H:%M')}}",
+                    "room": "{{sched.room}}",
+                    "year_id": "{{sched.year_id}}"
+                }</span>
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.40); z-index:9999;">
+    <div style="background:#fff; max-width:660px; margin:48px auto; padding:28px 32px 24px 32px; border-radius:12px; position:relative; box-shadow:0 6px 40px #27324a21;">
+        <button type="button" onclick="closeEditModal()" style="position:absolute;top:16px;right:18px;font-size:22px;background:none;border:none;">&times;</button>
+        <h2 class="mb-3">Edit Schedule</h2>
+        <form method="post" id="editForm">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Section / Subject / Teacher</label>
+                    <select name="combo" id="edit_combo" class="form-select" required>
+                        <option value="">-- Select --</option>
+                        {% for c in combinations %}
+                        <option value="{{c.section_id}}|{{c.subject_id}}|{{c.teacher_id}}">
+                            [{{c.year_id}}] {{c.section_name}} — {{c.subject_name}} ({{c.teacher_name}})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Day</label>
+                    <select name="day_of_week" id="edit_day_of_week" class="form-select" required>
+                        <option value="">-- Day --</option>
+                        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday'] %}
+                        <option value="{{day}}">{{day}}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Start</label>
+                    <input type="time" name="start_time" id="edit_start_time" class="form-control" required min="07:00" max="18:00">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">End</label>
+                    <input type="time" name="end_time" id="edit_end_time" class="form-control" required min="07:00" max="18:00">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Room</label>
+                    <input type="text" name="room" id="edit_room" maxlength="32" class="form-control" required>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">School Year</label>
+                    <select name="year_id" id="edit_year_id" class="form-select" required>
+                        <option value="">-- Year --</option>
+                        {% for sy in school_years %}
+                        <option value="{{sy.year_id}}">{{sy.label}}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <span id="edit-time-error" style="display:none;color:#c00;font-size:14px;display:block;text-align:center;margin-top:8px;">Start time must be before end time.</span>
+            <button class="btn btn-success mt-4 px-4" type="submit">Save</button>
+            <button type="button" class="btn btn-secondary mt-4 px-4" onclick="closeEditModal()" style="margin-left:7px;">Cancel</button>
+        </form>
+    </div>
+</div>
+
+<script>
+// Helper: Is time in allowed range (07:00 <= t <= 18:00)?
+function isInRange(val) {
+    return val >= "07:00" && val <= "18:00";
+}
+
+function showError(span, msg) {
+    span.textContent = msg;
+    span.style.display = 'inline';
+}
+
+// Add form validation
+document.getElementById('addForm').addEventListener('submit', function(e) {
+  var s = this.start_time.value, e_ = this.end_time.value;
+  var errorSpan = document.getElementById('add-time-error');
+  errorSpan.style.display = 'none';
+
+  if (s && e_ && (!isInRange(s) || !isInRange(e_))) {
+      showError(errorSpan, "Times must be between 07:00 and 18:00.");
+      e.preventDefault();
+  } else if (s && e_ && s >= e_) {
+      showError(errorSpan, "Start time must be before end time.");
+      e.preventDefault();
+  }
+});
+
+// Edit form validation
+document.getElementById('editForm').addEventListener('submit', function(e) {
+  var s = this.start_time.value, e_ = this.end_time.value;
+  var errorSpan = document.getElementById('edit-time-error');
+  errorSpan.style.display = 'none';
+
+  if (s && e_ && (!isInRange(s) || !isInRange(e_))) {
+      showError(errorSpan, "Times must be between 07:00 and 18:00.");
+      e.preventDefault();
+  } else if (s && e_ && s >= e_) {
+      showError(errorSpan, "Start time must be before end time.");
+      e.preventDefault();
+  }
+});
+
+function openEditModal(schedule_id) {
+    var raw = document.getElementById('sched-data-' + schedule_id).innerText
+        .replace(/(\r\n|\n|\r)/gm,"")
+        .replace(/,\s*}/, '}');
+    var sched = JSON.parse(raw);
+
+    document.getElementById('edit_combo').value =
+        sched.section_id + '|' + sched.subject_id + '|' + sched.teacher_id;
+    document.getElementById('edit_day_of_week').value = sched.day_of_week;
+    document.getElementById('edit_start_time').value = sched.start_time;
+    document.getElementById('edit_end_time').value = sched.end_time;
+    document.getElementById('edit_room').value = sched.room;
+    document.getElementById('edit_year_id').value = sched.year_id;
+
+    var form = document.getElementById('editForm');
+    form.action = '/registrar/schedules/' + sched.schedule_id + '/edit';
+
+    document.getElementById('editModal').style.display = 'block';
+}
+function closeEditModal() {
+    document.getElementById('editModal').style.display = 'none';
+}
+</script>
+
+<style>
+.card, .table, .modal-content {
+  border-radius: 14px !important;
+}
+.table th, .table td {
+  vertical-align: middle !important;
+}
+.table-striped > tbody > tr:nth-of-type(odd) {
+  background-color: #fdfdf7 !important;
+}
+#editModal {
+    /* already styled inline for overlay effect */
+}
+
+@media (max-width: 991px) {
+    .card, .table {
+        font-size: 15px;
+    }
+    .modal-content {
+        font-size: 15px;
+    }
+}
+</style>
+{% endblock %}
