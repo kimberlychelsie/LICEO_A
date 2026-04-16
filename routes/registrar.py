@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, session, redirect, request, flash
+from flask import Blueprint, render_template, session, redirect, request, flash, url_for
 from db import get_db_connection, is_branch_active
 from werkzeug.security import generate_password_hash
 import secrets
@@ -7,6 +7,7 @@ import logging
 import psycopg2.extras
 import json
 from utils.send_email import send_email
+from flask import abort
 
 # Setup logging
 logging.basicConfig(level=logging.ERROR)
@@ -917,7 +918,278 @@ def registrar_students_by_grade_update(enrollment_id):
         
     return redirect(request.referrer or "/registrar/students-by-grade")
 
+from datetime import datetime, time
 
+@registrar_bp.route("/registrar/schedules", methods=['GET', 'POST'])
+def list_and_add_schedules():
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    branch_id = session["branch_id"]
+
+    # Only show combos for SECTIONS in ACTIVE years for THIS branch:
+    cursor.execute("""
+        SELECT st.section_id, sec.section_name, st.subject_id, subj.name AS subject_name,
+               st.teacher_id, u.full_name AS teacher_name, sec.year_id
+        FROM section_teachers st
+        JOIN sections sec ON st.section_id = sec.section_id
+        JOIN school_years y ON sec.year_id = y.year_id
+        JOIN subjects subj ON st.subject_id = subj.subject_id
+        JOIN users u ON st.teacher_id = u.user_id
+        WHERE sec.branch_id = %s
+          AND y.is_active = TRUE
+        ORDER BY y.label DESC, sec.section_name, subj.name, u.full_name
+    """, (branch_id,))
+    combinations = cursor.fetchall()
+
+    # Only fetch ACTIVE school years for the dropdown
+    cursor.execute("""
+        SELECT year_id, label FROM school_years 
+        WHERE is_active = TRUE AND branch_id = %s 
+        ORDER BY label DESC
+    """, (branch_id,))
+    school_years = cursor.fetchall()
+
+    if request.method == "POST":
+        combo = request.form["combo"]
+        section_id, subject_id, teacher_id = combo.split('|')
+        day_of_week = request.form["day_of_week"]
+        start_time = request.form["start_time"]
+        end_time = request.form["end_time"]
+        room = request.form["room"]
+        year_id = request.form["year_id"]
+
+        # --- TIME VALIDATION: must be within 07:00 and 18:00, and start < end ---
+        start_t = datetime.strptime(start_time, "%H:%M").time()
+        end_t = datetime.strptime(end_time, "%H:%M").time()
+        if not (time(7,0) <= start_t <= time(18,0)) or not (time(7,0) <= end_t <= time(18,0)):
+            flash("Invalid schedule: Times must be between 07:00 and 18:00.", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("registrar.list_and_add_schedules"))
+        if start_t >= end_t:
+            flash("Invalid schedule: Start time must be before end time.", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("registrar.list_and_add_schedules"))
+
+        # --- DETAILED COLLISION CHECK ---
+        cursor.execute("""
+            SELECT s.*, subj.name AS conflict_subject_name, sec.section_name AS conflict_section_name, 
+                   u.full_name AS conflict_teacher_name, y.label AS conflict_year_label
+            FROM schedules s
+            JOIN subjects subj ON s.subject_id = subj.subject_id
+            JOIN sections sec ON s.section_id = sec.section_id
+            JOIN users u ON s.teacher_id = u.user_id
+            JOIN school_years y ON s.year_id = y.year_id
+            WHERE s.year_id = %s AND s.branch_id = %s
+              AND s.day_of_week = %s
+              AND (s.start_time < %s AND s.end_time > %s)
+              AND (
+                    s.teacher_id = %s
+                 OR s.section_id = %s
+                 OR s.room = %s
+              )
+            LIMIT 1
+        """, (year_id, branch_id, day_of_week, end_time, start_time, teacher_id, section_id, room))
+        conflict = cursor.fetchone()
+        if conflict:
+            reasons = []
+            if str(conflict["teacher_id"]) == str(teacher_id):
+                reasons.append(f"Teacher {conflict['conflict_teacher_name']}")
+            if str(conflict["section_id"]) == str(section_id):
+                reasons.append(f"Section {conflict['conflict_section_name']}")
+            if str(conflict["room"]) == str(room):
+                reasons.append(f"Room {conflict['room']}")
+
+            conflict_types = " and ".join(reasons)
+            conflict_slot = f"{conflict['day_of_week']} {conflict['start_time'].strftime('%H:%M')}-{conflict['end_time'].strftime('%H:%M')}"
+            conflict_subj = conflict.get("conflict_subject_name", "")
+            message = (f"Conflict detected: {conflict_types} already has "
+                       f"{conflict_subj} scheduled on {conflict_slot}. "
+                       "Please choose a different time or resource.")
+            flash(message, "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("registrar.list_and_add_schedules"))
+
+        # --- INSERT IF NO ISSUES ---
+        cursor.execute("""
+            INSERT INTO schedules
+            (subject_id, section_id, teacher_id, day_of_week, start_time, end_time, room, year_id, branch_id)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """, (
+            subject_id, section_id, teacher_id,
+            day_of_week, start_time, end_time, room, year_id, branch_id
+        ))
+        db.commit()
+        flash("Schedule added!", "success")
+        cursor.close(); db.close()
+        return redirect(url_for("registrar.list_and_add_schedules"))
+
+    # List all schedules for this branch's sections 
+    cursor.execute("""
+        SELECT s.*, subj.name AS subject_name, sec.section_name AS section_name, 
+               u.full_name AS teacher_name, y.label AS year_label
+        FROM schedules s
+        JOIN subjects subj ON s.subject_id = subj.subject_id
+        JOIN sections sec ON s.section_id = sec.section_id
+        JOIN users u ON s.teacher_id = u.user_id
+        JOIN school_years y ON s.year_id = y.year_id
+        WHERE s.branch_id = %s
+        ORDER BY y.label DESC, sec.section_name, subj.name, s.day_of_week, s.start_time
+    """, (branch_id,))
+    schedules = cursor.fetchall()
+
+    cursor.close()
+    db.close()
+
+    return render_template(
+        "schedules_allinone.html",
+        schedules=schedules,
+        combinations=combinations,
+        school_years=school_years
+    )
+
+
+from datetime import datetime, time
+
+@registrar_bp.route("/registrar/schedules/<int:schedule_id>/edit", methods=["GET", "POST"])
+def edit_schedule(schedule_id):
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    branch_id = session.get("branch_id")
+
+    cursor.execute("""
+        SELECT s.*, 
+               subj.name AS subject_name, 
+               sec.section_name AS section_name, 
+               u.full_name AS teacher_name,
+               y.label AS year_label
+        FROM schedules s
+        JOIN subjects subj ON s.subject_id = subj.subject_id
+        JOIN sections sec ON s.section_id = sec.section_id
+        JOIN users u ON s.teacher_id = u.user_id
+        JOIN school_years y ON s.year_id = y.year_id
+        WHERE s.schedule_id = %s AND s.branch_id = %s
+    """, (schedule_id, branch_id))
+    schedule = cursor.fetchone()
+    if not schedule:
+        cursor.close(); db.close()
+        abort(404)
+
+    # Repopulate combinations as in add view
+    cursor.execute("""
+        SELECT st.section_id, sec.section_name, st.subject_id, subj.name AS subject_name,
+               st.teacher_id, u.full_name AS teacher_name, sec.year_id
+        FROM section_teachers st
+        JOIN sections sec ON st.section_id = sec.section_id
+        JOIN school_years y ON sec.year_id = y.year_id
+        JOIN subjects subj ON st.subject_id = subj.subject_id
+        JOIN users u ON st.teacher_id = u.user_id
+        WHERE sec.branch_id = %s
+          AND y.is_active = TRUE
+        ORDER BY y.label DESC, sec.section_name, subj.name, u.full_name
+    """, (branch_id,))
+    combinations = cursor.fetchall()
+
+    # Only fetch ACTIVE school years for the dropdown
+    cursor.execute("""
+        SELECT year_id, label FROM school_years 
+        WHERE is_active = TRUE AND branch_id = %s
+        ORDER BY label DESC
+    """, (branch_id,))
+    school_years = cursor.fetchall()
+
+    if request.method == "POST":
+        combo = request.form["combo"]
+        section_id, subject_id, teacher_id = combo.split('|')
+        day_of_week = request.form["day_of_week"]
+        start_time = request.form["start_time"]
+        end_time = request.form["end_time"]
+        room = request.form["room"]
+        year_id = request.form["year_id"]
+
+        # --- TIME VALIDATION: must be within 07:00 and 18:00, and start < end ---
+        start_t = datetime.strptime(start_time, "%H:%M").time()
+        end_t = datetime.strptime(end_time, "%H:%M").time()
+        if not (time(7,0) <= start_t <= time(18,0)) or not (time(7,0) <= end_t <= time(18,0)):
+            flash("Invalid schedule: Times must be between 07:00 and 18:00.", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("registrar.list_and_add_schedules"))
+        if start_t >= end_t:
+            flash("Invalid schedule: Start time must be before end time.", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("registrar.list_and_add_schedules"))
+
+        # --- DETAILED COLLISION CHECK ---
+        cursor.execute("""
+            SELECT s.*, subj.name AS conflict_subject_name, sec.section_name AS conflict_section_name, 
+                   u.full_name AS conflict_teacher_name, y.label AS conflict_year_label
+            FROM schedules s
+            JOIN subjects subj ON s.subject_id = subj.subject_id
+            JOIN sections sec ON s.section_id = sec.section_id
+            JOIN users u ON s.teacher_id = u.user_id
+            JOIN school_years y ON s.year_id = y.year_id
+            WHERE s.year_id = %s AND s.branch_id = %s
+              AND s.day_of_week = %s
+              AND (s.start_time < %s AND s.end_time > %s)
+              AND (
+                    s.teacher_id = %s
+                 OR s.section_id = %s
+                 OR s.room = %s
+              )
+              AND s.schedule_id != %s
+            LIMIT 1
+        """, (year_id, branch_id, day_of_week, end_time, start_time, teacher_id, section_id, room, schedule_id))
+        conflict = cursor.fetchone()
+        if conflict:
+            reasons = []
+            if str(conflict["teacher_id"]) == str(teacher_id):
+                reasons.append(f"Teacher {conflict['conflict_teacher_name']}")
+            if str(conflict["section_id"]) == str(section_id):
+                reasons.append(f"Section {conflict['conflict_section_name']}")
+            if str(conflict["room"]) == str(room):
+                reasons.append(f"Room {conflict['room']}")
+
+            conflict_types = " and ".join(reasons)
+            conflict_slot = f"{conflict['day_of_week']} {conflict['start_time'].strftime('%H:%M')}-{conflict['end_time'].strftime('%H:%M')}"
+            conflict_subj = conflict.get("conflict_subject_name", "")
+            message = (f"Conflict detected: {conflict_types} already has "
+                       f"{conflict_subj} scheduled on {conflict_slot}. "
+                       "Please choose a different time or resource.")
+            flash(message, "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("registrar.list_and_add_schedules"))
+
+        cursor.execute("""
+            UPDATE schedules
+            SET subject_id=%s, section_id=%s, teacher_id=%s, day_of_week=%s,
+                start_time=%s, end_time=%s, room=%s, year_id=%s
+            WHERE schedule_id=%s AND branch_id=%s
+        """, (subject_id, section_id, teacher_id, day_of_week, start_time, end_time, room, year_id, schedule_id, branch_id))
+        db.commit()
+        cursor.close(); db.close()
+        flash("Schedule updated!", "success")
+        return redirect(url_for("registrar.list_and_add_schedules"))
+
+    cursor.close(); db.close()
+    return render_template(
+        "schedule_edit.html",
+        schedule=schedule,
+        combinations=combinations,
+        school_years=school_years
+    )
+
+
+@registrar_bp.route("/registrar/schedules/<int:schedule_id>/delete", methods=["POST"])
+def delete_schedule(schedule_id):
+    db = get_db_connection()
+    cursor = db.cursor()
+    branch_id = session.get("branch_id")
+    cursor.execute("""
+        DELETE FROM schedules WHERE schedule_id = %s AND branch_id = %s
+    """, (schedule_id, branch_id))
+    db.commit()
+    cursor.close(); db.close()
+    flash("Schedule deleted.", "success")
+    return redirect(url_for("registrar.list_and_add_schedules"))
 # ══════════════════════════════════════════
 # NO CACHE
 # ══════════════════════════════════════════
