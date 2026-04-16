@@ -186,6 +186,13 @@ def dashboard():
         
         cursor.execute("SELECT COUNT(*) FROM users WHERE role IN ('registrar', 'cashier', 'librarian') AND COALESCE(status, 'active')='active' AND branch_id=%s", (b_id,))
         metrics['total_staff'] = cursor.fetchone()['count']
+
+        # ✅ Inventory Count (Uniforms & Supplies)
+        cursor.execute("SELECT SUM(stock_total) FROM inventory_items WHERE branch_id=%s AND category != 'BOOK'", (b_id,))
+        metrics['total_inventory'] = cursor.fetchone()['sum'] or 0
+
+        # ✅ Map total_enrolled to total_students for template
+        metrics['total_students'] = metrics['total_enrolled']
         
         # Chart Data: Enrollment by Grade
         cursor.execute("""
@@ -2077,6 +2084,7 @@ def branch_admin_manage_accounts():
         return redirect(url_for("auth.login"))
 
     role_filter = (request.args.get("role") or "registrar").strip().lower()
+    view_mode = (request.args.get("view") or "flat").strip().lower()
     created_user = None
     filter_grade = request.args.get("grade", "")
     filter_section = request.args.get("section", "")
@@ -2216,6 +2224,7 @@ def branch_admin_manage_accounts():
         section_options = cursor.fetchall() or []
 
         # Fetch accounts based on role
+        # Fetch accounts based on role
         if role_filter == "student":
             query = """
                 SELECT 
@@ -2237,19 +2246,37 @@ def branch_admin_manage_accounts():
             if filter_search:
                 query += " AND (sa.username ILIKE %s OR e.student_name ILIKE %s)"
                 params.extend([f"%{filter_search}%", f"%{filter_search}%"])
-
-            query += " ORDER BY e.student_name ASC"
+            cursor.execute(query, tuple(params))
+        elif role_filter == "teacher" and view_mode == "grouped":
+            # Categorized by Section logic: One row per teacher-section pairing
+            query = """
+                SELECT
+                    u.user_id, u.username, u.role, u.full_name, u.gender,
+                    u.email, COALESCE(g_u.name, u.grade_level) AS teacher_grade, u.status,
+                    s.section_name, g_s.name AS section_grade
+                FROM users u
+                LEFT JOIN grade_levels g_u ON u.grade_level_id = g_u.id
+                JOIN section_teachers st ON u.user_id = st.teacher_id
+                JOIN sections s ON st.section_id = s.section_id
+                JOIN grade_levels g_s ON s.grade_level_id = g_s.id
+                WHERE u.branch_id = %s AND u.role = 'teacher'
+            """
+            params = [branch_id]
+            if filter_search:
+                query += " AND (u.username ILIKE %s OR u.full_name ILIKE %s)"
+                params.extend([f"%{filter_search}%", f"%{filter_search}%"])
             cursor.execute(query, tuple(params))
         else:
             query = """
                 SELECT
                     u.user_id, u.username, u.role, u.full_name, u.gender,
                     u.email, COALESCE(g.name, u.grade_level) AS grade_level, u.status,
-                    STRING_AGG(DISTINCT s.section_name, ', ') AS sections
+                    (SELECT STRING_AGG(DISTINCT s2.section_name, ', ') 
+                     FROM section_teachers st2 
+                     JOIN sections s2 ON st2.section_id = s2.section_id 
+                     WHERE st2.teacher_id = u.user_id) AS sections
                 FROM users u
                 LEFT JOIN grade_levels g ON u.grade_level_id = g.id
-                LEFT JOIN section_teachers st ON u.user_id = st.teacher_id
-                LEFT JOIN sections s ON st.section_id = s.section_id
                 WHERE u.branch_id = %s AND u.role = %s
             """
             params = [branch_id, role_filter]
@@ -2262,10 +2289,29 @@ def branch_admin_manage_accounts():
             if filter_search:
                 query += " AND (u.username ILIKE %s OR u.full_name ILIKE %s)"
                 params.extend([f"%{filter_search}%", f"%{filter_search}%"])
-
-            query += " GROUP BY u.user_id, g.name ORDER BY u.user_id DESC"
             cursor.execute(query, tuple(params))
+
         accounts = cursor.fetchall() or []
+
+        # --- ADVANCED ACADEMIC SORTING (PYTHON BASED) ---
+        import re
+        def academic_sort_key(item):
+            # Extract grade string safely from various possible keys
+            grade_str = (item.get('grade_level') or item.get('teacher_grade') or item.get('section_grade') or '').lower().strip()
+            
+            # 1. Nursery/Kinder priority
+            if 'nursery' in grade_str: return (1, (item.get('full_name') or '').lower())
+            if 'kinder' in grade_str: return (2, (item.get('full_name') or '').lower())
+            
+            # 2. Sequential Grades (extracting number from "Grade 1", "Grade 11 – STEM", etc)
+            nums = re.findall(r'\d+', grade_str)
+            if nums:
+                return (int(nums[0]) + 10, (item.get('full_name') or '').lower())
+            
+            # 3. Fallback (Alphabetical for others)
+            return (999, (item.get('full_name') or '').lower())
+
+        accounts.sort(key=academic_sort_key)
 
     except Exception as e:
         db.rollback()
@@ -2278,6 +2324,7 @@ def branch_admin_manage_accounts():
     return render_template(
         "branch_admin_manage_accounts.html",
         role_filter=role_filter,
+        view_mode=view_mode,
         accounts=accounts,
         grades=grades,
         section_options=section_options,
