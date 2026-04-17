@@ -41,7 +41,7 @@ def dashboard():
                        br.branch_name, br.location
                 FROM student_accounts sa
                 JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
-                JOIN branches br ON e.branch_id = br.branch_id
+                LEFT JOIN branches br ON e.branch_id = br.branch_id
                 WHERE sa.account_id = %s
             """, (account_id,))
         elif enrollment_id:
@@ -53,19 +53,21 @@ def dashboard():
                        e.student_name, e.grade_level, e.status, e.branch_id,
                        br.branch_name, br.location
                 FROM enrollments e
-                JOIN branches br ON e.branch_id = br.branch_id
+                LEFT JOIN branches br ON e.branch_id = br.branch_id
                 JOIN users u ON u.user_id = e.user_id
                 WHERE e.enrollment_id = %s
             """, (enrollment_id,))
         else:
+            session.clear()
             flash("Session expired or student account not found. Please log in again.", "error")
-            return redirect("/")
+            return redirect("/login")
 
         student = cursor.fetchone()
 
         if not student:
+            session.clear()
             flash("Student account not found", "error")
-            return redirect("/")
+            return redirect("/login")
 
         # Billing info
         cursor.execute("SELECT * FROM billing WHERE enrollment_id=%s", (student["enrollment_id"],))
