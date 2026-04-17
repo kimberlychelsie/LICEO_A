@@ -3,740 +3,1194 @@
 
 {% block styles %}
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-
-    :root {
-        --reg-blue: #1e3a8a;
-        --reg-blue-light: #eff6ff;
-        --reg-blue-soft: #dbeafe;
-        --reg-yellow: #facc15;
-        --reg-yellow-dark: #ca8a04;
-        --reg-yellow-soft: #fefce8;
-        --reg-text-main: #0f172a;
-        --reg-text-muted: #64748b;
-        --reg-border: rgba(226, 232, 240, 0.8);
-        --reg-surface: #ffffff;
-        --reg-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        --reg-shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        --reg-radius: 20px;
-        --reg-radius-lg: 28px;
-    }
-
-    body {
-        background-color: #f8fafc;
-        font-family: 'Plus Jakarta Sans', sans-serif;
-    }
-
-    .enrollments-wrapper {
-        max-width: 1300px;
-        margin: 0 auto;
-        padding: 30px 24px;
-        animation: fadeSlideUp 0.4s ease-out;
-    }
-
-    @keyframes fadeSlideUp {
-        from { opacity: 0; transform: translateY(15px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Fixed Premium Header */
-    .premium-header {
+    /* ── Tabs ── */
+    .tab-bar {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 30px;
-        background: var(--reg-surface);
-        padding: 28px 32px;
-        border-radius: var(--reg-radius-lg);
-        box-shadow: var(--reg-shadow-md);
-        border: 1px solid var(--reg-border);
-        position: relative;
-        overflow: hidden;
+        gap: 4px;
+        border-bottom: 2px solid var(--border);
+        margin-bottom: 20px;
     }
 
-    .premium-header::before {
-        content: '';
-        position: absolute;
-        left: 0; top: 0; height: 100%; width: 8px;
-        background: linear-gradient(180deg, var(--reg-blue) 0%, var(--reg-yellow) 100%);
-    }
-
-    .header-text h2 {
-        margin: 0;
-        font-size: 1.75rem;
-        font-weight: 800;
-        color: var(--reg-text-main);
-        letter-spacing: -0.02em;
-    }
-
-    .header-text p {
-        margin: 4px 0 0;
-        font-size: 0.95rem;
-        color: var(--reg-text-muted);
-        font-weight: 500;
-    }
-
-    /* Tabs Card Style */
-    .segment-control {
-        display: inline-flex;
-        background: #e2e8f0;
-        padding: 6px;
-        border-radius: 18px;
-        margin-bottom: 30px;
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
-    }
-
-    .segment-btn {
-        padding: 12px 28px;
-        border-radius: 14px;
+    .tab-btn {
+        padding: 10px 22px;
+        font-size: 0.88rem;
         font-weight: 700;
-        font-size: 0.95rem;
-        color: var(--reg-text-muted);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        transition: all 0.25s ease;
-        text-decoration: none;
         border: none;
-        background: transparent;
+        background: none;
+        cursor: pointer;
+        border-radius: 8px 8px 0 0;
+        color: var(--muted);
+        border-bottom: 3px solid transparent;
+        transition: color .15s, border-color .15s;
+        position: relative;
+        bottom: -2px;
+        text-decoration: none;
+        display: inline-block;
     }
 
-    .segment-btn.active {
-        background: var(--reg-surface);
-        color: var(--reg-blue);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    .tab-btn.active {
+        color: var(--btn);
+        border-bottom-color: var(--btn);
+        background: #eff6ff;
     }
 
-    .pill-count {
-        background: #94a3b8;
-        color: white;
-        padding: 2px 10px;
-        border-radius: 12px;
-        font-size: 0.8rem;
-        font-weight: 800;
-    }
-
-    .segment-btn.active .pill-count { background: var(--reg-blue); }
-
-    .tab-view { display: none; }
-    .tab-view.is-visible { display: block; animation: fadeSlideUp 0.3s ease-out; }
-
-    /* Main Table Card */
-    .table-surface {
-        background: var(--reg-surface);
-        border-radius: var(--reg-radius-lg);
-        box-shadow: var(--reg-shadow-md);
-        border: 1px solid var(--reg-border);
-        overflow: hidden;
-    }
-
-    .toolbar {
-        padding: 24px 32px;
-        background: #fcfcfd;
-        border-bottom: 1px solid var(--reg-border);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 20px;
-        flex-wrap: wrap;
-    }
-
-    .toolbar-title { font-weight: 800; color: var(--reg-text-main); font-size: 1.2rem; }
-
-    .filter-group { display: flex; align-items: center; gap: 16px; }
-
-    .premium-input {
-        padding: 12px 20px;
-        border: 1px solid var(--reg-border);
-        border-radius: 14px;
-        font-family: inherit;
-        font-size: 0.9rem;
-        font-weight: 600;
-        background: var(--reg-surface);
-        transition: all 0.2s;
-    }
-
-    .premium-input:focus {
-        outline: none;
-        border-color: var(--reg-blue);
-        box-shadow: 0 0 0 4px var(--reg-blue-soft);
-    }
-
-    /* Table Design */
-    .premium-table { width: 100%; border-collapse: collapse; }
-    .premium-table th {
-        text-align: left;
-        padding: 20px 32px;
-        background: rgba(248, 250, 252, 0.6);
-        color: var(--reg-text-muted);
-        font-size: 0.75rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        border-bottom: 1px solid var(--reg-border);
-    }
-
-    .premium-table td {
-        padding: 22px 32px;
-        border-bottom: 1px solid #f1f5f9;
-        vertical-align: middle;
-        transition: background 0.2s;
-    }
-
-    .premium-table tbody tr:hover {
-        background: #f8fafc;
-    }
-
-    .identity { display: flex; flex-direction: column; gap: 6px; }
-    .id-tag {
-        font-family: 'Courier New', Courier, monospace;
-        font-size: 0.75rem;
-        font-weight: 800;
-        color: var(--reg-blue);
-        background: var(--reg-blue-soft);
-        padding: 3px 8px;
-        border-radius: 6px;
-        width: fit-content;
-    }
-    .name-main { font-weight: 800; font-size: 1.05rem; color: var(--reg-text-main); }
-    .sub-info { font-size: 0.85rem; color: var(--reg-text-muted); font-weight: 600; }
-
-    /* Row Form Cards */
-    .detail-card {
-        background: var(--reg-surface);
-        border: 1px solid var(--reg-border);
-        border-radius: 20px;
-        padding: 24px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.03);
-        transition: transform 0.2s;
-    }
-    .detail-card:hover { transform: translateY(-2px); border-color: var(--reg-blue-soft); }
-
-    /* Badges */
-    .badge-modern {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        border-radius: 20px;
-        font-size: 0.75rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.02em;
-    }
-
-    .bg-pending { background: #fef9c3; color: #a16207; }
-    .bg-approved { background: #dbeafe; color: #1e40af; }
-    .bg-rejected { background: #fee2e2; color: #b91c1c; }
-    .bg-enrolled { background: #dcfce7; color: #15803d; }
-    .bg-open { background: var(--reg-yellow-soft); color: var(--reg-yellow-dark); border: 1px solid var(--reg-yellow); }
-
-    /* Buttons */
-    .btn-elegant {
+    .tab-btn .tab-count {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 10px;
-        padding: 10px 20px;
-        border-radius: 12px;
-        font-size: 0.88rem;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        border: 1px solid transparent;
-        text-decoration: none;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        font-size: 0.7rem;
+        font-weight: 800;
+        margin-left: 6px;
+        background: var(--btn);
+        color: #fff;
     }
 
-    .btn-view-modern { background: var(--reg-surface); border-color: var(--reg-border); color: var(--reg-text-main); }
-    .btn-view-modern:hover { background: #f8fafc; color: var(--reg-blue); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-    
-    .btn-check-modern { background: #ecfdf5; color: #059669; border-color: #a7f3d0; }
-    .btn-check-modern:hover { background: #10b981; color: white; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
-    
-    .btn-create-acc {
-        display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-        padding: 10px 20px; border-radius: 12px; font-weight: 800; font-size: 0.88rem;
-        cursor: pointer; border: 1px solid transparent; text-decoration: none; transition: all 0.2s;
+    .tab-panel {
+        display: none;
     }
-    .btn-create-acc.student { background: #EFF6FF; color: #1D4ED8; border-color: #BFDBFE; }
-    .btn-create-acc.student:hover { background: #1D4ED8; color: white; box-shadow: 0 4px 12px rgba(29, 78, 216, 0.2); }
-    .btn-create-acc.parent { background: #F5F3FF; color: #6D28D9; border-color: #DDD6FE; }
-    .btn-create-acc.parent:hover { background: #6D28D9; color: white; box-shadow: 0 4px 12px rgba(109, 40, 217, 0.2); }
 
-    .acc-linked {
-        display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px;
-        border-radius: 12px; font-weight: 800; font-size: 0.88rem;
-        background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0;
+    .tab-panel.active {
+        display: block;
     }
-    .acc-linked.parent { background: #F5F3FF; color: #6D28D9; border-color: #DDD6FE; }
-    .account-stack {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        min-width: 240px;
+
+    /* ── Card / Table ── */
+    .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        box-shadow: 0 2px 10px rgba(2, 6, 23, .06);
+        overflow: hidden;
+        margin-bottom: 20px;
     }
-    .account-row {
+
+    .card-header {
+        padding: 14px 16px;
+        font-weight: 900;
+        border-bottom: 1px solid var(--border);
+        background: #f8fafc;
         display: flex;
         align-items: center;
-        gap: 8px;
+        justify-content: space-between;
         flex-wrap: wrap;
-    }
-    .account-label {
-        font-size: 0.72rem;
-        font-weight: 800;
-        color: var(--reg-text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        min-width: 58px;
+        gap: 10px;
     }
 
-    /* Modal Styling */
-    .glass-overlay {
-        position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7);
-        backdrop-filter: blur(8px); display: none; align-items: center;
-        justify-content: center; z-index: 1000; opacity: 0; transition: opacity 0.3s ease;
+    table {
+        width: 100%;
+        border-collapse: collapse;
     }
-    .glass-overlay.visible { display: flex; opacity: 1; }
-    .glass-modal {
-        background: var(--reg-surface); width: 100%; max-width: 580px;
-        border-radius: 32px; padding: 40px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+
+    th,
+    td {
+        padding: 11px 12px;
+        border-bottom: 1px solid var(--border);
+        text-align: left;
+        vertical-align: top;
+        font-size: 13.5px;
+    }
+
+    th {
+        color: var(--muted);
+        font-weight: 900;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        background: #fbfdff;
+    }
+
+    /* ── Badges ── */
+    .badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        font-weight: 700;
+        border: 1px solid var(--border);
+    }
+
+    .badge-pending {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border-color: #bfdbfe;
+    }
+
+    .badge-approved {
+        background: #f0fdf4;
+        color: #166534;
+        border-color: #bbf7d0;
+    }
+
+    .badge-rejected {
+        background: #fef2f2;
+        color: #991b1b;
+        border-color: #fecaca;
+    }
+
+    .badge-enrolled {
+        background: #f0fdfa;
+        color: #0f766e;
+        border-color: #99f6e4;
+    }
+
+    .badge-open {
+        background: #fefce8;
+        color: #ca8a04;
+        border-color: #fde68a;
+    }
+
+    /* ── Buttons ── */
+    .btn-sm {
+        padding: 7px 12px;
+        border-radius: 8px;
+        font-size: 12.5px;
+    }
+
+    .btn-success {
+        background: #16a34a;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-success:hover {
+        filter: brightness(.93);
+    }
+
+    .btn-danger {
+        background: #dc2626;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-danger:hover {
+        filter: brightness(.93);
+    }
+
+    .btn-secondary {
+        background: #475569;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-secondary:hover {
+        filter: brightness(.93);
+    }
+
+    .btn-warning {
+        background: #f59e0b;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-warning:hover {
+        filter: brightness(.93);
+    }
+
+    .btn-info {
+        background: #0891b2;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-info:hover {
+        filter: brightness(.93);
+    }
+
+    /* ── Toggle banner ── */
+    .toggle-banner {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 14px;
+        border-radius: 12px;
+        padding: 16px 20px;
+        margin-bottom: 18px;
+        border: 2px solid;
+    }
+
+    .toggle-banner.open-state {
+        background: #fefce8;
+        border-color: #fde68a;
+    }
+
+    .toggle-banner.closed-state {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+    }
+
+    .toggle-banner .tg-left strong {
+        display: block;
+        font-size: 0.95rem;
+        font-weight: 800;
+        margin-bottom: 2px;
+    }
+
+    .toggle-banner .tg-left span {
+        font-size: 0.82rem;
+        color: #64748b;
+    }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-bottom: 14px;
+    }
+
+    .filter-bar label {
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: var(--muted);
+    }
+
+    .filter-bar select {
+        padding: 7px 12px;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-family: inherit;
+        cursor: pointer;
+        background: #fff;
+    }
+
+    .filter-bar select:focus {
+        outline: none;
+        border-color: var(--btn);
+    }
+
+    .search-input {
+        padding: 7px 12px;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-family: inherit;
+        flex: 1;
+        min-width: 180px;
+        max-width: 280px;
+    }
+
+    .search-input:focus {
+        outline: none;
+        border-color: var(--btn);
+    }
+
+    /* ── Docs ── */
+    .docs a {
+        color: #1d4ed8;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 12.5px;
+    }
+
+    .docs a:hover {
+        text-decoration: underline;
+    }
+
+    .muted-note {
+        color: var(--muted);
+        font-size: 12px;
+    }
+
+    .acct-ok {
+        color: #10b981;
+        font-weight: 700;
+        font-size: 12.5px;
+    }
+
+    .empty-row td {
+        text-align: center;
+        padding: 32px;
+        color: var(--muted);
+        font-size: 0.88rem;
+    }
+
+    /* ── Documents modal ── */
+    .modal-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .modal-backdrop.open {
+        display: flex;
+    }
+
+    .modal-box {
+        background: #fff;
+        border-radius: 16px;
+        padding: 28px 32px;
+        max-width: 600px;
+        width: 95%;
+        max-height: 85vh;
+        overflow-y: auto;
+        box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
         position: relative;
     }
 
-    .doc-item {
-        background: #f8fafc; border: 1px solid var(--reg-border); border-radius: 16px;
-        padding: 18px; display: flex; justify-content: space-between; align-items: center;
-        margin-bottom: 12px;
+    .modal-box h3 {
+        margin: 0 0 4px;
+        font-size: 1.1rem;
     }
 
-    .status-banner {
-        display: flex; justify-content: space-between; align-items: center;
-        padding: 24px 32px; border-radius: var(--reg-radius-lg); margin-bottom: 30px;
-        border: 1px solid transparent; box-shadow: var(--reg-shadow-md);
+    .modal-sub {
+        color: #64748b;
+        font-size: 0.85rem;
+        margin-bottom: 20px;
     }
-    .status-banner.is-open { background: #fefce8; border-color: #fef08a; }
-    .status-banner.is-closed { background: #f0fdf4; border-color: #bbf7d0; }
+
+    .modal-close-x {
+        position: absolute;
+        top: 14px;
+        right: 18px;
+        background: none;
+        border: none;
+        font-size: 1.3rem;
+        cursor: pointer;
+        color: #94a3b8;
+    }
+
+    .modal-close-x:hover {
+        color: #1e293b;
+    }
+
+    /* ── Document cards inside modal ── */
+    .doc-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 12px;
+        margin-top: 12px;
+    }
+
+    .doc-card {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: #f8fafc;
+        transition: box-shadow 0.15s;
+    }
+
+    .doc-card:hover {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .doc-card .doc-icon {
+        font-size: 2rem;
+        line-height: 1;
+    }
+
+    .doc-card .doc-name {
+        font-size: 12.5px;
+        font-weight: 700;
+        color: #1e293b;
+        word-break: break-word;
+    }
+
+    .doc-card .doc-type {
+        font-size: 11px;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+
+    .doc-card a {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: #1d4ed8;
+        color: #fff;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        width: fit-content;
+        transition: background 0.15s;
+    }
+
+    .doc-card a:hover {
+        background: #1e40af;
+    }
+
+    .no-docs {
+        text-align: center;
+        color: #94a3b8;
+        padding: 24px 0;
+        font-size: 0.9rem;
+    }
+
+    /* ── Section assign modal ── */
+    .modal-box label {
+        font-weight: 700;
+        font-size: 0.85rem;
+        display: block;
+        margin-bottom: 5px;
+        color: #374151;
+    }
+
+    .modal-box select,
+    .modal-box input {
+        width: 100%;
+        padding: 9px 12px;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 0.9rem;
+        font-family: inherit;
+        margin-bottom: 16px;
+        box-sizing: border-box;
+    }
+
+    .modal-box select:focus,
+    .modal-box input:focus {
+        outline: none;
+        border-color: #3b82f6;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+        margin-top: 4px;
+    }
+
+    .step-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        border-radius: 8px;
+        padding: 4px 10px;
+        font-size: 12px;
+        font-weight: 700;
+        margin-bottom: 16px;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="enrollments-wrapper">
-    <!-- Header -->
-    <div class="premium-header">
-        <div class="header-text">
-            <h2>Enrollment List</h2>
-            <p>Manage new and old student enrollments here.</p>
-        </div>
-    </div>
 
-    <!-- Tabs -->
-    <div class="segment-control">
-        <a href="#new" class="segment-btn active" id="btn-tab-new" onclick="selectTab('new', this); return false;">
-            <i class="fas fa-inbox"></i> New
-            <span class="pill-count">{{ new_enrollments | length }}</span>
-        </a>
-        <a href="#enrolled" class="segment-btn" id="btn-tab-enrolled" onclick="selectTab('enrolled', this); return false;">
-            <i class="fas fa-user-check"></i> Student List
-            <span class="pill-count">{{ enrolled_students | length }}</span>
-        </a>
-    </div>
-
-    <!-- TAB 1: NEW -->
-    <div class="tab-view is-visible" id="view-tab-new">
-        <div class="table-surface">
-            <div class="toolbar">
-                <span class="toolbar-title">Waiting List</span>
-                <div class="filter-group" style="margin-left: auto;">
-                    <select class="premium-input" id="newGradeFilter" onchange="runNewFilter()">
-                        <option value="">All Grades</option>
-                        {% for g in grade_levels %}
-                        <option value="{{ g }}">{{ g }}</option>
-                        {% endfor %}
-                    </select>
-                    <input class="premium-input" type="text" id="newSearch" placeholder="Search name..." oninput="runNewFilter()" style="width: 250px;">
-                </div>
-            </div>
-
-            <div style="overflow-x: auto;">
-                <table class="premium-table">
-                    <thead>
-                        <tr>
-                            <th>Student Info</th>
-                            <th>Grade</th>
-                            <th>Requirements</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for e in new_enrollments %}
-                        <tr class="new-enroll-row" data-grade="{{ e.grade_level | lower }}" data-name="{{ e.student_name | lower }}">
-                            <td>
-                                <div class="identity">
-                                    <span class="id-tag">#{{ e.display_no }}</span>
-                                    <span class="name-main">{{ e.student_name }}</span>
-                                    {% if e.gender %}<span class="sub-info">{{ e.gender }}</span>{% endif %}
-                                </div>
-                            </td>
-                            <td><span style="font-weight: 800; color: var(--reg-blue);">{{ e.grade_level }}</span></td>
-                            <td>
-                                {% if e.documents and e.documents | length > 0 %}
-                                <button class="btn-elegant btn-view-modern view-docs-btn" data-student="{{ e.student_name }}" data-docs='{{ e.documents | tojson | safe }}'>
-                                    <i class="fas fa-folder-open" style="color: var(--reg-yellow-dark);"></i> {{ e.documents | length }} Files
-                                </button>
-                                {% else %}
-                                <span class="sub-info"><i class="fas fa-minus"></i> No Files</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if e.status == 'approved' %}
-                                <div class="badge-modern bg-approved"><i class="fas fa-check-circle"></i> Approved</div>
-                                {% elif e.status == 'rejected' %}
-                                <div class="badge-modern bg-rejected"><i class="fas fa-times-circle"></i> Rejected</div>
-                                {% else %}
-                                <div class="badge-modern bg-pending"><i class="fas fa-clock"></i> Checking</div>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div style="display: flex; flex-direction: column; gap: 8px;">
-                                    <button class="btn-elegant btn-view-modern" onclick="toggleNewDetails('{{ e.enrollment_id }}', this)">
-                                        <i class="fas fa-user"></i> View Info
-                                    </button>
-                                    {% if e.status == 'pending' %}
-                                    <div style="display: flex; gap: 8px;">
-                                        <form method="post" action="/registrar/enrollments" style="flex:1;">
-                                            <input type="hidden" name="enrollment_id" value="{{ e.enrollment_id }}">
-                                            <button name="action" value="approved" class="btn-elegant btn-check-modern" style="width:100%;"><i class="fas fa-check"></i> Accept</button>
-                                        </form>
-                                        <button class="btn-elegant btn-cross-modern" onclick="openRejectModal('{{ e.enrollment_id }}', '{{ e.student_name }}')"><i class="fas fa-ban"></i></button>
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            </td>
-                        </tr>
-                        <!-- Expanded Form Cards -->
-                        <tr id="new-details-{{ e.enrollment_id }}" style="display:none; background:#fcfcfd;">
-                            <td colspan="5" style="padding:32px;">
-                                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:24px;">
-                                    <div class="detail-card">
-                                        <h4 style="margin:0 0 20px; color:var(--reg-blue); font-weight:800; border-bottom:2px solid #f1f5f9; padding-bottom:10px;">Student Details</h4>
-                                        <form method="post" action="/registrar/enrollment/{{ e.enrollment_id }}">
-                                            <div style="display:flex; flex-direction:column; gap:16px;">
-                                                <div class="form-group">
-                                                    <label style="display:block; font-size:0.75rem; font-weight:800; color:var(--reg-text-muted); text-transform:uppercase; margin-bottom:8px;">Gender</label>
-                                                    <select name="gender" class="premium-input track-change" style="width:100%;">
-                                                        <option value="Male" {{ 'selected' if e.gender=='Male' }}>Male</option>
-                                                        <option value="Female" {{ 'selected' if e.gender=='Female' }}>Female</option>
-                                                    </select>
-                                                </div>
-                                                <div class="form-group">
-                                                    <label style="display:block; font-size:0.75rem; font-weight:800; color:var(--reg-text-muted); text-transform:uppercase; margin-bottom:8px;">Birthday</label>
-                                                    <input type="date" name="dob" class="premium-input track-change" style="width:100%;" value="{{ e.dob.strftime('%Y-%m-%d') if e.dob else '' }}">
-                                                </div>
-                                            </div>
-                                    </div>
-                                    <div class="detail-card">
-                                        <h4 style="margin:0 0 20px; color:var(--reg-blue); font-weight:800; border-bottom:2px solid #f1f5f9; padding-bottom:10px;">Parent Contact</h4>
-                                        <div style="display:flex; flex-direction:column; gap:16px;">
-                                            <div class="form-group">
-                                                <label style="display:block; font-size:0.75rem; font-weight:800; color:var(--reg-text-muted); text-transform:uppercase; margin-bottom:8px;">Full Name</label>
-                                                <input type="text" name="guardian_name" class="premium-input track-change" style="width:100%;" value="{{ e.guardian_name or '' }}">
-                                            </div>
-                                            <div class="form-group">
-                                                <label style="display:block; font-size:0.75rem; font-weight:800; color:var(--reg-text-muted); text-transform:uppercase; margin-bottom:8px;">Phone Number</label>
-                                                <input type="text" name="guardian_contact" class="premium-input track-change" style="width:100%;" value="{{ e.guardian_contact or '' }}">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="detail-card" style="display:flex; flex-direction:column; justify-content:center; align-items:center; background: #f8faff;">
-                                        <div style="text-align:center; margin-bottom:20px;">
-                                            <i class="fas fa-save" style="font-size:2rem; color:var(--reg-blue); opacity:0.2;"></i>
-                                            <p style="font-size:0.85rem; color:var(--reg-text-muted); margin-top:10px;">Changes must be saved to update student records.</p>
-                                        </div>
-                                        <button type="submit" class="btn-elegant btn-check-modern save-inline-btn" disabled style="width:100%; padding:14px;">Save All Changes</button>
-                                        </form>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-
-    <!-- TAB 2: STUDENT LIST -->
-    <div class="tab-view" id="view-tab-enrolled">
-        {% if is_branch_active_status %}
-        {% if reenrollment_open %}
-        <div class="status-banner is-open">
-            <div>
-                <h3 style="margin:0 0 4px; font-weight: 800; color: #a16207;">Portal Open</h3>
-                <p style="margin:0; font-size: 0.9rem; color: #854d0e;">The enrollment gateway is currently active.</p>
-            </div>
-            <form method="post" action="/registrar/toggle-reenrollment">
-                <input type="hidden" name="action" value="close">
-                <button type="submit" class="btn-elegant btn-cross-modern" style="padding:12px 24px;">Close Portal</button>
-            </form>
-        </div>
-        {% else %}
-        <div class="status-banner is-closed">
-            <div>
-                <h3 style="margin:0 0 4px; font-weight: 800; color: #166534;">Portal Closed</h3>
-                <p style="margin:0; font-size: 0.9rem; color: #15803d;">The gateway is currently locked for students.</p>
-            </div>
-            <form method="post" action="/registrar/toggle-reenrollment">
-                <input type="hidden" name="action" value="open">
-                <button type="submit" class="btn-elegant btn-check-modern" style="padding:12px 24px;">Open Portal</button>
-            </form>
-        </div>
-        {% endif %}
-        {% endif %}
-
-        <div class="table-surface">
-            <div class="toolbar">
-                <div class="filter-group">
-                    <select class="premium-input" id="rosterGrade" onchange="runFilter()">
-                        <option value="">All Grades</option>
-                        {% for g in grade_levels %}
-                        <option value="{{ g }}">{{ g }}</option>
-                        {% endfor %}
-                    </select>
-                    <input class="premium-input" type="text" id="rosterSearch" placeholder="Search roster..." oninput="runFilter()" style="width: 280px;">
-                </div>
-                <div style="font-weight: 800; color: var(--reg-blue); font-size: 1rem; background: var(--reg-blue-soft); padding: 8px 16px; border-radius: 12px;" id="rosterCountBox">
-                    {{ enrolled_students | length }} Students
-                </div>
-            </div>
-
-            <div style="overflow-x: auto;">
-                <table class="premium-table">
-                    <thead>
-                        <tr>
-                            <th>Student</th>
-                            <th>Grade</th>
-                            <th>Section</th>
-                            <th>Status</th>
-                            <th>Account</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for e in enrolled_students %}
-                        <tr class="roster-row" data-grade="{{ e.grade_level | lower }}" data-name="{{ e.student_name | lower }}">
-                            <td>
-                                <div class="identity">
-                                    <span class="name-main">{{ e.student_name }}</span>
-                                    {% if e.gender %}<span class="sub-info">{{ e.gender }}</span>{% endif %}
-                                </div>
-                            </td>
-                            <td><span style="font-weight: 800; color: var(--reg-blue);">{{ e.grade_level }}</span></td>
-                            <td>
-                                {% if e.section_name %}
-                                <span style="font-weight: 800; color: #15803D;">{{ e.section_name }}</span>
-                                {% else %}
-                                <span style="color: #ca8a04; font-weight: 700; font-size: 0.85rem;">No Section</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if e.status == 'approved' %}
-                                <div class="badge-modern bg-approved">Approved</div>
-                                {% else %}
-                                <div class="badge-modern bg-enrolled">Enrolled</div>
-                                {% endif %}
-                            </td>
-                            <td>
-                                <div class="account-stack">
-                                    <div class="account-row">
-                                        <a href="/registrar/enrollment/{{ e.enrollment_id }}" class="btn-elegant btn-view-modern">View info</a>
-                                    </div>
-                                    <div class="account-row">
-                                        <span class="account-label">Student</span>
-                                        {% if e.has_student_account %}
-                                        <div class="acc-linked">Connected</div>
-                                        {% else %}
-                                        <button
-                                            type="button"
-                                            class="btn-create-acc student js-create-student"
-                                            data-enrollment-id="{{ e.enrollment_id }}"
-                                            data-student-name="{{ e.student_name }}"
-                                            data-grade-level="{{ e.grade_level }}"
-                                        >
-                                            Create
-                                        </button>
-                                        {% endif %}
-                                    </div>
-                                    <div class="account-row">
-                                        <span class="account-label">Parent</span>
-                                        {% if e.has_parent_account %}
-                                        <div class="acc-linked parent">Connected</div>
-                                        {% else %}
-                                        <form method="post" action="/registrar/create-parent-account/{{ e.enrollment_id }}" style="margin:0;">
-                                            <button type="submit" class="btn-create-acc parent">Create</button>
-                                        </form>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+<div
+    style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+    <h2 style="margin:0;">Enrollments</h2>
+    <a href="/registrar" class="btn btn-secondary btn-sm">← Back to Dashboard</a>
 </div>
 
-<!-- Overlays -->
-<div class="glass-overlay" id="docOverlay">
-    <div class="glass-modal">
-        <button class="modal-close" style="position: absolute; top: 24px; right: 24px; border:none; background:none; font-size: 1.5rem; cursor:pointer;" onclick="hideDocOverlay()"><i class="fas fa-times"></i></button>
-        <h3 style="font-weight: 900; color: var(--reg-blue); margin: 0 0 10px; font-size: 1.5rem;">Student Files</h3>
-        <p style="font-size: 0.95rem; color: var(--reg-text-muted); font-weight: 600;" id="docApplicantName">...</p>
-        <div class="doc-showcase" id="docShowcaseBox" style="margin-top: 24px;"></div>
-    </div>
+<!-- ═══ TABS ═══ -->
+<div class="tab-bar">
+    <a class="tab-btn active" href="#" onclick="switchTab('new',this); return false;">
+        📋 New Enrollments
+        <span class="tab-count">{{ new_enrollments | length }}</span>
+    </a>
+    <a class="tab-btn" href="#enrolled" id="tab-enrolled-btn" onclick="switchTab('enrolled',this); return false;">
+        🎓 Enrolled Students
+        <span class="tab-count">{{ enrolled_students | length }}</span>
+    </a>
 </div>
 
-<div class="glass-overlay" id="accOverlay">
-    <div class="glass-modal">
-        <button style="position: absolute; top: 24px; right: 24px; border:none; background:none; cursor:pointer;" onclick="hideAccOverlay()"><i class="fas fa-times"></i></button>
-        <h3 style="font-weight: 900; color: var(--reg-blue); margin-bottom: 24px; font-size: 1.5rem;">Create Student Account</h3>
-        <div style="background: #f8fafc; padding: 20px; border-radius: 20px; margin-bottom: 24px;">
-            <div id="accStudentName" style="font-weight: 800; font-size: 1.2rem; color: var(--reg-blue);">...</div>
-            <div id="accGrade" style="color: var(--reg-text-muted); font-weight: 700; margin-top: 4px;">...</div>
-        </div>
-        <form method="post" id="accForm" action="">
-            <div class="form-group" style="margin-bottom: 24px;">
-                <label style="display:block; font-weight: 800; color: var(--reg-text-muted); text-transform: uppercase; font-size: 0.75rem; margin-bottom: 12px;">Select Section</label>
-                <select id="accSectionDrop" name="section_id" class="premium-input" style="width: 100%;">
-                    <option value="">No Section</option>
+<!-- ═══ TAB: NEW ENROLLMENTS ═══ -->
+<div class="tab-panel active" id="tab-new">
+
+    <!-- Filter Card for New Enrollments -->
+    <div class="card"
+        style="margin-bottom: 20px; padding: 16px 20px; border-radius: 12px; background: #f8fafc; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Grade Level</label>
+                <select id="newGradeFilter" onchange="filterNew()"
+                    style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #fff; min-width: 140px; cursor: pointer;">
+                    <option value="">-- All Grades --</option>
+                    {% for g in grade_levels %}
+                    <option value="{{ g | lower }}">{{ g }}</option>
+                    {% endfor %}
                 </select>
             </div>
-            <div style="display: flex; gap: 16px; justify-content: flex-end;">
-                <button type="button" class="btn-elegant btn-view-modern" onclick="hideAccOverlay()" style="flex:1;">Cancel</button>
-                <button type="submit" class="btn-elegant" style="background: var(--reg-blue); color: white; flex:2;">Create Student Account</button>
+            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Search Student</label>
+                <input type="text" id="newSearch" placeholder="Search student name..." oninput="filterNew()"
+                    style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 100%; max-width: 400px;">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span>New / Transferee Enrollment Applications</span>
+            <span class="muted-note" id="newCount">{{ new_enrollments | length }} applications</span>
+        </div>
+        <div style="overflow:auto;">
+            <table id="newEnrollTable">
+                <tr>
+                    <th>Student ID</th>
+                    <th>Student Name</th>
+                    <th>Grade Level</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+
+                {% for enrollment in new_enrollments %}
+                <tr class="new-enroll-row" data-grade="{{ enrollment.grade_level | lower }}"
+                    data-name="{{ enrollment.student_name | lower }}">
+                    <td>
+                        <span style="font-weight:800;">{{ "%04d"|format(enrollment.display_no|default(0)|int) if
+                            enrollment.display_no|int else enrollment.enrollment_id }}</span>
+                        <div class="muted-note">ID: {{ "%04d"|format(enrollment.display_no|default(0)|int) if
+                            enrollment.display_no|int else enrollment.enrollment_id }}</div>
+                    </td>
+                    <td>
+                        <strong>{{ enrollment.student_name }}</strong>
+                        {% if enrollment.gender %}
+                        <div class="muted-note">{{ enrollment.gender }}</div>
+                        {% endif %}
+                    </td>
+                    <td>{{ enrollment.grade_level }}</td>
+
+                    <td>
+                        {% if enrollment.status == 'approved' %}
+                        <span class="badge badge-approved">✅ Approved</span>
+                        {% elif enrollment.status == 'rejected' %}
+                        <span class="badge badge-rejected">❌ Rejected</span>
+                        {% else %}
+                        <span class="badge badge-pending">⏳ Pending</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if enrollment.status == 'pending' %}
+                        {% if is_branch_active_status %}
+                        <button type="button" class="btn btn-primary btn-sm"
+                            onclick="toggleNewDetails('{{ enrollment.enrollment_id }}', this)">👁 View Details</button>
+                        <form method="post" action="/registrar/enrollments" style="display:inline;">
+                            <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
+                            <button name="action" value="approved" class="btn btn-success btn-sm">✅ Approve</button>
+                        </form>
+                        <button type="button" class="btn btn-danger btn-sm"
+                            onclick="openRejectModal('{{ enrollment.enrollment_id }}', '{{ enrollment.student_name|e }}')">❌
+                            Reject</button>
+                        {% else %}
+                        <span class="muted-note">Actions disabled (Archive Mode)</span>
+                        {% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr id="new-details-{{ enrollment.enrollment_id }}" class="new-details-row" style="display:none;">
+                    <td colspan="5" style="background:#f8fafc; padding:0;">
+                        <div style="padding:16px 18px; border-top:1px solid var(--border);">
+                            <div
+                                style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;">
+                                <div style="font-weight:900; color:#1e293b;">Student Details</div>
+                                <button type="button" class="btn btn-sm"
+                                    onclick="toggleNewDetails('{{ enrollment.enrollment_id }}')"
+                                    style="background:#f1f5f9; color:#475569; border:1px solid var(--border);">Hide</button>
+                            </div>
+
+                            <form method="post" action="/registrar/enrollment/{{ enrollment.enrollment_id }}"
+                                class="new-details-form">
+                                <div style="display:grid; grid-template-columns: 1.2fr 1.2fr 1fr; gap:14px;">
+                                    <!-- Personal & Contact -->
+                                    <div
+                                        style="background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px;">
+                                        <div style="font-weight:800; color:#1e3a8a; margin-bottom:10px;">Personal &
+                                            Contact Information</div>
+
+                                        <div class="form-row"
+                                            style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Gender:
+                                            </div>
+                                            <select name="gender" class="track-change"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px; background:#fff;">
+                                                <option value="">—</option>
+                                                <option value="Male" {{ 'selected' if enrollment.gender=='Male' }}>Male
+                                                </option>
+                                                <option value="Female" {{ 'selected' if enrollment.gender=='Female' }}>
+                                                    Female</option>
+                                            </select>
+                                        </div>
+
+                                        <div class="form-row"
+                                            style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">DOB:
+                                            </div>
+                                            <input type="date" name="dob" class="track-change"
+                                                value="{{ enrollment.dob.strftime('%Y-%m-%d') if enrollment.dob else '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+
+                                        <div class="form-row"
+                                            style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">LRN:
+                                            </div>
+                                            <input type="text" name="lrn" class="track-change"
+                                                value="{{ enrollment.lrn or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+
+                                        <div class="form-row"
+                                            style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Email:
+                                            </div>
+                                            <input type="email" name="email" class="track-change"
+                                                value="{{ enrollment.email or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+
+                                        <div class="form-row"
+                                            style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">
+                                                Contact:</div>
+                                            <input type="text" name="contact_number" class="track-change"
+                                                value="{{ enrollment.contact_number or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+
+                                        <div class="form-row"
+                                            style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:start;">
+                                            <div
+                                                style="font-size:0.78rem; font-weight:800; color:var(--muted); padding-top:8px;">
+                                                Address:</div>
+                                            <textarea name="address" class="track-change" rows="2"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px; resize:vertical;">{{ enrollment.address or '' }}</textarea>
+                                        </div>
+                                    </div>
+
+                                    <!-- Guardian -->
+                                    <div
+                                        style="background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px;">
+                                        <div style="font-weight:800; color:#1e3a8a; margin-bottom:10px;">Guardian
+                                            Information</div>
+
+                                        <div class="form-row"
+                                            style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">
+                                                Guardian:</div>
+                                            <input type="text" name="guardian_name" class="track-change"
+                                                value="{{ enrollment.guardian_name or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div class="form-row"
+                                            style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">
+                                                Contact:</div>
+                                            <input type="text" name="guardian_contact" class="track-change"
+                                                value="{{ enrollment.guardian_contact or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div class="form-row"
+                                            style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Email:
+                                            </div>
+                                            <input type="email" name="guardian_email" class="track-change"
+                                                value="{{ enrollment.guardian_email or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+
+                                        <div style="height:10px;"></div>
+
+                                        <div class="form-row"
+                                            style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Father:
+                                            </div>
+                                            <input type="text" name="father_name" class="track-change"
+                                                value="{{ enrollment.father_name or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div class="form-row"
+                                            style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Father
+                                                Contact:</div>
+                                            <input type="text" name="father_contact" class="track-change"
+                                                value="{{ enrollment.father_contact or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div class="form-row"
+                                            style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Mother:
+                                            </div>
+                                            <input type="text" name="mother_name" class="track-change"
+                                                value="{{ enrollment.mother_name or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div class="form-row"
+                                            style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Mother
+                                                Contact:</div>
+                                            <input type="text" name="mother_contact" class="track-change"
+                                                value="{{ enrollment.mother_contact or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                    </div>
+
+                                    <!-- Documents -->
+                                    <div
+                                        style="background:#fff; border:1px solid var(--border); border-radius:12px; padding:14px;">
+                                        <div style="font-weight:800; color:#1e3a8a; margin-bottom:10px;">Submitted
+                                            Documents</div>
+                                        {% if enrollment.documents and enrollment.documents | length > 0 %}
+                                        <div style="display:flex; flex-direction:column; gap:8px;">
+                                            {% for doc in enrollment.documents %}
+                                            <a href="{{ doc.file_path }}" target="_blank" rel="noopener"
+                                                style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 10px; border:1px solid var(--border); border-radius:10px; text-decoration:none; color:#0f172a; background:#f8fafc;">
+                                                <span style="font-weight:700; font-size:0.86rem;">{{ doc.document_type
+                                                    or doc.file_name }}</span>
+                                                <span style="font-size:0.78rem; color:var(--muted);">View</span>
+                                            </a>
+                                            {% endfor %}
+                                        </div>
+                                        {% else %}
+                                        <div class="muted-note">No documents</div>
+                                        {% endif %}
+
+                                        <div
+                                            style="margin-top:12px; display:grid; grid-template-columns: 90px 1fr; gap:10px; align-items:center;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Prev
+                                                School:</div>
+                                            <input type="text" name="previous_school" class="track-change"
+                                                value="{{ enrollment.previous_school or '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+                                        <div
+                                            style="margin-top:8px; display:grid; grid-template-columns: 90px 1fr; gap:10px; align-items:center;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Type:
+                                            </div>
+                                            <select name="enroll_type" class="track-change"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px; background:#fff;">
+                                                <option value="">—</option>
+                                                {% for t in ['New', 'Transferee', 'Old', 'Returnee'] %}
+                                                <option value="{{ t }}" {{ 'selected' if enrollment.enroll_type==t }}>{{
+                                                    t }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+                                        <button type="submit" class="btn btn-primary btn-sm save-inline-btn" disabled
+                                            style="margin-top:12px; width:100%; justify-content:center; background:#8aa0c8; border:none;">
+                                            💾 Save Changes
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr class="empty-row">
+                    <td colspan="5">No new enrollment applications yet.</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Reject Reason Modal -->
+<div id="rejectModal"
+    style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:9999; padding:24px;">
+    <div
+        style="max-width:520px; margin:60px auto; background:#fff; border-radius:14px; border:1px solid var(--border); box-shadow:0 20px 60px rgba(0,0,0,0.25); overflow:hidden;">
+        <div
+            style="padding:14px 16px; background:#fef2f2; border-bottom:1px solid #fecaca; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+            <div style="font-weight:900; color:#991b1b;">Reject Enrollment</div>
+            <button type="button" class="btn btn-sm" onclick="closeRejectModal()"
+                style="background:#fff; color:#991b1b; border:1px solid #fecaca;">✕</button>
+        </div>
+        <div style="padding:16px;">
+            <div style="font-size:0.85rem; color:var(--muted); margin-bottom:10px;">
+                Student: <strong id="rejectStudentName"></strong>
+            </div>
+            <form method="post" action="/registrar/enrollments"
+                onsubmit="return confirm('Reject this enrollment? This will require a reason.');">
+                <input type="hidden" name="enrollment_id" id="rejectEnrollmentId" value="">
+                <input type="hidden" name="action" value="rejected">
+                <label
+                    style="font-size:0.8rem; font-weight:800; color:#475569; display:block; margin-bottom:6px;">Reason
+                    (required)</label>
+                <textarea name="rejection_reason" id="rejectReason" required rows="4"
+                    style="width:100%; border:1.5px solid var(--border); border-radius:10px; padding:10px 12px; font-size:0.9rem; resize:vertical;"
+                    placeholder="Type the reason for rejection..."></textarea>
+                <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
+                    <button type="button" class="btn btn-sm" onclick="closeRejectModal()"
+                        style="background:#f1f5f9; color:#475569; border:1px solid var(--border);">Cancel</button>
+                    <button type="submit" class="btn btn-danger btn-sm">Submit Rejection</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function toggleNewDetails(enrollmentId, btn) {
+        const row = document.getElementById('new-details-' + enrollmentId);
+        if (!row) return;
+        const isOpen = row.style.display !== 'none';
+        row.style.display = isOpen ? 'none' : '';
+        if (btn) btn.textContent = isOpen ? '👁 View Details' : 'Hide Details';
+    }
+
+    function openRejectModal(enrollmentId, studentName) {
+        const modal = document.getElementById('rejectModal');
+        document.getElementById('rejectEnrollmentId').value = enrollmentId;
+        document.getElementById('rejectStudentName').textContent = studentName || '';
+        const reason = document.getElementById('rejectReason');
+        reason.value = '';
+        modal.style.display = 'block';
+        setTimeout(() => reason.focus(), 0);
+    }
+    function closeRejectModal() {
+        const modal = document.getElementById('rejectModal');
+        modal.style.display = 'none';
+    }
+    document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') closeRejectModal();
+    });
+    document.getElementById('rejectModal')?.addEventListener('click', function (e) {
+        if (e.target === this) closeRejectModal();
+    });
+
+    // Enable inline save button only when changes exist (per expanded form)
+    document.addEventListener('input', function (e) {
+        const form = e.target.closest?.('.new-details-form');
+        if (!form) return;
+        const btn = form.querySelector('.save-inline-btn');
+        if (!btn) return;
+
+        if (!form.__originals) {
+            form.__originals = {};
+            form.querySelectorAll('.track-change').forEach(function (el) {
+                form.__originals[el.name] = el.value;
+            });
+        }
+        let changed = false;
+        form.querySelectorAll('.track-change').forEach(function (el) {
+            if ((form.__originals[el.name] ?? '') !== el.value) changed = true;
+        });
+        btn.disabled = !changed;
+        btn.style.background = changed ? '#1d4ed8' : '#8aa0c8';
+    });
+</script>
+
+<!-- ═══ TAB: ENROLLED STUDENTS ═══ -->
+<div class="tab-panel" id="tab-enrolled">
+
+    <!-- Toggle Banner -->
+    {% if is_branch_active_status %}
+    {% if reenrollment_open %}
+    <div class="toggle-banner open-state">
+        <div class="tg-left">
+            <strong>🔓 Re-Enrollment is OPEN</strong>
+            <span>Students can currently log in and re-enroll for the next school year.</span>
+        </div>
+        <form method="post" action="/registrar/toggle-reenrollment">
+            <input type="hidden" name="action" value="close">
+            <button type="submit" class="btn btn-danger btn-sm"
+                onclick="return confirm('Close re-enrollment for ALL students?')">
+                🔒 Close Re-Enrollment
+            </button>
+        </form>
+    </div>
+    {% else %}
+    <div class="toggle-banner closed-state">
+        <div class="tg-left">
+            <strong>🔒 Re-Enrollment is CLOSED</strong>
+            <span>Students cannot re-enroll yet. Click Open to allow all enrolled students to
+                re-enroll.</span>
+        </div>
+        <form method="post" action="/registrar/toggle-reenrollment">
+            <input type="hidden" name="action" value="open">
+            <button type="submit" class="btn btn-warning btn-sm"
+                onclick="return confirm('Open re-enrollment for ALL enrolled students?')">
+                🔓 Open Re-Enrollment for All
+            </button>
+        </form>
+    </div>
+    {% endif %}
+    {% endif %}
+
+    <!-- Filter Card Enrolled -->
+    <div class="card"
+        style="margin-bottom: 20px; padding: 16px 20px; border-radius: 12px; background: #f8fafc; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Grade Level</label>
+                <select id="gradeFilter" onchange="filterEnrolled()"
+                    style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #fff; min-width: 140px; cursor: pointer;">
+                    <option value="">-- All Grades --</option>
+                    {% for g in grade_levels %}
+                    <option value="{{ g | lower }}">{{ g }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Section</label>
+                <select id="sectionFilter" onchange="filterEnrolled()"
+                    style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #fff; min-width: 160px; cursor: pointer;">
+                    <option value="">-- All Sections --</option>
+                    {% for s in section_options %}
+                    <option value="{{ s.section_name | lower }}">{{ s.section_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
+                <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Search Student</label>
+                <input type="text" id="enrolledSearch" placeholder="Search student name..." oninput="filterEnrolled()"
+                    style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 100%; max-width: 400px;">
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <span>Enrolled Students</span>
+            <span class="muted-note" id="enrolledCount">{{ enrolled_students | length }} students</span>
+        </div>
+        <div style="overflow:auto;">
+            <table id="enrolledTable">
+                <tr>
+                    <th>Student ID</th>
+                    <th>Student Name</th>
+                    <th>Grade Level</th>
+                    <th>Section</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+                {% for e in enrolled_students %}
+                <tr class="enrolled-row" data-grade="{{ e.grade_level | lower }}"
+                    data-name="{{ e.student_name | lower }}"
+                    data-section="{{ e.section_name | lower if e.section_name else '' }}">
+                    <td>
+                        <span style="font-weight:800; color: #1e293b;">{{ "%04d"|format(e.display_no|default(0)|int) if
+                            e.display_no|int else e.enrollment_id }}</span>
+                    </td>
+                    <td>
+                        <strong>{{ e.student_name }}</strong>
+                        {% if e.gender %}
+                        <div class="muted-note">{{ e.gender }}</div>
+                        {% endif %}
+                    </td>
+                    <td>{{ e.grade_level }}</td>
+                    <td class="muted-note">
+                        {% if e.section_name %}
+                        {{ e.section_name }}
+                        {% elif e.section_id %}
+                        Section #{{ e.section_id }}
+                        {% else %}
+                        <span style="color:#f59e0b; font-weight:700;">⚠ Not assigned</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if e.status == 'open_for_enrollment' %}
+                        <span class="badge badge-open">🔓 Re-Enrollment Open</span>
+                        {% elif e.status == 'approved' %}
+                        <span class="badge badge-approved">✅ Approved</span>
+                        {% else %}
+                        <span class="badge badge-enrolled">🎓 Enrolled</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if not e.has_student_account %}
+                        {% if is_branch_active_status %}
+                        <button class="btn btn-primary btn-sm" onclick="openCreateModal(
+                                {{ e.enrollment_id }},
+                                '{{ e.student_name | replace("'", "\\'") }}',
+                                '{{ e.grade_level | replace("'", "\\'") }}'
+                            )">
+                            👤 Create Student Account
+                        </button>
+                        {% endif %}
+                        {% else %}
+                        <span class="acct-ok">✓ Student Account Created</span>
+                        {% endif %}
+                        <br><br>
+                        {% if not e.has_parent_account %}
+                        {% if is_branch_active_status %}
+                        <form method="post" action="/registrar/create-parent-account/{{ e.enrollment_id }}"
+                            style="display:inline;">
+                            <button type="submit" class="btn btn-secondary btn-sm">👨‍👩‍👧 Create Parent
+                                Account</button>
+                        </form>
+                        {% endif %}
+                        {% else %}
+                        <span class="acct-ok">✓ Parent Account Created</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr class="empty-row">
+                    <td colspan="5">No enrolled students yet.</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+    </div>
+
+</div>
+
+<!-- ═══ MODAL: Create Student Account + Assign Section ═══ -->
+<div class="modal-backdrop" id="createStudentModal">
+    <div class="modal-box">
+        <button class="modal-close-x" onclick="closeCreateModal()">✕</button>
+        <div class="step-badge">👤 Create Student Account</div>
+        <h3 id="modalStudentName">Student Name</h3>
+        <div class="modal-sub" id="modalGradeLevel"></div>
+
+        <form method="post" id="createStudentForm" action="">
+            <label for="modalSectionSelect">
+                Assign to Section
+                <span style="color:#94a3b8; font-weight:400; text-transform:none;">
+                    (optional — can be done later by Branch Admin)
+                </span>
+            </label>
+            <select id="modalSectionSelect" name="section_id">
+                <option value="">— Skip for now —</option>
+            </select>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeCreateModal()">Cancel</button>
+                <button type="submit" class="btn btn-success btn-sm">✅ Create Account</button>
             </div>
         </form>
     </div>
 </div>
 
-<div class="glass-overlay" id="rejectOverlay">
-    <div class="glass-modal" style="max-width: 480px;">
-        <h3 style="font-weight: 900; color: #b91c1c; margin-bottom: 12px; font-size: 1.5rem;">Reject Student</h3>
-        <p style="font-size: 0.95rem; color: var(--reg-text-muted); font-weight: 600; margin-bottom: 24px;" id="rejectStudentNameDisplay"></p>
-        <form method="post" action="/registrar/enrollments">
-            <input type="hidden" name="enrollment_id" id="rejectEnrollmentId">
-            <input type="hidden" name="action" value="rejected">
-            <textarea name="rejection_reason" required class="premium-input" style="width:100%; height:120px; margin-bottom: 24px; resize: none;" placeholder="Why are you rejecting this?"></textarea>
-            <div style="display: flex; gap: 16px; justify-content: flex-end;">
-                <button type="button" class="btn-elegant btn-view-modern" onclick="closeRejectModal()" style="flex:1;">Cancel</button>
-                <button type="submit" class="btn-elegant" style="background: #ef4444; color: white; flex:1.5;">Confirm Reject</button>
-            </div>
-        </form>
-    </div>
-</div>
-
-<script type="application/json" id="sections-data">{{ section_options | tojson | safe }}</script>
 {% endblock %}
 
 {% block scripts %}
 <script>
-    function selectTab(target, trigger) {
-        document.querySelectorAll('.tab-view').forEach(t => t.classList.remove('is-visible'));
-        document.querySelectorAll('.segment-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('view-tab-' + target).classList.add('is-visible');
-        trigger.classList.add('active');
+    // ── Tab switching ──
+    function switchTab(tab, btn) {
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + tab).classList.add('active');
+        btn.classList.add('active');
+        window.location.hash = tab === 'new' ? '' : tab;
     }
 
-    function toggleNewDetails(id, btn) {
-        const row = document.getElementById('new-details-' + id);
-        const isOpen = row.style.display !== 'none';
-        row.style.display = isOpen ? 'none' : 'table-row';
-        btn.innerHTML = isOpen ? '<i class="fas fa-user"></i> View Info' : '<i class="fas fa-times"></i> Close';
-    }
-
-    document.addEventListener('input', function(e) {
-        if (e.target.classList.contains('track-change')) {
-            const form = e.target.closest('form');
-            form.querySelector('.save-inline-btn').disabled = false;
+    window.addEventListener('DOMContentLoaded', function () {
+        if (window.location.hash === '#enrolled') {
+            var btn = document.getElementById('tab-enrolled-btn');
+            if (btn) switchTab('enrolled', btn);
         }
     });
 
-    function runNewFilter() {
-        const grade = document.getElementById('newGradeFilter').value.toLowerCase();
-        const search = document.getElementById('newSearch').value.toLowerCase();
-        document.querySelectorAll('.new-enroll-row').forEach(r => {
-            const matchG = !grade || r.dataset.grade === grade;
-            const matchS = !search || r.dataset.name.includes(search);
-            r.style.display = (matchG && matchS) ? '' : 'none';
+    // ── Filter enrolled table ──
+    function filterEnrolled() {
+        var grade = document.getElementById('gradeFilter').value.toLowerCase();
+        var search = document.getElementById('enrolledSearch').value.toLowerCase();
+        var rows = document.querySelectorAll('.enrolled-row');
+        var visible = 0;
+
+        rows.forEach(function (row) {
+            var matchGrade = !grade || row.dataset.grade === grade;
+            var matchName = !search || row.dataset.name.includes(search);
+            var show = matchGrade && matchName;
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
         });
+
+        var cnt = document.getElementById('enrolledCount');
+        if (cnt) cnt.textContent = visible + ' student' + (visible !== 1 ? 's' : '');
     }
 
-    function runFilter() {
-        const grade = document.getElementById('rosterGrade').value.toLowerCase();
-        const search = document.getElementById('rosterSearch').value.toLowerCase();
-        let count = 0;
-        document.querySelectorAll('.roster-row').forEach(r => {
-            const matchG = !grade || r.dataset.grade === grade;
-            const matchS = !search || r.dataset.name.includes(search);
-            const show = matchG && matchS;
-            r.style.display = show ? '' : 'none';
-            if (show) count++;
-        });
-        document.getElementById('rosterCountBox').innerText = count + ' Students';
+    // ── Create Student Account modal ──
+    function closeCreateModal() {
+        document.getElementById('createStudentModal').classList.remove('open');
     }
 
-    function hideDocOverlay() { document.getElementById('docOverlay').classList.remove('visible'); }
-    document.querySelectorAll('.view-docs-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            document.getElementById('docApplicantName').innerText = this.dataset.student;
-            const docs = JSON.parse(this.dataset.docs || '[]');
-            const container = document.getElementById('docShowcaseBox');
-            container.innerHTML = docs.length ? '' : '<p style="text-align:center; color:#64748b; padding:20px;">No files uploaded.</p>';
-            docs.forEach(d => {
-                container.innerHTML += `
-                    <div class="doc-item">
-                        <div style="display:flex; align-items:center; gap:12px;">
-                            <i class="fas fa-file-pdf" style="color:#ef4444; font-size:1.2rem;"></i>
-                            <span style="font-weight:700; color:#1e293b; font-size:0.9rem;">${d.file_name}</span>
-                        </div>
-                        <a href="${d.file_path}" target="_blank" class="btn-elegant btn-view-modern">View File</a>
-                    </div>
-                `;
+    document.getElementById('createStudentModal').addEventListener('click', function (e) {
+        if (e.target === this) closeCreateModal();
+    });
+
+    // ── Filter: New Enrollments ──
+    function filterNew() {
+        var gradeVal = document.getElementById('newGradeFilter').value;
+        var searchVal = document.getElementById('newSearch').value.toLowerCase();
+        var rows = document.querySelectorAll('#newEnrollTable .new-enroll-row');
+        var visible = 0;
+        rows.forEach(function (row) {
+            var gradeMatch = !gradeVal || row.dataset.grade === gradeVal;
+            var nameMatch = !searchVal || row.dataset.name.includes(searchVal);
+            var show = gradeMatch && nameMatch;
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+        var countEl = document.getElementById('newCount');
+        if (countEl) countEl.textContent = visible + ' applications';
+    }
+
+    // ── Filter: Enrolled Students ──
+    function filterEnrolled() {
+        var gradeVal = document.getElementById('gradeFilter').value;
+        var sectionVal = document.getElementById('sectionFilter').value;
+        var searchVal = document.getElementById('enrolledSearch').value.toLowerCase();
+        var rows = document.querySelectorAll('#enrolledTable .enrolled-row');
+        var visible = 0;
+        rows.forEach(function (row) {
+            var gradeMatch = !gradeVal || row.dataset.grade === gradeVal;
+            var sectionMatch = !sectionVal || row.dataset.section === sectionVal;
+            var nameMatch = !searchVal || row.dataset.name.includes(searchVal);
+            var show = gradeMatch && sectionMatch && nameMatch;
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+        var countEl = document.getElementById('enrolledCount');
+        if (countEl) countEl.textContent = visible + ' students';
+    }
+
+    const __rawSections = {{ section_options | tojson | safe }};
+
+    const ALL_SECTIONS = __rawSections.map(s => ({
+        section_id: s.section_id,
+        section_name: s.section_name,
+        grade_level_name: (s.grade_level_name || "").toLowerCase()
+    }));
+
+    function openCreateModal(enrollmentId, studentName, gradeLevel) {
+        document.getElementById('modalStudentName').textContent = studentName;
+        document.getElementById('modalGradeLevel').textContent = '📚 Grade Level: ' + gradeLevel;
+        document.getElementById('createStudentForm').action =
+            '/registrar/create-student-account/' + enrollmentId;
+
+        var select = document.getElementById('modalSectionSelect');
+        select.innerHTML = '<option value="">— Skip for now —</option>';
+
+        var gradeLower = gradeLevel.trim().toLowerCase();
+        var filtered = ALL_SECTIONS.filter(function (s) {
+            return s.grade_level_name === gradeLower;
+        });
+
+        if (filtered.length === 0) {
+            select.innerHTML += '<option disabled>No sections found for ' + gradeLevel + '</option>';
+        } else {
+            filtered.forEach(function (s) {
+                select.innerHTML += '<option value="' + s.section_id + '">'
+                    + gradeLevel + ' - ' + s.section_name + '</option>';
             });
-            document.getElementById('docOverlay').classList.add('visible');
-        });
-    });
+        }
 
-    function hideAccOverlay() { document.getElementById('accOverlay').classList.remove('visible'); }
-    const SECTIONS = JSON.parse(document.getElementById('sections-data').textContent || '[]');
-    function triggerAccountModal(id, name, grade) {
-        document.getElementById('accStudentName').innerText = name;
-        document.getElementById('accGrade').innerText = 'Grade: ' + grade;
-        document.getElementById('accForm').action = '/registrar/create-student-account/' + id;
-        const drop = document.getElementById('accSectionDrop');
-        drop.innerHTML = '<option value="">No Section</option>';
-        SECTIONS.filter(s => s.grade_level_name.toLowerCase() === grade.toLowerCase()).forEach(s => {
-            drop.innerHTML += `<option value="${s.section_id}">${s.section_name}</option>`;
-        });
-        document.getElementById('accOverlay').classList.add('visible');
+        document.getElementById('createStudentModal').classList.add('open');
     }
 
-    document.querySelectorAll('.js-create-student').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const id = this.dataset.enrollmentId;
-            const name = this.dataset.studentName || '';
-            const grade = this.dataset.gradeLevel || '';
-            triggerAccountModal(id, name, grade);
-        });
-    });
-
-    function openRejectModal(id, name) {
-        document.getElementById('rejectEnrollmentId').value = id;
-        document.getElementById('rejectStudentNameDisplay').innerText = name;
-        document.getElementById('rejectOverlay').classList.add('visible');
+    function closeCreateModal() {
+        document.getElementById('createStudentModal').classList.remove('open');
     }
-    function closeRejectModal() { document.getElementById('rejectOverlay').classList.remove('visible'); }
+
+    document.getElementById('createStudentModal').addEventListener('click', function (e) {
+        if (e.target === this) closeCreateModal();
+    });
 </script>
 {% endblock %}
