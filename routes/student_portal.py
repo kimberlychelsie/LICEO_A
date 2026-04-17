@@ -1313,6 +1313,69 @@ def student_grades():
         db.close()
 
 
+@student_portal_bp.route("/student/my-schedule")
+def student_my_schedule():
+    if not _require_student():
+        return redirect("/")
+
+    enrollment_id = session.get("enrollment_id")
+    branch_id     = session.get("branch_id")   # ✅ safe .get() — avoids KeyError
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Get enrollment info (section, grade level, branch)
+        cur.execute("""
+            SELECT e.enrollment_id, e.student_name, e.grade_level,
+                   e.section_id, e.branch_id,
+                   s.section_name, s.school_year
+            FROM enrollments e
+            LEFT JOIN sections s ON e.section_id = s.section_id
+            WHERE e.enrollment_id = %s
+        """, (enrollment_id,))
+        enr = cur.fetchone()
+
+        if not enr:
+            flash("Enrollment record not found.", "error")
+            return redirect(url_for("student_portal.dashboard"))
+
+        # Use branch_id from enrollment if not in session
+        effective_branch_id = enr["branch_id"] or branch_id
+        section_id = enr["section_id"]
+
+        schedules = []
+        if section_id:
+            cur.execute("""
+                SELECT sc.*,
+                       sub.name AS subject_name,
+                       u.full_name AS teacher_name
+                FROM schedules sc
+                LEFT JOIN subjects sub ON sc.subject_id = sub.subject_id
+                LEFT JOIN users u ON sc.teacher_id = u.user_id
+                WHERE sc.section_id = %s
+                ORDER BY
+                    CASE sc.day_of_week
+                        WHEN 'Monday'    THEN 1
+                        WHEN 'Tuesday'   THEN 2
+                        WHEN 'Wednesday' THEN 3
+                        WHEN 'Thursday'  THEN 4
+                        WHEN 'Friday'    THEN 5
+                        WHEN 'Saturday'  THEN 6
+                        WHEN 'Sunday'    THEN 7
+                        ELSE 8
+                    END,
+                    sc.start_time
+            """, (section_id,))
+            schedules = cur.fetchall() or []
+
+        return render_template("student_my_schedule.html",
+                               enrollment=enr,
+                               schedules=schedules)
+    finally:
+        cur.close()
+        db.close()
+
+
 @student_portal_bp.route("/student/profile")
 def student_profile():
     if not _require_student():

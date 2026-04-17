@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}My Schedule{% endblock %}
+
+{% block styles %}
+<style>
+  .sched-wrap {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 24px 16px;
+  }
+
+  .sched-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .sched-title {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #1e293b;
+  }
+
+  .sched-meta {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-bottom: 24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+  }
+
+  .sched-meta strong { color: #1e293b; }
+
+  /* Day group */
+  .day-group {
+    margin-bottom: 24px;
+  }
+
+  .day-label {
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: #1e40af;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 4px 14px;
+    display: inline-block;
+    margin-bottom: 10px;
+  }
+
+  /* Schedule card */
+  .sched-card {
+    background: #fff;
+    border-radius: 14px;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #1e40af;
+    padding: 16px 20px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    flex-wrap: wrap;
+    transition: transform .15s, box-shadow .15s;
+  }
+
+  .sched-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0,0,0,.09);
+  }
+
+  .sched-time-block {
+    min-width: 120px;
+    text-align: center;
+    background: #eff6ff;
+    border-radius: 10px;
+    padding: 10px 14px;
+  }
+
+  .sched-time-block .time {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #1e40af;
+    white-space: nowrap;
+  }
+
+  .sched-time-block .sep {
+    font-size: 0.72rem;
+    color: #94a3b8;
+    margin: 2px 0;
+  }
+
+  .sched-info { flex: 1; min-width: 180px; }
+
+  .sched-subject {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 4px;
+  }
+
+  .sched-teacher {
+    font-size: 0.82rem;
+    color: #64748b;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .room-badge {
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    padding: 2px 10px;
+    border-radius: 6px;
+    white-space: nowrap;
+  }
+
+  /* Empty state */
+  .empty-box {
+    text-align: center;
+    padding: 60px 20px;
+    color: #94a3b8;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+  }
+
+  .empty-box .big-icon { font-size: 3rem; margin-bottom: 12px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sched-wrap">
+  <div class="sched-header">
+    <div class="sched-title">📅 My Schedule</div>
+  </div>
+
+  <!-- Meta info -->
+  <div class="sched-meta">
+    <span>👤 <strong>{{ enrollment.student_name }}</strong></span>
+    {% if enrollment.section_name %}
+    <span>🏫 Section: <strong>{{ enrollment.section_name }}</strong></span>
+    {% endif %}
+    {% if enrollment.grade_level %}
+    <span>📚 Grade <strong>{{ enrollment.grade_level }}</strong></span>
+    {% endif %}
+    {% if enrollment.school_year %}
+    <span>🗓 SY <strong>{{ enrollment.school_year }}</strong></span>
+    {% endif %}
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}{% for cat, msg in messages %}
+  <div style="padding:12px 16px; border-radius:10px; margin-bottom:14px;
+      background:{{ '#d1e7dd' if cat=='success' else '#f8d7da' }};
+      color:{{ '#0f5132' if cat=='success' else '#842029' }};
+      border:1px solid {{ '#badbcc' if cat=='success' else '#f5c2c7' }};">{{ msg }}</div>
+  {% endfor %}{% endif %}{% endwith %}
+
+  {% if not enrollment.section_id %}
+    <div class="empty-box">
+      <div class="big-icon">📭</div>
+      <h3 style="color:#475569;">No section assigned yet</h3>
+      <p>Please contact your school admin to be assigned to a section.</p>
+    </div>
+  {% elif schedules %}
+    {% set days_order = ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'] %}
+    {% set ns = namespace(grouped={}) %}
+
+    {# Group schedules by day #}
+    {% for day in days_order %}
+      {% set day_scheds = schedules | selectattr('day_of_week', 'equalto', day) | list %}
+      {% if day_scheds %}
+      <div class="day-group">
+        <div class="day-label">{{ day }}</div>
+        {% for sc in day_scheds %}
+        <div class="sched-card">
+          <div class="sched-time-block">
+            <div class="time">
+              {% if sc.start_time %}
+                {{ sc.start_time.strftime('%I:%M %p') if sc.start_time is not string else sc.start_time }}
+              {% else %}—{% endif %}
+            </div>
+            <div class="sep">to</div>
+            <div class="time">
+              {% if sc.end_time %}
+                {{ sc.end_time.strftime('%I:%M %p') if sc.end_time is not string else sc.end_time }}
+              {% else %}—{% endif %}
+            </div>
+          </div>
+
+          <div class="sched-info">
+            <div class="sched-subject">
+              {{ sc.subject_name or 'Subject' }}
+            </div>
+            <div class="sched-teacher">
+              👨‍🏫 {{ sc.teacher_name or 'TBA' }}
+            </div>
+          </div>
+
+          {% if sc.room %}
+            <span class="room-badge">🚪 {{ sc.room }}</span>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    {% endfor %}
+
+  {% else %}
+    <div class="empty-box">
+      <div class="big-icon">📭</div>
+      <h3 style="color:#475569;">No schedule yet</h3>
+      <p>No class schedule has been posted for your section yet.</p>
+    </div>
+  {% endif %}
+</div>
+{% endblock %}
