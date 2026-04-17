@@ -270,6 +270,26 @@
         background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0;
     }
     .acc-linked.parent { background: #F5F3FF; color: #6D28D9; border-color: #DDD6FE; }
+    .account-stack {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        min-width: 240px;
+    }
+    .account-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .account-label {
+        font-size: 0.72rem;
+        font-weight: 800;
+        color: var(--reg-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        min-width: 58px;
+    }
 
     /* Modal Styling */
     .glass-overlay {
@@ -527,22 +547,36 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                                    <a href="/registrar/enrollment/{{ e.enrollment_id }}" class="btn-elegant btn-view-modern">View info</a>
-                                    {% if not e.has_student_account %}
-                                    <button class="btn-create-acc student" onclick="triggerAccountModal({{ e.enrollment_id }}, '{{ e.student_name | replace("'", "\\'") }}', '{{ e.grade_level | replace("'", "\\'") }}')">
-                                        Create Student Account
-                                    </button>
-                                    {% else %}
-                                    <div class="acc-linked">Student Connected</div>
-                                    {% if not e.has_parent_account %}
-                                    <form method="post" action="/registrar/create-parent-account/{{ e.enrollment_id }}" style="margin:0;">
-                                        <button type="submit" class="btn-create-acc parent">Create Parent Account</button>
-                                    </form>
-                                    {% else %}
-                                    <div class="acc-linked parent">Parent Connected</div>
-                                    {% endif %}
-                                    {% endif %}
+                                <div class="account-stack">
+                                    <div class="account-row">
+                                        <a href="/registrar/enrollment/{{ e.enrollment_id }}" class="btn-elegant btn-view-modern">View info</a>
+                                    </div>
+                                    <div class="account-row">
+                                        <span class="account-label">Student</span>
+                                        {% if e.has_student_account %}
+                                        <div class="acc-linked">Connected</div>
+                                        {% else %}
+                                        <button
+                                            type="button"
+                                            class="btn-create-acc student js-create-student"
+                                            data-enrollment-id="{{ e.enrollment_id }}"
+                                            data-student-name="{{ e.student_name }}"
+                                            data-grade-level="{{ e.grade_level }}"
+                                        >
+                                            Create
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                    <div class="account-row">
+                                        <span class="account-label">Parent</span>
+                                        {% if e.has_parent_account %}
+                                        <div class="acc-linked parent">Connected</div>
+                                        {% else %}
+                                        <form method="post" action="/registrar/create-parent-account/{{ e.enrollment_id }}" style="margin:0;">
+                                            <button type="submit" class="btn-create-acc parent">Create</button>
+                                        </form>
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </td>
                         </tr>
@@ -602,6 +636,8 @@
         </form>
     </div>
 </div>
+
+<script type="application/json" id="sections-data">{{ section_options | tojson | safe }}</script>
 {% endblock %}
 
 {% block scripts %}
@@ -674,7 +710,7 @@
     });
 
     function hideAccOverlay() { document.getElementById('accOverlay').classList.remove('visible'); }
-    const SECTIONS = {{ section_options | tojson | safe }};
+    const SECTIONS = JSON.parse(document.getElementById('sections-data').textContent || '[]');
     function triggerAccountModal(id, name, grade) {
         document.getElementById('accStudentName').innerText = name;
         document.getElementById('accGrade').innerText = 'Grade: ' + grade;
@@ -686,6 +722,15 @@
         });
         document.getElementById('accOverlay').classList.add('visible');
     }
+
+    document.querySelectorAll('.js-create-student').forEach(btn => {
+        btn.addEventListener('click', function () {
+            const id = this.dataset.enrollmentId;
+            const name = this.dataset.studentName || '';
+            const grade = this.dataset.gradeLevel || '';
+            triggerAccountModal(id, name, grade);
+        });
+    });
 
     function openRejectModal(id, name) {
         document.getElementById('rejectEnrollmentId').value = id;
