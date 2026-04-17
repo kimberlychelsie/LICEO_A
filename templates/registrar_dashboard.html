@@ -261,12 +261,15 @@
     }
     .btn-create-acc.student { background: #EFF6FF; color: #1D4ED8; border-color: #BFDBFE; }
     .btn-create-acc.student:hover { background: #1D4ED8; color: white; box-shadow: 0 4px 12px rgba(29, 78, 216, 0.2); }
+    .btn-create-acc.parent { background: #F5F3FF; color: #6D28D9; border-color: #DDD6FE; }
+    .btn-create-acc.parent:hover { background: #6D28D9; color: white; box-shadow: 0 4px 12px rgba(109, 40, 217, 0.2); }
 
     .acc-linked {
         display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px;
         border-radius: 12px; font-weight: 800; font-size: 0.88rem;
         background: #F0FDF4; color: #15803D; border: 1px solid #BBF7D0;
     }
+    .acc-linked.parent { background: #F5F3FF; color: #6D28D9; border-color: #DDD6FE; }
 
     /* Modal Styling */
     .glass-overlay {
@@ -524,14 +527,21 @@
                                 {% endif %}
                             </td>
                             <td>
-                                <div style="display: flex; gap: 8px; align-items: center;">
+                                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                                     <a href="/registrar/enrollment/{{ e.enrollment_id }}" class="btn-elegant btn-view-modern">View info</a>
                                     {% if not e.has_student_account %}
                                     <button class="btn-create-acc student" onclick="triggerAccountModal({{ e.enrollment_id }}, '{{ e.student_name | replace("'", "\\'") }}', '{{ e.grade_level | replace("'", "\\'") }}')">
-                                        Create Account
+                                        Create Student Account
                                     </button>
                                     {% else %}
-                                    <div class="acc-linked">Connected</div>
+                                    <div class="acc-linked">Student Connected</div>
+                                    {% if not e.has_parent_account %}
+                                    <form method="post" action="/registrar/create-parent-account/{{ e.enrollment_id }}" style="margin:0;">
+                                        <button type="submit" class="btn-create-acc parent">Create Parent Account</button>
+                                    </form>
+                                    {% else %}
+                                    <div class="acc-linked parent">Parent Connected</div>
+                                    {% endif %}
                                     {% endif %}
                                 </div>
                             </td>
@@ -557,7 +567,7 @@
 <div class="glass-overlay" id="accOverlay">
     <div class="glass-modal">
         <button style="position: absolute; top: 24px; right: 24px; border:none; background:none; cursor:pointer;" onclick="hideAccOverlay()"><i class="fas fa-times"></i></button>
-        <h3 style="font-weight: 900; color: var(--reg-blue); margin-bottom: 24px; font-size: 1.5rem;">Create Account</h3>
+        <h3 style="font-weight: 900; color: var(--reg-blue); margin-bottom: 24px; font-size: 1.5rem;">Create Student Account</h3>
         <div style="background: #f8fafc; padding: 20px; border-radius: 20px; margin-bottom: 24px;">
             <div id="accStudentName" style="font-weight: 800; font-size: 1.2rem; color: var(--reg-blue);">...</div>
             <div id="accGrade" style="color: var(--reg-text-muted); font-weight: 700; margin-top: 4px;">...</div>
@@ -571,7 +581,7 @@
             </div>
             <div style="display: flex; gap: 16px; justify-content: flex-end;">
                 <button type="button" class="btn-elegant btn-view-modern" onclick="hideAccOverlay()" style="flex:1;">Cancel</button>
-                <button type="submit" class="btn-elegant" style="background: var(--reg-blue); color: white; flex:2;">Create Account</button>
+                <button type="submit" class="btn-elegant" style="background: var(--reg-blue); color: white; flex:2;">Create Student Account</button>
             </div>
         </form>
     </div>
