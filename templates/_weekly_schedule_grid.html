@@ -1,0 +1,280 @@
+{# Shared weekly schedule grid (Student + Teacher) #}
+{% macro render_weekly_schedule(schedules, title="My Schedule", subtitle="Weekly class timetable", show_teacher=false, show_section=false, show_year=false) %}
+  {% set DAYS = [
+    ('Monday','Mon'),
+    ('Tuesday','Tue'),
+    ('Wednesday','Wed'),
+    ('Thursday','Thu'),
+    ('Friday','Fri'),
+    ('Saturday','Sat'),
+    ('Sunday','Sun')
+  ] %}
+
+  {# 30-min steps 7:00 – 10:30, formatted as 7:00-7:30 #}
+  {% set slots = [] %}
+  {% for h in range(7, 23) %}
+    {% for m in [0, 30] %}
+      {% if not (h == 22 and m == 30) %}
+        {% set hour12 = h if h <= 12 else h - 12 %}
+        {% set m_end = m + 30 %}
+        {% set h_end = h if m_end < 60 else h + 1 %}
+        {% set m_end_fmt = m_end if m_end < 60 else 0 %}
+        {% set h_end12 = h_end if h_end <= 12 else h_end - 12 %}
+        {% set label = "%d:%02d-%d:%02d" % (hour12, m, h_end12, m_end_fmt) %}
+        {% set _ = slots.append({'h': h, 'm': m, 'label': label}) %}
+      {% endif %}
+    {% endfor %}
+  {% endfor %}
+
+  <div class="sch-wrap" data-sch>
+    {# ── Hero bar ── #}
+    <div class="sch-hero">
+      <div class="sch-hero-left">
+        <div class="sch-hero-icon" aria-hidden="true">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="16" y1="2" x2="16" y2="6"></line>
+            <line x1="8" y1="2" x2="8" y2="6"></line>
+            <line x1="3" y1="10" x2="21" y2="10"></line>
+            <path d="m9 16 2 2 4-4"></path>
+          </svg>
+        </div>
+        <div>
+          <div class="sch-hero-title">{{ title }}</div>
+          <div class="sch-hero-sub">{{ subtitle }}</div>
+        </div>
+      </div>
+    </div>
+
+    {% if schedules and schedules|length > 0 %}
+      <div class="sch-grid-shell">
+        <div class="sch-grid-scroll" data-scrollwrap>
+          <div class="sch-grid" data-grid>
+
+            {# ── Header row (row 1) ── #}
+            <div class="sch-cell sch-head sch-time"
+                 style="grid-column:1; grid-row:1;">TIME</div>
+            {% for d in DAYS %}
+              <div class="sch-cell sch-head sch-day"
+                   style="grid-column:{{ loop.index + 1 }}; grid-row:1;"
+                   data-daycol="{{ d[0] }}">{{ d[1] }}</div>
+            {% endfor %}
+
+            {# ── Time slot rows (row 2 onwards) — every cell is EXPLICIT ── #}
+            {% for slot in slots %}
+              {% set slot_row = loop.index + 1 %}
+              <div class="sch-cell sch-time"
+                   style="grid-column:1; grid-row:{{ slot_row }};">{{ slot.label }}</div>
+              {% for d in DAYS %}
+                <div class="sch-cell sch-slot"
+                     style="grid-column:{{ loop.index + 1 }}; grid-row:{{ slot_row }};"
+                     data-day="{{ d[0] }}"
+                     data-time="{{ slot.h }}:{{ '%02d' % slot.m }}"></div>
+              {% endfor %}
+            {% endfor %}
+
+            {# ── Schedule blocks ── #}
+            {% for sched in schedules %}
+              {% set day_to_col = {
+                'Monday':1,'Tuesday':2,'Wednesday':3,'Thursday':4,'Friday':5,'Saturday':6,'Sunday':7
+              } %}
+              {% set col       = day_to_col.get(sched.day_of_week, 1) %}
+              {% set row_start = ((sched.start_time.hour - 7) * 2) + (sched.start_time.minute // 30) + 2 %}
+              {% set row_end   = ((sched.end_time.hour   - 7) * 2) + (sched.end_time.minute   // 30) + 2 %}
+
+              {# 12-hr tooltip label #}
+              {% set sh   = sched.start_time.hour %}
+              {% set sm   = sched.start_time.minute %}
+              {% set eh   = sched.end_time.hour %}
+              {% set em   = sched.end_time.minute %}
+              {% set sh12 = sh if sh <= 12 else sh - 12 %}
+              {% set sa   = 'AM' if sh < 12 else 'PM' %}
+              {% set eh12 = eh if eh <= 12 else eh - 12 %}
+              {% set ea   = 'AM' if eh < 12 else 'PM' %}
+              {% set tip  = "%d:%02d %s – %d:%02d %s" % (sh12, sm, sa, eh12, em, ea) %}
+
+              <div class="sch-block sch-c{{ col }}"
+                   style="grid-column:{{ col + 1 }}; grid-row:{{ row_start }} / {{ row_end }};"
+                   title="{{ sched.subject_name }} ({{ sched.day_of_week }}, {{ tip }})">
+                <div class="sch-block-title">{{ sched.subject_name }}</div>
+                <div class="sch-block-meta">
+                  {% if show_teacher and sched.teacher_name %}
+                    <div class="sch-meta-line"><span class="sch-meta-strong">{{ sched.teacher_name }}</span></div>
+                  {% endif %}
+                  {% if show_section and sched.section_name %}
+                    <div class="sch-meta-line">{{ sched.section_name }}</div>
+                  {% endif %}
+                  {% if sched.room %}
+                    <div class="sch-meta-line sch-meta-muted">{{ sched.room }}</div>
+                  {% endif %}
+                </div>
+              </div>
+            {% endfor %}
+
+          </div>{# /sch-grid #}
+        </div>{# /sch-grid-scroll #}
+      </div>{# /sch-grid-shell #}
+    {% else %}
+      <div class="alert alert-info mt-4">No class schedule found.</div>
+    {% endif %}
+  </div>
+
+  <style>
+    /* ─── Tokens ─── */
+    .sch-wrap {
+      --sch-blue:     #123a8c;
+      --sch-blue-2:   #0b2f74;
+      --sch-border:   rgba(226,232,240,.9);
+      --sch-text:     #0f172a;
+      --sch-muted:    #64748b;
+      --sch-shadow:   0 10px 20px rgba(2,6,23,.06);
+      --sch-time-col: 85px;
+      --sch-day-col:  190px;
+      --sch-row:      44px;
+      margin-top: 10px;
+    }
+
+    /* ─── Hero ─── */
+    .sch-hero {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      background: linear-gradient(135deg, var(--sch-blue) 0%, var(--sch-blue-2) 60%, #0a2557 100%);
+      color: #fff;
+      border-radius: 22px;
+      padding: 18px;
+      box-shadow: var(--sch-shadow);
+      overflow: hidden;
+    }
+    .sch-hero-left  { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .sch-hero-icon  {
+      display: grid; place-items: center;
+      flex: 0 0 auto;
+      color: rgba(255,255,255,0.95);
+    }
+    .sch-hero-title { font-weight: 900; font-size: 18px; letter-spacing: -.02em; }
+    .sch-hero-sub   { font-size: 12px; opacity: .85; font-weight: 600; }
+
+    /* ─── Grid shell ─── */
+    .sch-grid-shell {
+      margin-top: 14px;
+      background: #fff;
+      border: 1px solid var(--sch-border);
+      border-radius: 22px;
+      box-shadow: var(--sch-shadow);
+      overflow: hidden;
+    }
+    .sch-grid-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scroll-behavior: smooth;
+    }
+
+    /* ─── Grid ─── */
+    .sch-grid {
+      display: grid;
+      grid-template-columns: var(--sch-time-col) repeat(7, var(--sch-day-col));
+      grid-auto-rows: var(--sch-row);
+      min-width: calc(var(--sch-time-col) + 7 * var(--sch-day-col));
+      background: #fbfdff;
+      position: relative;
+    }
+
+    /* ─── Cells ─── */
+    .sch-cell {
+      border-bottom: 1px solid rgba(226,232,240,.65);
+      border-right:  1px solid rgba(226,232,240,.55);
+    }
+
+    .sch-head {
+      position: sticky;
+      top: 0;
+      z-index: 6;
+      background: #f6f9ff;
+      border-bottom: 2px solid rgba(226,232,240,.9);
+      font-weight: 900;
+      color: var(--sch-text);
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      font-size: 11px;
+      display: grid;
+      place-items: center;
+    }
+
+    /* Time label cells — simple, no flex, just padding + text-align */
+    .sch-time {
+      position: sticky;
+      left: 0;
+      z-index: 7;
+      background: #ffffff;
+      border-right: 2px solid rgba(226,232,240,.9);
+      font-weight: 700;
+      color: var(--sch-muted);
+      font-size: 11px;
+      white-space: nowrap;
+      padding: 0 6px;
+      line-height: var(--sch-row);   /* vertically center via line-height */
+      text-align: right;
+      box-sizing: border-box;
+    }
+    .sch-head.sch-time {
+      line-height: normal;           /* reset for header — centering via display:grid */
+      background: #f6f9ff;
+      z-index: 8;
+    }
+
+    .sch-slot { background: transparent; }
+
+    /* ─── Schedule blocks ─── */
+    .sch-block {
+      z-index: 5;
+      margin: 3px 5px;
+      border-radius: 13px;
+      padding: 8px 10px;
+      background: #eaf1ff;
+      border: 1px solid rgba(18,58,140,.14);
+      box-shadow: 0 6px 14px rgba(2,6,23,.07);
+      overflow: hidden;
+      align-self: stretch;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    .sch-block-title { font-weight: 800; color: #0b1f4d; font-size: 13px; line-height: 1.2; }
+    .sch-block-meta  { margin-top: 4px; display: grid; gap: 1px; }
+    .sch-meta-line   { font-size: 11px; color: #243b72; font-weight: 700; }
+    .sch-meta-muted  { color: #3a4d7c; opacity: .9; }
+    .sch-meta-strong { font-weight: 900; }
+    .sch-meta-chip {
+      margin-top: 4px;
+      display: inline-block;
+      width: fit-content;
+      padding: 3px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 900;
+      background: rgba(18,58,140,.12);
+      color: #0b2f74;
+      border: 1px solid rgba(18,58,140,.18);
+    }
+
+    /* ─── Day-column colours ─── */
+    .sch-c1 { border-left: 5px solid #1d4ed8; }
+    .sch-c2 { border-left: 5px solid #2563eb; }
+    .sch-c3 { border-left: 5px solid #3b82f6; }
+    .sch-c4 { border-left: 5px solid #1e40af; }
+    .sch-c5 { border-left: 5px solid #60a5fa; }
+    .sch-c6 { border-left: 5px solid #0ea5e9; }
+    .sch-c7 { border-left: 5px solid #38bdf8; }
+
+    @media (max-width: 900px) {
+      .sch-wrap { --sch-day-col: 155px; }
+      .sch-hero { flex-direction: column; align-items: stretch; }
+    }
+  </style>
+
+
+{% endmacro %}

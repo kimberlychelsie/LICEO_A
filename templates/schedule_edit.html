@@ -178,12 +178,12 @@
 
                 <div class="form-group">
                     <label class="form-label">Start Time</label>
-                    <input type="time" name="start_time" class="premium-input" value="{{ schedule.start_time.strftime('%H:%M') }}" required min="07:00" max="18:00">
+                    <input type="time" name="start_time" class="premium-input" value="{{ schedule.start_time.strftime('%H:%M') }}" required min="07:00" max="23:00" step="900">
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">End Time</label>
-                    <input type="time" name="end_time" class="premium-input" value="{{ schedule.end_time.strftime('%H:%M') }}" required min="07:00" max="18:00">
+                    <input type="time" name="end_time" class="premium-input" value="{{ schedule.end_time.strftime('%H:%M') }}" required min="07:00" max="23:00" step="900">
                 </div>
 
                 <div class="form-group" style="grid-column: span 2;">
@@ -207,7 +207,7 @@
 </div>
 
 <script>
-    function isInRange(val) { return val >= "07:00" && val <= "18:00"; }
+    function isInRange(val) { return val >= "07:00" && val <= "23:00"; }
     
     document.getElementById('editForm').addEventListener('submit', function(e) {
         const s = this.start_time.value;
@@ -216,7 +216,7 @@
         err.style.display = 'none';
 
         if (s && o && (!isInRange(s) || !isInRange(o))) {
-            err.innerText = "Times must be between 07:00 and 18:00.";
+            err.innerText = "Times must be between 07:00 and 23:00.";
             err.style.display = 'block';
             e.preventDefault();
         } else if (s && o && s >= o) {

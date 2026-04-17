@@ -958,15 +958,19 @@ def list_and_add_schedules():
         room = request.form["room"]
         year_id = request.form["year_id"]
 
-        # --- TIME VALIDATION: must be within 07:00 and 18:00, and start < end ---
+        # --- TIME VALIDATION: must be within 07:00 and 23:00, and start < end ---
         start_t = datetime.strptime(start_time, "%H:%M").time()
         end_t = datetime.strptime(end_time, "%H:%M").time()
-        if not (time(7,0) <= start_t <= time(18,0)) or not (time(7,0) <= end_t <= time(18,0)):
-            flash("Invalid schedule: Times must be between 07:00 and 18:00.", "danger")
+        if not (time(7,0) <= start_t <= time(23,0)) or not (time(7,0) <= end_t <= time(23,0)):
+            flash("Invalid schedule: Times must be between 07:00 and 23:00.", "danger")
             cursor.close(); db.close()
             return redirect(url_for("registrar.list_and_add_schedules"))
         if start_t >= end_t:
             flash("Invalid schedule: Start time must be before end time.", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("registrar.list_and_add_schedules"))
+        if (start_t.minute % 15) != 0 or (end_t.minute % 15) != 0:
+            flash("Invalid schedule: Times must be in 15-minute increments.", "danger")
             cursor.close(); db.close()
             return redirect(url_for("registrar.list_and_add_schedules"))
 
@@ -1106,15 +1110,19 @@ def edit_schedule(schedule_id):
         room = request.form["room"]
         year_id = request.form["year_id"]
 
-        # --- TIME VALIDATION: must be within 07:00 and 18:00, and start < end ---
+        # --- TIME VALIDATION: must be within 07:00 and 23:00, and start < end ---
         start_t = datetime.strptime(start_time, "%H:%M").time()
         end_t = datetime.strptime(end_time, "%H:%M").time()
-        if not (time(7,0) <= start_t <= time(18,0)) or not (time(7,0) <= end_t <= time(18,0)):
-            flash("Invalid schedule: Times must be between 07:00 and 18:00.", "danger")
+        if not (time(7,0) <= start_t <= time(23,0)) or not (time(7,0) <= end_t <= time(23,0)):
+            flash("Invalid schedule: Times must be between 07:00 and 23:00.", "danger")
             cursor.close(); db.close()
             return redirect(url_for("registrar.list_and_add_schedules"))
         if start_t >= end_t:
             flash("Invalid schedule: Start time must be before end time.", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("registrar.list_and_add_schedules"))
+        if (start_t.minute % 15) != 0 or (end_t.minute % 15) != 0:
+            flash("Invalid schedule: Times must be in 15-minute increments.", "danger")
             cursor.close(); db.close()
             return redirect(url_for("registrar.list_and_add_schedules"))
 
