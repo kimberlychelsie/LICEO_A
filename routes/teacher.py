@@ -50,7 +50,7 @@ def parse_docx(file):
             continue
 
         # Split multi-field lines:
-        # e.g. "Points: 2  Question: Pogi" → ["Points: 2", "Question: Pogi"]
+        # e.g. "Points: 2Question: Pogi" → ["Points: 2", "Question: Pogi"]
         parts = [p.strip() for p in regex.split(text) if p.strip()]
         # Rebuild fields (pattern, value, pattern, value,...)
         it = iter(parts)
@@ -936,7 +936,13 @@ def activity_submissions(activity_id):
             return redirect(url_for("teacher.teacher_dashboard"))
         
         # Get activity context
-        cur.execute("SELECT * FROM activities WHERE activity_id = %s AND teacher_id = %s", (activity_id, user_id))
+        cur.execute("""
+            SELECT *
+            FROM activities
+            WHERE activity_id = %s
+              AND teacher_id = %s
+              AND year_id = %s
+        """, (activity_id, user_id, year_id))
         activity = cur.fetchone()
         if not activity:
             flash("Activity not found or unauthorized", "error")
@@ -947,9 +953,12 @@ def activity_submissions(activity_id):
             SELECT e.enrollment_id, e.student_name, u.user_id as student_user_id
             FROM enrollments e
             LEFT JOIN users u ON u.user_id = e.user_id
-            WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled') AND e.branch_id = %s
+            WHERE e.section_id = %s
+              AND e.status IN ('approved', 'enrolled')
+              AND e.branch_id = %s
+              AND e.year_id = %s
             ORDER BY e.student_name ASC
-        ''', (activity['section_id'], activity['branch_id']))
+        ''', (activity['section_id'], activity['branch_id'], year_id))
         students = cur.fetchall()
         
         # Get all submissions for this activity
@@ -960,8 +969,9 @@ def activity_submissions(activity_id):
             LEFT JOIN activity_grades g ON sub.submission_id = g.submission_id
             LEFT JOIN individual_extensions ext ON ext.enrollment_id = sub.enrollment_id AND ext.item_id = %s AND ext.item_type = 'activity'
             WHERE sub.activity_id = %s
+              AND sub.year_id = %s
             ORDER BY sub.submitted_at ASC
-        ''', (activity_id, activity_id))
+        ''', (activity_id, activity_id, year_id))
         submissions_raw = {row['enrollment_id']: row for row in cur.fetchall()}
         
         # Also need students who haven't submitted but might have extensions

@@ -37,6 +37,28 @@ def registrar_home():
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        cursor.execute("""
+            SELECT year_id
+            FROM school_years
+            WHERE branch_id = %s AND is_active = TRUE
+            LIMIT 1
+        """, (branch_id,))
+        active_year = cursor.fetchone()
+        active_year_id = active_year["year_id"] if active_year else None
+
+        if not active_year_id:
+            flash("No active school year found for this branch.", "warning")
+            return render_template(
+                "registrar_home.html",
+                pending_count=0,
+                enrolled_count=0,
+                no_section_count=0,
+                reenroll_count=0,
+                no_account_count=0,
+                recent_pending=[],
+                enrollment_by_grade=[],
+            )
+
         # ✅ All stats in ONE query
         cursor.execute("""
             SELECT
@@ -47,38 +69,41 @@ def registrar_home():
                 COUNT(*) FILTER (WHERE status = 'open_for_enrollment')                         AS reenroll_count
             FROM enrollments
             WHERE branch_id = %s
-        """, (branch_id,))
+              AND year_id = %s
+        """, (branch_id, active_year_id))
         stats = cursor.fetchone()
 
         # ✅ no_account_count still needs subquery — separate but single query
         cursor.execute("""
             SELECT COUNT(*) AS cnt FROM enrollments e
             WHERE e.branch_id = %s
+              AND e.year_id = %s
               AND e.status IN ('enrolled','approved','open_for_enrollment')
               AND NOT EXISTS (
                   SELECT 1 FROM student_accounts sa WHERE sa.enrollment_id = e.enrollment_id
               )
-        """, (branch_id,))
+        """, (branch_id, active_year_id))
         no_account_count = cursor.fetchone()["cnt"]
 
         # ✅ Recent 5 pending enrollments for preview
         cursor.execute("""
             SELECT student_name, grade_level, created_at, branch_enrollment_no AS display_no
             FROM enrollments
-            WHERE branch_id=%s AND status='pending'
+            WHERE branch_id=%s AND year_id=%s AND status='pending'
             ORDER BY created_at DESC
             LIMIT 5
-        """, (branch_id,))
+        """, (branch_id, active_year_id))
         recent_pending = cursor.fetchall()
         
         # ✅ Enrollment by Grade for Chart
         cursor.execute("""
             SELECT grade_level, COUNT(*) AS student_count
             FROM enrollments
-            WHERE branch_id = %s AND status IN ('enrolled', 'approved', 'open_for_enrollment')
+            WHERE branch_id = %s AND year_id = %s
+              AND status IN ('enrolled', 'approved', 'open_for_enrollment')
             GROUP BY grade_level
             ORDER BY grade_level
-        """, (branch_id,))
+        """, (branch_id, active_year_id))
         enrollment_by_grade = cursor.fetchall()
 
         return render_template(
@@ -113,14 +138,27 @@ def registrar_enrollments():
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        cursor.execute("""
+            SELECT year_id
+            FROM school_years
+            WHERE branch_id = %s AND is_active = TRUE
+            LIMIT 1
+        """, (branch_id,))
+        active_year = cursor.fetchone()
+        active_year_id = active_year["year_id"] if active_year else None
+        if not active_year_id:
+            flash("No active school year found for this branch.", "error")
+            return redirect("/registrar")
+
         # Keep status consistent: once section is assigned, approved -> enrolled.
         cursor.execute("""
             UPDATE enrollments
             SET status = 'enrolled'
             WHERE branch_id = %s
+              AND year_id = %s
               AND status = 'approved'
               AND section_id IS NOT NULL
-        """, (branch_id,))
+        """, (branch_id, active_year_id))
         db.commit()
 
         if request.method == "POST":
@@ -142,18 +180,18 @@ def registrar_enrollments():
                     """
                     UPDATE enrollments
                     SET status=%s, rejection_reason=%s, rejected_at=NOW()
-                    WHERE enrollment_id=%s AND branch_id=%s
+                    WHERE enrollment_id=%s AND branch_id=%s AND year_id=%s
                     """,
-                    (action, rejection_reason, enrollment_id, branch_id),
+                    (action, rejection_reason, enrollment_id, branch_id, active_year_id),
                 )
             else:
                 cursor.execute(
                     """
                     UPDATE enrollments
                     SET status=%s, rejection_reason=NULL, rejected_at=NULL
-                    WHERE enrollment_id=%s AND branch_id=%s
+                    WHERE enrollment_id=%s AND branch_id=%s AND year_id=%s
                     """,
-                    (action, enrollment_id, branch_id),
+                    (action, enrollment_id, branch_id, active_year_id),
                 )
 
             if cursor.rowcount == 0:
@@ -186,10 +224,12 @@ def registrar_enrollments():
                    ) AS documents
             FROM enrollments e
             LEFT JOIN enrollment_documents d ON d.enrollment_id = e.enrollment_id
-            WHERE e.branch_id=%s AND e.status IN ('pending', 'rejected')
+            WHERE e.branch_id=%s
+              AND e.year_id=%s
+              AND e.status IN ('pending', 'rejected')
             GROUP BY e.enrollment_id
             ORDER BY e.branch_enrollment_no ASC NULLS LAST, e.created_at DESC
-        """, (branch_id,))
+        """, (branch_id, active_year_id))
         new_enrollments_raw = cursor.fetchall()
 
         new_enrollments = []
@@ -213,9 +253,10 @@ def registrar_enrollments():
             LEFT JOIN parent_student ps   ON ps.student_id   = e.enrollment_id
             LEFT JOIN users u             ON u.user_id        = ps.parent_id
             WHERE e.branch_id=%s
+              AND e.year_id=%s
               AND e.status IN ('enrolled', 'open_for_enrollment', 'approved')
             ORDER BY e.grade_level ASC, e.student_name ASC
-        """, (branch_id,))
+        """, (branch_id, active_year_id))
         enrolled_students = cursor.fetchall()
         # ✅ No loop needed — account status already in each row
 

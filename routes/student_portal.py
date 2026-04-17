@@ -442,7 +442,9 @@ def subject_view(subject_id):
     try:
         # Get student's section and branch
         cur.execute("""
-            SELECT section_id, branch_id FROM enrollments WHERE enrollment_id = %s
+            SELECT section_id, branch_id, year_id
+            FROM enrollments
+            WHERE enrollment_id = %s
         """, (enrollment_id,))
         enr = cur.fetchone()
         if not enr or not enr.get('section_id'):
@@ -451,6 +453,7 @@ def subject_view(subject_id):
 
         student_section_id = enr['section_id']
         student_branch_id  = enr['branch_id']
+        student_year_id = enr.get('year_id')
 
         # Get subject details and teacher
         cur.execute("""
@@ -461,7 +464,8 @@ def subject_view(subject_id):
             JOIN sections s ON st.section_id = s.section_id
             LEFT JOIN users u ON st.teacher_id = u.user_id
             WHERE sub.subject_id = %s AND s.section_id = %s
-        """, (subject_id, student_section_id))
+              AND st.year_id = %s
+        """, (subject_id, student_section_id, student_year_id))
         subject_info = cur.fetchone()
         
         if not subject_info:
@@ -480,9 +484,10 @@ def subject_view(subject_id):
     WHERE a.subject_id = %s 
       AND a.section_id = %s 
       AND a.branch_id = %s 
+      AND a.year_id = %s
       AND a.status = 'Published'
     ORDER BY a.due_date ASC
-''', (student_user_id, enrollment_id, subject_id, student_section_id, student_branch_id))
+''', (student_user_id, enrollment_id, subject_id, student_section_id, student_branch_id, student_year_id))
             activities = cur.fetchall()
         else:
             activities = []
@@ -495,11 +500,12 @@ def subject_view(subject_id):
             FROM exams e
             LEFT JOIN exam_results r ON r.exam_id = e.exam_id AND r.enrollment_id = %s
             WHERE e.subject_id = %s AND e.section_id = %s
+              AND e.year_id = %s
               AND e.exam_type = 'quiz'
               AND e.status IN ('published', 'closed')
               AND e.is_visible = TRUE
             ORDER BY e.created_at DESC
-        """, (enrollment_id, subject_id, student_section_id))
+        """, (enrollment_id, subject_id, student_section_id, student_year_id))
         quizzes_raw = cur.fetchall() or []
 
         ph_tz = pytz.timezone("Asia/Manila")
@@ -803,7 +809,7 @@ def student_exams():
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cur.execute("SELECT section_id, grade_level FROM enrollments WHERE enrollment_id=%s",
+        cur.execute("SELECT section_id, grade_level, year_id FROM enrollments WHERE enrollment_id=%s",
                     (enrollment_id,))
         enr = cur.fetchone()
         if not enr:
@@ -811,6 +817,7 @@ def student_exams():
             return redirect(url_for("student_portal.dashboard"))
 
         section_id = enr["section_id"]
+        year_id = enr["year_id"]
 
         # ✅ section check now works because now_naive is already defined
         if not section_id:
@@ -833,11 +840,12 @@ def student_exams():
             LEFT JOIN individual_extensions ext
                 ON ext.item_id = e.exam_id AND ext.enrollment_id = %s AND ext.item_type IN ('exam', 'quiz')
             WHERE e.section_id = %s
+              AND e.year_id = %s
               AND e.status IN ('published', 'closed')
               AND e.exam_type != 'quiz'
               AND e.is_visible = TRUE
             ORDER BY e.created_at DESC
-        """, (enrollment_id, enrollment_id, section_id))
+        """, (enrollment_id, enrollment_id, section_id, year_id))
         exams_raw = cur.fetchall() or []
 
         # Normalize scheduled_start to PH naive time for correct comparison in Jinja
@@ -881,12 +889,13 @@ def student_quizzes():
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cur.execute("SELECT section_id FROM enrollments WHERE enrollment_id=%s", (enrollment_id,))
+        cur.execute("SELECT section_id, year_id FROM enrollments WHERE enrollment_id=%s", (enrollment_id,))
         enr = cur.fetchone()
         if not enr:
             return redirect(url_for("student_portal.dashboard"))
 
         section_id = enr["section_id"]
+        year_id = enr["year_id"]
 
         if not section_id:
             flash("You have not been assigned to a section yet. Please contact your school admin.", "warning")
@@ -908,10 +917,11 @@ def student_quizzes():
             LEFT JOIN individual_extensions ext
                 ON ext.item_id = e.exam_id AND ext.enrollment_id = %s AND ext.item_type = 'quiz'
             WHERE e.section_id = %s
+              AND e.year_id = %s
               AND e.status IN ('published', 'closed')
               AND e.exam_type = 'quiz'
             ORDER BY e.created_at DESC
-        """, (enrollment_id, enrollment_id, section_id))
+        """, (enrollment_id, enrollment_id, section_id, year_id))
         quizzes_raw = cur.fetchall() or []
 
         quizzes = []
@@ -965,6 +975,7 @@ def student_exam_take(exam_id):
                 ON ext.item_id = e.exam_id AND ext.enrollment_id = %s AND ext.item_type IN ('exam', 'quiz')
             WHERE e.exam_id = %s
               AND en.enrollment_id = %s
+              AND e.year_id = en.year_id
               AND e.status = 'published'
         """, (enrollment_id, exam_id, enrollment_id))
         exam = cur.fetchone()
@@ -1380,7 +1391,7 @@ def student_my_schedule():
         # Get enrollment info (section, grade level, branch)
         cur.execute("""
             SELECT e.enrollment_id, e.student_name, e.grade_level,
-                   e.section_id, e.branch_id,
+                   e.section_id, e.branch_id, e.year_id,
                    s.section_name, s.school_year
             FROM enrollments e
             LEFT JOIN sections s ON e.section_id = s.section_id
@@ -1406,6 +1417,7 @@ def student_my_schedule():
                 LEFT JOIN subjects sub ON sc.subject_id = sub.subject_id
                 LEFT JOIN users u ON sc.teacher_id = u.user_id
                 WHERE sc.section_id = %s
+                  AND sc.year_id = %s
                 ORDER BY
                     CASE sc.day_of_week
                         WHEN 'Monday'    THEN 1
@@ -1418,7 +1430,7 @@ def student_my_schedule():
                         ELSE 8
                     END,
                     sc.start_time
-            """, (section_id,))
+            """, (section_id, enr.get("year_id")))
             schedules = cur.fetchall() or []
 
         return render_template("student_my_schedule.html",

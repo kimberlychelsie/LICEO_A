@@ -1451,6 +1451,18 @@ def branch_admin_assign_teachers():
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
+        cursor.execute("""
+            SELECT year_id
+            FROM school_years
+            WHERE branch_id = %s AND is_active = TRUE
+            LIMIT 1
+        """, (branch_id,))
+        active_year = cursor.fetchone()
+        active_year_id = active_year["year_id"] if active_year else None
+        if not active_year_id:
+            flash("No active school year found.", "error")
+            return redirect("/branch-admin")
+
         # ── GET: Load unique grade levels used in the current branch ──
         cursor.execute("""
             SELECT DISTINCT g.id, g.name, g.display_order
@@ -1481,7 +1493,12 @@ def branch_admin_assign_teachers():
 
             # ── Verify section belongs to THIS branch ──
             cursor.execute(
-                "SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s",
+                """
+                SELECT 1
+                FROM sections s
+                JOIN school_years y ON y.year_id = s.year_id
+                WHERE s.section_id=%s AND s.branch_id=%s AND y.is_active = TRUE
+                """,
                 (section_id, branch_id)
             )
             if not cursor.fetchone():
@@ -1502,7 +1519,8 @@ def branch_admin_assign_teachers():
                 UPDATE section_teachers
                 SET teacher_id = %s
                 WHERE section_id = %s AND subject_id = %s
-            """, (teacher_id, section_id, subject_id))
+                  AND year_id = %s
+            """, (teacher_id, section_id, subject_id, active_year_id))
             db.commit()
 
             action_label = "assigned" if teacher_id else "unassigned"
@@ -1676,6 +1694,17 @@ def assign_teachers_bulk():
     cursor = db.cursor()
 
     try:
+        cursor.execute("""
+            SELECT year_id
+            FROM school_years
+            WHERE branch_id = %s AND is_active = TRUE
+            LIMIT 1
+        """, (branch_id,))
+        row = cursor.fetchone()
+        active_year_id = row[0] if row else None
+        if not active_year_id:
+            return {"success": False, "message": "No active school year found"}, 400
+
         # Verify teacher belongs to this branch
         cursor.execute(
             "SELECT 1 FROM users WHERE user_id=%s AND branch_id=%s AND role='teacher'",
@@ -1691,9 +1720,12 @@ def assign_teachers_bulk():
                 cursor.execute("""
                     SELECT st.section_id FROM section_teachers st
                     JOIN sections s ON st.section_id = s.section_id
+                    JOIN school_years y ON s.year_id = y.year_id
                     WHERE st.subject_id = %s AND s.branch_id = %s
+                      AND y.is_active = TRUE
+                      AND st.year_id = %s
                     LIMIT 1
-                """, (subject_id, branch_id))
+                """, (subject_id, branch_id, active_year_id))
                 
                 if cursor.fetchone():
                     # Update the assignment
@@ -1701,10 +1733,14 @@ def assign_teachers_bulk():
                         UPDATE section_teachers
                         SET teacher_id = %s
                         WHERE subject_id = %s
+                        AND year_id = %s
                         AND section_id IN (
-                            SELECT section_id FROM sections WHERE branch_id = %s
+                            SELECT s.section_id
+                            FROM sections s
+                            JOIN school_years y ON s.year_id = y.year_id
+                            WHERE s.branch_id = %s AND y.is_active = TRUE
                         )
-                    """, (teacher_id, subject_id, branch_id))
+                    """, (teacher_id, subject_id, active_year_id, branch_id))
                     count += cursor.rowcount
 
             except Exception as e:
@@ -1745,12 +1781,26 @@ def remove_teacher_assignment():
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        cursor.execute("""
+            SELECT year_id
+            FROM school_years
+            WHERE branch_id = %s AND is_active = TRUE
+            LIMIT 1
+        """, (branch_id,))
+        active_year = cursor.fetchone()
+        active_year_id = active_year["year_id"] if active_year else None
+        if not active_year_id:
+            return {"success": False, "message": "No active school year found"}, 400
+
         # Verify this row belongs to this branch
         cursor.execute("""
             SELECT st.id FROM section_teachers st
             JOIN sections s ON st.section_id = s.section_id
+            JOIN school_years y ON s.year_id = y.year_id
             WHERE st.id = %s AND s.branch_id = %s
-        """, (section_teacher_id, branch_id))
+              AND y.is_active = TRUE
+              AND st.year_id = %s
+        """, (section_teacher_id, branch_id, active_year_id))
         if not cursor.fetchone():
             return {"success": False, "message": "Assignment not found"}, 404
 
@@ -1838,6 +1888,18 @@ def branch_admin_assign_students():
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
+        cursor.execute("""
+            SELECT year_id
+            FROM school_years
+            WHERE branch_id = %s AND is_active = TRUE
+            LIMIT 1
+        """, (branch_id,))
+        active_year = cursor.fetchone()
+        active_year_id = active_year["year_id"] if active_year else None
+        if not active_year_id:
+            flash("No active school year found.", "error")
+            return redirect("/branch-admin")
+
         # ✅ Only load THIS branch's grade levels
         cursor.execute(
             "SELECT id, name, display_order FROM grade_levels WHERE branch_id = %s ORDER BY display_order",
@@ -1859,7 +1921,10 @@ def branch_admin_assign_students():
                 flash("Invalid input.", "error")
                 return redirect(url_for("branch_admin.branch_admin_assign_students", grade=grade_filter))
 
-            cursor.execute("SELECT 1 FROM enrollments WHERE enrollment_id=%s AND branch_id=%s", (enrollment_id, branch_id))
+            cursor.execute(
+                "SELECT 1 FROM enrollments WHERE enrollment_id=%s AND branch_id=%s AND year_id=%s",
+                (enrollment_id, branch_id, active_year_id)
+            )
             if not cursor.fetchone():
                 flash("Enrollment not found.", "error")
                 return redirect(url_for("branch_admin.branch_admin_assign_students", grade=grade_filter))
@@ -1887,8 +1952,8 @@ def branch_admin_assign_students():
                         WHEN %s IS NOT NULL AND status = 'approved' THEN 'enrolled'
                         ELSE status
                     END
-                WHERE enrollment_id=%s
-            """, (section_id, section_id, enrollment_id))
+                WHERE enrollment_id=%s AND year_id=%s
+            """, (section_id, section_id, enrollment_id, active_year_id))
             db.commit()
 
             # ── Auto-notify student about all existing Published activities in this section ──
@@ -1971,10 +2036,12 @@ def branch_admin_assign_students():
                    s.section_name
             FROM enrollments e
             LEFT JOIN sections s ON e.section_id = s.section_id
-            WHERE e.branch_id = %s AND e.status IN ('approved', 'enrolled')
+            WHERE e.branch_id = %s
+              AND e.year_id = %s
+              AND e.status IN ('approved', 'enrolled')
               AND (e.grade_level ILIKE %s OR e.grade_level ILIKE %s)
             ORDER BY e.student_name
-        """, (branch_id, grade_name, grade_name.replace("Grade ", "")))
+        """, (branch_id, active_year_id, grade_name, grade_name.replace("Grade ", "")))
         students = cursor.fetchall() or []
 
     except Exception as e:
@@ -2011,10 +2078,21 @@ def api_assign_student_section():
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        cursor.execute("""
+            SELECT year_id
+            FROM school_years
+            WHERE branch_id = %s AND is_active = TRUE
+            LIMIT 1
+        """, (branch_id,))
+        active_year = cursor.fetchone()
+        active_year_id = active_year["year_id"] if active_year else None
+        if not active_year_id:
+            return {"success": False, "message": "No active school year found"}, 400
+
         # Verify enrollment belongs to this branch
         cursor.execute(
-            "SELECT 1 FROM enrollments WHERE enrollment_id=%s AND branch_id=%s",
-            (enrollment_id, branch_id)
+            "SELECT 1 FROM enrollments WHERE enrollment_id=%s AND branch_id=%s AND year_id=%s",
+            (enrollment_id, branch_id, active_year_id)
         )
         if not cursor.fetchone():
             return {"success": False, "message": "Enrollment not found"}, 404
@@ -2043,8 +2121,8 @@ def api_assign_student_section():
                     WHEN %s IS NOT NULL AND status = 'approved' THEN 'enrolled'
                     ELSE status
                 END
-            WHERE enrollment_id=%s
-        """, (section_id, section_id, enrollment_id))
+            WHERE enrollment_id=%s AND year_id=%s
+        """, (section_id, section_id, enrollment_id, active_year_id))
         db.commit()
 
         # Auto-notify student about existing published activities in the new section
