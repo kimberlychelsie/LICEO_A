@@ -501,40 +501,60 @@
     }
 
     /* ══════════════════════════════════════════
-       FLASH MESSAGES (Toast style)
+       FLASH MESSAGES (Premium Top-Center Toast)
     ══════════════════════════════════════════ */
     .flash-wrap {
       position: fixed;
-      bottom: 40px;
-      right: 40px;
-      z-index: 9999;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10000;
       display: flex;
       flex-direction: column;
       gap: 12px;
+      align-items: center;
+      width: 100%;
+      max-width: 600px;
       pointer-events: none;
     }
 
     .flash {
       pointer-events: auto;
-      min-width: 300px;
-      max-width: 450px;
-      padding: 16px 20px;
-      border-radius: 12px;
+      width: 95%;
+      min-width: 320px;
+      padding: 20px 24px;
+      border-radius: 16px;
       background: #ffffff;
-      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1), 0 4px 10px rgba(0, 0, 0, 0.05);
+      box-shadow: 0 15px 50px rgba(0, 0, 0, 0.15), 0 5px 15px rgba(0, 0, 0, 0.05);
       border: 1px solid #e2e8f0;
-      font-size: 14px;
-      font-weight: 600;
-      color: #334155;
+      font-size: 16px;
+      font-weight: 700;
+      color: #1e293b;
       display: flex;
       align-items: center;
-      gap: 14px;
-      animation: slideInUpToast 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.25) forwards;
+      gap: 18px;
+      animation: slideInDownToast 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.25) forwards;
       opacity: 0;
-      transform: translateY(40px);
-      transition: opacity 0.4s, transform 0.4s;
+      transform: translateY(-40px);
+      transition: all 0.4s ease;
       position: relative;
       overflow: hidden;
+    }
+
+    .flash-close {
+      margin-left: auto;
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: #94a3b8;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+      transition: color 0.2s;
+    }
+
+    .flash-close:hover {
+      color: #334155;
     }
 
     /* Animated progress bar */
@@ -543,12 +563,12 @@
       position: absolute;
       bottom: 0;
       left: 0;
-      height: 4px;
+      height: 5px;
       width: 100%;
-      animation: toastProgress 4s linear forwards;
+      animation: toastProgress 15s linear forwards;
     }
 
-    @keyframes slideInUpToast {
+    @keyframes slideInDownToast {
       to {
         opacity: 1;
         transform: translateY(0);
@@ -1523,7 +1543,10 @@
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         {% for category, msg in messages %}
-        <div class="flash {{ category }}">{{ msg }}</div>
+        <div class="flash {{ category }}">
+          <span>{{ msg }}</span>
+          <button class="flash-close" onclick="this.parentElement.remove()">&times;</button>
+        </div>
         {% endfor %}
         {% endif %}
         {% endwith %}
@@ -1814,15 +1837,17 @@
   {% endif %}
 
   <script>
-    // Auto-dismiss flash messages after 4 seconds
+    // Auto-dismiss flash messages after 15 seconds
     document.addEventListener("DOMContentLoaded", function () {
       const flashes = document.querySelectorAll('.flash');
       flashes.forEach(flash => {
         setTimeout(() => {
-          flash.style.opacity = '0';
-          flash.style.transform = 'translateY(40px)';
-          setTimeout(() => flash.remove(), 400);
-        }, 4000);
+          if (flash.parentElement) {
+            flash.style.opacity = '0';
+            flash.style.transform = 'translateY(-20px)';
+            setTimeout(() => flash.remove(), 400);
+          }
+        }, 15000);
       });
     });
   </script>

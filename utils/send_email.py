@@ -1,10 +1,11 @@
 import smtplib
+import threading
 from email.message import EmailMessage
 
-def send_email(to_email, subject, body):
+def _send_email_core(to_email, subject, body):
+    """Internal function to handle the actual SMTP connection."""
     gmail_user = "biticonmr@gmail.com"
     gmail_pass = "ohny yttw tgwq dayg"  
-
     from_email = "LiceoLMS <biticonmr@gmail.com>"  
 
     try:
@@ -18,9 +19,21 @@ def send_email(to_email, subject, body):
             smtp.login(gmail_user, gmail_pass)
             smtp.send_message(msg)
 
-        print("🔥 EMAIL STATUS: SENT (SMTP)")
+        print(f"🔥 EMAIL STATUS: SENT to {to_email}")
         return True
 
     except Exception as e:
-        print("🔥 EMAIL ERROR:", str(e))
+        print(f"🔥 EMAIL ERROR ({to_email}):", str(e))
         return False
+
+def send_email(to_email, subject, body, use_background=True):
+    """
+    Sends an email using Gmail SMTP.
+    Default is use_background=True to prevent blocking the main request thread.
+    """
+    if use_background:
+        thread = threading.Thread(target=_send_email_core, args=(to_email, subject, body))
+        thread.start()
+        return True
+    else:
+        return _send_email_core(to_email, subject, body)
