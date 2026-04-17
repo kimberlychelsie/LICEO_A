@@ -346,7 +346,7 @@
                             <form method="POST" action="/registrar/students-by-grade/update/{{ s.enrollment_id }}">
                                 <div class="details-inner">
                                     <div class="detail-group">
-                                        <h4>👤 Personal & Connectivity</h4>
+                                        <h4>👤 Personal & Contact Information</h4>
                                         <div class="grid-data">
                                             <strong>Sex:</strong>
                                             <select name="gender" class="input-edit track-{{ s.enrollment_id }}">
@@ -365,12 +365,17 @@
                                     </div>
 
                                     <div class="detail-group">
-                                        <h4>👨‍👩‍👧 Next of Kin & Guardians</h4>
+                                        <h4>👨‍👩‍👧 Guardian Information</h4>
                                         <div class="grid-data">
                                             <strong>Guardian:</strong> <input type="text" name="guardian_name" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.guardian_name or '' }}">
-                                            <strong>Guardian #:</strong> <input type="text" name="guardian_contact" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.guardian_contact or '' }}">
-                                            <strong>Paternal:</strong> <input type="text" name="father_name" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.father_name or '' }}">
-                                            <strong>Maternal:</strong> <input type="text" name="mother_name" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.mother_name or '' }}">
+                                            <strong>Contact:</strong> <input type="text" name="guardian_contact" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.guardian_contact or '' }}">
+                                            <strong>Email:</strong> <input type="email" name="guardian_email" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.guardian_email or '' }}">
+                                            <strong>Father:</strong> <input type="text" name="father_name" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.father_name or '' }}">
+                                            <strong>Father Contact:</strong> <input type="text" name="father_contact" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.father_contact or '' }}">
+                                            <strong>Father Occupation:</strong> <input type="text" name="father_occupation" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.father_occupation or '' }}">
+                                            <strong>Mother:</strong> <input type="text" name="mother_name" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.mother_name or '' }}">
+                                            <strong>Mother Contact:</strong> <input type="text" name="mother_contact" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.mother_contact or '' }}">
+                                            <strong>Mother Occupation:</strong> <input type="text" name="mother_occupation" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.mother_occupation or '' }}">
                                         </div>
                                         
                                         <div style="margin-top: 24px; padding-top: 24px; border-top: 1px dashed var(--reg-border);">
@@ -474,7 +479,16 @@
             "Contact": s.contact_number || "",
             "Address": s.address || "",
             "Guardian": s.guardian_name || "",
-            "Guardian Contact": s.guardian_contact || ""
+            "Guardian Contact": s.guardian_contact || "",
+            "Guardian Email": s.guardian_email || "",
+            "Father Name": s.father_name || "",
+            "Father Contact": s.father_contact || "",
+            "Father Occupation": s.father_occupation || "",
+            "Mother Name": s.mother_name || "",
+            "Mother Contact": s.mother_contact || "",
+            "Mother Occupation": s.mother_occupation || "",
+            "Previous School": s.previous_school || "",
+            "Enroll Type": s.enroll_type || ""
         }));
         const ws = XLSX.utils.json_to_sheet(rows);
         XLSX.utils.book_append_sheet(wb, ws, "Students");
