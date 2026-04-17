@@ -49,14 +49,13 @@ def dashboard():
             cursor.execute("""
                 SELECT NULL AS account_id, e.enrollment_id,
                        e.branch_enrollment_no, e.section_id,
-                       u.username, NULL AS email,
+                       CAST(%s AS text) AS username, NULL AS email,
                        e.student_name, e.grade_level, e.status, e.branch_id,
                        br.branch_name, br.location
                 FROM enrollments e
                 LEFT JOIN branches br ON e.branch_id = br.branch_id
-                JOIN users u ON u.user_id = e.user_id
                 WHERE e.enrollment_id = %s
-            """, (enrollment_id,))
+            """, (session.get("username"), enrollment_id,))
         else:
             session.clear()
             flash("Session expired or student account not found. Please log in again.", "error")
