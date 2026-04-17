@@ -1,27 +1,36 @@
 {% extends "base.html" %}
-{% block title %}Manage Profile Pictures | Registrar{% endblock %}
+{% block title %}Profile Pictures Management{% endblock %}
 
 {% block styles %}
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
     :root {
-        --reg-blue: #1a3a8f;
-        --reg-blue-dark: #142e75;
-        --reg-blue-light: #eff6ff;
-        --reg-yellow: #facc15;
-        --reg-yellow-dark: #eab308;
-        --reg-yellow-soft: #fef9c3;
-        --reg-text: #1e293b;
+        --reg-primary: #1e3a8a;
+        --reg-accent: #3b82f6;
+        --reg-success: #10b981;
+        --reg-pending: #f59e0b;
+        --reg-danger: #ef4444;
+        --reg-bg: #f8fafc;
+        --reg-card: #ffffff;
+        --reg-text: #0f172a;
         --reg-muted: #64748b;
         --reg-border: #e2e8f0;
-        --glass-bg: rgba(255, 255, 255, 0.95);
-        --reg-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+
+        --reg-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        --reg-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
     }
 
-    .reg-container {
-        max-width: 1200px;
+    body {
+        background-color: var(--reg-bg);
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+
+    .dashboard-wrap {
+        max-width: 1280px;
         margin: 0 auto;
-        padding: 20px;
-        animation: fadeIn 0.5s ease-out;
+        padding: 24px 20px 80px;
+        animation: fadeIn 0.4s ease-out;
     }
 
     @keyframes fadeIn {
@@ -29,564 +38,367 @@
         to { opacity: 1; transform: translateY(0); }
     }
 
-    .reg-header {
-        background: white;
-        padding: 30px;
-        border-radius: 20px;
-        box-shadow: var(--reg-shadow);
-        margin-bottom: 30px;
-        border-left: 6px solid var(--reg-yellow);
+    /* ── Header ── */
+    .dashboard-header {
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 20px;
     }
 
-    .reg-header-content h2 {
-        color: var(--reg-blue);
+    .header-text h1 {
+        font-size: 1.85rem;
         font-weight: 800;
-        font-size: 1.8rem;
-        margin: 0;
+        color: var(--reg-primary);
+        margin-bottom: 4px;
+        letter-spacing: -0.02em;
     }
 
-    .reg-header-content p {
+    .header-text p {
         color: var(--reg-muted);
-        margin-top: 5px;
+        font-size: 0.95rem;
     }
 
-    /* Tabs Styling */
-    .profile-tabs {
-        display: flex;
-        gap: 12px;
+    /* ── Segmented Tabs ── */
+    .tab-container {
+        display: inline-flex;
         background: #f1f5f9;
         padding: 6px;
-        border-radius: 14px;
-        width: fit-content;
-        margin-bottom: 25px;
+        border-radius: 16px;
+        gap: 4px;
+        margin-bottom: 24px;
     }
 
-    .profile-tab {
+    .tab-link {
         padding: 10px 24px;
-        border-radius: 10px;
+        border-radius: 12px;
         font-weight: 700;
+        font-size: 0.9rem;
         color: var(--reg-muted);
         text-decoration: none;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: all 0.2s;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
     }
 
-    .profile-tab.active {
-        background: white;
-        color: var(--reg-blue);
+    .tab-link.active {
+        background: #ffffff;
+        color: var(--reg-primary);
         box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
-    .profile-tab:hover:not(.active) {
-        color: var(--reg-blue);
-        background: rgba(255,255,255,0.5);
-    }
-
-    /* Grade Tabs */
-    .grade-tabs {
+    /* ── Filter Bar ── */
+    .catalog-filters {
+        background: #ffffff;
+        border: 1px solid var(--reg-border);
+        border-radius: 20px;
+        padding: 20px 24px;
+        margin-bottom: 24px;
+        box-shadow: var(--reg-shadow);
         display: flex;
-        gap: 10px;
         flex-wrap: wrap;
-        margin-bottom: 25px;
-        padding: 15px;
-        background: white;
-        border-radius: 16px;
-        box-shadow: var(--reg-shadow);
-    }
-
-    .grade-tab {
-        padding: 8px 16px;
-        border-radius: 10px;
-        background: var(--reg-blue-light);
-        color: var(--reg-blue);
-        font-weight: 700;
-        font-size: 0.85rem;
-        text-decoration: none;
-        transition: all 0.2s;
-        border: 2px solid transparent;
-    }
-
-    .grade-tab:hover {
-        background: var(--reg-blue);
-        color: white;
-    }
-
-    .grade-tab.active {
-        background: var(--reg-yellow);
-        color: var(--reg-blue);
-        border-color: var(--reg-yellow-dark);
-        box-shadow: 0 4px 10px rgba(250, 204, 21, 0.2);
-    }
-
-    /* Filter Bar */
-    .filter-bar {
-        display: flex;
-        gap: 15px;
+        gap: 16px;
         align-items: center;
-        margin-bottom: 20px;
-        background: white;
-        padding: 15px 25px;
-        border-radius: 16px;
-        box-shadow: var(--reg-shadow);
     }
 
-    .search-input-wrapper {
-        position: relative;
-        flex-grow: 1;
-        max-width: 400px;
-    }
-
-    .search-input-wrapper i {
-        position: absolute;
-        left: 15px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: var(--reg-muted);
-    }
-
+    .search-wrap { position: relative; flex: 1; min-width: 280px; }
     .search-input {
         width: 100%;
-        padding: 12px 12px 12px 45px;
-        border-radius: 12px;
-        border: 2px solid var(--reg-border);
+        padding: 12px 16px;
+        padding-left: 44px;
+        border-radius: 14px;
+        border: 1.5px solid var(--reg-border);
         font-size: 0.95rem;
-        transition: all 0.3s;
+        font-weight: 600;
         outline: none;
+        transition: all 0.2s;
+    }
+    .search-input:focus { border-color: var(--reg-accent); box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+    .search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--reg-muted); font-size: 1.1rem; }
+
+    .grade-pills {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        margin-bottom: 24px;
     }
 
-    .search-input:focus {
-        border-color: var(--reg-blue);
-        box-shadow: 0 0 0 4px rgba(26, 58, 143, 0.1);
-    }
-
-    /* Custom Table Design */
-    .table-container {
-        background: white;
-        border-radius: 20px;
-        box-shadow: var(--reg-shadow);
-        overflow: hidden;
+    .grade-pill {
+        padding: 8px 16px;
+        border-radius: 999px;
+        background: #fff;
         border: 1px solid var(--reg-border);
+        color: var(--reg-muted);
+        font-weight: 700;
+        font-size: 0.8rem;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: all 0.2s;
     }
 
-    .premium-table {
-        width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
+    .grade-pill:hover { border-color: var(--reg-accent); color: var(--reg-primary); }
+    .grade-pill.active { background: var(--reg-primary); color: #fff; border-color: var(--reg-primary); }
+
+    /* ── Table & Cards ── */
+    .registry-card {
+        background: #ffffff;
+        border: 1px solid var(--reg-border);
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: var(--reg-shadow);
     }
 
-    .premium-table th {
-        background: var(--reg-blue-light);
-        color: var(--reg-blue);
-        padding: 18px 20px;
+    .modern-table { width: 100%; border-collapse: collapse; }
+    .modern-table th {
+        background: #fbfcfe;
+        padding: 18px 24px;
         text-align: left;
+        font-size: 0.75rem;
         font-weight: 800;
-        font-size: 0.85rem;
+        color: var(--reg-muted);
         text-transform: uppercase;
-        letter-spacing: 0.05em;
-        border-bottom: 2px solid var(--reg-border);
+        border-bottom: 1px solid var(--reg-border);
     }
 
-    .premium-table td {
-        padding: 15px 20px;
-        border-bottom: 1px solid var(--reg-border);
+    .modern-table td {
+        padding: 12px 24px;
+        font-size: 0.9rem;
         color: var(--reg-text);
+        border-bottom: 1px solid var(--reg-border);
         vertical-align: middle;
     }
 
-    .premium-table tr:last-child td {
-        border-bottom: none;
-    }
+    .modern-table tr:last-child td { border-bottom: none; }
+    .modern-table tr:hover { background: #f8fafc; }
 
-    .premium-table tr:hover {
-        background: #f8fafc;
-    }
-
-    /* Avatar Preview Enhancement */
-    .avatar-cell {
-        display: flex;
-        align-items: center;
-        gap: 15px;
-    }
-
-    .avatar-wrapper {
-        width: 50px;
-        height: 50px;
-        border-radius: 14px;
+    /* Avatar Element */
+    .avatar-modern {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
         overflow: hidden;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        border: 3px solid white;
-        background: var(--reg-blue-light);
+        background: #f1f5f9;
         display: flex;
         align-items: center;
         justify-content: center;
-        position: relative;
-    }
-
-    .avatar-wrapper img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .avatar-placeholder {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--reg-blue);
-        color: white;
         font-weight: 800;
-        font-size: 1.2rem;
+        color: var(--reg-primary);
+        font-size: 1.1rem;
+        border: 2px solid #fff;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
     }
+    .avatar-modern img { width: 100%; height: 100%; object-fit: cover; }
 
-    /* Custom File Input */
-    .file-upload-form {
-        display: flex;
-        gap: 10px;
-        align-items: center;
-    }
-
-    .custom-file-input {
+    /* Upload UI */
+    .upload-form { display: flex; gap: 8px; align-items: center; }
+    .file-btn {
         position: relative;
-        display: inline-block;
+        overflow: hidden;
+        padding: 8px 12px;
+        background: #f1f5f9;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 0.75rem;
+        color: var(--reg-muted);
+        cursor: pointer;
+        border: 1.5px dashed var(--reg-border);
+        flex: 1;
+        text-align: center;
+        transition: all 0.2s;
     }
 
-    .custom-file-label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 8px 16px;
-        background: var(--reg-blue-light);
-        color: var(--reg-blue);
-        border: 2px dashed var(--reg-blue);
+    .file-btn:hover { border-color: var(--reg-accent); color: var(--reg-primary); background: #eff6ff; }
+    .file-btn input { position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; }
+
+    .btn-submit {
+        padding: 9px 16px;
         border-radius: 10px;
-        font-size: 0.85rem;
-        font-weight: 700;
+        background: var(--reg-primary);
+        color: #fff;
+        font-weight: 800;
+        font-size: 0.75rem;
+        border: none;
         cursor: pointer;
         transition: all 0.2s;
-        max-width: 200px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
     }
 
-    .custom-file-label:hover {
-        background: var(--reg-blue);
-        color: white;
-    }
+    .btn-submit:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2); }
 
-    .hidden-file-input {
-        position: absolute;
-        left: 0;
-        top: 0;
-        opacity: 0;
-        width: 100%;
-        height: 100%;
-        cursor: pointer;
-    }
-
-    .upload-btn {
-        background: var(--reg-yellow);
-        color: var(--reg-blue);
-        border: none;
-        padding: 10px 20px;
-        border-radius: 10px;
-        font-weight: 800;
-        font-size: 0.85rem;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        box-shadow: 0 4px 12px rgba(250, 204, 21, 0.2);
-    }
-
-    .upload-btn:hover {
-        background: var(--reg-yellow-dark);
-        transform: translateY(-2px);
-        box-shadow: 0 6px 15px rgba(250, 204, 21, 0.3);
-    }
-
-    .upload-btn:active {
-        transform: translateY(0);
-    }
-
-    /* Badges Improvement */
-    .reg-badge {
-        padding: 6px 12px;
-        border-radius: 8px;
-        font-size: 0.75rem;
+    /* ── badges ── */
+    .badge {
+        display: inline-flex;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 0.7rem;
         font-weight: 800;
         text-transform: uppercase;
-        display: inline-block;
+        background: #f1f5f9;
+        color: var(--reg-muted);
     }
-
-    .badge-blue { background: var(--reg-blue-light); color: var(--reg-blue); }
-    .badge-yellow { background: var(--reg-yellow-soft); color: var(--reg-yellow-dark); }
-    .badge-green { background: #dcfce7; color: #166534; }
-    .badge-red { background: #fee2e2; color: #991b1b; }
-
-    .hidden-row { display: none; }
+    .badge-success { background: #dcfce7; color: #166534; }
+    .badge-primary { background: #eff6ff; color: #1e40af; }
 
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="reg-container">
-    <!-- Breadcrumbs -->
-    <div style="margin-bottom: 20px; font-size: 0.9rem;">
-        <a href="/registrar" style="color: var(--reg-blue); text-decoration: none; font-weight: 700;">Dashboard</a>
-        <span style="color: var(--reg-muted); margin: 0 10px;">/</span>
-        <span style="color: var(--reg-muted);">Profile Pictures</span>
+<div class="dashboard-wrap">
+
+    <!-- Header -->
+    <div class="dashboard-header">
+        <div class="header-text">
+            <h1>Identity Preservation</h1>
+            <p>Managing community profile imagery for student and faculty registries.</p>
+        </div>
+        <a href="/registrar" class="btn-pill" style="padding: 10px 20px; border-radius:12px; border:1px solid var(--reg-border); text-decoration:none; font-weight:700; color:var(--reg-primary); background:#fff;">← Back Home</a>
     </div>
 
-    <header class="reg-header">
-        <div class="reg-header-content">
-            <h2>🖼️ Manage Profile Pictures</h2>
-            <p>Maintain professional identities for the entire school community.</p>
-        </div>
-        <div style="text-align: right;">
-            <div style="font-size: 0.75rem; color: var(--reg-muted); margin-bottom: 5px; font-weight: 700; text-transform: uppercase;">Current Session</div>
-            <div style="color: var(--reg-blue); font-weight: 800; font-size: 1rem;">Profile Management Hub</div>
-        </div>
-    </header>
-
-    <!-- Main Navigation Tabs -->
-    <div class="profile-tabs">
-        <a href="?tab=students" class="profile-tab {% if tab == 'students' or not tab %}active{% endif %}">
-            <i class="fas fa-user-graduate"></i> Students
+    <!-- Main Navigation -->
+    <div class="tab-container">
+        <a href="?tab=students" class="tab-link {% if tab == 'students' or not tab %}active{% endif %}">
+            🎓 Student Body
         </a>
-        <a href="?tab=teachers" class="profile-tab {% if tab == 'teachers' %}active{% endif %}">
-            <i class="fas fa-chalkboard-teacher"></i> Teachers
+        <a href="?tab=teachers" class="tab-link {% if tab == 'teachers' %}active{% endif %}">
+            👨‍🏫 Faculty Base
         </a>
     </div>
 
     {% if tab == 'students' or not tab %}
-        <!-- Grade Level Filters for Students -->
-        <div class="grade-tabs">
-            <a href="?tab=students" class="grade-tab {% if not grade_filter %}active{% endif %}">All Levels</a>
+        <!-- Grade Pills for Students -->
+        <div class="grade-pills">
+            <a href="?tab=students" class="grade-pill {% if not grade_filter %}active{% endif %}">All Enrollment</a>
             {% for g in all_grades %}
-            <a href="?tab=students&grade={{ g }}" class="grade-tab {% if grade_filter == g|string %}active{% endif %}">{{ g }}</a>
+            <a href="?tab=students&grade={{ g }}" class="grade-pill {% if grade_filter == g|string %}active{% endif %}">{{ g }}</a>
             {% endfor %}
         </div>
+    {% endif %}
 
-        <!-- Search Bar -->
-        <div class="filter-bar">
-            <!-- Section Filter -->
-            <select class="search-input" style="max-width:200px; padding-left:12px;" onchange="window.location.href='?tab=students&grade={{ grade_filter }}&section_id=' + this.value;">
-                <option value="">All Sections</option>
-                {% for sec in all_sections %}
-                <option value="{{ sec.section_id }}" {% if section_filter == sec.section_id|string %}selected{% endif %}>{{ sec.section_name }} ({{ sec.grade_level }})</option>
-                {% endfor %}
-            </select>
-
-            <div class="search-input-wrapper">
-                <i class="fas fa-search"></i>
-                <input type="text" id="searchInput" class="search-input" placeholder="Search by student name..." oninput="applyFilters()">
-            </div>
-            <div style="margin-left:auto; font-weight: 700; font-size: 0.85rem; color: var(--reg-muted);" id="visibleCount"></div>
+    <!-- Search / Filter Bar -->
+    <div class="catalog-filters">
+        <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" class="search-input" placeholder="Search by name or identifier..." oninput="applyFilters()">
         </div>
+        <div id="resultCount" style="font-size: 0.8rem; font-weight: 800; color: var(--reg-muted);"></div>
+    </div>
 
-        <div class="table-container">
-            <table class="premium-table">
-                <thead>
-                    <tr>
-                        <th style="width: 80px;">Identity</th>
-                        <th>Student Information</th>
-                        <th>Classification</th>
-                        <th>Status</th>
-                        <th style="width: 320px;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="memberTbody">
-                    {% set ns = namespace(current_grade="") %}
+    <!-- Results Table -->
+    <div class="registry-card">
+        <table class="modern-table">
+            <thead>
+                <tr>
+                    <th style="width: 80px;">Visual</th>
+                    <th>Full Identity</th>
+                    <th>Classification</th>
+                    <th>Status</th>
+                    <th style="width: 340px;">Action Archive</th>
+                </tr>
+            </thead>
+            <tbody id="memberTbody">
+                {% if tab == 'students' or not tab %}
                     {% for s in students %}
-                        {% if not grade_filter and s.grade_level != ns.current_grade %}
-                        <tr class="grade-category-header">
-                            <td colspan="5" style="background: var(--reg-blue-light); color: var(--reg-blue); font-weight: 800; padding: 12px 20px; font-size: 0.95rem; border-bottom: 2px solid var(--reg-blue);">
-                                <i class="fas fa-layer-group" style="margin-right: 8px;"></i> {{ s.grade_level }}
-                            </td>
-                        </tr>
-                        {% set ns.current_grade = s.grade_level %}
-                        {% endif %}
-                    <tr data-name="{{ s.student_name | lower }}" class="student-row">
+                    <tr class="member-row" data-name="{{ s.student_name | lower }}">
                         <td>
-                            <div class="avatar-wrapper">
+                            <div class="avatar-modern">
                                 {% if s.profile_image %}
-                                <img src="{% if s.profile_image.startswith('http') %}{{ s.profile_image }}{% elif s.profile_image.startswith('/') %}{{ s.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ s.profile_image) }}{% endif %}" alt="Profile">
+                                <img src="{% if s.profile_image.startswith('http') %}{{ s.profile_image }}{% elif s.profile_image.startswith('/') %}{{ s.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ s.profile_image) }}{% endif %}" alt="">
                                 {% else %}
-                                <div class="avatar-placeholder">{{ s.student_name[0]|upper }}</div>
+                                {{ s.student_name[0]|upper }}
                                 {% endif %}
                             </div>
                         </td>
                         <td>
-                            <div style="font-weight: 800; font-size: 1rem; color: var(--reg-blue);">{{ s.student_name }}</div>
-                            <div style="font-size: 0.8rem; color: var(--reg-muted); font-weight: 600;">#{{ s.branch_enrollment_no or s.enrollment_id }}</div>
+                            <div style="font-weight: 800; color: var(--reg-primary);">{{ s.student_name }}</div>
+                            <div style="font-size: 0.75rem; font-weight: 700; color: var(--reg-muted);">ID #{{ s.branch_enrollment_no or s.enrollment_id }}</div>
                         </td>
                         <td>
-                            <span class="reg-badge badge-blue" style="margin-right: 5px;">{{ s.grade_level }}</span>
-                            {% if s.section_name %}
-                            <span class="reg-badge badge-green">{{ s.section_name }}</span>
-                            {% else %}
-                            <span class="reg-badge badge-red">Pending Section</span>
-                            {% endif %}
+                            <div style="display: flex; gap: 4px;">
+                                <span class="badge badge-primary">{{ s.grade_level }}</span>
+                                {% if s.section_name %}
+                                <span class="badge badge-success">{{ s.section_name }}</span>
+                                {% endif %}
+                            </div>
                         </td>
                         <td>
-                            <span class="reg-badge {% if s.status == 'enrolled' %}badge-green{% elif s.status == 'approved' %}badge-blue{% else %}badge-yellow{% endif %}">
-                                {{ s.status | replace('_', ' ') | title }}
-                            </span>
+                            <span class="badge {% if s.status == 'enrolled' %}badge-success{% else %}badge-primary{% endif %}">{{ s.status | title }}</span>
                         </td>
                         <td>
-                            <form method="POST" action="{{ url_for('registrar.registrar_profile_pictures') }}" enctype="multipart/form-data" class="file-upload-form">
+                            <form method="POST" action="{{ url_for('registrar.registrar_profile_pictures') }}" enctype="multipart/form-data" class="upload-form">
                                 <input type="hidden" name="user_type" value="student">
                                 <input type="hidden" name="target_id" value="{{ s.enrollment_id }}">
-                                
-                                <div class="custom-file-input">
-                                    <label class="custom-file-label">
-                                        <i class="fas fa-folder-open"></i> Choose Image
-                                    </label>
-                                    <input type="file" name="profile_image" class="hidden-file-input" accept=".png,.jpg,.jpeg,.gif" required onchange="updateFileName(this)">
-                                </div>
-                                <button type="submit" class="upload-btn">
-                                    <i class="fas fa-cloud-upload-alt"></i> {% if s.profile_image %}Update{% else %}Upload{% endif %}
-                                </button>
+                                <label class="file-btn">
+                                    📁 Select Photo
+                                    <input type="file" name="profile_image" accept="image/*" required onchange="handleFile(this)">
+                                </label>
+                                <button type="submit" class="btn-submit">{% if s.profile_image %}Update{% else %}Upload{% endif %}</button>
                             </form>
                         </td>
                     </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5" style="text-align: center; padding: 60px 20px; color: var(--reg-muted);">
-                            <i class="fas fa-users-slash" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.3;"></i>
-                            <div style="font-weight: 700;">No students found in this category.</div>
-                        </td>
-                    </tr>
                     {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-    {% elif tab == 'teachers' %}
-        <!-- Search Bar -->
-        <div class="filter-bar">
-            <div class="search-input-wrapper">
-                <i class="fas fa-search"></i>
-                <input type="text" id="searchInput" class="search-input" placeholder="Search by teacher name..." oninput="applyFilters()">
-            </div>
-            <div style="margin-left:auto; font-weight: 700; font-size: 0.85rem; color: var(--reg-muted);" id="visibleCount"></div>
-        </div>
-
-        <div class="table-container">
-            <table class="premium-table">
-                <thead>
-                    <tr>
-                        <th style="width: 80px;">Identity</th>
-                        <th>Teacher Information</th>
-                        <th>Handle/Username</th>
-                        <th>Subjects</th>
-                        <th style="width: 320px;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody id="memberTbody">
+                {% else %}
                     {% for t in teachers %}
-                    <tr data-name="{{ t.full_name | lower }}" class="teacher-row">
+                    <tr class="member-row" data-name="{{ t.full_name | lower or t.username | lower }}">
                         <td>
-                            <div class="avatar-wrapper">
+                            <div class="avatar-modern">
                                 {% if t.profile_image %}
-                                <img src="{% if t.profile_image.startswith('http') %}{{ t.profile_image }}{% elif t.profile_image.startswith('/') %}{{ t.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ t.profile_image) }}{% endif %}" alt="Profile">
+                                <img src="{% if t.profile_image.startswith('http') %}{{ t.profile_image }}{% elif t.profile_image.startswith('/') %}{{ t.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ t.profile_image) }}{% endif %}" alt="">
                                 {% else %}
-                                <div class="avatar-placeholder">{{ (t.full_name or t.username)[0]|upper }}</div>
+                                {{ (t.full_name or t.username)[0]|upper }}
                                 {% endif %}
                             </div>
                         </td>
                         <td>
-                            <div style="font-weight: 800; font-size: 1rem; color: var(--reg-blue);">{{ t.full_name or t.username }}</div>
-                            <div style="font-size: 0.8rem; color: var(--reg-muted); font-weight: 600;">Faculty Member</div>
+                            <div style="font-weight: 800; color: var(--reg-primary);">{{ t.full_name or t.username }}</div>
+                            <div style="font-size: 0.75rem; font-weight: 700; color: var(--reg-muted);">FACULTY @{{ t.username }}</div>
                         </td>
+                        <td><span class="badge">Instructor</span></td>
+                        <td><span class="badge badge-success">Active</span></td>
                         <td>
-                            <span class="reg-badge badge-blue">@{{ t.username }}</span>
-                        </td>
-                        <td>
-                            <div style="font-size: 0.85rem; color: var(--reg-text); max-width: 200px; line-height: 1.4;">
-                                {{ t.subjects or 'General' }}
-                            </div>
-                        </td>
-                        <td>
-                            <form method="POST" action="{{ url_for('registrar.registrar_profile_pictures') }}" enctype="multipart/form-data" class="file-upload-form">
+                            <form method="POST" action="{{ url_for('registrar.registrar_profile_pictures') }}" enctype="multipart/form-data" class="upload-form">
                                 <input type="hidden" name="user_type" value="teacher">
                                 <input type="hidden" name="target_id" value="{{ t.user_id }}">
-                                
-                                <div class="custom-file-input">
-                                    <label class="custom-file-label">
-                                        <i class="fas fa-folder-open"></i> Choose Image
-                                    </label>
-                                    <input type="file" name="profile_image" class="hidden-file-input" accept=".png,.jpg,.jpeg,.gif" required onchange="updateFileName(this)">
-                                </div>
-                                <button type="submit" class="upload-btn">
-                                    <i class="fas fa-cloud-upload-alt"></i> {% if t.profile_image %}Update{% else %}Upload{% endif %}
-                                </button>
+                                <label class="file-btn">
+                                    📁 Select Photo
+                                    <input type="file" name="profile_image" accept="image/*" required onchange="handleFile(this)">
+                                </label>
+                                <button type="submit" class="btn-submit">{% if t.profile_image %}Update{% else %}Upload{% endif %}</button>
                             </form>
                         </td>
                     </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5" style="text-align: center; padding: 60px 20px; color: var(--reg-muted);">
-                            <i class="fas fa-chalkboard-teacher" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.3;"></i>
-                            <div style="font-weight: 700;">No faculty members found.</div>
-                        </td>
-                    </tr>
                     {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% endif %}
+                {% endif %}
+            </tbody>
+        </table>
+    </div>
+
 </div>
 
 <script>
-    function updateFileName(input) {
-        if (input.files && input.files[0]) {
-            const fileName = input.files[0].name;
-            const label = input.previousElementSibling;
-            label.innerHTML = `<i class="fas fa-file-image"></i> ${fileName.substring(0, 12)}${fileName.length > 12 ? '...' : ''}`;
-            label.style.borderColor = 'var(--reg-yellow)';
-            label.style.background = 'var(--reg-yellow-soft)';
+    function handleFile(input) {
+        if (input.files[0]) {
+            const label = input.parentElement;
+            label.innerHTML = `✅ ${input.files[0].name.substring(0, 15)}...`;
+            label.style.borderColor = 'var(--reg-success)';
+            label.style.background = '#f0fdf4';
         }
     }
 
     function applyFilters() {
-        const search = document.getElementById('searchInput').value.toLowerCase();
-        
-        const headers = document.querySelectorAll('.grade-category-header');
-        headers.forEach(h => {
-            if (search) h.style.display = 'none';
-            else h.style.display = '';
-        });
-
-        const rows = document.querySelectorAll('#memberTbody tr.student-row, #memberTbody tr.teacher-row');
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        const rows = document.querySelectorAll('.member-row');
         let visible = 0;
-        
-        rows.forEach(row => {
-            const name = row.dataset.name || '';
-            if (!search || name.includes(search)) {
-                row.classList.remove('hidden-row');
-                visible++;
-            } else {
-                row.classList.add('hidden-row');
-            }
+        rows.forEach(r => {
+            const match = r.dataset.name.includes(query);
+            r.style.display = match ? '' : 'none';
+            if(match) visible++;
         });
-        
-        const countEl = document.getElementById('visibleCount');
-        if (countEl && rows.length > 0) {
-            countEl.textContent = `Showing ${visible} of ${rows.length}`;
-        }
+        document.getElementById('resultCount').innerText = `Displaying ${visible} Records`;
     }
-    
-    // Initialize counting
+
     document.addEventListener('DOMContentLoaded', applyFilters);
 </script>
 {% endblock %}

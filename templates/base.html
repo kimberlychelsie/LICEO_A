@@ -1367,24 +1367,52 @@
     <span class="topbar-title" onclick="toggleSidebar()" style="cursor: pointer;">{% block page_title %}Liceo LMS{% endblock %}</span>
 
     <div class="topbar-right">
-      {% if session.get('role') == 'student' %}
+      {% if session.get('role') in ['student', 'branch_admin', 'super_admin'] %}
       <div class="notif-wrapper" style="margin-right: 8px;">
         <button class="notif-btn" id="notifBtn" onclick="toggleNotifs()">
           🔔
-          {% if student_unread_count and student_unread_count > 0 %}
-          <span class="notif-badge" id="notifBadge">{{ student_unread_count }}</span>
+          {% if session.get('role') == 'student' %}
+            {% if student_unread_count and student_unread_count > 0 %}
+            <span class="notif-badge" id="notifBadge">{{ student_unread_count }}</span>
+            {% endif %}
+          {% elif session.get('role') == 'branch_admin' %}
+            {% if branch_unread_count and branch_unread_count > 0 %}
+            <span class="notif-badge" id="notifBadge">{{ branch_unread_count }}</span>
+            {% endif %}
+          {% elif session.get('role') == 'super_admin' %}
+            {% if super_unread_count and super_unread_count > 0 %}
+            <span class="notif-badge" id="notifBadge">{{ super_unread_count }}</span>
+            {% endif %}
           {% endif %}
         </button>
         <div class="notif-dropdown" id="notifDropdown">
           <div class="notif-header">
             <span>Notifications</span>
-            {% if student_unread_count and student_unread_count > 0 %}
-            <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ student_unread_count }}
-              New</span>
+            {% if session.get('role') == 'student' %}
+              {% if student_unread_count and student_unread_count > 0 %}
+              <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ student_unread_count }} New</span>
+              {% endif %}
+            {% elif session.get('role') == 'branch_admin' %}
+              {% if branch_unread_count and branch_unread_count > 0 %}
+              <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ branch_unread_count }} New</span>
+              {% endif %}
+            {% elif session.get('role') == 'super_admin' %}
+              {% if super_unread_count and super_unread_count > 0 %}
+              <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ super_unread_count }} New</span>
+              {% endif %}
             {% endif %}
           </div>
           <div class="notif-list">
-            {% for n in student_global_notifs %}
+            {% set active_notifs = [] %}
+            {% if session.get('role') == 'student' %}
+              {% set active_notifs = student_global_notifs %}
+            {% elif session.get('role') == 'branch_admin' %}
+              {% set active_notifs = branch_global_notifs %}
+            {% elif session.get('role') == 'super_admin' %}
+              {% set active_notifs = super_global_notifs %}
+            {% endif %}
+
+            {% for n in active_notifs %}
             <a href="{{ n.link or '#' }}" class="notif-item {% if not n.is_read %}notif-unread{% endif %}">
               <div class="notif-item-title">{{ n.title }}</div>
               <div class="notif-item-msg">{{ n.message }}</div>

@@ -1,496 +1,551 @@
 {% extends "base.html" %}
-{% block title %}Applicants{% endblock %}
+{% block title %}Applicants Management{% endblock %}
 
 {% block styles %}
 <style>
-    /* ── Tabs ── */
-    .tab-bar {
-        display: flex;
-        gap: 4px;
-        border-bottom: 2px solid var(--border);
-        margin-bottom: 20px;
-    }
-    .tab-btn {
-        padding: 10px 22px;
-        font-size: 0.88rem;
-        font-weight: 700;
-        border: none;
-        background: none;
-        cursor: pointer;
-        border-radius: 8px 8px 0 0;
-        color: var(--muted);
-        border-bottom: 3px solid transparent;
-        transition: color .15s, border-color .15s;
-        position: relative;
-        bottom: -2px;
-        text-decoration: none;
-        display: inline-block;
-    }
-    .tab-btn.active {
-        color: var(--btn);
-        border-bottom-color: var(--btn);
-        background: #eff6ff;
-    }
-    .tab-btn .tab-count {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 20px;
-        height: 20px;
-        border-radius: 50%;
-        font-size: 0.7rem;
-        font-weight: 800;
-        margin-left: 6px;
-        background: var(--btn);
-        color: #fff;
-    }
-    .tab-panel { display: none; }
-    .tab-panel.active { display: block; }
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
-    /* ── Card / Table ── */
-    .card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 14px;
-        box-shadow: 0 2px 10px rgba(2,6,23,.06);
-        overflow: hidden;
-        margin-bottom: 20px;
+    :root {
+        --reg-primary: #1e3a8a;
+        --reg-accent: #3b82f6;
+        --reg-success: #10b981;
+        --reg-pending: #f59e0b;
+        --reg-danger: #ef4444;
+        --reg-bg: #f8fafc;
+        --reg-card: #ffffff;
+        --reg-text: #0f172a;
+        --reg-muted: #64748b;
+        --reg-border: #e2e8f0;
+
+        --reg-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        --reg-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
     }
-    .card-header {
-        padding: 14px 16px;
-        font-weight: 900;
-        border-bottom: 1px solid var(--border);
-        background: #f8fafc;
+
+    body {
+        background-color: var(--reg-bg);
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+
+    .dashboard-wrap {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 24px 20px 64px;
+        animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Header Section ── */
+    .dashboard-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        margin-bottom: 24px;
         flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .header-text h1 {
+        font-size: 1.85rem;
+        font-weight: 800;
+        color: var(--reg-primary);
+        margin-bottom: 4px;
+        letter-spacing: -0.02em;
+    }
+
+    .header-text p {
+        color: var(--reg-muted);
+        font-size: 0.95rem;
+        font-weight: 500;
+    }
+
+    /* ── Tabs / Segmented Control ── */
+    .tab-container {
+        display: inline-flex;
+        background: #f1f5f9;
+        padding: 6px;
+        border-radius: 16px;
+        gap: 4px;
+        margin-bottom: 24px;
+    }
+
+    .tab-btn {
+        padding: 10px 24px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: var(--reg-muted);
+        text-decoration: none;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
         gap: 10px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
     }
-    table { width: 100%; border-collapse: collapse; }
-    th, td {
-        padding: 11px 12px;
-        border-bottom: 1px solid var(--border);
-        text-align: left;
-        vertical-align: top;
-        font-size: 13.5px;
+
+    .tab-btn.active {
+        background: #ffffff;
+        color: var(--reg-primary);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
-    th {
-        color: var(--muted);
-        font-weight: 900;
-        font-size: 12px;
+
+    .tab-count {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2px 8px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        background: #f1f5f9;
+        color: var(--reg-muted);
+    }
+
+    .tab-btn.active .tab-count {
+        background: var(--reg-primary);
+        color: #ffffff;
+    }
+
+    /* ── Filter Engine ── */
+    .filter-card {
+        background: #ffffff;
+        border: 1px solid var(--reg-border);
+        border-radius: 20px;
+        padding: 20px 24px;
+        margin-bottom: 24px;
+        box-shadow: var(--reg-shadow);
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: flex-end;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .filter-group label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--reg-muted);
         text-transform: uppercase;
-        letter-spacing: .04em;
-        background: #fbfdff;
+        letter-spacing: 0.05em;
     }
+
+    .filter-input, .filter-select {
+        padding: 10px 16px;
+        border-radius: 12px;
+        border: 1.5px solid var(--reg-border);
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--reg-text);
+        background: #fff;
+        transition: all 0.2s;
+        outline: none;
+    }
+
+    /* ── Modern Table ── */
+    .table-card {
+        background: #ffffff;
+        border: 1px solid var(--reg-border);
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: var(--reg-shadow);
+    }
+
+    .table-header {
+        padding: 20px 24px;
+        background: #fbfcfe;
+        border-bottom: 1px solid var(--reg-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .table-header h2 {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--reg-primary);
+        margin: 0;
+    }
+
+    .modern-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .modern-table th {
+        background: #fbfcfe;
+        padding: 16px 24px;
+        text-align: left;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--reg-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid var(--reg-border);
+    }
+
+    .modern-table td {
+        padding: 16px 24px;
+        font-size: 0.9rem;
+        color: var(--reg-text);
+        border-bottom: 1px solid var(--reg-border);
+        vertical-align: middle;
+    }
+
+    .modern-table tr:hover { background: #f8fafc; }
 
     /* ── Badges ── */
-    .badge { display:inline-block; padding:3px 10px; border-radius:999px;
-             font-size:12px; font-weight:700; border:1px solid var(--border); }
-    .badge-pending  { background:#eff6ff; color:#1d4ed8; border-color:#bfdbfe; }
-    .badge-approved { background:#f0fdf4; color:#166534; border-color:#bbf7d0; }
-    .badge-rejected { background:#fef2f2; color:#991b1b; border-color:#fecaca; }
-    .badge-enrolled { background:#f0fdfa; color:#0f766e; border-color:#99f6e4; }
-    .badge-open     { background:#fefce8; color:#ca8a04; border-color:#fde68a; }
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 14px;
+        border-radius: 999px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+
+    .badge-pending { background: #fffbeb; color: #92400e; }
+    .badge-approved { background: #dcfce7; color: #166534; }
+    .badge-rejected { background: #fee2e2; color: #991b1b; }
+    .badge-enrolled { background: #dbeafe; color: #1e40af; }
 
     /* ── Buttons ── */
-    .btn-sm { padding:7px 12px; border-radius:8px; font-size:12.5px; }
-    .btn-success  { background:#16a34a; color:#fff; border:none; cursor:pointer; }
-    .btn-success:hover { filter:brightness(.93); }
-    .btn-danger   { background:#dc2626; color:#fff; border:none; cursor:pointer; }
-    .btn-danger:hover  { filter:brightness(.93); }
-    .btn-secondary{ background:#475569; color:#fff; border:none; cursor:pointer; }
-    .btn-secondary:hover { filter:brightness(.93); }
-    .btn-warning  { background:#f59e0b; color:#fff; border:none; cursor:pointer; }
-    .btn-warning:hover { filter:brightness(.93); }
-    .btn-info     { background:#0891b2; color:#fff; border:none; cursor:pointer; }
-    .btn-info:hover { filter:brightness(.93); }
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 18px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+    }
 
-    /* ── Toggle banner ── */
-    .toggle-banner {
-        display:flex; align-items:center; justify-content:space-between;
-        flex-wrap:wrap; gap:14px; border-radius:12px; padding:16px 20px;
-        margin-bottom:18px; border:2px solid;
-    }
-    .toggle-banner.open-state   { background:#fefce8; border-color:#fde68a; }
-    .toggle-banner.closed-state { background:#f0fdf4; border-color:#bbf7d0; }
-    .toggle-banner .tg-left strong {
-        display:block; font-size:.95rem; font-weight:800; margin-bottom:2px;
-    }
-    .toggle-banner .tg-left span { font-size:.82rem; color:#64748b; }
-
-    /* ── Filter bar ── */
-    .filter-bar {
-        display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:14px;
-    }
-    .filter-bar label { font-size:.82rem; font-weight:700; color:var(--muted); }
-    .filter-bar select {
-        padding:7px 12px; border:1.5px solid var(--border); border-radius:8px;
-        font-size:.85rem; font-family:inherit; cursor:pointer; background:#fff;
-    }
-    .filter-bar select:focus { outline:none; border-color:var(--btn); }
-    .search-input {
-        padding:7px 12px; border:1.5px solid var(--border); border-radius:8px;
-        font-size:.85rem; font-family:inherit; flex:1; min-width:180px; max-width:280px;
-    }
-    .search-input:focus { outline:none; border-color:var(--btn); }
-
-    .muted-note { color:var(--muted); font-size:12px; }
-    .acct-ok    { color:#10b981; font-weight:700; font-size:12.5px; }
-    .empty-row td { text-align:center; padding:32px; color:var(--muted); font-size:.88rem; }
+    .btn-primary { background: var(--reg-primary); color: #fff; }
+    .btn-primary:hover { background: #1e40af; transform: translateY(-1px); }
+    .btn-outline { background: #fff; color: var(--reg-primary); border-color: var(--reg-border); }
+    .btn-outline:hover { background: #f8fafc; transform: translateY(-1px); }
 
     /* ── Modals ── */
-    .modal-backdrop {
-        display:none; position:fixed; inset:0;
-        background:rgba(0,0,0,0.5); z-index:1000;
-        align-items:center; justify-content:center;
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.5);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
     }
-    .modal-backdrop.open { display:flex; }
-    .modal-box {
-        background:#fff; border-radius:16px; padding:28px 32px;
-        max-width:600px; width:95%; max-height:85vh; overflow-y:auto;
-        box-shadow:0 8px 40px rgba(0,0,0,.2); position:relative;
-    }
-    .modal-box h3  { margin:0 0 4px; font-size:1.1rem; }
-    .modal-sub     { color:#64748b; font-size:.85rem; margin-bottom:20px; }
-    .modal-close-x {
-        position:absolute; top:14px; right:18px;
-        background:none; border:none; font-size:1.3rem; cursor:pointer; color:#94a3b8;
-    }
-    .modal-close-x:hover { color:#1e293b; }
+    .modal-overlay.open { display: flex; }
 
-    /* Doc cards */
+    .modal-card {
+        background: #fff;
+        border-radius: 24px;
+        padding: 32px;
+        width: 95%;
+        max-width: 580px;
+        box-shadow: var(--reg-shadow-lg);
+        position: relative;
+    }
+
+    .modal-card h3 { font-size: 1.25rem; font-weight: 800; color: var(--reg-primary); margin: 0 0 4px; }
+
+    /* Doc cards inside modal */
     .doc-grid {
-        display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr));
-        gap:12px; margin-top:12px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 12px;
+        margin-top: 20px;
     }
-    .doc-card {
-        border:1.5px solid #e2e8f0; border-radius:12px; padding:14px;
-        display:flex; flex-direction:column; gap:8px;
-        background:#f8fafc; transition:box-shadow .15s;
-    }
-    .doc-card:hover { box-shadow:0 4px 12px rgba(0,0,0,.08); }
-    .doc-card .doc-icon { font-size:2rem; line-height:1; }
-    .doc-card .doc-name { font-size:12.5px; font-weight:700; color:#1e293b; word-break:break-word; }
-    .doc-card .doc-type { font-size:11px; color:#64748b; text-transform:uppercase; letter-spacing:.4px; }
-    .doc-card a {
-        display:inline-flex; align-items:center; gap:5px;
-        background:#1d4ed8; color:#fff; border-radius:8px;
-        padding:6px 12px; font-size:12px; font-weight:700;
-        text-decoration:none; width:fit-content; transition:background .15s;
-    }
-    .doc-card a:hover { background:#1e40af; }
-    .no-docs { text-align:center; color:#94a3b8; padding:24px 0; font-size:.9rem; }
 
-    /* Section modal */
-    .modal-box label {
-        font-weight:700; font-size:.85rem; display:block; margin-bottom:5px; color:#374151;
+    .doc-card {
+        border: 1.5px solid var(--reg-border);
+        border-radius: 16px;
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        background: #f8fafc;
+        transition: all 0.2s;
     }
-    .modal-box select, .modal-box input {
-        width:100%; padding:9px 12px; border:1.5px solid #e2e8f0;
-        border-radius:8px; font-size:.9rem; font-family:inherit;
-        margin-bottom:16px; box-sizing:border-box;
+
+    .doc-card:hover {
+        border-color: var(--reg-accent);
+        background: #fff;
+        box-shadow: var(--reg-shadow);
+        transform: translateY(-2px);
     }
-    .modal-box select:focus, .modal-box input:focus { outline:none; border-color:#3b82f6; }
-    .modal-actions { display:flex; gap:10px; justify-content:flex-end; margin-top:4px; }
-    .step-badge {
-        display:inline-flex; align-items:center; gap:6px;
-        background:#eff6ff; color:#1d4ed8; border-radius:8px;
-        padding:4px 10px; font-size:12px; font-weight:700; margin-bottom:16px;
+
+    .doc-icon { font-size: 1.8rem; }
+    .doc-name { font-size: 0.85rem; font-weight: 700; color: var(--reg-text); word-break: break-all; }
+    .doc-ext { font-size: 0.7rem; font-weight: 800; color: var(--reg-muted); text-transform: uppercase; }
+
+    .doc-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--reg-primary);
+        color: #fff;
+        border-radius: 8px;
+        padding: 6px 12px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-decoration: none;
+        width: fit-content;
     }
+
 </style>
 {% endblock %}
 
 {% block content %}
+<div class="dashboard-wrap">
 
-<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; flex-wrap:wrap; gap:10px;">
-    <h2 style="margin:0;">Applicants &amp; Enrolled</h2>
-    <div style="display:flex; gap:8px; flex-wrap:wrap;">
-        <a href="/change-password" class="btn btn-secondary btn-sm">Change Password</a>
-        <a href="/logout" class="btn btn-dark btn-sm">Logout</a>
-    </div>
-</div>
-
-<!-- ═══ TABS ═══ -->
-<div class="tab-bar">
-    <a class="tab-btn active" href="#" id="tab-new-btn"
-       onclick="switchTab('new',this); return false;">
-        📋 New Enrollments
-        <span class="tab-count">{{ new_enrollments | length }}</span>
-    </a>
-    <a class="tab-btn" href="#enrolled" id="tab-enrolled-btn"
-       onclick="switchTab('enrolled',this); return false;">
-        🎓 Enrolled Students
-        <span class="tab-count">{{ enrolled_students | length }}</span>
-    </a>
-</div>
-
-<!-- ═══ TAB: NEW ENROLLMENTS ═══ -->
-<div class="tab-panel active" id="tab-new">
-
-    <!-- Search + Status Filter -->
-    <form method="get" action="/registrar/applicants" id="filterForm">
-        <div class="filter-bar">
-            <label>Filter:</label>
-            <select name="status" onchange="document.getElementById('filterForm').submit()">
-                <option value="" {% if not status_filter %}selected{% endif %}>All Statuses</option>
-                <option value="pending"  {% if status_filter=='pending' %}selected{% endif %}>⏳ Pending</option>
-                <option value="approved" {% if status_filter=='approved' %}selected{% endif %}>✅ Approved</option>
-                <option value="rejected" {% if status_filter=='rejected' %}selected{% endif %}>❌ Rejected</option>
-            </select>
-            <input class="search-input" type="text" name="search"
-                   value="{{ search }}" placeholder="Search student name..."
-                   onchange="document.getElementById('filterForm').submit()">
-            {% if status_filter or search %}
-            <a href="/registrar/applicants"
-               style="font-size:.82rem; color:var(--muted); text-decoration:none;">✕ Clear</a>
-            {% endif %}
+    <!-- Header -->
+    <div class="dashboard-header">
+        <div class="header-text">
+            <h1>Applicants Roster</h1>
+            <p>Archive of all historical applications and registry entries.</p>
         </div>
-    </form>
-
-    <div class="card">
-        <div class="card-header">
-            <span>New / Transferee Enrollment Applications</span>
-            <span class="muted-note">{{ new_enrollments | length }} record(s)</span>
-        </div>
-        <div style="overflow:auto;">
-            <table>
-                <tr>
-                    <th>ID</th>
-                    <th>Student Name</th>
-                    <th>Grade Level</th>
-                    <th>Documents</th>
-                    <th>Status</th>
-                    <th>Actions</th>
-                </tr>
-                {% for enrollment in new_enrollments %}
-                <tr>
-                    <td>
-                        <span style="font-weight:800;">#{{ enrollment.display_no }}</span>
-                    </td>
-                    <td>
-                        <strong>{{ enrollment.student_name }}</strong>
-                        {% if enrollment.gender %}
-                        <div class="muted-note">{{ enrollment.gender }}</div>
-                        {% endif %}
-                    </td>
-                    <td>{{ enrollment.grade_level }}</td>
-
-                    <td>
-                        {% if enrollment.documents and enrollment.documents | length > 0 %}
-                        <button class="btn btn-info btn-sm view-docs-btn"
-                            data-student="{{ enrollment.student_name }}"
-                            data-docs='{{ enrollment.documents | tojson | safe }}'>
-                            📂 View ({{ enrollment.documents | length }})
-                        </button>
-                        {% else %}
-                        <span class="muted-note">No documents</span>
-                        {% endif %}
-                    </td>
-
-                    <td>
-                        {% if enrollment.status == 'approved' %}
-                        <span class="badge badge-approved">✅ Approved</span>
-                        {% elif enrollment.status == 'rejected' %}
-                        <span class="badge badge-rejected">❌ Rejected</span>
-                        {% else %}
-                        <span class="badge badge-pending">⏳ Pending</span>
-                        {% endif %}
-                    </td>
-
-                    <td>
-                        {% if enrollment.status == 'pending' %}
-                        {% if is_branch_active_status %}
-                        <form method="post" action="/registrar/applicants" style="display:inline;">
-                            <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
-                            <button name="action" value="approved" class="btn btn-success btn-sm">✅ Approve</button>
-                        </form>
-                        <form method="post" action="/registrar/applicants" style="display:inline;">
-                            <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
-                            <button name="action" value="rejected" class="btn btn-danger btn-sm"
-                                onclick="return confirm('Reject this enrollment?')">❌ Reject</button>
-                        </form>
-                        {% else %}
-                        <span class="muted-note">Actions disabled (Archive Mode)</span>
-                        {% endif %}
-
-                        {% elif enrollment.status == 'approved' %}
-                        {% if not enrollment.has_student_account %}
-                        {% if is_branch_active_status %}
-                        <button class="btn btn-primary btn-sm" onclick="openCreateModal(
-                                {{ enrollment.enrollment_id }},
-                                '{{ enrollment.student_name | replace("'", "\\'") }}',
-                                '{{ enrollment.grade_level | replace("'", "\\'") }}'
-                            )">
-                            👤 Create Student Account
-                        </button>
-                        {% endif %}
-                        {% else %}
-                        <span class="acct-ok">✓ Student Account Created</span>
-                        {% endif %}
-                        <br><br>
-                        {% if not enrollment.has_parent_account %}
-                        {% if is_branch_active_status %}
-                        <form method="post"
-                              action="/registrar/create-parent-account/{{ enrollment.enrollment_id }}"
-                              style="display:inline;">
-                            <button type="submit" class="btn btn-secondary btn-sm">
-                                👨‍👩‍👧 Create Parent Account
-                            </button>
-                        </form>
-                        {% endif %}
-                        {% else %}
-                        <span class="acct-ok">✓ Parent Account Created</span>
-                        {% endif %}
-
-                        {% else %}
-                        <span class="muted-note">—</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% else %}
-                <tr class="empty-row">
-                    <td colspan="6">No enrollment applications found.</td>
-                </tr>
-                {% endfor %}
-            </table>
+        <div style="display:flex; gap:12px;">
+            <a href="/registrar" class="btn btn-outline">← Back Home</a>
+            <a href="/change-password" class="btn btn-outline" style="font-size:0.75rem;">🔑 Password</a>
+            <a href="/logout" class="btn btn-outline" style="border-color:var(--reg-danger); color:var(--reg-danger); font-size:0.75rem;">🚪 Logout</a>
         </div>
     </div>
-</div>
 
-<!-- ═══ TAB: ENROLLED STUDENTS ═══ -->
-<div class="tab-panel" id="tab-enrolled">
+    <!-- Segmented Tabs -->
+    <div class="tab-container">
+        <button class="tab-btn active" id="btn-tab-new" onclick="switchTab('new', this)">
+            📋 Applicants
+            <span class="tab-count">{{ new_enrollments | length }}</span>
+        </button>
+        <button class="tab-btn" id="btn-tab-enrolled" onclick="switchTab('enrolled', this)">
+            🎓 Enrolled Students
+            <span class="tab-count">{{ enrolled_students | length }}</span>
+        </button>
+    </div>
 
-    <!-- Toggle Banner -->
-    {% if is_branch_active_status %}
-    {% if reenrollment_open %}
-    <div class="toggle-banner open-state">
-        <div class="tg-left">
-            <strong>🔓 Re-Enrollment is OPEN</strong>
-            <span>Students can currently log in and re-enroll for the next school year.</span>
-        </div>
-        <form method="post" action="/registrar/toggle-reenrollment">
-            <input type="hidden" name="action" value="close">
-            <button type="submit" class="btn btn-danger btn-sm"
-                onclick="return confirm('Close re-enrollment for ALL students?')">
-                🔒 Close Re-Enrollment
-            </button>
+    <!-- ── TAB: NEW ENROLLMENTS ── -->
+    <div class="tab-panel active" id="tab-new">
+        
+        <form method="get" action="/registrar/applicants" id="filterForm">
+            <div class="filter-card">
+                <div class="filter-group">
+                    <label>Status Filter</label>
+                    <select name="status" class="filter-select" onchange="this.form.submit()">
+                        <option value="" {% if not status_filter %}selected{% endif %}>All Records</option>
+                        <option value="pending" {% if status_filter=='pending' %}selected{% endif %}>⏳ Pending</option>
+                        <option value="approved" {% if status_filter=='approved' %}selected{% endif %}>✅ Approved</option>
+                        <option value="rejected" {% if status_filter=='rejected' %}selected{% endif %}>❌ Rejected</option>
+                    </select>
+                </div>
+                <div class="filter-group" style="flex:1;">
+                    <label>Search Identity</label>
+                    <input type="text" name="search" class="filter-input" value="{{ search }}" placeholder="Search name..." onchange="this.form.submit()">
+                </div>
+                {% if status_filter or search %}
+                <a href="/registrar/applicants" class="btn btn-outline" style="padding:10px 14px;">✕ Clear</a>
+                {% endif %}
+            </div>
         </form>
-    </div>
-    {% else %}
-    <div class="toggle-banner closed-state">
-        <div class="tg-left">
-            <strong>🔒 Re-Enrollment is CLOSED</strong>
-            <span>Students cannot re-enroll yet. Click Open to allow all enrolled students to re-enroll.</span>
-        </div>
-        <form method="post" action="/registrar/toggle-reenrollment">
-            <input type="hidden" name="action" value="open">
-            <button type="submit" class="btn btn-warning btn-sm"
-                onclick="return confirm('Open re-enrollment for ALL enrolled students?')">
-                🔓 Open Re-Enrollment for All
-            </button>
-        </form>
-    </div>
-    {% endif %}
-    {% endif %}
 
-    <!-- Filter Bar -->
-    <div class="filter-bar">
-        <label>Filter by Grade:</label>
-        <select id="gradeFilter" onchange="filterEnrolled()">
-            <option value="">All Grades</option>
-            {% for g in grade_levels %}
-            <option value="{{ g | lower }}">{{ g }}</option>
-            {% endfor %}
-        </select>
-        <input class="search-input" type="text" id="enrolledSearch"
-               placeholder="Search student name..." oninput="filterEnrolled()">
+        <div class="table-card">
+            <div class="table-header">
+                <h2>Application Archive</h2>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Identity</th>
+                            <th>Grade Level</th>
+                            <th>Verification</th>
+                            <th>Status</th>
+                            <th style="text-align: right;">Registry Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for enrollment in new_enrollments %}
+                        <tr>
+                            <td><span style="font-weight:700; color:var(--reg-muted);">#{% if enrollment.display_no %}{{ enrollment.display_no }}{% else %}{{ enrollment.enrollment_id }}{% endif %}</span></td>
+                            <td>
+                                <div style="font-weight:800; color:var(--reg-text);">{{ enrollment.student_name }}</div>
+                                <div style="font-size:0.75rem; color:var(--reg-muted);">{{ enrollment.gender or 'N/A' }}</div>
+                            </td>
+                            <td><span style="font-weight:600;">{{ enrollment.grade_level }}</span></td>
+                            <td>
+                                {% if enrollment.documents and enrollment.documents | length > 0 %}
+                                    <button class="btn btn-outline" style="padding:6px 12px; font-size:0.7rem;"
+                                            onclick="openDocsModal('{{ enrollment.student_name|replace("'", "\\'") }}', {{ enrollment.documents | tojson | safe }})">
+                                        📂 View Attachments ({{ enrollment.documents | length }})
+                                    </button>
+                                {% else %}
+                                    <span style="font-size:0.75rem; color:var(--reg-muted);">No documents</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if enrollment.status == 'approved' %}
+                                    <span class="badge badge-approved">Approved</span>
+                                {% elif enrollment.status == 'rejected' %}
+                                    <span class="badge badge-rejected">Rejected</span>
+                                {% else %}
+                                    <span class="badge badge-pending">Reviewing</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: right;">
+                                <div style="display:flex; flex-direction:column; gap:6px; align-items:flex-end;">
+                                    {% if enrollment.status == 'pending' %}
+                                        {% if is_branch_active_status %}
+                                        <div style="display:flex; gap:6px;">
+                                            <form method="post" action="/registrar/applicants">
+                                                <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
+                                                <button name="action" value="approved" class="btn btn-primary" style="padding:6px 12px; font-size:0.7rem; background:var(--reg-success);">Approve</button>
+                                            </form>
+                                            <form method="post" action="/registrar/applicants">
+                                                <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
+                                                <button name="action" value="rejected" class="btn btn-danger" style="padding:6px 12px; font-size:0.7rem;" onclick="return confirm('Reject?')">Reject</button>
+                                            </form>
+                                        </div>
+                                        {% endif %}
+                                    {% elif enrollment.status == 'approved' %}
+                                        {% if not enrollment.has_student_account %}
+                                            <button class="btn btn-primary" style="padding:6px 12px; font-size:0.7rem;"
+                                                    onclick="openCreateModal({{ enrollment.enrollment_id }}, '{{ enrollment.student_name|replace("'", "\\'") }}', '{{ enrollment.grade_level|replace("'", "\\'") }}')">
+                                                👤 Provision Student
+                                            </button>
+                                        {% else %}
+                                            <div style="color:var(--reg-success); font-size:0.7rem; font-weight:800;">✓ Student Access Ready</div>
+                                        {% endif %}
+
+                                        {% if not enrollment.has_parent_account %}
+                                            <form method="post" action="/registrar/create-parent-account/{{ enrollment.enrollment_id }}">
+                                                <button type="submit" class="btn btn-outline" style="padding:6px 12px; font-size:0.7rem;">👨‍👩‍👦 Provision Parent</button>
+                                            </form>
+                                        {% else %}
+                                            <div style="color:var(--reg-success); font-size:0.7rem; font-weight:800;">✓ Parent Access Ready</div>
+                                        {% endif %}
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" style="text-align:center; padding:48px; color:var(--reg-muted);">No records match your criteria.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-    <div class="card">
-        <div class="card-header">
-            <span>Enrolled Students</span>
-            <span class="muted-note" id="enrolledCount">
-                {{ enrolled_students | length }} student(s)
-            </span>
+    <!-- ── TAB: ENROLLED STUDENTS ── -->
+    <div class="tab-panel" id="tab-enrolled" style="display:none;">
+        <div class="filter-card">
+            <div class="filter-group">
+                <label>Filter Grade</label>
+                <select id="gradeFilter" class="filter-select" onchange="filterEnrolled()">
+                    <option value="">All Grade Levels</option>
+                    {% for g in grade_levels %}
+                    <option value="{{ g | lower }}">{{ g }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group" style="flex:1;">
+                <label>Search Identity</label>
+                <input type="text" id="enrolledSearch" class="filter-input" placeholder="Search name or ID..." oninput="filterEnrolled()">
+            </div>
         </div>
-        <div style="overflow:auto;">
-            <table id="enrolledTable">
-                <tr>
-                    <th>Student Name</th>
-                    <th>Grade Level</th>
-                    <th>Section</th>
-                    <th>Status</th>
-                </tr>
-                {% for e in enrolled_students %}
-                <tr class="enrolled-row"
-                    data-grade="{{ e.grade_level | lower }}"
-                    data-name="{{ e.student_name | lower }}">
-                    <td>
-                        <strong>{{ e.student_name }}</strong>
-                        {% if e.gender %}
-                        <div class="muted-note">{{ e.gender }}</div>
-                        {% endif %}
-                    </td>
-                    <td>{{ e.grade_level }}</td>
-                    <td class="muted-note">
-                        {% if e.section_name %}
-                        {{ e.section_name }}
-                        {% elif e.section_id %}
-                        Section #{{ e.section_id }}
-                        {% else %}
-                        <span style="color:#f59e0b; font-weight:700;">⚠ Not assigned</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if e.status == 'open_for_enrollment' %}
-                        <span class="badge badge-open">🔓 Re-Enrollment Open</span>
-                        {% else %}
-                        <span class="badge badge-enrolled">🎓 Enrolled</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% else %}
-                <tr class="empty-row">
-                    <td colspan="4">No enrolled students yet.</td>
-                </tr>
-                {% endfor %}
-            </table>
+
+        <div class="table-card">
+            <div class="table-header">
+                <h2>Enrolled Student Body</h2>
+                <div id="enrolledCount" style="font-size:0.8rem; font-weight:700; color:var(--reg-muted);">{{ enrolled_students|length }} students</div>
+            </div>
+            <div style="overflow-x: auto;">
+                <table class="modern-table" id="enrolledTable">
+                    <thead>
+                        <tr>
+                            <th>Identity</th>
+                            <th>Grade Placement</th>
+                            <th>Section Detail</th>
+                            <th>Registry Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in enrolled_students %}
+                        <tr class="enrolled-row" data-grade="{{ e.grade_level|lower }}" data-name="{{ e.student_name|lower }}">
+                            <td>
+                                <div style="font-weight:800; color:var(--reg-primary);">{{ e.student_name }}</div>
+                                <div style="font-size:0.75rem; color:var(--reg-muted);">{{ e.gender or 'N/A' }}</div>
+                            </td>
+                            <td><span style="font-weight:700;">{{ e.grade_level }}</span></td>
+                            <td>
+                                {% if e.section_name %}
+                                    <div style="color:var(--reg-success); font-weight:800; font-size:0.85rem;">{{ e.section_name }}</div>
+                                {% else %}
+                                    <div style="color:var(--reg-pending); font-weight:800; font-size:0.75rem;">Waiting for Section</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if e.status == 'open_for_enrollment' %}
+                                    <span class="badge badge-open">Re-Enrollment Open</span>
+                                {% else %}
+                                    <span class="badge badge-enrolled">Active</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
+
 </div>
 
-<!-- ═══ MODAL: View Documents ═══ -->
-<div class="modal-backdrop" id="docsModal">
-    <div class="modal-box">
-        <button class="modal-close-x" onclick="closeDocsModal()">✕</button>
-        <h3 id="docsModalTitle">Documents</h3>
-        <div class="modal-sub" id="docsModalSub"></div>
+<!-- ── DOCS MODAL ── -->
+<div class="modal-overlay" id="docsModal">
+    <div class="modal-card" style="max-width:700px;">
+        <h3 id="docsModalTitle">Digital Archives</h3>
+        <p id="docsModalSub" style="font-size:0.9rem; color:var(--reg-muted); margin-bottom:12px;"></p>
         <div class="doc-grid" id="docsModalGrid"></div>
+        <div style="margin-top:24px; display:flex; justify-content:flex-end;">
+            <button class="btn btn-outline" onclick="closeDocsModal()">Dismiss Portal</button>
+        </div>
     </div>
 </div>
 
-<!-- ═══ MODAL: Create Student Account ═══ -->
-<div class="modal-backdrop" id="createStudentModal">
-    <div class="modal-box">
-        <button class="modal-close-x" onclick="closeCreateModal()">✕</button>
-        <div class="step-badge">👤 Create Student Account</div>
-        <h3 id="modalStudentName">Student Name</h3>
-        <div class="modal-sub" id="modalGradeLevel"></div>
-        <form method="post" id="createStudentForm" action="">
-            <label for="modalSectionSelect">
-                Assign to Section
-                <span style="color:#94a3b8; font-weight:400; text-transform:none;">
-                    (optional — can be done later)
-                </span>
-            </label>
-            <select id="modalSectionSelect" name="section_id">
-                <option value="">— Skip for now —</option>
-            </select>
-            <div class="modal-actions">
-                <button type="button" class="btn btn-secondary btn-sm"
-                        onclick="closeCreateModal()">Cancel</button>
-                <button type="submit" class="btn btn-success btn-sm">✅ Create Account</button>
+<!-- ── CREATE ACCOUNT MODAL ── -->
+<div class="modal-overlay" id="createAccountModal">
+    <div class="modal-card">
+        <h3 id="modalStudentTitle">Provision New Access</h3>
+        <p id="modalGradeInfo" style="font-size:0.9rem; color:var(--reg-muted); margin-bottom:20px;"></p>
+        <form method="post" id="createStudentForm">
+            <div style="margin-bottom:20px;">
+                <label style="display:block; font-size:0.7rem; font-weight:800; color:var(--reg-muted); text-transform:uppercase; margin-bottom:6px;">Section Assignment</label>
+                <select name="section_id" id="modalSectionSelect" class="filter-select" style="width:100%;">
+                    <option value="">Hold Assignment (Defer to Admin)</option>
+                </select>
+            </div>
+            <div style="display:flex; gap:12px; justify-content:flex-end;">
+                <button type="button" class="btn btn-outline" onclick="closeCreateModal()">Abort</button>
+                <button type="submit" class="btn btn-primary" style="background:var(--reg-success);">Activate Account</button>
             </div>
         </form>
     </div>
@@ -500,136 +555,77 @@
 
 {% block scripts %}
 <script>
-    // ── Tab switching ──
     function switchTab(tab, btn) {
-        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.style.display = 'none');
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('tab-' + tab).classList.add('active');
+        document.getElementById('tab-' + tab).style.display = 'block';
         btn.classList.add('active');
         window.location.hash = tab === 'new' ? '' : tab;
     }
 
-    window.addEventListener('DOMContentLoaded', function () {
-        if (window.location.hash === '#enrolled') {
-            var btn = document.getElementById('tab-enrolled-btn');
-            if (btn) switchTab('enrolled', btn);
-        }
+    window.addEventListener('DOMContentLoaded', () => {
+        if (window.location.hash === '#enrolled') switchTab('enrolled', document.getElementById('btn-tab-enrolled'));
     });
 
-    // ── Filter enrolled table ──
     function filterEnrolled() {
-        var grade  = document.getElementById('gradeFilter').value.toLowerCase();
-        var search = document.getElementById('enrolledSearch').value.toLowerCase();
-        var rows   = document.querySelectorAll('.enrolled-row');
-        var visible = 0;
-        rows.forEach(function (row) {
-            var matchGrade = !grade  || row.dataset.grade === grade;
-            var matchName  = !search || row.dataset.name.includes(search);
-            var show = matchGrade && matchName;
-            row.style.display = show ? '' : 'none';
-            if (show) visible++;
+        const grade = document.getElementById('gradeFilter').value;
+        const search = document.getElementById('enrolledSearch').value.toLowerCase();
+        const rows = document.querySelectorAll('#enrolledTable .enrolled-row');
+        let count = 0;
+        rows.forEach(r => {
+            const matchG = !grade || r.dataset.grade === grade;
+            const matchS = !search || r.dataset.name.includes(search);
+            const show = matchG && matchS;
+            r.style.display = show ? '' : 'none';
+            if (show) count++;
         });
-        var cnt = document.getElementById('enrolledCount');
-        if (cnt) cnt.textContent = visible + ' student' + (visible !== 1 ? 's' : '');
+        document.getElementById('enrolledCount').innerText = `${count} records`;
     }
 
-    // ── Documents modal ──
-    document.querySelectorAll('.view-docs-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
-            openDocsModal(this.dataset.student, JSON.parse(this.dataset.docs || '[]'));
-        });
-    });
-
-    function openDocsModal(studentName, docs) {
-        document.getElementById('docsModalTitle').textContent = '📂 Submitted Documents';
-        document.getElementById('docsModalSub').textContent   = 'Student: ' + studentName;
-        var grid = document.getElementById('docsModalGrid');
+    function openDocsModal(name, docs) {
+        document.getElementById('docsModalSub').innerText = `Reviewing verification files for ${name}.`;
+        const grid = document.getElementById('docsModalGrid');
         grid.innerHTML = '';
-        if (!docs || docs.length === 0) {
-            grid.innerHTML = '<div class="no-docs">📭 No documents submitted.</div>';
-        } else {
-            docs.forEach(function (doc) {
-                var ext  = (doc.file_name || '').split('.').pop().toLowerCase();
-                var icon = '📄';
-                if (ext === 'pdf') icon = '📕';
-                else if (['jpg','jpeg','png','webp'].includes(ext)) icon = '🖼️';
+        docs.forEach(d => {
+            const ext = d.file_name.split('.').pop().toLowerCase();
+            let icon = '📄';
+            if(ext === 'pdf') icon = '📕';
+            else if(['jpg','jpeg','png'].includes(ext)) icon = '🖼️';
 
-                var filePath = doc.file_path || '';
-                var viewPath = filePath;
+            let viewPath = d.file_path;
+            if(ext === 'pdf' && viewPath.includes('/upload/')) viewPath = viewPath.replace('/upload/', '/upload/fl_attachment:false/');
 
-                // For PDF: force inline view using Cloudinary flag (no auto-download)
-                if (ext === 'pdf' && filePath.includes('/upload/')) {
-                    viewPath = filePath.replace('/upload/', '/upload/fl_attachment:false/');
-                }
-
-                var card = document.createElement('div');
-                card.className = 'doc-card';
-
-                var actionButtons = '';
-                if (ext === 'pdf') {
-                    actionButtons = `
-                        <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                            <a href="${viewPath}" target="_blank" rel="noopener" style="background:#1d4ed8;">
-                                👁 View
-                            </a>
-                            <a href="${filePath}" target="_blank" rel="noopener" download style="background:#475569;">
-                                ⬇ Download
-                            </a>
-                        </div>`;
-                } else {
-                    actionButtons = `<a href="${viewPath}" target="_blank" rel="noopener">👁 View / Download</a>`;
-                }
-
-                card.innerHTML = `
-                    <div class="doc-icon">${icon}</div>
-                    <div class="doc-name">${doc.file_name || 'Unnamed file'}</div>
-                    <div class="doc-type">${ext.toUpperCase()} file</div>
-                    ${actionButtons}
-                `;
-                grid.appendChild(card);
-            });
-        }
+            grid.innerHTML += `
+                <div class="doc-card">
+                    <span class="doc-icon">${icon}</span>
+                    <span class="doc-name">${d.doc_type || d.file_name}</span>
+                    <span class="doc-ext">${ext} archive</span>
+                    <a href="${viewPath}" target="_blank" class="doc-action">👁 Review Archive</a>
+                </div>
+            `;
+        });
         document.getElementById('docsModal').classList.add('open');
     }
+    function closeDocsModal() { document.getElementById('docsModal').classList.remove('open'); }
 
-    function closeDocsModal() {
-        document.getElementById('docsModal').classList.remove('open');
-    }
-    document.getElementById('docsModal').addEventListener('click', function (e) {
-        if (e.target === this) closeDocsModal();
-    });
-
-    // ── Create Student Account modal ──
     const ALL_SECTIONS = {{ section_options | tojson | safe }};
-
-    function openCreateModal(enrollmentId, studentName, gradeLevel) {
-        document.getElementById('modalStudentName').textContent = studentName;
-        document.getElementById('modalGradeLevel').textContent  = '📚 Grade Level: ' + gradeLevel;
-        document.getElementById('createStudentForm').action =
-            '/registrar/create-student-account/' + enrollmentId;
-
-        var select    = document.getElementById('modalSectionSelect');
-        select.innerHTML = '<option value="">— Skip for now —</option>';
-        var gradeLower   = gradeLevel.trim().toLowerCase();
-        var filtered     = ALL_SECTIONS.filter(s =>
-            (s.grade_level_name || '').toLowerCase() === gradeLower
-        );
-
-        if (filtered.length === 0) {
-            select.innerHTML += '<option disabled>No sections found for ' + gradeLevel + '</option>';
-        } else {
-            filtered.forEach(s => {
-                select.innerHTML += `<option value="${s.section_id}">${gradeLevel} — ${s.section_name}</option>`;
-            });
-        }
-        document.getElementById('createStudentModal').classList.add('open');
+    function openCreateModal(id, name, grade) {
+        document.getElementById('modalStudentTitle').innerText = `Provisioning: ${name}`;
+        document.getElementById('modalGradeInfo').innerText = `Grade Level: ${grade}`;
+        document.getElementById('createStudentForm').action = `/registrar/create-student-account/${id}`;
+        
+        const select = document.getElementById('modalSectionSelect');
+        select.innerHTML = '<option value="">Hold Assignment (Defer to Admin)</option>';
+        const gradeLower = grade.trim().toLowerCase();
+        ALL_SECTIONS.filter(s => s.grade_level_name.toLowerCase() === gradeLower).forEach(s => {
+            select.innerHTML += `<option value="${s.section_id}">${s.section_name}</option>`;
+        });
+        document.getElementById('createAccountModal').classList.add('open');
     }
+    function closeCreateModal() { document.getElementById('createAccountModal').classList.remove('open'); }
 
-    function closeCreateModal() {
-        document.getElementById('createStudentModal').classList.remove('open');
-    }
-    document.getElementById('createStudentModal').addEventListener('click', function (e) {
-        if (e.target === this) closeCreateModal();
+    document.querySelectorAll('.modal-overlay').forEach(m => {
+        m.addEventListener('click', (e) => { if(e.target === m) { closeDocsModal(); closeCreateModal(); } });
     });
 </script>
 {% endblock %}

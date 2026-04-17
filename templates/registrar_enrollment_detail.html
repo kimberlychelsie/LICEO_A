@@ -1,693 +1,516 @@
 {% extends "base.html" %}
-{% block title %}Enrollment Detail{% endblock %}
+{% block title %}Enrollment Profile | {{ enrollment.student_name }}{% endblock %}
+
 {% block styles %}
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
     :root {
-        --reg-blue: #1e3a8a;
-        --reg-blue-light: #eff6ff;
-        --reg-blue-soft: #dbeafe;
-        --reg-yellow: #facc15;
-        --reg-yellow-dark: #ca8a04;
-        --reg-yellow-soft: #fefce8;
-        --reg-text-main: #0f172a;
-        --reg-text-muted: #64748b;
+        --reg-primary: #1e3a8a;
+        --reg-accent: #3b82f6;
+        --reg-success: #10b981;
+        --reg-pending: #f59e0b;
+        --reg-danger: #ef4444;
+        --reg-bg: #f8fafc;
+        --reg-card: #ffffff;
+        --reg-text: #0f172a;
+        --reg-muted: #64748b;
         --reg-border: #e2e8f0;
-        --reg-surface: #ffffff;
-        --reg-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-        --reg-shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-        --reg-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.05);
-        --reg-radius: 16px;
+
+        --reg-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+        --reg-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
     }
 
     body {
-        background-color: #f8fafc;
-        font-family: 'Plus Jakarta Sans', sans-serif;
+        background-color: var(--reg-bg);
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     }
 
-    .detail-wrapper {
-        max-width: 950px;
+    .profile-wrap {
+        max-width: 1000px;
         margin: 0 auto;
-        padding: 30px 20px 80px 20px;
-        /* bottom padding for sticky bar */
-        animation: fadeSlideUp 0.4s ease-out;
+        padding: 24px 20px 80px;
+        animation: slideUp 0.4s ease-out;
     }
 
-    @keyframes fadeSlideUp {
-        from {
-            opacity: 0;
-            transform: translateY(15px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
-    /* Action Bar */
-    .action-bar {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 12px;
-        margin-bottom: 24px;
-    }
-
-    .action-stack {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-    }
-
-    /* Profile Header */
+    /* ── Profile Header ── */
     .profile-header {
-        background: var(--reg-surface);
-        padding: 30px 35px;
-        border-radius: var(--reg-radius);
-        box-shadow: var(--reg-shadow-sm);
-        border: 1px solid rgba(226, 232, 240, 0.8);
-        position: relative;
-        overflow: hidden;
+        background: #fff;
+        border: 1px solid var(--reg-border);
+        border-radius: 24px;
+        padding: 32px;
         margin-bottom: 24px;
-    }
-
-    .profile-header::before {
-        content: '';
-        position: absolute;
-        left: 0;
-        top: 0;
-        height: 100%;
-        width: 6px;
-        background: linear-gradient(180deg, var(--reg-blue) 0%, var(--reg-yellow) 100%);
-    }
-
-    .profile-title {
-        font-size: 1.6rem;
-        font-weight: 800;
-        color: var(--reg-text-main);
-        letter-spacing: -0.02em;
-        margin-bottom: 8px;
-    }
-
-    .profile-sub {
+        box-shadow: var(--reg-shadow);
         display: flex;
         align-items: center;
-        gap: 12px;
-        color: var(--reg-text-muted);
-        font-size: 0.95rem;
-        font-weight: 500;
+        gap: 28px;
+        flex-wrap: wrap;
     }
 
-    /* Status Badges */
-    .badge-modern {
+    .avatar-circle {
+        width: 100px;
+        height: 100px;
+        background: linear-gradient(135deg, var(--reg-primary), var(--reg-accent));
+        border-radius: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.25rem;
+        font-weight: 800;
+        color: #fff;
+        box-shadow: 0 10px 20px rgba(30, 58, 138, 0.2);
+    }
+
+    .header-info { flex: 1; min-width: 280px; }
+    .header-info h1 {
+        font-size: 1.85rem;
+        font-weight: 900;
+        color: var(--reg-primary);
+        margin: 0 0 6px 0;
+        letter-spacing: -0.02em;
+    }
+
+    .meta-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    
+    .badge {
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 6px 12px;
-        border-radius: 20px;
+        padding: 6px 14px;
+        border-radius: 999px;
         font-size: 0.75rem;
-        font-weight: 700;
-        letter-spacing: 0.02em;
+        font-weight: 800;
         text-transform: uppercase;
     }
 
-    .badge-modern i {
-        font-size: 0.8rem;
-    }
+    .badge-pending { background: #fffbeb; color: #92400e; }
+    .badge-approved { background: #dcfce7; color: #166534; }
+    .badge-rejected { background: #fee2e2; color: #991b1b; }
+    .badge-enrolled { background: #dbeafe; color: #1e40af; }
 
-    .bg-pending {
-        background: #fef9c3;
-        color: #a16207;
-    }
-
-    .bg-approved {
-        background: #dbeafe;
-        color: #1e40af;
-    }
-
-    .bg-rejected {
-        background: #fee2e2;
-        color: #b91c1c;
-    }
-
-    .bg-enrolled {
-        background: #dcfce7;
-        color: #15803d;
-    }
-
-    /* Elegant Buttons */
-    .btn-elegant {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding: 10px 18px;
-        border-radius: 10px;
-        font-size: 0.85rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-        border: 1px solid transparent;
-        text-decoration: none;
-    }
-
-    .btn-elegant:active {
-        transform: scale(0.97);
-    }
-
-    .btn-view-modern {
-        background: var(--reg-surface);
-        border-color: var(--reg-border);
-        color: var(--reg-text-main);
-        box-shadow: var(--reg-shadow-sm);
-    }
-
-    .btn-view-modern:hover {
-        background: #f8fafc;
-        border-color: #cbd5e1;
-        color: var(--reg-blue);
-    }
-
-    .btn-check-modern {
-        background: #ecfdf5;
-        color: #059669;
-        border-color: #a7f3d0;
-    }
-
-    .btn-check-modern:hover {
-        background: #10b981;
-        color: white;
-        box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
-    }
-
-    .btn-cross-modern {
-        background: #fef2f2;
-        color: #dc2626;
-        border-color: #fecaca;
-    }
-
-    .btn-cross-modern:hover {
-        background: #ef4444;
-        color: white;
-        box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2);
-    }
-
-    .btn-primary {
-        background: var(--reg-blue);
-        color: white;
-        box-shadow: var(--reg-shadow-md);
-    }
-
-    .btn-primary:hover:not(:disabled) {
-        background: var(--reg-blue-dark);
-        box-shadow: var(--reg-shadow-lg);
-    }
-
-    .btn-primary:disabled {
-        background: #cbd5e1;
-        color: #f1f5f9;
-        cursor: not-allowed;
-        box-shadow: none;
-        transform: none;
-    }
-
-    /* Forms */
-    .data-card {
-        background: var(--reg-surface);
-        border-radius: var(--reg-radius);
-        box-shadow: var(--reg-shadow-sm);
-        border: 1px solid rgba(226, 232, 240, 0.8);
+    /* ── Data Cards ── */
+    .data-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
         margin-bottom: 24px;
-        overflow: hidden;
     }
 
-    .data-header {
-        background: rgba(248, 250, 252, 0.5);
+    @media (max-width: 800px) {
+        .data-grid { grid-template-columns: 1fr; }
+    }
+
+    .data-card {
+        background: #fff;
+        border: 1px solid var(--reg-border);
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: var(--reg-shadow);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .card-head {
+        padding: 18px 24px;
+        background: #fbfcfe;
         border-bottom: 1px solid var(--reg-border);
-        padding: 16px 24px;
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         font-weight: 800;
-        color: var(--reg-text-main);
+        color: var(--reg-primary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
         display: flex;
         align-items: center;
         gap: 10px;
     }
 
-    .data-header i {
-        color: var(--reg-blue);
-    }
+    .card-body { padding: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 500px) { .card-body { grid-template-columns: 1fr; } }
 
-    .data-body {
-        padding: 24px;
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-        gap: 20px;
-    }
-
-    .data-field label {
-        display: block;
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: var(--reg-text-muted);
+    .field-group { display: flex; flex-direction: column; gap: 6px; }
+    .field-group label {
+        font-size: 0.7rem;
+        font-weight: 800;
+        color: var(--reg-muted);
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        margin-bottom: 8px;
     }
 
-    .premium-input {
-        width: 100%;
-        padding: 12px 16px;
-        border: 1px solid var(--reg-border);
+    .field-value {
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--reg-text);
+        padding: 10px 14px;
+        background: #f8fafc;
         border-radius: 10px;
+        border: 1px solid var(--reg-border);
+        transition: all 0.2s;
+    }
+
+    .field-input {
         font-family: inherit;
         font-size: 0.95rem;
-        font-weight: 600;
-        color: var(--reg-text-main);
-        transition: all 0.2s;
+        font-weight: 700;
+        color: var(--reg-text);
+        padding: 10px 14px;
         background: #f8fafc;
-        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.01);
-        box-sizing: border-box;
-    }
-
-    .premium-input:focus {
+        border-radius: 12px;
+        border: 1.5px solid var(--reg-border);
         outline: none;
-        border-color: var(--reg-blue);
-        background: var(--reg-surface);
-        box-shadow: 0 0 0 3px var(--reg-blue-light);
+        transition: all 0.2s;
     }
 
-    .premium-input:read-only {
-        background: var(--reg-border);
-        color: var(--reg-text-muted);
-        border-color: transparent;
-        cursor: not-allowed;
+    .field-input:focus {
+        background: #fff;
+        border-color: var(--reg-accent);
+        box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
     }
 
-    .premium-input:disabled {
-        background: var(--reg-border);
-        cursor: not-allowed;
+    /* ── Document Strip ── */
+    .doc-strip {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 12px;
     }
 
-    /* Document Showcase */
-    .doc-showcase {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 16px;
-        padding: 24px;
-    }
-
-    .doc-item {
+    .doc-link {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
         background: #f8fafc;
         border: 1px solid var(--reg-border);
-        border-radius: 12px;
-        padding: 16px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
+        border-radius: 14px;
+        text-decoration: none;
+        color: var(--reg-text);
+        font-weight: 700;
+        font-size: 0.85rem;
         transition: all 0.2s;
     }
 
-    .doc-item:hover {
+    .doc-link:hover {
         background: #fff;
-        border-color: var(--reg-blue-soft);
-        box-shadow: var(--reg-shadow-sm);
+        border-color: var(--reg-accent);
         transform: translateY(-2px);
+        box-shadow: var(--reg-shadow);
     }
 
-    /* Floating Save Bar */
-    .floating-save-bar {
+    /* ── Action Bar ── */
+    .action-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 24px;
+        border-radius: 14px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: 1px solid transparent;
+        text-decoration: none;
+    }
+
+    .btn-outline { background: #fff; border-color: var(--reg-border); color: var(--reg-muted); }
+    .btn-outline:hover { background: #f8fafc; transform: translateY(-1px); }
+    .btn-success { background: var(--reg-success); color: #fff; }
+    .btn-success:hover { background: #059669; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
+    .btn-danger { background: var(--reg-danger); color: #fff; }
+    .btn-danger:hover { background: #dc2626; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); }
+
+    .save-float {
         position: fixed;
         bottom: 24px;
         left: 50%;
         transform: translateX(-50%);
-        background: rgba(255, 255, 255, 0.85);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(226, 232, 240, 0.8);
-        padding: 16px 24px;
-        border-radius: 20px;
-        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-        z-index: 100;
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        width: 100%;
-        max-width: 900px;
-        justify-content: space-between;
+        z-index: 1000;
+        display: none;
+        animation: popUp 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+    }
+    @keyframes popUp { from { bottom: -50px; opacity:0; } to { bottom: 24px; opacity:1; } }
+
+    .btn-save {
+        background: var(--reg-primary);
+        color: #fff;
+        padding: 14px 40px;
+        font-size: 1rem;
+        box-shadow: 0 10px 25px rgba(30, 58, 138, 0.3);
     }
 
-    .floating-save-text {
-        font-size: 0.9rem;
-        font-weight: 600;
-        color: var(--reg-text-muted);
+    /* ── Modals Case Style ── */
+    .modal-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.5);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
     }
+    .modal-overlay.open { display: flex; }
+
+    .modal-card {
+        background: #fff;
+        border-radius: 24px;
+        padding: 32px;
+        width: 95%;
+        max-width: 500px;
+        box-shadow: var(--reg-shadow-lg);
+    }
+
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="detail-wrapper">
+<div class="profile-wrap">
 
     <!-- Top Action Bar -->
     <div class="action-bar">
-
-        <div class="action-stack">
-            {% if enrollment.status == 'pending' %}
-            <form method="post" action="/registrar/enrollments" style="display:inline;">
-                <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
-                <button name="action" value="approved" class="btn-elegant btn-check-modern"><i
-                        class="fas fa-check-circle"></i> Approve Registration</button>
-            </form>
-            <button type="button" class="btn-elegant btn-cross-modern"
-                onclick="openRejectModal('{{ enrollment.enrollment_id }}', '{{ enrollment.student_name|e }}')">
-                <i class="fas fa-times-circle"></i> Deny Registration
-            </button>
+        <a href="/registrar/enrollments" class="btn btn-outline">← Back to Roster</a>
+        <div style="display:flex; gap:12px;">
+            {% if enrollment.status == 'pending' and is_branch_active_status %}
+                <button form="enrollmentForm" name="action" value="approved" class="btn btn-success">✅ Approve Application</button>
+                <button type="button" class="btn btn-danger" onclick="openRejectModal()">❌ Deny Application</button>
             {% endif %}
         </div>
     </div>
 
-    <!-- Profile Overview -->
+    <!-- Feedback Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for cat, msg in messages %}
+    <div style="padding:16px 24px; border-radius:16px; margin-bottom:24px; font-weight:700; font-size:0.9rem;
+        background:{{ '#d1fae5' if cat=='success' else ('#fef9c3' if cat=='warning' else '#fee2e2') }};
+        color:{{ '#065f46' if cat=='success' else ('#854d0e' if cat=='warning' else '#991b1b') }};
+        border:1px solid {{ '#6ee7b7' if cat=='success' else ('#fde68a' if cat=='warning' else '#fca5a5') }};">
+        {{ msg }}
+    </div>
+    {% endfor %}{% endif %}{% endwith %}
+
+    {% set initials = enrollment.student_name[0] | upper if enrollment.student_name else '?' %}
+
+    <!-- Profile Header -->
     <div class="profile-header">
-        <div class="profile-title">Enrollment Record Detail</div>
-        <div class="profile-sub">
-            <span style="font-family: monospace; font-weight: 800; color: var(--reg-blue);">REF: #{{
-                enrollment.branch_enrollment_no }}</span>
-            <span style="color: var(--reg-border);">|</span>
-            {% if enrollment.status == 'pending' %}
-            <div class="badge-modern bg-pending"><i class="fas fa-clock"></i> In Review</div>
-            {% elif enrollment.status == 'approved' %}
-            <div class="badge-modern bg-approved"><i class="fas fa-check-circle"></i> Approved</div>
-            {% elif enrollment.status == 'rejected' %}
-            <div class="badge-modern bg-rejected"><i class="fas fa-times-circle"></i> Rejected</div>
-            {% else %}
-            <div class="badge-modern bg-enrolled"><i class="fas fa-graduation-cap"></i> {{ enrollment.status | title }}
+        <div class="avatar-circle">{{ initials }}</div>
+        <div class="header-info">
+            <h1>{{ enrollment.student_name }}</h1>
+            <div class="meta-row">
+                <span style="font-weight:800; color:var(--reg-muted);">ID #{{ enrollment.branch_enrollment_no or enrollment.enrollment_id }}</span>
+                <span style="color:var(--reg-border);">|</span>
+                <span style="font-weight:700; color:var(--reg-primary);">{{ enrollment.grade_level }}</span>
+                <span style="color:var(--reg-border);">|</span>
+                {% if enrollment.status == 'pending' %}
+                    <span class="badge badge-pending">Pending Review</span>
+                {% elif enrollment.status == 'approved' %}
+                    <span class="badge badge-approved">Approved</span>
+                {% elif enrollment.status == 'rejected' %}
+                    <span class="badge badge-rejected">Rejected</span>
+                {% else %}
+                    <span class="badge badge-enrolled">{{ enrollment.status | title }}</span>
+                {% endif %}
             </div>
-            {% endif %}
         </div>
     </div>
 
-    <!-- MAIN FORM -->
+    <!-- Main Content Form -->
     <form id="enrollmentForm" method="post" action="/registrar/enrollment/{{ enrollment.enrollment_id }}">
-
-        <!-- Block 1: Enrollment Info -->
-        <div class="data-card">
-            <div class="data-header"><i class="fas fa-info-circle"></i> Academic Tracking</div>
-            <div class="data-body">
-                <div class="data-field">
-                    <label>Enrollment Type</label>
-                    <div style="position:relative;">
-                        <select name="enroll_type" class="premium-input track-change">
-                            <option value="">— Select Category —</option>
-                            {% for t in ['New', 'Transferee', 'Old', 'Returnee'] %}
-                            <option value="{{ t }}" {{ 'selected' if enrollment.enroll_type==t }}>{{ t }}</option>
+        
+        <div class="data-grid">
+            <!-- PERSONAL INFORMATION -->
+            <div class="data-card" style="grid-column: span 2;">
+                <div class="card-head">👤 Student Identity & Details</div>
+                <div class="card-body">
+                    <div class="field-group">
+                        <label>Full Legal Name</label>
+                        <input type="text" name="student_name" class="field-input track-change" value="{{ enrollment.student_name }}" required>
+                    </div>
+                    <div class="field-group">
+                        <label>Gender Identity</label>
+                        <select name="gender" class="field-input track-change">
+                            <option value="">Select —</option>
+                            <option value="Male" {{ 'selected' if enrollment.gender == 'Male' }}>Male</option>
+                            <option value="Female" {{ 'selected' if enrollment.gender == 'Female' }}>Female</option>
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label>Grade Assignment</label>
+                        <select name="grade_level" class="field-input track-change" required>
+                            {% for g in ['Nursery','Kinder','Grade 1','Grade 2','Grade 3','Grade 4','Grade 5','Grade 6','Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'] %}
+                            <option value="{{ g }}" {{ 'selected' if enrollment.grade_level == g }}>{{ g }}</option>
                             {% endfor %}
                         </select>
                     </div>
+                    <div class="field-group">
+                        <label>Birth Date</label>
+                        <input type="date" name="dob" class="field-input track-change" value="{{ enrollment.dob.strftime('%Y-%m-%d') if enrollment.dob else '' }}">
+                    </div>
+                    <div class="field-group">
+                        <label>Birthplace</label>
+                        <input type="text" name="birthplace" class="field-input track-change" value="{{ enrollment.birthplace or '' }}">
+                    </div>
+                    <div class="field-group">
+                        <label>Learner Reference # (LRN)</label>
+                        <input type="text" name="lrn" class="field-input track-change" value="{{ enrollment.lrn or '' }}">
+                    </div>
+                    <div class="field-group" style="grid-column: span 2;">
+                        <label>Physical Home Address</label>
+                        <input type="text" name="address" class="field-input track-change" value="{{ enrollment.address or '' }}">
+                    </div>
                 </div>
-                <div class="data-field">
-                    <label>Submission Date</label>
-                    <input type="date" name="enroll_date" class="premium-input track-change"
-                        value="{{ enrollment.enroll_date.strftime('%Y-%m-%d') if enrollment.enroll_date else '' }}"
-                        readonly>
+            </div>
+
+            <!-- FAMILY / GUARDIAN INFORMATION -->
+            <div class="data-card">
+                <div class="card-head">👨‍👩‍👧 Family & Guardians</div>
+                <div class="card-body" style="grid-template-columns: 1fr;">
+                    <div class="field-group">
+                        <label>Primary Guardian Name</label>
+                        <input type="text" name="guardian_name" class="field-input track-change" value="{{ enrollment.guardian_name or '' }}">
+                    </div>
+                    <div class="field-group">
+                        <label>Guardian Contact #</label>
+                        <input type="text" name="guardian_contact" class="field-input track-change" value="{{ enrollment.guardian_contact or '' }}">
+                    </div>
+                    <div class="field-group">
+                        <label>Guardian Email</label>
+                        <input type="email" name="guardian_email" class="field-input track-change" value="{{ enrollment.guardian_email or '' }}">
+                    </div>
                 </div>
-                <div class="data-field">
-                    <label>Administrative Remarks</label>
-                    <input type="text" name="remarks" class="premium-input track-change"
-                        value="{{ enrollment.remarks or '' }}" placeholder="Enter any notes here...">
+            </div>
+
+            <!-- ENROLLMENT STATUS & SCHOOLING -->
+            <div class="data-card">
+                <div class="card-head">🏫 Academic History</div>
+                <div class="card-body" style="grid-template-columns: 1fr;">
+                    <div class="field-group">
+                        <label>Enrollment Type</label>
+                        <select name="enroll_type" class="field-input track-change">
+                            {% for t in ['New', 'Transferee', 'Old', 'Returnee'] %}
+                            <option value="{{ t }}" {{ 'selected' if enrollment.enroll_type == t }}>{{ t }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="field-group">
+                        <label>Previous School Attended</label>
+                        <input type="text" name="previous_school" class="field-input track-change" value="{{ enrollment.previous_school or '' }}">
+                    </div>
+                    <div class="field-group">
+                        <label>Cycle Assessment Remarks</label>
+                        <input type="text" name="remarks" class="field-input track-change" value="{{ enrollment.remarks or '' }}">
+                    </div>
                 </div>
             </div>
         </div>
 
-        <!-- Block 2: Student Details -->
-        <div class="data-card">
-            <div class="data-header"><i class="fas fa-user-graduate"></i> Identity & Background</div>
-            <div class="data-body">
-                <div class="data-field" style="grid-column: span 2;">
-                    <label>Official Full Name</label>
-                    <input type="text" name="student_name" class="premium-input track-change"
-                        value="{{ enrollment.student_name or '' }}" required>
-                </div>
-                <div class="data-field">
-                    <label>Grade Level Placed</label>
-                    <select name="grade_level" class="premium-input track-change" required>
-                        <option value="">— Select Target Level —</option>
-                        {% set grades = ['Nursery','Kinder','Grade 1','Grade 2','Grade 3','Grade 4','Grade 5','Grade 6','Grade 7','Grade 8','Grade 9','Grade 10','Grade 11','Grade 12'] %}
-                        {% for g in grades %}
-                        <option value="{{ g }}" {{ 'selected' if enrollment.grade_level==g }}>{{ g }}</option>
+        <!-- DOCUMENTS SECTION -->
+        <div class="data-card" style="margin-bottom:24px;">
+            <div class="card-head">📂 Submitted Documentation</div>
+            <div style="padding:24px;">
+                {% if documents %}
+                    <div class="doc-strip">
+                        {% for doc in documents %}
+                            {% set ext = doc.file_name.rsplit('.', 1)[-1].lower() if doc.file_name else '' %}
+                            <a href="{{ doc.file_path }}" target="_blank" class="doc-link">
+                                <span style="font-size:1.5rem;">{% if ext == 'pdf' %}📕{% elif ext in ['jpg','jpeg','png'] %}🖼️{% else %}📄{% endif %}</span>
+                                <div style="display:flex; flex-direction:column;">
+                                    <span>{{ doc.doc_type or doc.file_name }}</span>
+                                    <span style="font-size:0.65rem; color:var(--reg-muted);">{{ ext | upper }} View Archive</span>
+                                </div>
+                            </a>
                         {% endfor %}
-                    </select>
-                </div>
-                <div class="data-field">
-                    <label>Sex Identfier</label>
-                    <select name="gender" class="premium-input track-change">
-                        <option value="">— Unspecified —</option>
-                        <option value="Male" {{ 'selected' if enrollment.gender=='Male' }}>Male</option>
-                        <option value="Female" {{ 'selected' if enrollment.gender=='Female' }}>Female</option>
-                    </select>
-                </div>
-                <div class="data-field">
-                    <label>Date of Birth</label>
-                    <input type="date" name="dob" class="premium-input track-change"
-                        value="{{ enrollment.dob.strftime('%Y-%m-%d') if enrollment.dob else '' }}">
-                </div>
-                <div class="data-field">
-                    <label>Place of Birth</label>
-                    <input type="text" name="birthplace" class="premium-input track-change"
-                        value="{{ enrollment.birthplace or '' }}" placeholder="e.g. Manila, Philippines">
-                </div>
-                <div class="data-field">
-                    <label>Learner Reference Number (LRN)</label>
-                    <input type="text" name="lrn" class="premium-input track-change" value="{{ enrollment.lrn or '' }}"
-                        placeholder="12-digit number">
-                </div>
-                <div class="data-field" style="grid-column: 1 / -1;">
-                    <label>Primary Residential Address</label>
-                    <input type="text" name="address" class="premium-input track-change"
-                        value="{{ enrollment.address or '' }}" placeholder="Full address line">
-                </div>
-                <div class="data-field">
-                    <label>Personal Contact No.</label>
-                    <input type="text" name="contact_number" class="premium-input track-change"
-                        value="{{ enrollment.contact_number or '' }}" placeholder="Mobile/Landline">
-                </div>
-                <div class="data-field">
-                    <label>Email Address</label>
-                    <input type="email" name="email" class="premium-input track-change"
-                        value="{{ enrollment.email or '' }}" placeholder="student@example.com">
-                </div>
-                <div class="data-field">
-                    <label>Current Section Assigned</label>
-                    <input type="text" readonly class="premium-input"
-                        value="{{ enrollment.section_name or '⚠ Not assigned yet' }}">
-                </div>
+                    </div>
+                {% else %}
+                    <p style="color:var(--reg-muted); font-size:0.9rem; text-align:center; padding:20px; border:2px dashed var(--reg-border); border-radius:16px;">
+                        No digital copies were submitted with this application.
+                    </p>
+                {% endif %}
             </div>
         </div>
 
-        <!-- Block 3: Guardian Details -->
-        <div class="data-card">
-            <div class="data-header"><i class="fas fa-users"></i> Parental & Guardian Information</div>
-            <div class="data-body">
-                <div class="data-field">
-                    <label>Father's Name</label>
-                    <input type="text" name="father_name" class="premium-input track-change"
-                        value="{{ enrollment.father_name or '' }}">
-                </div>
-                <div class="data-field">
-                    <label>Father's Contact</label>
-                    <input type="text" name="father_contact" class="premium-input track-change"
-                        value="{{ enrollment.father_contact or '' }}">
-                </div>
-                <div class="data-field">
-                    <label>Father's Occupation</label>
-                    <input type="text" name="father_occupation" class="premium-input track-change"
-                        value="{{ enrollment.father_occupation or '' }}">
-                </div>
-
-                <div class="data-field">
-                    <label>Mother's Name</label>
-                    <input type="text" name="mother_name" class="premium-input track-change"
-                        value="{{ enrollment.mother_name or '' }}">
-                </div>
-                <div class="data-field">
-                    <label>Mother's Contact</label>
-                    <input type="text" name="mother_contact" class="premium-input track-change"
-                        value="{{ enrollment.mother_contact or '' }}">
-                </div>
-                <div class="data-field">
-                    <label>Mother's Occupation</label>
-                    <input type="text" name="mother_occupation" class="premium-input track-change"
-                        value="{{ enrollment.mother_occupation or '' }}">
-                </div>
-
-                <div class="data-field">
-                    <label>Guardian / Emergency Contact Name</label>
-                    <input type="text" name="guardian_name" class="premium-input track-change"
-                        value="{{ enrollment.guardian_name or '' }}">
-                </div>
-                <div class="data-field">
-                    <label>Guardian Contact No.</label>
-                    <input type="text" name="guardian_contact" class="premium-input track-change"
-                        value="{{ enrollment.guardian_contact or '' }}">
-                </div>
-                <div class="data-field">
-                    <label>Guardian Email</label>
-                    <input type="email" name="guardian_email" class="premium-input track-change"
-                        value="{{ enrollment.guardian_email or '' }}">
-                </div>
+        {% if enrollment.status == 'rejected' and enrollment.rejection_reason %}
+        <div class="data-card" style="border-color: var(--reg-danger); margin-bottom:24px;">
+            <div class="card-head" style="background:#fef2f2; color:var(--reg-danger);">❌ Rejection Record</div>
+            <div style="padding:24px; font-weight:700; color:var(--reg-text); line-height:1.6;">
+                {{ enrollment.rejection_reason }}
             </div>
         </div>
+        {% endif %}
 
-        <!-- Block 4: Previous School -->
-        <div class="data-card">
-            <div class="data-header"><i class="fas fa-university"></i> Academic History</div>
-            <div class="data-body">
-                <div class="data-field" style="grid-column: span 2;">
-                    <label>Last School Attended</label>
-                    <input type="text" name="previous_school" class="premium-input track-change"
-                        value="{{ enrollment.previous_school or '' }}">
-                </div>
-                <div class="data-field">
-                    <label>Target School Year</label>
-                    <input type="text" readonly class="premium-input" value="{{ enrollment.school_year_label or '—' }}">
-                </div>
-            </div>
-        </div>
-
-        <!-- Sticky Floating Save Bar -->
-        <div class="floating-save-bar" id="stickySaveContainer"
-            style="opacity: 0.8; pointer-events: none; transition: opacity 0.3s;">
-            <div class="floating-save-text" id="saveHint">No modifications detected.</div>
-            <button type="submit" id="saveBtn" class="btn-elegant btn-primary" disabled style="padding: 12px 30px;">
-                <i class="fas fa-save"></i> Save Global Changes
-            </button>
+        <div class="save-float" id="saveFloat">
+            <button type="submit" class="btn btn-save">💾 Commit Registry Changes</button>
         </div>
 
     </form>
-
-    <!-- Block 5: Documents Array -->
-    <div class="data-card">
-        <div class="data-header"><i class="fas fa-folder-open"></i> Uploaded Documents Verification</div>
-        {% if documents %}
-        <div class="doc-showcase">
-            {% for doc in documents %}
-            {% set ext = doc.file_name.rsplit('.', 1)[-1].lower() if doc.file_name else '' %}
-
-            {% set icon_class = 'fa-file-alt' %}
-            {% if ext == 'pdf' %}{% set icon_class = 'fa-file-pdf' %}
-            {% elif ext in ['jpg','jpeg','png'] %}{% set icon_class = 'fa-file-image' %}
-            {% endif %}
-
-            <div class="doc-item">
-                <div style="display:flex; align-items:center; gap: 12px;">
-                    <div
-                        style="background: var(--reg-blue-light); color: var(--reg-blue); width: 40px; height: 40px; border-radius: 10px; display:flex; align-items:center; justify-content:center; font-size: 1.2rem;">
-                        <i class="fas {{ icon_class }}"></i>
-                    </div>
-                    <div>
-                        <div
-                            style="font-weight: 700; color: var(--reg-text-main); font-size: 0.9rem; word-break: break-all; max-width: 150px;">
-                            {{ doc.doc_type or doc.file_name }}</div>
-                        <div
-                            style="font-size: 0.75rem; color: var(--reg-text-muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.05em;">
-                            {{ ext }} Format</div>
-                    </div>
-                </div>
-                <a href="{{ doc.file_path }}" target="_blank" class="btn-elegant btn-view-modern"
-                    style="padding: 6px 12px; font-size: 0.8rem;"><i class="fas fa-external-link-alt"></i> Verify</a>
-            </div>
-            {% endfor %}
-        </div>
-        {% else %}
-        <div style="padding:40px; text-align:center;">
-            <i class="fas fa-folder-minus"
-                style="font-size: 2.5rem; color: var(--reg-border); margin-bottom: 10px;"></i>
-            <div style="color:var(--reg-text-muted); font-weight:600;">No credentials submitted for verification.</div>
-        </div>
-        {% endif %}
-    </div>
-
 </div>
 
-<!-- Reject Reason Modal -->
-<div id="rejectModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:9999; padding:24px;">
-    <div style="max-width:520px; margin:100px auto; background:#fff; border-radius:14px; border:1px solid var(--reg-border); box-shadow:0 20px 60px rgba(0,0,0,0.25); overflow:hidden;">
-        <div style="padding:14px 16px; background:#fef2f2; border-bottom:1px solid #fecaca; display:flex; align-items:center; justify-content:space-between; gap:10px;">
-            <div style="font-weight:900; color:#991b1b;">Reject Enrollment</div>
-            <button type="button" onclick="closeRejectModal()" style="background:#fff; color:#991b1b; border:1px solid #fecaca; border-radius: 4px; cursor:pointer;"><i class="fas fa-times"></i></button>
-        </div>
-        <div style="padding:16px;">
-            <div style="font-size:0.85rem; color:var(--reg-text-muted); margin-bottom:10px;">
-                Student: <strong id="rejectStudentName"></strong>
+<!-- ── REJECT MODAL ── -->
+<div class="modal-overlay" id="rejectModal">
+    <div class="modal-card">
+        <h3 style="color:var(--reg-danger);">Deny Application</h3>
+        <p style="color:var(--reg-muted); font-size:0.9rem; margin-bottom:20px;">
+            Provisioning a denial notice for <strong>{{ enrollment.student_name }}</strong>.
+        </p>
+        <form method="post" action="/registrar/enrollments">
+            <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
+            <input type="hidden" name="action" value="rejected">
+            <div style="margin-bottom:20px;">
+                <label style="display:block; font-size:0.75rem; font-weight:800; color:var(--reg-muted); text-transform:uppercase; margin-bottom:8px;">Reason for Denial</label>
+                <textarea name="rejection_reason" required class="field-input" 
+                          style="width:100%; min-height:120px; font-family:inherit; resize:none;" 
+                          placeholder="Provide specific feedback..."></textarea>
             </div>
-            <form method="post" action="/registrar/enrollments" onsubmit="return confirm('Reject this enrollment? This will require a reason.');">
-                <input type="hidden" name="enrollment_id" id="rejectEnrollmentId" value="">
-                <input type="hidden" name="action" value="rejected">
-                <label style="font-size:0.8rem; font-weight:800; color:#475569; display:block; margin-bottom:6px;">Reason (required)</label>
-                <textarea
-                    name="rejection_reason"
-                    id="rejectReason"
-                    required
-                    rows="4"
-                    style="width:100%; border:1.5px solid var(--reg-border); border-radius:10px; padding:10px 12px; font-size:0.9rem; resize:vertical; box-sizing:border-box;"
-                    placeholder="Type the reason for rejection..."
-                ></textarea>
-                <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:12px;">
-                    <button type="button" class="btn-elegant btn-view-modern" onclick="closeRejectModal()">Cancel</button>
-                    <button type="submit" class="btn-elegant" style="background:#dc2626; color:white;">Submit Rejection</button>
-                </div>
-            </form>
-        </div>
+            <div style="display:flex; gap:12px; justify-content:flex-end;">
+                <button type="button" class="btn btn-outline" onclick="closeRejectModal()">Abort</button>
+                <button type="submit" class="btn btn-danger">Confirm Denial</button>
+            </div>
+        </form>
     </div>
 </div>
 
 <script>
-    function openRejectModal(enrollmentId, studentName) {
-        document.getElementById('rejectEnrollmentId').value = enrollmentId;
-        document.getElementById('rejectStudentName').textContent = studentName || '';
-        document.getElementById('rejectReason').value = '';
-        document.getElementById('rejectModal').style.display = 'block';
-        setTimeout(() => document.getElementById('rejectReason').focus(), 0);
-    }
+    function openRejectModal() { document.getElementById('rejectModal').classList.add('open'); }
+    function closeRejectModal() { document.getElementById('rejectModal').classList.remove('open'); }
 
-    function closeRejectModal() {
-        document.getElementById('rejectModal').style.display = 'none';
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
+    // Change Detection
+    document.addEventListener('DOMContentLoaded', () => {
         const form = document.getElementById('enrollmentForm');
-        const saveBtn = document.getElementById('saveBtn');
-        const saveContainer = document.getElementById('stickySaveContainer');
-        const saveHint = document.getElementById('saveHint');
+        const saveFloat = document.getElementById('saveFloat');
         const fields = form.querySelectorAll('.track-change');
+        const originals = {};
 
-        const originals = new Map();
-        fields.forEach(f => originals.set(f.name, f.value));
+        fields.forEach(f => originals[f.name] = f.value);
 
-        function checkChanges() {
+        const checkChanges = () => {
             let changed = false;
             fields.forEach(f => {
-                if (f.value !== originals.get(f.name)) changed = true;
+                if (f.value !== originals[f.name]) changed = true;
             });
-
-            saveBtn.disabled = !changed;
-            if (changed) {
-                saveContainer.style.opacity = '1';
-                saveContainer.style.pointerEvents = 'auto';
-                saveHint.textContent = 'Unsaved changes ready.';
-                saveHint.style.color = '#ca8a04'; // Yellow dark
-            } else {
-                saveContainer.style.opacity = '0.8';
-                saveContainer.style.pointerEvents = 'none';
-                saveHint.textContent = 'No modifications detected.';
-                saveHint.style.color = 'var(--reg-text-muted)';
-            }
+            saveFloat.style.display = changed ? 'block' : 'none';
         }
 
         fields.forEach(f => {
             f.addEventListener('input', checkChanges);
             f.addEventListener('change', checkChanges);
         });
+    });
+
+    // Backdrop Click Exit
+    document.getElementById('rejectModal').addEventListener('click', (e) => {
+        if(e.target === document.getElementById('rejectModal')) closeRejectModal();
     });
 </script>
 {% endblock %}

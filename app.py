@@ -187,6 +187,75 @@ def inject_student_notifications():
     return dict(student_global_notifs=[])
 
 
+@app.context_processor
+def inject_super_admin_notifications():
+    if session.get('role') == 'super_admin':
+        from db import get_db_connection
+        import psycopg2.extras
+        from datetime import datetime
+        db = get_db_connection()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            alerts = []
+            
+            # 1. Missing Branch Code
+            cursor.execute("""
+                SELECT COUNT(*) as cnt FROM branches
+                WHERE branch_code IS NULL OR branch_code = ''
+            """)
+            no_code = cursor.fetchone()
+            if no_code and no_code['cnt'] > 0:
+                alerts.append({
+                    'title': 'Credential Gap',
+                    'message': f"{no_code['cnt']} branches missing branch codes",
+                    'link': url_for('super_admin.super_admin_branches'),
+                    'is_read': False,
+                    'created_at': datetime.utcnow()
+                })
+
+            # 2. Missing Admin
+            cursor.execute("""
+                SELECT COUNT(*) as cnt
+                FROM branches b
+                LEFT JOIN users u ON u.branch_id = b.branch_id AND u.role = 'branch_admin'
+                WHERE u.user_id IS NULL
+            """)
+            no_admin = cursor.fetchone()
+            if no_admin and no_admin['cnt'] > 0:
+                alerts.append({
+                    'title': 'Leadership Gap',
+                    'message': f"{no_admin['cnt']} branches without administrators",
+                    'link': url_for('super_admin.super_admin_branches'),
+                    'is_read': False,
+                    'created_at': datetime.utcnow()
+                })
+
+            # 3. Inactive Branches
+            cursor.execute("""
+                SELECT COUNT(*) as cnt FROM branches
+                WHERE is_active = FALSE
+            """)
+            inactive = cursor.fetchone()
+            if inactive and inactive['cnt'] > 0:
+                alerts.append({
+                    'title': 'System Status',
+                    'message': f"{inactive['cnt']} branches are currently inactive",
+                    'link': url_for('super_admin.super_admin_branches'),
+                    'is_read': False,
+                    'created_at': datetime.utcnow()
+                })
+
+            unread_count = len(alerts)
+            return dict(super_global_notifs=alerts, super_unread_count=unread_count)
+        except Exception as e:
+            print(f"Error in Super Admin context processor: {e}")
+            return dict(super_global_notifs=[], super_unread_count=0)
+        finally:
+            cursor.close()
+            db.close()
+    return dict(super_global_notifs=[], super_unread_count=0)
+
+
 @app.after_request
 def add_security_headers(response):
     """Add security headers for browser protection and security scans."""
