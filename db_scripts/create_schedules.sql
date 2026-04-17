@@ -22,10 +22,10 @@ CREATE INDEX IF NOT EXISTS idx_schedules_branch  ON public.schedules (branch_id)
 CREATE INDEX IF NOT EXISTS idx_schedules_year    ON public.schedules (year_id);
 
 -- Verify after creation
-ALTER TABLE public.schedules OWNER TO liceo_db1;
-ALTER SEQUENCE public.schedules_id_seq OWNER TO liceo_db1;
+ALTER TABLE public.schedules OWNER TO liceo_db;
+ALTER SEQUENCE public.schedules_id_seq OWNER TO liceo_db;
 
 DO $$ 
 BEGIN 
-    RAISE NOTICE 'Schedules table and indexes created and ownership transferred to liceo_db1.'; 
+    RAISE NOTICE 'Schedules table and indexes created and ownership transferred to liceo_db.'; 
 END $$;
