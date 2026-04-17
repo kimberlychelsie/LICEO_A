@@ -166,11 +166,11 @@
     .btn-act-blue { background: #2563eb; color: #fff; }
     .btn-act-blue:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
 
-    .btn-act-purple { background: #7c3aed; color: #fff; }
-    .btn-act-purple:hover { background: #6d28d9; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(124,58,237,0.25); }
+    .btn-act-purple { background: #2563eb; color: #fff; }
+    .btn-act-purple:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
 
-    .btn-act-green { background: #059669; color: #fff; }
-    .btn-act-green:hover { background: #047857; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(5,150,105,0.25); }
+    .btn-act-green { background: #2563eb; color: #fff; }
+    .btn-act-green:hover { background: #1d4ed8; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(37,99,235,0.25); }
 
     .btn-act-gray { background: #e2e8f0; color: #475569; }
     .btn-act-gray:hover { background: #cbd5e1; transform: translateY(-1px); }
@@ -208,8 +208,8 @@
 
     .filter-tab:hover { border-color: #1a3a8f; color: #1a3a8f; }
     .filter-tab-act.active { background: #2563eb; color: #fff; border-color: #2563eb; }
-    .filter-tab-quiz.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
-    .filter-tab-exam.active { background: #059669; color: #fff; border-color: #059669; }
+    .filter-tab-quiz.active { background: #2563eb; color: #fff; border-color: #2563eb; }
+    .filter-tab-exam.active { background: #2563eb; color: #fff; border-color: #2563eb; }
 
     /* ── Stats Card ── */
     .stats-card {
@@ -335,8 +335,8 @@
         border-bottom: 2px solid var(--border);
     }
 
-    .table-quiz th { background: linear-gradient(135deg, #f3f0ff, #faf5ff); color: #5b21b6; border-bottom-color: #e9d5ff; }
-    .table-exam th { background: linear-gradient(135deg, #f0fdf4, #f0f9ff); color: #065f46; border-bottom-color: #86efac; }
+    .table-quiz th { background: linear-gradient(135deg, #f0f7ff, #f8fbff); color: #1a3a8f; border-bottom-color: #dbeafe; }
+    .table-exam th { background: linear-gradient(135deg, #f0f7ff, #f8fbff); color: #1a3a8f; border-bottom-color: #dbeafe; }
 
     .exam-table td {
         padding: 11px 14px;
@@ -407,7 +407,7 @@
     <div id="tab-activities" class="view-tab-content active">
         <div class="header-row">
             <h2>📝 My Activities</h2>
-            <a href="{{ url_for('teacher.create_activity', subject_id=subject_id) }}" class="btn-action btn-act-blue">➕ Create Activity</a>
+            <a href="{{ url_for('teacher.create_activity', subject_id=subject_id) }}" id="btn-create-act" class="btn-action btn-act-blue">➕ Create Activity</a>
         </div>
 
         <div class="filter-tabs">
@@ -486,7 +486,7 @@
     <div id="tab-quizzes" class="view-tab-content">
         <div class="header-row">
             <h2>✏️ My Quizzes</h2>
-            <a href="{{ url_for('teacher.teacher_quiz_create', subject_id=subject_id) }}" class="btn-action btn-act-purple">➕ Create Quiz</a>
+            <a href="{{ url_for('teacher.teacher_quiz_create', subject_id=subject_id) }}" id="btn-create-quiz" class="btn-action btn-act-purple">➕ Create Quiz</a>
         </div>
 
         <div class="filter-tabs">
@@ -516,7 +516,7 @@
                 <tr class="js-quiz-row" data-period="{{ q.grading_period or 'none' }}">
                     <td><strong>{{ q.title }}</strong></td>
                     <td style="color:var(--muted);">{{ class_info.grade_level_name }} - {{ class_info.section_name }}</td>
-                    <td><span class="badge badge-purple">{{ q.grading_period or 'None' }}</span></td>
+                    <td><span class="badge badge-blue">{{ q.grading_period or 'None' }}</span></td>
                     <td>{{ q.duration_mins }} min</td>
                     <td>{{ q.question_count }}</td>
                     <td>{{ q.attempt_count }}</td>
@@ -551,7 +551,7 @@
     <div id="tab-exams" class="view-tab-content">
         <div class="header-row">
             <h2>📋 My Exams</h2>
-            <a href="{{ url_for('teacher.teacher_exam_create', subject_id=subject_id) }}" class="btn-action btn-act-green">➕ Create Exam</a>
+            <a href="{{ url_for('teacher.teacher_exam_create', subject_id=subject_id) }}" id="btn-create-exam" class="btn-action btn-act-green">➕ Create Exam</a>
         </div>
 
         <div class="filter-tabs">
@@ -581,7 +581,7 @@
                 <tr class="js-exam-row" data-period="{{ e.grading_period or 'none' }}">
                     <td><strong>{{ e.title }}</strong></td>
                     <td style="color:var(--muted);">{{ class_info.grade_level_name }} - {{ class_info.section_name }}</td>
-                    <td><span class="badge" style="background:#d1fae5; color:#065f46;">{{ e.grading_period or 'None' }}</span></td>
+                    <td><span class="badge badge-blue">{{ e.grading_period or 'None' }}</span></td>
                     <td>{{ e.duration_mins }} min</td>
                     <td>{{ e.question_count }}</td>
                     <td>{{ e.attempt_count }}</td>
@@ -595,7 +595,7 @@
                                 </button>
                             </form>
                             <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=e.exam_id) }}" class="btn-action btn-act-gray btn-sm-action">✏️ Edit</a>
-                            <a href="{{ url_for('teacher.teacher_exam_results', exam_id=e.exam_id) }}" class="btn-action btn-act-green btn-sm-action">📊 Results</a>
+                            <a href="{{ url_for('teacher.teacher_exam_results', exam_id=e.exam_id) }}" class="btn-action btn-act-blue btn-sm-action">📊 Results</a>
                             <form method="POST" action="{{ url_for('teacher.delete_exam', exam_id=e.exam_id) }}" onsubmit="return confirm('Delete this exam?');" style="display:inline;">
                                 <input type="hidden" name="active_tab" value="exams">
                                 <button type="submit" class="btn-action btn-act-red btn-sm-action">🗑</button>
@@ -628,6 +628,14 @@
         const allTabs = el.parentElement.querySelectorAll('.filter-tab');
         allTabs.forEach(t => { t.classList.remove('active'); });
         el.classList.add('active');
+
+        // Update create button URL to default to this period
+        const createBtn = document.getElementById('btn-create-' + type);
+        if (createBtn) {
+            let url = new URL(createBtn.href, window.location.origin);
+            url.searchParams.set('period', period);
+            createBtn.href = url.pathname + url.search;
+        }
 
         const rows = document.querySelectorAll('.js-' + type + '-row');
         let visibleCount = 0;

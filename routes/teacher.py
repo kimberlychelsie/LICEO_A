@@ -763,12 +763,12 @@ def create_activity():
                     INSERT INTO activities (
                         branch_id, section_id, subject_id, teacher_id, 
                         title, category, instructions, max_score, due_date, 
-                        status, allowed_file_types, attachment_path, grading_period, batch_id
-                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        status, allowed_file_types, attachment_path, grading_period, batch_id, year_id
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING activity_id
                 ''', (branch_id, section_id, subject_id, user_id, 
                       title, category, instructions, max_score, due_date or None, 
-                      status, allowed_file_types, attachment_path, grading_period, batch_id))
+                      status, allowed_file_types, attachment_path, grading_period, batch_id, year_id))
                 activity_id = cur.fetchone()['activity_id']
                 
                 if status == 'Published':
@@ -936,12 +936,14 @@ def activity_submissions(activity_id):
             return redirect(url_for("teacher.teacher_dashboard"))
         
         # Get activity context
+        # Fetch activity details (Joining with sections to verify year_id)
         cur.execute("""
-            SELECT *
-            FROM activities
-            WHERE activity_id = %s
-              AND teacher_id = %s
-              AND year_id = %s
+            SELECT a.*, s.section_name 
+            FROM activities a
+            JOIN sections s ON a.section_id = s.section_id
+            WHERE a.activity_id = %s 
+              AND a.teacher_id = %s 
+              AND s.year_id = %s
         """, (activity_id, user_id, year_id))
         activity = cur.fetchone()
         if not activity:
@@ -969,9 +971,8 @@ def activity_submissions(activity_id):
             LEFT JOIN activity_grades g ON sub.submission_id = g.submission_id
             LEFT JOIN individual_extensions ext ON ext.enrollment_id = sub.enrollment_id AND ext.item_id = %s AND ext.item_type = 'activity'
             WHERE sub.activity_id = %s
-              AND sub.year_id = %s
             ORDER BY sub.submitted_at ASC
-        ''', (activity_id, activity_id, year_id))
+        ''', (activity_id, activity_id))
         submissions_raw = {row['enrollment_id']: row for row in cur.fetchall()}
         
         # Also need students who haven't submitted but might have extensions
@@ -3134,12 +3135,13 @@ def toggle_activity_status(activity_id):
             flash("No active school year.", "error")
             return redirect(request.referrer or url_for("teacher.teacher_dashboard"))
 
-        # ✅ Verify activity (OPTIONAL: add year_id if your table has it)
+        # ✅ Verify activity (Join with sections to ensure year context)
         cur.execute("""
-            SELECT status, section_id, title, subject_id 
-            FROM activities 
-            WHERE activity_id = %s AND teacher_id = %s
-        """, (activity_id, user_id))
+            SELECT a.status, a.section_id, a.title, a.subject_id 
+            FROM activities a
+            JOIN sections s ON a.section_id = s.section_id
+            WHERE a.activity_id = %s AND a.teacher_id = %s AND s.year_id = %s
+        """, (activity_id, user_id, year_id))
 
         act = cur.fetchone()
         if not act:
