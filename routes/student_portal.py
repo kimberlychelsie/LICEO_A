@@ -1410,41 +1410,4 @@ def student_profile():
     finally:
         cur.close()
         db.close()
-
-@student_portal_bp.route("/student/my-schedule")
-def student_my_schedule():
-    db = get_db_connection()
-    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    branch_id = session["branch_id"]
-    user_id = session["user_id"]
-
-    # Use year_id everywhere, not school_year_id
-    cursor.execute("""
-        SELECT e.section_id, s.year_id, y.label as year_label
-        FROM enrollments e
-        JOIN sections s ON e.section_id = s.section_id
-        JOIN school_years y ON s.year_id = y.year_id
-        WHERE e.user_id = %s AND e.branch_id = %s AND e.status IN ('approved', 'enrolled')
-        LIMIT 1
-    """, (user_id, branch_id))
-    row = cursor.fetchone()
-
-    schedules = []
-    school_year_label = None
-    if row:
-        section_id = row["section_id"]
-        year_id = row["year_id"]
-        school_year_label = row["year_label"]
-
-        cursor.execute("""
-            SELECT sched.*, subj.name AS subject_name, u.full_name AS teacher_name
-            FROM schedules sched
-            JOIN subjects subj ON sched.subject_id = subj.subject_id
-            JOIN users u ON sched.teacher_id = u.user_id
-            WHERE sched.branch_id = %s AND sched.section_id = %s AND sched.year_id = %s
-            ORDER BY sched.day_of_week, sched.start_time
-        """, (branch_id, section_id, year_id))
-        schedules = cursor.fetchall()
-
-    cursor.close(); db.close()
-    return render_template("student_schedules.html", schedules=schedules, school_year_label=school_year_label)
+
