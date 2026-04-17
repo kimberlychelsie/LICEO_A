@@ -1,154 +1,172 @@
 {% extends "base.html" %}
-{% block title %}Reserve Items — Select Child{% endblock %}
+{% block title %}Reservation Portal – Select Student{% endblock %}
 
-{% block content %}
+{% block styles %}
 <style>
-    .picker-container {
-        max-width: 600px;
-        margin: 2rem auto;
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    :root {
+        --pick-primary: #1a3a8f;
+        --pick-gold: #facc15;
+        --pick-text: #0f172a;
+        --pick-muted: #64748b;
+        --pick-border: rgba(226, 232, 240, 0.8);
+        --pick-radius: 24px;
+        --pick-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
     }
 
-    .form-card {
-        background: var(--card);
-        border-radius: 16px;
-        border: 1px solid var(--border);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+    body {
+        background-color: #f8fafc;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .picker-container {
+        max-width: 550px;
+        margin: 80px auto;
+        padding: 24px;
+        animation: fadeSlideUp 0.4s ease-out;
+    }
+
+    @keyframes fadeSlideUp {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .premium-card {
+        background: white;
+        border-radius: var(--pick-radius);
+        border: 1px solid var(--pick-border);
+        box-shadow: var(--pick-shadow);
         overflow: hidden;
     }
 
-    .form-card-header {
-        background: linear-gradient(135deg, #10b981, #059669);
-        color: white;
-        padding: 24px 30px;
+    .premium-card-header {
+        background: linear-gradient(135deg, var(--pick-primary) 0%, #0c2461 100%);
+        padding: 40px 30px;
         text-align: center;
-    }
-
-    .form-card-header h2 {
-        font-size: 1.5rem;
-        font-weight: 800;
-        margin: 0 0 4px 0;
-    }
-
-    .form-card-header p {
-        font-size: 0.9rem;
-        opacity: 0.9;
-        margin: 0;
-    }
-
-    .form-card-body {
-        padding: 30px;
-        background: #f8fafc;
-    }
-
-    .child-select-btn {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        padding: 16px 20px;
-        text-decoration: none;
-        color: var(--text);
-        margin-bottom: 12px;
-        transition: all 0.2s ease;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-    }
-
-    .child-select-btn:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 16px rgba(16, 185, 129, 0.1);
-        border-color: #10b981;
-    }
-
-    .child-avatar-mini {
-        width: 48px;
-        height: 48px;
-        background: linear-gradient(135deg, #10b981, #047857);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
         color: white;
-        font-weight: 800;
-        font-size: 1.2rem;
-        flex-shrink: 0;
-        box-shadow: 0 4px 8px rgba(16, 185, 129, 0.2);
+        position: relative;
     }
 
-    .child-info-mini {
-        flex: 1;
+    .premium-card-header h2 {
+        font-size: 1.75rem;
+        font-weight: 900;
+        margin: 0;
+        letter-spacing: -0.02em;
     }
 
-    .child-name-mini {
-        font-weight: 800;
-        font-size: 1.1rem;
-        color: var(--text);
-        margin-bottom: 2px;
-    }
-
-    .child-meta-mini {
-        font-size: 0.8rem;
-        color: var(--muted);
+    .premium-card-header p {
+        font-size: 0.95rem;
+        opacity: 0.8;
+        margin-top: 8px;
         font-weight: 500;
     }
 
-    .child-arrow {
-        color: #10b981;
-        font-size: 1.2rem;
-        font-weight: 800;
-        transition: transform 0.2s ease;
+    .premium-card-body {
+        padding: 32px;
+        background: #ffffff;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
     }
 
-    .child-select-btn:hover .child-arrow {
-        transform: translateX(4px);
-    }
-
-    .btn-cancel {
-        display: block;
-        text-align: center;
-        width: 100%;
-        padding: 14px;
-        font-size: 0.95rem;
-        font-weight: 600;
-        color: var(--muted);
-        background: transparent;
-        border: none;
+    .student-link {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        padding: 20px;
+        background: #fcfcfd;
+        border: 1px solid var(--pick-border);
+        border-radius: 20px;
         text-decoration: none;
-        margin-top: 16px;
-        border-radius: 10px;
-        transition: background 0.2s, color 0.2s;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
-    .btn-cancel:hover {
-        background: #f1f5f9;
-        color: var(--text);
+    .student-link:hover {
+        transform: translateY(-5px);
+        background: white;
+        border-color: var(--pick-primary);
+        box-shadow: 0 12px 20px rgba(26, 58, 143, 0.1);
+    }
+
+    .avatar-circle {
+        width: 56px; height: 56px;
+        background: var(--pick-primary);
+        color: white;
+        border-radius: 18px;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: 900; font-size: 1.5rem;
+        box-shadow: 0 4px 10px rgba(26, 58, 143, 0.2);
+    }
+
+    .student-info { flex: 1; }
+    .student-name { font-weight: 800; font-size: 1.15rem; color: var(--pick-text); margin-bottom: 2px; }
+    .student-meta { font-size: 0.8rem; font-weight: 600; color: var(--pick-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+    .arrow-icon {
+        color: var(--pick-primary);
+        font-weight: 900;
+        font-size: 1.25rem;
+        opacity: 0.3;
+        transition: all 0.2s;
+    }
+
+    .student-link:hover .arrow-icon {
+        opacity: 1;
+        transform: translateX(5px);
+    }
+
+    .btn-back {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+        color: var(--pick-muted);
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.9rem;
+        transition: color 0.2s;
+    }
+
+    .btn-back:hover { color: var(--pick-primary); }
+
+    .pulse-mark {
+        position: absolute;
+        top: 20px; right: 20px;
+        width: 8px; height: 8px;
+        background: var(--pick-gold);
+        border-radius: 50%;
+        box-shadow: 0 0 10px var(--pick-gold);
     }
 </style>
+{% endblock %}
 
+{% block content %}
 <div class="picker-container">
-    <div class="form-card">
-        <div class="form-card-header">
-            <h2>🛒 Select Child</h2>
-            <p>Choose which child's reservation you want to manage</p>
+    <div class="premium-card">
+        <div class="premium-card-header">
+            <div class="pulse-mark"></div>
+            <h2>Select Student</h2>
+            <p>Choose which record you want to manage for reservations.</p>
         </div>
 
-        <div class="form-card-body">
+        <div class="premium-card-body">
             {% for child in children %}
-            <a href="{{ url_for('student.student_reservation', enrollment_id=child.enrollment_id) }}" class="child-select-btn">
-                <div class="child-avatar-mini">
+            <a href="{{ url_for('student.student_reservation', enrollment_id=child.enrollment_id) }}" class="student-link">
+                <div class="avatar-circle">
                     {{ child.student_name[0] | upper }}
                 </div>
-                <div class="child-info-mini">
-                    <div class="child-name-mini">{{ child.student_name }}</div>
-                    <div class="child-meta-mini">Grade {{ child.grade_level }} &nbsp;&bull;&nbsp; Enrollment #{{ child.enrollment_id }}</div>
+                <div class="student-info">
+                    <div class="student-name">{{ child.student_name }}</div>
+                    <div class="student-meta">{{ child.grade_level }} &nbsp;•&nbsp; ID: #{{ child.enrollment_id }}</div>
                 </div>
-                <span class="child-arrow">→</span>
+                <div class="arrow-icon"><i class="fas fa-chevron-right"></i></div>
             </a>
             {% endfor %}
 
-            <a href="{{ url_for('parent.dashboard') }}" class="btn-cancel">
-                ← Back to Dashboard
+            <a href="{{ url_for('parent.dashboard') }}" class="btn-back">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
             </a>
         </div>
     </div>

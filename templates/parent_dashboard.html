@@ -1,336 +1,440 @@
 {% extends "base.html" %}
+{% block title %}Parent Portal – My Children{% endblock %}
 
-{% block title %}My Children{% endblock %}
-
-{% block content %}
+{% block styles %}
 <style>
-    /* Parent Dashboard Specific Styles */
-    .parent-dashboard-header {
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    :root {
+        --par-primary: #1a3a8f;
+        --par-primary-light: #eff6ff;
+        --par-gold: #facc15;
+        --par-gold-dark: #ca8a04;
+        --par-text: #0f172a;
+        --par-muted: #64748b;
+        --par-border: rgba(226, 232, 240, 0.8);
+        --par-card: #ffffff;
+        --par-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+        --par-shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        --par-radius: 20px;
+        --par-radius-lg: 32px;
+    }
+
+    body {
+        background-color: #f8fafc;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .par-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 32px 24px;
+        animation: fadeSlideUp 0.4s ease-out;
+    }
+
+    @keyframes fadeSlideUp {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Header ── */
+    .premium-header {
+        background: linear-gradient(135deg, var(--par-primary) 0%, #0c2461 100%);
+        border-radius: var(--par-radius-lg);
+        padding: 40px;
+        color: white;
+        margin-bottom: 32px;
+        box-shadow: 0 10px 30px rgba(26, 58, 143, 0.2);
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .premium-header::after {
+        content: '';
+        position: absolute;
+        top: -50%; right: -10%;
+        width: 400px; height: 400px;
+        background: radial-gradient(circle, rgba(250, 204, 21, 0.1) 0%, transparent 70%);
+        border-radius: 50%;
+    }
+
+    .header-content h1 {
+        margin: 0;
+        font-size: 2.25rem;
+        font-weight: 900;
+        letter-spacing: -0.03em;
+        line-height: 1.1;
+    }
+
+    .status-line {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        margin-bottom: 24px;
-        padding-bottom: 16px;
-        border-bottom: 1px solid var(--border);
+        gap: 10px;
+        font-size: 0.95rem;
+        margin-top: 12px;
+        font-weight: 500;
+        opacity: 0.9;
     }
-    
-    .parent-dashboard-title {
-        font-size: 1.5rem;
+
+    .pulse-dot {
+        width: 10px; height: 10px;
+        background: var(--par-gold);
+        border-radius: 50%;
+        box-shadow: 0 0 10px var(--par-gold);
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(250, 204, 21, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); }
+    }
+
+    .btn-add-child {
+        background: var(--par-gold);
+        color: var(--par-primary);
+        padding: 16px 28px;
+        border-radius: 16px;
         font-weight: 800;
-        color: var(--text);
-        margin: 0;
+        text-decoration: none;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        box-shadow: 0 4px 15px rgba(250, 204, 21, 0.3);
+        z-index: 10;
+        font-size: 0.95rem;
     }
-    
-    .parent-dashboard-subtitle {
-        color: var(--muted);
-        font-size: 0.9rem;
-        margin-top: 4px;
+
+    .btn-add-child:hover {
+        transform: translateY(-3px);
+        background: white;
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+
+    /* ── Child Cards Grid ── */
+    .child-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+        gap: 32px;
     }
 
     .child-card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 16px;
+        background: var(--par-card);
+        border: 1px solid var(--par-border);
+        border-radius: var(--par-radius-lg);
         overflow: hidden;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.03);
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        box-shadow: var(--par-shadow);
         display: flex;
         flex-direction: column;
         height: 100%;
-    }
-
-    .child-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 24px rgba(0,0,0,0.08);
-    }
-
-    .child-card-header {
-        background: linear-gradient(135deg, #1e3a8a, #3b82f6);
-        color: white;
-        padding: 24px 20px;
         position: relative;
     }
 
-    .child-avatar {
-        width: 64px;
-        height: 64px;
-        background: rgba(255, 255, 255, 0.2);
-        border: 2px solid rgba(255,255,255,0.5);
-        border-radius: 50%;
+    .child-card:hover {
+        transform: translateY(-12px);
+        box-shadow: var(--par-shadow-hover);
+        border-color: var(--par-primary);
+    }
+
+    .card-header {
+        padding: 32px;
+        background: linear-gradient(to bottom, #f8fafc, #ffffff);
+        border-bottom: 1px solid #f1f5f9;
         display: flex;
         align-items: center;
-        justify-content: center;
-        font-size: 26px;
-        font-weight: 800;
-        margin-bottom: 16px;
+        gap: 24px;
+        position: relative;
+    }
+
+    .avatar-box {
+        width: 80px; height: 80px;
+        border-radius: 24px;
+        background: var(--par-primary);
         color: white;
-        backdrop-filter: blur(4px);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 2rem; font-weight: 900;
+        box-shadow: 0 8px 16px rgba(26, 58, 143, 0.2);
+        flex-shrink: 0;
     }
 
-    .child-name {
-        font-size: 1.3rem;
-        font-weight: 700;
-        margin: 0 0 6px 0;
-        letter-spacing: -0.01em;
-        line-height: 1.2;
-    }
-
-    .child-grade {
-        font-size: 0.9rem;
-        opacity: 0.9;
+    .header-info h3 {
         margin: 0;
-        font-weight: 500;
+        font-size: 1.4rem;
+        font-weight: 900;
+        color: var(--par-primary);
+        letter-spacing: -0.02em;
     }
-    
-    .status-badge-absolute {
-        position: absolute;
-        top: 20px;
-        right: 20px;
-        background: rgba(255,255,255,0.95);
-        color: #1e3a8a;
+
+    .grade-badge {
+        display: inline-block;
+        margin-top: 6px;
+        padding: 4px 12px;
+        background: var(--par-primary-light);
+        color: var(--par-primary);
+        border-radius: 10px;
         font-size: 0.75rem;
-        font-weight: 700;
-        padding: 6px 12px;
-        border-radius: 20px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        font-weight: 800;
+        text-transform: uppercase;
     }
 
-    .status-badge-absolute.approved { color: #16a34a; }
-    .status-badge-absolute.rejected { color: #dc2626; }
-    .status-badge-absolute.pending { color: #d97706; }
+    .status-pill {
+        position: absolute;
+        top: 32px; right: 32px;
+        padding: 6px 14px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
 
-    .child-card-body {
-        padding: 20px;
+    .status-pill.enrolled { background: #dcfce7; color: #166534; }
+    .status-pill.pending { background: #fff7ed; color: #9a3412; }
+    .status-pill.rejected { background: #fee2e2; color: #991b1b; }
+
+    .card-body {
+        padding: 32px;
         flex: 1;
         display: flex;
         flex-direction: column;
-        gap: 16px;
+        gap: 24px;
     }
 
-    .info-row {
+    .meta-row {
         display: flex;
         flex-direction: column;
-        gap: 4px;
+        gap: 6px;
     }
 
-    .info-label {
-        font-size: 0.75rem;
+    .meta-label {
+        font-size: 0.7rem;
+        font-weight: 800;
+        color: var(--par-muted);
         text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--muted);
-        font-weight: 600;
+        letter-spacing: 0.1em;
     }
 
-    .info-value {
-        font-size: 0.95rem;
-        color: var(--text);
-        font-weight: 600;
+    .meta-value {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--par-text);
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
-    .billing-section {
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 16px;
+    /* ── Billing Section ── */
+    .billing-card {
+        background: #fcfcfd;
+        border: 1px solid var(--par-border);
+        border-radius: 20px;
+        padding: 20px;
         margin-top: auto;
     }
 
-    .billing-header {
+    .bill-top {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 12px;
-        font-size: 0.85rem;
-        font-weight: 700;
-        color: var(--text);
+        margin-bottom: 16px;
     }
 
-    .billing-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
-        text-align: center;
+    .bill-top span:first-child {
+        font-weight: 800; font-size: 0.85rem; color: var(--par-primary);
     }
 
-    .billing-item-label {
-        font-size: 0.65rem;
-        color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 600;
-        margin-bottom: 4px;
-    }
-
-    .billing-item-value {
-        font-size: 0.9rem;
-        font-weight: 800;
-        color: var(--text);
-    }
-
-    .billing-item-value.balance-red {
-        color: #dc2626;
-    }
-
-    .billing-empty {
-        background: #fef3c7;
-        border: 1px solid #fde68a;
-        border-radius: 12px;
-        padding: 16px;
-        margin-top: auto;
-        text-align: center;
-        color: #92400e;
-        font-size: 0.85rem;
-        font-weight: 600;
-    }
-
-    .child-card-actions {
-        padding: 16px;
-        background: #fff;
-        border-top: 1px solid var(--border);
+    .balance-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 10px;
+        gap: 12px;
     }
 
-    .action-btn {
-        width: 100%;
-        justify-content: center;
-        font-weight: 600;
-        border-radius: 8px;
+    .bal-item {
+        padding: 12px;
+        background: white;
+        border-radius: 12px;
+        border: 1px solid #f1f5f9;
+        text-align: center;
     }
 
-    .action-btn-full {
-        grid-column: span 2;
+    .bal-label { font-size: 0.65rem; font-weight: 800; color: var(--par-muted); text-transform: uppercase; margin-bottom: 4px; }
+    .bal-val { font-size: 1rem; font-weight: 900; color: var(--par-text); }
+
+    /* ── Actions ── */
+    .card-actions {
+        padding: 24px 32px;
+        background: #f8fafc;
+        border-top: 1px solid #f1f5f9;
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 12px;
     }
 
+    .btn-main {
+        padding: 12px;
+        border-radius: 12px;
+        font-weight: 800;
+        text-decoration: none;
+        text-align: center;
+        transition: all 0.2s;
+        font-size: 0.85rem;
+    }
+
+    .btn-blue { background: var(--par-primary); color: white; }
+    .btn-blue:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(26, 58, 143, 0.2); }
+    
+    .btn-outline { border: 1px solid var(--par-border); background: white; color: var(--par-text); }
+    .btn-outline:hover { background: #f1f5f9; }
+
+    .btn-full { grid-column: span 2; background: #10b981; color: white; border: none; }
+    .btn-full:hover { background: #059669; }
+
+    /* ── Empty State ── */
     .empty-state {
         text-align: center;
-        padding: 60px 20px;
+        padding: 100px 40px;
         background: white;
-        border-radius: 16px;
-        border: 1px dashed var(--border);
-        box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        border-radius: var(--par-radius-lg);
+        border: 2px dashed #cbd5e1;
+        box-shadow: var(--par-shadow);
     }
 
-    .empty-state h3 {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: var(--text);
-        margin-bottom: 12px;
-    }
-
-    .empty-state p {
-        color: var(--muted);
+    .empty-icon {
+        font-size: 4rem;
         margin-bottom: 24px;
-        font-size: 1rem;
+        display: block;
+    }
+
+    @media (max-width: 768px) {
+        .premium-header { flex-direction: column; text-align: center; gap: 24px; padding: 32px 24px; }
+        .child-grid { grid-template-columns: 1fr; }
     }
 </style>
+{% endblock %}
 
-<div class="parent-dashboard-header">
-    <div>
-        <h1 class="parent-dashboard-title">Command Center</h1>
-        <div class="parent-dashboard-subtitle">Manage your children's academic and billing records</div>
-    </div>
-    <a href="{{ url_for('parent.link_child') }}" class="btn btn-primary" style="padding: 10px 20px; font-weight: 700; border-radius: 12px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);">
-        <span style="font-size: 18px; line-height: 1; margin-right: 4px;">+</span> Link Child
-    </a>
-</div>
-
-{% if children %}
-<div class="grid grid-3">
-    {% for child in children %}
-    <div class="child-card">
-        <div class="child-card-header">
-            <div class="child-avatar">
-                {{ child.student_name[0]|upper }}
+{% block content %}
+<div class="par-container">
+    <!-- Header -->
+    <div class="premium-header">
+        <div class="header-content">
+            <h1>Parent Portal</h1>
+            <div class="status-line">
+                <span class="pulse-dot"></span>
+                Managing records for {{ children | length }} children.
             </div>
-            
-            {% if child.status == 'approved' %}
-            <div class="status-badge-absolute approved">✓ Enrolled</div>
+        </div>
+        <a href="{{ url_for('parent.link_child') }}" class="btn-add-child">
+            <i class="fas fa-plus"></i> Add Child
+        </a>
+    </div>
+
+    {% if children %}
+    <div class="child-grid">
+        {% for child in children %}
+        <div class="child-card">
+            <!-- Status Pill -->
+            {% if child.status == 'approved' or child.status == 'enrolled' %}
+            <div class="status-pill enrolled">✓ Enrolled</div>
             {% elif child.status == 'rejected' %}
-            <div class="status-badge-absolute rejected">✕ Rejected</div>
+            <div class="status-pill rejected">✕ Rejected</div>
             {% else %}
-            <div class="status-badge-absolute pending">⧗ Pending</div>
+            <div class="status-pill pending">⧗ Pending</div>
             {% endif %}
 
-            <h3 class="child-name">{{ child.student_name }}</h3>
-            <p class="child-grade">Grade: {{ child.grade_level }}</p>
-        </div>
-
-        <div class="child-card-body">
-            <div class="info-row">
-                <span class="info-label">Branch Details</span>
-                <span class="info-value">{{ child.branch_name }} <span style="color: var(--muted); font-size: 0.85em; font-weight: 500;">({{ child.location }})</span></span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Relationship</span>
-                <span class="info-value">
-                    <span style="background: #f1f5f9; padding: 4px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; color: #475569;">{{ child.relationship|title }}</span>
-                </span>
+            <div class="card-header">
+                <div class="avatar-box">
+                    {{ child.student_name[0]|upper }}
+                </div>
+                <div class="header-info">
+                    <h3>{{ child.student_name }}</h3>
+                    <div class="grade-badge">{{ child.grade_level }}</div>
+                </div>
             </div>
 
-            {% if child.bill_id %}
-            <div class="billing-section">
-                <div class="billing-header">
-                    <span>💳 Billing Summary</span>
-                    {% if child.bill_status == 'paid' %}
-                    <span class="badge badge-green">Paid</span>
-                    {% elif child.bill_status == 'partial' %}
-                    <span class="badge badge-yellow">Partial</span>
+            <div class="card-body">
+                <div class="meta-row">
+                    <span class="meta-label">Branch Location</span>
+                    <span class="meta-value">
+                        <i class="fas fa-landmark" style="color: var(--par-gold-dark); font-size: 0.8rem;"></i>
+                        {{ child.branch_name }}
+                    </span>
+                </div>
+
+                <div class="meta-row">
+                    <span class="meta-label">Access Level</span>
+                    <span class="meta-value">
+                        <span style="background: #f1f5f9; padding: 4px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 800; color: #475569;">
+                            {{ child.relationship|upper }} PORTAL
+                        </span>
+                    </span>
+                </div>
+
+                <!-- Billing Summary Card -->
+                <div class="billing-card">
+                    <div class="bill-top">
+                        <span><i class="fas fa-file-invoice-dollar"></i> Current Billing</span>
+                        {% if child.bill_id %}
+                            {% if child.bill_status == 'paid' %}
+                            <span class="status-pill enrolled" style="position:static; font-size: 0.65rem;">PAID</span>
+                            {% elif child.bill_status == 'partial' %}
+                            <span class="status-pill pending" style="position:static; font-size: 0.65rem;">PARTIAL</span>
+                            {% else %}
+                            <span class="status-pill rejected" style="position:static; font-size: 0.65rem;">UNPAID</span>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+
+                    {% if child.bill_id %}
+                    <div class="balance-grid">
+                        <div class="bal-item">
+                            <div class="bal-label">Paid</div>
+                            <div class="bal-val" style="color: #16a34a;">₱{{ "{:,.2f}".format(child.amount_paid) }}</div>
+                        </div>
+                        <div class="bal-item">
+                            <div class="bal-label">Balance</div>
+                            <div class="bal-val" style="color: {% if child.balance > 0 %}#dc2626{% else %}#1a3a8f{% endif %};">
+                                ₱{{ "{:,.2f}".format(child.balance) }}
+                            </div>
+                        </div>
+                    </div>
                     {% else %}
-                    <span class="badge badge-red">Unpaid</span>
+                    <div style="text-align: center; padding: 10px; font-size: 0.8rem; color: var(--par-muted); font-weight: 600;">
+                        No active bills found for this child.
+                    </div>
                     {% endif %}
                 </div>
-                <div class="billing-grid">
-                    <div>
-                        <div class="billing-item-label">Total</div>
-                        <div class="billing-item-value">₱{{ "{:,.2f}".format(child.total_amount) }}</div>
-                    </div>
-                    <div style="border-left: 1px solid #e2e8f0; border-right: 1px solid #e2e8f0;">
-                        <div class="billing-item-label">Paid</div>
-                        <div class="billing-item-value" style="color: #16a34a;">₱{{ "{:,.2f}".format(child.amount_paid) }}</div>
-                    </div>
-                    <div>
-                        <div class="billing-item-label">Balance</div>
-                        <div class="billing-item-value {% if child.balance > 0 %}balance-red{% endif %}">₱{{ "{:,.2f}".format(child.balance) }}</div>
-                    </div>
-                </div>
             </div>
-            {% else %}
-            <div class="billing-empty">
-                <span style="display: block; font-size: 1.5rem; margin-bottom: 6px;">🧾</span>
-                No billing generated yet.
-            </div>
-            {% endif %}
-        </div>
 
-        <div class="child-card-actions">
-            <a href="{{ url_for('parent.child_detail', enrollment_id=child.enrollment_id) }}" class="btn btn-secondary action-btn">
-                📄 Details
-            </a>
-            <a href="{{ url_for('parent.child_bills', enrollment_id=child.enrollment_id) }}" class="btn btn-primary action-btn">
-                💳 Bills
-            </a>
-            
-            {% if is_branch_active_status %}
-            <a href="{{ url_for('parent.child_reserve', enrollment_id=child.enrollment_id) }}" class="btn btn-success action-btn action-btn-full" style="background: #10b981; border: none;">
-                🎒 Reserve Items
-            </a>
-            {% endif %}
+            <div class="card-actions">
+                <a href="{{ url_for('parent.child_detail', enrollment_id=child.enrollment_id) }}" class="btn-main btn-outline">
+                    View Record
+                </a>
+                <a href="{{ url_for('parent.child_bills', enrollment_id=child.enrollment_id) }}" class="btn-main btn-blue">
+                    Billing Details
+                </a>
+                {% if is_branch_active_status %}
+                <a href="{{ url_for('parent.child_reserve', enrollment_id=child.enrollment_id) }}" class="btn-main btn-full">
+                    <i class="fas fa-shopping-bag"></i> Reserve Items
+                </a>
+                {% endif %}
+            </div>
         </div>
+        {% endfor %}
     </div>
-    {% endfor %}
+    {% else %}
+    <div class="empty-state">
+        <span class="empty-icon">👨‍👩‍👧‍👦</span>
+        <h2 style="font-weight:900; color:var(--par-primary); margin-bottom:12px;">No Children Linked</h2>
+        <p style="color:var(--par-muted); margin-bottom:32px; font-weight:500;">Link your children to view their academic status, billing statements, and reserve school items.</p>
+        <a href="{{ url_for('parent.link_child') }}" class="btn-add-child" style="display:inline-flex; width:auto; padding: 18px 40px; font-size: 1.1rem;">
+            Link Child Now
+        </a>
+    </div>
+    {% endif %}
 </div>
-{% else %}
-<div class="empty-state">
-    <div style="font-size: 4.5rem; opacity: 0.8; margin-bottom: 20px;">👨‍👩‍👧‍👦</div>
-    <h3>No children linked to your account yet</h3>
-    <p>Link your children using their enrollment ID to view their academic records, bills, and more.</p>
-    <a href="{{ url_for('parent.link_child') }}" class="btn btn-primary" style="padding: 14px 28px; font-weight: 700; border-radius: 12px; font-size: 1.1rem; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);">
-        Link Child Now
-    </a>
-</div>
-{% endif %}
-
 {% endblock %}
