@@ -113,6 +113,16 @@ def registrar_enrollments():
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        # Keep status consistent: once section is assigned, approved -> enrolled.
+        cursor.execute("""
+            UPDATE enrollments
+            SET status = 'enrolled'
+            WHERE branch_id = %s
+              AND status = 'approved'
+              AND section_id IS NOT NULL
+        """, (branch_id,))
+        db.commit()
+
         if request.method == "POST":
             enrollment_id = request.form.get("enrollment_id")
             action = request.form.get("action")
@@ -438,7 +448,12 @@ def create_student_account(enrollment_id):
                     """, (int(section_id), branch_id, enrollment.get("grade_level", "")))
                     if cursor.fetchone():
                         cursor.execute("""
-                            UPDATE enrollments SET section_id = %s
+                            UPDATE enrollments
+                            SET section_id = %s,
+                                status = CASE
+                                    WHEN status = 'approved' THEN 'enrolled'
+                                    ELSE status
+                                END
                             WHERE enrollment_id = %s AND branch_id = %s
                         """, (int(section_id), enrollment_id, branch_id))
                         db.commit()

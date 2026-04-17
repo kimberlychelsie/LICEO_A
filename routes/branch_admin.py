@@ -1880,7 +1880,15 @@ def branch_admin_assign_students():
                     flash(f"👉 Section is already full ({sec_info['current_count']} students). Please choose another section.", "error")
                     return redirect(url_for("branch_admin.branch_admin_assign_students", grade=grade_filter))
 
-            cursor.execute("UPDATE enrollments SET section_id=%s WHERE enrollment_id=%s", (section_id, enrollment_id))
+            cursor.execute("""
+                UPDATE enrollments
+                SET section_id=%s,
+                    status = CASE
+                        WHEN %s IS NOT NULL AND status = 'approved' THEN 'enrolled'
+                        ELSE status
+                    END
+                WHERE enrollment_id=%s
+            """, (section_id, section_id, enrollment_id))
             db.commit()
 
             # ── Auto-notify student about all existing Published activities in this section ──
@@ -2028,10 +2036,15 @@ def api_assign_student_section():
             if sec["current_count"] >= sec["capacity"]:
                 return {"success": False, "message": f"Section is full ({sec['current_count']}/{sec['capacity']})"}, 400
 
-        cursor.execute(
-            "UPDATE enrollments SET section_id=%s WHERE enrollment_id=%s",
-            (section_id, enrollment_id)
-        )
+        cursor.execute("""
+            UPDATE enrollments
+            SET section_id=%s,
+                status = CASE
+                    WHEN %s IS NOT NULL AND status = 'approved' THEN 'enrolled'
+                    ELSE status
+                END
+            WHERE enrollment_id=%s
+        """, (section_id, section_id, enrollment_id))
         db.commit()
 
         # Auto-notify student about existing published activities in the new section

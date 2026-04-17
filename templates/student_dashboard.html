@@ -284,8 +284,12 @@
             <div class="sd-info-pill">
                 <div class="lbl">Status</div>
                 <div class="val">
-                    {% if student.status == 'approved' %}
+                    {% if student.status == 'enrolled' or (student.status == 'approved' and student.section_id) %}
+                    <span class="badge-status badge-approved">🎓 Enrolled</span>
+                    {% elif student.status == 'approved' %}
                     <span class="badge-status badge-approved">✅ Approved</span>
+                    {% elif student.status == 'open_for_enrollment' %}
+                    <span class="badge-status badge-pending">🔓 Re-enrollment Open</span>
                     {% elif student.status == 'rejected' %}
                     <span class="badge-status badge-rejected">❌ Rejected</span>
                     {% else %}
