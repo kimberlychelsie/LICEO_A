@@ -262,13 +262,45 @@ def enrollment_status():
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
-        cursor.execute("""
-            SELECT sa.*, e.*, br.branch_name, br.location
-            FROM student_accounts sa
-            JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
-            JOIN branches br ON e.branch_id = br.branch_id
-            WHERE sa.account_id = %s
-        """, (session.get("student_account_id"),))
+        account_id = session.get("student_account_id")
+        enrollment_id = session.get("enrollment_id")
+
+        if account_id:
+            cursor.execute("""
+                SELECT sa.*, e.*, br.branch_name, br.location
+                FROM student_accounts sa
+                JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
+                JOIN branches br ON e.branch_id = br.branch_id
+                WHERE sa.account_id = %s
+            """, (account_id,))
+        elif enrollment_id:
+            cursor.execute("""
+                SELECT NULL::bigint AS account_id,
+                       e.enrollment_id,
+                       e.branch_enrollment_no,
+                       e.student_name,
+                       e.grade_level,
+                       e.status,
+                       e.branch_id,
+                       e.guardian_name,
+                       e.guardian_contact,
+                       e.guardian_email,
+                       e.contact_number,
+                       e.email,
+                       e.address,
+                       e.profile_image,
+                       e.section_id,
+                       e.created_at,
+                       br.branch_name,
+                       br.location
+                FROM enrollments e
+                JOIN branches br ON e.branch_id = br.branch_id
+                WHERE e.enrollment_id = %s
+                LIMIT 1
+            """, (enrollment_id,))
+        else:
+            flash("Student account not found", "error")
+            return redirect(url_for("student_portal.dashboard"))
         enrollment = cursor.fetchone()
 
         if not enrollment:
@@ -306,12 +338,32 @@ def billing():
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
-        cursor.execute("""
-            SELECT sa.*, e.student_name, e.grade_level, e.branch_enrollment_no
-            FROM student_accounts sa
-            JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
-            WHERE sa.account_id = %s
-        """, (session.get("student_account_id"),))
+        account_id = session.get("student_account_id")
+        enrollment_id = session.get("enrollment_id")
+
+        if account_id:
+            cursor.execute("""
+                SELECT sa.*, e.student_name, e.grade_level, e.branch_enrollment_no
+                FROM student_accounts sa
+                JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
+                WHERE sa.account_id = %s
+            """, (account_id,))
+        elif enrollment_id:
+            cursor.execute("""
+                SELECT NULL::bigint AS account_id,
+                       e.enrollment_id,
+                       CAST(%s AS text) AS username,
+                       e.student_name,
+                       e.grade_level,
+                       e.branch_enrollment_no,
+                       e.email
+                FROM enrollments e
+                WHERE e.enrollment_id = %s
+                LIMIT 1
+            """, (session.get("username"), enrollment_id))
+        else:
+            flash("Student account not found", "error")
+            return redirect("/")
         student = cursor.fetchone()
 
         if not student:
@@ -1411,4 +1463,4 @@ def student_profile():
     finally:
         cur.close()
         db.close()
-
+
