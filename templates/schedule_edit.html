@@ -1,0 +1,229 @@
+{% extends "base.html" %}
+{% block title %}Registrar – Edit Schedule{% endblock %}
+
+{% block styles %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    :root {
+        --sch-blue: #1e3a8a;
+        --sch-blue-light: #eff6ff;
+        --sch-blue-soft: #dbeafe;
+        --sch-gold: #facc15;
+        --sch-text-main: #0f172a;
+        --sch-text-muted: #64748b;
+        --sch-border: rgba(226, 232, 240, 0.8);
+        --sch-surface: #ffffff;
+        --sch-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+        --sch-radius: 20px;
+        --sch-radius-lg: 28px;
+    }
+
+    body {
+        background-color: #f8fafc;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .sch-container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 48px 24px;
+        animation: fadeSlideUp 0.4s ease-out;
+    }
+
+    @keyframes fadeSlideUp {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-card {
+        background: var(--sch-surface);
+        border-radius: var(--sch-radius-lg);
+        padding: 40px;
+        box-shadow: var(--sch-shadow);
+        border: 1px solid var(--sch-border);
+    }
+
+    .form-title {
+        font-size: 1.5rem;
+        font-weight: 900;
+        color: var(--sch-blue);
+        margin-bottom: 8px;
+    }
+
+    .form-subtitle {
+        color: var(--sch-text-muted);
+        font-size: 0.95rem;
+        margin-bottom: 32px;
+        font-weight: 500;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--sch-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .premium-input {
+        padding: 14px 18px;
+        border: 1px solid var(--sch-border);
+        border-radius: 14px;
+        font-family: inherit;
+        font-size: 0.95rem;
+        font-weight: 600;
+        background: #fcfcfd;
+        transition: all 0.2s;
+        width: 100%;
+    }
+
+    .premium-input:focus {
+        outline: none;
+        border-color: var(--sch-blue);
+        box-shadow: 0 0 0 4px var(--sch-blue-soft);
+        background: #fff;
+    }
+
+    .btn-save {
+        background: var(--sch-blue);
+        color: white;
+        border: none;
+        padding: 16px 32px;
+        border-radius: 14px;
+        font-weight: 800;
+        font-size: 1rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        margin-top: 20px;
+    }
+
+    .btn-save:hover {
+        background: #111827;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(30, 58, 138, 0.15);
+    }
+
+    .btn-back {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--sch-text-muted);
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.9rem;
+        margin-bottom: 24px;
+        transition: color 0.2s;
+    }
+
+    .btn-back:hover { color: var(--sch-blue); }
+
+    .error-hint {
+        color: #ef4444; font-size: 0.85rem; font-weight: 700; margin-top: 10px; display: none; text-align: center;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sch-container">
+    <a href="/registrar/schedules" class="btn-back">
+        <i class="fas fa-arrow-left"></i> Back to Schedules
+    </a>
+
+    <div class="form-card">
+        <h2 class="form-title">Edit Class Schedule</h2>
+        <p class="form-subtitle">Update core details for this scheduled session.</p>
+
+        <form method="post" id="editForm">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label class="form-label">Class Details</label>
+                    <select name="combo" class="premium-input" required>
+                        <option value="">-- Select --</option>
+                        {% for c in combinations %}
+                        <option value="{{c.section_id}}|{{c.subject_id}}|{{c.teacher_id}}" 
+                                {{ 'selected' if (c.section_id == schedule.section_id and c.subject_id == schedule.subject_id and c.teacher_id == schedule.teacher_id) }}>
+                            {{c.section_name}} — {{c.subject_name}} ({{c.teacher_name}})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Day</label>
+                    <select name="day_of_week" class="premium-input" required>
+                        <option value="">Day</option>
+                        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday'] %}
+                        <option value="{{day}}" {{ 'selected' if schedule.day_of_week == day }}>{{day}}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Room Number</label>
+                    <input type="text" name="room" maxlength="32" class="premium-input" value="{{ schedule.room }}" required>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Start Time</label>
+                    <input type="time" name="start_time" class="premium-input" value="{{ schedule.start_time.strftime('%H:%M') }}" required min="07:00" max="18:00">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">End Time</label>
+                    <input type="time" name="end_time" class="premium-input" value="{{ schedule.end_time.strftime('%H:%M') }}" required min="07:00" max="18:00">
+                </div>
+
+                <div class="form-group" style="grid-column: span 2;">
+                    <label class="form-label">Academic Year</label>
+                    <select name="year_id" class="premium-input" required>
+                        <option value="">-- Select --</option>
+                        {% for sy in school_years %}
+                        <option value="{{sy.year_id}}" {{ 'selected' if schedule.year_id == sy.year_id }}>{{sy.label}}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <div id="time-error" class="error-hint">Start time must be before end time.</div>
+            
+            <button type="submit" class="btn-save">
+                <i class="fas fa-save"></i> Save Changes
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function isInRange(val) { return val >= "07:00" && val <= "18:00"; }
+    
+    document.getElementById('editForm').addEventListener('submit', function(e) {
+        const s = this.start_time.value;
+        const o = this.end_time.value;
+        const err = document.getElementById('time-error');
+        err.style.display = 'none';
+
+        if (s && o && (!isInRange(s) || !isInRange(o))) {
+            err.innerText = "Times must be between 07:00 and 18:00.";
+            err.style.display = 'block';
+            e.preventDefault();
+        } else if (s && o && s >= o) {
+            err.innerText = "Start time must be before end time.";
+            err.style.display = 'block';
+            e.preventDefault();
+        }
+    });
+</script>
+{% endblock %}

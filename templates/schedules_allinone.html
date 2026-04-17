@@ -1,254 +1,549 @@
 {% extends "base.html" %}
-{% block title %}Registrar – Schedules{% endblock %}
+{% block title %}Registrar – Class Schedules{% endblock %}
+
+{% block styles %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+    :root {
+        --sch-blue: #1e3a8a;
+        --sch-blue-light: #eff6ff;
+        --sch-blue-soft: #dbeafe;
+        --sch-gold: #facc15;
+        --sch-gold-dark: #ca8a04;
+        --sch-text-main: #0f172a;
+        --sch-text-muted: #64748b;
+        --sch-border: rgba(226, 232, 240, 0.8);
+        --sch-surface: #ffffff;
+        --sch-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+        --sch-radius: 20px;
+        --sch-radius-lg: 28px;
+    }
+
+    body {
+        background-color: #f8fafc;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .sch-container {
+        max-width: 1300px;
+        margin: 0 auto;
+        padding: 32px 24px;
+        animation: fadeSlideUp 0.4s ease-out;
+    }
+
+    @keyframes fadeSlideUp {
+        from { opacity: 0; transform: translateY(15px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Premium Header ── */
+    .premium-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 32px;
+        background: var(--sch-surface);
+        padding: 28px 32px;
+        border-radius: var(--sch-radius-lg);
+        box-shadow: var(--sch-shadow);
+        border: 1px solid var(--sch-border);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .premium-header::before {
+        content: '';
+        position: absolute;
+        left: 0; top: 0; height: 100%; width: 8px;
+        background: linear-gradient(180deg, var(--sch-blue) 0%, var(--sch-gold) 100%);
+    }
+
+    .header-text h2 {
+        margin: 0;
+        font-size: 1.75rem;
+        font-weight: 800;
+        color: var(--sch-text-main);
+        letter-spacing: -0.02em;
+    }
+
+    .status-badge {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--sch-text-muted);
+    }
+
+    .pulse-dot {
+        width: 10px; height: 10px;
+        background: var(--sch-gold);
+        border-radius: 50%;
+        box-shadow: 0 0 10px var(--sch-gold);
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(250, 204, 21, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); }
+    }
+
+    /* ── Action Form Card ── */
+    .form-card {
+        background: var(--sch-surface);
+        border-radius: var(--sch-radius-lg);
+        padding: 32px;
+        margin-bottom: 40px;
+        box-shadow: var(--sch-shadow);
+        border: 1px solid var(--sch-border);
+    }
+
+    .form-title {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--sch-blue);
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.5fr;
+        gap: 16px;
+        align-items: end;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .form-label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--sch-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .premium-input {
+        padding: 12px 16px;
+        border: 1px solid var(--sch-border);
+        border-radius: 12px;
+        font-family: inherit;
+        font-size: 0.9rem;
+        font-weight: 600;
+        background: #fcfcfd;
+        transition: all 0.2s;
+        width: 100%;
+    }
+
+    .premium-input:focus {
+        outline: none;
+        border-color: var(--sch-blue);
+        box-shadow: 0 0 0 4px var(--sch-blue-soft);
+        background: #fff;
+    }
+
+    .btn-create {
+        background: var(--sch-blue);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 800;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        height: 100%;
+    }
+
+    .btn-create:hover {
+        background: #111827;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
+    }
+
+    /* ── Schedule Table ── */
+    .table-surface {
+        background: var(--sch-surface);
+        border-radius: var(--sch-radius-lg);
+        box-shadow: var(--sch-shadow);
+        border: 1px solid var(--sch-border);
+        overflow: hidden;
+    }
+
+    .table-toolbar {
+        padding: 24px 32px;
+        background: #fcfcfd;
+        border-bottom: 1px solid var(--sch-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .premium-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .premium-table th {
+        text-align: left;
+        padding: 18px 32px;
+        background: rgba(248, 250, 252, 0.6);
+        color: var(--sch-text-muted);
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        border-bottom: 1px solid var(--sch-border);
+    }
+
+    .premium-table td {
+        padding: 20px 32px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--sch-text-main);
+    }
+
+    .premium-table tr:hover {
+        background: #f8fafc;
+    }
+
+    .class-info { display: flex; flex-direction: column; gap: 4px; }
+    .class-main { font-weight: 800; color: var(--sch-blue); }
+    .class-sub { font-size: 0.8rem; color: var(--sch-text-muted); }
+
+    .time-slot {
+        background: var(--sch-blue-light);
+        color: var(--sch-blue);
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        display: inline-block;
+    }
+
+    .room-badge {
+        background: var(--sch-gold-soft);
+        color: var(--sch-gold-dark);
+        border: 1px solid var(--sch-gold);
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+
+    /* ── Action Buttons ── */
+    .btn-action {
+        width: 38px; height: 38px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid var(--sch-border);
+        background: white;
+        color: var(--sch-text-muted);
+        transition: all 0.2s;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    .btn-edit:hover { background: var(--sch-blue-light); color: var(--sch-blue); border-color: var(--sch-blue); }
+    .btn-delete:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
+
+    /* ── Glass Modal ── */
+    .glass-overlay {
+        position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7);
+        backdrop-filter: blur(8px); display: none; align-items: center;
+        justify-content: center; z-index: 1000; opacity: 0; transition: opacity 0.3s ease;
+    }
+    .glass-overlay.visible { display: flex; opacity: 1; }
+    
+    .glass-modal {
+        background: var(--sch-surface); width: 100%; max-width: 650px;
+        border-radius: 32px; padding: 40px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        position: relative;
+    }
+
+    .modal-close {
+        position: absolute; top: 24px; right: 24px;
+        border: none; background: none; font-size: 1.5rem; color: var(--sch-text-muted);
+        cursor: pointer; transition: color 0.2s;
+    }
+    .modal-close:hover { color: var(--sch-blue); }
+
+    .error-hint {
+        color: #ef4444; font-size: 0.8rem; font-weight: 700; margin-top: 8px; display: none;
+    }
+
+    @media (max-width: 1100px) {
+        .form-grid { grid-template-columns: 1fr 1fr; }
+        .btn-create { grid-column: span 2; }
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<h1 class="mb-4">Class Schedules</h1>
-
-<form method="post" class="card shadow-sm border-0 mb-4" style="max-width:1100px;margin:auto; padding:22px 34px 22px 34px; border-radius:14px;" id="addForm">
-    <h3 class="mb-3">Add Schedule</h3>
-    <div class="row g-3">
-        <div class="col-md-4">
-            <label class="form-label">Section / Subject / Teacher</label>
-            <select name="combo" class="form-select" required>
-                <option value="">-- Select --</option>
-                {% for c in combinations %}
-                <option value="{{c.section_id}}|{{c.subject_id}}|{{c.teacher_id}}">
-                    [{{c.year_id}}] {{c.section_name}} — {{c.subject_name}} ({{c.teacher_name}})
-                </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Day</label>
-            <select name="day_of_week" class="form-select" required>
-                <option value="">-- Day --</option>
-                {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday'] %}
-                <option value="{{day}}">{{day}}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Start</label>
-            <input type="time" name="start_time" class="form-control" required min="07:00" max="18:00">
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">End</label>
-            <input type="time" name="end_time" class="form-control" required min="07:00" max="18:00">
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">Room</label>
-            <input type="text" name="room" maxlength="32" class="form-control" placeholder="Rm 201" required>
-        </div>
-        <div class="col-md-2">
-            <label class="form-label">School Year</label>
-            <select name="year_id" class="form-select" required>
-                <option value="">-- Year --</option>
-                {% for sy in school_years %}
-                <option value="{{sy.year_id}}">{{sy.label}}</option>
-                {% endfor %}
-            </select>
+<div class="sch-container">
+    <!-- Header -->
+    <div class="premium-header">
+        <div class="header-text">
+            <h2>Class Schedules</h2>
+            <div class="status-badge">
+                <span class="pulse-dot"></span>
+                Managing class rosters and time slots.
+            </div>
         </div>
     </div>
-    <span id="add-time-error" style="display:none; color:#c00; font-size:14px; margin-top:8px;">Start time must be before end time.</span>
-    <button class="btn btn-success mt-4 px-4" type="submit">Add Schedule</button>
-</form>
 
-<div class="table-responsive" style="max-width:1200px;margin:auto;">
-<table class="table table-striped table-bordered align-middle rounded shadow-sm" style="margin-top:18px;">
-    <thead class="table-light">
-        <tr>
-            <th>School Year</th>
-            <th>Section</th>
-            <th>Subject</th>
-            <th>Teacher</th>
-            <th>Day</th>
-            <th>Start</th>
-            <th>End</th>
-            <th>Room</th>
-            <th style="width:108px;">Actions</th>
-        </tr>
-    </thead>
-    <tbody>
-    {% for sched in schedules %}
-        <tr>
-            <td>{{sched.year_label}}</td>
-            <td>{{sched.section_name}}</td>
-            <td>{{sched.subject_name}}</td>
-            <td>{{sched.teacher_name}}</td>
-            <td>{{sched.day_of_week}}</td>
-            <td>{{ sched.start_time.strftime('%H:%M') }}</td>
-            <td>{{ sched.end_time.strftime('%H:%M') }}</td>
-            <td>{{sched.room}}</td>
-            <td>
-                <button type="button"
-                        class="btn btn-sm btn-outline-primary mb-1"
-                        onclick="openEditModal({{sched.schedule_id}})">Edit</button>
-                <form method="post"
-                      action="{{ url_for('registrar.delete_schedule', schedule_id=sched.schedule_id) }}"
-                      style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this schedule?');">
-                    <button type="submit" class="btn btn-sm btn-outline-danger mb-1">Delete</button>
-                </form>
-                <!-- Hidden data for modal population -->
-                <span id="sched-data-{{sched.schedule_id}}" style="display:none;">{
-                    "schedule_id": "{{sched.schedule_id}}",
-                    "section_id": "{{sched.section_id}}",
-                    "subject_id": "{{sched.subject_id}}",
-                    "teacher_id": "{{sched.teacher_id}}",
-                    "day_of_week": "{{sched.day_of_week}}",
-                    "start_time": "{{sched.start_time.strftime('%H:%M')}}",
-                    "end_time": "{{sched.end_time.strftime('%H:%M')}}",
-                    "room": "{{sched.room}}",
-                    "year_id": "{{sched.year_id}}"
-                }</span>
-            </td>
-        </tr>
-    {% endfor %}
-    </tbody>
-</table>
-</div>
-
-<!-- Edit Modal -->
-<div id="editModal" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(0,0,0,0.40); z-index:9999;">
-    <div style="background:#fff; max-width:660px; margin:48px auto; padding:28px 32px 24px 32px; border-radius:12px; position:relative; box-shadow:0 6px 40px #27324a21;">
-        <button type="button" onclick="closeEditModal()" style="position:absolute;top:16px;right:18px;font-size:22px;background:none;border:none;">&times;</button>
-        <h2 class="mb-3">Edit Schedule</h2>
-        <form method="post" id="editForm">
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label">Section / Subject / Teacher</label>
-                    <select name="combo" id="edit_combo" class="form-select" required>
+    <!-- Quick Add Form -->
+    <div class="form-card">
+        <h3 class="form-title"><i class="fas fa-plus-circle"></i> Add New Class</h3>
+        <form method="post" id="addForm">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label class="form-label">Class Details</label>
+                    <select name="combo" class="premium-input" required>
                         <option value="">-- Select --</option>
                         {% for c in combinations %}
                         <option value="{{c.section_id}}|{{c.subject_id}}|{{c.teacher_id}}">
-                            [{{c.year_id}}] {{c.section_name}} — {{c.subject_name}} ({{c.teacher_name}})
+                            {{c.section_name}} — {{c.subject_name}} ({{c.teacher_name}})
                         </option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-6">
+                <div class="form-group">
                     <label class="form-label">Day</label>
-                    <select name="day_of_week" id="edit_day_of_week" class="form-select" required>
-                        <option value="">-- Day --</option>
+                    <select name="day_of_week" class="premium-input" required>
+                        <option value="">Day</option>
                         {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday'] %}
                         <option value="{{day}}">{{day}}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="form-group">
                     <label class="form-label">Start</label>
-                    <input type="time" name="start_time" id="edit_start_time" class="form-control" required min="07:00" max="18:00">
+                    <input type="time" name="start_time" class="premium-input" required min="07:00" max="18:00">
                 </div>
-                <div class="col-md-4">
+                <div class="form-group">
                     <label class="form-label">End</label>
-                    <input type="time" name="end_time" id="edit_end_time" class="form-control" required min="07:00" max="18:00">
+                    <input type="time" name="end_time" class="premium-input" required min="07:00" max="18:00">
                 </div>
-                <div class="col-md-4">
+                <div class="form-group">
                     <label class="form-label">Room</label>
-                    <input type="text" name="room" id="edit_room" maxlength="32" class="form-control" required>
+                    <input type="text" name="room" maxlength="32" class="premium-input" placeholder="Rm 101" required>
                 </div>
-                <div class="col-md-5">
-                    <label class="form-label">School Year</label>
-                    <select name="year_id" id="edit_year_id" class="form-select" required>
-                        <option value="">-- Year --</option>
+                <div class="form-group">
+                    <label class="form-label">Academic Year</label>
+                    <div style="display: flex; gap: 8px;">
+                        <select name="year_id" class="premium-input" required>
+                            <option value="">Year</option>
+                            {% for sy in school_years %}
+                            <option value="{{sy.year_id}}">{{sy.label}}</option>
+                            {% endfor %}
+                        </select>
+                        <button class="btn-create" type="submit"><i class="fas fa-check"></i> Add</button>
+                    </div>
+                </div>
+            </div>
+            <div id="add-time-error" class="error-hint">Start time must be before end time.</div>
+        </form>
+    </div>
+
+    <!-- Schedule List -->
+    <div class="table-surface">
+        <div class="table-toolbar">
+            <h3 style="margin:0; font-weight:800; color:var(--sch-blue); font-size:1.1rem;">Scheduled Classes</h3>
+            <div style="font-weight: 700; color: var(--sch-blue); font-size: 0.9rem; background: var(--sch-blue-soft); padding: 8px 16px; border-radius: 12px;">
+                {{ schedules | length }} Classes Active
+            </div>
+        </div>
+
+        <div style="overflow-x: auto;">
+            <table class="premium-table">
+                <thead>
+                    <tr>
+                        <th>Year</th>
+                        <th>Class & Info</th>
+                        <th>Teacher</th>
+                        <th>Day</th>
+                        <th>Time Slot</th>
+                        <th>Room</th>
+                        <th style="width: 100px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sched in schedules %}
+                    <tr>
+                        <td><span style="color: var(--sch-blue); font-weight: 800;">{{sched.year_label}}</span></td>
+                        <td>
+                            <div class="class-info">
+                                <span class="class-main">{{sched.section_name}}</span>
+                                <span class="class-sub">{{sched.subject_name}}</span>
+                            </div>
+                        </td>
+                        <td>{{sched.teacher_name}}</td>
+                        <td><span style="font-weight: 700;">{{sched.day_of_week}}</span></td>
+                        <td>
+                            <div class="time-slot">{{ sched.start_time.strftime('%H:%M') }} - {{ sched.end_time.strftime('%H:%M') }}</div>
+                        </td>
+                        <td><span class="room-badge">{{sched.room}}</span></td>
+                        <td>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn-action btn-edit" title="Edit" onclick="openEditModal({{sched.schedule_id}})">
+                                    <i class="fas fa-pen"></i>
+                                </button>
+                                <form method="post" action="{{ url_for('registrar.delete_schedule', schedule_id=sched.schedule_id) }}" style="display:inline;" onsubmit="return confirm('Delete this class?');">
+                                    <button type="submit" class="btn-action btn-delete" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                            <!-- Hidden JSON for Modal -->
+                            <script id="sched-data-{{sched.schedule_id}}" type="application/json">
+                                {
+                                    "schedule_id": "{{sched.schedule_id}}",
+                                    "section_id": "{{sched.section_id}}",
+                                    "subject_id": "{{sched.subject_id}}",
+                                    "teacher_id": "{{sched.teacher_id}}",
+                                    "day_of_week": "{{sched.day_of_week}}",
+                                    "start_time": "{{sched.start_time.strftime('%H:%M')}}",
+                                    "end_time": "{{sched.end_time.strftime('%H:%M')}}",
+                                    "room": "{{sched.room}}",
+                                    "year_id": "{{sched.year_id}}"
+                                }
+                            </script>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Overlay -->
+<div class="glass-overlay" id="editOverlay">
+    <div class="glass-modal">
+        <button class="modal-close" onclick="closeEditModal()">&times;</button>
+        <h2 style="font-weight:900; color:var(--sch-blue); margin-bottom:24px; font-size:1.5rem;">Edit Class</h2>
+        
+        <form method="post" id="editForm">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div class="form-group" style="grid-column: span 2;">
+                    <label class="form-label">Class Details</label>
+                    <select name="combo" id="edit_combo" class="premium-input" required>
+                        <option value="">-- Select --</option>
+                        {% for c in combinations %}
+                        <option value="{{c.section_id}}|{{c.subject_id}}|{{c.teacher_id}}">
+                            {{c.section_name}} — {{c.subject_name}} ({{c.teacher_name}})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Day</label>
+                    <select name="day_of_week" id="edit_day_of_week" class="premium-input" required>
+                        <option value="">Day</option>
+                        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday'] %}
+                        <option value="{{day}}">{{day}}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Room</label>
+                    <input type="text" name="room" id="edit_room" maxlength="32" class="premium-input" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Start</label>
+                    <input type="time" name="start_time" id="edit_start_time" class="premium-input" required min="07:00" max="18:00">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">End</label>
+                    <input type="time" name="end_time" id="edit_end_time" class="premium-input" required min="07:00" max="18:00">
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label class="form-label">Academic Year</label>
+                    <select name="year_id" id="edit_year_id" class="premium-input" required>
+                        <option value="">-- Select --</option>
                         {% for sy in school_years %}
                         <option value="{{sy.year_id}}">{{sy.label}}</option>
                         {% endfor %}
                     </select>
                 </div>
             </div>
-            <span id="edit-time-error" style="display:none;color:#c00;font-size:14px;display:block;text-align:center;margin-top:8px;">Start time must be before end time.</span>
-            <button class="btn btn-success mt-4 px-4" type="submit">Save</button>
-            <button type="button" class="btn btn-secondary mt-4 px-4" onclick="closeEditModal()" style="margin-left:7px;">Cancel</button>
+            <div id="edit-time-error" class="error-hint">Start time must be before end time.</div>
+            <div style="display: flex; gap: 12px; margin-top: 32px;">
+                <button type="button" class="premium-input" style="width: 100%; cursor: pointer;" onclick="closeEditModal()">Cancel</button>
+                <button type="submit" class="btn-create" style="width: 100%; height: auto;">Save Changes</button>
+            </div>
         </form>
     </div>
 </div>
 
 <script>
-// Helper: Is time in allowed range (07:00 <= t <= 18:00)?
-function isInRange(val) {
-    return val >= "07:00" && val <= "18:00";
-}
+    function isInRange(val) { return val >= "07:00" && val <= "18:00"; }
+    
+    function validateForm(s, e_, errorEl) {
+        errorEl.style.display = 'none';
+        if (s && e_ && (!isInRange(s) || !isInRange(e_))) {
+            errorEl.innerText = "Times must be between 07:00 and 18:00.";
+            errorEl.style.display = 'block';
+            return false;
+        } else if (s && e_ && s >= e_) {
+            errorEl.innerText = "Start time must be before end time.";
+            errorEl.style.display = 'block';
+            return false;
+        }
+        return true;
+    }
 
-function showError(span, msg) {
-    span.textContent = msg;
-    span.style.display = 'inline';
-}
+    document.getElementById('addForm').addEventListener('submit', function(e) {
+        if (!validateForm(this.start_time.value, this.end_time.value, document.getElementById('add-time-error'))) {
+            e.preventDefault();
+        }
+    });
 
-// Add form validation
-document.getElementById('addForm').addEventListener('submit', function(e) {
-  var s = this.start_time.value, e_ = this.end_time.value;
-  var errorSpan = document.getElementById('add-time-error');
-  errorSpan.style.display = 'none';
+    document.getElementById('editForm').addEventListener('submit', function(e) {
+        if (!validateForm(this.start_time.value, this.end_time.value, document.getElementById('edit-time-error'))) {
+            e.preventDefault();
+        }
+    });
 
-  if (s && e_ && (!isInRange(s) || !isInRange(e_))) {
-      showError(errorSpan, "Times must be between 07:00 and 18:00.");
-      e.preventDefault();
-  } else if (s && e_ && s >= e_) {
-      showError(errorSpan, "Start time must be before end time.");
-      e.preventDefault();
-  }
-});
+    function openEditModal(schedule_id) {
+        const dataTag = document.getElementById('sched-data-' + schedule_id);
+        if (!dataTag) return;
+        
+        const sched = JSON.parse(dataTag.textContent);
+        document.getElementById('edit_combo').value = sched.section_id + '|' + sched.subject_id + '|' + sched.teacher_id;
+        document.getElementById('edit_day_of_week').value = sched.day_of_week;
+        document.getElementById('edit_start_time').value = sched.start_time;
+        document.getElementById('edit_end_time').value = sched.end_time;
+        document.getElementById('edit_room').value = sched.room;
+        document.getElementById('edit_year_id').value = sched.year_id;
+        document.getElementById('editForm').action = '/registrar/schedules/' + sched.schedule_id + '/edit';
+        
+        const overlay = document.getElementById('editOverlay');
+        overlay.style.display = 'flex';
+        setTimeout(() => overlay.classList.add('visible'), 10);
+    }
 
-// Edit form validation
-document.getElementById('editForm').addEventListener('submit', function(e) {
-  var s = this.start_time.value, e_ = this.end_time.value;
-  var errorSpan = document.getElementById('edit-time-error');
-  errorSpan.style.display = 'none';
-
-  if (s && e_ && (!isInRange(s) || !isInRange(e_))) {
-      showError(errorSpan, "Times must be between 07:00 and 18:00.");
-      e.preventDefault();
-  } else if (s && e_ && s >= e_) {
-      showError(errorSpan, "Start time must be before end time.");
-      e.preventDefault();
-  }
-});
-
-function openEditModal(schedule_id) {
-    var raw = document.getElementById('sched-data-' + schedule_id).innerText
-        .replace(/(\r\n|\n|\r)/gm,"")
-        .replace(/,\s*}/, '}');
-    var sched = JSON.parse(raw);
-
-    document.getElementById('edit_combo').value =
-        sched.section_id + '|' + sched.subject_id + '|' + sched.teacher_id;
-    document.getElementById('edit_day_of_week').value = sched.day_of_week;
-    document.getElementById('edit_start_time').value = sched.start_time;
-    document.getElementById('edit_end_time').value = sched.end_time;
-    document.getElementById('edit_room').value = sched.room;
-    document.getElementById('edit_year_id').value = sched.year_id;
-
-    var form = document.getElementById('editForm');
-    form.action = '/registrar/schedules/' + sched.schedule_id + '/edit';
-
-    document.getElementById('editModal').style.display = 'block';
-}
-function closeEditModal() {
-    document.getElementById('editModal').style.display = 'none';
-}
+    function closeEditModal() {
+        const overlay = document.getElementById('editOverlay');
+        overlay.classList.remove('visible');
+        setTimeout(() => overlay.style.display = 'none', 300);
+    }
 </script>
-
-<style>
-.card, .table, .modal-content {
-  border-radius: 14px !important;
-}
-.table th, .table td {
-  vertical-align: middle !important;
-}
-.table-striped > tbody > tr:nth-of-type(odd) {
-  background-color: #fdfdf7 !important;
-}
-#editModal {
-    /* already styled inline for overlay effect */
-}
-
-@media (max-width: 991px) {
-    .card, .table {
-        font-size: 15px;
-    }
-    .modal-content {
-        font-size: 15px;
-    }
-}
-</style>
 {% endblock %}
