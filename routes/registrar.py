@@ -1052,8 +1052,10 @@ def list_and_add_schedules():
         JOIN users u ON s.teacher_id = u.user_id
         JOIN school_years y ON s.year_id = y.year_id
         WHERE s.branch_id = %s
+          AND y.branch_id = %s
+          AND y.is_active = TRUE
         ORDER BY y.label DESC, sec.section_name, subj.name, s.day_of_week, s.start_time
-    """, (branch_id,))
+    """, (branch_id, branch_id))
     schedules = cursor.fetchall()
 
     cursor.close()
