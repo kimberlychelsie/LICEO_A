@@ -491,6 +491,31 @@
     <h2 style="margin:0;">Enrollments</h2>
     <a href="/registrar" class="btn btn-secondary btn-sm">← Back to Dashboard</a>
 </div>
+<!-- School Year Switcher -->
+<div class="card" style="margin-bottom: 14px;">
+    <div class="card-header">
+      <span>Viewing School Year</span>
+      {% if not can_modify %}
+        <span class="badge" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;">
+          Archive Mode (read-only)
+        </span>
+      {% else %}
+        <span class="badge badge-approved">Active Year (editable)</span>
+      {% endif %}
+    </div>
+    <div style="padding: 12px 16px;">
+      <form method="get" action="/registrar/enrollments" class="filter-bar" style="margin:0;">
+        <label>School Year</label>
+        <select name="year_id" onchange="this.form.submit()">
+          {% for sy in all_school_years %}
+            <option value="{{ sy.year_id }}" {% if sy.year_id == selected_year_id %}selected{% endif %}>
+              {{ sy.label }}{% if sy.is_active %} (Active){% endif %}
+            </option>
+          {% endfor %}
+        </select>
+      </form>
+    </div>
+  </div>
 
 <!-- ═══ TABS ═══ -->
 <div class="tab-bar">
@@ -573,20 +598,22 @@
 
                     <td>
                         {% if enrollment.status == 'pending' %}
-                        {% if is_branch_active_status %}
-                        <button type="button" class="btn btn-primary btn-sm"
-                            onclick="toggleNewDetails('{{ enrollment.enrollment_id }}', this)">👁 View Details</button>
-                        <form method="post" action="/registrar/enrollments" style="display:inline;">
-                            <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
-                            <button name="action" value="approved" class="btn btn-success btn-sm">✅ Approve</button>
-                        </form>
-                        <button type="button" class="btn btn-danger btn-sm"
-                            onclick="openRejectModal('{{ enrollment.enrollment_id }}', '{{ enrollment.student_name|e }}')">❌
-                            Reject</button>
-                        {% else %}
-                        <span class="muted-note">Actions disabled (Archive Mode)</span>
-                        {% endif %}
-                        {% endif %}
+{% if is_branch_active_status and can_modify %}
+  <button type="button" class="btn btn-primary btn-sm"
+      onclick="toggleNewDetails('{{ enrollment.enrollment_id }}', this)">👁 View Details</button>
+
+  <form method="post" action="/registrar/enrollments" style="display:inline;">
+      <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
+      <input type="hidden" name="year_id" value="{{ selected_year_id }}">
+      <button name="action" value="approved" class="btn btn-success btn-sm">✅ Approve</button>
+  </form>
+
+  <button type="button" class="btn btn-danger btn-sm"
+      onclick="openRejectModal('{{ enrollment.enrollment_id }}', '{{ enrollment.student_name|e }}')">❌ Reject</button>
+{% else %}
+  <span class="muted-note">Actions disabled (Archive Mode)</span>
+{% endif %}
+{% endif %}
                     </td>
                 </tr>
                 <tr id="new-details-{{ enrollment.enrollment_id }}" class="new-details-row" style="display:none;">
@@ -777,12 +804,18 @@
                                                 {% endfor %}
                                             </select>
                                         </div>
-                                        {% if not is_history_mode %}
-                                        <button type="submit" class="btn btn-primary btn-sm save-inline-btn" disabled
-                                            style="margin-top:12px; width:100%; justify-content:center; background:#8aa0c8; border:none;">
-                                            💾 Save Changes
-                                        </button>
-                                        {% endif %}
+                                        <button type="submit"
+        class="btn btn-primary btn-sm save-inline-btn"
+        {% if not can_modify %}disabled{% endif %}
+        style="margin-top:12px; width:100%; justify-content:center; background:#8aa0c8; border:none;">
+  💾 Save Changes
+</button>
+
+{% if not can_modify %}
+  <div class="muted-note" style="margin-top:8px;">
+    Archive Mode: editing is disabled for inactive school years.
+  </div>
+{% endif %}
                                     </div>
                                 </div>
                             </form>
@@ -817,6 +850,7 @@
             <form method="post" action="/registrar/enrollments"
                 onsubmit="return confirm('Reject this enrollment? This will require a reason.');">
                 <input type="hidden" name="enrollment_id" id="rejectEnrollmentId" value="">
+                <input type="hidden" name="year_id" value="{{ selected_year_id }}">
                 <input type="hidden" name="action" value="rejected">
                 <label
                     style="font-size:0.8rem; font-weight:800; color:#475569; display:block; margin-bottom:6px;">Reason
@@ -835,61 +869,78 @@
 </div>
 
 <script>
+    const CAN_MODIFY = {{ 'true' if can_modify else 'false' }};
+  
     function toggleNewDetails(enrollmentId, btn) {
-        const row = document.getElementById('new-details-' + enrollmentId);
-        if (!row) return;
-        const isOpen = row.style.display !== 'none';
-        row.style.display = isOpen ? 'none' : '';
-        if (btn) btn.textContent = isOpen ? '👁 View Details' : 'Hide Details';
+      const row = document.getElementById('new-details-' + enrollmentId);
+      if (!row) return;
+      const isOpen = row.style.display !== 'none';
+      row.style.display = isOpen ? 'none' : '';
+      if (btn) btn.textContent = isOpen ? '👁 View Details' : 'Hide Details';
     }
-
+  
     function openRejectModal(enrollmentId, studentName) {
-        const modal = document.getElementById('rejectModal');
-        document.getElementById('rejectEnrollmentId').value = enrollmentId;
-        document.getElementById('rejectStudentName').textContent = studentName || '';
-        const reason = document.getElementById('rejectReason');
-        reason.value = '';
-        modal.style.display = 'block';
-        setTimeout(() => reason.focus(), 0);
+      const modal = document.getElementById('rejectModal');
+      document.getElementById('rejectEnrollmentId').value = enrollmentId;
+      document.getElementById('rejectStudentName').textContent = studentName || '';
+      const reason = document.getElementById('rejectReason');
+      reason.value = '';
+      modal.style.display = 'block';
+      setTimeout(() => reason.focus(), 0);
     }
+  
     function closeRejectModal() {
-        const modal = document.getElementById('rejectModal');
-        modal.style.display = 'none';
+      const modal = document.getElementById('rejectModal');
+      modal.style.display = 'none';
     }
+  
     document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') closeRejectModal();
+      if (e.key === 'Escape') closeRejectModal();
     });
+  
     document.getElementById('rejectModal')?.addEventListener('click', function (e) {
-        if (e.target === this) closeRejectModal();
+      if (e.target === this) closeRejectModal();
     });
-
+  
     // Enable inline save button only when changes exist (per expanded form)
     document.addEventListener('input', function (e) {
-        const form = e.target.closest?.('.new-details-form');
-        if (!form) return;
-        const btn = form.querySelector('.save-inline-btn');
-        if (!btn) return;
-
-        if (!form.__originals) {
-            form.__originals = {};
-            form.querySelectorAll('.track-change').forEach(function (el) {
-                form.__originals[el.name] = el.value;
-            });
-        }
-        let changed = false;
+      const form = e.target.closest?.('.new-details-form');
+      if (!form) return;
+  
+      const btn = form.querySelector('.save-inline-btn');
+      if (!btn) return;
+  
+      // Archive mode: always disabled
+      if (!CAN_MODIFY) {
+        btn.disabled = true;
+        btn.style.background = '#8aa0c8';
+        return;
+      }
+  
+      // Capture originals once
+      if (!form.__originals) {
+        form.__originals = {};
         form.querySelectorAll('.track-change').forEach(function (el) {
-            if ((form.__originals[el.name] ?? '') !== el.value) changed = true;
+          form.__originals[el.name] = el.value;
         });
-        btn.disabled = !changed;
-        btn.style.background = changed ? '#1d4ed8' : '#8aa0c8';
+      }
+  
+      // Detect changes
+      let changed = false;
+      form.querySelectorAll('.track-change').forEach(function (el) {
+        if ((form.__originals[el.name] ?? '') !== el.value) changed = true;
+      });
+  
+      btn.disabled = !changed;
+      btn.style.background = changed ? '#1d4ed8' : '#8aa0c8';
     });
-</script>
+  </script>
 
 <!-- ═══ TAB: ENROLLED STUDENTS ═══ -->
 <div class="tab-panel" id="tab-enrolled">
 
     <!-- Toggle Banner -->
-    {% if is_branch_active_status %}
+    {% if is_branch_active_status and can_modify %}
     {% if reenrollment_open %}
     <div class="toggle-banner open-state">
         <div class="tg-left">
@@ -1004,7 +1055,7 @@
                     </td>
                     <td>
                         {% if not e.has_student_account %}
-                        {% if is_branch_active_status %}
+                        {% if is_branch_active_status and can_modify %}
                         <button class="btn btn-primary btn-sm" onclick="openCreateModal(
                                 {{ e.enrollment_id }},
                                 '{{ e.student_name | replace("'", "\\'") }}',
@@ -1018,7 +1069,7 @@
                         {% endif %}
                         <br><br>
                         {% if not e.has_parent_account %}
-                        {% if is_branch_active_status %}
+                        {% if is_branch_active_status and can_modify %}
                         <form method="post" action="/registrar/create-parent-account/{{ e.enrollment_id }}"
                             style="display:inline;">
                             <button type="submit" class="btn btn-secondary btn-sm">👨‍👩‍👧 Create Parent

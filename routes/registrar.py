@@ -124,7 +124,6 @@ def registrar_home():
 # ══════════════════════════════════════════
 # ENROLLMENTS — Full Tab Table
 # ══════════════════════════════════════════
-
 @registrar_bp.route("/registrar/enrollments", methods=["GET", "POST"])
 def registrar_enrollments():
     if session.get("role") != "registrar":
@@ -138,6 +137,7 @@ def registrar_enrollments():
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        # --- ACTIVE YEAR (for safe actions) ---
         cursor.execute("""
             SELECT year_id
             FROM school_years
@@ -150,7 +150,22 @@ def registrar_enrollments():
             flash("No active school year found for this branch.", "error")
             return redirect("/registrar")
 
-        # Keep status consistent: once section is assigned, approved -> enrolled.
+        # --- YEAR SWITCHER (view context) ---
+        selected_year_id = request.args.get("year_id", type=int) or active_year_id
+
+        # dropdown data: active + inactive
+        cursor.execute("""
+            SELECT year_id, label, is_active
+            FROM school_years
+            WHERE branch_id = %s
+            ORDER BY label DESC
+        """, (branch_id,))
+        all_school_years = cursor.fetchall()
+
+        # can user modify on this page?
+        can_modify = (selected_year_id == active_year_id)
+
+        # Keep status consistent: once section is assigned, approved -> enrolled (ACTIVE YEAR ONLY)
         cursor.execute("""
             UPDATE enrollments
             SET status = 'enrolled'
@@ -161,16 +176,20 @@ def registrar_enrollments():
         """, (branch_id, active_year_id))
         db.commit()
 
+        # --- POST actions: ACTIVE YEAR ONLY ---
         if request.method == "POST":
+            if not can_modify:
+                flash("You can only approve/reject enrollments in the ACTIVE school year.", "error")
+                return redirect(url_for("registrar.registrar_enrollments", year_id=selected_year_id))
+
             enrollment_id = request.form.get("enrollment_id")
             action = request.form.get("action")
             rejection_reason = (request.form.get("rejection_reason") or "").strip()
 
             if not enrollment_id or action not in ("approved", "rejected"):
                 flash("Invalid action.", "error")
-                return redirect("/registrar/enrollments")
+                return redirect(url_for("registrar.registrar_enrollments", year_id=selected_year_id))
 
-            # Reject must include a reason (so registrar can justify why).
             if action == "rejected" and not rejection_reason:
                 flash("Please provide a rejection reason.", "error")
                 return redirect(f"/registrar/enrollment/{enrollment_id}#reject")
@@ -197,10 +216,13 @@ def registrar_enrollments():
             if cursor.rowcount == 0:
                 db.rollback()
                 flash("Enrollment not found for your branch.", "error")
-                return redirect("/registrar/enrollments")
+                return redirect(url_for("registrar.registrar_enrollments", year_id=selected_year_id))
 
             db.commit()
-            cursor.execute("SELECT branch_enrollment_no AS display_no FROM enrollments WHERE enrollment_id=%s", (enrollment_id,))
+            cursor.execute(
+                "SELECT branch_enrollment_no AS display_no FROM enrollments WHERE enrollment_id=%s",
+                (enrollment_id,)
+            )
             disp_row = cursor.fetchone()
             display_no = disp_row["display_no"] if disp_row else "???"
             flash(
@@ -208,7 +230,7 @@ def registrar_enrollments():
                 "success" if action == "approved" else "warning"
             )
 
-        # ✅ NEW enrollments — single query with documents aggregated
+        # --- NEW enrollments list (VIEW selected year) ---
         cursor.execute("""
             SELECT e.*,
                    e.branch_enrollment_no AS display_no,
@@ -229,7 +251,7 @@ def registrar_enrollments():
               AND e.status IN ('pending', 'rejected')
             GROUP BY e.enrollment_id
             ORDER BY e.branch_enrollment_no ASC NULLS LAST, e.created_at DESC
-        """, (branch_id, active_year_id))
+        """, (branch_id, selected_year_id))
         new_enrollments_raw = cursor.fetchall()
 
         new_enrollments = []
@@ -239,7 +261,7 @@ def registrar_enrollments():
                 e["documents"] = json.loads(e["documents"])
             new_enrollments.append(e)
 
-        # ✅ ENROLLED students — single query with account status
+        # --- ENROLLED students list (VIEW selected year) ---
         cursor.execute("""
             SELECT e.*,
                    e.branch_enrollment_no AS display_no,
@@ -256,17 +278,21 @@ def registrar_enrollments():
               AND e.year_id=%s
               AND e.status IN ('enrolled', 'open_for_enrollment', 'approved')
             ORDER BY e.grade_level ASC, e.student_name ASC
-        """, (branch_id, active_year_id))
+        """, (branch_id, selected_year_id))
         enrolled_students = cursor.fetchall()
-        # ✅ No loop needed — account status already in each row
 
         grade_levels = [
-            "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3", "Grade 4", 
-            "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", 
+            "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3", "Grade 4",
+            "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10",
             "Grade 11", "Grade 12"
         ]
-        reenrollment_open = any(e["status"] == "open_for_enrollment" for e in enrolled_students)
 
+        # Re-enrollment open should only consider ACTIVE year data (otherwise confusing)
+        reenrollment_open = False
+        if can_modify:
+            reenrollment_open = any(e["status"] == "open_for_enrollment" for e in enrolled_students)
+
+        # Section options stay ACTIVE year only (since assigning sections is an active-year operation)
         cursor.execute("""
             SELECT s.section_id, s.section_name, g.name AS grade_level_name,
                    CONCAT(g.name, ' — ', s.section_name) AS section_display
@@ -290,6 +316,12 @@ def registrar_enrollments():
             reenrollment_open=reenrollment_open,
             section_options=section_options,
             is_branch_active_status=is_branch_active_status,
+
+            # NEW template vars for year switcher
+            all_school_years=all_school_years,
+            selected_year_id=selected_year_id,
+            active_year_id=active_year_id,
+            can_modify=can_modify,
         )
     except Exception as e:
         db.rollback()
@@ -489,14 +521,19 @@ def create_student_account(enrollment_id):
                     """, (int(section_id), branch_id, enrollment.get("grade_level", "")))
                     if cursor.fetchone():
                         cursor.execute("""
-                            UPDATE enrollments
-                            SET section_id = %s,
+                            UPDATE enrollments e
+                            SET section_id = s.section_id,
+                                year_id = s.year_id,
                                 status = CASE
-                                    WHEN status = 'approved' THEN 'enrolled'
-                                    ELSE status
+                                    WHEN e.status = 'approved' THEN 'enrolled'
+                                    ELSE e.status
                                 END
-                            WHERE enrollment_id = %s AND branch_id = %s
-                        """, (int(section_id), enrollment_id, branch_id))
+                            FROM sections s
+                            WHERE e.enrollment_id = %s
+                            AND e.branch_id = %s
+                            AND s.section_id = %s
+                            AND s.branch_id = %s
+                        """, (enrollment_id, branch_id, int(section_id), branch_id))
                         db.commit()
                 except Exception as e:
                     db.rollback()
