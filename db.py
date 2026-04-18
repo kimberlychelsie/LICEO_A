@@ -276,6 +276,25 @@ def get_db_connection():
                 logger.warning(f"Could not migrate individual_extensions table: {e}")
                 conn.rollback()
 
+            # password_reset_tokens migration
+            try:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                      id SERIAL PRIMARY KEY,
+                      token_hash TEXT NOT NULL UNIQUE,
+                      user_id INTEGER NULL REFERENCES users(user_id) ON DELETE CASCADE,
+                      student_account_id INTEGER NULL REFERENCES student_accounts(account_id) ON DELETE CASCADE,
+                      email TEXT NOT NULL,
+                      created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+                      expires_at TIMESTAMP NOT NULL,
+                      used_at TIMESTAMP NULL
+                    )
+                """)
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate password_reset_tokens table: {e}")
+                conn.rollback()
+
             # ONE-TIME CLEANUP: Delete test Teacher9 accounts directly on boot
             try:
                 cur.execute("DELETE FROM users WHERE role='teacher' AND username ILIKE '%Teacher9%'")
