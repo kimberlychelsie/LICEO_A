@@ -2363,7 +2363,7 @@ def _get_teacher_assignments(cur, user_id, branch_id, year_id):
     return cur.fetchall() or []
 
 
-# ── Grading Weights Setup ─────────────────────────────────────────────────────
+# ── DepEd Grading Info (read-only — weights are auto-computed) ────────────────
 @teacher_bp.route("/teacher/grading-weights")
 def grading_weights():
     if not _require_teacher():
@@ -2382,107 +2382,36 @@ def grading_weights():
 
         assignments = _get_teacher_assignments(cur, user_id, branch_id, year_id)
 
-        cur.execute("""
-            SELECT section_id, subject_id, grading_period,
-                   quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct
-            FROM grading_weights
-            WHERE teacher_id = %s
-        """, (user_id,))
-        raw_weights = cur.fetchall() or []
-
-        weights_map = {}
-        for w in raw_weights:
-            key = (w['section_id'], w['subject_id'], w['grading_period'])
-            weights_map[key] = w
+        # Build per-assignment auto weights (read-only, from DepEd category)
+        assignments_with_weights = []
+        for a in assignments:
+            category = a.get('deped_category') or 'language'
+            w = DEPED_WEIGHTS.get(category, DEPED_WEIGHTS['language'])
+            assignments_with_weights.append({
+                **dict(a),
+                'ww_pct':  int(round(w['ww'] * 100)),
+                'pt_pct':  int(round(w['pt'] * 100)),
+                'qa_pct':  int(round(w['qa'] * 100)),
+            })
 
     finally:
         cur.close()
         db.close()
 
     return render_template("teacher_grading_weights.html",
-                           assignments=assignments,
-                           weights_map=weights_map,
+                           assignments=assignments_with_weights,
                            grading_periods=GRADING_PERIODS)
+
+
 
 
 @teacher_bp.route("/teacher/grading-weights/set", methods=["POST"])
 def grading_weights_set():
+    # DEPRECATED — grading weights are now auto-computed from DepEd category
     if not _require_teacher():
         return redirect("/")
-
-    user_id   = session.get("user_id")
-    branch_id = session.get("branch_id")
-
-    section_id  = request.form.get("section_id")
-    subject_id  = request.form.get("subject_id")
-    period      = request.form.get("grading_period")
-    apply_all   = request.form.get("apply_all_subjects")
-
-    try:
-        quiz_pct          = float(request.form.get("quiz_pct", 0) or 0)
-        exam_pct          = float(request.form.get("exam_pct", 0) or 0)
-        activity_pct      = float(request.form.get("activity_pct", 0) or 0)
-        participation_pct = float(request.form.get("participation_pct", 0) or 0)
-        attendance_pct    = float(request.form.get("attendance_pct", 0) or 0)
-    except ValueError:
-        flash("All percentage values must be numbers.", "error")
-        return redirect(url_for("teacher.grading_weights"))
-
-    if period not in GRADING_PERIODS:
-        flash("Invalid grading period.", "error")
-        return redirect(url_for("teacher.grading_weights"))
-
-    total = quiz_pct + exam_pct + activity_pct + participation_pct + attendance_pct
-    if abs(total - 100.0) > 0.01:
-        flash(f"Percentages must total exactly 100%. Current total: {total:.1f}%", "error")
-        return redirect(url_for("teacher.grading_weights"))
-
-    db  = get_db_connection()
-    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    try:
-        year_id = _get_active_school_year(cur, branch_id)
-        if not year_id:
-            flash("No active school year.", "error")
-            return redirect(url_for("teacher.teacher_dashboard"))
-        targets = [{'section_id': section_id, 'subject_id': subject_id}]
-        
-        if apply_all == "1":
-            cur.execute("""
-                SELECT st.section_id, st.subject_id
-                FROM section_teachers st
-                JOIN sections s ON st.section_id = s.section_id
-                WHERE st.teacher_id = %s AND s.branch_id = %s AND s.year_id = %s
-            """, (user_id, branch_id, year_id))
-            targets = cur.fetchall()
-
-        for t in targets:
-            sid = t['section_id']
-            subjid = t['subject_id']
-            cur.execute("""
-    INSERT INTO grading_weights
-        (teacher_id, section_id, subject_id, grading_period,
-         quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct, branch_id, year_id)
-    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-    ON CONFLICT (teacher_id, section_id, subject_id, grading_period, year_id)
-    DO UPDATE SET
-        quiz_pct          = EXCLUDED.quiz_pct,
-        exam_pct          = EXCLUDED.exam_pct,
-        activity_pct      = EXCLUDED.activity_pct,
-        participation_pct = EXCLUDED.participation_pct,
-        attendance_pct    = EXCLUDED.attendance_pct
-""", (user_id, sid, subjid, period,
-      quiz_pct, exam_pct, activity_pct, participation_pct, attendance_pct, branch_id, year_id))
-        
-        db.commit()
-        flash(f"Grading weights for {period} Grading saved successfully!", "success")
-    except Exception as e:
-        db.rollback()
-        flash(f"Could not save weights: {e}", "error")
-    finally:
-        cur.close()
-        db.close()
-
-    return redirect(url_for("teacher.grading_weights"))
+    flash("Grading weights are now automatically set based on DepEd K-12 subject category.", "info")
+    return redirect(url_for("teacher.teacher_dashboard"))
 
 
 def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, period, year_id):

@@ -31,14 +31,14 @@
       --border: #e2e8f0;
 
       --sidebar-w: 260px;
-      --sidebar-bg: #1a3a8f;
-      /* Deep Blue Matches Image */
-      --sidebar-dark: #142e75;
-      --sidebar-text: #ffffff;
-      --sidebar-muted: rgba(255, 255, 255, 0.6);
-      --sidebar-hover: rgba(255, 255, 255, 0.1);
-      --sidebar-active: #ffffff;
-      --sidebar-active-text: #1a3a8f;
+      --sidebar-bg: #ffffff;
+      /* Kaiadmin Sidebar theme */
+      --sidebar-dark: #f8fafc;
+      --sidebar-text: #575962;
+      --sidebar-muted: #8d9498;
+      --sidebar-hover: rgba(0, 0, 0, 0.04);
+      --sidebar-active: var(--info);
+      --sidebar-active-text: #ffffff;
 
       --topbar-h: 60px;
       --topbar-bg: #1a3a8f;
@@ -84,14 +84,15 @@
       width: var(--sidebar-w);
       height: 100vh;
       background: var(--sidebar-bg);
-      border-right: none;
+      border-right: 1px solid var(--border);
       display: flex;
       flex-direction: column;
       z-index: 1100;
-      transition: transform 0.3s cubic-bezier(.4, 0, .2, 1), box-shadow 0.3s;
+      transition: width 0.3s cubic-bezier(.4, 0, .2, 1), transform 0.3s cubic-bezier(.4, 0, .2, 1), box-shadow 0.3s;
       overflow: hidden;
       /* Always hidden by default — opens via .open class */
       transform: translateX(-100%);
+
       box-shadow: none;
     }
 
@@ -102,28 +103,33 @@
 
     /* Brand */
     .sb-brand {
+      height: var(--topbar-h);
+      background: var(--topbar-bg);
       display: flex;
-      flex-direction: column;
+      flex-direction: row;
       align-items: center;
-      justify-content: center;
-      padding: 30px 20px;
+      justify-content: flex-start;
+      padding: 0 20px;
       text-decoration: none;
       border-bottom: none;
       flex-shrink: 0;
-      text-align: center;
+      gap: 12px;
+      width: calc(100% + 1px);
+      position: relative;
+      z-index: 2;
     }
 
     .sb-brand-icon {
-      width: 80px;
-      height: 80px;
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
       overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      /* removed shadowed box for cleaner look */
-      margin-bottom: 15px;
+      margin-bottom: 0;
+      background: transparent;
       transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
@@ -132,45 +138,49 @@
     }
 
     .sb-brand-icon img {
-      width: 100%;
-      height: 100%;
+      width: 85%;
+      height: 85%;
       object-fit: contain;
     }
 
     .sb-brand-text {
-      line-height: 1.2;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      line-height: 1.1;
     }
 
     .sb-brand-name {
-      font-size: 1rem;
+      font-size: 1.1rem;
       font-weight: 800;
       color: #ffffff;
       letter-spacing: 0.02em;
     }
 
     .sb-brand-sub {
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       color: rgba(255, 255, 255, 0.7);
       font-weight: 500;
       margin-top: 2px;
+      text-transform: uppercase;
     }
 
     /* User info strip */
     .sb-user {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 14px 18px;
+      gap: 12px;
+      padding: 18px 20px;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
-      background: #fff;
+      background: transparent;
     }
 
     .sb-avatar {
-      width: 38px;
-      height: 38px;
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
-      background: linear-gradient(135deg, var(--sidebar-active), #4f78d4);
+      background: var(--info);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -178,19 +188,18 @@
       font-size: 0.9rem;
       color: #fff;
       flex-shrink: 0;
-      box-shadow: 0 2px 8px rgba(26, 58, 143, .25);
     }
 
     .sb-user-name {
-      font-size: 0.84rem;
+      font-size: 0.88rem;
       font-weight: 700;
-      color: var(--text);
-      line-height: 1.2;
+      color: var(--sidebar-text);
+      line-height: 1.3;
     }
 
     .sb-user-role {
-      font-size: 0.7rem;
-      color: var(--muted);
+      font-size: 0.75rem;
+      color: var(--sidebar-muted);
       font-weight: 500;
       text-transform: capitalize;
     }
@@ -207,9 +216,9 @@
       margin: 10px 16px 6px;
       padding: 8px 12px;
       border-radius: 10px;
-      background: rgba(255, 255, 255, 0.12);
-      border: 1px solid rgba(255, 255, 255, 0.22);
-      color: #ffffff;
+      background: var(--sidebar-hover);
+      border: 1px solid var(--border);
+      color: var(--sidebar-text);
       font-size: 0.78rem;
       font-weight: 700;
       text-align: center;
@@ -244,47 +253,41 @@
     .sb-link {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 12px 20px;
+      gap: 14px;
+      padding: 11px 18px;
       margin: 4px 15px;
       color: var(--sidebar-text);
       text-decoration: none;
-      font-size: 0.9rem;
-      font-weight: 500;
-      border-radius: 0 25px 25px 0;
-      /* Pill style starting from left */
-      margin-left: 0;
-      padding-left: 25px;
-      transition: all 0.3s ease;
+      font-size: 0.88rem;
+      font-weight: 600;
+      border-radius: 8px;
+      transition: all 0.2s ease;
       position: relative;
     }
 
     .sb-link:hover {
       background: var(--sidebar-hover);
-      padding-left: 30px;
+      color: var(--text);
     }
 
     .sb-link.active {
       background: var(--sidebar-active);
       color: var(--sidebar-active-text);
       font-weight: 700;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 4px 10px rgba(37, 99, 235, 0.25);
     }
 
     .sb-link.active .sb-icon {
-      transform: scale(1.1);
+      color: var(--sidebar-active-text);
     }
 
     .sb-icon {
-      font-size: 1.15rem;
+      font-size: 1.25rem;
       flex-shrink: 0;
       width: 24px;
       text-align: center;
-      transition: transform 0.3s ease;
-    }
-
-    .sb-link:hover .sb-icon {
-      transform: translateX(3px) scale(1.1);
+      color: var(--sidebar-muted);
+      transition: color 0.2s ease;
     }
 
     /* Dropdown */
@@ -292,16 +295,16 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      width: calc(100% - 20px);
-      margin: 2px 10px;
-      background: none;
+      width: calc(100% - 30px);
+      margin: 4px 15px;
+      background: transparent;
       border: none;
       cursor: pointer;
       font-family: inherit;
-      padding: 9px 14px;
+      padding: 11px 18px;
       color: var(--sidebar-text);
       font-size: 0.88rem;
-      font-weight: 500;
+      font-weight: 600;
       border-radius: 8px;
       transition: background 0.15s, color 0.15s;
       text-align: left;
@@ -309,13 +312,13 @@
 
     .sb-dropdown-btn:hover {
       background: var(--sidebar-hover);
-      color: var(--sidebar-active);
+      color: var(--sidebar-text);
     }
 
     .sb-dropdown-btn .sb-left {
       display: flex;
       align-items: center;
-      gap: 11px;
+      gap: 14px;
     }
 
     .sb-dropdown-arrow {
@@ -332,7 +335,7 @@
       display: none;
       background: var(--sidebar-dark);
       border-radius: 8px;
-      margin: 0 10px 4px;
+      margin: 0 15px 4px;
     }
 
     .sb-dropdown-content.show {
@@ -340,11 +343,11 @@
     }
 
     .sb-dropdown-content .sb-link {
-      padding-left: 38px;
+      padding-left: 42px;
       font-size: 0.82rem;
-      padding-top: 7px;
-      padding-bottom: 7px;
-      margin: 1px 0;
+      padding-top: 8px;
+      padding-bottom: 8px;
+      margin: 2px 10px;
     }
 
     /* Logout at bottom */
@@ -357,12 +360,13 @@
     .sb-logout {
       display: flex;
       align-items: center;
-      gap: 11px;
-      padding: 9px 14px;
+      gap: 14px;
+      padding: 11px 18px;
+      margin: 4px 15px;
       color: #ef4444;
       text-decoration: none;
       font-size: 0.88rem;
-      font-weight: 500;
+      font-weight: 600;
       border-radius: 8px;
       transition: background 0.15s, color 0.15s;
     }
@@ -423,8 +427,8 @@
     }
 
     .hamburger:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: #fff;
+      background: transparent;
+      opacity: 0.8;
     }
 
     .hamburger span {
@@ -476,8 +480,10 @@
       margin-left: 0;
       margin-top: var(--topbar-h);
       min-height: calc(100vh - var(--topbar-h));
-      /* Sidebar is overlay — content always full width */
+      /* Trans transitions for side push */
+      transition: margin-left 0.3s cubic-bezier(.4, 0, .2, 1);
     }
+
 
     .page-content {
       padding: 24px 20px 60px;
@@ -499,6 +505,122 @@
         padding: 16px 12px 48px;
       }
     }
+
+    /* ══════════════════════════════════════════
+       RESPONSIVE DESKTOP SIDEBAR (Push layout)
+    ══════════════════════════════════════════ */
+    @media (min-width: 1024px) {
+      .sidebar {
+        transform: translateX(0) !important;
+      }
+      .topbar {
+        left: var(--sidebar-w);
+        width: calc(100% - var(--sidebar-w));
+        transition: left 0.3s cubic-bezier(.4, 0, .2, 1), width 0.3s cubic-bezier(.4, 0, .2, 1);
+      }
+      .main-wrap {
+        margin-left: var(--sidebar-w);
+      }
+      
+      /* Collapsed State */
+      body.sidebar-collapsed .sidebar {
+        width: 80px;
+      }
+      body.sidebar-collapsed .topbar {
+        left: 80px;
+        width: calc(100% - 80px);
+      }
+      body.sidebar-collapsed .main-wrap {
+        margin-left: 80px;
+      }
+      
+      /* Collapsed UI Adjustments */
+      body.sidebar-collapsed .sb-brand-name,
+      body.sidebar-collapsed .sb-brand-sub,
+      body.sidebar-collapsed .sb-user-name,
+      body.sidebar-collapsed .sb-user-role,
+      body.sidebar-collapsed .school-year-badge,
+      body.sidebar-collapsed .sb-dropdown-arrow,
+      body.sidebar-collapsed .sb-section-label {
+        display: none !important;
+      }
+      
+      body.sidebar-collapsed .sb-link,
+      body.sidebar-collapsed .sb-dropdown-btn,
+      body.sidebar-collapsed .sb-logout {
+        font-size: 0 !important;
+        white-space: nowrap;
+        color: transparent !important;
+      }
+      
+      body.sidebar-collapsed .sb-icon {
+        font-size: 1.3rem !important;
+        color: var(--sidebar-muted) !important;
+        display: inline-block;
+        visibility: visible;
+      }
+      
+      body.sidebar-collapsed .sb-link:hover .sb-icon,
+      body.sidebar-collapsed .sb-dropdown-btn:hover .sb-icon {
+        color: var(--sidebar-active-text) !important;
+      }
+      
+      body.sidebar-collapsed .sb-link.active .sb-icon {
+        color: var(--sidebar-active-text) !important;
+      }
+
+      body.sidebar-collapsed .sb-user {
+        justify-content: center;
+        padding-left: 0;
+        padding-right: 0;
+      }
+      body.sidebar-collapsed .sb-brand {
+        padding: 0;
+        justify-content: center;
+      }
+      body.sidebar-collapsed .sb-brand-icon {
+        width: 32px;
+        height: 32px;
+        margin-right: 0;
+      }
+      body.sidebar-collapsed .sb-link {
+        padding: 14px 0 !important;
+        justify-content: center;
+        margin: 6px 10px;
+        border-radius: 12px !important;
+        gap: 0 !important;
+      }
+      body.sidebar-collapsed .sb-link:hover {
+        padding: 14px 0 !important;
+      }
+      body.sidebar-collapsed .sb-icon {
+        margin: 0 !important;
+        width: auto !important;
+      }
+      body.sidebar-collapsed .sb-dropdown-btn {
+        justify-content: center;
+        padding: 14px 0 !important;
+      }
+      body.sidebar-collapsed .sb-dropdown-btn .sb-left {
+        gap: 0 !important;
+      }
+      body.sidebar-collapsed .sb-logout {
+        justify-content: center;
+        padding: 14px 0 !important;
+        margin: 6px 10px;
+        border-radius: 12px !important;
+        gap: 0 !important;
+      }
+      body.sidebar-collapsed .sb-dropdown-content {
+        position: absolute;
+        left: 85px;
+        min-width: 200px;
+        box-shadow: var(--shadow-md);
+        z-index: 1200;
+        margin-top: -40px;
+      }
+    }
+
 
     /* ══════════════════════════════════════════
        FLASH MESSAGES (Premium Top-Center Toast)
@@ -1123,7 +1245,7 @@
     {% endif %}
     <a class="sb-brand" href="{{ dashboard_url }}">
       <span class="sb-brand-icon">
-        <img src="{{ url_for('static', filename='img/spdcss_logo.jpg') }}" alt="SPDCSS Logo">
+        <img src="{{ url_for('static', filename=dynamic_branch_logo) }}" alt="Branch Logo">
       </span>
       <span class="sb-brand-text">
         <span class="sb-brand-name">Liceo LMS</span>
@@ -1148,7 +1270,8 @@
       <a class="sb-link {% if request.path == '/student/dashboard' %}active{% endif %}" href="/student/dashboard">
         <span class="sb-icon">🏠</span> Dashboard
       </a>
-      <a class="sb-link {% if request.path.startswith('/student/my-schedule') %}active{% endif %}" href="/student/my-schedule">
+      <a class="sb-link {% if request.path.startswith('/student/my-schedule') %}active{% endif %}"
+        href="/student/my-schedule">
         <span class="sb-icon">📅</span> My Schedule
       </a>
 
@@ -1219,7 +1342,8 @@
       <a class="sb-link {% if request.path == '/teacher' %}active{% endif %}" href="/teacher">
         <span class="sb-icon">🏠</span> Dashboard
       </a>
-      <a class="sb-link {% if request.path.startswith('/teacher/my-schedule') %}active{% endif %}" href="/teacher/my-schedule">
+      <a class="sb-link {% if request.path.startswith('/teacher/my-schedule') %}active{% endif %}"
+        href="/teacher/my-schedule">
         <span class="sb-icon">📅</span> My Schedule
       </a>
 
@@ -1305,7 +1429,8 @@
         href="{{ url_for('librarian.books_inventory') }}">
         <span class="sb-icon">📚</span> Book Inventory
       </a>
-      <a class="sb-link {% if '/librarian/books/add' in request.path %}active{% endif %}" href="{{ url_for('librarian.book_add') }}">
+      <a class="sb-link {% if '/librarian/books/add' in request.path %}active{% endif %}"
+        href="{{ url_for('librarian.book_add') }}">
         <span class="sb-icon">➕</span> Add Book
       </a>
 
@@ -1405,7 +1530,7 @@
       <span></span>
     </button>
 
-    <span class="topbar-title" onclick="toggleSidebar()" style="cursor: pointer;">{% block page_title %}Liceo LMS{% endblock %}</span>
+    <span class="topbar-title" onclick="toggleSidebar()" style="cursor: pointer;">{% block page_title %}{% endblock %}</span>
 
     <div class="topbar-right">
       {% if session.get('role') in ['student', 'branch_admin', 'super_admin'] %}
@@ -1413,44 +1538,47 @@
         <button class="notif-btn" id="notifBtn" onclick="toggleNotifs()">
           🔔
           {% if session.get('role') == 'student' %}
-            {% if student_unread_count and student_unread_count > 0 %}
-            <span class="notif-badge" id="notifBadge">{{ student_unread_count }}</span>
-            {% endif %}
+          {% if student_unread_count and student_unread_count > 0 %}
+          <span class="notif-badge" id="notifBadge">{{ student_unread_count }}</span>
+          {% endif %}
           {% elif session.get('role') == 'branch_admin' %}
-            {% if branch_unread_count and branch_unread_count > 0 %}
-            <span class="notif-badge" id="notifBadge">{{ branch_unread_count }}</span>
-            {% endif %}
+          {% if branch_unread_count and branch_unread_count > 0 %}
+          <span class="notif-badge" id="notifBadge">{{ branch_unread_count }}</span>
+          {% endif %}
           {% elif session.get('role') == 'super_admin' %}
-            {% if super_unread_count and super_unread_count > 0 %}
-            <span class="notif-badge" id="notifBadge">{{ super_unread_count }}</span>
-            {% endif %}
+          {% if super_unread_count and super_unread_count > 0 %}
+          <span class="notif-badge" id="notifBadge">{{ super_unread_count }}</span>
+          {% endif %}
           {% endif %}
         </button>
         <div class="notif-dropdown" id="notifDropdown">
           <div class="notif-header">
             <span>Notifications</span>
             {% if session.get('role') == 'student' %}
-              {% if student_unread_count and student_unread_count > 0 %}
-              <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ student_unread_count }} New</span>
-              {% endif %}
+            {% if student_unread_count and student_unread_count > 0 %}
+            <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ student_unread_count }}
+              New</span>
+            {% endif %}
             {% elif session.get('role') == 'branch_admin' %}
-              {% if branch_unread_count and branch_unread_count > 0 %}
-              <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ branch_unread_count }} New</span>
-              {% endif %}
+            {% if branch_unread_count and branch_unread_count > 0 %}
+            <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ branch_unread_count }}
+              New</span>
+            {% endif %}
             {% elif session.get('role') == 'super_admin' %}
-              {% if super_unread_count and super_unread_count > 0 %}
-              <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ super_unread_count }} New</span>
-              {% endif %}
+            {% if super_unread_count and super_unread_count > 0 %}
+            <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ super_unread_count }}
+              New</span>
+            {% endif %}
             {% endif %}
           </div>
           <div class="notif-list">
             {% set active_notifs = [] %}
             {% if session.get('role') == 'student' %}
-              {% set active_notifs = student_global_notifs %}
+            {% set active_notifs = student_global_notifs %}
             {% elif session.get('role') == 'branch_admin' %}
-              {% set active_notifs = branch_global_notifs %}
+            {% set active_notifs = branch_global_notifs %}
             {% elif session.get('role') == 'super_admin' %}
-              {% set active_notifs = super_global_notifs %}
+            {% set active_notifs = super_global_notifs %}
             {% endif %}
 
             {% for n in active_notifs %}
@@ -1577,7 +1705,7 @@
     const mainWrap = document.getElementById('mainWrap');
     const sbOverlayEl = document.getElementById('sbOverlay');
 
-    // Always start closed as requested by the user
+    // Always start closed as requested by the user on mobile
     let isOpen = false;
 
     function applyState() {
@@ -1590,8 +1718,21 @@
       }
     }
 
-    function toggleSidebar() { isOpen = !isOpen; applyState(); }
-    function closeSidebar()   { isOpen = false;  applyState(); }
+    function toggleSidebar() { 
+      if (window.innerWidth >= 1024) {
+        document.body.classList.toggle('sidebar-collapsed');
+      } else {
+        isOpen = !isOpen; 
+        applyState(); 
+      }
+    }
+    
+    function closeSidebar() { 
+      if (window.innerWidth < 1024) {
+        isOpen = false; 
+        applyState(); 
+      }
+    }
 
     function toggleNotifs() {
       const dropdown = document.getElementById('notifDropdown');

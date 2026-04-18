@@ -57,6 +57,20 @@ def inject_is_branch_active():
     return dict(is_branch_active_status=is_active)
 
 @app.context_processor
+def inject_branch_logo():
+    import os
+    logo_filename = 'img/spdcss_logo.webp' # Default to webp if available
+    branch_name = session.get('branch_name')
+    if branch_name:
+        clean_name = branch_name.replace(" ", "") + "Logo"
+        base_dir = os.path.join(app.root_path, 'static', 'img')
+        for ext in ['.webp', '.png', '.jpg', '.jpeg']:
+            if os.path.exists(os.path.join(base_dir, clean_name + ext)):
+                logo_filename = f"img/{clean_name}{ext}"
+                break
+    return dict(dynamic_branch_logo=logo_filename)
+
+@app.context_processor
 def inject_profile_image():
     img = session.get('profile_image')
     role = session.get('role')

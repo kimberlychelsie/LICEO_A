@@ -446,7 +446,7 @@
                 Draft announcements for the portal homepage. The monitor on the right will show your changes instantly.
             </p>
 
-            {% if is_branch_active_status %}
+            {% if is_branch_active_status and not is_history_mode %}
             <form method="post" action="{{ url_for('branch_admin.dashboard') }}" enctype="multipart/form-data">
                 <input type="hidden" name="add_announcement" value="1">
                 
@@ -557,7 +557,7 @@
             <div style="font-weight: 800; font-size: 0.95rem;">{{ a.title }}</div>
             <div style="font-size: 0.8rem; color: var(--ma-muted);">{{ a.message[:80] }}...</div>
         </div>
-        {% if a.is_active %}
+        {% if a.is_active and not is_history_mode %}
         <form method="post" action="{{ url_for('branch_admin.announcement_hide', announcement_id=a.id) }}">
             <button type="submit" style="background: #fef2f2; color: #ef4444; border: 1px solid #fee2e2; padding: 10px 18px; border-radius: 14px; font-weight: 800; font-size: 0.75rem; cursor: pointer;">
                 Archive Feed

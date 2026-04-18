@@ -113,6 +113,17 @@ def recompute_item_totals_from_sizes(cursor, item_id: int, branch_id: int):
         WHERE item_id = %s AND branch_id = %s
     """, (item_id, item_id, item_id, branch_id))
 
+def _get_viewed_year_id(cursor, branch_id):
+    """Returns the viewed year_id, defaulting to active year."""
+    viewed = session.get("viewed_year_id")
+    if viewed:
+        cursor.execute("SELECT year_id FROM school_years WHERE year_id = %s AND branch_id = %s", (viewed, branch_id))
+        if cursor.fetchone():
+            return viewed
+    cursor.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
+    row = cursor.fetchone()
+    return row["year_id"] if row else None
+
 # =======================
 # BRANCH ADMIN DASHBOARD
 # =======================
@@ -174,13 +185,40 @@ def dashboard():
         
         # ✅ Fetch Metrics
         b_id = session.get("branch_id")
+        year_id = _get_viewed_year_id(cursor, b_id)
         
-        cursor.execute("SELECT COUNT(*) FROM enrollments WHERE status='approved' AND branch_id=%s", (b_id,))
-        metrics['total_enrolled'] = cursor.fetchone()['count']
-        
-        cursor.execute("SELECT COUNT(*) FROM enrollments WHERE status='pending' AND branch_id=%s", (b_id,))
-        metrics['pending_reservations'] = cursor.fetchone()['count']
-        
+        if year_id:
+            cursor.execute("SELECT COUNT(*) FROM enrollments WHERE status IN ('enrolled', 'approved') AND branch_id=%s AND year_id=%s", (b_id, year_id))
+            metrics['total_enrolled'] = cursor.fetchone()['count']
+            
+            cursor.execute("SELECT COUNT(*) FROM enrollments WHERE status='pending' AND branch_id=%s AND year_id=%s", (b_id, year_id))
+            metrics['pending_reservations'] = cursor.fetchone()['count']
+            
+            # Chart Data: Enrollment by Grade
+            cursor.execute("""
+                SELECT grade_level, COUNT(*) 
+                FROM enrollments 
+                WHERE status IN ('enrolled', 'approved') AND branch_id=%s AND year_id=%s
+                GROUP BY grade_level
+                ORDER BY COUNT(*) DESC
+            """, (b_id, year_id))
+            metrics['grade_stats'] = cursor.fetchall() or []
+            
+            # Chart Data: Status Breakdown
+            cursor.execute("""
+                SELECT status, COUNT(*) 
+                FROM enrollments 
+                WHERE branch_id=%s AND year_id=%s
+                GROUP BY status
+            """, (b_id, year_id))
+            metrics['status_stats'] = cursor.fetchall() or []
+        else:
+            metrics['total_enrolled'] = 0
+            metrics['pending_reservations'] = 0
+            metrics['grade_stats'] = []
+            metrics['status_stats'] = []
+
+        # Teachers and Staff are not year-bound right now unless requested
         cursor.execute("SELECT COUNT(*) FROM users WHERE role='teacher' AND COALESCE(status, 'active')='active' AND branch_id=%s", (b_id,))
         metrics['total_teachers'] = cursor.fetchone()['count']
         
@@ -193,25 +231,6 @@ def dashboard():
 
         # ✅ Map total_enrolled to total_students for template
         metrics['total_students'] = metrics['total_enrolled']
-        
-        # Chart Data: Enrollment by Grade
-        cursor.execute("""
-            SELECT grade_level, COUNT(*) 
-            FROM enrollments 
-            WHERE status='approved' AND branch_id=%s 
-            GROUP BY grade_level
-            ORDER BY COUNT(*) DESC
-        """, (b_id,))
-        metrics['grade_stats'] = cursor.fetchall() or []
-        
-        # Chart Data: Status Breakdown
-        cursor.execute("""
-            SELECT status, COUNT(*) 
-            FROM enrollments 
-            WHERE branch_id=%s 
-            GROUP BY status
-        """, (b_id,))
-        metrics['status_stats'] = cursor.fetchall() or []
         
     except Exception as e:
         print(f"Error loading dashboard metrics: {e}")

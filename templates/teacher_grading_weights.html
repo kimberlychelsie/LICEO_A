@@ -1,13 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Grading Weights Setup{% endblock %}
+{% block title %}DepEd Grading Info{% endblock %}
 
 {% block styles %}
 <style>
-    .gw-wrap { max-width: 1100px; margin: 0 auto; padding: 0 0 56px; }
+    .gw-wrap { max-width: 1000px; margin: 0 auto; padding: 0 0 48px; }
 
     /* ── Hero ── */
     .gw-hero {
-        background: linear-gradient(135deg, #0f2a6b, #1a3a8f, #1e50d0);
+        background: linear-gradient(135deg, #0f2a6b 0%, #1a3a8f 50%, #1e50d0 100%);
         border-radius: 20px;
         padding: 28px 32px;
         margin-bottom: 28px;
@@ -19,8 +19,8 @@
     .gw-hero::before {
         content: '';
         position: absolute;
-        top: -60px; right: -40px;
-        width: 230px; height: 230px;
+        top: -50px; right: -50px;
+        width: 220px; height: 220px;
         background: rgba(255,255,255,0.05);
         border-radius: 50%;
     }
@@ -30,248 +30,259 @@
         z-index: 1;
     }
 
-    .gw-hero h1 {
-        font-size: 1.7rem;
+    .gw-hero-title {
+        font-size: 1.6rem;
         font-weight: 900;
         color: #fff;
         margin: 0 0 6px;
         letter-spacing: -0.02em;
     }
 
-    .gw-hero p {
+    .gw-hero-sub {
         font-size: 0.92rem;
-        color: rgba(255,255,255,0.72);
+        color: rgba(255,255,255,0.75);
         margin: 0;
     }
 
-    .gw-hero p strong { color: #93c5fd; }
+    /* ── Info banner ── */
+    .gw-info-banner {
+        background: linear-gradient(135deg, #eff6ff, #f0fdf4);
+        border: 1.5px solid #bfdbfe;
+        border-radius: 16px;
+        padding: 18px 24px;
+        margin-bottom: 28px;
+        display: flex;
+        align-items: flex-start;
+        gap: 14px;
+    }
 
-    /* ── Subject Cards ── */
-    .subject-card {
+    .gw-info-icon {
+        font-size: 1.5rem;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
+    .gw-info-text {
+        font-size: 0.88rem;
+        color: #1e40af;
+        line-height: 1.6;
+    }
+
+    .gw-info-text strong {
+        color: #1e3a8a;
+        font-weight: 800;
+    }
+
+    /* ── Subject card ── */
+    .gw-card {
         background: var(--card);
         border: 1px solid var(--border);
         border-radius: 18px;
-        padding: 24px 26px;
+        padding: 22px 26px;
         margin-bottom: 18px;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+        box-shadow: 0 2px 10px rgba(0,0,0,0.04);
         transition: box-shadow 0.2s;
     }
 
-    .subject-card:hover {
-        box-shadow: 0 6px 24px rgba(0,0,0,0.08);
+    .gw-card:hover {
+        box-shadow: 0 6px 20px rgba(26,58,143,0.1);
     }
 
-    .subject-label {
-        font-size: 1rem;
+    .gw-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 18px;
+    }
+
+    .gw-subject-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .gw-subject-name {
+        font-size: 1.05rem;
         font-weight: 800;
-        margin-bottom: 16px;
         color: var(--text);
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 10px;
     }
 
-    .subject-label .subject-meta {
-        font-weight: 400;
-        color: var(--muted);
-        font-size: 0.9rem;
-    }
-
-    .subject-label .btn-class-record {
-        margin-left: auto;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 14px;
-        border-radius: 8px;
-        background: linear-gradient(135deg, #1a3a8f, #2563eb);
-        color: #fff;
+    .gw-subject-meta {
         font-size: 0.82rem;
+        color: var(--muted);
+        font-weight: 500;
+    }
+
+    .gw-category-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 4px 12px;
+        border-radius: 999px;
+        font-size: 0.74rem;
         font-weight: 700;
-        text-decoration: none;
-        transition: opacity 0.18s, transform 0.15s;
     }
 
-    .subject-label .btn-class-record:hover {
-        opacity: 0.88;
-        transform: translateY(-1px);
-    }
+    .cat-language     { background: rgba(219,234,254,0.5); color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .cat-science_math { background: rgba(209,250,229,0.5); color: #15803d; border: 1px solid #bbf7d0; }
+    .cat-skills       { background: rgba(254,243,199,0.5); color: #b45309; border: 1px solid #fde68a; }
 
-    /* ── Period Tabs ── */
-    .period-tabs {
+    /* ── Weight boxes ── */
+    .gw-weights {
         display: flex;
-        gap: 8px;
-        margin-bottom: 20px;
+        gap: 14px;
         flex-wrap: wrap;
     }
 
-    .ptab {
-        padding: 7px 16px;
-        border-radius: 999px;
-        font-size: 0.84rem;
-        font-weight: 700;
-        cursor: pointer;
-        border: 2px solid var(--border);
-        background: var(--bg);
-        color: var(--muted);
-        transition: all 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
+    .gw-weight-box {
+        flex: 1;
+        min-width: 160px;
+        background: #f8fafc;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 16px 20px;
+        text-align: center;
+        transition: transform 0.15s, box-shadow 0.15s;
     }
 
-    .ptab:hover {
-        border-color: #1a3a8f;
-        color: #1a3a8f;
-        transform: translateY(-1px);
+    .gw-weight-box:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 14px rgba(0,0,0,0.07);
     }
 
-    .ptab.active {
-        background: linear-gradient(135deg, #1a3a8f, #2563eb);
-        color: #fff;
-        border-color: transparent;
-        box-shadow: 0 4px 10px rgba(26,58,143,0.25);
-    }
-
-    .saved-badge {
-        display: inline-flex;
-        align-items: center;
-        background: #dcfce7;
-        color: #166534;
-        border-radius: 999px;
-        font-size: 0.7rem;
-        padding: 1px 8px;
-        font-weight: 700;
-    }
-
-    /* ── Weight Form ── */
-    .weight-form { display: none; }
-    .weight-form.active { display: block; }
-
-    .weight-grid {
-        display: grid;
-        grid-template-columns: repeat(5, 1fr);
-        gap: 14px;
-        margin-bottom: 14px;
-    }
-
-    .weight-item label {
-        font-size: 0.78rem;
-        color: var(--muted);
-        display: block;
-        margin-bottom: 6px;
+    .gw-weight-label {
+        font-size: 0.72rem;
         font-weight: 700;
         text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.05em;
+        color: #64748b;
+        margin-bottom: 4px;
     }
 
-    .input-with-percent {
+    .gw-weight-components {
+        font-size: 0.73rem;
+        color: #94a3b8;
+        margin-bottom: 8px;
+        line-height: 1.4;
+    }
+
+    .gw-weight-pct {
+        font-size: 2rem;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        line-height: 1;
+    }
+
+    .ww-color { color: #2563eb; }
+    .pt-color { color: #16a34a; }
+    .qa-color { color: #d97706; }
+
+    .gw-weight-border-ww { border-color: #93c5fd; }
+    .gw-weight-border-pt { border-color: #86efac; }
+    .gw-weight-border-qa { border-color: #fcd34d; }
+
+    /* ── Legend ── */
+    .gw-legend {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 22px 26px;
+        margin-top: 10px;
+    }
+
+    .gw-legend-title {
+        font-size: 0.9rem;
+        font-weight: 800;
+        color: var(--text);
+        margin-bottom: 16px;
         display: flex;
         align-items: center;
+        gap: 8px;
+    }
+
+    .gw-legend-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 14px;
+    }
+
+    .gw-legend-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
         background: #f8fafc;
-        border: 1.5px solid var(--border);
-        border-radius: 10px;
-        overflow: hidden;
-        transition: border-color 0.18s, box-shadow 0.18s;
+        border-radius: 12px;
+        padding: 14px 16px;
     }
 
-    .input-with-percent:focus-within {
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59,130,246,.1);
+    .gw-legend-dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        margin-top: 3px;
     }
 
-    .input-with-percent input {
-        flex-grow: 1;
-        padding: 9px 10px;
-        border: none;
-        background: transparent;
+    .dot-lang  { background: #2563eb; }
+    .dot-sci   { background: #16a34a; }
+    .dot-skill { background: #d97706; }
+
+    .gw-legend-item-text strong {
+        display: block;
+        font-size: 0.84rem;
+        font-weight: 800;
         color: var(--text);
-        font-size: 1rem;
-        text-align: center;
-        outline: none;
-        font-family: 'Inter', sans-serif;
-        font-weight: 700;
+        margin-bottom: 3px;
     }
 
-    .input-with-percent span {
-        padding: 9px 12px;
-        font-weight: 700;
+    .gw-legend-item-text span {
+        font-size: 0.78rem;
         color: var(--muted);
-        background: rgba(0,0,0,0.03);
-        border-left: 1px solid var(--border);
-        font-size: 0.9rem;
+        line-height: 1.4;
     }
 
-    .total-display {
-        font-size: 0.86rem;
-        color: var(--muted);
-        margin-bottom: 14px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: 600;
-    }
-
-    .total-ok { color: #16a34a; font-weight: 800; }
-    .total-bad { color: #dc2626; font-weight: 800; }
-
-    .gw-form-footer {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        flex-wrap: wrap;
-    }
-
-    .btn-save-weights {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px 22px;
-        border-radius: 10px;
-        background: linear-gradient(135deg, #1a3a8f, #2563eb);
-        color: #fff;
-        font-weight: 700;
-        font-size: 0.9rem;
-        border: none;
-        cursor: pointer;
-        transition: opacity 0.18s, transform 0.15s;
-        font-family: 'Inter', sans-serif;
-    }
-
-    .btn-save-weights:hover {
-        opacity: 0.88;
-        transform: translateY(-1px);
-    }
-
-    .apply-all-label {
-        font-size: 0.88rem;
-        color: var(--text);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .apply-all-label input[type="checkbox"] {
-        width: 16px;
-        height: 16px;
-        accent-color: #1a3a8f;
-    }
-
-    /* ── Empty State ── */
+    /* Empty state */
     .gw-empty {
         text-align: center;
-        padding: 64px 20px;
+        padding: 60px 20px;
         color: var(--muted);
     }
 
-    .gw-empty .big-icon { font-size: 3.5rem; margin-bottom: 14px; }
-    .gw-empty h3 { font-size: 1.1rem; font-weight: 700; color: var(--text); margin: 0 0 8px; }
+    .gw-empty .big-icon { font-size: 3rem; margin-bottom: 14px; }
+    .gw-empty h3 { font-size: 1.1rem; font-weight: 700; color: var(--text); margin: 0 0 6px; }
+
+    .gw-cr-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 9px 18px;
+        background: linear-gradient(135deg, #1a3a8f, #2563eb);
+        color: #fff;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        transition: all 0.18s;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .gw-cr-btn:hover {
+        background: linear-gradient(135deg, #1e3a8a, #1d4ed8);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26,58,143,0.3);
+        color: #fff;
+    }
 
     @media (max-width: 640px) {
-        .weight-grid { grid-template-columns: repeat(2, 1fr); }
         .gw-hero { padding: 22px 18px; }
+        .gw-hero-title { font-size: 1.3rem; }
+        .gw-weight-box { min-width: 130px; }
     }
 </style>
 {% endblock %}
@@ -282,193 +293,100 @@
     <!-- ── Hero ── -->
     <div class="gw-hero">
         <div class="gw-hero-inner">
-            <h1>⚖️ Grading Weights</h1>
-            <p>Set component percentages per subject per grading period. Must total exactly <strong>100%</strong> to save.</p>
+            <h1 class="gw-hero-title">⚖️ DepEd Grading Info</h1>
+            <p class="gw-hero-sub">
+                Grading weights are <strong style="color:#fff;">automatically set</strong> per subject based on the DepEd K-12 framework — no manual input needed.
+                &nbsp;<span style="opacity:0.6;">· DepEd Order No. 8, s. 2015</span>
+            </p>
         </div>
     </div>
 
-    {% if not assignments %}
+    <!-- ── Info Banner ── -->
+    <div class="gw-info-banner">
+        <div class="gw-info-icon">💡</div>
+        <div class="gw-info-text">
+            <strong>How grade computation works:</strong><br>
+            Each subject's grading weight is automatically determined by its subject type (Language / Science & Math / Skills).
+            Scores from <strong>Quiz + Monthly Exam</strong> go to Written Works (WW),
+            <strong>Activity + Participation + Attendance</strong> go to Performance Tasks (PT),
+            and <strong>Periodical Exam</strong> scores go to Quarterly Assessment (QA).
+        </div>
+    </div>
+
+    <!-- ── Subject Assignments ── -->
+    {% if assignments %}
+        {% for a in assignments %}
+        <div class="gw-card">
+            <div class="gw-card-header">
+                <div class="gw-subject-info">
+                    <span class="gw-subject-name">📖 {{ a.subject_name }}</span>
+                    <span class="gw-subject-meta">{{ a.grade_level_name }} / {{ a.section_name }}</span>
+                    {% if a.deped_category == 'language' %}
+                    <span class="gw-category-badge cat-language">🗣 Language / Values</span>
+                    {% elif a.deped_category == 'science_math' %}
+                    <span class="gw-category-badge cat-science_math">🔬 Science / Math</span>
+                    {% else %}
+                    <span class="gw-category-badge cat-skills">🎨 Skills (EPP/TLE/MAPEH)</span>
+                    {% endif %}
+                </div>
+                <a href="{{ url_for('teacher.class_record', section_id=a.section_id, subject_id=a.subject_id) }}"
+                   class="gw-cr-btn">📊 Class Record</a>
+            </div>
+
+            <div class="gw-weights">
+                <div class="gw-weight-box gw-weight-border-ww">
+                    <div class="gw-weight-label">📝 Written Works (WW)</div>
+                    <div class="gw-weight-components">Quiz + Monthly Exam</div>
+                    <div class="gw-weight-pct ww-color">{{ a.ww_pct }}%</div>
+                </div>
+                <div class="gw-weight-box gw-weight-border-pt">
+                    <div class="gw-weight-label">🎯 Performance Tasks (PT)</div>
+                    <div class="gw-weight-components">Activity + Participation + Attendance</div>
+                    <div class="gw-weight-pct pt-color">{{ a.pt_pct }}%</div>
+                </div>
+                <div class="gw-weight-box gw-weight-border-qa">
+                    <div class="gw-weight-label">📄 Quarterly Assessment (QA)</div>
+                    <div class="gw-weight-components">Periodical Exam</div>
+                    <div class="gw-weight-pct qa-color">{{ a.qa_pct }}%</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
     <div class="gw-empty">
-        <div class="big-icon">📭</div>
-        <h3>No subjects assigned yet</h3>
-        <p>Contact your branch admin to assign you to a section and subject.</p>
+        <div class="big-icon">📋</div>
+        <h3>No subject assignments yet</h3>
+        <p>You have no subjects assigned for the current school year.</p>
     </div>
     {% endif %}
 
-    {% for asgn in assignments %}
-    {% set outer_loop = loop %}
-    {% set sid = asgn.section_id %}
-    {% set subjid = asgn.subject_id %}
-    {% set card_id = 'card_' ~ sid ~ '_' ~ subjid %}
-
-    <div class="subject-card">
-        <div class="subject-label">
-            📖 {{ asgn.subject_name }}
-            <span class="subject-meta">— {{ asgn.grade_level_name }} / {{ asgn.section_name }}</span>
-            <a href="{{ url_for('teacher.class_record', section_id=sid, subject_id=subjid) }}" class="btn-class-record">
-                📊 Class Record
-            </a>
-        </div>
-
-        <!-- Period tabs -->
-        <div class="period-tabs" id="tabs_{{ card_id }}">
-            {% for period in grading_periods %}
-            {% set w = weights_map.get((sid, subjid, period)) %}
-            <div class="ptab {% if loop.first %}active{% endif %}"
-                 onclick="switchPeriod('{{ card_id }}', '{{ period }}')">
-                {{ period }} Grading
-                {% if w %}<span class="saved-badge">✓ Set</span>{% endif %}
+    <!-- ── DepEd Category Legend ── -->
+    <div class="gw-legend">
+        <div class="gw-legend-title">📚 DepEd K-12 Subject Categories</div>
+        <div class="gw-legend-grid">
+            <div class="gw-legend-item">
+                <div class="gw-legend-dot dot-lang"></div>
+                <div class="gw-legend-item-text">
+                    <strong>Language / Values — WW 30% · PT 50% · QA 20%</strong>
+                    <span>Filipino, English, Araling Panlipunan, Edukasyon sa Pagpapakatao (EsP)</span>
+                </div>
             </div>
-            {% endfor %}
+            <div class="gw-legend-item">
+                <div class="gw-legend-dot dot-sci"></div>
+                <div class="gw-legend-item-text">
+                    <strong>Science / Math — WW 40% · PT 40% · QA 20%</strong>
+                    <span>Mathematics, Science</span>
+                </div>
+            </div>
+            <div class="gw-legend-item">
+                <div class="gw-legend-dot dot-skill"></div>
+                <div class="gw-legend-item-text">
+                    <strong>Skills — WW 20% · PT 60% · QA 20%</strong>
+                    <span>EPP, TLE, MAPEH (Music, Arts, PE, Health)</span>
+                </div>
+            </div>
         </div>
-
-        <!-- Weight forms per period -->
-        {% for period in grading_periods %}
-        {% set w = weights_map.get((sid, subjid, period)) %}
-        <div class="weight-form {% if loop.first %}active{% endif %}" id="form_{{ card_id }}_{{ period }}">
-            <form method="POST" action="{{ url_for('teacher.grading_weights_set') }}" onsubmit="return validateWeights(this)">
-                <input type="hidden" name="section_id" value="{{ sid }}">
-                <input type="hidden" name="subject_id" value="{{ subjid }}">
-                <input type="hidden" name="grading_period" value="{{ period }}">
-
-                <div class="weight-grid">
-                    <div class="weight-item">
-                        <label>📝 Quiz</label>
-                        <div class="input-with-percent">
-                            <input type="number" name="quiz_pct" min="0" max="100" step="0.5"
-                                   value="{{ w.quiz_pct | default(0) }}" oninput="updateTotal(this)" required>
-                            <span>%</span>
-                        </div>
-                    </div>
-                    <div class="weight-item">
-                        <label>📄 Exam</label>
-                        <div class="input-with-percent">
-                            <input type="number" name="exam_pct" min="0" max="100" step="0.5"
-                                   value="{{ w.exam_pct | default(0) }}" oninput="updateTotal(this)" required>
-                            <span>%</span>
-                        </div>
-                    </div>
-                    <div class="weight-item">
-                        <label>📁 Activity</label>
-                        <div class="input-with-percent">
-                            <input type="number" name="activity_pct" min="0" max="100" step="0.5"
-                                   value="{{ w.activity_pct | default(0) }}" oninput="updateTotal(this)" required>
-                            <span>%</span>
-                        </div>
-                    </div>
-                    <div class="weight-item">
-                        <label>🙋 Participation</label>
-                        <div class="input-with-percent">
-                            <input type="number" name="participation_pct" min="0" max="100" step="0.5"
-                                   value="{{ w.participation_pct | default(0) }}" oninput="updateTotal(this)" required>
-                            <span>%</span>
-                        </div>
-                    </div>
-                    <div class="weight-item">
-                        <label>🗓 Attendance</label>
-                        <div class="input-with-percent">
-                            <input type="number" name="attendance_pct" min="0" max="100" step="0.5"
-                                   value="{{ w.attendance_pct | default(0) }}" oninput="updateTotal(this)" required>
-                            <span>%</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="total-display" id="total_{{ card_id }}_{{ period }}">
-                    Total: <span class="total-val">{{ (w.quiz_pct|float + w.exam_pct|float + w.activity_pct|float + w.participation_pct|float + w.attendance_pct|float) | round(1) if w else '0.0' }}</span>%
-                    {% set tot = (w.quiz_pct|float + w.exam_pct|float + w.activity_pct|float + w.participation_pct|float + w.attendance_pct|float) if w else 0 %}
-                    {% if w and (tot - 100.0)|abs < 0.01 %}
-                    <span class="total-ok">✓ OK — ready to save</span>
-                    {% elif w %}
-                    <span class="total-bad">✗ Must equal 100%</span>
-                    {% endif %}
-                </div>
-
-                <div class="gw-form-footer">
-                    <button type="submit" class="btn-save-weights">💾 Save {{ period }} Weights</button>
-                    {% if outer_loop.first %}
-                    <label class="apply-all-label">
-                        <input type="checkbox" name="apply_all_subjects" value="1"
-                               onchange="syncWeights(this, '{{ period }}')">
-                        Apply to ALL my subjects for {{ period }} Grading
-                    </label>
-                    {% endif %}
-                </div>
-            </form>
-        </div>
-        {% endfor %}
     </div>
-    {% endfor %}
 
 </div>
-
-<script>
-function switchPeriod(cardId, period) {
-    document.querySelectorAll(`#tabs_${cardId} .ptab`).forEach(t => t.classList.remove('active'));
-    document.querySelectorAll(`[id^="form_${cardId}_"]`).forEach(f => f.classList.remove('active'));
-    event.currentTarget.classList.add('active');
-    document.getElementById(`form_${cardId}_${period}`).classList.add('active');
-}
-
-function updateTotal(input) {
-    const form = input.closest('form');
-    const inputs = form.querySelectorAll('input[type="number"]');
-    let total = 0;
-    inputs.forEach(i => total += parseFloat(i.value || 0));
-    const totalDiv = form.querySelector('.total-display');
-    if (totalDiv) {
-        const val = totalDiv.querySelector('.total-val');
-        if (val) val.textContent = total.toFixed(1);
-        let badge = totalDiv.querySelector('.total-badge');
-        if (!badge) { badge = document.createElement('span'); badge.className = 'total-badge'; totalDiv.appendChild(badge); }
-        if (Math.abs(total - 100) < 0.01) {
-            badge.className = 'total-badge total-ok'; badge.textContent = '✓ OK — ready to save';
-        } else {
-            badge.className = 'total-badge total-bad'; badge.textContent = '✗ Must equal 100%';
-        }
-    }
-}
-
-function validateWeights(form) {
-    const inputs = form.querySelectorAll('input[type="number"]');
-    let total = 0;
-    inputs.forEach(i => total += parseFloat(i.value || 0));
-    if (Math.abs(total - 100) > 0.01) {
-        alert(`Percentages must total exactly 100%. Current total: ${total.toFixed(1)}%`);
-        return false;
-    }
-    return true;
-}
-
-function syncWeights(checkbox, period) {
-    if (!checkbox.checked) return;
-    const sourceForm = checkbox.closest('form');
-    if (!validateWeights(sourceForm)) { checkbox.checked = false; return; }
-
-    const quiz = sourceForm.querySelector('input[name="quiz_pct"]').value;
-    const exam = sourceForm.querySelector('input[name="exam_pct"]').value;
-    const activity = sourceForm.querySelector('input[name="activity_pct"]').value;
-    const participation = sourceForm.querySelector('input[name="participation_pct"]').value;
-    const attendance = sourceForm.querySelector('input[name="attendance_pct"]').value;
-
-    const allForms = document.querySelectorAll(`form input[name="grading_period"][value="${period}"]`);
-    allForms.forEach(hiddenInput => {
-        const targetForm = hiddenInput.closest('form');
-        if (targetForm === sourceForm) return;
-        targetForm.querySelector('input[name="quiz_pct"]').value = quiz;
-        targetForm.querySelector('input[name="exam_pct"]').value = exam;
-        targetForm.querySelector('input[name="activity_pct"]').value = activity;
-        targetForm.querySelector('input[name="participation_pct"]').value = participation;
-        targetForm.querySelector('input[name="attendance_pct"]').value = attendance;
-        const anyInput = targetForm.querySelector('input[name="quiz_pct"]');
-        if (anyInput) updateTotal(anyInput);
-    });
-
-    const btn = sourceForm.querySelector('button[type="submit"]');
-    if (btn) { btn.innerHTML = '⏳ Saving All...'; btn.disabled = true; }
-    sourceForm.submit();
-}
-
-document.querySelectorAll('.weight-item input').forEach(i => updateTotal(i));
-</script>
 {% endblock %}
