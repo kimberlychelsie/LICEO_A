@@ -3,10 +3,15 @@ from db import get_db_connection
 from werkzeug.security import check_password_hash, generate_password_hash
 import psycopg2.extras
 import re
+import secrets, hashlib
+from datetime import datetime, timedelta, timezone
+from utils.send_email import send_email
+import os
 
 from extensions import limiter
 
 auth_bp = Blueprint("auth", __name__)
+BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:5000")
 
 def check_password_change_required(user_data, is_student=False):
     """Check if user needs to change password on first login"""
@@ -23,6 +28,8 @@ def validate_password_policy(password):
         return False, "Password must contain at least one number."
     return True, None
 
+def _hash_token(raw: str) -> str:
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 @limiter.limit("8 per minute", exempt_when=lambda: request.method != "POST")
@@ -406,6 +413,226 @@ def change_password():
 
     finally:
         cursor.close()
+        db.close()
+@auth_bp.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    if request.method == "POST":
+        username = (request.form.get("username") or "").strip()
+        email = (request.form.get("email") or "").strip().lower()
+
+        generic_msg = "If the username and email match an account, we sent password reset instructions."
+
+        if not username or not email:
+            flash("Username and email are required.", "error")
+            return redirect(url_for("auth.forgot_password"))
+
+        cooldown_minutes = 2  # ✅ RESEND TIMER (change this to 5/10 if you want)
+
+        db = get_db_connection()
+        cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            expiry = datetime.now(timezone.utc) + timedelta(minutes=30)
+
+            # 1) Try users table
+            cur.execute("""
+                SELECT user_id, username, role, branch_id, email
+                FROM users
+                WHERE username=%s
+                LIMIT 1
+            """, (username,))
+            u = cur.fetchone()
+
+            if u and (u.get("email") or "").strip().lower() == email:
+
+                # ✅ RESEND TIMER for users (put it HERE)
+                cur.execute("""
+                    SELECT 1
+                    FROM password_reset_tokens
+                    WHERE user_id = %s
+                      AND used_at IS NULL
+                      AND expires_at > NOW()
+                      AND created_at > NOW() - INTERVAL %s
+                    LIMIT 1
+                """, (u["user_id"], f"{cooldown_minutes} minutes"))
+                if cur.fetchone():
+                    flash(f"Please wait {cooldown_minutes} minute(s) before requesting another reset link.", "error")
+                    return redirect(url_for("auth.forgot_password"))
+
+                raw = secrets.token_urlsafe(32)
+                th = _hash_token(raw)
+
+                cur.execute("""
+                    INSERT INTO password_reset_tokens (token_hash, user_id, student_account_id, email, expires_at)
+                    VALUES (%s, %s, NULL, %s, %s)
+                """, (th, u["user_id"], email, expiry))
+                db.commit()
+
+                link = f"{BASE_URL}/reset-password/{raw}"
+                body = (
+                    "We received a request to reset your password.\n\n"
+                    f"Account: {u['role']} ({u['username']})\n"
+                    f"Reset link: {link}\n\n"
+                    "This link expires in 30 minutes. If you did not request this, ignore this email."
+                )
+                send_email(email, "Password Reset Request", body)
+
+                flash(generic_msg, "success")
+                return redirect(url_for("auth.login"))
+
+            # 2) Try student_accounts table
+            cur.execute("""
+                SELECT
+                    sa.account_id, sa.username, sa.branch_id,
+                    e.student_name,
+                    COALESCE(NULLIF(sa.email,''), NULLIF(e.email,''), NULLIF(e.guardian_email,'')) AS match_email
+                FROM student_accounts sa
+                LEFT JOIN enrollments e ON e.enrollment_id = sa.enrollment_id
+                WHERE sa.username=%s
+                LIMIT 1
+            """, (username,))
+            s = cur.fetchone()
+
+            if s and (s.get("match_email") or "").strip().lower() == email:
+
+                # ✅ RESEND TIMER for student_accounts (put it HERE)
+                cur.execute("""
+                    SELECT 1
+                    FROM password_reset_tokens
+                    WHERE student_account_id = %s
+                      AND used_at IS NULL
+                      AND expires_at > NOW()
+                      AND created_at > NOW() - INTERVAL %s
+                    LIMIT 1
+                """, (s["account_id"], f"{cooldown_minutes} minutes"))
+                if cur.fetchone():
+                    flash(f"Please wait {cooldown_minutes} minute(s) before requesting another reset link.", "error")
+                    return redirect(url_for("auth.forgot_password"))
+
+                raw = secrets.token_urlsafe(32)
+                th = _hash_token(raw)
+
+                cur.execute("""
+                    INSERT INTO password_reset_tokens (token_hash, user_id, student_account_id, email, expires_at)
+                    VALUES (%s, NULL, %s, %s, %s)
+                """, (th, s["account_id"], email, expiry))
+                db.commit()
+
+                link = f"{BASE_URL}/reset-password/{raw}"
+                who = s.get("student_name") or "Student"
+                body = (
+                    "We received a request to reset your password.\n\n"
+                    f"Account: Student ({s['username']}) - {who}\n"
+                    f"Reset link: {link}\n\n"
+                    "This link expires in 30 minutes. If you did not request this, ignore this email."
+                )
+                send_email(email, "Password Reset Request", body)
+
+                flash(generic_msg, "success")
+                return redirect(url_for("auth.login"))
+
+            flash(generic_msg, "success")
+            return redirect(url_for("auth.login"))
+
+        except Exception as e:
+            db.rollback()
+            print("Forgot password error:", e)
+            flash(generic_msg, "success")
+            return redirect(url_for("auth.login"))
+        finally:
+            cur.close()
+            db.close()
+
+    return render_template("forgot_password.html")
+
+
+@auth_bp.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    if not token:
+        flash("Invalid reset link.", "error")
+        return redirect(url_for("auth.login"))
+
+    token_hash = _hash_token(token)
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT *
+            FROM password_reset_tokens
+            WHERE token_hash=%s
+            LIMIT 1
+        """, (token_hash,))
+        row = cur.fetchone()
+
+        if not row or row.get("used_at"):
+            flash("Reset link is invalid or already used.", "error")
+            return redirect(url_for("auth.login"))
+
+        # Expiry check
+        cur.execute("""
+    SELECT 1
+    FROM password_reset_tokens
+    WHERE token_hash=%s
+      AND used_at IS NULL
+      AND expires_at > NOW()
+    LIMIT 1
+""", (token_hash,))
+        still_valid = cur.fetchone()
+
+        if not still_valid:
+            flash("Reset link expired. Please request a new one.", "error")
+            return redirect(url_for("auth.forgot_password"))
+
+        if request.method == "POST":
+            new_password = request.form.get("password") or ""
+            confirm = request.form.get("confirm_password") or ""
+
+            # Use your existing policy function if available:
+            ok, err = validate_password_policy(new_password)
+            if not ok:
+                flash(err, "error")
+                return redirect(request.url)
+
+            if new_password != confirm:
+                flash("Passwords do not match.", "error")
+                return redirect(request.url)
+
+            hashed = generate_password_hash(new_password)
+
+            if row.get("user_id"):
+                cur.execute("""
+                    UPDATE users
+                    SET password=%s, require_password_change=FALSE, last_password_change=NOW()
+                    WHERE user_id=%s
+                """, (hashed, row["user_id"]))
+            else:
+                cur.execute("""
+                    UPDATE student_accounts
+                    SET password=%s, require_password_change=FALSE, last_password_change=NOW()
+                    WHERE account_id=%s
+                """, (hashed, row["student_account_id"]))
+
+                # Optional: keep users table in sync if student has a users row too
+                cur.execute("""
+                    UPDATE users
+                    SET password=%s, require_password_change=FALSE, last_password_change=NOW()
+                    WHERE username = (SELECT username FROM student_accounts WHERE account_id=%s)
+                """, (hashed, row["student_account_id"]))
+
+            cur.execute("""
+                UPDATE password_reset_tokens
+                SET used_at = NOW()
+                WHERE id = %s
+            """, (row["id"],))
+
+            db.commit()
+            flash("Password reset successful. Please log in.", "success")
+            return redirect(url_for("auth.login"))
+
+        return render_template("reset_password.html")
+
+    finally:
+        cur.close()
         db.close()
 
 
