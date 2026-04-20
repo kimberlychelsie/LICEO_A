@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Edit Application – {{ branch.branch_name }}</title>
+    <style>
+        :root {
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --muted: #64748b;
+            --line: #e2e8f0;
+            --primary: #1e3a8a;
+            --primary-light: #2563eb;
+            --soft: #f1f5f9;
+            --gold: #b8960c;
+            --gold-light: #fde047;
+            --danger: #dc2626;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --radius: 12px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            padding: 40px 20px;
+        }
+
+        .wrap { max-width: 900px; margin: 0 auto; }
+
+        .card {
+            background: var(--card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid var(--line);
+            overflow: hidden;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            background: #1e3a8a;
+            padding: 30px;
+            color: #fff;
+            text-align: center;
+            border-bottom: 4px solid var(--gold);
+        }
+
+        .header h1 { font-size: 24px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+        .header p { font-size: 14px; opacity: 0.9; margin-top: 4px; }
+
+        /* ── CORRECTION BANNER ── */
+        .correction-banner {
+            background: #fff1f2;
+            border-bottom: 1px solid #fecaca;
+            padding: 24px 30px;
+        }
+
+        .correction-banner .label {
+            display: inline-block;
+            background: var(--danger);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 800;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+        }
+
+        .correction-banner .reason-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #991b1b;
+            margin-bottom: 4px;
+        }
+
+        .correction-banner .reason-text {
+            font-size: 16px;
+            color: #1e293b;
+            font-weight: 500;
+        }
+
+        /* ── FORM ── */
+        form { padding: 30px; }
+
+        .section { margin-bottom: 30px; }
+        .section-title {
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--primary);
+            border-bottom: 2px solid var(--soft);
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 640px) { 
+            .grid { display: block; }
+            .grid > div { margin-bottom: 15px; }
+        }
+
+        .c12 { grid-column: span 12; }
+        .c8 { grid-column: span 8; }
+        .c6 { grid-column: span 6; }
+        .c4 { grid-column: span 4; }
+        .c3 { grid-column: span 3; }
+
+        .field { display: flex; flex-direction: column; gap: 6px; }
+        .field label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+        .field input, .field select, .field textarea {
+            padding: 11px;
+            border: 1.5px solid var(--line);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+            width: 100%;
+            background: #fff;
+        }
+
+        .field input:focus, .field select:focus { border-color: var(--primary-light); }
+
+        /* ── READONLY / LOCKED STATE ── */
+        .field input[readonly], .field select[disabled], .field textarea[readonly] {
+            background-color: #f1f5f9;
+            color: #475569;
+            cursor: not-allowed;
+            border-style: solid;
+            opacity: 0.8;
+        }
+
+        .section-header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 2px solid var(--soft);
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+        }
+
+        .section-header-row .section-title {
+            border: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .btn-unlock {
+            background: #fff;
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-unlock:hover {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .btn-unlock.active {
+            background: #fef2f2;
+            border-color: #ef4444;
+            color: #ef4444;
+        }
+
+        /* ── PILLS for ENROLL TYPE ── */
+        .pill-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 5px; }
+        .pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border: 1.5px solid var(--line);
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .pill input { margin: 0; cursor: pointer; }
+        .pill:has(input:checked) {
+            background: var(--soft);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        /* ── DOCUMENTS ── */
+        .doc-item {
+            background: #f8fafc;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .doc-info { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .doc-name { font-size: 14px; font-weight: 700; color: var(--text); }
+        .doc-status { font-size: 12px; color: #16a34a; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+
+        .file-input-wrapper {
+            position: relative;
+            background: #fff;
+            border: 1.5px dashed var(--line);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        /* ── FOOTER ── */
+        .footer {
+            padding-top: 20px;
+            border-top: 1px solid var(--line);
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn-cancel {
+            text-decoration: none;
+            color: var(--muted);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .btn-submit {
+            background: var(--primary);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            transition: background 0.2s;
+            box-shadow: 0 4px 6px rgba(30, 58, 138, 0.2);
+        }
+
+        .btn-submit:hover { background: #1e40af; }
+    </style>
+</head>
+
+<body>
+    <div class="wrap">
+        <div class="card">
+            <header class="header">
+                <h1>Update Application</h1>
+                <p>{{ branch.branch_name }}</p>
+            </header>
+
+            <div class="correction-banner">
+                <span class="label">Correction Requested</span>
+                <div class="reason-title">Note from Registrar:</div>
+                <div class="reason-text">"{{ enrollment.rejection_reason }}"</div>
+            </div>
+
+            <form method="post" enctype="multipart/form-data">
+                
+                <!-- ══ ENROLLMENT TYPE ══ -->
+                <div class="section">
+                    <h2 class="section-title">Enrollment Type</h2>
+                    <div class="grid">
+                        <div class="c12">
+                            <div class="field">
+                                <label>Type <span style="color:red">*</span></label>
+                                <div class="pill-row">
+                                    {% for type in ['Old', 'New', 'Transferee', 'First Semester', 'Second Semester'] %}
+                                    <label class="pill">
+                                        <input type="radio" name="enroll_type" value="{{ type }}" {% if enrollment.enroll_type == type %}checked{% endif %}> {{ type }}
+                                    </label>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="c12">
+                            <div class="field">
+                                <label>Remarks / Notes</label>
+                                <input type="text" name="remarks" value="{{ enrollment.remarks or '' }}" placeholder="e.g. Scholarship applicant...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ══ STUDENT DETAILS ══ -->
+                <div class="section" id="section-personal">
+                    <div class="section-header-row">
+                        <h2 class="section-title">Personal Information</h2>
+                        <button type="button" class="btn-unlock" onclick="toggleSection('section-personal')">🔓 Edit Info</button>
+                    </div>
+                    <div class="grid">
+                        <div class="c8">
+                            <div class="field">
+                                <label>Full Name</label>
+                                <input type="text" name="student_name" value="{{ enrollment.student_name }}" required readonly>
+                            </div>
+                        </div>
+                        <div class="c4">
+                            <div class="field">
+                                <label>Grade Level</label>
+                                <select name="grade_level" required disabled>
+                                    {% for g in grade_levels %}
+                                    <option value="{{ g.name }}" {% if g.name == enrollment.grade_level %}selected{% endif %}>{{ g.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="c4">
+                            <div class="field">
+                                <label>LRN</label>
+                                <input type="text" name="lrn" value="{{ enrollment.lrn or '' }}" maxlength="12" readonly>
+                            </div>
+                        </div>
+                        <div class="c4">
+                            <div class="field">
+                                <label>Birthday</label>
+                                <input type="date" name="dob" value="{{ enrollment.dob }}" readonly>
+                            </div>
+                        </div>
+                        <div class="c4">
+                            <div class="field">
+                                <label>Sex</label>
+                                <select name="gender" disabled>
+                                    <option value="Male" {% if enrollment.gender == 'Male' %}selected{% endif %}>Male</option>
+                                    <option value="Female" {% if enrollment.gender == 'Female' %}selected{% endif %}>Female</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="c12">
+                            <div class="field">
+                                <label>Address</label>
+                                <input type="text" name="address" value="{{ enrollment.address }}" required readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ══ FAMILY INFORMATION ══ -->
+                <div class="section" id="section-family">
+                    <div class="section-header-row">
+                        <h2 class="section-title">Family Information</h2>
+                        <button type="button" class="btn-unlock" onclick="toggleSection('section-family')">🔓 Edit Info</button>
+                    </div>
+                    <div class="grid">
+                        <!-- Father -->
+                        <div class="c6">
+                            <div class="field">
+                                <label>Father's Name</label>
+                                <input type="text" name="father_name" value="{{ enrollment.father_name or '' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="c3">
+                            <div class="field">
+                                <label>Contact No.</label>
+                                <input type="tel" name="father_contact" value="{{ enrollment.father_contact or '' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="c3">
+                            <div class="field">
+                                <label>Occupation</label>
+                                <input type="text" name="father_occupation" value="{{ enrollment.father_occupation or '' }}" readonly>
+                            </div>
+                        </div>
+                        
+                        <!-- Mother -->
+                        <div class="c6">
+                            <div class="field">
+                                <label>Mother's Name</label>
+                                <input type="text" name="mother_name" value="{{ enrollment.mother_name or '' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="c3">
+                            <div class="field">
+                                <label>Contact No.</label>
+                                <input type="tel" name="mother_contact" value="{{ enrollment.mother_contact or '' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="c3">
+                            <div class="field">
+                                <label>Occupation</label>
+                                <input type="text" name="mother_occupation" value="{{ enrollment.mother_occupation or '' }}" readonly>
+                            </div>
+                        </div>
+
+                        <!-- Guardian -->
+                        <div class="c6">
+                            <div class="field">
+                                <label>Guardian Name <span style="color:red">*</span></label>
+                                <input type="text" name="guardian_name" value="{{ enrollment.guardian_name }}" required readonly>
+                            </div>
+                        </div>
+                        <div class="c3">
+                            <div class="field">
+                                <label>Contact <span style="color:red">*</span></label>
+                                <input type="tel" name="guardian_contact" value="{{ enrollment.guardian_contact }}" required readonly>
+                            </div>
+                        </div>
+                        <div class="c3">
+                            <div class="field">
+                                <label>Email <span style="color:red">*</span></label>
+                                <input type="email" name="guardian_email" value="{{ enrollment.guardian_email or '' }}" required readonly>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ══ PREVIOUS SCHOOL ══ -->
+                <div class="section" id="section-school">
+                    <div class="section-header-row">
+                        <h2 class="section-title">Previous School</h2>
+                        <button type="button" class="btn-unlock" onclick="toggleSection('section-school')">🔓 Edit Info</button>
+                    </div>
+                    <div class="grid">
+                        <div class="c10">
+                            <div class="field">
+                                <label>Last School Attended</label>
+                                <input type="text" name="previous_school" value="{{ enrollment.previous_school or '' }}" readonly>
+                            </div>
+                        </div>
+                        <div class="c2">
+                             <div class="field">
+                                <label>SY</label>
+                                <select name="year_id" disabled>
+                                    {% for sy in school_years %}
+                                    <option value="{{ sy.year_id }}" {% if sy.year_id == enrollment.year_id %}selected{% endif %}>{{ sy.label }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ══ DOCUMENTS ══ -->
+                <div class="section">
+                    <h2 class="section-title">Documents (Update if needed)</h2>
+                    
+                    {% set doc_types = [
+                        ('psa_birth_cert', 'PSA Birth Certificate'),
+                        ('baptismal_cert', 'Baptismal Certificate'),
+                        ('form_138', 'Form 138'),
+                        ('good_moral', 'Good Moral Certificate'),
+                        ('form_137', 'Form 137')
+                    ] %}
+
+                    {% for field_id, doc_label in doc_types %}
+                    <div class="doc-item">
+                        <div class="doc-info">
+                            <div class="doc-name">{{ doc_label }}</div>
+                            {% set current_doc = existing_docs | selectattr('doc_type', 'equalto', doc_label) | first %}
+                            {% if current_doc %}
+                            <div class="doc-status">✅ Already uploaded</div>
+                            {% else %}
+                            <div class="doc-status" style="color: #64748b;">Not yet uploaded</div>
+                            {% endif %}
+                        </div>
+                        <div class="file-input-wrapper">
+                            <input type="file" name="{{ field_id }}" accept=".pdf,.jpg,.jpeg,.png">
+                            {% if current_doc %}
+                            <p style="font-size: 11px; color: var(--muted); margin-top: 5px;">Uploading a new file will replace the previous one.</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <div class="footer">
+                    <a href="{{ url_for('student.track_enrollment') }}" class="btn-cancel">Cancel</a>
+                    <button type="submit" class="btn-submit">Submit Corrections</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <script>
+        function toggleSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            const btn = section.querySelector('.btn-unlock');
+            const inputs = section.querySelectorAll('input, select, textarea');
+            const isLocked = btn.innerText.includes('🔓');
+
+            if (isLocked) {
+                btn.innerText = '🔒 Lock Section';
+                btn.classList.add('active');
+                inputs.forEach(el => {
+                    if (el.tagName === 'SELECT') el.disabled = false;
+                    else el.removeAttribute('readonly');
+                });
+            } else {
+                btn.innerText = '🔓 Edit Info';
+                btn.classList.remove('active');
+                inputs.forEach(el => {
+                    if (el.tagName === 'SELECT') el.disabled = true;
+                    else el.setAttribute('readonly', 'true');
+                });
+            }
+        }
+
+        // Before submitting, we need to temporarily enable selects so they are sent in the POST
+        document.querySelector('form').addEventListener('submit', function() {
+            document.querySelectorAll('select[disabled]').forEach(s => s.disabled = false);
+        });
+    </script>
+</body>
+
+</html>

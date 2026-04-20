@@ -602,14 +602,7 @@
   <button type="button" class="btn btn-primary btn-sm"
       onclick="toggleNewDetails('{{ enrollment.enrollment_id }}', this)">👁 View Details</button>
 
-  <form method="post" action="/registrar/enrollments" style="display:inline;">
-      <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
-      <input type="hidden" name="year_id" value="{{ selected_year_id }}">
-      <button name="action" value="approved" class="btn btn-success btn-sm">✅ Approve</button>
-  </form>
 
-  <button type="button" class="btn btn-danger btn-sm"
-      onclick="openRejectModal('{{ enrollment.enrollment_id }}', '{{ enrollment.student_name|e }}')">❌ Reject</button>
 {% else %}
   <span class="muted-note">Actions disabled (Archive Mode)</span>
 {% endif %}
@@ -772,10 +765,15 @@
                                         <div style="display:flex; flex-direction:column; gap:8px;">
                                             {% for doc in enrollment.documents %}
                                             <a href="{{ doc.file_path }}" target="_blank" rel="noopener"
-                                                style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:9px 10px; border:1px solid var(--border); border-radius:10px; text-decoration:none; color:#0f172a; background:#f8fafc;">
-                                                <span style="font-weight:700; font-size:0.86rem;">{{ doc.document_type
-                                                    or doc.file_name }}</span>
-                                                <span style="font-size:0.78rem; color:var(--muted);">View</span>
+                                                class="doc-view-link"
+                                                data-enrollment-id="{{ enrollment.enrollment_id }}"
+                                                onclick="markDocViewed('{{ enrollment.enrollment_id }}', this)"
+                                                style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; border:1px solid var(--border); border-radius:10px; text-decoration:none; color:#0f172a; background:#f8fafc; transition: all 0.2s;">
+                                                <span style="font-weight:700; font-size:0.86rem; display:flex; align-items:center; gap:8px;">
+                                                    <span class="view-check" style="display:none; color:#10b981;">✓</span>
+                                                    {{ doc.document_type or doc.file_name }}
+                                                </span>
+                                                <span style="font-size:0.75rem; font-weight:700; color:var(--btn); background:#eff6ff; padding:2px 8px; border-radius:6px;">View</span>
                                             </a>
                                             {% endfor %}
                                         </div>
@@ -819,6 +817,52 @@
                                     </div>
                                 </div>
                             </form>
+
+                            <!-- Decision Section -->
+                            {% if enrollment.status == 'pending' %}
+                            <div id="decision-box-{{ enrollment.enrollment_id }}" 
+                                 class="decision-box"
+                                 data-total-docs="{{ enrollment.documents | length if enrollment.documents else 0 }}"
+                                 data-viewed-docs="0"
+                                 style="margin: 16px 0; padding:12px 18px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px; display:flex; align-items:center; justify-content:space-between; gap:12px; overflow: hidden;">
+                                <div style="flex:1;">
+                                    <div style="font-weight:900; color:#1e293b; font-size:0.95rem; display:flex; align-items:center; gap:6px;">
+                                        ⚖️ Application Decision
+                                        {% if enrollment.documents and enrollment.documents | length > 0 %}
+                                            <span class="doc-status-badge" style="font-size:0.7rem; background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:99px; font-weight:800;">
+                                                View all {{ enrollment.documents | length }} docs to enable
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    <div style="font-size:0.78rem; color:var(--muted); font-weight:600;">Final action for this enrollment request.</div>
+                                </div>
+                                <div style="display:flex; gap:10px;">
+                                    {% if is_branch_active_status and can_modify %}
+                                        <form method="post" action="/registrar/enrollments" style="margin:0;">
+                                            <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
+                                            <input type="hidden" name="year_id" value="{{ selected_year_id }}">
+                                            <button name="action" value="approved" 
+                                                    class="btn btn-success action-btn-{{ enrollment.enrollment_id }}" 
+                                                    {% if enrollment.documents and enrollment.documents | length > 0 %}disabled{% endif %}
+                                                    style="padding:8px 20px; font-weight:800; border-radius:10px; border:none; cursor:pointer; font-size:0.85rem; opacity:{% if enrollment.documents and enrollment.documents | length > 0 %}0.5{% else %}1{% endif %};">
+                                                ✅ Approve
+                                            </button>
+                                        </form>
+                                        <button type="button" 
+                                                class="btn btn-danger action-btn-{{ enrollment.enrollment_id }}" 
+                                                {% if enrollment.documents and enrollment.documents | length > 0 %}disabled{% endif %}
+                                                style="padding:8px 20px; font-weight:800; border-radius:10px; border:none; cursor:pointer; font-size:0.85rem; opacity:{% if enrollment.documents and enrollment.documents | length > 0 %}0.5{% else %}1{% endif %};"
+                                                onclick="openRejectModal('{{ enrollment.enrollment_id }}', '{{ enrollment.student_name|e }}')">
+                                            ❌ Reject
+                                        </button>
+                                    {% else %}
+                                        <span class="badge" style="background:#e2e8f0; color:#64748b; border:none; font-weight:800; font-size:0.8rem;">
+                                            Decision Locked
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
@@ -877,6 +921,41 @@
       const isOpen = row.style.display !== 'none';
       row.style.display = isOpen ? 'none' : '';
       if (btn) btn.textContent = isOpen ? '👁 View Details' : 'Hide Details';
+    }
+
+    function markDocViewed(enrollmentId, link) {
+        if (link.dataset.alreadyViewed === 'true') return;
+        link.dataset.alreadyViewed = 'true';
+        
+        // Show checkmark
+        const check = link.querySelector('.view-check');
+        if (check) check.style.display = 'inline';
+        link.style.borderColor = '#10b981';
+        link.style.background = '#f0fdf4';
+
+        const box = document.getElementById('decision-box-' + enrollmentId);
+        if (!box) return;
+
+        let viewed = parseInt(box.dataset.viewedDocs) + 1;
+        let total = parseInt(box.dataset.totalDocs);
+        box.dataset.viewedDocs = viewed;
+
+        const badge = box.querySelector('.doc-status-badge');
+        if (viewed < total) {
+            if (badge) badge.textContent = `View ${total - viewed} more docs to enable`;
+        } else {
+            // Enable buttons
+            if (badge) {
+                badge.textContent = '✅ Review complete';
+                badge.style.background = '#dcfce7';
+                badge.style.color = '#166534';
+            }
+            document.querySelectorAll('.action-btn-' + enrollmentId).forEach(btn => {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                btn.style.cursor = 'pointer';
+            });
+        }
     }
   
     function openRejectModal(enrollmentId, studentName) {

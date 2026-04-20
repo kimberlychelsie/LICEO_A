@@ -7,6 +7,7 @@ from db import get_db_connection, is_branch_active
 from cloudinary_helper import upload_enrollment_document
 from rapidfuzz import fuzz
 import logging
+from utils.send_email import send_email
 
 logger = logging.getLogger(__name__)
 
@@ -216,6 +217,48 @@ def check_duplicate():
         db.close()
 
 
+def trigger_enrollment_email(student_email, student_name, display_no, branch_name):
+    """Sends a professional HTML enrollment confirmation email."""
+    if not student_email:
+        return
+
+    subject = f"Enrollment Submitted - {branch_name}"
+    
+    # Plain text version as fallback
+    body = (
+        f"Enrollment Submitted!\n\n"
+        f"Hello {student_name},\n"
+        f"Your application has been received by {branch_name}.\n\n"
+        f"YOUR BRANCH ENROLLMENT ID: {display_no}\n\n"
+        f"Important: Save this ID! You will need it to track your enrollment status."
+    )
+
+    # Professional HTML version
+    html_body = f"""
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+        <div style="background-color: #1a2a4e; padding: 30px; text-align: center; color: white;">
+            <h1 style="margin: 0; font-size: 24px; font-weight: 700;">Enrollment Submitted!</h1>
+        </div>
+        <div style="padding: 40px; color: #334155; line-height: 1.6;">
+            <p style="font-size: 16px;">Hello <strong>{student_name}</strong>,</p>
+            <p style="font-size: 16px;">Your application has been successfully received by <strong>{branch_name}</strong> and is now pending review.</p>
+            
+            <div style="background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 25px; margin: 30px 0; text-align: center;">
+                <p style="margin: 0 0 10px 0; font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Your Branch Enrollment ID</p>
+                <p style="margin: 0; font-size: 42px; font-weight: 800; color: #1a2a4e;">{display_no}</p>
+            </div>
+
+            <p style="font-size: 14px; color: #e11d48; font-weight: 600; text-align: center;">Important: Save this ID! You will need it to track your enrollment status.</p>
+        </div>
+        <div style="background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+            &copy; 2026 LiceoLMS - Liceo de Majayjay System
+        </div>
+    </div>
+    """
+    
+    send_email(student_email, subject, body, html_body=html_body)
+
+
 # ---------------- Step 1: Student Enrollment ----------------
 @student_bp.route("/branch/<int:branch_id>/enroll", methods=["GET", "POST"])
 def enroll(branch_id):
@@ -379,6 +422,10 @@ def enroll(branch_id):
             ]:
                 save_doc_file(cursor, enrollment_id, request.files.get(file_field), doc_name)
             db.commit()
+
+            # ── Trigger Email Notification ──
+            if email:
+                trigger_enrollment_email(email, student_name, next_no, branch["branch_name"])
 
             return redirect(url_for("student.enrollment_success", branch_id=branch_id, enrollment_id=enrollment_id))
 
@@ -805,18 +852,18 @@ def track_enrollment():
     enrollment = None
     documents = []
     branches = []
-    requirements = {}  # Add this for template
+    requirements = {}
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     REQUIRED_DOCS = {
-    "PSA Birth Certificate": "PSA Birth Certificate",
-    "Baptismal Certificate": "Baptismal Certificate",
-    "Form 138": "Form 138",
-    "Good Moral Certificate": "Good Moral Certificate",
-    "Form 137": "Form 137",
-}
+        "PSA Birth Certificate": "PSA Birth Certificate",
+        "Baptismal Certificate": "Baptismal Certificate",
+        "Form 138": "Form 138",
+        "Good Moral Certificate": "Good Moral Certificate",
+        "Form 137": "Form 137",
+    }
 
     try:
         cursor.execute("SELECT branch_id, branch_name FROM branches WHERE is_active = TRUE ORDER BY branch_name")
@@ -841,6 +888,9 @@ def track_enrollment():
                 enrollment = cursor.fetchone()
 
                 if enrollment:
+                    session["tracked_enrollment_id"] = enrollment["enrollment_id"]
+                    session["tracked_branch_id"]     = enrollment["branch_id"]
+
                     cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id=%s", (enrollment["enrollment_id"],))
                     documents = cursor.fetchall()
                     submitted_types = set(d["doc_type"] for d in documents)
@@ -856,8 +906,107 @@ def track_enrollment():
         enrollment=enrollment,
         documents=documents,
         branches=branches,
-        requirements=requirements    # Pass the requirements dict!
+        requirements=requirements
     )
+
+# ---------------- Correction / Edit Enrollment ----------------
+@student_bp.route("/enroll/edit/<int:enrollment_id>", methods=["GET", "POST"])
+def enroll_edit(enrollment_id):
+    # Security check: Must have tracked this enrollment in the current session
+    if session.get("tracked_enrollment_id") != enrollment_id:
+        flash("Unauthorized access. Please track your enrollment first.", "error")
+        return redirect(url_for("student.track_enrollment"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        # Fetch existing enrollment
+        cursor.execute("SELECT * FROM enrollments WHERE enrollment_id = %s", (enrollment_id,))
+        enrollment = cursor.fetchone()
+        if not enrollment:
+            flash("Enrollment not found.", "error")
+            return redirect(url_for("student.track_enrollment"))
+
+        branch_id = enrollment["branch_id"]
+
+        # Fetch branch & grade levels
+        cursor.execute("SELECT branch_id, branch_name FROM branches WHERE branch_id=%s", (branch_id,))
+        branch = cursor.fetchone()
+        
+        cursor.execute("SELECT id, name FROM grade_levels WHERE branch_id = %s ORDER BY display_order", (branch_id,))
+        grade_levels = cursor.fetchall() or []
+
+        # Fetch school years
+        cursor.execute("SELECT year_id, label FROM school_years WHERE branch_id = %s ORDER BY label DESC", (branch_id,))
+        school_years = cursor.fetchall() or []
+
+        # Fetch existing documents
+        cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id = %s", (enrollment_id,))
+        existing_docs = cursor.fetchall()
+
+        if request.method == "POST":
+            # ── Selective Update Logic ──
+            # Only update fields that were actually in the form
+            possible_fields = [
+                "student_name", "grade_level", "gender", "dob", "lrn", "address", 
+                "contact_number", "email", "birthplace", "guardian_name", 
+                "guardian_contact", "guardian_email", "father_name", "father_contact", 
+                "father_occupation", "mother_name", "mother_contact", "mother_occupation", 
+                "previous_school", "enroll_type", "remarks", "year_id"
+            ]
+            
+            update_fields = []
+            update_values = []
+            
+            for field in possible_fields:
+                if field in request.form:
+                    val = request.form.get(field, "").strip()
+                    if field == "grade_level":
+                        val = normalize_grade_level(val)
+                    
+                    update_fields.append(f"{field} = %s")
+                    update_values.append(val or None)
+            
+            # Always reset status to pending
+            update_fields.append("status = %s")
+            update_values.append("pending")
+            
+            if update_fields:
+                final_query = f"UPDATE enrollments SET {', '.join(update_fields)} WHERE enrollment_id = %s"
+                update_values.append(enrollment_id)
+                cursor.execute(final_query, update_values)
+
+            # ── Handle Document Re-uploads ──
+            for file_field, doc_name in [
+                ("psa_birth_cert", "PSA Birth Certificate"),
+                ("baptismal_cert", "Baptismal Certificate"),
+                ("form_138", "Form 138"),
+                ("good_moral", "Good Moral Certificate"),
+                ("form_137", "Form 137")
+            ]:
+                fileobj = request.files.get(file_field)
+                if fileobj and fileobj.filename:
+                    # Delete old record if it exists (Cloudinary cleanup could be added here)
+                    cursor.execute("DELETE FROM enrollment_documents WHERE enrollment_id=%s AND doc_type=%s", (enrollment_id, doc_name))
+                    save_doc_file(cursor, enrollment_id, fileobj, doc_name)
+
+            db.commit()
+            flash("Your application has been updated and re-submitted for review.", "success")
+            return redirect(url_for("student.track_enrollment"))
+
+        return render_template(
+            "student_enroll_edit.html",
+            enrollment=enrollment,
+            branch=branch,
+            grade_levels=grade_levels,
+            school_years=school_years,
+            existing_docs=existing_docs
+        )
+
+    finally:
+        cursor.close()
+        db.close()
 
 
 # =======================

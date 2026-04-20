@@ -3620,9 +3620,11 @@ def teacher_schedules():
             JOIN school_years y ON s.year_id = y.year_id
             WHERE s.branch_id = %s AND s.teacher_id = %s
               AND s.year_id = ANY(%s)
+              AND s.is_archived = FALSE
             ORDER BY y.label DESC, sec.section_name, subj.name, s.day_of_week, s.start_time
         """, (branch_id, teacher_id, active_years))
         schedules = cursor.fetchall()
+
 
     cursor.close(); db.close()
 

@@ -172,28 +172,28 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Room Number</label>
-                    <input type="text" name="room" maxlength="32" class="premium-input" value="{{ schedule.room }}" required>
+                    <label class="form-label">Room Number (1-30)</label>
+                    <input type="number" name="room" min="1" max="30" class="premium-input" value="{{ schedule.room }}" required>
                 </div>
 
                 <div class="form-group">
                     <label class="form-label">Start Time</label>
-                    <input type="time" name="start_time" class="premium-input" value="{{ schedule.start_time.strftime('%H:%M') }}" required min="07:00" max="23:00" step="900">
+                    <input type="time" name="start_time" class="premium-input" value="{{ schedule.start_time.strftime('%H:%M') }}" required min="07:00" max="17:00" step="900">
                 </div>
-
                 <div class="form-group">
                     <label class="form-label">End Time</label>
-                    <input type="time" name="end_time" class="premium-input" value="{{ schedule.end_time.strftime('%H:%M') }}" required min="07:00" max="23:00" step="900">
+                    <input type="time" name="end_time" class="premium-input" value="{{ schedule.end_time.strftime('%H:%M') }}" required min="07:00" max="17:00" step="900">
                 </div>
 
+                <div class="form-group" style="display: none;">
+                    <label class="form-label">Academic Year</label>
+                    <input type="hidden" name="year_id" value="{{ active_year.year_id if active_year else schedule.year_id }}">
+                </div>
                 <div class="form-group" style="grid-column: span 2;">
                     <label class="form-label">Academic Year</label>
-                    <select name="year_id" class="premium-input" required>
-                        <option value="">-- Select --</option>
-                        {% for sy in school_years %}
-                        <option value="{{sy.year_id}}" {{ 'selected' if schedule.year_id == sy.year_id }}>{{sy.label}}</option>
-                        {% endfor %}
-                    </select>
+                    <div class="premium-input" style="background: #f8fafc; color: var(--sch-text-muted); display: flex; align-items: center; border-color: rgba(0,0,0,0.05);">
+                        {{ active_year.label if active_year else 'No Active Year Found' }}
+                    </div>
                 </div>
             </div>
 
@@ -207,7 +207,7 @@
 </div>
 
 <script>
-    function isInRange(val) { return val >= "07:00" && val <= "23:00"; }
+    function isInRange(val) { return val >= "07:00" && val <= "17:00"; }
     
     document.getElementById('editForm').addEventListener('submit', function(e) {
         const s = this.start_time.value;
@@ -216,7 +216,7 @@
         err.style.display = 'none';
 
         if (s && o && (!isInRange(s) || !isInRange(o))) {
-            err.innerText = "Times must be between 07:00 and 23:00.";
+            err.innerText = "Times must be between 07:00 and 17:00.";
             err.style.display = 'block';
             e.preventDefault();
         } else if (s && o && s >= o) {

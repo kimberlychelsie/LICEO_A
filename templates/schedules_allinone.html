@@ -302,13 +302,26 @@
         <div class="header-text">
             <h2>Class Schedules</h2>
             <div class="status-badge">
-                <span class="pulse-dot"></span>
-                Managing class rosters and time slots.
+                <span class="pulse-dot" style="background: {{ 'var(--sch-gold)' if not show_archived else '#ef4444' }}; box-shadow: 0 0 10px {{ 'var(--sch-gold)' if not show_archived else '#ef4444' }};"></span>
+                {{ 'Managing class rosters and time slots.' if not show_archived else 'Viewing archived schedules.' }}
             </div>
+        </div>
+        <div class="header-actions">
+            {% if show_archived %}
+            <a href="{{ url_for('registrar.list_and_add_schedules') }}" class="btn-create" style="background: var(--sch-text-muted);">
+                <i class="fas fa-arrow-left"></i> Back to Active
+            </a>
+            {% else %}
+            <a href="{{ url_for('registrar.list_and_add_schedules', show_archived='true') }}" class="btn-create" style="background: #64748b;">
+                <i class="fas fa-archive"></i> View Archived
+            </a>
+            {% endif %}
         </div>
     </div>
 
     <!-- Quick Add Form -->
+    <!-- Add Form: Hidden when viewing archived -->
+    {% if not show_archived %}
     <div class="form-card">
         <h3 class="form-title"><i class="fas fa-plus-circle"></i> Add New Class</h3>
         <form method="post" id="addForm">
@@ -324,6 +337,10 @@
                         {% endfor %}
                     </select>
                 </div>
+                <div class="form-group" style="display: none;">
+                    <label class="form-label">Academic Year</label>
+                    <input type="hidden" name="year_id" value="{{ active_year.year_id if active_year else '' }}">
+                </div>
                 <div class="form-group">
                     <label class="form-label">Day</label>
                     <select name="day_of_week" class="premium-input" required>
@@ -335,25 +352,25 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Start</label>
-                    <input type="time" name="start_time" class="premium-input" required min="07:00" max="23:00" step="900">
+                    <input type="time" name="start_time" class="premium-input" required min="07:00" max="17:00" step="900">
                 </div>
                 <div class="form-group">
                     <label class="form-label">End</label>
-                    <input type="time" name="end_time" class="premium-input" required min="07:00" max="23:00" step="900">
+                    <input type="time" name="end_time" class="premium-input" required min="07:00" max="17:00" step="900">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Room</label>
-                    <input type="text" name="room" maxlength="32" class="premium-input" placeholder="Rm 101" required>
+                    <label class="form-label">Room (1-30)</label>
+                    <input type="number" name="room" min="1" max="30" class="premium-input" placeholder="e.g. 10" required 
+                           oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2); if(parseInt(this.value) > 30) this.value = 30;"
+                           title="Enter room number between 1 and 30 (max 2 digits)">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Academic Year</label>
                     <div style="display: flex; gap: 8px;">
-                        <select name="year_id" class="premium-input" required>
-                            <option value="">Year</option>
-                            {% for sy in school_years %}
-                            <option value="{{sy.year_id}}">{{sy.label}}</option>
-                            {% endfor %}
-                        </select>
+                        <input type="hidden" name="year_id" value="{{ active_year.year_id if active_year else '' }}">
+                        <div class="premium-input" style="background: #f8fafc; color: var(--sch-text-muted); display: flex; align-items: center; border-color: rgba(0,0,0,0.05); flex: 1;">
+                            {{ active_year.label if active_year else 'No Active Year' }}
+                        </div>
                         <button class="btn-create" type="submit"><i class="fas fa-check"></i> Add</button>
                     </div>
                 </div>
@@ -361,13 +378,35 @@
             <div id="add-time-error" class="error-hint">Start time must be before end time.</div>
         </form>
     </div>
+    {% endif %}
 
     <!-- Schedule List -->
     <div class="table-surface">
-        <div class="table-toolbar">
-            <h3 style="margin:0; font-weight:800; color:var(--sch-blue); font-size:1.1rem;">Scheduled Classes</h3>
-            <div style="font-weight: 700; color: var(--sch-blue); font-size: 0.9rem; background: var(--sch-blue-soft); padding: 8px 16px; border-radius: 12px;">
-                {{ schedules | length }} Classes Active
+        <div class="table-toolbar" style="flex-wrap: wrap; gap: 16px;">
+            <div style="display: flex; align-items: center; gap: 20px; flex: 1;">
+                <h3 style="margin:0; font-weight:800; color:var(--sch-blue); font-size:1.1rem; white-space: nowrap;">
+                    {{ 'Scheduled Classes' if not show_archived else 'Archived Schedules' }}
+                </h3>
+                
+                <!-- Filters -->
+                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                    <select id="gradeFilter" class="premium-input" style="padding: 8px 14px; font-size: 0.85rem; width: auto; min-width: 130px; height: 38px;" onchange="updateSectionFilter()">
+                        <option value="">-- All Grades --</option>
+                        {% for grade in all_grades %}
+                        <option value="{{ grade }}">{{ grade }}</option>
+                        {% endfor %}
+                    </select>
+                    <select id="sectionFilter" class="premium-input" style="padding: 8px 14px; font-size: 0.85rem; width: auto; min-width: 150px; height: 38px;" onchange="filterTable()">
+                        <option value="">-- All Sections --</option>
+                        {% for sec in all_sections %}
+                        <option value="{{ sec.section_id }}" data-grade="{{ sec.grade_name }}">{{ sec.section_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            
+            <div style="font-weight: 700; color: var(--sch-blue); font-size: 0.9rem; background: var(--sch-blue-soft); padding: 8px 16px; border-radius: 12px; height: fit-content;">
+                <span id="activeCount">{{ schedules | length }}</span> {{ 'Active' if not show_archived else 'Archived' }}
             </div>
         </div>
 
@@ -386,7 +425,7 @@
                 </thead>
                 <tbody>
                     {% for sched in schedules %}
-                    <tr>
+                    <tr class="schedule-row" data-grade="{{ sched.grade_name }}" data-section-id="{{ sched.section_id }}">
                         <td><span style="color: var(--sch-blue); font-weight: 800;">{{sched.year_label}}</span></td>
                         <td>
                             <div class="class-info">
@@ -399,17 +438,30 @@
                         <td>
                             <div class="time-slot">{{ sched.start_time.strftime('%H:%M') }} - {{ sched.end_time.strftime('%H:%M') }}</div>
                         </td>
-                        <td><span class="room-badge">{{sched.room}}</span></td>
+                        <td><span class="room-badge">Room {{sched.room}}</span></td>
                         <td>
                             <div style="display: flex; gap: 8px;">
+                                {% if not show_archived %}
                                 <button class="btn-action btn-edit" title="Edit" onclick="openEditModal({{sched.schedule_id}})">
                                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                 </button>
-                                <form method="post" action="{{ url_for('registrar.delete_schedule', schedule_id=sched.schedule_id) }}" style="display:inline;" onsubmit="return confirm('Delete this class?');">
-                                    <button type="submit" class="btn-action btn-delete" title="Delete">
+                                <form method="post" action="{{ url_for('registrar.archive_schedule', schedule_id=sched.schedule_id) }}" style="display:inline;" onsubmit="return confirm('Archive this class?');">
+                                    <button type="submit" class="btn-action btn-delete" title="Archive">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V20.9932C21 21.5501 20.5552 22 20.0066 22H3.9934C3.44476 22 3 21.5552 3 20.9932V8H21ZM2 5.0044C2 4.44971 2.4435 4 3.0031 4H20.9969C21.5509 4 22 4.4435 22 5.0044V7H2V5.0044ZM8 11V13H16V11H8Z"/></svg>
+                                    </button>
+                                </form>
+                                {% else %}
+                                <form method="post" action="{{ url_for('registrar.unarchive_schedule', schedule_id=sched.schedule_id) }}" style="display:inline;" onsubmit="return confirm('Unarchive this class?');">
+                                    <button type="submit" class="btn-action btn-edit" title="Unarchive" style="border-color: #10b981; color: #10b981; background: #ecfdf5;">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10H5V19H19V10H21V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V10Z"/><path d="M12 3L4 9L5.5 10.125L12 5.25L18.5 10.125L20 9L12 3Z"/><path d="M11 11V17H13V11H11Z"/></svg>
+                                    </button>
+                                </form>
+                                <form method="post" action="{{ url_for('registrar.delete_schedule_permanent', schedule_id=sched.schedule_id) }}" style="display:inline;" onsubmit="return confirm('PERMANENTLY DELETE this schedule? This action cannot be undone.');">
+                                    <button type="submit" class="btn-action btn-delete" title="Permanent Delete">
                                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                                     </button>
                                 </form>
+                                {% endif %}
                             </div>
                             <!-- Hidden JSON for Modal -->
                             <script id="sched-data-{{sched.schedule_id}}" type="application/json">
@@ -463,43 +515,46 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Room</label>
-                    <input type="text" name="room" id="edit_room" maxlength="32" class="premium-input" required>
+                    <label class="form-label">Room (1-30)</label>
+                    <input type="number" name="room" id="edit_room" min="1" max="30" class="premium-input" required 
+                           oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2); if(parseInt(this.value) > 30) this.value = 30;"
+                           title="Enter room number between 1 and 30 (max 2 digits)">
                 </div>
                 <div class="form-group">
                     <label class="form-label">Start</label>
-                    <input type="time" name="start_time" id="edit_start_time" class="premium-input" required min="07:00" max="23:00" step="900">
+                    <input type="time" name="start_time" id="edit_start_time" class="premium-input" required min="07:00" max="17:00" step="900">
                 </div>
                 <div class="form-group">
                     <label class="form-label">End</label>
-                    <input type="time" name="end_time" id="edit_end_time" class="premium-input" required min="07:00" max="23:00" step="900">
+                    <input type="time" name="end_time" id="edit_end_time" class="premium-input" required min="07:00" max="17:00" step="900">
+                </div>
+                <div class="form-group" style="display: none;">
+                    <label class="form-label">Academic Year</label>
+                    <input type="hidden" name="year_id" id="edit_year_id" value="{{ active_year.year_id if active_year else '' }}">
                 </div>
                 <div class="form-group" style="grid-column: span 2;">
                     <label class="form-label">Academic Year</label>
-                    <select name="year_id" id="edit_year_id" class="premium-input" required>
-                        <option value="">-- Select --</option>
-                        {% for sy in school_years %}
-                        <option value="{{sy.year_id}}">{{sy.label}}</option>
-                        {% endfor %}
-                    </select>
+                    <div class="premium-input" style="background: #f8fafc; color: var(--sch-text-muted); display: flex; align-items: center; border-color: rgba(0,0,0,0.05);">
+                        {{ active_year.label if active_year else 'No Active Year Found' }}
+                    </div>
                 </div>
             </div>
             <div id="edit-time-error" class="error-hint">Start time must be before end time.</div>
             <div style="display: flex; gap: 12px; margin-top: 32px;">
                 <button type="button" class="premium-input" style="width: 100%; cursor: pointer;" onclick="closeEditModal()">Cancel</button>
-                <button type="submit" class="btn-create" style="width: 100%; height: auto;">Save Changes</button>
+                <button type="submit" class="btn-create" id="editSaveBtn" style="width: 100%; height: auto;">Save Changes</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-    function isInRange(val) { return val >= "07:00" && val <= "23:00"; }
+    function isInRange(val) { return val >= "07:00" && val <= "17:00"; }
     
     function validateForm(s, e_, errorEl) {
         errorEl.style.display = 'none';
         if (s && e_ && (!isInRange(s) || !isInRange(e_))) {
-            errorEl.innerText = "Times must be between 07:00 and 23:00.";
+            errorEl.innerText = "Times must be between 07:00 and 17:00.";
             errorEl.style.display = 'block';
             return false;
         } else if (s && e_ && s >= e_) {
@@ -522,12 +577,45 @@
         }
     });
 
+    let initialEditValues = {};
+    const editForm = document.getElementById('editForm');
+    const saveBtn = document.getElementById('editSaveBtn');
+
+    function checkChanges() {
+        let changed = false;
+        const currentData = {
+            combo: document.getElementById('edit_combo').value,
+            day_of_week: document.getElementById('edit_day_of_week').value,
+            start_time: document.getElementById('edit_start_time').value,
+            end_time: document.getElementById('edit_end_time').value,
+            room: document.getElementById('edit_room').value,
+            year_id: document.getElementById('edit_year_id').value
+        };
+
+        for (let key in initialEditValues) {
+            if (initialEditValues[key] !== currentData[key]) {
+                changed = true;
+                break;
+            }
+        }
+        saveBtn.disabled = !changed;
+        saveBtn.style.opacity = changed ? "1" : "0.5";
+        saveBtn.style.cursor = changed ? "pointer" : "not-allowed";
+    }
+
+    ['edit_combo', 'edit_day_of_week', 'edit_start_time', 'edit_end_time', 'edit_room', 'edit_year_id'].forEach(id => {
+        document.getElementById(id).addEventListener('change', checkChanges);
+        document.getElementById(id).addEventListener('input', checkChanges);
+    });
+
     function openEditModal(schedule_id) {
         const dataTag = document.getElementById('sched-data-' + schedule_id);
         if (!dataTag) return;
         
         const sched = JSON.parse(dataTag.textContent);
-        document.getElementById('edit_combo').value = sched.section_id + '|' + sched.subject_id + '|' + sched.teacher_id;
+        const comboVal = sched.section_id + '|' + sched.subject_id + '|' + sched.teacher_id;
+        
+        document.getElementById('edit_combo').value = comboVal;
         document.getElementById('edit_day_of_week').value = sched.day_of_week;
         document.getElementById('edit_start_time').value = sched.start_time;
         document.getElementById('edit_end_time').value = sched.end_time;
@@ -535,9 +623,67 @@
         document.getElementById('edit_year_id').value = sched.year_id;
         document.getElementById('editForm').action = '/registrar/schedules/' + sched.schedule_id + '/edit';
         
+        initialEditValues = {
+            combo: comboVal,
+            day_of_week: sched.day_of_week,
+            start_time: sched.start_time,
+            end_time: sched.end_time,
+            room: sched.room,
+            year_id: sched.year_id
+        };
+        
+        checkChanges();
+
         const overlay = document.getElementById('editOverlay');
         overlay.style.display = 'flex';
         setTimeout(() => overlay.classList.add('visible'), 10);
+    }
+
+    function updateSectionFilter() {
+        const grade = document.getElementById('gradeFilter').value;
+        const sectionSelect = document.getElementById('sectionFilter');
+        const options = sectionSelect.querySelectorAll('option');
+        
+        options.forEach(opt => {
+            if (opt.value === "") {
+                opt.style.display = 'block';
+            } else {
+                const optGrade = opt.getAttribute('data-grade');
+                opt.style.display = (grade === "" || optGrade === grade) ? 'block' : 'none';
+            }
+        });
+        
+        // Reset section filter if current is hidden
+        if (grade !== "" && sectionSelect.options[sectionSelect.selectedIndex].style.display === 'none') {
+            sectionSelect.value = "";
+        }
+        
+        filterTable();
+    }
+
+    function filterTable() {
+        const grade = document.getElementById('gradeFilter').value;
+        const sectionId = document.getElementById('sectionFilter').value;
+        const rows = document.querySelectorAll('.schedule-row');
+        let visibleCount = 0;
+        
+        rows.forEach(row => {
+            const rowGrade = row.getAttribute('data-grade');
+            const rowSectionId = row.getAttribute('data-section-id');
+            
+            const gradeMatch = (grade === "" || rowGrade === grade);
+            const sectionMatch = (sectionId === "" || rowSectionId === sectionId);
+            
+            if (gradeMatch && sectionMatch) {
+                row.style.display = 'table-row';
+                visibleCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+        
+        const countSpan = document.getElementById('activeCount');
+        if (countSpan) countSpan.innerText = visibleCount;
     }
 
     function closeEditModal() {

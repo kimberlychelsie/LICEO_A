@@ -1412,6 +1412,7 @@ def student_my_schedule():
                 LEFT JOIN users u ON sc.teacher_id = u.user_id
                 WHERE sc.section_id = %s
                   AND sc.year_id = %s
+                  AND sc.is_archived = FALSE
                 ORDER BY
                     CASE sc.day_of_week
                         WHEN 'Monday'    THEN 1

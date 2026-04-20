@@ -225,8 +225,69 @@ def registrar_enrollments():
             )
             disp_row = cursor.fetchone()
             display_no = disp_row["display_no"] if disp_row else "???"
+            # ─────── SEND EMAIL ON REJECTION ───────
+            if action == "rejected":
+                try:
+                    cursor.execute("""
+                        SELECT e.student_name, e.email, e.guardian_email, e.branch_enrollment_no, b.branch_name
+                        FROM enrollments e
+                        JOIN branches b ON e.branch_id = b.branch_id
+                        WHERE e.enrollment_id = %s
+                    """, (enrollment_id,))
+                    student_data = cursor.fetchone()
+                    
+                    if student_data:
+                        target_email = student_data["email"] or student_data["guardian_email"]
+                        if target_email:
+                            branch_name = student_data["branch_name"]
+                            student_name = student_data["student_name"]
+                            display_no = student_data["branch_enrollment_no"]
+                            
+                            subject = f"Enrollment Update - Action Required ({branch_name})"
+                            
+                            body = (
+                                f"Action Required: Enrollment Correction\n\n"
+                                f"Hello {student_name},\n"
+                                f"Your enrollment application for {branch_name} requires correction.\n\n"
+                                f"Reason: {rejection_reason}\n\n"
+                                f"Please visit the tracking page at https://liceolms.up.railway.app/track to fix your application."
+                            )
+                            
+                            html_body = f"""
+                            <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                                <div style="background-color: #991b1b; padding: 30px; text-align: center; color: white;">
+                                    <h1 style="margin: 0; font-size: 24px; font-weight: 700;">Action Required</h1>
+                                    <p style="margin: 5px 0 0; opacity: 0.9;">Enrollment Application Update</p>
+                                </div>
+                                <div style="padding: 40px; color: #334155; line-height: 1.6;">
+                                    <p style="font-size: 16px;">Hello <strong>{student_name}</strong>,</p>
+                                    <p style="font-size: 16px;">Your enrollment application (ID: <strong>{display_no}</strong>) at <strong>{branch_name}</strong> requires your attention before it can be approved.</p>
+                                    
+                                    <div style="background-color: #fef2f2; border-left: 4px solid #ef4444; padding: 20px; margin: 25px 0;">
+                                        <p style="margin: 0 0 8px 0; font-size: 14px; color: #991b1b; font-weight: 800; text-transform: uppercase;">Message from Registrar:</p>
+                                        <p style="margin: 0; font-size: 16px; color: #1e293b; font-weight: 500;">{rejection_reason}</p>
+                                    </div>
+
+                                    <p style="font-size: 16px;">Please log in to the tracking portal to update your information or re-upload the necessary documents.</p>
+                                    
+                                    <div style="text-align: center; margin-top: 30px;">
+                                        <a href="https://liceolms.up.railway.app/track" 
+                                           style="display: inline-block; padding: 14px 28px; background-color: #1a2a4e; color: white; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px;">
+                                            Fix Application &rarr;
+                                        </a>
+                                    </div>
+                                </div>
+                                <div style="background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+                                    &copy; 2026 LiceoLMS - Liceo de Majayjay System
+                                </div>
+                            </div>
+                            """
+                            send_email(target_email, subject, body, html_body=html_body)
+                except Exception as email_err:
+                    logger.error(f"Failed to send rejection email: {str(email_err)}")
+
             flash(
-                f"Enrollment #{display_no} {'approved' if action == 'approved' else 'rejected'}.",
+                f"Enrollment #{display_no} {'approved' if action == 'approved' else 'notified for correction'}.",
                 "success" if action == "approved" else "warning"
             )
 
@@ -542,23 +603,57 @@ def create_student_account(enrollment_id):
             # ─────── SEND EMAIL WITH CREDENTIALS ───────
             student_email = enrollment.get("email")
             if student_email:
-                subject = "Your Student Account Credentials"
-                body = f"""
-Dear {enrollment.get('student_name')},
+                subject = f"Enrollment Approved & Account Credentials - {enrollment.get('student_name')}"
+                
+                body = (
+                    f"Congratulations! Your enrollment is approved.\n\n"
+                    f"Hello {enrollment.get('student_name')},\n"
+                    f"Your student account has been created.\n\n"
+                    f"Username: {username}\n"
+                    f"Temporary Password: {temp_password}\n\n"
+                    f"Login at: https://liceolms.up.railway.app/"
+                )
 
-Your student account has been created.
+                html_body = f"""
+                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                    <div style="background-color: #1a2a4e; padding: 40px; text-align: center; color: white;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🎉</div>
+                        <h1 style="margin: 0; font-size: 28px; font-weight: 800;">Congratulations!</h1>
+                        <p style="margin: 5px 0 0; opacity: 0.9; font-size: 16px;">Your Enrollment is Approved</p>
+                    </div>
+                    <div style="padding: 40px; color: #334155; line-height: 1.6;">
+                        <p style="font-size: 16px;">Hello <strong>{enrollment.get('student_name')}</strong>,</p>
+                        <p style="font-size: 16px;">We are pleased to inform you that your enrollment has been approved. Your student account is now ready for use.</p>
+                        
+                        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 25px; margin: 30px 0;">
+                            <h3 style="margin: 0 0 15px 0; font-size: 14px; text-transform: uppercase; color: #64748b; letter-spacing: 1px;">Your Login Credentials</h3>
+                            <div style="margin-bottom: 15px;">
+                                <span style="display: block; font-size: 12px; color: #94a3b8;">Username</span>
+                                <span style="font-size: 18px; font-weight: 700; color: #1e293b;">{username}</span>
+                            </div>
+                            <div>
+                                <span style="display: block; font-size: 12px; color: #94a3b8;">Temporary Password</span>
+                                <span style="font-size: 18px; font-weight: 700; color: #1e293b;">{temp_password}</span>
+                            </div>
+                        </div>
 
-Username: {username}
-Temporary Password: {temp_password}
-
-You can log in at: https://liceolms.up.railway.app/
-
-Please change your password after logging in!
-
-Regards,
-Registrar
-"""
-                send_email(student_email, subject, body)
+                        <div style="text-align: center; margin-top: 30px;">
+                            <a href="https://liceolms.up.railway.app/login" 
+                               style="display: inline-block; padding: 16px 32px; background-color: #1a2a4e; color: white; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                                Log In to Portal &rarr;
+                            </a>
+                        </div>
+                        
+                        <p style="font-size: 13px; color: #94a3b8; margin-top: 30px; text-align: center;">
+                            Note: You will be required to change your password upon your first login.
+                        </p>
+                    </div>
+                    <div style="background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+                        &copy; 2026 LiceoLMS - Liceo de Majayjay System
+                    </div>
+                </div>
+                """
+                send_email(student_email, subject, body, html_body=html_body)
 
             return render_template(
                 "account_created.html",
@@ -664,26 +759,72 @@ def create_parent_account(enrollment_id):
             # ─────── SEND EMAIL WITH CREDENTIALS ───────
             parent_email = enrollment.get("guardian_email") or enrollment.get("email")
             if parent_email:
-                subject = "Your Parent Account Credentials"
-                body = f"""
-Dear Parent/Guardian of {enrollment.get('student_name')},
+                # Determine relationship word based on student gender
+                rel_word = "daughter" if enrollment.get("gender") == "Female" else "son"
+                student_name = enrollment.get("student_name")
+                
+                subject = f"Parent Account Created - Parent of {student_name}"
+                
+                body = (
+                    f"Congratulations! Your {rel_word}'s enrollment is approved.\n\n"
+                    f"Hello,\n"
+                    f"Your parent account has been created for {student_name}.\n\n"
+                    f"Parent Username: {username}\n"
+                    f"Parent Password: {temp_password}\n\n"
+                    f"Student Username: {student_username or 'N/A'}\n"
+                    f"Student Password: {student_temp_password or 'N/A'}\n"
+                )
 
-Your parent account has been created.
+                html_body = f"""
+                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #e0e0e0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
+                    <div style="background-color: #1a2a4e; padding: 40px; text-align: center; color: white;">
+                        <div style="font-size: 48px; margin-bottom: 10px;">🛡️</div>
+                        <h1 style="margin: 0; font-size: 26px; font-weight: 800;">Congratulations!</h1>
+                        <p style="margin: 5px 0 0; opacity: 0.9; font-size: 16px;">Your {rel_word}'s enrollment is approved</p>
+                    </div>
+                    <div style="padding: 40px; color: #334155; line-height: 1.6;">
+                        <p style="font-size: 16px;">Hello,</p>
+                        <p style="font-size: 16px;">We are happy to inform you that your {rel_word}, <strong>{student_name}</strong>, is now officially enrolled. Your parent account and the student's account are ready.</p>
+                        
+                        <!-- Parent Section -->
+                        <div style="background-color: #f0f9ff; border: 1px solid #bae6fd; border-radius: 10px; padding: 20px; margin: 25px 0;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 13px; text-transform: uppercase; color: #0369a1; letter-spacing: 1px;">Parent Account Details</h3>
+                            <div style="margin-bottom: 10px;">
+                                <span style="font-size: 14px; color: #64748b;">Username:</span>
+                                <strong style="font-size: 16px; color: #0c4a6e; margin-left: 5px;">{username}</strong>
+                            </div>
+                            <div>
+                                <span style="font-size: 14px; color: #64748b;">Password:</span>
+                                <strong style="font-size: 16px; color: #0c4a6e; margin-left: 5px;">{temp_password}</strong>
+                            </div>
+                        </div>
 
-Username: {username}
-Temporary Password: {temp_password}
+                        <!-- Student Section -->
+                        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 20px; margin: 0 0 25px 0;">
+                            <h3 style="margin: 0 0 12px 0; font-size: 13px; text-transform: uppercase; color: #64748b; letter-spacing: 1px;">Student Account Details</h3>
+                            <div style="margin-bottom: 10px;">
+                                <span style="font-size: 14px; color: #64748b;">Username:</span>
+                                <strong style="font-size: 16px; color: #1e293b; margin-left: 5px;">{student_username or '[See Registrar]'}</strong>
+                            </div>
+                            <div>
+                                <span style="font-size: 14px; color: #64748b;">Password:</span>
+                                <strong style="font-size: 16px; color: #1e293b; margin-left: 5px;">{student_temp_password or '[See Registrar]'}</strong>
+                            </div>
+                        </div>
 
-Student LMS Username: {student_username or '[See Registrar]'}
-Temporary Password: {student_temp_password or '[See Registrar or previous email]'}
-
-You can log in at: https://liceolms.up.railway.app/
-
-Please change your password after logging in!
-
-Regards,
-Registrar
-"""
-                send_email(parent_email, subject, body)
+                        <div style="text-align: center; margin-top: 10px;">
+                            <a href="https://liceolms.up.railway.app/login" 
+                               style="display: inline-block; padding: 16px 32px; background-color: #1a2a4e; color: white; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px;">
+                                Access the Portal &rarr;
+                            </a>
+                        </div>
+                    </div>
+                    <div style="background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+                        &copy; 2026 LiceoLMS - Liceo de Majayjay System
+                    </div>
+                </div>
+                """
+                send_email(parent_email, subject, body, html_body=html_body)
 
             return render_template(
                 "account_created.html",
@@ -1041,6 +1182,22 @@ def list_and_add_schedules():
         ORDER BY label DESC
     """, (branch_id,))
     school_years = cursor.fetchall()
+    active_year = school_years[0] if school_years else None
+
+    # Fetch unique Grades and Sections for filtering
+    all_grades_list = [
+        "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3", "Grade 4", 
+        "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", 
+        "Grade 11", "Grade 12"
+    ]
+    cursor.execute("""
+        SELECT s.section_id, s.section_name, g.name AS grade_name
+        FROM sections s
+        JOIN grade_levels g ON g.id = s.grade_level_id
+        WHERE s.branch_id = %s
+        ORDER BY g.id, s.section_name
+    """, (branch_id,))
+    all_sections_list = cursor.fetchall()
 
     if request.method == "POST":
         combo = request.form["combo"]
@@ -1049,13 +1206,19 @@ def list_and_add_schedules():
         start_time = request.form["start_time"]
         end_time = request.form["end_time"]
         room = request.form["room"]
-        year_id = request.form["year_id"]
+        # Use active year automatically
+        year_id = active_year["year_id"] if active_year else None
 
-        # --- TIME VALIDATION: must be within 07:00 and 23:00, and start < end ---
+        if not year_id:
+            flash("No active school year found. Cannot add schedule.", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("registrar.list_and_add_schedules"))
+
+        # --- TIME VALIDATION: must be within 07:00 and 17:00, and start < end ---
         start_t = datetime.strptime(start_time, "%H:%M").time()
         end_t = datetime.strptime(end_time, "%H:%M").time()
-        if not (time(7,0) <= start_t <= time(23,0)) or not (time(7,0) <= end_t <= time(23,0)):
-            flash("Invalid schedule: Times must be between 07:00 and 23:00.", "danger")
+        if not (time(7,0) <= start_t <= time(17,0)) or not (time(7,0) <= end_t <= time(17,0)):
+            flash("Invalid schedule: Times must be between 07:00 and 17:00.", "danger")
             cursor.close(); db.close()
             return redirect(url_for("registrar.list_and_add_schedules"))
         if start_t >= end_t:
@@ -1064,6 +1227,18 @@ def list_and_add_schedules():
             return redirect(url_for("registrar.list_and_add_schedules"))
         if (start_t.minute % 15) != 0 or (end_t.minute % 15) != 0:
             flash("Invalid schedule: Times must be in 15-minute increments.", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("registrar.list_and_add_schedules"))
+
+        # --- ROOM VALIDATION: must be a number between 1 and 30 ---
+        try:
+            room_val = int(room)
+            if not (1 <= room_val <= 30):
+                flash("Invalid Room: Room number must be between 1 and 30.", "danger")
+                cursor.close(); db.close()
+                return redirect(url_for("registrar.list_and_add_schedules"))
+        except (ValueError, TypeError):
+            flash("Invalid Room: Please enter a numeric room number (1-30).", "danger")
             cursor.close(); db.close()
             return redirect(url_for("registrar.list_and_add_schedules"))
 
@@ -1078,6 +1253,7 @@ def list_and_add_schedules():
             JOIN school_years y ON s.year_id = y.year_id
             WHERE s.year_id = %s AND s.branch_id = %s
               AND s.day_of_week = %s
+              AND s.is_archived = FALSE
               AND (s.start_time < %s AND s.end_time > %s)
               AND (
                     s.teacher_id = %s
@@ -1120,20 +1296,26 @@ def list_and_add_schedules():
         cursor.close(); db.close()
         return redirect(url_for("registrar.list_and_add_schedules"))
 
+    # Filter by Archive Status
+    show_archived = request.args.get("show_archived") == "true"
+    
     # List all schedules for this branch's sections 
     cursor.execute("""
         SELECT s.*, subj.name AS subject_name, sec.section_name AS section_name, 
-               u.full_name AS teacher_name, y.label AS year_label
+               u.full_name AS teacher_name, y.label AS year_label,
+               g.name AS grade_name
         FROM schedules s
         JOIN subjects subj ON s.subject_id = subj.subject_id
         JOIN sections sec ON s.section_id = sec.section_id
+        JOIN grade_levels g ON g.id = sec.grade_level_id
         JOIN users u ON s.teacher_id = u.user_id
         JOIN school_years y ON s.year_id = y.year_id
         WHERE s.branch_id = %s
           AND y.branch_id = %s
           AND y.is_active = TRUE
+          AND s.is_archived = %s
         ORDER BY y.label DESC, sec.section_name, subj.name, s.day_of_week, s.start_time
-    """, (branch_id, branch_id))
+    """, (branch_id, branch_id, show_archived))
     schedules = cursor.fetchall()
 
     cursor.close()
@@ -1143,8 +1325,12 @@ def list_and_add_schedules():
         "schedules_allinone.html",
         schedules=schedules,
         combinations=combinations,
-        school_years=school_years
+        active_year=active_year,
+        show_archived=show_archived,
+        all_grades=all_grades_list,
+        all_sections=all_sections_list
     )
+
 
 
 from datetime import datetime, time
@@ -1205,11 +1391,11 @@ def edit_schedule(schedule_id):
         room = request.form["room"]
         year_id = request.form["year_id"]
 
-        # --- TIME VALIDATION: must be within 07:00 and 23:00, and start < end ---
+        # --- TIME VALIDATION: must be within 07:00 and 17:00, and start < end ---
         start_t = datetime.strptime(start_time, "%H:%M").time()
         end_t = datetime.strptime(end_time, "%H:%M").time()
-        if not (time(7,0) <= start_t <= time(23,0)) or not (time(7,0) <= end_t <= time(23,0)):
-            flash("Invalid schedule: Times must be between 07:00 and 23:00.", "danger")
+        if not (time(7,0) <= start_t <= time(17,0)) or not (time(7,0) <= end_t <= time(17,0)):
+            flash("Invalid schedule: Times must be between 07:00 and 17:00.", "danger")
             cursor.close(); db.close()
             return redirect(url_for("registrar.list_and_add_schedules"))
         if start_t >= end_t:
@@ -1218,6 +1404,18 @@ def edit_schedule(schedule_id):
             return redirect(url_for("registrar.list_and_add_schedules"))
         if (start_t.minute % 15) != 0 or (end_t.minute % 15) != 0:
             flash("Invalid schedule: Times must be in 15-minute increments.", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("registrar.list_and_add_schedules"))
+
+        # --- ROOM VALIDATION: must be a number between 1 and 30 ---
+        try:
+            room_val = int(room)
+            if not (1 <= room_val <= 30):
+                flash("Invalid Room: Room number must be between 1 and 30.", "danger")
+                cursor.close(); db.close()
+                return redirect(url_for("registrar.list_and_add_schedules"))
+        except (ValueError, TypeError):
+            flash("Invalid Room: Please enter a numeric room number (1-30).", "danger")
             cursor.close(); db.close()
             return redirect(url_for("registrar.list_and_add_schedules"))
 
@@ -1232,6 +1430,7 @@ def edit_schedule(schedule_id):
             JOIN school_years y ON s.year_id = y.year_id
             WHERE s.year_id = %s AND s.branch_id = %s
               AND s.day_of_week = %s
+              AND s.is_archived = FALSE
               AND (s.start_time < %s AND s.end_time > %s)
               AND (
                     s.teacher_id = %s
@@ -1241,6 +1440,7 @@ def edit_schedule(schedule_id):
               AND s.schedule_id != %s
             LIMIT 1
         """, (year_id, branch_id, day_of_week, end_time, start_time, teacher_id, section_id, room, schedule_id))
+
         conflict = cursor.fetchone()
         if conflict:
             reasons = []
@@ -1266,7 +1466,7 @@ def edit_schedule(schedule_id):
             SET subject_id=%s, section_id=%s, teacher_id=%s, day_of_week=%s,
                 start_time=%s, end_time=%s, room=%s, year_id=%s
             WHERE schedule_id=%s AND branch_id=%s
-        """, (subject_id, section_id, teacher_id, day_of_week, start_time, end_time, room, year_id, schedule_id, branch_id))
+        """, (subject_id, section_id, teacher_id, day_of_week, start_time, end_time, room, active_year["year_id"] if active_year else year_id, schedule_id, branch_id))
         db.commit()
         cursor.close(); db.close()
         flash("Schedule updated!", "success")
@@ -1277,12 +1477,38 @@ def edit_schedule(schedule_id):
         "schedule_edit.html",
         schedule=schedule,
         combinations=combinations,
-        school_years=school_years
+        active_year=active_year
     )
 
 
-@registrar_bp.route("/registrar/schedules/<int:schedule_id>/delete", methods=["POST"])
-def delete_schedule(schedule_id):
+@registrar_bp.route("/registrar/schedules/<int:schedule_id>/archive", methods=["POST"])
+def archive_schedule(schedule_id):
+    db = get_db_connection()
+    cursor = db.cursor()
+    branch_id = session.get("branch_id")
+    cursor.execute("""
+        UPDATE schedules SET is_archived = TRUE WHERE schedule_id = %s AND branch_id = %s
+    """, (schedule_id, branch_id))
+    db.commit()
+    cursor.close(); db.close()
+    flash("Schedule archived.", "warning")
+    return redirect(url_for("registrar.list_and_add_schedules"))
+
+@registrar_bp.route("/registrar/schedules/<int:schedule_id>/unarchive", methods=["POST"])
+def unarchive_schedule(schedule_id):
+    db = get_db_connection()
+    cursor = db.cursor()
+    branch_id = session.get("branch_id")
+    cursor.execute("""
+        UPDATE schedules SET is_archived = FALSE WHERE schedule_id = %s AND branch_id = %s
+    """, (schedule_id, branch_id))
+    db.commit()
+    cursor.close(); db.close()
+    flash("Schedule restored!", "success")
+    return redirect(url_for("registrar.list_and_add_schedules", show_archived="true"))
+
+@registrar_bp.route("/registrar/schedules/<int:schedule_id>/delete_permanent", methods=["POST"])
+def delete_schedule_permanent(schedule_id):
     db = get_db_connection()
     cursor = db.cursor()
     branch_id = session.get("branch_id")
@@ -1291,8 +1517,8 @@ def delete_schedule(schedule_id):
     """, (schedule_id, branch_id))
     db.commit()
     cursor.close(); db.close()
-    flash("Schedule deleted.", "success")
-    return redirect(url_for("registrar.list_and_add_schedules"))
+    flash("Schedule permanently deleted.", "danger")
+    return redirect(url_for("registrar.list_and_add_schedules", show_archived="true"))
 # ══════════════════════════════════════════
 # NO CACHE
 # ══════════════════════════════════════════

@@ -295,6 +295,22 @@ def get_db_connection():
                 logger.warning(f"Could not migrate password_reset_tokens table: {e}")
                 conn.rollback()
 
+            # schedules migration (is_archived)
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'schedules'")
+                sch_cols = [r[0] for r in cur.fetchall()]
+                if sch_cols:
+                    if 'is_archived' not in sch_cols:
+                        cur.execute("ALTER TABLE schedules ADD COLUMN is_archived BOOLEAN DEFAULT FALSE")
+                    conn.commit()
+                else: 
+                    # If table logic is missing elsewhere, skip for now but log
+                    logger.warning("Schedules table not found during migration check.")
+            except Exception as e:
+                logger.warning(f"Could not migrate schedules table: {e}")
+                conn.rollback()
+
+
             # ONE-TIME CLEANUP: Delete test Teacher9 accounts directly on boot
             try:
                 cur.execute("DELETE FROM users WHERE role='teacher' AND username ILIKE '%Teacher9%'")
