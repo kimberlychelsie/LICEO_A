@@ -414,6 +414,69 @@
         margin: 0 0 6px;
     }
 
+    /* ── Transmutation modal ── */
+    .tm-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.55);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 3000;
+        padding: 20px;
+    }
+    .tm-overlay.show { display: flex; }
+    .tm-modal {
+        width: min(760px, 96vw);
+        background: #fff;
+        border-radius: 14px;
+        border: 1px solid var(--border);
+        box-shadow: 0 16px 40px rgba(0,0,0,.2);
+        overflow: hidden;
+    }
+    .tm-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 14px 18px;
+        background: #f8fafc;
+        border-bottom: 1px solid var(--border);
+        font-weight: 800;
+        color: #1e3a8a;
+    }
+    .tm-body { padding: 16px 18px; }
+    .tm-close {
+        border: none;
+        background: transparent;
+        font-size: 1.3rem;
+        color: #64748b;
+        cursor: pointer;
+    }
+    .tm-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(180px, 1fr));
+        gap: 10px;
+        margin-bottom: 12px;
+        font-size: 0.86rem;
+    }
+    .tm-item {
+        background: #f8fafc;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 8px 10px;
+    }
+    .tm-label { color: #64748b; font-size: 0.76rem; font-weight: 700; text-transform: uppercase; }
+    .tm-val { color: #0f172a; font-weight: 700; margin-top: 2px; }
+    .tm-note {
+        margin-top: 10px;
+        background: #eef2ff;
+        border: 1px solid #c7d2fe;
+        color: #3730a3;
+        border-radius: 10px;
+        padding: 10px 12px;
+        font-size: 0.82rem;
+    }
+
     @media (max-width: 640px) {
         .cr-hero { padding: 22px 18px; }
         .cr-hero-title { font-size: 1.3rem; }
@@ -452,6 +515,8 @@
                     class="cr-btn cr-btn-ghost">🙋 Participation</a>
                 <a href="{{ url_for('teacher.attendance_input', section_id=section_id, subject_id=subject_id, period=period) }}"
                     class="cr-btn cr-btn-ghost">🗓 Attendance</a>
+                <a href="{{ url_for('teacher.class_record_export', section_id=section_id, subject_id=subject_id, period=period) }}"
+                    class="cr-btn cr-btn-ghost">📥 Export Excel</a>
                 <form action="{{ url_for('teacher.teacher_post_grades', section_id=section_id, subject_id=subject_id, period=period) }}"
                     method="POST" style="display:inline;"
                     onsubmit="return confirm('Post {{ period }} Grading grades to the student portal? This will overwrite any previously posted grades.');">
@@ -522,6 +587,7 @@
                         <small>Periodical Exam · {{ weights.exam_pct | int }}%</small>
                     </th>
                     <th>🏆 Quarterly Grade</th>
+                    <th>🔎 Details</th>
                 </tr>
             </thead>
             <tbody>
@@ -552,6 +618,27 @@
                         <span class="grade-pill" style="background:var(--bg); color:var(--muted); font-style:italic; font-size:0.8rem;">—</span>
                         {% endif %}
                     </td>
+                    <td>
+                        <button type="button"
+                            class="cr-btn cr-btn-ghost"
+                            style="padding:6px 10px; font-size:0.78rem; color:#1e3a8a; border-color:#bfdbfe; background:#eff6ff;"
+                            onclick='openTransmutation({
+                                "student_name": {{ (r.student_name or "")|tojson }},
+                                "ww": {{ (r.quiz or 0)|float }},
+                                "act": {{ (r.activity or 0)|float }},
+                                "par": {{ (r.participation or 0)|float }},
+                                "att": {{ (r.attendance or 0)|float }},
+                                "pt": {{ (r.pt_score or 0)|float }},
+                                "qa": {{ (r.exam or 0)|float }},
+                                "initial": {{ (r.period_grade or 0)|float }},
+                                "final": {{ (r.transmuted_grade or 0)|float }},
+                                "ww_pct": {{ (weights.quiz_pct or 0)|float }},
+                                "pt_pct": {{ (weights.activity_pct or 0)|float }},
+                                "qa_pct": {{ (weights.exam_pct or 0)|float }}
+                            })'>
+                            View
+                        </button>
+                    </td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -566,4 +653,57 @@
     {% endif %}
 
 </div>
+
+<div id="tmOverlay" class="tm-overlay" onclick="closeTransmutation(event)">
+    <div class="tm-modal" onclick="event.stopPropagation()">
+        <div class="tm-head">
+            <span>Student Transmutation Details</span>
+            <button class="tm-close" onclick="closeTransmutation()">&times;</button>
+        </div>
+        <div class="tm-body">
+            <div style="font-weight:800; color:#0f172a; margin-bottom:10px;" id="tmStudent">—</div>
+            <div class="tm-grid">
+                <div class="tm-item"><div class="tm-label">WW Raw</div><div class="tm-val" id="tmWw">0</div></div>
+                <div class="tm-item"><div class="tm-label">WW Weight</div><div class="tm-val" id="tmWwPct">0%</div></div>
+                <div class="tm-item"><div class="tm-label">PT Combined</div><div class="tm-val" id="tmPt">0</div></div>
+                <div class="tm-item"><div class="tm-label">PT Weight</div><div class="tm-val" id="tmPtPct">0%</div></div>
+                <div class="tm-item"><div class="tm-label">QA Raw</div><div class="tm-val" id="tmQa">0</div></div>
+                <div class="tm-item"><div class="tm-label">QA Weight</div><div class="tm-val" id="tmQaPct">0%</div></div>
+                <div class="tm-item"><div class="tm-label">Initial Grade</div><div class="tm-val" id="tmInitial">0</div></div>
+                <div class="tm-item"><div class="tm-label">Transmuted Grade</div><div class="tm-val" id="tmFinal">0</div></div>
+            </div>
+            <div class="tm-note" id="tmFormula"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+function openTransmutation(data) {
+    document.getElementById("tmStudent").textContent = data.student_name || "Student";
+    document.getElementById("tmWw").textContent = Number(data.ww || 0).toFixed(2);
+    document.getElementById("tmPt").textContent = Number(data.pt || 0).toFixed(2);
+    document.getElementById("tmQa").textContent = Number(data.qa || 0).toFixed(2);
+    document.getElementById("tmWwPct").textContent = Number(data.ww_pct || 0).toFixed(0) + "%";
+    document.getElementById("tmPtPct").textContent = Number(data.pt_pct || 0).toFixed(0) + "%";
+    document.getElementById("tmQaPct").textContent = Number(data.qa_pct || 0).toFixed(0) + "%";
+    document.getElementById("tmInitial").textContent = Number(data.initial || 0).toFixed(2);
+    document.getElementById("tmFinal").textContent = Number(data.final || 0).toFixed(2);
+
+    const wwW = (Number(data.ww || 0) * (Number(data.ww_pct || 0) / 100)).toFixed(2);
+    const ptW = (Number(data.pt || 0) * (Number(data.pt_pct || 0) / 100)).toFixed(2);
+    const qaW = (Number(data.qa || 0) * (Number(data.qa_pct || 0) / 100)).toFixed(2);
+    document.getElementById("tmFormula").textContent =
+        `Computation: (${Number(data.ww || 0).toFixed(2)} × ${Number(data.ww_pct || 0).toFixed(0)}%) + ` +
+        `(${Number(data.pt || 0).toFixed(2)} × ${Number(data.pt_pct || 0).toFixed(0)}%) + ` +
+        `(${Number(data.qa || 0).toFixed(2)} × ${Number(data.qa_pct || 0).toFixed(0)}%) = ` +
+        `${Number(data.initial || 0).toFixed(2)} initial grade. Weighted parts: WW ${wwW}, PT ${ptW}, QA ${qaW}.`;
+
+    document.getElementById("tmOverlay").classList.add("show");
+}
+
+function closeTransmutation(evt) {
+    if (evt && evt.target && evt.target.id !== "tmOverlay") return;
+    document.getElementById("tmOverlay").classList.remove("show");
+}
+</script>
 {% endblock %}

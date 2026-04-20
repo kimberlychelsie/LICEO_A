@@ -1,11 +1,12 @@
 import re as _re
 import re
-from flask import Blueprint, render_template, request, session, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, session, redirect, url_for, flash, jsonify, send_file
 from db import get_db_connection
 import psycopg2.extras
 from cloudinary_helper import upload_file
 import os
 import json
+import io
 import pandas as pd
 import pdfplumber
 from docx import Document
@@ -2673,6 +2674,113 @@ def class_record(section_id, subject_id):
     finally:
         cur.close()
         db.close()
+
+@teacher_bp.route("/teacher/class-record/<int:section_id>/<int:subject_id>/export")
+def class_record_export(section_id, subject_id):
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
+    period = request.args.get("period", "1st")
+    if period not in GRADING_PERIODS:
+        period = "1st"
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        cur.execute("""
+            SELECT 1 FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s AND s.year_id=%s
+        """, (user_id, section_id, subject_id, year_id))
+        if not cur.fetchone():
+            flash("Unauthorized or assignment not found.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        cur.execute("""
+            SELECT s.section_name, g.name AS grade_level_name, sub.name AS subject_name
+            FROM sections s
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            JOIN subjects sub ON sub.subject_id = %s
+            WHERE s.section_id = %s AND s.year_id = %s
+        """, (subject_id, section_id, year_id))
+        context = cur.fetchone()
+        if not context:
+            flash("Class context not found.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        _, weights, records = _compute_period_grades(
+            cur, user_id, branch_id, section_id, subject_id, period, year_id
+        )
+
+        summary_rows = []
+        detail_rows = []
+        for idx, r in enumerate(records, start=1):
+            remarks = "PASS" if (r.get("transmuted_grade") or 0) >= 75 else "FAIL"
+            summary_rows.append({
+                "No": idx,
+                "Student Name": r.get("student_name"),
+                "Written Works (WW)": r.get("quiz"),
+                "Performance Tasks (PT)": r.get("pt_score"),
+                "Quarterly Assessment (QA)": r.get("exam"),
+                "Quarterly Grade (Transmuted)": r.get("transmuted_grade"),
+                "Remarks": remarks,
+            })
+            detail_rows.append({
+                "No": idx,
+                "Student Name": r.get("student_name"),
+                "WW Raw": r.get("quiz"),
+                "PT Activity": r.get("activity"),
+                "PT Participation": r.get("participation"),
+                "PT Attendance": r.get("attendance"),
+                "PT Combined": r.get("pt_score"),
+                "QA Raw": r.get("exam"),
+                "Initial Grade": r.get("period_grade"),
+                "Transmuted Grade": r.get("transmuted_grade"),
+                "WW Weight %": weights.get("quiz_pct"),
+                "PT Weight %": weights.get("activity_pct"),
+                "QA Weight %": weights.get("exam_pct"),
+                "Subject": context.get("subject_name"),
+                "Section": f"{context.get('grade_level_name')} - {context.get('section_name')}",
+                "Period": f"{period} Grading",
+            })
+
+        filename_base = f"class_record_{context.get('subject_name','subject')}_{context.get('section_name','section')}_{period}grading".replace(" ", "_")
+
+        output = io.BytesIO()
+        try:
+            with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                pd.DataFrame(summary_rows).to_excel(writer, sheet_name="Summary", index=False)
+                pd.DataFrame(detail_rows).to_excel(writer, sheet_name="Per Student Breakdown", index=False)
+            output.seek(0)
+            return send_file(
+                output,
+                as_attachment=True,
+                download_name=f"{filename_base}.xlsx",
+                mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            )
+        except Exception:
+            # Safe fallback if Excel writer dependency is unavailable.
+            csv_output = io.StringIO()
+            pd.DataFrame(summary_rows).to_csv(csv_output, index=False)
+            csv_bytes = io.BytesIO(csv_output.getvalue().encode("utf-8"))
+            csv_bytes.seek(0)
+            return send_file(
+                csv_bytes,
+                as_attachment=True,
+                download_name=f"{filename_base}.csv",
+                mimetype="text/csv",
+            )
+    finally:
+        cur.close()
+        db.close()
+
 @teacher_bp.route("/teacher/post-grades/<int:section_id>/<int:subject_id>/<string:period>", methods=["POST"])
 def teacher_post_grades(section_id, subject_id, period):
     if not _require_teacher(): return redirect("/")
