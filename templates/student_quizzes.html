@@ -82,13 +82,17 @@
     .filter-tab { padding: 8px 16px; background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; cursor: pointer; font-size: 0.9rem; font-weight: 600; white-space: nowrap; transition: all 0.2s; color: #475569; }
     .filter-tab:hover { border-color: #7c3aed; color: #7c3aed; }
     .filter-tab.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+    .filter-empty-note { color:#94a3b8; font-size:0.86rem; margin-bottom:16px; display:none; }
   </style>
   <div class="filter-tabs">
-    <div class="filter-tab active" onclick="filterQuizzes('1st', this)">1st Grading</div>
+    <div class="filter-tab active" onclick="filterQuizzes('all', this)">All</div>
+    <div class="filter-tab" onclick="filterQuizzes('1st', this)">1st Grading</div>
+    <div class="filter-tab" onclick="filterQuizzes('none', this)">No Period</div>
     <div class="filter-tab" onclick="filterQuizzes('2nd', this)">2nd Grading</div>
     <div class="filter-tab" onclick="filterQuizzes('3rd', this)">3rd Grading</div>
     <div class="filter-tab" onclick="filterQuizzes('4th', this)">4th Grading</div>
   </div>
+  <div id="filterEmptyNote" class="filter-empty-note">No quizzes found for this filter.</div>
 
   {% with messages = get_flashed_messages(with_categories=true) %}
   {% if messages %}{% for cat, msg in messages %}
@@ -169,19 +173,26 @@ function filterQuizzes(period, el) {
   el.classList.add('active');
 
   const cards = document.querySelectorAll('.task-card');
+  let visibleCount = 0;
   cards.forEach(card => {
     if (period === 'all' || card.dataset.period === period) {
       card.style.display = 'block';
+      visibleCount += 1;
     } else {
       card.style.display = 'none';
     }
   });
+
+  const emptyNote = document.getElementById('filterEmptyNote');
+  if (emptyNote) {
+    emptyNote.style.display = visibleCount === 0 ? 'block' : 'none';
+  }
 }
 
 document.addEventListener("DOMContentLoaded", function() {
     const activeTab = document.querySelector('.filter-tab.active');
     if (activeTab) {
-        filterQuizzes('1st', activeTab);
+        filterQuizzes('all', activeTab);
     }
 });
 </script>

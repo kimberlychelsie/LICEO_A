@@ -636,7 +636,7 @@ def delete_exam(exam_id):
         active_tab = request.form.get("active_tab")
         # Year+ownership check
         cur.execute("""
-            SELECT e.exam_id, e.exam_type, e.subject_id, e.section_id
+            SELECT e.exam_id, e.exam_type, e.subject_id, e.section_id, e.batch_id
             FROM exams e
             JOIN sections s ON e.section_id = s.section_id
             WHERE e.exam_id = %s AND e.teacher_id = %s AND s.year_id = %s
@@ -648,11 +648,29 @@ def delete_exam(exam_id):
 
         subject_id = row['subject_id']
 
-        # Cascade delete only for this exam
-        cur.execute("DELETE FROM exam_results WHERE exam_id=%s", (exam_id,))
-        cur.execute("DELETE FROM exam_questions WHERE exam_id=%s", (exam_id,))
-        cur.execute("DELETE FROM student_notifications WHERE link = %s", (f"/student/exams/{exam_id}",))
-        cur.execute("DELETE FROM exams WHERE exam_id=%s AND teacher_id=%s", (exam_id, user_id))
+        # Cascade delete all linked copies if this is a batch-created quiz/exam.
+        if row.get("batch_id"):
+            cur.execute("""
+                SELECT e.exam_id
+                FROM exams e
+                JOIN sections s ON e.section_id = s.section_id
+                WHERE e.batch_id = %s
+                  AND e.teacher_id = %s
+                  AND s.year_id = %s
+            """, (row["batch_id"], user_id, year_id))
+            target_exam_ids = [r["exam_id"] for r in (cur.fetchall() or [])]
+        else:
+            target_exam_ids = [exam_id]
+
+        if target_exam_ids:
+            cur.execute("DELETE FROM exam_results WHERE exam_id = ANY(%s)", (target_exam_ids,))
+            cur.execute("DELETE FROM exam_questions WHERE exam_id = ANY(%s)", (target_exam_ids,))
+            cur.execute("DELETE FROM exams WHERE exam_id = ANY(%s) AND teacher_id = %s", (target_exam_ids, user_id))
+
+        # Clear related student notifications for this subject/exam pages.
+        cur.execute("DELETE FROM student_notifications WHERE link = %s", (f"/student/subject/{subject_id}",))
+        for target_id in target_exam_ids:
+            cur.execute("DELETE FROM student_notifications WHERE link = %s", (f"/student/exams/{target_id}",))
         db.commit()
         flash("Deleted successfully.", "success")
         return redirect(url_for("teacher.teacher_class_view", subject_id=subject_id, active_tab=active_tab))
@@ -1197,9 +1215,9 @@ def teacher_exam_create():
                         scheduled_start,
                         max_attempts, passing_score,
                         randomize,
-                        instructions, status, grading_period, is_visible, batch_id
+                        instructions, status, grading_period, is_visible, batch_id, year_id
                     )
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'draft',%s,FALSE, %s)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'draft',%s,FALSE,%s,%s)
                     RETURNING exam_id
                 """, (
                     branch_id, section_id, subject_id, user_id,
@@ -1207,7 +1225,7 @@ def teacher_exam_create():
                     scheduled_start,
                     max_attempts, passing_score,
                      randomize,
-                    instructions, grading_period, batch_id
+                    instructions, grading_period, batch_id, year_id
                 ))
                 exam_id = cur.fetchone()["exam_id"]
                 if primary_exam_id is None:
@@ -1508,7 +1526,8 @@ def toggle_exam_visibility(exam_id):
         active_tab = request.form.get("active_tab")
         # Check ownership
         cur.execute("""
-            SELECT exams.is_visible, exams.exam_type, exams.subject_id, exams.status, exams.title, exams.section_id
+            SELECT exams.exam_id, exams.is_visible, exams.exam_type, exams.subject_id,
+                   exams.status, exams.title, exams.section_id, exams.batch_id
             FROM exams
             JOIN sections s ON exams.section_id = s.section_id
             WHERE exams.exam_id = %s
@@ -1521,39 +1540,63 @@ def toggle_exam_visibility(exam_id):
             return redirect(request.referrer or url_for("teacher.teacher_exams"))
 
         new_status = not exam["is_visible"]
-        
-        if new_status and exam['status'] == 'draft':
-            cur.execute("SELECT COUNT(*) AS cnt FROM exam_questions WHERE exam_id=%s", (exam_id,))
-            if cur.fetchone()["cnt"] == 0:
-                flash("Cannot make visible — please add at least 1 question to publish this quiz/exam first.", "error")
-                return redirect(request.referrer or url_for("teacher.teacher_exams"))
-            cur.execute("UPDATE exams SET is_visible=%s, status='published' WHERE exam_id=%s", (new_status, exam_id))
-            exam['status'] = 'published'
-        else:
-            cur.execute("UPDATE exams SET is_visible=%s WHERE exam_id=%s", (new_status, exam_id))
-        
-        # Send notifications if becoming visible and is already published
-        if new_status and exam['status'] == 'published':
-            notif_label = "Quiz" if exam['exam_type'] == 'quiz' else "Exam"
+
+        # Toggle all linked copies if quiz/exam was created for multiple sections.
+        if exam.get("batch_id"):
             cur.execute("""
-                SELECT DISTINCT u.user_id
-                FROM enrollments e 
-                JOIN users u ON u.user_id = e.user_id
-                WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
-                UNION
-                SELECT DISTINCT u.user_id
-                FROM enrollments e
-                JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
-                JOIN users u ON u.username = sa.username
-                WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
-            """, (exam['section_id'], exam['section_id']))
-            students = cur.fetchall()
-            for s in students:
-                notif_link = f"/student/subject/{exam['subject_id']}" if exam['exam_type'] == 'quiz' else "/student/exams"
+                SELECT exams.exam_id, exams.exam_type, exams.subject_id, exams.status, exams.title, exams.section_id
+                FROM exams
+                JOIN sections s ON exams.section_id = s.section_id
+                WHERE exams.batch_id = %s
+                  AND exams.teacher_id = %s
+                  AND s.year_id = %s
+            """, (exam["batch_id"], user_id, year_id))
+            target_exams = cur.fetchall() or []
+        else:
+            target_exams = [exam]
+
+        if new_status:
+            for target in target_exams:
+                if target["status"] == "draft":
+                    cur.execute("SELECT COUNT(*) AS cnt FROM exam_questions WHERE exam_id=%s", (target["exam_id"],))
+                    if cur.fetchone()["cnt"] == 0:
+                        flash("Cannot make visible — please add at least 1 question to publish this quiz/exam first.", "error")
+                        return redirect(request.referrer or url_for("teacher.teacher_exams"))
+
+            target_ids = [t["exam_id"] for t in target_exams]
+            cur.execute("""
+                UPDATE exams
+                SET is_visible = TRUE,
+                    status = CASE WHEN status = 'draft' THEN 'published' ELSE status END
+                WHERE exam_id = ANY(%s)
+            """, (target_ids,))
+        else:
+            target_ids = [t["exam_id"] for t in target_exams]
+            cur.execute("UPDATE exams SET is_visible = FALSE WHERE exam_id = ANY(%s)", (target_ids,))
+
+        # Send notifications when becoming visible.
+        if new_status:
+            notif_label = "Quiz" if exam['exam_type'] == 'quiz' else "Exam"
+            for target in target_exams:
                 cur.execute("""
-                    INSERT INTO student_notifications (student_id, title, message, link)
-                    VALUES (%s, %s, %s, %s)
-                """, (s['user_id'], f"New {notif_label}: {exam['title']}", f"A new {notif_label.lower()} is now available: {exam['title']}", notif_link))
+                    SELECT DISTINCT u.user_id
+                    FROM enrollments e 
+                    JOIN users u ON u.user_id = e.user_id
+                    WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+                    UNION
+                    SELECT DISTINCT u.user_id
+                    FROM enrollments e
+                    JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
+                    JOIN users u ON u.username = sa.username
+                    WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+                """, (target['section_id'], target['section_id']))
+                students = cur.fetchall()
+                for s in students:
+                    notif_link = f"/student/subject/{target['subject_id']}" if target['exam_type'] == 'quiz' else "/student/exams"
+                    cur.execute("""
+                        INSERT INTO student_notifications (student_id, title, message, link)
+                        VALUES (%s, %s, %s, %s)
+                    """, (s['user_id'], f"New {notif_label}: {target['title']}", f"A new {notif_label.lower()} is now available: {target['title']}", notif_link))
 
         db.commit()
 
@@ -1667,9 +1710,9 @@ def teacher_quiz_create():
                         scheduled_start,
                         max_attempts, passing_score,
                         randomize,
-                        instructions, status, grading_period, is_visible, batch_id
+                        instructions, status, grading_period, is_visible, batch_id, year_id
                     )
-                    VALUES (%s,%s,%s,%s,%s,'quiz',%s,%s,%s,%s,%s,%s,'draft',%s,FALSE,%s)
+                    VALUES (%s,%s,%s,%s,%s,'quiz',%s,%s,%s,%s,%s,%s,'draft',%s,FALSE,%s,%s)
                     RETURNING exam_id
                 """, (
                     branch_id, section_id, subject_id, user_id,
@@ -1677,7 +1720,7 @@ def teacher_quiz_create():
                     scheduled_start,
                     max_attempts, passing_score,
                     randomize,
-                    instructions, grading_period, batch_id
+                    instructions, grading_period, batch_id, year_id
                 ))
                 exam_id = cur.fetchone()["exam_id"]
                 if primary_exam_id is None:

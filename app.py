@@ -180,6 +180,8 @@ def inject_student_notifications():
         user_id = session.get('user_id')
         from db import get_db_connection
         import psycopg2.extras
+        from datetime import timezone
+        import pytz
         db = get_db_connection()
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
@@ -190,6 +192,14 @@ def inject_student_notifications():
                 ORDER BY created_at DESC LIMIT 15
             ''', (user_id,))
             notifs = cursor.fetchall()
+            ph_tz = pytz.timezone("Asia/Manila")
+            for n in notifs:
+                ts = n.get("created_at")
+                if not ts:
+                    continue
+                if getattr(ts, "tzinfo", None) is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
+                n["created_at"] = ts.astimezone(ph_tz).replace(tzinfo=None)
             # Count only unread (for the red badge)
             unread_count = sum(1 for n in notifs if not n.get('is_read'))
             return dict(student_global_notifs=notifs, student_unread_count=unread_count)

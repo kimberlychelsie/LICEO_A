@@ -18,6 +18,20 @@ student_portal_bp = Blueprint("student_portal", __name__)
 def _require_student():
     return session.get("role") == "student"
 
+def _to_manila_naive(dt_value):
+    """
+    Normalize DB datetimes for UI/runtime checks.
+    If datetime is naive, treat it as already Asia/Manila local time.
+    If datetime is timezone-aware, convert it to Asia/Manila.
+    """
+    if not dt_value:
+        return None
+    ph_tz = pytz.timezone("Asia/Manila")
+    if getattr(dt_value, "tzinfo", None) is None:
+        # Teacher-set schedules are stored as local wall-clock time.
+        return dt_value.replace(tzinfo=None)
+    return dt_value.astimezone(ph_tz).replace(tzinfo=None)
+
 
 
 @student_portal_bp.route("/student/dashboard")
@@ -218,8 +232,7 @@ def dashboard():
                 cursor.execute("SELECT * FROM billing WHERE bill_id=%s", (bill['bill_id'],))
                 bill = cursor.fetchone()
 
-        ph_tz = pytz.timezone("Asia/Manila")
-        now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+        now_naive = _to_manila_naive(datetime.now(timezone.utc))
 
         school_year_label = None
         if student.get("section_id"):
@@ -500,12 +513,12 @@ def subject_view(subject_id):
             FROM exams e
             LEFT JOIN exam_results r ON r.exam_id = e.exam_id AND r.enrollment_id = %s
             WHERE e.subject_id = %s AND e.section_id = %s
-              AND e.year_id = %s
+              AND COALESCE(e.year_id, %s) = %s
               AND e.exam_type = 'quiz'
-              AND e.status IN ('published', 'closed')
+              AND LOWER(COALESCE(e.status, '')) IN ('published', 'closed')
               AND e.is_visible = TRUE
             ORDER BY e.created_at DESC
-        """, (enrollment_id, subject_id, student_section_id, student_year_id))
+        """, (enrollment_id, subject_id, student_section_id, student_year_id, student_year_id))
         quizzes_raw = cur.fetchall() or []
 
         ph_tz = pytz.timezone("Asia/Manila")
@@ -515,9 +528,7 @@ def subject_view(subject_id):
         for q in quizzes_raw:
             q = dict(q)
             if q.get("scheduled_start"):
-                ss = q["scheduled_start"]
-                if hasattr(ss, "tzinfo") and ss.tzinfo is not None:
-                    q["scheduled_start"] = ss.astimezone(ph_tz).replace(tzinfo=None)
+                q["scheduled_start"] = _to_manila_naive(q["scheduled_start"])
             quizzes.append(q)
 
     finally:
@@ -803,8 +814,7 @@ def student_exams():
     branch_id     = session.get("branch_id")
 
     # ✅ Define now_naive at the TOP before any checks
-    ph_tz     = pytz.timezone("Asia/Manila")
-    now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+    now_naive = _to_manila_naive(datetime.now(timezone.utc))
 
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -840,12 +850,12 @@ def student_exams():
             LEFT JOIN individual_extensions ext
                 ON ext.item_id = e.exam_id AND ext.enrollment_id = %s AND ext.item_type IN ('exam', 'quiz')
             WHERE e.section_id = %s
-              AND e.year_id = %s
-              AND e.status IN ('published', 'closed')
+              AND COALESCE(e.year_id, %s) = %s
+              AND LOWER(COALESCE(e.status, '')) IN ('published', 'closed')
               AND e.exam_type != 'quiz'
               AND e.is_visible = TRUE
             ORDER BY e.created_at DESC
-        """, (enrollment_id, enrollment_id, section_id, year_id))
+        """, (enrollment_id, enrollment_id, section_id, year_id, year_id))
         exams_raw = cur.fetchall() or []
 
         # Normalize scheduled_start to PH naive time for correct comparison in Jinja
@@ -856,11 +866,7 @@ def student_exams():
             effective_start = e.get("individual_extension") or e.get("scheduled_start")
             
             if effective_start:
-                ss = effective_start
-                if hasattr(ss, "tzinfo") and ss.tzinfo is not None:
-                    e["effective_start"] = ss.astimezone(ph_tz).replace(tzinfo=None)
-                else:
-                    e["effective_start"] = ss.replace(tzinfo=None)
+                e["effective_start"] = _to_manila_naive(effective_start)
             else:
                 e["effective_start"] = None
                 
@@ -883,8 +889,7 @@ def student_quizzes():
 
     enrollment_id = session.get("enrollment_id")
 
-    ph_tz     = pytz.timezone("Asia/Manila")
-    now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+    now_naive = _to_manila_naive(datetime.now(timezone.utc))
 
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -917,11 +922,11 @@ def student_quizzes():
             LEFT JOIN individual_extensions ext
                 ON ext.item_id = e.exam_id AND ext.enrollment_id = %s AND ext.item_type = 'quiz'
             WHERE e.section_id = %s
-              AND e.year_id = %s
-              AND e.status IN ('published', 'closed')
+              AND COALESCE(e.year_id, %s) = %s
+              AND LOWER(COALESCE(e.status, '')) IN ('published', 'closed')
               AND e.exam_type = 'quiz'
             ORDER BY e.created_at DESC
-        """, (enrollment_id, enrollment_id, section_id, year_id))
+        """, (enrollment_id, enrollment_id, section_id, year_id, year_id))
         quizzes_raw = cur.fetchall() or []
 
         quizzes = []
@@ -931,13 +936,7 @@ def student_quizzes():
             effective_start = q.get("individual_extension") or q.get("scheduled_start")
             
             if effective_start:
-                ss = effective_start
-                if hasattr(ss, "tzinfo") and ss.tzinfo is not None:
-                    # ✅ UTC-aware → convert to PHT naive
-                    q["effective_start"] = ss.astimezone(ph_tz).replace(tzinfo=None)
-                else:
-                    # ✅ Naive — check if we need to adjust
-                    q["effective_start"] = ss.replace(tzinfo=None)
+                q["effective_start"] = _to_manila_naive(effective_start)
             else:
                 q["effective_start"] = None
                 
@@ -975,8 +974,8 @@ def student_exam_take(exam_id):
                 ON ext.item_id = e.exam_id AND ext.enrollment_id = %s AND ext.item_type IN ('exam', 'quiz')
             WHERE e.exam_id = %s
               AND en.enrollment_id = %s
-              AND e.year_id = en.year_id
-              AND e.status = 'published'
+              AND COALESCE(e.year_id, en.year_id) = en.year_id
+              AND LOWER(COALESCE(e.status, '')) = 'published'
         """, (enrollment_id, exam_id, enrollment_id))
         exam = cur.fetchone()
         if not exam:
@@ -984,8 +983,7 @@ def student_exam_take(exam_id):
             return redirect(url_for("student_portal.student_exams"))
 
         # ✅ Determine type + correct back URL
-        ph_tz    = pytz.timezone("Asia/Manila")
-        now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+        now_naive = _to_manila_naive(datetime.now(timezone.utc))
         is_quiz  = exam.get("exam_type") == "quiz"
         back_url = url_for("student_portal.student_quizzes") if is_quiz else url_for("student_portal.student_exams")
 
@@ -993,11 +991,7 @@ def student_exam_take(exam_id):
         effective_start = exam["individual_extension"] or exam["scheduled_start"]
         
         if effective_start:
-            # ✅ Convert UTC-aware timestamp to PHT naive
-            if hasattr(effective_start, "tzinfo") and effective_start.tzinfo is not None:
-                start = effective_start.astimezone(ph_tz).replace(tzinfo=None)
-            else:
-                start = effective_start.replace(tzinfo=None)
+            start = _to_manila_naive(effective_start)
 
             if now_naive < start:
                 flash("This quiz has not started yet." if is_quiz else "This exam has not started yet.", "warning")
