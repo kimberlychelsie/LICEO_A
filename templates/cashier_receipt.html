@@ -199,7 +199,9 @@
                 </div>
                 <div class="info-item">
                     <span class="label">Academic Level</span>
-                    <span class="value">Grade {{ payment.grade_level }}</span>
+                    {% set level = (payment.grade_level or '')|string %}
+                    {% set level_lower = level|lower %}
+                    <span class="value">{{ level if level_lower[:5] == 'grade' else ('Grade ' ~ level) }}</span>
                 </div>
             </div>
         </div>
@@ -248,4 +250,4 @@
     </div>
 
 </body>
-</html>
+</html>

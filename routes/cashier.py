@@ -9,9 +9,26 @@ import psycopg2.extras
 
 cashier_bp = Blueprint("cashier", __name__)
 
+def _get_manila_now():
+    import pytz
+    return datetime.now(pytz.timezone("Asia/Manila"))
+
+def _get_manila_today():
+    return _get_manila_now().date()
+
+def _to_manila_naive(dt_value):
+    if not dt_value:
+        return None
+    import pytz
+    ph_tz = pytz.timezone("Asia/Manila")
+    # If the datetime is naive, assume it's UTC (Postgres default)
+    if getattr(dt_value, "tzinfo", None) is None:
+        dt_value = pytz.utc.localize(dt_value)
+    return dt_value.astimezone(ph_tz).replace(tzinfo=None)
+
 def generate_receipt_number():
     """Generate unique receipt number: OR-YYYYMMDD-XXXXX"""
-    today = datetime.now().strftime("%Y%m%d")
+    today = _get_manila_now().strftime("%Y%m%d")
     random_part = secrets.token_hex(3).upper()  # 6 character hex
     return f"OR-{today}-{random_part}"
 
@@ -57,7 +74,7 @@ def dashboard():
             WHERE payment_date::date = %s
               AND branch_id = %s
               AND received_by = %s
-        """, (date.today(), session.get("branch_id"), session.get("user_id")))
+        """, (_get_manila_today(), session.get("branch_id"), session.get("user_id")))
         today_summary = cursor.fetchone() or {"payment_count": 0, "total_collected": 0}
 
         cursor.execute("""
@@ -360,7 +377,7 @@ def print_receipt(payment_id):
                    e.student_name, e.grade_level, e.guardian_name, e.branch_enrollment_no,
                    b.total_amount, b.amount_paid, b.balance,
                    br.branch_name, br.location,
-                   u.username AS received_by_name
+                   COALESCE(NULLIF(TRIM(u.full_name), ''), u.username) AS received_by_name
             FROM payments p
             JOIN billing b ON p.bill_id = b.bill_id
             JOIN enrollments e ON p.enrollment_id = e.enrollment_id
@@ -374,6 +391,7 @@ def print_receipt(payment_id):
             flash("Receipt not found", "error")
             return redirect("/cashier")
 
+        payment["payment_date"] = _to_manila_naive(payment.get("payment_date"))
         return render_template("cashier_receipt.html", payment=payment)
     finally:
         cursor.close()
@@ -385,7 +403,7 @@ def reports():
     if not _require_cashier():
         return redirect("/")
 
-    report_date = request.form.get("report_date", date.today().strftime("%Y-%m-%d"))
+    report_date = request.form.get("report_date", _get_manila_today().strftime("%Y-%m-%d"))
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -482,8 +500,8 @@ def payment_history():
     if not _require_cashier():
         return redirect("/")
 
-    date_from = request.args.get("date_from", "").strip() or date.today().replace(day=1).strftime("%Y-%m-%d")
-    date_to = request.args.get("date_to", "").strip() or date.today().strftime("%Y-%m-%d")
+    date_from = request.args.get("date_from", "").strip() or _get_manila_today().replace(day=1).strftime("%Y-%m-%d")
+    date_to = request.args.get("date_to", "").strip() or _get_manila_today().strftime("%Y-%m-%d")
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
