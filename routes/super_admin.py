@@ -43,11 +43,22 @@ def super_admin_dashboard():
         total_pending = cursor.fetchone()["cnt"]
 
         cursor.execute("""
-            SELECT COUNT(*) AS cnt FROM users
+            SELECT role, COUNT(*) AS cnt 
+            FROM users 
             WHERE role NOT IN ('super_admin', 'branch_admin')
             AND COALESCE(status, 'active') = 'active'
+            GROUP BY role
         """)
-        total_staff = cursor.fetchone()["cnt"]
+        workforce_stats = cursor.fetchall() or []
+        total_staff = sum(row['cnt'] for row in workforce_stats)
+
+        # ── Global Enrollment Funnel ──
+        cursor.execute("""
+            SELECT status, COUNT(*) AS cnt
+            FROM enrollments
+            GROUP BY status
+        """)
+        funnel_stats = cursor.fetchall() or []
 
         # ── Alerts ──
         cursor.execute("""
@@ -73,15 +84,23 @@ def super_admin_dashboard():
         inactive_branches = cursor.fetchall() or []
 
         # ── Branch health table ──
-        cursor.execute("""
+        cursor.execute("SELECT column_name FROM information_schema.columns WHERE table_name='users' AND column_name='last_login'")
+        has_last_login = cursor.fetchone() is not None
+        
+        login_col = "u.last_login AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila'" if has_last_login else "NULL"
+
+        cursor.execute(f"""
             SELECT
                 b.branch_id,
                 b.branch_name,
                 b.is_active,
                 b.branch_code,
+                u.full_name AS admin_name,
+                {login_col} AS last_active,
                 COALESCE(e_all.cnt, 0)     AS total_students,
                 COALESCE(e_pend.cnt, 0)    AS pending_count
             FROM branches b
+            LEFT JOIN users u ON u.branch_id = b.branch_id AND u.role = 'branch_admin'
             LEFT JOIN (
                 SELECT branch_id, COUNT(*) AS cnt
                 FROM enrollments
@@ -92,9 +111,11 @@ def super_admin_dashboard():
                 FROM enrollments WHERE status = 'pending'
                 GROUP BY branch_id
             ) e_pend ON e_pend.branch_id = b.branch_id
-            ORDER BY b.branch_name
+            ORDER BY total_students DESC
         """)
         branch_health = cursor.fetchall() or []
+        
+        top_branches = branch_health[:3]
 
         return render_template(
             "super_admin_dashboard.html",
@@ -103,10 +124,13 @@ def super_admin_dashboard():
             total_students=total_students,
             total_pending=total_pending,
             total_staff=total_staff,
+            workforce_stats=workforce_stats,
+            funnel_stats=funnel_stats,
+            branch_health=branch_health,
+            top_branches=top_branches,
             missing_code=missing_code,
             missing_admin=missing_admin,
-            inactive_branches=inactive_branches,
-            branch_health=branch_health,
+            inactive_branches=inactive_branches
         )
 
     except Exception as e:
@@ -131,12 +155,15 @@ def super_admin_branches():
         branch_code = (request.form.get("branch_code") or "").strip().upper()
         location    = request.form.get("location", "").strip()
         admin_email = request.form.get("admin_email", "").strip()
+        admin_name  = request.form.get("admin_name", "").strip()
+        gender      = request.form.get("gender", "").strip()
 
-        if not branch_name or not location or not branch_code or not admin_email:
-            flash("Branch name, code, location, and admin email are required.", "error")
+        if not branch_name or not branch_code or not location or not admin_email or not admin_name or not gender:
+            flash("All fields (Branch Name, Code, Coordinates, Admin Name, Gender, Email) are required.", "error")
             return redirect(url_for("super_admin.super_admin_branches"))
 
-        username      = branch_name.lower().replace(" ", "_") + "_admin"
+        # USERNAME CONVENTION: [BRANCH_CODE]_Admin
+        username      = f"{branch_code}_Admin"
         temp_password = generate_password()
         hashed        = generate_password_hash(temp_password)
 
@@ -164,30 +191,47 @@ def super_admin_branches():
             branch_id = cursor.fetchone()["branch_id"]
 
             cursor.execute(
-                "INSERT INTO users (branch_id, username, password, role, email, require_password_change) VALUES (%s, %s, %s, %s, %s, TRUE)",
-                (branch_id, username, hashed, "branch_admin", admin_email)
+                "INSERT INTO users (branch_id, username, password, role, email, full_name, gender, require_password_change) VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE)",
+                (branch_id, username, hashed, "branch_admin", admin_email, admin_name, gender)
             )
             db.commit()
 
             db.commit()
 
-            subject = f"Liceo Branch Admin Credentials for {branch_name}"
-            body = f"""Hello,
+            subject = f"Liceo Management System: Admin Credentials for {branch_name}"
+            
+            # Premium HTML Template
+            honorific = "Mr." if gender == "Male" else "Ms."
+            html_body = f"""
+            <div style="font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; padding: 40px; border-radius: 24px; color: #0f172a; max-width: 600px; margin: 0 auto; border: 1px solid rgba(26, 58, 143, 0.1);">
+                <div style="background: linear-gradient(135deg, #1a3a8f 0%, #0c2461 100%); padding: 32px; border-radius: 20px 20px 0 0; text-align: center; color: #ffffff;">
+                    <h2 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em;">Liceo Management System</h2>
+                    <p style="margin: 8px 0 0 0; opacity: 0.8; font-weight: 500;">Secure Node Deployment Protocols</p>
+                </div>
+                <div style="background: #ffffff; padding: 32px; border-radius: 0 0 20px 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
+                    <p style="font-size: 16px; line-height: 1.6;">Hello <strong>{honorific} {admin_name}</strong>,</p>
+                    <p style="font-size: 16px; line-height: 1.6;">Your administrative node for <strong>{branch_name}</strong> has been successfully initialized. Below are your secure access credentials:</p>
+                    
+                    <div style="background: #f1f5f9; padding: 24px; border-radius: 16px; margin: 24px 0; border: 1px dashed #cbd5e1;">
+                        <div style="margin-bottom: 12px; font-size: 14px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em;">Access Protocol</div>
+                        <div style="font-size: 15px; margin-bottom: 8px;"><strong>Username:</strong> <code style="color: #1a3a8f;">{username}</code></div>
+                        <div style="font-size: 15px;"><strong>Secure Key:</strong> <code style="color: #1a3a8f;">{temp_password}</code></div>
+                    </div>
 
-            Your branch admin account for {branch_name} has been created!
+                    <div style="text-align: center; margin: 32px 0;">
+                        <a href="https://liceolms.up.railway.app/" style="background: #facc15; color: #1a3a8f; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 800; font-size: 15px; box-shadow: 0 4px 12px rgba(250, 204, 21, 0.4);">Access Dashboard</a>
+                    </div>
 
-            Username: {username}
-            Password: {temp_password}
-            Login URL: https://liceolms.up.railway.app/
-
-            Please log in and change your password immediately.
-
-            If you have any questions, contact your super admin.
-
-            -- The Liceo LMS Team
+                    <p style="font-size: 13px; color: #64748b; line-height: 1.6; font-style: italic;">Note: For security reasons, you will be required to update your "Secure Key" upon your first successful protocol authentication.</p>
+                    
+                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 32px 0;">
+                    <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">&copy; 2026 Liceo Management System. All rights reserved.</p>
+                </div>
+            </div>
             """
+            body = f"Hello {honorific} {admin_name}, your credentials for {branch_name} are: Username: {username}, Password: {temp_password}. Login at https://liceolms.up.railway.app/"
 
-            email_sent = send_email(admin_email, subject, body)
+            email_sent = send_email(admin_email, subject, body, html_body=html_body)
             if not email_sent:
                 flash("Branch admin account created, but failed to send email.", "warning")
 
@@ -218,7 +262,9 @@ def super_admin_branches():
                 b.is_active, b.created_at, b.branch_code,
                 u.username AS admin_username,
                 u.email AS admin_email,
-                u.user_id  AS admin_id
+                u.user_id  AS admin_id,
+                u.full_name AS admin_full_name,
+                u.gender AS admin_gender
             FROM branches b
             LEFT JOIN users u ON u.branch_id = b.branch_id AND u.role = 'branch_admin'
             ORDER BY b.created_at DESC
@@ -247,8 +293,10 @@ def super_admin_edit_branch(branch_id):
     branch_code = (request.form.get("branch_code") or "").strip().upper()
     location    = (request.form.get("location") or "").strip()
     admin_email = (request.form.get("admin_email") or "").strip()
+    admin_name  = (request.form.get("admin_name") or "").strip()
+    gender      = (request.form.get("gender") or "").strip()
 
-    if not branch_name or not branch_code or not location or not admin_email:
+    if not branch_name or not branch_code or not admin_email or not admin_name or not gender:
         flash("All fields are required.", "error")
         return redirect(url_for("super_admin.super_admin_branches"))
 
@@ -271,9 +319,9 @@ def super_admin_edit_branch(branch_id):
         
         cursor.execute("""
             UPDATE users
-            SET email = %s
+            SET email = %s, full_name = %s, gender = %s
             WHERE branch_id = %s AND role = 'branch_admin'
-        """, (admin_email, branch_id))
+        """, (admin_email, admin_name, gender, branch_id))
         db.commit()
         flash(f"Branch updated! Code set to: {branch_code}", "success")
 

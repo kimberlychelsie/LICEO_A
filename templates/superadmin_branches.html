@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}Branch Registry | Super Admin{% endblock %}
 {% block content %}
 <style>
@@ -226,9 +226,9 @@
     .glass-modal {
         background: white;
         border-radius: 24px;
-        padding: 40px;
+        padding: 24px 32px;
         width: 100%;
-        max-width: 500px;
+        max-width: 550px;
         box-shadow: 0 40px 100px -20px rgba(0,0,0,0.3);
     }
 </style>
@@ -287,8 +287,20 @@
                     <input type="text" id="branch_code" name="branch_code" placeholder="AUTO-SYNC" readonly required>
                 </div>
                 <div class="form-node">
-                    <label>Physical Location</label>
-                    <input type="text" id="location" name="location" placeholder="e.g. Laguna" required>
+                    <label>Coordinates</label>
+                    <input type="text" name="location" id="branch_location" class="no-numbers" placeholder="e.g. Majayjay, Laguna" required>
+                </div>
+                <div class="form-node">
+                    <label>Admin Leader Name</label>
+                    <input type="text" id="admin_name" name="admin_name" class="no-numbers" placeholder="e.g. Jocelyn Ramirez" required>
+                </div>
+                <div class="form-node">
+                    <label>Gender</label>
+                    <select name="gender" required>
+                        <option value="">— Select —</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
                 </div>
                 <div class="form-node">
                     <label>Admin Protocol Email</label>
@@ -320,7 +332,7 @@
                         <th>System Entity</th>
                         <th>Coordinates</th>
                         <th>Protocol</th>
-                        <th>Leadership</th>
+                        <th>Leadership Info</th>
                         <th>Status</th>
                         <th style="width: 200px; text-align: right; padding-right: 32px;">Command</th>
                     </tr>
@@ -342,8 +354,12 @@
                             {% endif %}
                         </td>
                         <td>
-                            <div style="font-weight: 800; font-size: 0.85rem; color: var(--ma-primary);">{{ b.admin_username or 'UNASSIGNED' }}</div>
-                            <div style="font-size: 0.75rem; color: var(--ma-muted);">{{ b.admin_email or 'No Email Protocol' }}</div>
+                            <div style="font-weight: 850; font-size: 0.9rem; color: var(--ma-primary);">{{ b.admin_full_name or 'UNNAMED' }}</div>
+                            <div style="font-size: 0.75rem; color: var(--ma-muted); font-weight: 700;">
+                                {% if b.admin_gender == 'Male' %}<i class="fas fa-mars" style="color:#3b82f6;"></i> Mr.{% elif b.admin_gender == 'Female' %}<i class="fas fa-venus" style="color:#f43f5e;"></i> Ms.{% endif %} 
+                                @{{ b.admin_username or 'no_user' }}
+                            </div>
+                            <div style="font-size: 0.75rem; color: var(--ma-muted); opacity: 0.7;">{{ b.admin_email or 'No Email Protocol' }}</div>
                         </td>
                         <td>
                             {% if b.is_active %}
@@ -361,6 +377,7 @@
                             <button type="button" class="btn-prem edit-branch-btn" data-id="{{ b.branch_id }}" 
                                 data-name="{{ b.branch_name | e }}" data-code="{{ b.branch_code or '' }}" 
                                 data-location="{{ b.location | e }}" data-email="{{ b.admin_email or '' }}"
+                                data-fullname="{{ b.admin_full_name or '' }}" data-gender="{{ b.admin_gender or '' }}"
                                 style="padding: 8px 14px; background: rgba(250, 204, 21, 0.1); color: #92400e; font-size: 0.75rem; margin-left: 8px;">
                                 <i class="fas fa-edit"></i> Edit
                             </button>
@@ -382,31 +399,44 @@
 <!-- Edit Modal -->
 <div id="editBranchModal" class="glass-overlay">
     <div class="glass-modal">
-        <h2 style="font-size: 1.5rem; font-weight: 900; color: var(--ma-primary); margin-bottom: 24px;">Adjust Node Protocol</h2>
+        <h2 style="font-size: 1.25rem; font-weight: 900; color: var(--ma-primary); margin-bottom: 16px;">Adjust Node Protocol</h2>
         <form id="editBranchForm" method="post">
-            <div class="entry-grid" style="grid-template-columns: 1fr;">
+            <div class="entry-grid" style="grid-template-columns: 1fr; gap: 12px;">
                 <div class="form-node">
                     <label>Branch Identity</label>
                     <input type="text" name="branch_name" id="editBranchName" required />
                 </div>
-                <div class="entry-grid">
+                <div class="entry-grid" style="grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 0;">
                     <div class="form-node">
                         <label>Assigned Code</label>
                         <input type="text" name="branch_code" id="editBranchCode" required maxlength="20" style="text-transform: uppercase;" />
                     </div>
                     <div class="form-node">
                         <label>Coordinates</label>
-                        <input type="text" name="location" id="editBranchLocation" required />
+                        <input type="text" name="location" id="editBranchLocation" class="no-numbers" required />
+                    </div>
+                </div>
+                <div class="entry-grid" style="grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 0;">
+                    <div class="form-node">
+                        <label>Admin Name</label>
+                        <input type="text" name="admin_name" id="editAdminName" class="no-numbers" required />
+                    </div>
+                    <div class="form-node">
+                        <label>Gender</label>
+                        <select name="gender" id="editGender" required>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
                     </div>
                 </div>
                 <div class="form-node">
-                    <label>Admin Leader Email</label>
+                    <label>Admin Email</label>
                     <input type="email" name="admin_email" id="editAdminEmail" required />
                 </div>
             </div>
-            <div style="display: flex; justify-content: space-between; margin-top: 32px;">
+            <div style="display: flex; justify-content: space-between; margin-top: 24px;">
                 <button type="button" onclick="closeEditBranch()" class="btn-prem" style="background: #f1f5f9; color: var(--ma-muted);">Dismiss</button>
-                <button type="submit" class="btn-prem btn-gold">Commit Changes</button>
+                <button type="submit" class="btn-prem btn-gold" id="commitEditBtn" disabled>Commit Changes</button>
             </div>
         </form>
     </div>
@@ -423,14 +453,64 @@
         if (select && codeInput) { select.addEventListener('change', syncCode); syncCode(); }
     })();
 
-    function openEditBranch(id, name, code, location, email) {
+    let originalEditData = {};
+
+    function openEditBranch(id, name, code, location, email, fullname, gender) {
         document.getElementById('editBranchName').value = name;
         document.getElementById('editBranchCode').value = code;
         document.getElementById('editBranchLocation').value = location;
         document.getElementById('editAdminEmail').value = email;
+        document.getElementById('editAdminName').value = fullname;
+        document.getElementById('editGender').value = gender || 'Male';
+        
         document.getElementById('editBranchForm').action = '/super-admin/branches/' + id + '/edit';
+        
+        // Store for change detection
+        originalEditData = { 
+            name: (name || "").trim(), 
+            code: (code || "").trim(), 
+            location: (location || "").trim(), 
+            email: (email || "").trim(), 
+            fullname: (fullname || "").trim(), 
+            gender: gender || 'Male' 
+        };
+        checkEditChanges();
+        
         document.getElementById('editBranchModal').style.display = 'flex';
     }
+
+    function checkEditChanges() {
+        const currentData = {
+            name: document.getElementById('editBranchName').value.trim(),
+            code: document.getElementById('editBranchCode').value.trim(),
+            location: document.getElementById('editBranchLocation').value.trim(),
+            email: document.getElementById('editAdminEmail').value.trim(),
+            fullname: document.getElementById('editAdminName').value.trim(),
+            gender: document.getElementById('editGender').value
+        };
+        
+        let hasChanged = false;
+        for (let key in originalEditData) {
+            if (String(originalEditData[key]).trim() !== String(currentData[key]).trim()) {
+                hasChanged = true;
+                break;
+            }
+        }
+        document.getElementById('commitEditBtn').disabled = !hasChanged;
+    }
+
+    // Block numbers for specific fields
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('no-numbers')) {
+            e.target.value = e.target.value.replace(/[0-9]/g, '');
+        }
+    });
+
+    // Attach listeners to all edit inputs
+    ['editBranchName', 'editBranchCode', 'editBranchLocation', 'editAdminEmail', 'editAdminName', 'editGender'].forEach(id => {
+        document.getElementById(id).addEventListener('input', checkEditChanges);
+        document.getElementById(id).addEventListener('change', checkEditChanges);
+    });
 
     function closeEditBranch() {
         document.getElementById('editBranchModal').style.display = 'none';
@@ -439,7 +519,15 @@
     document.addEventListener('click', function (e) {
         const btn = e.target.closest('.edit-branch-btn');
         if (!btn) return;
-        openEditBranch(btn.dataset.id, btn.dataset.name, btn.dataset.code, btn.dataset.location, btn.dataset.email);
+        openEditBranch(
+            btn.dataset.id, 
+            btn.dataset.name, 
+            btn.dataset.code, 
+            btn.dataset.location, 
+            btn.dataset.email,
+            btn.dataset.fullname,
+            btn.dataset.gender
+        );
     });
 
     const searchInput = document.getElementById('branchSearch');

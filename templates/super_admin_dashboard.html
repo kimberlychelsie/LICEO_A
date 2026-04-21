@@ -244,6 +244,20 @@
         </a>
     </div>
 
+    <!-- NEW: TOP 3 BRANCH PERFORMANCE -->
+    <div class="shortcut-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+        {% for b in top_branches %}
+        <div class="action-card" style="border-left: 4px solid var(--ma-gold); cursor: default;">
+            <div class="action-icon" style="background: #fefce8; color: #854d0e; font-weight: 800; font-size: 0.9rem;">#{{ loop.index }}</div>
+            <div class="action-info">
+                <h3 style="color: var(--ma-primary);">{{ b.branch_name }}</h3>
+                <p style="font-weight: 700;">{{ b.total_students }} Total Students</p>
+                <p style="font-size: 0.7rem;">Active Node Security Protocol</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
     <div class="dashboard-grid">
         <!-- Branch Table -->
         <div class="content-card">
@@ -253,9 +267,10 @@
                     <thead>
                         <tr>
                             <th>Branch Name</th>
+                            <th>Admin Identity</th>
                             <th>Total Students</th>
                             <th>Pending</th>
-                            <th>Code</th>
+                            <th>Last Active</th>
                             <th>Status</th>
                         </tr>
                     </thead>
@@ -264,6 +279,10 @@
                         <tr>
                             <td>
                                 <div style="font-weight: 700; color: var(--ma-primary);">{{ b.branch_name }}</div>
+                                <code style="font-size: 0.7rem; color: var(--ma-muted);">{{ b.branch_code or 'NO CODE' }}</code>
+                            </td>
+                            <td>
+                                <div style="font-weight: 600; font-size: 0.85rem;">{{ b.admin_name or 'No Admin Assign' }}</div>
                             </td>
                             <td>{{ b.total_students }}</td>
                             <td>
@@ -274,10 +293,10 @@
                                 {% endif %}
                             </td>
                             <td>
-                                {% if b.branch_code %}
-                                <code style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">{{ b.branch_code }}</code>
+                                {% if b.last_active %}
+                                <div style="font-size: 0.8rem; font-weight: 600; color: #1e40af;">{{ b.last_active.strftime('%b %d, %I:%M %p') }}</div>
                                 {% else %}
-                                <span style="color:#ef4444; font-weight:700;">No Code</span>
+                                <span style="color: #94a3b8; font-size: 0.75rem;">Never Active</span>
                                 {% endif %}
                             </td>
                             <td>
@@ -329,6 +348,16 @@
                 <div style="text-align: right;">
                     <div style="font-size: 0.7rem; color: var(--ma-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">System Health</div>
                     <div style="font-size: 1.4rem; font-weight: 900; color: #10b981;">{{ ((active_branches / total_branches * 100)|round|int) if total_branches > 0 else 100 }}%</div>
+                </div>
+            </div>
+
+            <!-- NEW: WORKFORCE DISTRIBUTION CHART -->
+            <div style="margin-top: 32px; text-align: left;">
+                <h2 style="font-size: 1.15rem; font-weight: 800; color: var(--ma-primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
+                    <i class="fas fa-users-cog"></i> Global Workforce
+                </h2>
+                <div style="height: 200px;">
+                    <canvas id="workforceChart"></canvas>
                 </div>
             </div>
         </div>
@@ -385,6 +414,34 @@ document.addEventListener('DOMContentLoaded', function() {
                     labelEl.innerText = 'Total Records';
                     countEl.style.color = 'var(--ma-primary)';
                 }
+            }
+        }
+    });
+
+    // NEW: Workforce Chart
+    const wfCtx = document.getElementById('workforceChart').getContext('2d');
+    const workforceChart = new Chart(wfCtx, {
+        type: 'bar',
+        data: {
+            labels: [{% for w in workforce_stats %}'{{ w.role | title }}'{% if not loop.last %}, {% endif %}{% endfor %}],
+            datasets: [{
+                label: 'Headcount',
+                data: [{% for w in workforce_stats %}{{ w.cnt }}{% if not loop.last %}, {% endif %}{% endfor %}],
+                backgroundColor: '#3b82f6',
+                borderRadius: 8,
+                barThickness: 20
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: { grid: { display: false }, ticks: { display: false } },
+                y: { grid: { display: false } }
             }
         }
     });

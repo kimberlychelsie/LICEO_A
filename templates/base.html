@@ -1624,8 +1624,11 @@
           'Teacher'} %}
           {% set role_raw = session.get('role') %}
           {% set role_label = role_labels.get(role_raw, role_raw | title) %}
-          {% set disp = session.get('full_name') or session.get('student_name') or session.get('username') or 'System
-          User' %}
+          {% set honorific = "" %}
+          {% if session.get('role') == 'branch_admin' %}
+            {% if session.get('gender') == 'Male' %}{% set honorific = "Mr. " %}{% elif session.get('gender') == 'Female' %}{% set honorific = "Ms. " %}{% endif %}
+          {% endif %}
+          {% set disp = honorific ~ (session.get('full_name') or session.get('student_name') or session.get('username') or 'System User') %}
 
           <div
             style="padding: 12px 10px 18px; text-align: center; border-bottom: 2px solid #f1f5f9; margin-bottom: 12px;">
