@@ -34,8 +34,15 @@
     }
 
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     /* ── Header ── */
@@ -75,7 +82,14 @@
         align-items: flex-end;
     }
 
-    .filter-group { display: flex; flex-direction: column; gap: 8px; flex: 1; min-width: 200px; }
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex: 1;
+        min-width: 200px;
+    }
+
     .filter-group label {
         font-size: 0.75rem;
         font-weight: 800;
@@ -128,9 +142,20 @@
         transition: all 0.2s;
     }
 
-    .btn-excel { background: #16a34a; box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2); }
-    .btn-pdf { background: #dc2626; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2); }
-    .btn-export:hover { transform: translateY(-2px); filter: brightness(1.1); }
+    .btn-excel {
+        background: #16a34a;
+        box-shadow: 0 4px 12px rgba(22, 163, 74, 0.2);
+    }
+
+    .btn-pdf {
+        background: #dc2626;
+        box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);
+    }
+
+    .btn-export:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.1);
+    }
 
     /* ── Table & Accordion ── */
     .registry-card {
@@ -141,7 +166,11 @@
         box-shadow: var(--reg-shadow);
     }
 
-    .modern-table { width: 100%; border-collapse: collapse; }
+    .modern-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
     .modern-table th {
         background: #fbfcfe;
         padding: 18px 24px;
@@ -160,12 +189,28 @@
         border-bottom: 1px solid var(--reg-border);
     }
 
-    .row-main { cursor: pointer; transition: background 0.2s; }
-    .row-main:hover { background: #f8fafc; }
-    .row-main.active { background: #f1f5f9; }
+    .row-main {
+        cursor: pointer;
+        transition: background 0.2s;
+    }
 
-    .details-row { display: none; background: #fff; border-bottom: 2px solid var(--reg-accent); }
-    .details-row.show { display: table-row; }
+    .row-main:hover {
+        background: #f8fafc;
+    }
+
+    .row-main.active {
+        background: #f1f5f9;
+    }
+
+    .details-row {
+        display: none;
+        background: #fff;
+        border-bottom: 2px solid var(--reg-accent);
+    }
+
+    .details-row.show {
+        display: table-row;
+    }
 
     .details-inner {
         padding: 32px;
@@ -186,8 +231,19 @@
         padding-bottom: 8px;
     }
 
-    .grid-data { display: grid; grid-template-columns: 120px 1fr; gap: 12px 20px; align-items: center; }
-    .grid-data strong { font-size: 0.75rem; font-weight: 800; color: var(--reg-muted); text-transform: uppercase; }
+    .grid-data {
+        display: grid;
+        grid-template-columns: 120px 1fr;
+        gap: 12px 20px;
+        align-items: center;
+    }
+
+    .grid-data strong {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--reg-muted);
+        text-transform: uppercase;
+    }
 
     .input-edit {
         width: 100%;
@@ -201,7 +257,10 @@
         outline: none;
     }
 
-    .input-edit:focus { border-color: var(--reg-accent); background: #fff; }
+    .input-edit:focus {
+        border-color: var(--reg-accent);
+        background: #fff;
+    }
 
     .btn-save-row {
         width: 100%;
@@ -216,7 +275,11 @@
         transition: all 0.2s;
     }
 
-    .btn-save-row:disabled { background: #e2e8f0; color: #94a3b8; cursor: not-allowed; }
+    .btn-save-row:disabled {
+        background: #e2e8f0;
+        color: #94a3b8;
+        cursor: not-allowed;
+    }
 
     /* ── Badges ── */
     .badge {
@@ -227,23 +290,35 @@
         font-size: 0.75rem;
         font-weight: 800;
     }
-    .badge-primary { background: #eff6ff; color: #1e40af; }
-    .badge-success { background: #dcfce7; color: #166534; }
-    .badge-pending { background: #fffbeb; color: #92400e; }
 
+    .badge-primary {
+        background: #eff6ff;
+        color: #1e40af;
+    }
+
+    .badge-success {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .badge-pending {
+        background: #fffbeb;
+        color: #92400e;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="dashboard-wrap">
-    
+
     <!-- Header -->
     <div class="dashboard-header">
         <div class="header-text">
             <h1>Student Registry Detail</h1>
             <p>Advanced cataloging and profile management by Grade & Section.</p>
         </div>
-        <a href="/registrar" class="btn btn-export btn-excel" style="background:#fff; color:var(--reg-primary); border:1.5px solid var(--reg-border);">← Back Home</a>
+        <a href="/registrar" class="btn btn-export btn-excel"
+            style="background:#fff; color:var(--reg-primary); border:1.5px solid var(--reg-border);">← Back Home</a>
     </div>
 
     <!-- Filters -->
@@ -254,28 +329,31 @@
                 <select name="grade" class="filter-control" onchange="this.form.submit()">
                     <option value="">— Select Grade —</option>
                     {% for g in all_grades %}
-                    <option value="{{ g }}" {% if g == grade_filter %}selected{% endif %}>{{ g }}</option>
+                    <option value="{{ g }}" {% if g==grade_filter %}selected{% endif %}>{{ g }}</option>
                     {% endfor %}
                 </select>
             </div>
-            
+
             <div class="filter-group">
                 <label>Section Placement</label>
-                <select name="section_id" id="sectionSelect" class="filter-control" onchange="this.form.submit()" {% if not grade_filter %}disabled{% endif %}>
+                <select name="section_id" id="sectionSelect" class="filter-control" onchange="this.form.submit()" {% if
+                    not grade_filter %}disabled{% endif %}>
                     <option value="">— All Sections —</option>
                     {% for s in all_sections %}
-                        {% if not grade_filter or s.grade_level == grade_filter %}
-                        <option value="{{ s.section_id }}" {% if s.section_id|string == section_filter|string %}selected{% endif %}>
-                            {{ s.section_name }}
-                        </option>
-                        {% endif %}
+                    {% if not grade_filter or s.grade_level == grade_filter %}
+                    <option value="{{ s.section_id }}" {% if s.section_id|string==section_filter|string %}selected{%
+                        endif %}>
+                        {{ s.section_name }}
+                    </option>
+                    {% endif %}
                     {% endfor %}
                 </select>
             </div>
-            
+
             <div class="filter-group" style="flex: 2;">
                 <label>Dynamic Search</label>
-                <input type="text" id="searchInput" class="filter-control" placeholder="Search identity, ID, or any attribute..." onkeyup="filterTable()">
+                <input type="text" id="searchInput" class="filter-control"
+                    placeholder="Search identity, ID, or any attribute..." onkeyup="filterTable()">
             </div>
         </form>
     </div>
@@ -291,131 +369,191 @@
     <!-- Registry Card -->
     <div class="registry-card">
         {% if not grade_filter %}
-            <div style="padding: 64px; text-align: center; color: var(--reg-muted);">
-                <div style="font-size: 3rem; margin-bottom: 20px;">📂</div>
-                <h3 style="color: var(--reg-primary); font-weight: 800;">Registry Deployed</h3>
-                <p>Select a <strong>Grade Level</strong> above to pull student metadata from the database.</p>
-            </div>
+        <div style="padding: 64px; text-align: center; color: var(--reg-muted);">
+            <div style="font-size: 3rem; margin-bottom: 20px;">📂</div>
+            <h3 style="color: var(--reg-primary); font-weight: 800;">Registry Deployed</h3>
+            <p>Select a <strong>Grade Level</strong> above to pull student metadata from the database.</p>
+        </div>
         {% elif students|length == 0 %}
-            <div style="padding: 64px; text-align: center; color: var(--reg-muted);">
-                <div style="font-size: 3rem; margin-bottom: 20px;">📭</div>
-                <h3 style="color: var(--reg-primary); font-weight: 800;">Empty Sector</h3>
-                <p>No active enrollments detected for the selected parameters.</p>
-            </div>
+        <div style="padding: 64px; text-align: center; color: var(--reg-muted);">
+            <div style="font-size: 3rem; margin-bottom: 20px;">📭</div>
+            <h3 style="color: var(--reg-primary); font-weight: 800;">Empty Sector</h3>
+            <p>No active enrollments detected for the selected parameters.</p>
+        </div>
         {% else %}
-            <table class="modern-table" id="studentsTable">
-                <thead>
-                    <tr>
-                        <th>Access ID</th>
-                        <th>Student Identity</th>
-                        <th>Grade</th>
-                        <th>Section</th>
-                        <th>Active Status</th>
-                        <th style="text-align: right;">Registry Ops</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in students %}
-                    <tr class="row-main" onclick="toggleRow('details-{{ s.enrollment_id }}', this)">
-                        <td><span style="font-weight: 700; color: var(--reg-muted);">#{{ "%04d"|format(s.branch_enrollment_no|int) if s.branch_enrollment_no else s.enrollment_id }}</span></td>
-                        <td><strong style="color: var(--reg-primary);">{{ s.student_name }}</strong></td>
-                        <td><span style="font-weight: 600;">{{ s.grade_level }}</span></td>
-                        <td>
-                            {% if s.section_name %}
-                                <span class="badge badge-primary">{{ s.section_name }}</span>
-                            {% else %}
-                                <span class="badge badge-pending">Unplaced</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if s.status == 'approved' %}
-                                <span class="badge badge-success">Approved</span>
-                            {% elif s.status == 'open_for_enrollment' %}
-                                <span class="badge badge-pending">Re-Enrollment Portal Open</span>
-                            {% else %}
-                                <span class="badge badge-primary">Active Base</span>
-                            {% endif %}
-                        </td>
-                        <td style="text-align: right;">
-                            <button type="button" class="btn btn-outline" style="padding: 6px 14px; font-size: 0.75rem;">Manage ▾</button>
-                        </td>
-                    </tr>
-                    
-                    <tr id="details-{{ s.enrollment_id }}" class="details-row">
-                        <td colspan="6" style="padding: 0;">
-                            <form method="POST" action="/registrar/students-by-grade/update/{{ s.enrollment_id }}">
-                                <div class="details-inner">
-                                    <div class="detail-group">
-                                        <h4>👤 Personal & Contact Information</h4>
-                                        <div class="grid-data">
-                                            <strong>Sex:</strong>
-                                            <select name="gender" class="input-edit track-{{ s.enrollment_id }}">
-                                                <option value="" {% if not s.gender %}selected{% endif %}>N/A</option>
-                                                <option value="Male" {% if s.gender == 'Male' %}selected{% endif %}>Male</option>
-                                                <option value="Female" {% if s.gender == 'Female' %}selected{% endif %}>Female</option>
-                                            </select>
+        <table class="modern-table" id="studentsTable">
+            <thead>
+                <tr>
+                    <th>Access ID</th>
+                    <th>Student Identity</th>
+                    <th>Grade</th>
+                    <th>Section</th>
+                    <th>Active Status</th>
+                    <th style="text-align: right;">Registry Ops</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in students %}
+                <tr class="row-main" onclick="toggleRow('details-{{ s.enrollment_id }}', this)">
+                    <td><span style="font-weight: 700; color: var(--reg-muted);">#{{
+                            "%04d"|format(s.branch_enrollment_no|int) if s.branch_enrollment_no else s.enrollment_id
+                            }}</span></td>
+                    <td><strong style="color: var(--reg-primary);">{{ s.student_name }}</strong></td>
+                    <td><span style="font-weight: 600;">{{ s.grade_level }}</span></td>
+                    <td>
+                        {% if s.section_name %}
+                        <span class="badge badge-primary">{{ s.section_name }}</span>
+                        {% else %}
+                        <span class="badge badge-pending">Unplaced</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if s.status == 'approved' %}
+                        <span class="badge badge-success">Approved</span>
+                        {% elif s.status == 'open_for_enrollment' %}
+                        <span class="badge badge-pending">Re-Enrollment Portal Open</span>
+                        {% else %}
+                        <span class="badge badge-primary">Active Base</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">
+                        <button type="button" class="btn btn-outline"
+                            style="padding: 6px 14px; font-size: 0.75rem;">Manage ▾</button>
+                    </td>
+                </tr>
 
-                                            <strong>Birthday:</strong> <input type="date" name="dob" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.dob or '' }}">
-                                            <strong>LRN:</strong> <input type="text" name="lrn" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.lrn or '' }}">
-                                            <strong>Email:</strong> <input type="email" name="email" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.email or '' }}">
-                                            <strong>Contact:</strong> <input type="text" name="contact_number" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.contact_number or '' }}">
-                                            <strong style="align-self: flex-start;">Address:</strong> 
-                                            <textarea name="address" class="input-edit track-{{ s.enrollment_id }}" rows="2" style="resize: none;">{{ s.address or '' }}</textarea>
-                                        </div>
-                                    </div>
+                <tr id="details-{{ s.enrollment_id }}" class="details-row">
+                    <td colspan="6" style="padding: 0;">
+                        <form method="POST" action="/registrar/students-by-grade/update/{{ s.enrollment_id }}">
+                            <div class="details-inner">
+                                <div class="detail-group">
+                                    <h4>👤 Personal & Contact Information</h4>
+                                    <div class="grid-data">
+                                        <strong>Sex:</strong>
+                                        <select name="gender" class="input-edit track-{{ s.enrollment_id }}">
+                                            <option value="" {% if not s.gender %}selected{% endif %}>N/A</option>
+                                            <option value="Male" {% if s.gender=='Male' %}selected{% endif %}>Male
+                                            </option>
+                                            <option value="Female" {% if s.gender=='Female' %}selected{% endif %}>Female
+                                            </option>
+                                        </select>
 
-                                    <div class="detail-group">
-                                        <h4>👨‍👩‍👧 Guardian Information</h4>
-                                        <div class="grid-data">
-                                            <strong>Guardian:</strong> <input type="text" name="guardian_name" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.guardian_name or '' }}">
-                                            <strong>Contact:</strong> <input type="text" name="guardian_contact" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.guardian_contact or '' }}">
-                                            <strong>Email:</strong> <input type="email" name="guardian_email" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.guardian_email or '' }}">
-                                            <strong>Father:</strong> <input type="text" name="father_name" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.father_name or '' }}">
-                                            <strong>Father Contact:</strong> <input type="text" name="father_contact" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.father_contact or '' }}">
-                                            <strong>Father Occupation:</strong> <input type="text" name="father_occupation" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.father_occupation or '' }}">
-                                            <strong>Mother:</strong> <input type="text" name="mother_name" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.mother_name or '' }}">
-                                            <strong>Mother Contact:</strong> <input type="text" name="mother_contact" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.mother_contact or '' }}">
-                                            <strong>Mother Occupation:</strong> <input type="text" name="mother_occupation" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.mother_occupation or '' }}">
-                                        </div>
-                                        
-                                        <div style="margin-top: 24px; padding-top: 24px; border-top: 1px dashed var(--reg-border);">
-                                            <div class="grid-data">
-                                                <strong>Prev School:</strong> <input type="text" name="previous_school" class="input-edit track-{{ s.enrollment_id }}" value="{{ s.previous_school or '' }}">
-                                                <strong>Type:</strong> 
-                                                <select name="enroll_type" class="input-edit track-{{ s.enrollment_id }}">
-                                                    {% for t in ['New', 'Transferee', 'Continuing', 'Returning'] %}
-                                                    <option value="{{ t }}" {% if s.enroll_type == t %}selected{% endif %}>{{ t }}</option>
-                                                    {% endfor %}
-                                                </select>
+                                        <strong>Birthday:</strong> <input type="date" name="dob"
+                                            class="input-edit track-{{ s.enrollment_id }}" value="{{ s.dob or '' }}">
+                                        <strong>LRN:</strong> <input type="text" name="lrn"
+                                            class="input-edit track-{{ s.enrollment_id }}" value="{{ s.lrn or '' }}">
+                                        <strong>Email:</strong> <input type="email" name="email"
+                                            class="input-edit track-{{ s.enrollment_id }}" value="{{ s.email or '' }}">
+                                        <strong>Contact:</strong> <input type="text" name="contact_number"
+                                            class="input-edit track-{{ s.enrollment_id }}"
+                                            value="{{ s.contact_number or '' }}">
+                                        <strong style="align-self: flex-start;">Address:</strong>
+                                        <textarea name="address" class="input-edit track-{{ s.enrollment_id }}" rows="2"
+                                            style="resize: none;">{{ s.address or '' }}</textarea>
+
+                                        <div
+                                            style="grid-column: span 2; margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--reg-border);">
+                                            <div
+                                                style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--reg-border);">
+                                                <div>
+                                                    <span
+                                                        style="display: block; font-size: 0.65rem; font-weight: 800; color: var(--reg-muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px;">Account
+                                                        Username</span>
+                                                    <span
+                                                        style="font-size: 0.9rem; font-weight: 700; color: var(--reg-primary);">{{
+                                                        s.account_username or 'No Account' }}</span>
+                                                </div>
+                                                {% if s.account_username %}
+                                                <button type="button" class="btn btn-outline"
+                                                    onclick="resetPassword('{{ s.enrollment_id }}', '{{ s.student_name }}')"
+                                                    style="padding: 6px 12px; font-size: 0.7rem; background: #fff; border-color: var(--reg-danger); color: var(--reg-danger);">
+                                                    🔄 Reset Password & Notify
+                                                </button>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     </div>
+                                </div>
 
-                                    <div class="detail-group">
-                                        <h4>📂 Verification Documents</h4>
-                                        <div style="display: flex; flex-direction: column; gap: 8px;">
-                                            {% if s.documents and s.documents|length > 0 %}
-                                                {% for doc in s.documents %}
-                                                {% set ext = doc.file_path.split('.')[-1] | lower %}
-                                                <a href="{{ doc.file_path }}" target="_blank" class="btn btn-outline" style="justify-content: flex-start; padding: 10px; font-size: 0.8rem;">
-                                                    {% if ext == 'pdf' %}📕{% else %}🖼️{% endif %} {{ doc.document_type|replace('_', ' ')|title }}
-                                                </a>
+                                <div class="detail-group">
+                                    <h4>👨‍👩‍👧 Guardian Information</h4>
+                                    <div class="grid-data">
+                                        <strong>Guardian:</strong> <input type="text" name="guardian_name"
+                                            class="input-edit track-{{ s.enrollment_id }}"
+                                            value="{{ s.guardian_name or '' }}">
+                                        <strong>Contact:</strong> <input type="text" name="guardian_contact"
+                                            class="input-edit track-{{ s.enrollment_id }}"
+                                            value="{{ s.guardian_contact or '' }}">
+                                        <strong>Email:</strong> <input type="email" name="guardian_email"
+                                            class="input-edit track-{{ s.enrollment_id }}"
+                                            value="{{ s.guardian_email or '' }}">
+                                        <strong>Father:</strong> <input type="text" name="father_name"
+                                            class="input-edit track-{{ s.enrollment_id }}"
+                                            value="{{ s.father_name or '' }}">
+                                        <strong>Father Contact:</strong> <input type="text" name="father_contact"
+                                            class="input-edit track-{{ s.enrollment_id }}"
+                                            value="{{ s.father_contact or '' }}">
+                                        <strong>Father Occupation:</strong> <input type="text" name="father_occupation"
+                                            class="input-edit track-{{ s.enrollment_id }}"
+                                            value="{{ s.father_occupation or '' }}">
+                                        <strong>Mother:</strong> <input type="text" name="mother_name"
+                                            class="input-edit track-{{ s.enrollment_id }}"
+                                            value="{{ s.mother_name or '' }}">
+                                        <strong>Mother Contact:</strong> <input type="text" name="mother_contact"
+                                            class="input-edit track-{{ s.enrollment_id }}"
+                                            value="{{ s.mother_contact or '' }}">
+                                        <strong>Mother Occupation:</strong> <input type="text" name="mother_occupation"
+                                            class="input-edit track-{{ s.enrollment_id }}"
+                                            value="{{ s.mother_occupation or '' }}">
+                                    </div>
+
+                                    <div
+                                        style="margin-top: 24px; padding-top: 24px; border-top: 1px dashed var(--reg-border);">
+                                        <div class="grid-data">
+                                            <strong>Prev School:</strong> <input type="text" name="previous_school"
+                                                class="input-edit track-{{ s.enrollment_id }}"
+                                                value="{{ s.previous_school or '' }}">
+                                            <strong>Type:</strong>
+                                            <select name="enroll_type" class="input-edit track-{{ s.enrollment_id }}">
+                                                {% for t in ['New', 'Transferee', 'Continuing', 'Returning'] %}
+                                                <option value="{{ t }}" {% if s.enroll_type==t %}selected{% endif %}>{{
+                                                    t }}</option>
                                                 {% endfor %}
-                                            {% else %}
-                                                <div style="padding: 16px; background: #f8fafc; border-radius: 12px; font-size: 0.8rem; color: var(--reg-muted); text-align: center;">Archive empty for this profile.</div>
-                                            {% endif %}
+                                            </select>
                                         </div>
-                                        {% if not is_history_mode %}
-                                        <button type="submit" id="save-btn-{{ s.enrollment_id }}" class="btn-save-row" disabled>Commit Profile Changes</button>
-                                        {% endif %}
                                     </div>
                                 </div>
-                            </form>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+
+                                <div class="detail-group">
+                                    <h4>📂 Verification Documents</h4>
+                                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                                        {% if s.documents and s.documents|length > 0 %}
+                                        {% for doc in s.documents %}
+                                        {% set ext = doc.file_path.split('.')[-1] | lower %}
+                                        <a href="{{ doc.file_path }}" target="_blank" class="btn btn-outline"
+                                            style="justify-content: flex-start; padding: 10px; font-size: 0.8rem;">
+                                            {% if ext == 'pdf' %}📕{% else %}🖼️{% endif %} {{
+                                            doc.document_type|replace('_', ' ')|title }}
+                                        </a>
+                                        {% endfor %}
+                                        {% else %}
+                                        <div
+                                            style="padding: 16px; background: #f8fafc; border-radius: 12px; font-size: 0.8rem; color: var(--reg-muted); text-align: center;">
+                                            Archive empty for this profile.</div>
+                                        {% endif %}
+                                    </div>
+                                    {% if not is_history_mode %}
+                                    <button type="submit" id="save-btn-{{ s.enrollment_id }}" class="btn-save-row"
+                                        disabled>Commit Profile Changes</button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
         {% endif %}
     </div>
 
@@ -445,24 +583,26 @@
         const inputs = form.querySelectorAll('input, select, textarea');
         let changed = false;
         inputs.forEach(i => {
-            if (i.type === 'checkbox' || i.type === 'radio') { if(i.checked !== i.defaultChecked) changed = true; }
-            else if (i.tagName === 'SELECT') { Array.from(i.options).forEach(o => { if(o.defaultSelected !== o.selected) changed = true; }); }
-            else { if(i.value !== i.defaultValue) changed = true; }
+            if (i.type === 'checkbox' || i.type === 'radio') { if (i.checked !== i.defaultChecked) changed = true; }
+            else if (i.tagName === 'SELECT') { Array.from(i.options).forEach(o => { if (o.defaultSelected !== o.selected) changed = true; }); }
+            else { if (i.value !== i.defaultValue) changed = true; }
         });
         btn.disabled = !changed;
     }
 
-    document.addEventListener('input', e => { if(e.target.classList.contains('input-edit')) {
-        const match = e.target.className.match(/track-(\d+)/);
-        if(match) checkChanges(match[1]);
-    }});
+    document.addEventListener('input', e => {
+        if (e.target.classList.contains('input-edit')) {
+            const match = e.target.className.match(/track-(\d+)/);
+            if (match) checkChanges(match[1]);
+        }
+    });
 
     function filterTable() {
         const query = document.getElementById('searchInput').value.toLowerCase();
         document.querySelectorAll('.row-main').forEach(r => {
             const text = r.innerText.toLowerCase();
             const detail = document.getElementById(r.getAttribute('onclick').match(/'([^']+)'/)[1]);
-            if(text.includes(query)) { r.style.display = ''; } else { r.style.display = 'none'; detail.classList.remove('show'); }
+            if (text.includes(query)) { r.style.display = ''; } else { r.style.display = 'none'; detail.classList.remove('show'); }
         });
     }
 
@@ -470,7 +610,7 @@
     function exportToExcel() {
         const wb = XLSX.utils.book_new();
         const rows = studentsData.map(s => ({
-            "Access ID": s.branch_enrollment_no ? String(s.branch_enrollment_no).padStart(4,'0') : s.enrollment_id,
+            "Access ID": s.branch_enrollment_no ? String(s.branch_enrollment_no).padStart(4, '0') : s.enrollment_id,
             "Identity": s.student_name,
             "Grade": s.grade_level,
             "Section": s.section_name || "Unassigned",
@@ -493,7 +633,7 @@
         }));
         const ws = XLSX.utils.json_to_sheet(rows);
         XLSX.utils.book_append_sheet(wb, ws, "Students");
-        XLSX.writeFile(wb, `Registry_${currentGrade.replace(/\s/g,'_')}.xlsx`);
+        XLSX.writeFile(wb, `Registry_${currentGrade.replace(/\s/g, '_')}.xlsx`);
     }
 
     // Export PDF
@@ -502,14 +642,45 @@
         const doc = new jsPDF('l');
         doc.setFontSize(16); doc.text(`Registry: ${currentGrade}`, 14, 15);
         const rows = studentsData.map(s => [
-            s.branch_enrollment_no ? String(s.branch_enrollment_no).padStart(4,'0') : s.enrollment_id,
-            s.student_name, s.gender||"", s.dob||"", s.contact_number||"", s.guardian_name||"", s.status||""
+            s.branch_enrollment_no ? String(s.branch_enrollment_no).padStart(4, '0') : s.enrollment_id,
+            s.student_name, s.gender || "", s.dob || "", s.contact_number || "", s.guardian_name || "", s.status || ""
         ]);
         doc.autoTable({
             head: [['ID', 'Name', 'Sex', 'DOB', 'Contact', 'Guardian', 'Status']],
-            body: rows, startY: 22, theme: 'grid', headStyles: {fillColor: [30, 58, 138]}, styles: {fontSize: 8}
+            body: rows, startY: 22, theme: 'grid', headStyles: { fillColor: [30, 58, 138] }, styles: { fontSize: 8 }
         });
-        doc.save(`Registry_${currentGrade.replace(/\s/g,'_')}.pdf`);
+        doc.save(`Registry_${currentGrade.replace(/\s/g, '_')}.pdf`);
+    }
+
+    async function resetPassword(enrollmentId, studentName) {
+        if (!confirm(`Are you sure you want to reset the password for ${studentName}?\n\nThis will generate a new temporary password and send it to their email automatically.`)) {
+            return;
+        }
+
+        const btn = event.currentTarget;
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '⌛ Resetting...';
+
+        try {
+            const response = await fetch(`/registrar/reset-password/${enrollmentId}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                alert(result.message || 'Password has been successfully reset and sent to the student.');
+            } else {
+                alert('Error: ' + (result.message || 'Failed to reset password.'));
+            }
+        } catch (error) {
+            console.error('Reset error:', error);
+            alert('A network error occurred. Please try again.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
     }
 </script>
 {% endblock %}

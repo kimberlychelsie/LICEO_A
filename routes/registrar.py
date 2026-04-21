@@ -1044,7 +1044,7 @@ def registrar_students_by_grade():
         all_sections = cursor.fetchall()
 
         query = """
-            SELECT e.*, s.section_name,
+            SELECT e.*, s.section_name, sa.username AS account_username,
                    COALESCE(
                        json_agg(
                            json_build_object(
@@ -1058,6 +1058,7 @@ def registrar_students_by_grade():
             FROM enrollments e
             LEFT JOIN sections s ON s.section_id = e.section_id
             LEFT JOIN enrollment_documents d ON d.enrollment_id = e.enrollment_id
+            LEFT JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
             WHERE e.branch_id = %s 
               AND e.status IN ('enrolled', 'approved', 'open_for_enrollment')
         """
@@ -1071,7 +1072,7 @@ def registrar_students_by_grade():
                 params.append(section_filter)
 
         query += """
-            GROUP BY e.enrollment_id, s.section_name
+            GROUP BY e.enrollment_id, s.section_name, sa.username
             ORDER BY e.grade_level ASC, s.section_name ASC NULLS LAST, e.student_name ASC
         """
 
@@ -1519,6 +1520,109 @@ def delete_schedule_permanent(schedule_id):
     cursor.close(); db.close()
     flash("Schedule permanently deleted.", "danger")
     return redirect(url_for("registrar.list_and_add_schedules", show_archived="true"))
+# ══════════════════════════════════════════
+# ACCOUNT RESET
+# ══════════════════════════════════════════
+
+@registrar_bp.route("/registrar/reset-password/<int:enrollment_id>", methods=["POST"])
+def registrar_reset_student_password(enrollment_id):
+    if session.get("role") != "registrar":
+        return {"success": False, "message": "Unauthorized"}, 403
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        # Check if enrollment and account exist
+        cursor.execute("""
+            SELECT e.enrollment_id, e.student_name, e.email as enr_email, sa.username, sa.email as acc_email
+            FROM enrollments e
+            JOIN student_accounts sa ON e.enrollment_id = sa.enrollment_id
+            WHERE e.enrollment_id = %s AND e.branch_id = %s
+        """, (enrollment_id, branch_id))
+        data = cursor.fetchone()
+
+        if not data:
+            return {"success": False, "message": "Student account not found."}, 404
+
+        target_email = data["acc_email"] or data["enr_email"]
+        if not target_email:
+            return {"success": False, "message": "Student email not found. Please provide an email address first."}, 400
+
+        # Generate new password
+        temp_password = generate_password()
+        from werkzeug.security import generate_password_hash
+        hashed_pw = generate_password_hash(temp_password)
+
+        # Update DB
+        cursor.execute("""
+            UPDATE student_accounts
+            SET password = %s, require_password_change = TRUE, last_password_change = NOW()
+            WHERE enrollment_id = %s
+        """, (hashed_pw, enrollment_id))
+        db.commit()
+
+        # Send Email
+        subject = "Account Password Reset - LiceoLMS"
+        body = f"""
+        Hello {data['student_name']},
+        
+        Your student portal password has been reset by the Registrar.
+        
+        Username: {data['username']}
+        New Temporary Password: {temp_password}
+        
+        Please log in and update your password immediately.
+        """
+        
+        html_body = f"""
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 20px auto; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+            <div style="background-color: #1e3a8a; padding: 40px; text-align: center; color: #ffffff;">
+                <div style="font-size: 40px; margin-bottom: 12px;">🔐</div>
+                <h1 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em;">Password Reset</h1>
+                <p style="margin: 8px 0 0; opacity: 0.9; font-size: 15px;">Your credentials have been updated</p>
+            </div>
+            <div style="padding: 40px; background-color: #ffffff; color: #1e293b;">
+                <p style="font-size: 16px; margin-bottom: 24px;">Hello <strong>{data['student_name']}</strong>,</p>
+                <p style="font-size: 15px; line-height: 1.6; color: #64748b; margin-bottom: 32px;">
+                    Your student portal password has been reset by the Registrar. You can now use the temporary credentials below to log in to your account.
+                </p>
+                
+                <div style="background-color: #f8fafc; border: 1.5px solid #e2e8f0; border-radius: 12px; padding: 24px; margin-bottom: 32px;">
+                    <div style="margin-bottom: 16px;">
+                        <span style="display: block; font-size: 11px; text-transform: uppercase; font-weight: 800; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 4px;">Username</span>
+                        <span style="font-size: 17px; font-weight: 700; color: #1e3a8a;">{data['username']}</span>
+                    </div>
+                    <div>
+                        <span style="display: block; font-size: 11px; text-transform: uppercase; font-weight: 800; color: #94a3b8; letter-spacing: 0.05em; margin-bottom: 4px;">Temporary Password</span>
+                        <span style="font-size: 17px; font-weight: 700; color: #1e3a8a;">{temp_password}</span>
+                    </div>
+                </div>
+                
+                <div style="text-align: center; margin-bottom: 32px;">
+                    <a href="https://liceolms.up.railway.app/login" style="display: inline-block; padding: 14px 28px; background-color: #1e3a8a; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.2);">Log In to Portal</a>
+                </div>
+                
+                <p style="font-size: 13px; color: #94a3b8; font-style: italic; text-align: center;">Note: You will be required to choose a new password upon your next login.</p>
+            </div>
+            <div style="background-color: #f1f5f9; padding: 20px; text-align: center; font-size: 12px; color: #94a3b8;">
+                &copy; 2026 LiceoLMS - System Managed Registry
+            </div>
+        </div>
+        """
+        send_email(target_email, subject, body, html_body=html_body)
+
+        return {"success": True, "message": "Password reset successful and email sent."}
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Password reset failed: {e}")
+        return {"success": False, "message": str(e)}, 500
+    finally:
+        cursor.close()
+        db.close()
+
 # ══════════════════════════════════════════
 # NO CACHE
 # ══════════════════════════════════════════

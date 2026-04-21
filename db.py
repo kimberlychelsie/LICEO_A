@@ -245,6 +245,10 @@ def get_db_connection():
                 if sa_cols:
                     if 'email' not in sa_cols:
                         cur.execute("ALTER TABLE student_accounts ADD COLUMN email VARCHAR(255)")
+                    if 'require_password_change' not in sa_cols:
+                        cur.execute("ALTER TABLE student_accounts ADD COLUMN require_password_change BOOLEAN DEFAULT FALSE")
+                    if 'last_password_change' not in sa_cols:
+                        cur.execute("ALTER TABLE student_accounts ADD COLUMN last_password_change TIMESTAMP")
                     conn.commit()
             except Exception as e:
                 logger.warning(f"Could not migrate student_accounts table: {e}")

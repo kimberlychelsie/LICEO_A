@@ -167,7 +167,7 @@
         <form method="post" action="{{ url_for('branch_admin.branch_admin_edit_account', user_id=user.user_id, role=request.args.get('role', 'registrar')) }}">
             <div class="form-group">
                 <label>Full Legal Name</label>
-                <input class="form-control" name="full_name" value="{{ user.full_name or '' }}" placeholder="Enter full name" required>
+                <input class="form-control" name="full_name" value="{{ user.full_name or '' }}" placeholder="Enter full name" required oninput="this.value = this.value.replace(/[0-9]/g, '')">
             </div>
             
             <div class="form-group">
@@ -196,7 +196,7 @@
             </div>
             {% endif %}
 
-            <button type="submit" class="btn-submit">Push Update to Registry</button>
+            <button type="submit" class="btn-submit" id="submitBtn">Push Update to Registry</button>
         </form>
     </div>
 
@@ -204,4 +204,37 @@
         ← Return to Account Inventory
     </a>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const editForm = document.querySelector('form');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    if (!editForm || !submitBtn) return;
+
+    // Capture initial state
+    const getFormData = () => {
+        const data = new FormData(editForm);
+        const obj = {};
+        data.forEach((value, key) => { obj[key] = value; });
+        return JSON.stringify(obj);
+    };
+
+    const initialData = getFormData();
+    submitBtn.disabled = true;
+    submitBtn.style.opacity = '0.5';
+    submitBtn.style.cursor = 'not-allowed';
+
+    editForm.addEventListener('input', () => {
+        const currentData = getFormData();
+        const hasChanged = currentData !== initialData;
+        
+        submitBtn.disabled = !hasChanged;
+        submitBtn.style.opacity = hasChanged ? '1' : '0.5';
+        submitBtn.style.cursor = hasChanged ? 'pointer' : 'not-allowed';
+    });
+});
+</script>
 {% endblock %}
