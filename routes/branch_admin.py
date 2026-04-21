@@ -175,11 +175,11 @@ def dashboard():
 
         # ✅ Load announcements for THIS branch only
         cursor.execute("""
-            SELECT announcement_id AS id, title, message, created_at, is_active,
-                   image_url, branch_id
-            FROM announcements
-            WHERE branch_id = %s
-            ORDER BY created_at DESC
+            SELECT announcement_id AS id, title, message, (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') AS created_at_local, is_active,
+           image_url, branch_id, audience
+    FROM announcements
+    WHERE branch_id = %s
+    ORDER BY created_at DESC
         """, (session.get("branch_id"),))
         announcements_list = cursor.fetchall() or []
         
@@ -260,10 +260,14 @@ def dashboard():
                 db = get_db_connection()
                 cur = db.cursor()
                 try:
+                    audience = (request.form.get("audience") or "all").strip().lower()
+                    if audience not in ("all", "teacher"):
+                        audience = "all"
+
                     cur.execute("""
-                        INSERT INTO announcements (title, message, is_active, image_url, branch_id)
-                        VALUES (%s, %s, TRUE, %s, %s)
-                    """, (title, message, image_url, session.get("branch_id")))
+                        INSERT INTO announcements (title, message, is_active, image_url, branch_id, audience)
+                        VALUES (%s, %s, TRUE, %s, %s, %s)
+                    """, (title, message, image_url, session.get("branch_id"), audience))
                     db.commit()
                     flash("Announcement added to homepage!", "success")
                 except Exception as e:

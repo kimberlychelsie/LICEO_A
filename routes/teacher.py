@@ -168,7 +168,6 @@ def _get_active_school_year(cur, branch_id):
 
 
 
-# ── Dashboard ─────────────────────────────────────────────
 @teacher_bp.route("/teacher")
 def teacher_dashboard():
     if not _require_teacher():
@@ -197,6 +196,7 @@ def teacher_dashboard():
 
     students = []
     announcements = []
+    admin_announcements = []
     teacher_assignments = []
     stats = {"total": 0, "cleared": 0, "pending_bill": 0,
              "reserved": 0, "claimed": 0, "no_reservation": 0}
@@ -334,6 +334,18 @@ def teacher_dashboard():
             )
             teacher_assignments = cur.fetchall() or []
 
+            # ── Branch Admin Announcements (for teachers) ──
+            cur.execute("""
+    SELECT announcement_id AS id, title, message, (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') AS created_at_local, image_url
+    FROM announcements
+    WHERE is_active = TRUE
+      AND branch_id = %s
+      AND audience IN ('all','teacher')
+    ORDER BY created_at DESC
+    LIMIT 20
+            """, (branch_id,))
+            admin_announcements = cur.fetchall() or []
+
         finally:
             cur.close()
             db.close()
@@ -346,6 +358,7 @@ def teacher_dashboard():
         selected_grade=selected_grade,
         grade_levels=GRADE_LEVELS,
         announcements=announcements,
+        admin_announcements=admin_announcements,
         teacher_assignments=teacher_assignments,
         teacher_user_id=session.get("user_id"),
         selected_section_id=selected_section_id,

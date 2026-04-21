@@ -624,6 +624,39 @@
         </div>
     </div>
     {% endif %}
+    <!-- ════ BRANCH ADMIN ANNOUNCEMENTS ════ -->
+{% if admin_announcements %}
+<div class="ann-section">
+    <p class="ann-section-title">🏫 Branch Admin Announcements</p>
+
+    <div class="ann-list">
+        {% for a in admin_announcements %}
+        <div class="ann-card">
+            <div class="ann-card-head">
+                <div style="flex:1;">
+                    <div class="ann-card-title">{{ a.title }}</div>
+                    <div class="ann-card-meta">
+                        📌 From Branch Admin &nbsp;&middot;&nbsp;
+                        {{ a.created_at_local.strftime('%b %d, %Y %I:%M %p') if a.created_at_local else '' }}
+                    </div>
+                </div>
+            </div>
+
+            {% if a.image_url %}
+            <div style="margin-top:12px;">
+                <img src="{{ a.image_url }}" alt="Announcement image"
+                     style="max-width:100%; border-radius:14px; border:1px solid var(--border);">
+            </div>
+            {% endif %}
+
+            {% if a.message %}
+            <div class="ann-card-body" style="margin-top:12px;">{{ a.message }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
 
     <!-- ════ ANNOUNCEMENTS ════ -->
     <div class="ann-section">

@@ -56,6 +56,7 @@ def homepage():
         SELECT announcement_id AS id, title, message, created_at, image_url
         FROM announcements
         WHERE is_active = TRUE
+            AND audience = 'all'
         ORDER BY created_at DESC
     """)
 
