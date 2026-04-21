@@ -198,6 +198,132 @@
             <button type="submit" class="btn btn-primary">➕ Add Question</button>
         </form>
     </div>
+
+    <div class="card" id="inline-builder">
+        <h2>⚡ Auto Build (Fill Inline)</h2>
+      
+        <!-- Step 1: choose counts (GET) -->
+        <form method="get" id="buildForm" style="display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
+          <div class="form-group" style="margin:0; width:120px;">
+            <label>MCQ</label>
+            <input type="number" name="mcq" min="0" max="100" step="1" value="{{ request.args.get('mcq','0') }}">
+          </div>
+          <div class="form-group" style="margin:0; width:120px;">
+            <label>True/False</label>
+            <input type="number" name="tf" min="0" max="100" step="1" value="{{ request.args.get('tf','0') }}">
+          </div>
+          <div class="form-group" style="margin:0; width:120px;">
+            <label>Matching</label>
+            <input type="number" name="match" min="0" max="100" step="1" value="{{ request.args.get('match','0') }}">
+          </div>
+          <div class="form-group" style="margin:0; width:120px;">
+            <label>Points each</label>
+            <input type="number" name="pts" min="1" max="5" step="1" value="{{ request.args.get('pts','1') }}">
+          </div>
+      
+          <button class="btn btn-primary" type="submit">Build Form</button>
+          <a class="btn btn-secondary" href="{{ url_for('teacher.teacher_exam_questions', exam_id=exam.exam_id) }}">Clear</a>
+        </form>
+      
+        {% set mcq_n = request.args.get('mcq', 0) | int %}
+{% set tf_n = request.args.get('tf', 0) | int %}
+{% set match_n = request.args.get('match', 0) | int %}
+{% set pts = request.args.get('pts', 1) | int %}
+
+{# clamp negatives #}
+{% set mcq_n = [mcq_n, 0] | max %}
+{% set tf_n = [tf_n, 0] | max %}
+{% set match_n = [match_n, 0] | max %}
+{% set pts = [pts, 1] | max %}
+{% set pts = [pts, 5] | min %}
+
+{# clamp max 100 #}
+{% set mcq_n = [mcq_n, 100] | min %}
+{% set tf_n = [tf_n, 100] | min %}
+{% set match_n = [match_n, 100] | min %}
+
+{% set total = mcq_n + tf_n + match_n %}
+      
+        {% if total > 0 %}
+        <hr style="border:none; border-top:1px solid #eee; margin:16px 0;">
+      
+        <!-- Step 2: fill questions (POST) -->
+        <form method="post" action="{{ url_for('teacher.teacher_exam_questions_bulk_add', exam_id=exam.exam_id) }}">
+          {% for i in range(mcq_n) %}
+            <div class="q-card">
+              <div class="q-num">MCQ #{{ i+1 }}</div>
+              <input type="hidden" name="q_type[]" value="mcq">
+              <div class="form-group">
+                <label>Question</label>
+                <textarea name="q_text[]" rows="2" required></textarea>
+              </div>
+              <div class="form-group" style="max-width:160px;">
+                <label>Points</label>
+                <input type="number" name="q_points[]" value="{{ pts }}" min="1" required>
+              </div>
+      
+              <div class="choices-grid">
+                <div class="form-group"><label>A</label><input type="text" name="mcq_a[]" required></div>
+                <div class="form-group"><label>B</label><input type="text" name="mcq_b[]" required></div>
+                <div class="form-group"><label>C</label><input type="text" name="mcq_c[]" required></div>
+                <div class="form-group"><label>D</label><input type="text" name="mcq_d[]" required></div>
+              </div>
+      
+              <div class="form-group" style="max-width:200px;">
+                <label>Correct</label>
+                <select name="mcq_correct[]" required>
+                  <option value="A">A</option><option value="B">B</option>
+                  <option value="C">C</option><option value="D">D</option>
+                </select>
+              </div>
+            </div>
+          {% endfor %}
+      
+          {% for i in range(tf_n) %}
+            <div class="q-card">
+              <div class="q-num">True/False #{{ i+1 }}</div>
+              <input type="hidden" name="q_type[]" value="truefalse">
+              <div class="form-group">
+                <label>Statement</label>
+                <textarea name="q_text[]" rows="2" required></textarea>
+              </div>
+              <div class="form-group" style="max-width:160px;">
+                <label>Points</label>
+                <input type="number" name="q_points[]" value="{{ pts }}" min="1" required>
+              </div>
+              <div class="form-group" style="max-width:220px;">
+                <label>Correct</label>
+                <select name="tf_correct[]" required>
+                  <option value="True">True</option>
+                  <option value="False">False</option>
+                </select>
+              </div>
+            </div>
+          {% endfor %}
+      
+          {% for i in range(match_n) %}
+            <div class="q-card">
+              <div class="q-num">Matching (Prompt→Answer) #{{ i+1 }}</div>
+              <input type="hidden" name="q_type[]" value="matching">
+              <div class="form-group">
+                <label>Prompt</label>
+                <textarea name="q_text[]" rows="2" required></textarea>
+              </div>
+              <div class="form-group">
+                <label>Answer</label>
+                <input type="text" name="match_answer[]" required>
+              </div>
+              <div class="form-group" style="max-width:160px;">
+                <label>Points</label>
+                <input type="number" name="q_points[]" value="{{ pts }}" min="1" required>
+              </div>
+            </div>
+          {% endfor %}
+      
+          <button class="btn btn-success" type="submit">💾 Save All Questions</button>
+        </form>
+        {% endif %}
+      </div>
     <!-- Add this inside the draft block, alongside the Add Question form -->
 <div class="card">
     <h2>📂 Import Questions from File</h2>
@@ -263,5 +389,50 @@ document.getElementById('questionForm')?.addEventListener('submit', function(e) 
 
     this.appendChild(hidden);
 });
+(function () {
+  const form = document.getElementById("buildForm");
+  if (!form) return;
+
+  function clampRange(el, min, max) {
+    const v = parseInt(el.value || String(min), 10);
+    if (isNaN(v) || v < min) el.value = min;
+    else if (v > max) el.value = max;
+  }
+
+  const mcq = form.querySelector('input[name="mcq"]');
+  const tf = form.querySelector('input[name="tf"]');
+  const match = form.querySelector('input[name="match"]');
+  const pts = form.querySelector('input[name="pts"]');
+
+  // Counts: 0..100
+  [mcq, tf, match].forEach(inp => {
+    if (!inp) return;
+    inp.addEventListener("input", () => clampRange(inp, 0, 100));
+    inp.addEventListener("change", () => clampRange(inp, 0, 100));
+  });
+
+  // Points: 1..5
+  if (pts) {
+    pts.addEventListener("input", () => clampRange(pts, 1, 5));
+    pts.addEventListener("change", () => clampRange(pts, 1, 5));
+  }
+
+  form.addEventListener("submit", function (e) {
+    clampRange(mcq, 0, 100);
+    clampRange(tf, 0, 100);
+    clampRange(match, 0, 100);
+    if (pts) clampRange(pts, 1, 5);
+
+    const mcqN = parseInt(mcq.value || "0", 10) || 0;
+    const tfN = parseInt(tf.value || "0", 10) || 0;
+    const matchN = parseInt(match.value || "0", 10) || 0;
+
+    if ((mcqN + tfN + matchN) <= 0) {
+      e.preventDefault();
+      alert("Please enter at least 1 question (MCQ / True-False / Matching).");
+      return false;
+    }
+  });
+})();
 </script>
 {% endblock %}

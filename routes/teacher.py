@@ -1436,6 +1436,150 @@ def teacher_exam_questions(exam_id):
         db.close()
 
 
+@teacher_bp.route("/teacher/exams/<int:exam_id>/questions/bulk-add", methods=["POST"])
+def teacher_exam_questions_bulk_add(exam_id):
+    if not _require_teacher():
+        return redirect("/")
+
+    import json
+    import psycopg2.extras
+    from db import get_db_connection
+
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    # Arrays from the inline builder
+    q_type  = request.form.getlist("q_type[]")
+    q_text  = request.form.getlist("q_text[]")
+    q_pts   = request.form.getlist("q_points[]")
+
+    # MCQ arrays
+    mcq_a = request.form.getlist("mcq_a[]")
+    mcq_b = request.form.getlist("mcq_b[]")
+    mcq_c = request.form.getlist("mcq_c[]")
+    mcq_d = request.form.getlist("mcq_d[]")
+    mcq_correct = request.form.getlist("mcq_correct[]")
+
+    # TF arrays
+    tf_correct = request.form.getlist("tf_correct[]")
+
+    # Matching arrays (prompt→answer)
+    match_answer = request.form.getlist("match_answer[]")
+
+    # Build shared dropdown options for ALL matching prompts in this bulk-add
+    match_options = [a.strip() for a in match_answer if (a or "").strip()]
+    seen = set()
+    match_options_unique = []
+    for a in match_options:
+        if a not in seen:
+            match_options_unique.append(a)
+            seen.add(a)
+
+    match_choices_json = json.dumps({"options": match_options_unique})
+
+    if not q_type or not q_text:
+        flash("Nothing to save.", "error")
+        return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        # ownership + draft check
+        cur.execute("""
+            SELECT e.exam_id
+            FROM exams e
+            JOIN sections s ON e.section_id = s.section_id
+            WHERE e.exam_id=%s
+              AND e.teacher_id=%s
+              AND e.branch_id=%s
+              AND s.year_id=%s
+              AND e.status='draft'
+        """, (exam_id, user_id, branch_id, year_id))
+        if not cur.fetchone():
+            flash("Exam not found / unauthorized / not editable.", "error")
+            return redirect(url_for("teacher.teacher_exams"))
+
+        cur.execute("SELECT COALESCE(MAX(order_num),0) AS max_o FROM exam_questions WHERE exam_id=%s", (exam_id,))
+        order_num = cur.fetchone()["max_o"] or 0
+
+        # indices for per-type arrays
+        i_mcq = 0
+        i_tf = 0
+        i_match = 0
+
+        inserted = 0
+
+        for i in range(len(q_type)):
+            t = (q_type[i] or "").strip().lower()
+            text = (q_text[i] or "").strip()
+            pts = int(q_pts[i] or 1)
+
+            if not text:
+                continue
+
+            choices = None
+            correct = ""
+
+            if t == "mcq":
+                a = (mcq_a[i_mcq] or "").strip()
+                b = (mcq_b[i_mcq] or "").strip()
+                c = (mcq_c[i_mcq] or "").strip()
+                d = (mcq_d[i_mcq] or "").strip()
+                corr = (mcq_correct[i_mcq] or "A").strip().upper()
+                i_mcq += 1
+
+                if not all([a, b, c, d]) or corr not in ("A", "B", "C", "D"):
+                    continue
+
+                choices = json.dumps({"A": a, "B": b, "C": c, "D": d})
+                correct = corr
+
+            elif t == "truefalse":
+                corr = (tf_correct[i_tf] or "True").strip()
+                i_tf += 1
+                if corr not in ("True", "False"):
+                    corr = "True"
+                correct = corr
+
+            elif t == "matching":
+                ans = (match_answer[i_match] or "").strip()
+                i_match += 1
+                if not ans:
+                    continue
+
+    # Use the shared options list so each prompt shows all answers
+                choices = match_choices_json
+                correct = ans
+
+            else:
+                continue
+
+            order_num += 1
+            cur.execute("""
+                INSERT INTO exam_questions
+                    (exam_id, question_text, question_type, choices, correct_answer, points, order_num)
+                VALUES (%s,%s,%s,%s,%s,%s,%s)
+            """, (exam_id, text, t, choices, correct, pts, order_num))
+            inserted += 1
+
+        db.commit()
+        flash(f"Saved {inserted} question(s).", "success")
+
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not save questions: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+
+    return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+
+
 @teacher_bp.route("/teacher/exams/<int:exam_id>/publish", methods=["POST"])
 def teacher_exam_publish(exam_id):
     if not _require_teacher():
