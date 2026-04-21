@@ -293,11 +293,17 @@
                             <td>
                                 <strong style="color: #1e293b;">{{ subj.name }}</strong>
                                 {% if subj.deped_category == 'science_math' %}
-                                <span style="display:inline-block; margin-left:8px; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700; background:#d1fae5; color:#065f46;">Science / Math</span>
+                                <span
+                                    style="display:inline-block; margin-left:8px; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700; background:#d1fae5; color:#065f46;">Science
+                                    / Math</span>
                                 {% elif subj.deped_category == 'skills' %}
-                                <span style="display:inline-block; margin-left:8px; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700; background:#fef3c7; color:#92400e;">Skills Subject</span>
+                                <span
+                                    style="display:inline-block; margin-left:8px; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700; background:#fef3c7; color:#92400e;">Skills
+                                    Subject</span>
                                 {% else %}
-                                <span style="display:inline-block; margin-left:8px; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700; background:#dbeafe; color:#1d4ed8;">Language / Values</span>
+                                <span
+                                    style="display:inline-block; margin-left:8px; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700; background:#dbeafe; color:#1d4ed8;">Language
+                                    / Values</span>
                                 {% endif %}
                             </td>
                             <td style="color: #475569;">
@@ -378,23 +384,110 @@
             <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
                 <button type="button" class="btn btn-secondary" style="width:auto;"
                     onclick="closeEditModal()">Cancel</button>
-                <button type="submit" class="btn btn-success" style="width:auto;">Save Changes</button>
+                <button type="submit" class="btn btn-success" id="editSubmitBtn" style="width:auto;">Save
+                    Changes</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
+    function validateSubject(name, category) {
+        const n = name.trim().toLowerCase();
+        const cat = category.toLowerCase();
+
+        // Science/Math validation
+        if ((n.includes('science') || n.includes('math')) && cat !== 'science_math') {
+            alert('⚠️ Validation Error: "Science" and "Mathematics" subjects must use the "Science / Math" category.');
+            return false;
+        }
+
+        // Language/Values validation
+        const langKeywords = ['filipino', 'english', 'ap', 'esp', 'religion', 'values', 'araling', 'pagpapakatao'];
+        if (langKeywords.some(k => n.includes(k)) && cat !== 'language') {
+            // Only block if it's clearly one of these
+            if (cat === 'science_math' || cat === 'skills') {
+                alert('⚠️ Validation Error: This subject belongs to the "Language / Values" category according to the guide.');
+                return false;
+            }
+        }
+
+        // Skills validation
+        const skillKeywords = ['epp', 'tle', 'mapeh', 'computer', 'ict', 'music', 'arts', 'physical education', 'health'];
+        if (skillKeywords.some(k => n.includes(k)) && cat !== 'skills') {
+            if (cat === 'science_math' || cat === 'language') {
+                alert('⚠️ Validation Error: This subject belongs to the "Skills" category (EPP, TLE, MAPEH, etc.).');
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    let initialSubjectData = {};
+
     function openEditModal(subjectId, name, sectionId, category) {
         document.getElementById('editForm').action = '/branch-admin/subjects/' + subjectId + '/edit';
         document.getElementById('edit_name').value = name;
         document.getElementById('edit_section_id').value = sectionId;
         document.getElementById('edit_deped_category').value = category || 'language';
+
+        // Capture initial state
+        initialSubjectData = {
+            name: name,
+            section: sectionId,
+            category: category || 'language'
+        };
+
+        const submitBtn = document.getElementById('editSubmitBtn');
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.5';
+        submitBtn.style.cursor = 'not-allowed';
+
         document.getElementById('editModal').style.display = 'flex';
     }
 
     function closeEditModal() {
         document.getElementById('editModal').style.display = 'none';
     }
+
+    // Monitor changes
+    document.getElementById('editForm').addEventListener('input', function () {
+        const currentName = document.getElementById('edit_name').value;
+        const currentSection = document.getElementById('edit_section_id').value;
+        const currentCat = document.getElementById('edit_deped_category').value;
+
+        const hasChanged = (
+            currentName !== initialSubjectData.name ||
+            currentSection != initialSubjectData.section ||
+            currentCat !== initialSubjectData.category
+        );
+
+        const submitBtn = document.getElementById('editSubmitBtn');
+        submitBtn.disabled = !hasChanged;
+        submitBtn.style.opacity = hasChanged ? '1' : '0.5';
+        submitBtn.style.cursor = hasChanged ? 'pointer' : 'not-allowed';
+    });
+
+    // Attach validation to both forms
+    document.addEventListener('DOMContentLoaded', function () {
+        const addForm = document.querySelector('.col-form form');
+        if (addForm) {
+            addForm.onsubmit = function () {
+                const name = addForm.querySelector('[name="name"]').value;
+                const cat = addForm.querySelector('[name="deped_category"]').value;
+                return validateSubject(name, cat);
+            };
+        }
+
+        const editForm = document.getElementById('editForm');
+        if (editForm) {
+            editForm.onsubmit = function () {
+                const name = document.getElementById('edit_name').value;
+                const cat = document.getElementById('edit_deped_category').value;
+                return validateSubject(name, cat);
+            };
+        }
+    });
 </script>
 {% endblock %}

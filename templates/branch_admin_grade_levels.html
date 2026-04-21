@@ -348,13 +348,15 @@
             <div style="display:flex; justify-content:flex-end; gap:8px; margin-top: 20px;">
                 <button type="button" class="btn btn-secondary" style="width:auto;"
                     onclick="closeEditModal()">Cancel</button>
-                <button type="submit" class="btn btn-success" style="width:auto;">Save Changes</button>
+                <button type="submit" class="btn btn-success" id="editSubmitBtn" style="width:auto;">Save Changes</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
+    let initialGradeData = {};
+
     function openEditModal(gradeId, order, name, description) {
         var baseUrl = "{{ url_for('branch_admin.branch_admin_grade_level_edit', grade_id=999999) }}";
         var finalUrl = baseUrl.replace('999999', gradeId);
@@ -363,12 +365,43 @@
         document.getElementById('edit_display_order').value = order;
         document.getElementById('edit_name').value = name;
         document.getElementById('edit_description').value = description;
+
+        // Capture initial state
+        initialGradeData = {
+            order: order,
+            name: name,
+            description: description
+        };
+
+        const submitBtn = document.getElementById('editSubmitBtn');
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.5';
+        submitBtn.style.cursor = 'not-allowed';
+
         document.getElementById('editModal').style.display = 'flex';
     }
 
     function closeEditModal() {
         document.getElementById('editModal').style.display = 'none';
     }
+
+    // Monitor changes
+    document.getElementById('editForm').addEventListener('input', function () {
+        const currentOrder = document.getElementById('edit_display_order').value;
+        const currentName = document.getElementById('edit_name').value;
+        const currentDesc = document.getElementById('edit_description').value;
+
+        const hasChanged = (
+            currentOrder != initialGradeData.order ||
+            currentName != initialGradeData.name ||
+            currentDesc != initialGradeData.description
+        );
+
+        const submitBtn = document.getElementById('editSubmitBtn');
+        submitBtn.disabled = !hasChanged;
+        submitBtn.style.opacity = hasChanged ? '1' : '0.5';
+        submitBtn.style.cursor = hasChanged ? 'pointer' : 'not-allowed';
+    });
 </script>
 </div>
 {% endblock %}

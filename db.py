@@ -314,6 +314,18 @@ def get_db_connection():
                 logger.warning(f"Could not migrate schedules table: {e}")
                 conn.rollback()
 
+            # announcements migration
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'announcements'")
+                ann_cols = [r[0] for r in cur.fetchall()]
+                if ann_cols:
+                    if 'audience' not in ann_cols:
+                        cur.execute("ALTER TABLE announcements ADD COLUMN audience TEXT NOT NULL DEFAULT 'all'")
+                    conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate announcements table: {e}")
+                conn.rollback()
+
 
             # ONE-TIME CLEANUP: Delete test Teacher9 accounts directly on boot
             try:

@@ -1652,6 +1652,7 @@ def api_get_all_subjects(teacher_id):
         # IMPORTANT: Check if ANYONE (not just this teacher) is assigned
         cursor.execute("""
             SELECT
+                st.id AS assignment_id,
                 st.subject_id,
                 st.section_id,
                 st.teacher_id,
@@ -1708,10 +1709,10 @@ def assign_teachers_bulk():
 
     data = request.get_json()
     teacher_id = data.get("teacher_id")
-    subject_ids = data.get("subject_ids", [])
+    assignment_ids = data.get("assignment_ids", [])  # Changed from subject_ids
 
-    if not teacher_id or not subject_ids:
-        return {"success": False, "message": "Missing teacher or subjects"}, 400
+    if not teacher_id or not assignment_ids:
+        return {"success": False, "message": "Missing teacher or assignments"}, 400
 
     db = get_db_connection()
     cursor = db.cursor()
@@ -1736,47 +1737,25 @@ def assign_teachers_bulk():
         if not cursor.fetchone():
             return {"success": False, "message": "Teacher not found"}, 404
 
-        count = 0
-        for subject_id in subject_ids:
-            try:
-                # Verify the subject exists in a section of this branch
-                cursor.execute("""
-                    SELECT st.section_id FROM section_teachers st
-                    JOIN sections s ON st.section_id = s.section_id
-                    JOIN school_years y ON s.year_id = y.year_id
-                    WHERE st.subject_id = %s AND s.branch_id = %s
-                      AND y.is_active = TRUE
-                      AND st.year_id = %s
-                    LIMIT 1
-                """, (subject_id, branch_id, active_year_id))
-                
-                if cursor.fetchone():
-                    # Update the assignment
-                    cursor.execute("""
-                        UPDATE section_teachers
-                        SET teacher_id = %s
-                        WHERE subject_id = %s
-                        AND year_id = %s
-                        AND section_id IN (
-                            SELECT s.section_id
-                            FROM sections s
-                            JOIN school_years y ON s.year_id = y.year_id
-                            WHERE s.branch_id = %s AND y.is_active = TRUE
-                        )
-                    """, (teacher_id, subject_id, active_year_id, branch_id))
-                    count += cursor.rowcount
-
-            except Exception as e:
-                print(f"Error assigning subject {subject_id}: {str(e)}")
-                continue
+        # Precisely update each selected assignment row
+        cursor.execute("""
+            UPDATE section_teachers
+            SET teacher_id = %s
+            WHERE id = ANY(%s)
+            AND section_id IN (
+                SELECT section_id FROM sections WHERE branch_id = %s
+            )
+        """, (teacher_id, assignment_ids, branch_id))
+        
+        count = cursor.rowcount
 
         db.commit()
-        print(f"✅ Bulk assigned {count} subjects to teacher {teacher_id}")
+        print(f"✅ Bulk assigned {count} specific sections to teacher {teacher_id}")
 
         return {
             "success": True,
             "count": count,
-            "message": f"Successfully assigned {count} subjects"
+            "message": f"Successfully assigned {count} sections"
         }
 
     except Exception as e:

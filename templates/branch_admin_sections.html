@@ -264,8 +264,9 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label>Capacity</label>
-                        <input class="form-control" type="number" name="capacity" value="50" min="1" required>
+                        <label>Capacity (Max 50)</label>
+                        <input class="form-control" type="number" name="capacity" value="50" min="1" max="50" required
+                            oninput="if(this.value.length > 2) this.value = this.value.slice(0,2); if(parseInt(this.value) > 50) this.value = 50;">
                     </div>
                     <button type="submit" class="btn btn-primary">Add Section</button>
                 </form>
@@ -346,30 +347,65 @@
             </div>
 
             <div class="form-group">
-                <label>Capacity *</label>
-                <input class="form-control" type="number" name="capacity" id="edit_capacity" min="1" required>
+                <label>Capacity (Max 50) *</label>
+                <input class="form-control" type="number" name="capacity" id="edit_capacity" min="1" max="50" required
+                    oninput="if(this.value.length > 2) this.value = this.value.slice(0,2); if(parseInt(this.value) > 50) this.value = 50;">
             </div>
 
             <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
                 <button type="button" class="btn btn-secondary" style="width:auto;"
                     onclick="closeEditModal()">Cancel</button>
-                <button type="submit" class="btn btn-success" style="width:auto;">Save Changes</button>
+                <button type="submit" class="btn btn-success" id="editSubmitBtn" style="width:auto;">Save
+                    Changes</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
+    let initialSectionData = {};
+
     function openEditModal(sectionId, sectionName, gradeLevelId, capacity) {
         document.getElementById('editForm').action = '/branch-admin/sections/' + sectionId + '/edit';
         document.getElementById('edit_section_name').value = sectionName;
         document.getElementById('edit_grade_level_id').value = gradeLevelId;
         document.getElementById('edit_capacity').value = capacity;
+
+        // Capture initial state
+        initialSectionData = {
+            name: sectionName,
+            grade: gradeLevelId,
+            capacity: capacity
+        };
+
+        const submitBtn = document.getElementById('editSubmitBtn');
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.5';
+        submitBtn.style.cursor = 'not-allowed';
+
         document.getElementById('editModal').style.display = 'flex';
     }
 
     function closeEditModal() {
         document.getElementById('editModal').style.display = 'none';
     }
+
+    // Monitor changes
+    document.getElementById('editForm').addEventListener('input', function () {
+        const currentName = document.getElementById('edit_section_name').value;
+        const currentGrade = document.getElementById('edit_grade_level_id').value;
+        const currentCap = document.getElementById('edit_capacity').value;
+
+        const hasChanged = (
+            currentName !== initialSectionData.name ||
+            currentGrade != initialSectionData.grade ||
+            currentCap != initialSectionData.capacity
+        );
+
+        const submitBtn = document.getElementById('editSubmitBtn');
+        submitBtn.disabled = !hasChanged;
+        submitBtn.style.opacity = hasChanged ? '1' : '0.5';
+        submitBtn.style.cursor = hasChanged ? 'pointer' : 'not-allowed';
+    });
 </script>
 {% endblock %}
