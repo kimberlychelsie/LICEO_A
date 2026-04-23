@@ -229,11 +229,15 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label" for="tuition_fee">Tuition & Mandatory Fees (₱)</label>
-                        <input type="number" id="tuition_fee" name="tuition_fee" class="form-input" step="0.01" min="0" value="0" oninput="calculateTotal()" required>
+                        <input type="text" id="tuition_fee" name="tuition_fee" class="form-input" 
+                          value="0" required
+                          oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(parseInt(this.value) > 20000) this.value = '20000'; calculateTotal()">
+                        <span style="font-size: 0.7rem; color: var(--cashier-muted);">Maximum allowed: ₱20,000</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="other_fees">Misc. / Incidentals (₱)</label>
-                        <input type="number" id="other_fees" name="other_fees" class="form-input" step="0.01" min="0" value="0" oninput="calculateTotal()">
+                        <input type="text" id="other_fees" name="other_fees" class="form-input" 
+                          value="0" oninput="this.value = this.value.replace(/[^0-9]/g, ''); calculateTotal()">
                     </div>
                 </div>
             </div>

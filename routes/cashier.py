@@ -231,16 +231,16 @@ def create_bill(enrollment_id):
             FROM reservation_items ri
             JOIN reservations r ON r.reservation_id = ri.reservation_id
             JOIN inventory_items ii ON ri.item_id = ii.item_id
-            WHERE r.branch_id = %s AND r.status != 'CANCELLED'
+            WHERE r.branch_id = %s AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED')
               AND (
                 r.enrollment_id = %s
                 OR
-                (r.enrollment_id IS NULL AND r.student_user_id IN (
+                r.student_user_id IN (
                     SELECT u.user_id
                     FROM users u
                     JOIN student_accounts sa ON u.username = sa.username
                     WHERE sa.enrollment_id = %s
-                ))
+                )
               )
         """, (session.get("branch_id"), enrollment_id, enrollment_id))
         reservation_items = cursor.fetchall()
@@ -270,6 +270,9 @@ def create_bill(enrollment_id):
 
         if request.method == "POST":
             tuition_fee = Decimal(request.form.get("tuition_fee", "0") or "0")
+            if tuition_fee > 20000:
+                tuition_fee = Decimal("20000")
+
             books_fee = Decimal(request.form.get("books_fee", "0") or "0")
             uniform_fee = Decimal(request.form.get("uniform_fee", "0") or "0")
             other_fees = Decimal(request.form.get("other_fees", "0") or "0")
@@ -354,7 +357,24 @@ def view_bill(bill_id):
         """, (bill_id,))
         payments = cursor.fetchall()
 
-        return render_template("cashier_view_bill.html", bill=bill, payments=payments)
+        # Fetch detailed reservations for breakdown
+        cursor.execute("""
+            SELECT
+                r.reservation_id, ii.item_name, ri.qty, ri.line_total, ii.category
+            FROM reservation_items ri
+            JOIN reservations r ON r.reservation_id = ri.reservation_id
+            JOIN inventory_items ii ON ri.item_id = ii.item_id
+            WHERE (r.enrollment_id = %s OR r.student_user_id IN (
+                SELECT u.user_id FROM student_accounts sa 
+                JOIN users u ON sa.username = u.username 
+                WHERE sa.enrollment_id = %s
+            )) 
+            AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED')
+            ORDER BY r.reservation_id ASC
+        """, (bill["enrollment_id"], bill["enrollment_id"]))
+        reservation_details = cursor.fetchall()
+
+        return render_template("cashier_view_bill.html", bill=bill, payments=payments, reservation_details=reservation_details)
     finally:
         cursor.close()
         db.close()

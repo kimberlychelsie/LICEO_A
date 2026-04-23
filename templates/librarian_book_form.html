@@ -237,7 +237,13 @@
 
   {# ── Page header ── #}
   <div class="page-header">
-    <div class="ph-icon">{{ '✏️' if mode=='edit' else '📚' }}</div>
+    <div class="ph-icon">
+      {% if mode == 'edit' %}
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+      {% else %}
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+      {% endif %}
+    </div>
     <div class="ph-text">
       {% if mode == 'edit' %}
       <h1>Edit <span>Book Record</span></h1>
@@ -260,7 +266,7 @@
         <div class="field-row">
           <div class="field-group">
             <label class="field-label" for="grade_level">
-              🎓 Grade Level <span class="field-required">*</span>
+              Grade Level <span class="field-required">*</span>
             </label>
             <div class="select-wrap">
               <select class="field-select" id="grade_level" name="grade_level" required>
@@ -275,7 +281,7 @@
 
           <div class="field-group">
             <label class="field-label" for="publisher">
-              🏢 Publisher <span class="field-required">*</span>
+              Publisher <span class="field-required">*</span>
             </label>
             <input class="field-input" id="publisher" type="text" name="publisher"
               value="{{ book.publisher if book else '' }}"
@@ -284,22 +290,35 @@
           </div>
         </div>
 
-        {# Title #}
-        <div class="field-full">
-          <div class="field-group">
+        {# Title + Price row #}
+        <div class="field-row">
+          <div class="field-group" style="grid-column: span 1;">
             <label class="field-label" for="title">
-              📖 Book Title <span class="field-required">*</span>
+              Book Title <span class="field-required">*</span>
             </label>
             <input class="field-input" id="title" type="text" name="title"
               value="{{ book.title if book else '' }}"
               placeholder="Enter the full, exact title of the book" required autocomplete="off">
             <span class="field-hint">Use the exact title as printed on the cover</span>
           </div>
+
+          <div class="field-group">
+            <label class="field-label" for="price">
+              Unit Price (₱) <span class="field-required">*</span>
+            </label>
+            <input class="field-input" id="price" type="text" name="price"
+              value="{{ book.price if book else '0' }}"
+              placeholder="000" required
+              oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 3)">
+            <span class="field-hint">Standard selling price for this book</span>
+          </div>
         </div>
 
         {# Info tip ── #}
         <div class="tips-panel">
-          <span class="tips-icon">💡</span>
+          <div class="tips-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+          </div>
           <div class="tips-body">
             <h4>Tips for accurate records</h4>
             <ul>
@@ -315,15 +334,16 @@
       {# ── Action buttons ── #}
       {% if is_branch_active_status %}
       <div class="form-actions">
-        <a href="{{ url_for('librarian.books_inventory') }}" class="btn-cancel">✕ Cancel</a>
+        <a href="{{ url_for('librarian.books_inventory') }}" class="btn-cancel">Cancel</a>
         <button class="btn-submit" type="submit" id="submitBtn">
-          {{ '💾 Save Changes' if mode == 'edit' else '➕ Add Book to Inventory' }}
+          {{ 'Save Changes' if mode == 'edit' else 'Add Book to Inventory' }}
         </button>
       </div>
       {% else %}
       <div class="form-actions">
-        <span style="font-size:13px; color:var(--muted); font-weight:600;">
-          🔒 Branch is inactive — editing is disabled.
+        <span style="font-size:13px; color:var(--muted); font-weight:600; display: flex; align-items: center; gap: 6px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+          Branch is inactive — editing is disabled.
         </span>
         <a href="{{ url_for('librarian.books_inventory') }}" class="btn-cancel">← Go Back</a>
       </div>
@@ -342,13 +362,34 @@
   const submitBtn = document.getElementById('submitBtn');
 
   // Mark fields as filled for styling
-  ['grade_level', 'publisher', 'title'].forEach(id => {
+  const fieldIds = ['grade_level', 'publisher', 'title', 'price'];
+  
+  // Track initial values for change detection
+  const initialValues = {};
+  fieldIds.forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
+    initialValues[id] = el.value;
+    
     const update = () => {
       if (el.value.trim()) el.classList.add('filled');
       else el.classList.remove('filled');
+      
+      // Change detection (only if in edit mode)
+      {% if mode == 'edit' %}
+        let hasChanged = false;
+        fieldIds.forEach(fid => {
+          const field = document.getElementById(fid);
+          if (field && field.value !== initialValues[fid]) {
+            hasChanged = true;
+          }
+        });
+        submitBtn.disabled = !hasChanged;
+        submitBtn.style.opacity = hasChanged ? '1' : '0.5';
+        submitBtn.style.cursor = hasChanged ? 'pointer' : 'not-allowed';
+      {% endif %}
     };
+    
     update();
     el.addEventListener('input', update);
     el.addEventListener('change', update);
@@ -359,12 +400,13 @@
     const grade  = document.getElementById('grade_level').value.trim();
     const pub    = document.getElementById('publisher').value.trim();
     const title  = document.getElementById('title').value.trim();
+    const price  = document.getElementById('price').value.trim();
 
-    if (!grade || !pub || !title) return; // let native validation handle it
+    if (!grade || !pub || !title || !price) return;
 
     if (submitBtn) {
       submitBtn.disabled = true;
-      submitBtn.innerHTML = '⏳ Processing…';
+      submitBtn.innerHTML = 'Processing…';
     }
     overlay.classList.add('active');
   });

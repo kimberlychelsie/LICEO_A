@@ -218,7 +218,7 @@
 <div class="ba-container">
 
     <div class="header-row">
-        <h1>📖 Subjects</h1>
+        <h1>Subjects</h1>
     </div>
 
     <!-- Flash messages -->
@@ -226,7 +226,6 @@
     {% if messages %}
     {% for cat, msg in messages %}
     <div class="flash-alert {{ 'flash-success' if cat == 'success' else 'flash-error' }}">
-        <span style="font-size:16px;">{{ '✅' if cat == 'success' else '⚠️' }}</span>
         {{ msg }}
     </div>
     {% endfor %}
@@ -238,7 +237,7 @@
         {% if is_branch_active_status %}
         <div class="col-form">
             <div class="card">
-                <h2>➕ Add Subject</h2>
+                <h2>Add Subject</h2>
                 <form method="post" action="{{ url_for('branch_admin.branch_admin_subjects') }}">
                     <div class="form-group">
                         <label>Subject Name *</label>
@@ -277,7 +276,7 @@
         <!-- Existing Subjects -->
         <div class="col-table" {% if not is_branch_active_status %}style="flex: 1 0 100%;" {% endif %}>
             <div class="card">
-                <h2>📋 Existing Subjects</h2>
+                <h2>Existing Subjects</h2>
                 {% if subjects %}
                 <table class="health-table">
                     <thead>
@@ -319,13 +318,12 @@
                                 {% if is_branch_active_status %}
                                 {% set current_section_id = subject_first_section.get(subj.subject_id, '') %}
                                 <button class="btn btn-sm btn-secondary" type="button"
-                                    onclick='openEditModal({{ subj.subject_id }}, {{ subj.name | tojson }}, "{{ current_section_id }}", "{{ subj.deped_category }}")'>✎
-                                    Edit</button>
+                                    onclick='openEditModal({{ subj.subject_id }}, {{ subj.name | tojson }}, "{{ current_section_id }}", "{{ subj.deped_category }}")'>Edit</button>
                                 <form method="post"
                                     action="{{ url_for('branch_admin.branch_admin_subject_delete', subject_id=subj.subject_id) }}"
                                     onsubmit="return confirm('Delete subject {{ subj.name }}?');"
                                     style="display:inline;">
-                                    <button class="btn btn-sm btn-danger" type="submit">🗑 Delete</button>
+                                    <button class="btn btn-sm btn-danger" type="submit">Delete</button>
                                 </form>
                                 {% endif %}
                             </td>
@@ -349,7 +347,7 @@
         style="background:#fff; padding:24px; border-radius:12px; width:90%; max-width:400px; box-shadow:0 8px 30px rgba(0,0,0,0.2);">
         <h2
             style="margin:0 0 16px 0; font-size:16px; font-weight:700; color:#2c3e50; border-bottom:2px solid #007bff; padding-bottom:10px;">
-            ✎ Edit Subject</h2>
+            Edit Subject</h2>
         <form id="editForm" method="post" action="">
             <div class="form-group">
                 <label>Subject Name *</label>
@@ -398,7 +396,7 @@
 
         // Science/Math validation
         if ((n.includes('science') || n.includes('math')) && cat !== 'science_math') {
-            alert('⚠️ Validation Error: "Science" and "Mathematics" subjects must use the "Science / Math" category.');
+            alert('Validation Error: "Science" and "Mathematics" subjects must use the "Science / Math" category.');
             return false;
         }
 
@@ -407,7 +405,7 @@
         if (langKeywords.some(k => n.includes(k)) && cat !== 'language') {
             // Only block if it's clearly one of these
             if (cat === 'science_math' || cat === 'skills') {
-                alert('⚠️ Validation Error: This subject belongs to the "Language / Values" category according to the guide.');
+                alert('Validation Error: This subject belongs to the "Language / Values" category according to the guide.');
                 return false;
             }
         }
@@ -416,7 +414,7 @@
         const skillKeywords = ['epp', 'tle', 'mapeh', 'computer', 'ict', 'music', 'arts', 'physical education', 'health'];
         if (skillKeywords.some(k => n.includes(k)) && cat !== 'skills') {
             if (cat === 'science_math' || cat === 'language') {
-                alert('⚠️ Validation Error: This subject belongs to the "Skills" category (EPP, TLE, MAPEH, etc.).');
+                alert('Validation Error: This subject belongs to the "Skills" category (EPP, TLE, MAPEH, etc.).');
                 return false;
             }
         }

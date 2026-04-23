@@ -208,14 +208,26 @@
 <div class="bill-container">
 
     <div class="statement-header">
-        <h1 class="statement-title">📄 Billing Statement</h1>
+        <h1 class="statement-title" style="display: flex; align-items: center; gap: 10px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            Billing Statement
+        </h1>
         <div style="text-align: right;">
             {% if bill.status == 'paid' %}
-                <span style="background: #ecfdf5; color: #065f46; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 0.75rem; border: 1px solid #a7f3d0;">✓ FULLY SETTLED</span>
+                <span style="background: #ecfdf5; color: #065f46; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 0.75rem; border: 1px solid #a7f3d0; display: inline-flex; align-items: center; gap: 6px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    FULLY SETTLED
+                </span>
             {% elif bill.status == 'partial' %}
-                <span style="background: #fffbeb; color: #92400e; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 0.75rem; border: 1px solid #fde68a;">⏳ PARTIAL PAYMENT</span>
+                <span style="background: #fffbeb; color: #92400e; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 0.75rem; border: 1px solid #fde68a; display: inline-flex; align-items: center; gap: 6px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    PARTIAL PAYMENT
+                </span>
             {% else %}
-                <span style="background: #fef2f2; color: #991b1b; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 0.75rem; border: 1px solid #fecaca;">⏰ PAYMENT DUE</span>
+                <span style="background: #fef2f2; color: #991b1b; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 0.75rem; border: 1px solid #fecaca; display: inline-flex; align-items: center; gap: 6px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    PAYMENT DUE
+                </span>
             {% endif %}
         </div>
     </div>
@@ -259,7 +271,10 @@
             </div>
         </div>
 
-        <h3 style="font-size: 1rem; font-weight: 800; color: var(--cashier-primary); margin-bottom: 16px;">🔍 Fee Itemization</h3>
+        <h3 style="font-size: 1rem; font-weight: 800; color: var(--cashier-primary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            Fee Itemization
+        </h3>
         <table class="breakdown-table">
             <thead>
                 <tr>
@@ -272,18 +287,24 @@
                     <td>Tuition & Mandatory Fees</td>
                     <td style="text-align: right;">₱{{ "{:,.2f}".format(bill.tuition_fee) }}</td>
                 </tr>
+                
+                {% for res in reservation_details %}
                 <tr>
-                    <td>Instructional Materials (Books)</td>
-                    <td style="text-align: right;">₱{{ "{:,.2f}".format(bill.books_fee) }}</td>
+                    <td style="font-size: 0.9rem;">
+                        <span style="color: var(--cashier-muted); font-family: monospace;">[RES-{{ "%04d"|format(res.reservation_id) }}]</span>
+                        {{ res.item_name }} {% if res.qty > 1 %}(x{{ res.qty }}){% endif %}
+                    </td>
+                    <td style="text-align: right;">₱{{ "{:,.2f}".format(res.line_total) }}</td>
                 </tr>
-                <tr>
-                    <td>School Uniforms & Apparel</td>
-                    <td style="text-align: right;">₱{{ "{:,.2f}".format(bill.uniform_fee) }}</td>
-                </tr>
+                {% endfor %}
+
+                {% if bill.other_fees > 0 %}
                 <tr>
                     <td>Miscellaneous / Other Charges</td>
                     <td style="text-align: right;">₱{{ "{:,.2f}".format(bill.other_fees) }}</td>
                 </tr>
+                {% endif %}
+
                 <tr class="row-total">
                     <td>TOTAL CHARGES</td>
                     <td style="text-align: right;">₱{{ "{:,.2f}".format(bill.total_amount) }}</td>
@@ -293,7 +314,10 @@
     </div>
 
     <div class="history-section">
-        <h3>💸 Transaction History</h3>
+        <h3 style="display: flex; align-items: center; gap: 10px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            Transaction History
+        </h3>
         {% if payments %}
         <div style="overflow-x: auto;">
             <table class="modern-table">
@@ -316,7 +340,10 @@
                         <td><span style="text-transform: capitalize;">{{ p.payment_method|replace('_', ' ') }}</span></td>
                         <td>{{ p.received_by_name }}</td>
                         <td style="text-align: right;">
-                            <a href="/cashier/receipt/{{ p.payment_id }}" target="_blank" class="btn-print">🖨️ Print Receipt</a>
+                            <a href="/cashier/receipt/{{ p.payment_id }}" target="_blank" class="btn-print">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                                Print Receipt
+                            </a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -332,9 +359,14 @@
 
     <div class="action-row">
         {% if bill.status != 'paid' %}
-            <a href="/cashier/process-payment/{{ bill.bill_id }}" class="btn-main btn-pay">💳 Process New Payment</a>
+            <a href="/cashier/process-payment/{{ bill.bill_id }}" class="btn-main btn-pay" style="display: inline-flex; align-items: center; gap: 8px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+                Process New Payment
+            </a>
         {% endif %}
-        <a href="/cashier" class="btn-main btn-back">⬅ Return to Registry</a>
+        <a href="/cashier" class="btn-main btn-back" style="display: inline-flex; align-items: center; gap: 8px;">
+            Return to Registry
+        </a>
     </div>
 
 </div>

@@ -302,12 +302,12 @@
             <h3 class="task-title">{{ act.title }}</h3>
             <div class="task-info-row">
               {% if act.due_date %}
-              <span>📅 Due: {{ act.due_date.strftime('%b %d, %Y %I:%M %p') }}</span>
-              {% if act.due_date < now %}<span style="color:#ef4444; font-weight:700;">⚠️ Past Due</span>{% endif %}
+              <span>Due: {{ act.due_date.strftime('%b %d, %Y %I:%M %p') }}</span>
+              {% if act.due_date < now %}<span style="color:#ef4444; font-weight:700;">Past Due</span>{% endif %}
               {% else %}
-              <span>📅 No due date</span>
+              <span>No due date</span>
               {% endif %}
-              <span>🏆 Max Score: {{ act.max_score }}</span>
+              <span>Max Score: {{ act.max_score }}</span>
               {% if act.grading_period %}
               <span class="status-badge" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">{{ act.grading_period }} Grading</span>
               {% endif %}
@@ -318,11 +318,11 @@
           </div>
           <div>
             {% if is_graded %}
-              <span class="status-badge st-graded">✅ Graded</span>
+              <span class="status-badge st-graded">Graded</span>
             {% elif is_submitted %}
-              <span class="status-badge st-submitted">✔ Submitted</span>
+              <span class="status-badge st-submitted">Submitted</span>
             {% else %}
-              <span class="status-badge st-pending">⏳ Pending</span>
+              <span class="status-badge st-pending">Pending</span>
             {% endif %}
           </div>
         </div>
@@ -332,19 +332,19 @@
           {% set ext = act.attachment_path.split('.')[-1].lower() %}
           {% if ext in ['jpg', 'jpeg', 'png', 'gif'] %}
           <div class="material-item" onclick="viewMedia('image', '{{ act.attachment_path }}')">
-            <span class="mat-icon">🖼️</span><span>View Image</span>
+            <span>View Image</span>
           </div>
           {% elif ext in ['mp4', 'webm', 'ogg'] %}
           <div class="material-item" onclick="viewMedia('video', '{{ act.attachment_path }}')">
-            <span class="mat-icon">🎥</span><span>Play Video</span>
+            <span>Play Video</span>
           </div>
           {% elif ext == 'pdf' %}
           <div class="material-item" onclick="viewMedia('pdf', '{{ act.attachment_path }}')">
-            <span class="mat-icon">📕</span><span>View PDF</span>
+            <span>View PDF</span>
           </div>
           {% else %}
           <a href="{{ act.attachment_path }}" target="_blank" class="material-item">
-            <span class="mat-icon">📄</span><span>Download Document</span>
+            <span>Download Document</span>
           </a>
           {% endif %}
         </div>
@@ -353,13 +353,12 @@
         <div class="task-card-bottom">
           <a href="{{ url_for('student_portal.activity_detail', activity_id=act.activity_id) }}"
              class="btn-task-primary">
-            {{ '📂 View My Submission' if is_submitted else '📋 Open Activity' }}
+            {{ 'View My Submission' if is_submitted else 'Open Activity' }}
           </a>
         </div>
       </div>
       {% else %}
       <div style="text-align:center; padding:60px 20px; color:#94a3b8; background:#fff; border:1px solid #e2e8f0; border-radius:14px;">
-        <div style="font-size:3rem; margin-bottom:12px;">✨</div>
         <h3 style="color:#475569;">No activities yet</h3>
         <p>No activities have been posted for this subject yet.</p>
       </div>
@@ -370,7 +369,7 @@
     {% if quizzes %}
     <div style="margin-top: 32px;">
       <h2 style="font-size: 1.05rem; font-weight: 800; color: #5b21b6; margin-bottom: 16px; display:flex; align-items:center; gap:8px;">
-        ✏️ Quizzes
+        Quizzes
       </h2>
       <div class="act-list">
         {% for q in quizzes %}
@@ -384,19 +383,19 @@
               <div class="task-cat-badge cat-quiz">Quiz</div>
               <h3 class="task-title">{{ q.title }}</h3>
               <div class="task-info-row">
-                <span>⏱ {{ q.duration_mins }} min</span>
-                <span>❓ {{ q.question_count }} question(s)</span>
+                <span>Duration: {{ q.duration_mins }} min</span>
+                <span>Questions: {{ q.question_count }}</span>
                 {% if q.grading_period %}
                 <span class="status-badge" style="background:#f5f3ff; color:#5b21b6; border:1px solid #ddd6fe;">{{ q.grading_period }} Grading</span>
                 {% endif %}
                 {% if q.scheduled_start %}
-                <span>📅 Opens {{ q.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}</span>
+                <span>Opens {{ q.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}</span>
                 {% endif %}
               </div>
               {% if q_done %}
               <div class="score-info">
               Score: <strong>{{ q.score|round|int }} / {{ q.total_points|round|int }}</strong>
-              {% if q.result_status == 'auto_submitted' %}<span style="color:#856404; font-size:11px;"> ⚠️ auto-submitted</span>{% endif %}
+              {% if q.result_status == 'auto_submitted' %}<span style="color:#856404; font-size:11px;"> auto-submitted</span>{% endif %}
             </div>
               {% endif %}
               {% if q.instructions %}
@@ -405,13 +404,13 @@
             </div>
             <div>
               {% if q_done %}
-                <span class="status-badge st-done">✅ Done</span>
+                <span class="status-badge st-done">Done</span>
               {% elif q_closed %}
                 <span class="status-badge st-closed">Closed</span>
               {% elif q_notyet %}
-                <span class="status-badge st-notyet">⏳ Not Yet Open</span>
+                <span class="status-badge st-notyet">Not Yet Open</span>
               {% elif q_expired %}
-                <span class="status-badge st-expired">⌛ Expired</span>
+                <span class="status-badge st-expired">Expired</span>
               {% else %}
                 <span class="status-badge st-available">Available</span>
               {% endif %}
@@ -419,9 +418,9 @@
           </div>
           <div class="task-card-bottom">
             {% if q_done %}
-              <a href="{{ url_for('student_portal.student_exam_result', result_id=q.result_id) }}" class="btn-task-secondary">📊 View Result</a>
+              <a href="{{ url_for('student_portal.student_exam_result', result_id=q.result_id) }}" class="btn-task-secondary">View Result</a>
             {% elif not q_closed and not q_notyet and not q_expired %}
-              <a href="{{ url_for('student_portal.student_exam_take', exam_id=q.exam_id) }}" class="btn-task-primary btn-task-quiz">✏️ Take Quiz</a>
+              <a href="{{ url_for('student_portal.student_exam_take', exam_id=q.exam_id) }}" class="btn-task-primary btn-task-quiz">Take Quiz</a>
             {% endif %}
           </div>
         </div>

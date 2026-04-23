@@ -74,7 +74,7 @@
 
 {% block content %}
 <div class="task-wrap">
-  <div class="task-page-title">✏️ My Quizzes</div>
+  <div class="task-page-title">My Quizzes</div>
 
   <!-- Filter Tabs -->
   <style>
@@ -119,35 +119,35 @@
             <h3 class="task-title">{{ q.title }}</h3>
             <div class="task-info-row">
               <strong style="color:#7c3aed;">{{ q.subject_name }}</strong> &bull;
-              <span>⏱ {{ q.duration_mins }} min</span>
-              <span>❓ {{ q.question_count }} question(s)</span>
+              <span>Duration: {{ q.duration_mins }} min</span>
+              <span>Questions: {{ q.question_count }}</span>
               {% if q.grading_period %}
               <span class="status-badge" style="background:#f5f3ff; color:#7c3aed; border:1px solid #ddd6fe;">{{ q.grading_period }} Grading</span>
               {% endif %}
               {% if q.individual_extension %}
               <span class="status-badge" style="background:#d1fae5; color:#065f46; border:1px solid #10b981;">
-                  ⭐ Rescheduled to {{ q.individual_extension.strftime('%b %d, %I:%M %p') }}
+                  Rescheduled to {{ q.individual_extension.strftime('%b %d, %I:%M %p') }}
               </span>
               {% elif q.scheduled_start %}
-              <span>📅 Opens {{ q.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}</span>
+              <span>Opens {{ q.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}</span>
               {% endif %}
             </div>
             {% if is_done %}
             <div class="score-info">
               Score: <strong>{{ q.score|round|int }} / {{ q.total_points|round|int }}</strong>
-              {% if q.result_status == 'auto_submitted' %}<span style="color:#856404; font-size:11px;"> ⚠️ auto-submitted</span>{% endif %}
+              {% if q.result_status == 'auto_submitted' %}<span style="color:#856404; font-size:11px;"> auto-submitted</span>{% endif %}
             </div>
             {% endif %}
           </div>
           <div>
             {% if is_done %}
-              <span class="status-badge st-done">✅ Done</span>
+              <span class="status-badge st-done">Done</span>
             {% elif is_closed %}
               <span class="status-badge st-closed">Closed</span>
             {% elif is_notyet %}
-              <span class="status-badge st-notyet">⏳ Not Yet Open</span>
+              <span class="status-badge st-notyet">Not Yet Open</span>
             {% elif is_expired %}
-              <span class="status-badge st-expired">⌛ Expired</span>
+              <span class="status-badge st-expired">Expired</span>
             {% else %}
               <span class="status-badge st-available">Available</span>
             {% endif %}
@@ -156,9 +156,9 @@
 
         <div class="task-card-bottom">
           {% if is_done %}
-            <a href="{{ url_for('student_portal.student_exam_result', result_id=q.result_id) }}" class="btn-result">📊 View Result</a>
+            <a href="{{ url_for('student_portal.student_exam_result', result_id=q.result_id) }}" class="btn-result">View Result</a>
           {% elif not is_closed and not is_notyet and not is_expired %}
-            <a href="{{ url_for('student_portal.student_exam_take', exam_id=q.exam_id) }}" class="btn-take">✏️ Take Quiz</a>
+            <a href="{{ url_for('student_portal.student_exam_take', exam_id=q.exam_id) }}" class="btn-take">Take Quiz</a>
           {% endif %}
         </div>
       </div>

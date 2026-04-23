@@ -226,16 +226,25 @@
             <h1>Daily Financial Report</h1>
             <p>Auditing collections and transactions for the branch.</p>
         </div>
-        <a href="{{ url_for('cashier.dashboard') }}" style="color: var(--report-muted); text-decoration: none; font-weight: 700;">⬅ Return to Console</a>
+        <a href="{{ url_for('cashier.dashboard') }}" style="color: var(--report-muted); text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            Return to Console
+        </a>
     </div>
 
     <!-- Date selector -->
     <form method="POST" class="date-selector-card">
         <span class="form-label">Reviewing reports for:</span>
         <input type="date" name="report_date" class="date-input" value="{{ report_date }}">
-        <button type="submit" class="btn-generate">🔄 Refresh Report</button>
+        <button type="submit" class="btn-generate" style="display: flex; align-items: center; gap: 8px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            Refresh Report
+        </button>
         <div style="margin-left: auto;">
-            <button type="button" onclick="window.print()" class="btn-generate" style="background: var(--report-success);">🖨️ Print Report</button>
+            <button type="button" onclick="window.print()" class="btn-generate" style="background: var(--report-success); display: flex; align-items: center; gap: 8px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                Print Report
+            </button>
         </div>
     </form>
 
@@ -293,7 +302,9 @@
         </div>
         {% else %}
         <div class="empty-state">
-            <div style="font-size: 3rem; margin-bottom: 16px;">📊</div>
+            <div style="margin-bottom: 16px; color: var(--report-border);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+            </div>
             <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--report-text);">Zero Transactions for this date</h3>
             <p style="margin-top: 8px;">Selected date: {{ report_date }}</p>
         </div>

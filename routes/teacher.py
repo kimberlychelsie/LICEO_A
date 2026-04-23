@@ -3713,25 +3713,23 @@ def teacher_profile():
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        year_id = _get_active_school_year(cur, teacher['branch_id'])
+        # 1. Fetch core teacher data first
         cur.execute("""
-    SELECT sub.name AS subject_name,
-                g.name AS grade_level,
-                s.section_name
-            FROM section_teachers st
-            JOIN subjects sub ON st.subject_id = sub.subject_id
-            JOIN sections s ON st.section_id = s.section_id
-            JOIN grade_levels g ON s.grade_level_id = g.id
-            WHERE st.teacher_id = %s AND s.year_id = %s
-            ORDER BY g.name, s.section_name, sub.name
-        """, (user_id, year_id))        
+            SELECT u.*, b.branch_name 
+            FROM users u
+            LEFT JOIN branches b ON u.branch_id = b.branch_id
+            WHERE u.user_id = %s AND u.role = 'teacher'
+        """, (user_id,))
         teacher = cur.fetchone()
-
+        
         if not teacher:
-            flash("Teacher profile not found.", "error")
+            flash("Teacher record not found.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
 
-        # Get assigned subjects and sections
+        # 2. Get active year using branch from teacher record
+        year_id = _get_active_school_year(cur, teacher['branch_id'])
+
+        # 3. Get assigned subjects and sections for the active year
         cur.execute("""
             SELECT sub.name AS subject_name,
                    g.name AS grade_level,
@@ -3740,9 +3738,9 @@ def teacher_profile():
             JOIN subjects sub ON st.subject_id = sub.subject_id
             JOIN sections s ON st.section_id = s.section_id
             JOIN grade_levels g ON s.grade_level_id = g.id
-            WHERE st.teacher_id = %s
+            WHERE st.teacher_id = %s AND s.year_id = %s
             ORDER BY g.name, s.section_name, sub.name
-        """, (user_id,))
+        """, (user_id, year_id))
         assignments = cur.fetchall()
         
         return render_template("teacher_profile.html", teacher=teacher, assignments=assignments)

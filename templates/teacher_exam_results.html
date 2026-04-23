@@ -25,7 +25,10 @@
 <div class="container">
     <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
         <div>
-            <h1 style="margin:0; font-size:20px;">📊 {{ exam.title }} — {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }} Results</h1>
+            <h1 style="margin:0; font-size:20px; display: flex; align-items: center; gap: 10px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                {{ exam.title }} — {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }} Results
+            </h1>
             <div style="font-size:13px; color:#888; margin-top:4px;">
                 {{ exam.subject_name }} · {{ exam.section_name }}
             </div>
@@ -43,7 +46,10 @@
                     <th>Score</th>
                     <th>Percentage</th>
                     <th>Status</th>
-                    <th>⚠️ Tab Switches</th>
+                    <th style="display: flex; align-items: center; gap: 6px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        Tab Switches
+                    </th>
                     <th>Submitted</th>
                     <th>Extension</th>
                     <th>Action</th>
@@ -63,7 +69,10 @@
                 <td><span class="badge badge-{{ r.status|lower|replace(' ', '_') }}">{{ r.status|replace('_',' ')|capitalize }}</span></td>
                 <td>
                     {% if r.switch_count > 0 %}
-                    <span class="tab-warn">⚠️ {{ r.switch_count }} switch{{ 'es' if r.switch_count > 1 else '' }}</span>
+                    <span class="tab-warn" style="display: inline-flex; align-items: center; gap: 4px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        {{ r.switch_count }} switch{{ 'es' if r.switch_count > 1 else '' }}
+                    </span>
                     {% else %}
                     <span class="tab-ok">None</span>
                     {% endif %}
@@ -71,8 +80,9 @@
                 <td>{{ r.submitted_at.strftime('%Y-%m-%d %H:%M') if r.submitted_at else '—' }}</td>
                 <td>
                     {% if r.individual_extension %}
-                    <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:11px; padding:4px 8px; border-radius:6px; display:inline-block; font-weight:600;">
-                        📅 {{ r.individual_extension.strftime('%b %d, %I:%M %p') }}
+                    <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:11px; padding:4px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px; font-weight:600;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        {{ r.individual_extension.strftime('%b %d, %I:%M %p') }}
                     </span>
                     {% endif %}
                 </td>
@@ -86,15 +96,17 @@
                           onsubmit="return confirm('Reset the {{ ctype }} attempt of {{ r.student_name }}? They will be able to retake it.');"
                           style="margin:0;">
                         <button type="submit" class="btn btn-danger"
-                                style="padding:4px 10px; font-size:12px;">
-                            🔄 Reset
+                                style="padding:4px 10px; font-size:12px; display: inline-flex; align-items: center; gap: 4px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+                            Reset
                         </button>
                     </form>
                     {% else %}
                     <button type="button" class="btn btn-secondary" 
-                            style="padding:4px 10px; font-size:12px; background:#17a2b8; color:#fff;"
+                            style="padding:4px 10px; font-size:12px; background:#17a2b8; color:#fff; display: inline-flex; align-items: center; gap: 4px;"
                             onclick="openRescheduleModal('{{ r.enrollment_id }}', '{{ r.student_name }}')">
-                        📅 Resched
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                        Resched
                     </button>
                     {% endif %}
                 </td>

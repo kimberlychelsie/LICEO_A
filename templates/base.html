@@ -79,21 +79,18 @@
     ══════════════════════════════════════════ */
     .sidebar {
       position: fixed;
-      top: 0;
+      top: var(--topbar-h);
       left: 0;
       width: var(--sidebar-w);
-      height: 100vh;
+      height: calc(100vh - var(--topbar-h));
       background: var(--sidebar-bg);
-      border-right: 1px solid var(--border);
+      border-right: none;
       display: flex;
       flex-direction: column;
-      z-index: 1100;
-      transition: width 0.3s cubic-bezier(.4, 0, .2, 1), transform 0.3s cubic-bezier(.4, 0, .2, 1), box-shadow 0.3s;
+      z-index: 1050;
+      transition: width 0.3s cubic-bezier(.4, 0, .2, 1), transform 0.3s cubic-bezier(.4, 0, .2, 1);
       overflow: hidden;
-      /* Always hidden by default — opens via .open class */
       transform: translateX(-100%);
-
-      box-shadow: none;
     }
 
     .sidebar.open {
@@ -266,8 +263,9 @@
     }
 
     .sb-link:hover {
-      background: var(--sidebar-hover);
-      color: var(--text);
+      background: rgba(37, 99, 235, 0.08);
+      color: var(--info);
+      transform: translateX(4px);
     }
 
     .sb-link.active {
@@ -285,9 +283,17 @@
       font-size: 1.25rem;
       flex-shrink: 0;
       width: 24px;
-      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       color: var(--sidebar-muted);
       transition: color 0.2s ease;
+    }
+
+    .sb-icon svg {
+      width: 18px;
+      height: 18px;
+      stroke-width: 2;
     }
 
     /* Dropdown */
@@ -401,14 +407,45 @@
       right: 0;
       height: var(--topbar-h);
       background: var(--topbar-bg);
-      border-bottom: none;
       display: flex;
       align-items: center;
-      padding: 0 24px;
-      gap: 12px;
-      z-index: 1000;
-      box-shadow: 0 2px 10px rgba(0, 0, 0, .15);
+      padding: 0 20px;
+      z-index: 1100;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, .1);
       color: var(--topbar-text);
+    }
+
+    .top-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-right: 20px;
+      text-decoration: none;
+    }
+
+    .top-brand-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .top-brand-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+
+    .top-brand-text {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .top-brand-name {
+      font-size: 1rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: 0.02em;
     }
 
     /* Hamburger */
@@ -416,19 +453,17 @@
       background: none;
       border: none;
       cursor: pointer;
-      padding: 8px;
+      padding: 10px;
       border-radius: 8px;
       color: var(--topbar-text);
       display: flex;
       flex-direction: column;
-      gap: 4px;
-      transition: background 0.15s, color 0.15s;
-      flex-shrink: 0;
+      gap: 5px;
+      transition: all 0.2s;
     }
 
     .hamburger:hover {
-      background: transparent;
-      opacity: 0.8;
+      background: rgba(255, 255, 255, 0.1);
     }
 
     .hamburger span {
@@ -1245,30 +1280,7 @@
   <!-- ══ SIDEBAR ══ -->
   <aside class="sidebar" id="sidebar">
 
-    <!-- Brand — links to role-specific dashboard -->
-    {% set dashboard_url = '/' %}
-    {% if session.get('role') == 'super_admin' %}{% set dashboard_url = '/super-admin' %}
-    {% elif session.get('role') == 'branch_admin' %}{% set dashboard_url = '/branch-admin' %}
-    {% elif session.get('role') == 'registrar' %}{% set dashboard_url = '/registrar' %}
-    {% elif session.get('role') == 'cashier' %}{% set dashboard_url = '/cashier' %}
-    {% elif session.get('role') == 'librarian' %}{% set dashboard_url = '/librarian' %}
-    {% elif session.get('role') == 'student' %}{% set dashboard_url = '/student/dashboard' %}
-    {% elif session.get('role') == 'parent' %}{% set dashboard_url = '/parent/dashboard' %}
-    {% elif session.get('role') == 'teacher' %}{% set dashboard_url = '/teacher' %}
-    {% endif %}
-    <a class="sb-brand" href="{{ dashboard_url }}">
-      <span class="sb-brand-icon">
-        <img src="{{ url_for('static', filename=dynamic_branch_logo) }}" alt="Branch Logo">
-      </span>
-      <span class="sb-brand-text">
-        <span class="sb-brand-name">Liceo LMS</span>
-        {% if session.get('branch_name') %}
-        <span class="sb-brand-sub">{{ session.get('branch_name') }}</span>
-        {% endif %}
-      </span>
-    </a>
-
-    <div>
+    <div style="margin-top: 10px;">
       {% if active_school_year %}
       <div class="school-year-badge">
         S.Y. {{ active_school_year }}
@@ -1281,17 +1293,17 @@
       {% if session.get('role') == 'student' %}
       <div class="sb-section-label">Student</div>
       <a class="sb-link {% if request.path == '/student/dashboard' %}active{% endif %}" href="/student/dashboard">
-        <span class="sb-icon">🏠</span> Dashboard
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></span> Dashboard
       </a>
       <a class="sb-link {% if request.path.startswith('/student/my-schedule') %}active{% endif %}"
         href="/student/my-schedule">
-        <span class="sb-icon">📅</span> My Schedule
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></span> My Schedule
       </a>
 
       <button class="sb-dropdown-btn {% if '/student/subject/' in request.path %}open{% endif %}"
         onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
         <div class="sb-left">
-          <span class="sb-icon">🎓</span> My Classes
+          <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg></span> My Classes
         </div>
         <span class="sb-dropdown-arrow">▼</span>
       </button>
@@ -1299,29 +1311,30 @@
         {% for sub in student_global_subjects %}
         <a class="sb-link {% if '/student/subject/' ~ sub.subject_id in request.path %}active{% endif %}"
           href="/student/subject/{{ sub.subject_id }}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
           {{ sub.subject_name }}
         </a>
         {% endfor %}
       </div>
 
       <a class="sb-link {% if request.path.startswith('/student/exams') %}active{% endif %}" href="/student/exams">
-        <span class="sb-icon">📄</span> My Exams
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14.5 2 14.5 7.5 20 7.5"></polyline></svg></span> My Exams
       </a>
       <a class="sb-link {% if request.path == '/student/grades' %}active{% endif %}" href="/student/grades">
-        <span class="sb-icon">📊</span> My Grades
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg></span> My Grades
       </a>
       <a class="sb-link {% if request.path == '/student/billing' %}active{% endif %}" href="/student/billing">
-        <span class="sb-icon">💳</span> Billing
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg></span> Billing
       </a>
       <a class="sb-link {% if request.path == '/student/enrollment-status' %}active{% endif %}"
         href="/student/enrollment-status">
-        <span class="sb-icon">📋</span> Enrollment
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></span> Enrollment
       </a>
       <button
         class="sb-dropdown-btn {% if '/student/reservations' in request.path or '/student/reservation' in request.path %}open{% endif %}"
         onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
         <div class="sb-left">
-          <span class="sb-icon">🛒</span> Reservations
+          <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path></svg></span> Reservations
         </div>
         <span class="sb-dropdown-arrow">▼</span>
       </button>
@@ -1341,29 +1354,29 @@
       {% elif session.get('role') == 'parent' %}
       <div class="sb-section-label">Parent</div>
       <a class="sb-link {% if request.path == '/parent/dashboard' %}active{% endif %}" href="/parent/dashboard">
-        <span class="sb-icon">🏠</span> Dashboard
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></span> Dashboard
       </a>
       <a class="sb-link {% if request.path == '/parent/link-child' %}active{% endif %}" href="/parent/link-child">
-        <span class="sb-icon">➕</span> Link Child
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><line x1="19" y1="8" x2="19" y2="14"></line><line x1="16" y1="11" x2="22" y2="11"></line></svg></span> Link Child
       </a>
       <a class="sb-link" href="/parent/reserve">
-        <span class="sb-icon">🛒</span> Reserve Items
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="21" r="1"></circle><circle cx="19" cy="21" r="1"></circle><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path></svg></span> Reserve Items
       </a>
 
       {% elif session.get('role') == 'teacher' %}
       <div class="sb-section-label">Teacher</div>
       <a class="sb-link {% if request.path == '/teacher' %}active{% endif %}" href="/teacher">
-        <span class="sb-icon">🏠</span> Dashboard
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></span> Dashboard
       </a>
       <a class="sb-link {% if request.path.startswith('/teacher/my-schedule') %}active{% endif %}"
         href="/teacher/my-schedule">
-        <span class="sb-icon">📅</span> My Schedule
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></span> My Schedule
       </a>
 
       <button class="sb-dropdown-btn {% if '/teacher/class/' in request.path %}open{% endif %}"
         onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
         <div class="sb-left">
-          <span class="sb-icon">🎓</span> My Classes
+          <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg></span> My Classes
         </div>
         <span class="sb-dropdown-arrow">▼</span>
       </button>
@@ -1371,6 +1384,7 @@
         {% for cls in teacher_global_classes %}
         <a class="sb-link {% if '/teacher/subject/' ~ cls.subject_id in request.path %}active{% endif %}"
           href="/teacher/subject/{{ cls.subject_id }}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
           {{ cls.subject_name }}
         </a>
         {% endfor %}
@@ -1382,37 +1396,37 @@
       <button class="sb-dropdown-btn {% if grading_active %}open{% endif %}"
         onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
         <div class="sb-left">
-          <span class="sb-icon">⚖️</span> Grading
+          <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"></path><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"></path><path d="M7 21h10"></path><path d="M12 3v18"></path><path d="M3 7h18"></path></svg></span> Grading
         </div>
         <span class="sb-dropdown-arrow">▼</span>
       </button>
       <div class="sb-dropdown-content {% if grading_active %}show{% endif %}">
         <a class="sb-link {% if '/teacher/grading-weights' in request.path %}active{% endif %}"
           href="/teacher/grading-weights">
-          ⚖️ DepEd Grading Info
+          <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"></path><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"></path><path d="M7 21h10"></path><path d="M12 3v18"></path><path d="M3 7h18"></path></svg></span> DepEd Grading Info
         </a>
       </div>
 
       {% elif session.get('role') == 'registrar' %}
       <div class="sb-section-label">Registrar</div>
       <a class="sb-link {% if request.path == '/registrar' %}active{% endif %}" href="/registrar">
-        <span class="sb-icon">🏠</span> Dashboard
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></span> Dashboard
       </a>
       <a class="sb-link {% if request.path == '/registrar/enrollments' %}active{% endif %}"
         href="/registrar/enrollments">
-        <span class="sb-icon">📋</span> Enrollments
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></span> Enrollments
       </a>
       <a class="sb-link {% if request.path == '/registrar/students-by-grade' %}active{% endif %}"
         href="/registrar/students-by-grade">
-        <span class="sb-icon">🎓</span> Students by Grade
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span> Students by Grade
       </a>
       <a class="sb-link {% if request.path == '/registrar/profile-pictures' %}active{% endif %}"
         href="/registrar/profile-pictures">
-        <span class="sb-icon">🖼️</span> Profile Pictures
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg></span> Profile Pictures
       </a>
       <a class="sb-link {% if request.path.startswith('/registrar/schedules') %}active{% endif %}"
         href="/registrar/schedules">
-        <span class="sb-icon">📅</span> Schedules
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></span> Schedules
       </a>
 
 
@@ -1420,49 +1434,53 @@
       {% elif session.get('role') == 'cashier' %}
       <div class="sb-section-label">Cashier</div>
       <a class="sb-link {% if request.path == '/cashier' %}active{% endif %}" href="/cashier">
-        <span class="sb-icon">💰</span> Dashboard
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></span> Dashboard
       </a>
 
       <div class="sb-section-label">Operations</div>
       <a class="sb-link {% if request.path == '/cashier/billing-registry' %}active{% endif %}" href="/cashier/billing-registry">
-        <span class="sb-icon">📋</span> Billing Registry
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></span> Billing Registry
       </a>
 
       <a class="sb-link {% if request.path == '/cashier/payment-history' %}active{% endif %}"
         href="/cashier/payment-history">
-        <span class="sb-icon">📊</span> Payment History
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg></span> Payment History
       </a>
       <a class="sb-link {% if request.path == '/cashier/reservations' %}active{% endif %}" href="/cashier/reservations">
-        <span class="sb-icon">📚</span> Reservations
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></span> Reservations
       </a>
 
       {% elif session.get('role') == 'librarian' %}
       <div class="sb-section-label">Library</div>
       <a class="sb-link {% if request.path == '/librarian' %}active{% endif %}" href="/librarian">
-        <span class="sb-icon">🏠</span> Dashboard
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></span> Dashboard
       </a>
       <a class="sb-link {% if request.path == '/librarian/books' or (request.path.startswith('/librarian/books') and 'add' not in request.path and '/edit' not in request.path and '/restock' not in request.path and '/price' not in request.path) %}active{% endif %}"
         href="{{ url_for('librarian.books_inventory') }}">
-        <span class="sb-icon">📚</span> Book Inventory
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></span> Book Inventory
       </a>
       <a class="sb-link {% if '/librarian/books/add' in request.path %}active{% endif %}"
         href="{{ url_for('librarian.book_add') }}">
-        <span class="sb-icon">➕</span> Add Book
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg></span> Add Book
+      </a>
+      <a class="sb-link {% if request.path == '/librarian/reservations' %}active{% endif %}"
+        href="{{ url_for('librarian.librarian_reservations') }}">
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg></span> Book Reservations
       </a>
 
       {% elif session.get('role') == 'branch_admin' %}
       <div class="sb-section-label">Administration</div>
       <a class="sb-link {% if request.path == '/branch-admin' %}active{% endif %}" href="/branch-admin">
-        <span class="sb-icon">🏫</span> Dashboard
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></span> Dashboard
       </a>
       <a class="sb-link {% if request.path == '/branch-admin/manage-accounts' %}active{% endif %}"
         href="/branch-admin/manage-accounts">
-        <span class="sb-icon">👥</span> Manage Accounts
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span> Manage Accounts
       </a>
 
       <a class="sb-link {% if '/branch-admin/inventory' in request.path %}active{% endif %}"
         href="/branch-admin/inventory">
-        <span class="sb-icon">📦</span> Inventory
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path><path d="m3.3 7 8.7 5 8.7-5"></path><path d="M12 22V12"></path></svg></span> Inventory
       </a>
 
       {% set acad_active = request.path == '/branch-admin/grade-levels' or request.path == '/branch-admin/sections' or
@@ -1471,30 +1489,35 @@
       <button class="sb-dropdown-btn {% if acad_active %}open{% endif %}"
         onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
         <div class="sb-left">
-          <span class="sb-icon">🎓</span> Academic Management
+          <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg></span> Academic Management
         </div>
         <span class="sb-dropdown-arrow">▼</span>
       </button>
       <div class="sb-dropdown-content {% if acad_active %}show{% endif %}">
         <a class="sb-link {% if request.path == '/branch-admin/grade-levels' %}active{% endif %}"
           href="/branch-admin/grade-levels">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"></path><circle cx="12" cy="8" r="6"></circle></svg>
           Grade Levels
         </a>
 
         <a class="sb-link {% if request.path == '/branch-admin/sections' %}active{% endif %}"
           href="/branch-admin/sections">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M3 9h18"></path><path d="M9 21V9"></path></svg>
           Sections
         </a>
         <a class="sb-link {% if request.path == '/branch-admin/subjects' %}active{% endif %}"
           href="/branch-admin/subjects">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
           Subjects
         </a>
         <a class="sb-link {% if request.path == '/branch-admin/assign-teachers' %}active{% endif %}"
           href="/branch-admin/assign-teachers">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
           Assign Teachers
         </a>
         <a class="sb-link {% if request.path == '/branch-admin/assign-students' %}active{% endif %}"
           href="/branch-admin/assign-students">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 6px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
           Assign Students
         </a>
       </div>
@@ -1502,36 +1525,36 @@
       {% elif session.get('role') == 'super_admin' %}
       <div class="sb-section-label">Super Admin</div>
       <a class="sb-link {% if request.path == '/super-admin' %}active{% endif %}" href="/super-admin">
-        <span class="sb-icon">🔐</span> Dashboard
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg></span> Dashboard
       </a>
       <a class="sb-link {% if request.path.startswith('/super-admin/branches') %}active{% endif %}"
         href="/super-admin/branches">
-        <span class="sb-icon">🏢</span> Branches
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2" ry="2"></rect><path d="M9 22v-4h6v4"></path><path d="M8 6h.01"></path><path d="M16 6h.01"></path><path d="M8 10h.01"></path><path d="M16 10h.01"></path><path d="M8 14h.01"></path><path d="M16 14h.01"></path></svg></span> Branches
       </a>
       <a class="sb-link {% if request.path.startswith('/superadmin/school-years') %}active{% endif %}"
         href="/superadmin/school-years">
-        <span class="sb-icon">📅</span> School Years
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg></span> School Years
       </a>
 
       {% else %}
       <div class="sb-section-label">Navigation</div>
-      <a class="sb-link" href="/login"><span class="sb-icon">🔑</span> Login</a>
-      <a class="sb-link" href="/track"><span class="sb-icon">🔍</span> Track</a>
+      <a class="sb-link" href="/login"><span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg></span> Login</a>
+      <a class="sb-link" href="/track"><span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg></span> Track</a>
       {% endif %}
 
       <!-- Common -->
       <div class="sb-section-label">General</div>
       {% if session.get('role') == 'super_admin' %}
       <a class="sb-link {% if '/super-admin/faqs' in request.path %}active{% endif %}" href="/super-admin/faqs">
-        <span class="sb-icon">❓</span> Manage FAQs
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></span> Manage FAQs
       </a>
       {% elif session.get('role') == 'branch_admin' %}
       <a class="sb-link {% if '/branch-admin/faqs' in request.path %}active{% endif %}" href="/branch-admin/faqs">
-        <span class="sb-icon">❓</span> Manage FAQs
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></span> Manage FAQs
       </a>
       {% elif session.get('role') %}
       <a class="sb-link {% if request.path == '/faq' %}active{% endif %}" href="/faq">
-        <span class="sb-icon">❓</span> FAQ
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg></span> FAQ
       </a>
       {% endif %}
     </nav>
@@ -1541,20 +1564,41 @@
 
   <!-- ══ TOPBAR ══ -->
   <header class="topbar" id="topbar">
+    {% set dashboard_url = '/' %}
+    {% if session.get('role') == 'super_admin' %}{% set dashboard_url = '/super-admin' %}
+    {% elif session.get('role') == 'branch_admin' %}{% set dashboard_url = '/branch-admin' %}
+    {% elif session.get('role') == 'registrar' %}{% set dashboard_url = '/registrar' %}
+    {% elif session.get('role') == 'cashier' %}{% set dashboard_url = '/cashier' %}
+    {% elif session.get('role') == 'librarian' %}{% set dashboard_url = '/librarian' %}
+    {% elif session.get('role') == 'student' %}{% set dashboard_url = '/student/dashboard' %}
+    {% elif session.get('role') == 'parent' %}{% set dashboard_url = '/parent/dashboard' %}
+    {% elif session.get('role') == 'teacher' %}{% set dashboard_url = '/teacher' %}
+    {% endif %}
+
+    <a class="top-brand" href="{{ dashboard_url }}">
+      <div class="top-brand-icon">
+        <img src="{{ url_for('static', filename=dynamic_branch_logo) }}" alt="Logo">
+      </div>
+      <div class="top-brand-text">
+        <span class="top-brand-name">Liceo LMS</span>
+      </div>
+    </a>
+
     <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Toggle sidebar">
       <span></span>
       <span></span>
       <span></span>
     </button>
 
-    <span class="topbar-title" onclick="toggleSidebar()" style="cursor: pointer;">{% block page_title %}{% endblock
-      %}</span>
+    <span class="topbar-title" onclick="toggleSidebar()" style="cursor: pointer; margin-left: 10px;">
+      {% block page_title %}{% endblock %}
+    </span>
 
     <div class="topbar-right">
-      {% if session.get('role') in ['student', 'branch_admin', 'super_admin'] %}
+      {% if session.get('role') in ['student', 'branch_admin', 'super_admin', 'librarian', 'teacher', 'registrar', 'cashier'] %}
       <div class="notif-wrapper" style="margin-right: 8px;">
         <button class="notif-btn" id="notifBtn" onclick="toggleNotifs()">
-          🔔
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
           {% if session.get('role') == 'student' %}
           {% if student_unread_count and student_unread_count > 0 %}
           <span class="notif-badge" id="notifBadge">{{ student_unread_count }}</span>
@@ -1566,6 +1610,10 @@
           {% elif session.get('role') == 'super_admin' %}
           {% if super_unread_count and super_unread_count > 0 %}
           <span class="notif-badge" id="notifBadge">{{ super_unread_count }}</span>
+          {% endif %}
+          {% elif session.get('role') == 'librarian' %}
+          {% if librarian_unread_count and librarian_unread_count > 0 %}
+          <span class="notif-badge" id="notifBadge">{{ librarian_unread_count }}</span>
           {% endif %}
           {% endif %}
         </button>
@@ -1587,6 +1635,11 @@
             <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ super_unread_count }}
               New</span>
             {% endif %}
+            {% elif session.get('role') == 'librarian' %}
+            {% if librarian_unread_count and librarian_unread_count > 0 %}
+            <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ librarian_unread_count }}
+              New</span>
+            {% endif %}
             {% endif %}
           </div>
           <div class="notif-list">
@@ -1597,6 +1650,8 @@
             {% set active_notifs = branch_global_notifs %}
             {% elif session.get('role') == 'super_admin' %}
             {% set active_notifs = super_global_notifs %}
+            {% elif session.get('role') == 'librarian' %}
+            {% set active_notifs = librarian_global_notifs %}
             {% endif %}
 
             {% for n in active_notifs %}
@@ -1607,7 +1662,9 @@
             </a>
             {% else %}
             <div class="notif-empty">
-              <div style="font-size: 2rem; margin-bottom: 10px;">✨</div>
+              <div style="font-size: 2rem; margin-bottom: 10px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.3;"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path><path d="M5 3v4"></path><path d="M19 17v4"></path><path d="M3 5h4"></path><path d="M17 19h4"></path></svg>
+              </div>
               All caught up!
             </div>
             {% endfor %}
@@ -1661,14 +1718,26 @@
 
           <div style="display: flex; flex-direction: column; gap: 4px;">
             {% if session.get('role') == 'student' %}
-            <a href="/student/profile" class="profile-dropdown-link">👤 My Profile</a>
+            <a href="/student/profile" class="profile-dropdown-link">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              My Profile
+            </a>
             {% elif session.get('role') == 'teacher' %}
-            <a href="/teacher/profile" class="profile-dropdown-link">👤 My Profile</a>
+            <a href="/teacher/profile" class="profile-dropdown-link">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              My Profile
+            </a>
             {% endif %}
 
-            <a href="/change-password" class="profile-dropdown-link">🔑 Change Password</a>
+            <a href="/change-password" class="profile-dropdown-link">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+              Change Password
+            </a>
             <a href="/logout" class="profile-dropdown-link"
-              style="color: #ef4444; border-top: 1px solid #f8fafc; margin-top: 4px; padding-top: 8px;">↩ Logout</a>
+              style="color: #ef4444; border-top: 1px solid #f8fafc; margin-top: 4px; padding-top: 8px;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+              Logout
+            </a>
           </div>
         </div>
       </div>
@@ -1681,7 +1750,6 @@
     {% if not is_branch_active_status %}
     <div
       style="background-color: #fef2f2; color: #991b1b; padding: 12px 24px; border-bottom: 2px solid #fecaca; font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 10px;">
-      <span style="font-size: 18px;">⚠️</span>
       Viewing in Archive Mode: This branch is currently deactivated. You cannot perform new transactions or modify
       records.
     </div>

@@ -213,7 +213,7 @@
     <!-- ── Hero ── -->
     <div class="act-hero">
         <div class="act-hero-inner">
-            <h1>📝 My Activities</h1>
+            <h1>My Activities</h1>
             <p>Manage your class assignments, tasks, and output-based activities.</p>
         </div>
     </div>
@@ -267,19 +267,23 @@
             <div class="act-actions">
                 <button onclick="toggleActivityStatus({{ act.activity_id }}, this)"
                         class="btn-action btn-gray toggle-vis-btn" title="Toggle Visibility">
-                    {% if act.status == 'Published' %}👁️{% else %}🙈{% endif %}
+                    {% if act.status == 'Published' %}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                    {% else %}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                    {% endif %}
                 </button>
                 <a href="{{ url_for('teacher.edit_activity', activity_id=act.activity_id) }}"
-                    class="btn-action btn-gray">✏️ Edit</a>
+                    class="btn-action btn-gray">Edit</a>
                 <a href="{{ url_for('teacher.activity_submissions', activity_id=act.activity_id) }}"
                     class="btn-action btn-blue">
-                    📥 Submissions
+                    Submissions
                     <span style="background:rgba(255,255,255,0.2); padding:1px 7px; border-radius:999px; font-size:0.76rem;">{{ act.submission_count }}</span>
                 </a>
                 <form method="POST" action="{{ url_for('teacher.delete_activity', activity_id=act.activity_id) }}"
                       onsubmit="return confirm('Delete this activity? All submissions and grades will also be deleted. This cannot be undone.');"
                       style="display:inline;">
-                    <button type="submit" class="btn-action btn-red">🗑</button>
+                    <button type="submit" class="btn-action btn-red"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
                 </form>
             </div>
         </div>
@@ -287,7 +291,7 @@
     </div>
     {% else %}
     <div class="empty-state">
-        <div class="big-icon">📚</div>
+        <div class="big-icon"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg></div>
         <h3>No activities found</h3>
         <p>You haven't created any activities yet.</p>
     </div>
@@ -318,7 +322,7 @@ function filterActivities(period, el) {
             emptyMsg = document.createElement('div');
             emptyMsg.id = 'filterEmptyMsg';
             emptyMsg.className = 'empty-state';
-            emptyMsg.innerHTML = '<div class="big-icon">📭</div><h3>No activities for this period</h3>';
+            emptyMsg.innerHTML = '<div class="big-icon"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 7-8.5 8.5L10 12 2 20"></path><path d="M2 7l8.5 8.5L14 12l8 8"></path></svg></div><h3>No activities for this period</h3>';
             const list = document.getElementById('activitiesList');
             if (list) list.appendChild(emptyMsg);
         }
@@ -340,7 +344,9 @@ async function toggleActivityStatus(activityId, btn) {
         });
         const result = await response.json();
         if (result.ok) {
-            btn.innerHTML = result.new_status === 'Published' ? '👁️' : '🙈';
+            btn.innerHTML = result.new_status === 'Published' 
+                ? '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>' 
+                : '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
             const card = btn.closest('.act-card');
             const badges = card.querySelectorAll('.badge');
             const statusBadge = badges[badges.length - 1];

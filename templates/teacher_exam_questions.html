@@ -40,16 +40,16 @@
             {% if exam.status == 'draft' %}
             <form method="POST" action="{{ url_for('teacher.teacher_exam_publish', exam_id=exam.exam_id) }}"
                   onsubmit="return confirm('Create this {{ 'quiz' if exam.exam_type == 'quiz' else 'exam' }}? Students will be able to take it once you make it visible.');">
-                <button type="submit" class="btn btn-success">🚀 Create {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }}</button>
+                <button type="submit" class="btn btn-success">Create {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }}</button>
             </form>
             {% elif exam.status == 'published' %}
             <form method="POST" action="{{ url_for('teacher.teacher_exam_close', exam_id=exam.exam_id) }}"
                   onsubmit="return confirm('Close this {{ 'quiz' if exam.exam_type == 'quiz' else 'exam' }}?');">
-                <button type="submit" class="btn btn-secondary">🔒 Close {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }}</button>
+                <button type="submit" class="btn btn-secondary">Close {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }}</button>
             </form>
             {% endif %}
-            <a href="{{ url_for('teacher.teacher_exam_results', exam_id=exam.exam_id) }}" class="btn btn-warning">📊 Results</a>
-            <a href="{{ url_for('teacher.teacher_class_view', subject_id=exam.subject_id, active_tab='quizzes' if exam.exam_type == 'quiz' else 'exams') }}" class="btn btn-secondary">← Back to Class</a>
+            <a href="{{ url_for('teacher.teacher_exam_results', exam_id=exam.exam_id) }}" class="btn btn-warning">Results</a>
+            <a href="{{ url_for('teacher.teacher_class_view', subject_id=exam.subject_id, active_tab='quizzes' if exam.exam_type == 'quiz' else 'exams') }}" class="btn btn-secondary">Back to Class</a>
         </div>
     </div>
 
@@ -63,7 +63,7 @@
 
     <!-- Question list -->
     <div class="card">
-        <h2>📋 Questions ({{ questions|length }})</h2>
+        <h2>Questions ({{ questions|length }})</h2>
         {% for q in questions %}
         <div class="q-card">
             <div class="q-num">Q{{ loop.index }} · {{ q.question_type|upper }} · {{ q.points }} pt(s)</div>
@@ -92,10 +92,10 @@
     <form method="POST"
           action="{{ url_for('teacher.teacher_exam_question_delete', exam_id=exam.exam_id, question_id=q.question_id) }}"
           onsubmit="return confirm('Delete this question?');">
-        <button type="submit" class="btn btn-danger" style="padding:4px 10px; font-size:12px;">🗑 Delete</button>
+        <button type="submit" class="btn btn-danger" style="padding:4px 10px; font-size:12px;">Delete</button>
     </form>
     <a href="{{ url_for('teacher.teacher_exam_question_edit', exam_id=exam.exam_id, question_id=q.question_id) }}"
-       class="btn btn-warning" style="padding:4px 10px; font-size:12px;">✏️ Edit</a>
+       class="btn btn-warning" style="padding:4px 10px; font-size:12px;">Edit</a>
 </div>
 {% endif %}
         </div>
@@ -104,7 +104,7 @@
         {% endfor %}
     </div>
     <div class="card" id="inline-builder">
-      <h2>⚡ Auto Build (Fill Inline)</h2>
+      <h2>Auto Build (Fill Inline)</h2>
     
       <!-- Step 1: choose counts (GET) -->
       <form method="get" id="buildForm" style="display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
@@ -224,7 +224,7 @@
           </div>
         {% endfor %}
     
-        <button class="btn btn-success" type="submit">💾 Save All Questions</button>
+        <button class="btn btn-success" type="submit">Save All Questions</button>
       </form>
       {% endif %}
     </div>
@@ -232,7 +232,7 @@
     <!-- Add question form (only if draft) -->
     {% if exam.status == 'draft' %}
     <div class="card">
-        <h2>➕ Add Question</h2>
+        <h2>Add Question</h2>
         <form method="POST" id="questionForm">
             <!-- Type toggle -->
             <div class="type-toggle">
@@ -299,7 +299,7 @@
                         <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()" style="padding:4px 8px;">✕</button>
                     </div>
                 </div>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="addMatchPair()" style="margin-bottom:15px; font-size:12px; padding:6px 10px;">➕ Add Another Pair</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addMatchPair()" style="margin-bottom:15px; font-size:12px; padding:6px 10px;">Add Another Pair</button>
                 <script>
                     function addMatchPair() {
                         const row = document.createElement('div');
@@ -320,13 +320,13 @@
                 <input type="number" name="points" value="1" min="1" max="10" />
             </div>
 
-            <button type="submit" class="btn btn-primary">➕ Add Question</button>
+            <button type="submit" class="btn btn-primary">Add Question</button>
         </form>
     </div>
 
     <!-- Add this inside the draft block, alongside the Add Question form -->
 <div class="card">
-    <h2>📂 Import Questions from File</h2>
+    <h2>Import Questions from File</h2>
     <form method="POST"
           action="{{ url_for('teacher.teacher_exam_import_questions', exam_id=exam.exam_id) }}"
           enctype="multipart/form-data">
@@ -334,7 +334,7 @@
             <label>Upload File <span style="font-weight:400; color:#888;">.docx / .pdf / .csv / .xlsx</span></label>
             <input type="file" name="question_file" accept=".docx,.pdf,.csv,.xls,.xlsx" required />
         </div>
-        <button type="submit" class="btn btn-primary">📥 Import Questions</button>
+        <button type="submit" class="btn btn-primary">Import Questions</button>
     </form>
     <div style="margin-top:12px; font-size:12px; color:#888;">
         <strong>Format:</strong><br>

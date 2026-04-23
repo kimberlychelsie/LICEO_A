@@ -391,23 +391,24 @@
                 </div>
             </div>
             <a href="{{ url_for('teacher.class_record', subject_id=subject_id, section_id=section_id, period='1st') }}" class="btn-manage-cl" style="text-decoration:none;">
-                🧑‍🎓 Manage Class Record / Grades
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                Manage Class Record / Grades
             </a>
         </div>
     </div>
 
     <!-- ── Main Tabs ── -->
     <div class="view-tabs-wrapper">
-        <button id="tab-btn-activities" class="view-tab-btn active" onclick="switchMainTab('activities', this)">📝 Activities</button>
-        <button id="tab-btn-quizzes" class="view-tab-btn" onclick="switchMainTab('quizzes', this)">✏️ Quizzes</button>
-        <button id="tab-btn-exams" class="view-tab-btn" onclick="switchMainTab('exams', this)">📋 Exams</button>
+        <button id="tab-btn-activities" class="view-tab-btn active" onclick="switchMainTab('activities', this)">Activities</button>
+        <button id="tab-btn-quizzes" class="view-tab-btn" onclick="switchMainTab('quizzes', this)">Quizzes</button>
+        <button id="tab-btn-exams" class="view-tab-btn" onclick="switchMainTab('exams', this)">Exams</button>
     </div>
 
     <!-- ══════════════ ACTIVITIES TAB ══════════════ -->
     <div id="tab-activities" class="view-tab-content active">
         <div class="header-row">
-            <h2>📝 My Activities</h2>
-            <a href="{{ url_for('teacher.create_activity', subject_id=subject_id) }}" id="btn-create-act" class="btn-action btn-act-blue">➕ Create Activity</a>
+            <h2>My Activities</h2>
+            <a href="{{ url_for('teacher.create_activity', subject_id=subject_id) }}" id="btn-create-act" class="btn-action btn-act-blue">Create Activity</a>
         </div>
 
         <div class="filter-tabs">
@@ -460,14 +461,18 @@
                     <form method="POST" action="/teacher/activities/{{ act.activity_id }}/toggle-status" style="display:inline;">
                         <input type="hidden" name="active_tab" value="activities">
                         <button type="submit" class="btn-action btn-act-gray btn-sm-action" title="Toggle Status">
-                            {% if act.status|lower == 'published' %}👁️{% else %}🙈{% endif %}
+                            {% if act.status|lower == 'published' %}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            {% else %}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                            {% endif %}
                         </button>
                     </form>
-                    <a href="{{ url_for('teacher.edit_activity', activity_id=act.activity_id) }}" class="btn-action btn-act-gray btn-sm-action">✏️ Edit</a>
-                    <a href="{{ url_for('teacher.activity_submissions', activity_id=act.activity_id) }}" class="btn-action btn-act-blue btn-sm-action">📥 Submissions <span style="background:rgba(255,255,255,0.2); padding:1px 6px; border-radius:999px; font-size:0.78rem;">{{ act.submission_count }}</span></a>
+                    <a href="{{ url_for('teacher.edit_activity', activity_id=act.activity_id) }}" class="btn-action btn-act-gray btn-sm-action">Edit</a>
+                    <a href="{{ url_for('teacher.activity_submissions', activity_id=act.activity_id) }}" class="btn-action btn-act-blue btn-sm-action">Submissions <span style="background:rgba(255,255,255,0.2); padding:1px 6px; border-radius:999px; font-size:0.78rem;">{{ act.submission_count }}</span></a>
                     <form method="POST" action="{{ url_for('teacher.delete_activity', activity_id=act.activity_id) }}" onsubmit="return confirm('Delete this activity?');" style="display:inline;">
                         <input type="hidden" name="active_tab" value="activities">
-                        <button type="submit" class="btn-action btn-act-red btn-sm-action">🗑</button>
+                        <button type="submit" class="btn-action btn-act-red btn-sm-action"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
                     </form>
                 </div>
             </div>
@@ -475,7 +480,9 @@
         </div>
         {% else %}
         <div class="empty-state">
-            <div class="big-icon">📚</div>
+            <div class="big-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            </div>
             <h3>No activities yet</h3>
             <p>You haven't created any activities for this section yet.</p>
         </div>
@@ -485,8 +492,8 @@
     <!-- ══════════════ QUIZZES TAB ══════════════ -->
     <div id="tab-quizzes" class="view-tab-content">
         <div class="header-row">
-            <h2>✏️ My Quizzes</h2>
-            <a href="{{ url_for('teacher.teacher_quiz_create', subject_id=subject_id) }}" id="btn-create-quiz" class="btn-action btn-act-purple">➕ Create Quiz</a>
+            <h2>My Quizzes</h2>
+            <a href="{{ url_for('teacher.teacher_quiz_create', subject_id=subject_id) }}" id="btn-create-quiz" class="btn-action btn-act-purple">Create Quiz</a>
         </div>
 
         <div class="filter-tabs">
@@ -526,14 +533,18 @@
                             <form method="POST" action="{{ url_for('teacher.toggle_exam_visibility', exam_id=q.exam_id) }}" style="display:inline;">
                                 <input type="hidden" name="active_tab" value="quizzes">
                                 <button type="submit" class="btn-action btn-act-gray btn-sm-action" title="{{ 'Hide' if q.is_visible else 'Show' }}">
-                                    {{ '👁️' if q.is_visible else '🙈' }}
+                                    {% if q.is_visible %}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    {% else %}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                                    {% endif %}
                                 </button>
                             </form>
-                            <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=q.exam_id) }}" class="btn-action btn-act-gray btn-sm-action">✏️ Edit</a>
-                            <a href="{{ url_for('teacher.teacher_exam_results', exam_id=q.exam_id) }}" class="btn-action btn-act-green btn-sm-action">📊 Results</a>
+                            <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=q.exam_id) }}" class="btn-action btn-act-gray btn-sm-action">Edit</a>
+                            <a href="{{ url_for('teacher.teacher_exam_results', exam_id=q.exam_id) }}" class="btn-action btn-act-green btn-sm-action">Results</a>
                             <form method="POST" action="{{ url_for('teacher.delete_exam', exam_id=q.exam_id) }}" onsubmit="return confirm('Delete this quiz?');" style="display:inline;">
                                 <input type="hidden" name="active_tab" value="quizzes">
-                                <button type="submit" class="btn-action btn-act-red btn-sm-action">🗑</button>
+                                <button type="submit" class="btn-action btn-act-red btn-sm-action"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
                             </form>
                         </div>
                     </td>
@@ -542,7 +553,7 @@
                 </tbody>
             </table>
             {% else %}
-            <div class="empty-state"><div class="big-icon">📭</div><h3>No quizzes found</h3></div>
+            <div class="empty-state"><div class="big-icon"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 7-8.5 8.5L10 12 2 20"></path><path d="M2 7l8.5 8.5L14 12l8 8"></path></svg></div><h3>No quizzes found</h3></div>
             {% endif %}
         </div>
     </div>
@@ -550,8 +561,8 @@
     <!-- ══════════════ EXAMS TAB ══════════════ -->
     <div id="tab-exams" class="view-tab-content">
         <div class="header-row">
-            <h2>📋 My Exams</h2>
-            <a href="{{ url_for('teacher.teacher_exam_create', subject_id=subject_id) }}" id="btn-create-exam" class="btn-action btn-act-green">➕ Create Exam</a>
+            <h2>My Exams</h2>
+            <a href="{{ url_for('teacher.teacher_exam_create', subject_id=subject_id) }}" id="btn-create-exam" class="btn-action btn-act-green">Create Exam</a>
         </div>
 
         <div class="filter-tabs">
@@ -591,14 +602,18 @@
                             <form method="POST" action="{{ url_for('teacher.toggle_exam_visibility', exam_id=e.exam_id) }}" style="display:inline;">
                                 <input type="hidden" name="active_tab" value="exams">
                                 <button type="submit" class="btn-action btn-act-gray btn-sm-action" title="{{ 'Hide' if e.is_visible else 'Show' }}">
-                                    {{ '👁️' if e.is_visible else '🙈' }}
+                                    {% if e.is_visible %}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    {% else %}
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                                    {% endif %}
                                 </button>
                             </form>
-                            <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=e.exam_id) }}" class="btn-action btn-act-gray btn-sm-action">✏️ Edit</a>
-                            <a href="{{ url_for('teacher.teacher_exam_results', exam_id=e.exam_id) }}" class="btn-action btn-act-blue btn-sm-action">📊 Results</a>
+                            <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=e.exam_id) }}" class="btn-action btn-act-gray btn-sm-action">Edit</a>
+                            <a href="{{ url_for('teacher.teacher_exam_results', exam_id=e.exam_id) }}" class="btn-action btn-act-blue btn-sm-action">Results</a>
                             <form method="POST" action="{{ url_for('teacher.delete_exam', exam_id=e.exam_id) }}" onsubmit="return confirm('Delete this exam?');" style="display:inline;">
                                 <input type="hidden" name="active_tab" value="exams">
-                                <button type="submit" class="btn-action btn-act-red btn-sm-action">🗑</button>
+                                <button type="submit" class="btn-action btn-act-red btn-sm-action"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg></button>
                             </form>
                         </div>
                     </td>
@@ -607,7 +622,7 @@
                 </tbody>
             </table>
             {% else %}
-            <div class="empty-state"><div class="big-icon">📭</div><h3>No exams found</h3></div>
+            <div class="empty-state"><div class="big-icon"><svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 7-8.5 8.5L10 12 2 20"></path><path d="M2 7l8.5 8.5L14 12l8 8"></path></svg></div><h3>No exams found</h3></div>
             {% endif %}
         </div>
     </div>

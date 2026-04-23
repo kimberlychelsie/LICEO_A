@@ -282,11 +282,31 @@ def child_bills(enrollment_id):
             """, (bill["bill_id"],))
             payments = cursor.fetchall()
 
+        # Fetch detailed reservations for breakdown
+        reservation_details = []
+        if bill:
+            cursor.execute("""
+                SELECT
+                    r.reservation_id, ii.item_name, ri.qty, ri.line_total, ii.category
+                FROM reservation_items ri
+                JOIN reservations r ON r.reservation_id = ri.reservation_id
+                JOIN inventory_items ii ON ri.item_id = ii.item_id
+                WHERE (r.enrollment_id = %s OR r.student_user_id IN (
+                    SELECT u.user_id FROM student_accounts sa 
+                    JOIN users u ON sa.username = u.username 
+                    WHERE sa.enrollment_id = %s
+                )) 
+                AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED')
+                ORDER BY r.reservation_id ASC
+            """, (enrollment_id, enrollment_id))
+            reservation_details = cursor.fetchall()
+
         return render_template(
             "parent_child_bills.html",
             child=child,
             bill=bill,
-            payments=payments
+            payments=payments,
+            reservation_details=reservation_details
         )
 
     finally:

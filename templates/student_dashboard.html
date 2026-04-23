@@ -251,14 +251,16 @@
     <!-- ── Welcome Section ── -->
     <div class="welcome-section" style="margin-bottom: 24px;">
         <h1 style="font-size: 1.8rem; font-weight: 800; color: #1e3a8f; margin-bottom: 4px;">Welcome back, {{
-            student.student_name.split(' ')[0] }}! 👋</h1>
+            student.student_name.split(' ')[0] }}!</h1>
         <p style="color: #64748b; font-weight: 500;">Today is {{ now.strftime('%A, %B %d, %Y') }}</p>
     </div>
 
     <!-- ── Hero info ── -->
     <div class="sd-hero">
         <div class="sd-hero-top">
-            <div class="sd-avatar">🎓</div>
+            <div class="sd-avatar">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+            </div>
             <div>
                 <div class="sd-hero-name">{{ student.student_name }}</div>
                 <div class="sd-hero-sub">Student Dashboard · {{ student.branch_name }}</div>
@@ -285,15 +287,15 @@
                 <div class="lbl">Status</div>
                 <div class="val">
                     {% if student.status == 'enrolled' or (student.status == 'approved' and student.section_id) %}
-                    <span class="badge-status badge-approved">🎓 Enrolled</span>
+                    <span class="badge-status badge-approved">Enrolled</span>
                     {% elif student.status == 'approved' %}
-                    <span class="badge-status badge-approved">✅ Approved</span>
+                    <span class="badge-status badge-approved">Approved</span>
                     {% elif student.status == 'open_for_enrollment' %}
-                    <span class="badge-status badge-pending">🔓 Re-enrollment Open</span>
+                    <span class="badge-status badge-pending">Re-enrollment Open</span>
                     {% elif student.status == 'rejected' %}
-                    <span class="badge-status badge-rejected">❌ Rejected</span>
+                    <span class="badge-status badge-rejected">Rejected</span>
                     {% else %}
-                    <span class="badge-status badge-pending">⏳ Pending</span>
+                    <span class="badge-status badge-pending">Pending</span>
                     {% endif %}
                 </div>
             </div>
@@ -308,7 +310,10 @@
 
         <!-- Billing Card -->
         <div class="sd-card">
-            <h3><span>💰</span> Billing Summary</h3>
+            <h3>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                Billing Summary
+            </h3>
             <div class="sd-card-content">
                 {% if bill %}
                 <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
@@ -337,7 +342,10 @@
 
         <!-- Reservations Card -->
         <div class="sd-card">
-            <h3><span>🛒</span> Item Reservations</h3>
+            <h3>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
+                Item Reservations
+            </h3>
             <div class="sd-card-content">
                 {% if reservations %}
                 {% set latest = reservations[0] %}

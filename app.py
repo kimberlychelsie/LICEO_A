@@ -331,6 +331,57 @@ def inject_branch_admin_notifications():
             db.close()
     return dict(branch_global_notifs=[], branch_unread_count=0)
 
+@app.context_processor
+def inject_librarian_notifications():
+    if session.get('role') == 'librarian':
+        branch_id = session.get('branch_id')
+        from db import get_db_connection
+        import psycopg2.extras
+        from datetime import datetime, timezone
+        import pytz
+        
+        db = get_db_connection()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            alerts = []
+            ph_tz = pytz.timezone("Asia/Manila")
+            now_ph = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+            
+            # Low Stock Alerts for BOOKS (Stock - Reserved < 10)
+            cursor.execute("""
+                SELECT item_name, stock_total, reserved_qty 
+                FROM inventory_items 
+                WHERE branch_id = %s 
+                  AND is_active = TRUE 
+                  AND category = 'BOOK'
+                  AND (stock_total - reserved_qty) < 10
+                ORDER BY (stock_total - reserved_qty) ASC
+                LIMIT 10
+            """, (branch_id,))
+            
+            low_stock_items = cursor.fetchall()
+            from urllib.parse import quote
+            for item in low_stock_items:
+                available = item['stock_total'] - item['reserved_qty']
+                safe_name = quote(item['item_name'])
+                alerts.append({
+                    'title': 'Low Book Stock',
+                    'message': f"Book '{item['item_name']}' is running low ({available} remaining).",
+                    'link': f"/librarian/books?search={safe_name}",
+                    'is_read': False,
+                    'created_at': now_ph
+                })
+            
+            unread_count = len(alerts)
+            return dict(librarian_global_notifs=alerts, librarian_unread_count=unread_count)
+        except Exception as e:
+            print(f"Error in Librarian context processor: {e}")
+            return dict(librarian_global_notifs=[], librarian_unread_count=0)
+        finally:
+            cursor.close()
+            db.close()
+    return dict(librarian_global_notifs=[], librarian_unread_count=0)
+
 
 @app.after_request
 def add_security_headers(response):

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Billing & Settlement Registry{% endblock %}
-{% block page_title %}📋 Billing Registry{% endblock %}
+{% block page_title %}Billing Registry{% endblock %}
 
 {% block styles %}
 <style>
@@ -400,12 +400,12 @@
     <!-- Page Header -->
     <div class="page-header">
         <div>
-            <h1>📋 Billing &amp; Settlement Registry</h1>
+            <h1>Billing &amp; Settlement Registry</h1>
             <p>Financial overview for <strong>{{ session.get('branch_name', 'Main Campus') }}</strong></p>
         </div>
         <a href="/cashier"
             style="padding:10px 20px; border-radius:10px; border:1px solid var(--cashier-border); background:#fff; color:var(--cashier-primary); font-weight:700; font-size:.9rem; text-decoration:none; display:flex; align-items:center; gap:6px;">
-            ← Back to Dashboard
+            Back to Dashboard
         </a>
     </div>
 
@@ -462,8 +462,11 @@
                     <option value="paid" {% if status_filter=='paid' %}selected{% endif %}>Fully Settled</option>
                 </select>
             </div>
-            <button type="submit" class="btn-filter btn-filter-apply">🔍 Filter</button>
-            <a href="/cashier/billing-registry" class="btn-filter btn-filter-reset">✕ Reset</a>
+            <button type="submit" class="btn-filter btn-filter-apply">Filter</button>
+            <a href="/cashier/billing-registry" class="btn-filter btn-filter-reset">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                Reset
+            </a>
         </form>
     </div>
 
@@ -507,11 +510,11 @@
                             {% if not e.bill_id %}
                             <span class="badge-status badge-none">No Bill</span>
                             {% elif e.bill_status == 'paid' %}
-                            <span class="badge-status badge-paid">✅ Settled</span>
+                            <span class="badge-status badge-paid">Settled</span>
                             {% elif e.bill_status == 'partial' %}
-                            <span class="badge-status badge-partial">⏳ Partial</span>
+                            <span class="badge-status badge-partial">Partial</span>
                             {% else %}
-                            <span class="badge-status badge-pending">⚠️ Due</span>
+                            <span class="badge-status badge-pending">Due</span>
                             {% endif %}
                         </td>
                         <td>
@@ -542,15 +545,20 @@
                             <div style="display:flex; gap:8px; justify-content:flex-end; align-items:center;">
                                 {% if not e.bill_id %}
                                 {% if is_branch_active_status %}
-                                <a href="/cashier/create-bill/{{ e.enrollment_id }}" class="btn-create">
-                                    ＋ Create Bill
+                                <a href="/cashier/create-bill/{{ e.enrollment_id }}" class="btn-create" style="display: flex; align-items: center; gap: 4px;">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                    Create Bill
                                 </a>
                                 {% endif %}
                                 {% else %}
-                                <a href="/cashier/bill/{{ e.bill_id }}" class="btn-icon" title="View Statement">👁</a>
+                                <a href="/cashier/bill/{{ e.bill_id }}" class="btn-icon" title="View Statement">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                </a>
                                 {% if e.bill_status != 'paid' and is_branch_active_status %}
                                 <a href="/cashier/process-payment/{{ e.bill_id }}" class="btn-icon btn-pay"
-                                    title="Process Payment">💵</a>
+                                    title="Process Payment">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+                                </a>
                                 {% endif %}
                                 {% endif %}
                             </div>
@@ -562,7 +570,9 @@
         </div>
         {% else %}
         <div class="empty-state">
-            <div class="empty-icon">📭</div>
+            <div class="empty-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 7-8.5 8.5L10 12 2 20"></path><path d="M2 7l8.5 8.5L14 12l8 8"></path></svg>
+            </div>
             <h3>No Records Found</h3>
             <p>Try adjusting your filters or search term.</p>
         </div>

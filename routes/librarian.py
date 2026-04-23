@@ -13,6 +13,17 @@ GRADES = [
 def _require_librarian():
     return session.get("role") == "librarian"
 
+def _to_manila_naive(dt_value):
+    if not dt_value:
+        return None
+    import pytz
+    from datetime import datetime
+    ph_tz = pytz.timezone("Asia/Manila")
+    # If the datetime is naive, assume it's UTC (Postgres default)
+    if getattr(dt_value, "tzinfo", None) is None:
+        dt_value = pytz.utc.localize(dt_value)
+    return dt_value.astimezone(ph_tz).replace(tzinfo=None)
+
 
 # Reuse this in SQL ORDER BY (keeps Nursery, Kinder, Grade 1..10)
 GRADE_ORDER_SQL = """
@@ -83,7 +94,6 @@ def dashboard():
                 print(f"[librarian.dashboard] grade_breakdown query error: {e}")
 
             # ── 3. Recent releases (last 5) ─────────────────────────────
-            try:
                 cur.execute("""
                     SELECT
                         br.release_id,
@@ -102,6 +112,9 @@ def dashboard():
                     LIMIT 5
                 """, (branch_id,))
                 recent_releases = cur.fetchall() or []
+                for rr in recent_releases:
+                    if rr.get("created_at"):
+                        rr["created_at"] = _to_manila_naive(rr["created_at"])
             except Exception as e:
                 print(f"[librarian.dashboard] recent_releases query error: {e}")
 
@@ -225,6 +238,7 @@ def book_add():
         grade_level = (request.form.get("grade_level") or "").strip()
         publisher = (request.form.get("publisher") or "").strip()
         title = (request.form.get("title") or "").strip()
+        price = (request.form.get("price") or "0").strip()
 
         if not (grade_level and publisher and title):
             flash("Missing required fields.", "error")
@@ -239,12 +253,13 @@ def book_add():
                      size_label, price, stock_total, reserved_qty, image_url, is_active)
                 VALUES
                     (%s, 'BOOK', %s, %s, FALSE,
-                     %s, 0, 0, 0, NULL, TRUE)
+                     %s, %s, 0, 0, NULL, TRUE)
             """, (
                 branch_id,
                 title,
                 grade_level,
                 publisher,
+                price,
             ))
             db.commit()
             flash("Book added successfully!", "success")
@@ -301,6 +316,7 @@ def book_edit(item_id):
             grade_level = (request.form.get("grade_level") or "").strip()
             publisher = (request.form.get("publisher") or "").strip()
             title = (request.form.get("title") or "").strip()
+            price = (request.form.get("price") or "0").strip()
 
             if not (grade_level and publisher and title):
                 flash("Missing required fields.", "error")
@@ -310,9 +326,9 @@ def book_edit(item_id):
             try:
                 cur2.execute("""
                     UPDATE inventory_items
-                    SET item_name=%s, grade_level=%s, size_label=%s
+                    SET item_name=%s, grade_level=%s, size_label=%s, price=%s
                     WHERE item_id=%s AND branch_id=%s AND UPPER(category)='BOOK'
-                """, (title, grade_level, publisher, item_id, branch_id))
+                """, (title, grade_level, publisher, price, item_id, branch_id))
                 db.commit()
                 flash("Book updated successfully!", "success")
                 return redirect(url_for("librarian.books_inventory"))
@@ -615,10 +631,11 @@ def releases():
             JOIN inventory_items ii     ON ii.item_id = bri.item_id
             LEFT JOIN enrollments e     ON e.enrollment_id = br.enrollment_id
             WHERE br.branch_id = %s
-            ORDER BY br.created_at DESC
-            LIMIT 50
         """, (branch_id,))
         releases_rows = cur.fetchall() or []
+        for rr in releases_rows:
+            if rr.get("created_at"):
+                rr["created_at"] = _to_manila_naive(rr["created_at"])
 
     except Exception as e:
         db.rollback()
@@ -702,6 +719,9 @@ def releases_all():
                 br.created_at DESC
         """, params)
         releases_rows = cur.fetchall() or []
+        for rr in releases_rows:
+            if rr.get("created_at"):
+                rr["created_at"] = _to_manila_naive(rr["created_at"])
 
         cur.execute("SELECT COUNT(*) AS total FROM book_releases br WHERE br.branch_id = %s", (branch_id,))
         total_row = cur.fetchone()
@@ -725,69 +745,117 @@ def releases_all():
     )
 
 
-@librarian_bp.route("/librarian/books/<int:item_id>/price", methods=["GET", "POST"])
-
-def book_price(item_id):
+@librarian_bp.route("/librarian/books/<int:item_id>/delete", methods=["POST"])
+def book_delete(item_id):
     if not _require_librarian():
         return redirect("/")
 
     branch_id = session.get("branch_id")
     if not branch_id:
-        flash("No branch assigned.", "error")
         return redirect("/")
 
     db = get_db_connection()
-    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-
+    cur = db.cursor()
     try:
+        # Check if it has stock before allowing delete?
+        # For now, just mark is_active=FALSE
         cur.execute("""
-            SELECT
-                item_id,
-                item_name AS title,
-                grade_level,
-                COALESCE(size_label,'') AS publisher,
-                price,
-                stock_total,
-                reserved_qty
-            FROM inventory_items
-            WHERE item_id=%s AND branch_id=%s AND UPPER(category)='BOOK' AND is_active=TRUE
-            LIMIT 1
+            UPDATE inventory_items
+            SET is_active = FALSE
+            WHERE item_id = %s AND branch_id = %s AND UPPER(category) = 'BOOK'
         """, (item_id, branch_id))
-        book = cur.fetchone()
-
-        if not book:
-            flash("Book not found.", "error")
-            return redirect(url_for("librarian.books_inventory"))
-
-        if request.method == "POST":
-            new_price = (request.form.get("new_price") or "").strip()
-            try:
-                new_price_val = float(new_price)
-                if new_price_val <= 0:
-                    raise ValueError()
-            except Exception:
-                flash("Invalid price.", "error")
-                return redirect(url_for("librarian.book_price", item_id=item_id))
-
-            cur2 = db.cursor()
-            try:
-                cur2.execute("""
-                    UPDATE inventory_items
-                    SET price=%s
-                    WHERE item_id=%s AND branch_id=%s AND UPPER(category)='BOOK'
-                """, (new_price_val, item_id, branch_id))
-                db.commit()
-                flash("Price updated successfully!", "success")
-                return redirect(url_for("librarian.books_inventory"))
-            except Exception as e:
-                db.rollback()
-                flash(f"Failed to update price: {e}", "error")
-                return redirect(url_for("librarian.book_price", item_id=item_id))
-            finally:
-                cur2.close()
-
+        db.commit()
+        flash("Book removed from inventory.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Failed to delete book: {e}", "error")
     finally:
         cur.close()
         db.close()
+    return redirect(url_for("librarian.books_inventory"))
 
-    return render_template("librarian_book_price.html", book=book)
+@librarian_bp.route("/librarian/reservations")
+def librarian_reservations():
+    if not _require_librarian():
+        return redirect(url_for("auth.login"))
+
+    branch_id = session.get("branch_id")
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        cur.execute("""
+            SELECT
+                r.reservation_id,
+                COALESCE(u.username, '') AS username,
+                r.student_user_id,
+                r.student_grade_level,
+                COALESCE(
+                    e.student_name,
+                    svp.student_name,
+                    u.username,
+                    ''
+                ) AS full_name,
+                COALESCE(r.student_grade_level, svp.grade_level) AS grade_level,
+                r.status,
+                r.created_at,
+                CASE
+                  WHEN r.reserved_by_user_id IS NOT NULL
+                       AND reserved_by.role = 'parent'
+                  THEN 'parent'
+                  ELSE 'student'
+                END AS reserved_by_role,
+                CASE
+                  WHEN r.reserved_by_user_id IS NOT NULL
+                       AND reserved_by.role = 'parent'
+                  THEN COALESCE(
+                    svp.guardian_name,
+                    reserved_by.username
+                  )
+                  ELSE NULL
+                END AS parent_name,
+                (
+                    SELECT STRING_AGG(ii.item_name || ' (x' || ri.qty || ')', ', ')
+                    FROM reservation_items ri
+                    JOIN inventory_items ii ON ri.item_id = ii.item_id
+                    WHERE ri.reservation_id = r.reservation_id AND UPPER(ii.category) = 'BOOK'
+                ) AS reserved_books
+            FROM reservations r
+            LEFT JOIN users u ON u.user_id = r.student_user_id
+            LEFT JOIN student_accounts sa ON sa.username = u.username
+            LEFT JOIN enrollments e ON e.enrollment_id = sa.enrollment_id
+            LEFT JOIN users reserved_by ON reserved_by.user_id = r.reserved_by_user_id
+            LEFT JOIN LATERAL (
+                SELECT
+                    e2.student_name,
+                    e2.grade_level,
+                    e2.guardian_name,
+                    ps2.relationship
+                FROM parent_student ps2
+                JOIN enrollments e2 ON e2.enrollment_id = ps2.student_id
+                WHERE ps2.parent_id = r.reserved_by_user_id
+                ORDER BY ps2.student_id
+                LIMIT 1
+            ) svp ON (reserved_by.role = 'parent')
+            WHERE r.branch_id = %s
+              AND EXISTS (
+                  SELECT 1 FROM reservation_items ri
+                  JOIN inventory_items ii ON ri.item_id = ii.item_id
+                  WHERE ri.reservation_id = r.reservation_id AND UPPER(ii.category) = 'BOOK'
+              )
+            ORDER BY r.created_at DESC
+        """, (branch_id,))
+        rows = cur.fetchall() or []
+
+        # Convert created_at to Manila time
+        for row in rows:
+            if row.get("created_at"):
+                row["created_at"] = _to_manila_naive(row["created_at"])
+
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
+
+    return render_template("librarian_reservations.html", rows=rows)

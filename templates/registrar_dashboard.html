@@ -488,8 +488,11 @@
 
 <div
     style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
-    <h2 style="margin:0;">Enrollments</h2>
-    <a href="/registrar" class="btn btn-secondary btn-sm">← Back to Dashboard</a>
+    <h2 style="margin:0; display: flex; align-items: center; gap: 10px;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        Enrollments
+    </h2>
+    <a href="/registrar" class="btn btn-secondary btn-sm">Back to Dashboard</a>
 </div>
 <!-- School Year Switcher -->
 <div class="card" style="margin-bottom: 14px;">
@@ -520,11 +523,13 @@
 <!-- ═══ TABS ═══ -->
 <div class="tab-bar">
     <a class="tab-btn active" href="#" onclick="switchTab('new',this); return false;">
-        📋 New Enrollments
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        New Enrollments
         <span class="tab-count">{{ new_enrollments | length }}</span>
     </a>
     <a class="tab-btn" href="#enrolled" id="tab-enrolled-btn" onclick="switchTab('enrolled',this); return false;">
-        🎓 Enrolled Students
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+        Enrolled Students
         <span class="tab-count">{{ enrolled_students | length }}</span>
     </a>
 </div>
@@ -588,11 +593,11 @@
 
                     <td>
                         {% if enrollment.status == 'approved' %}
-                        <span class="badge badge-approved">✅ Approved</span>
+                        <span class="badge badge-approved">Approved</span>
                         {% elif enrollment.status == 'rejected' %}
-                        <span class="badge badge-rejected">❌ Rejected</span>
+                        <span class="badge badge-rejected">Rejected</span>
                         {% else %}
-                        <span class="badge badge-pending">⏳ Pending</span>
+                        <span class="badge badge-pending">Pending</span>
                         {% endif %}
                     </td>
 
@@ -600,7 +605,7 @@
                         {% if enrollment.status == 'pending' %}
 {% if is_branch_active_status and can_modify %}
   <button type="button" class="btn btn-primary btn-sm"
-      onclick="toggleNewDetails('{{ enrollment.enrollment_id }}', this)">👁 View Details</button>
+      onclick="toggleNewDetails('{{ enrollment.enrollment_id }}', this)">View Details</button>
 
 
 {% else %}
@@ -770,7 +775,9 @@
                                                 onclick="markDocViewed('{{ enrollment.enrollment_id }}', this)"
                                                 style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; border:1px solid var(--border); border-radius:10px; text-decoration:none; color:#0f172a; background:#f8fafc; transition: all 0.2s;">
                                                 <span style="font-weight:700; font-size:0.86rem; display:flex; align-items:center; gap:8px;">
-                                                    <span class="view-check" style="display:none; color:#10b981;">✓</span>
+                                                    <span class="view-check" style="display:none; color:#10b981;">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                    </span>
                                                     {{ doc.document_type or doc.file_name }}
                                                 </span>
                                                 <span style="font-size:0.75rem; font-weight:700; color:var(--btn); background:#eff6ff; padding:2px 8px; border-radius:6px;">View</span>
@@ -805,8 +812,9 @@
                                         <button type="submit"
         class="btn btn-primary btn-sm save-inline-btn"
         {% if not can_modify %}disabled{% endif %}
-        style="margin-top:12px; width:100%; justify-content:center; background:#8aa0c8; border:none;">
-  💾 Save Changes
+        style="margin-top:12px; width:100%; justify-content:center; background:#8aa0c8; border:none; display: flex; align-items: center; gap: 8px;">
+  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+  Save Changes
 </button>
 
 {% if not can_modify %}
@@ -827,7 +835,8 @@
                                  style="margin: 16px 0; padding:12px 18px; background:#f8fafc; border:1.5px solid #e2e8f0; border-radius:12px; display:flex; align-items:center; justify-content:space-between; gap:12px; overflow: hidden;">
                                 <div style="flex:1;">
                                     <div style="font-weight:900; color:#1e293b; font-size:0.95rem; display:flex; align-items:center; gap:6px;">
-                                        ⚖️ Application Decision
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                        Application Decision
                                         {% if enrollment.documents and enrollment.documents | length > 0 %}
                                             <span class="doc-status-badge" style="font-size:0.7rem; background:#fee2e2; color:#991b1b; padding:2px 8px; border-radius:99px; font-weight:800;">
                                                 View all {{ enrollment.documents | length }} docs to enable
@@ -844,16 +853,18 @@
                                             <button name="action" value="approved" 
                                                     class="btn btn-success action-btn-{{ enrollment.enrollment_id }}" 
                                                     {% if enrollment.documents and enrollment.documents | length > 0 %}disabled{% endif %}
-                                                    style="padding:8px 20px; font-weight:800; border-radius:10px; border:none; cursor:pointer; font-size:0.85rem; opacity:{% if enrollment.documents and enrollment.documents | length > 0 %}0.5{% else %}1{% endif %};">
-                                                ✅ Approve
+                                                    style="padding:8px 20px; font-weight:800; border-radius:10px; border:none; cursor:pointer; font-size:0.85rem; opacity:{% if enrollment.documents and enrollment.documents | length > 0 %}0.5{% else %}1{% endif %}; display: flex; align-items: center; gap: 6px;">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                Approve
                                             </button>
                                         </form>
                                         <button type="button" 
                                                 class="btn btn-danger action-btn-{{ enrollment.enrollment_id }}" 
                                                 {% if enrollment.documents and enrollment.documents | length > 0 %}disabled{% endif %}
-                                                style="padding:8px 20px; font-weight:800; border-radius:10px; border:none; cursor:pointer; font-size:0.85rem; opacity:{% if enrollment.documents and enrollment.documents | length > 0 %}0.5{% else %}1{% endif %};"
+                                                style="padding:8px 20px; font-weight:800; border-radius:10px; border:none; cursor:pointer; font-size:0.85rem; opacity:{% if enrollment.documents and enrollment.documents | length > 0 %}0.5{% else %}1{% endif %}; display: flex; align-items: center; gap: 6px;"
                                                 onclick="openRejectModal('{{ enrollment.enrollment_id }}', '{{ enrollment.student_name|e }}')">
-                                            ❌ Reject
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                            Reject
                                         </button>
                                     {% else %}
                                         <span class="badge" style="background:#e2e8f0; color:#64748b; border:none; font-weight:800; font-size:0.8rem;">
@@ -868,7 +879,12 @@
                 </tr>
                 {% else %}
                 <tr class="empty-row">
-                    <td colspan="5">No new enrollment applications yet.</td>
+                    <td colspan="5">
+                        <div style="opacity: 0.3; margin-bottom: 8px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9.5C2 7 4 5 6.5 5H18c2.5 0 4 2 4 4.5V17z"></path><polyline points="15 5 15 9 18 9"></polyline><path d="M2 9.5h20"></path></svg>
+                        </div>
+                        No new enrollment applications yet.
+                    </td>
                 </tr>
                 {% endfor %}
             </table>
@@ -885,7 +901,9 @@
             style="padding:14px 16px; background:#fef2f2; border-bottom:1px solid #fecaca; display:flex; align-items:center; justify-content:space-between; gap:10px;">
             <div style="font-weight:900; color:#991b1b;">Reject Enrollment</div>
             <button type="button" class="btn btn-sm" onclick="closeRejectModal()"
-                style="background:#fff; color:#991b1b; border:1px solid #fecaca;">✕</button>
+                style="background:#fff; color:#991b1b; border:1px solid #fecaca;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
         </div>
         <div style="padding:16px;">
             <div style="font-size:0.85rem; color:var(--muted); margin-bottom:10px;">
@@ -920,7 +938,7 @@
       if (!row) return;
       const isOpen = row.style.display !== 'none';
       row.style.display = isOpen ? 'none' : '';
-      if (btn) btn.textContent = isOpen ? '👁 View Details' : 'Hide Details';
+      if (btn) btn.textContent = isOpen ? 'View Details' : 'Hide Details';
     }
 
     function markDocViewed(enrollmentId, link) {
@@ -946,7 +964,7 @@
         } else {
             // Enable buttons
             if (badge) {
-                badge.textContent = '✅ Review complete';
+                badge.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><polyline points="20 6 9 17 4 12"></polyline></svg> Review complete';
                 badge.style.background = '#dcfce7';
                 badge.style.color = '#166534';
             }
@@ -1023,21 +1041,21 @@
     {% if reenrollment_open %}
     <div class="toggle-banner open-state">
         <div class="tg-left">
-            <strong>🔓 Re-Enrollment is OPEN</strong>
+            <strong>Re-Enrollment is OPEN</strong>
             <span>Students can currently log in and re-enroll for the next school year.</span>
         </div>
         <form method="post" action="/registrar/toggle-reenrollment">
             <input type="hidden" name="action" value="close">
             <button type="submit" class="btn btn-danger btn-sm"
                 onclick="return confirm('Close re-enrollment for ALL students?')">
-                🔒 Close Re-Enrollment
+                Close Re-Enrollment
             </button>
         </form>
     </div>
     {% else %}
     <div class="toggle-banner closed-state">
         <div class="tg-left">
-            <strong>🔒 Re-Enrollment is CLOSED</strong>
+            <strong>Re-Enrollment is CLOSED</strong>
             <span>Students cannot re-enroll yet. Click Open to allow all enrolled students to
                 re-enroll.</span>
         </div>
@@ -1045,7 +1063,7 @@
             <input type="hidden" name="action" value="open">
             <button type="submit" class="btn btn-warning btn-sm"
                 onclick="return confirm('Open re-enrollment for ALL enrolled students?')">
-                🔓 Open Re-Enrollment for All
+                Open Re-Enrollment for All
             </button>
         </form>
     </div>
@@ -1120,16 +1138,16 @@
                         {% elif e.section_id %}
                         Section #{{ e.section_id }}
                         {% else %}
-                        <span style="color:#f59e0b; font-weight:700;">⚠ Not assigned</span>
+                        <span style="color:#f59e0b; font-weight:700;">Not assigned</span>
                         {% endif %}
                     </td>
                     <td>
                         {% if e.status == 'open_for_enrollment' %}
-                        <span class="badge badge-open">🔓 Re-Enrollment Open</span>
+                        <span class="badge badge-open">Re-Enrollment Open</span>
                         {% elif e.status == 'approved' %}
-                        <span class="badge badge-approved">✅ Approved</span>
+                        <span class="badge badge-approved">Approved</span>
                         {% else %}
-                        <span class="badge badge-enrolled">🎓 Enrolled</span>
+                        <span class="badge badge-enrolled">Enrolled</span>
                         {% endif %}
                     </td>
                     <td>
@@ -1139,12 +1157,16 @@
                                 {{ e.enrollment_id }},
                                 '{{ e.student_name | replace("'", "\\'") }}',
                                 '{{ e.grade_level | replace("'", "\\'") }}'
-                            )">
-                            👤 Create Student Account
+                            )" style="display: inline-flex; align-items: center; gap: 8px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                            Create Student Account
                         </button>
                         {% endif %}
                         {% else %}
-                        <span class="acct-ok">✓ Student Account Created</span>
+                        <span class="acct-ok">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            Student Account Created
+                        </span>
                         {% endif %}
                         <br><br>
                         {% if not e.has_parent_account %}
@@ -1165,19 +1187,29 @@
                             {% else %}
                                 <form method="post" action="/registrar/create-parent-account/{{ e.enrollment_id }}"
                                     style="display:inline;">
-                                    <button type="submit" class="btn btn-secondary btn-sm">👨‍👩‍👧 Create Parent
-                                        Account</button>
+                                    <button type="submit" class="btn btn-secondary btn-sm" style="display: inline-flex; align-items: center; gap: 8px;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                        Create Parent Account
+                                    </button>
                                 </form>
                             {% endif %}
                         {% endif %}
                         {% else %}
-                        <span class="acct-ok">✓ Parent Account Linked</span>
+                        <span class="acct-ok">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            Parent Account Linked
+                        </span>
                         {% endif %}
                     </td>
                 </tr>
                 {% else %}
                 <tr class="empty-row">
-                    <td colspan="5">No enrolled students yet.</td>
+                    <td colspan="5">
+                        <div style="opacity: 0.3; margin-bottom: 8px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        </div>
+                        No enrolled students yet.
+                    </td>
                 </tr>
                 {% endfor %}
             </table>
@@ -1189,8 +1221,10 @@
 <!-- ═══ MODAL: Create Student Account + Assign Section ═══ -->
 <div class="modal-backdrop" id="createStudentModal">
     <div class="modal-box">
-        <button class="modal-close-x" onclick="closeCreateModal()">✕</button>
-        <div class="step-badge">👤 Create Student Account</div>
+        <button class="modal-close-x" onclick="closeCreateModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+        <div class="step-badge">Create Student Account</div>
         <h3 id="modalStudentName">Student Name</h3>
         <div class="modal-sub" id="modalGradeLevel"></div>
 
@@ -1207,7 +1241,7 @@
 
             <div class="modal-actions">
                 <button type="button" class="btn btn-secondary btn-sm" onclick="closeCreateModal()">Cancel</button>
-                <button type="submit" class="btn btn-success btn-sm">✅ Create Account</button>
+                <button type="submit" class="btn btn-success btn-sm">Create Account</button>
             </div>
         </form>
     </div>
@@ -1232,25 +1266,6 @@
             if (btn) switchTab('enrolled', btn);
         }
     });
-
-    // ── Filter enrolled table ──
-    function filterEnrolled() {
-        var grade = document.getElementById('gradeFilter').value.toLowerCase();
-        var search = document.getElementById('enrolledSearch').value.toLowerCase();
-        var rows = document.querySelectorAll('.enrolled-row');
-        var visible = 0;
-
-        rows.forEach(function (row) {
-            var matchGrade = !grade || row.dataset.grade === grade;
-            var matchName = !search || row.dataset.name.includes(search);
-            var show = matchGrade && matchName;
-            row.style.display = show ? '' : 'none';
-            if (show) visible++;
-        });
-
-        var cnt = document.getElementById('enrolledCount');
-        if (cnt) cnt.textContent = visible + ' student' + (visible !== 1 ? 's' : '');
-    }
 
     // ── Create Student Account modal ──
     function closeCreateModal() {
@@ -1307,7 +1322,7 @@
 
     function openCreateModal(enrollmentId, studentName, gradeLevel) {
         document.getElementById('modalStudentName').textContent = studentName;
-        document.getElementById('modalGradeLevel').textContent = '📚 Grade Level: ' + gradeLevel;
+        document.getElementById('modalGradeLevel').textContent = 'Grade Level: ' + gradeLevel;
         document.getElementById('createStudentForm').action =
             '/registrar/create-student-account/' + enrollmentId;
 

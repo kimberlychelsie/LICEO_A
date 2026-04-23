@@ -1022,16 +1022,15 @@ def registrar_profile_pictures():
                     file_url = upload_file_to_subfolder(file, "profiles")
 
                     if user_type == 'student':
-                        # Update enrollments and if they have user account, update users too
+                        # Update enrollments
                         cursor.execute("UPDATE enrollments SET profile_image = %s WHERE enrollment_id = %s", (file_url, target_id))
                         
-                        # See if student account exists to update users table as well
-                        cursor.execute("""
-                            SELECT user_id FROM enrollments WHERE enrollment_id = %s
-                        """, (target_id,))
-                        row = cursor.fetchone()
-                        if row and row['user_id']:
-                            cursor.execute("UPDATE users SET profile_image = %s WHERE user_id = %s", (file_url, row['user_id']))
+                        # Also update student_accounts if they have one (though most templates use enrollments table for student profile images)
+                        # We do this as a fallback to keep data synchronized
+                        try:
+                            cursor.execute("UPDATE student_accounts SET profile_image = %s WHERE enrollment_id = %s", (file_url, target_id))
+                        except:
+                            pass # Column might not exist in all versions of the schema
 
                     elif user_type == 'teacher':
                         cursor.execute("UPDATE users SET profile_image = %s WHERE user_id = %s", (file_url, target_id))
@@ -1156,7 +1155,7 @@ def registrar_students_by_grade():
         year_filter = request.args.get("year_id", "")
 
         # Fetch school years for the dropdown
-        cursor.execute("SELECT year_id, label, is_active FROM school_years WHERE branch_id = %s ORDER BY start_date DESC", (branch_id,))
+        cursor.execute("SELECT year_id, label, is_active FROM school_years WHERE branch_id = %s ORDER BY label DESC", (branch_id,))
         school_years = cursor.fetchall()
         
         # Determine the active year id or fallback
