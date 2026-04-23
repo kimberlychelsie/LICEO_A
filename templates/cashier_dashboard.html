@@ -334,36 +334,27 @@
         <!-- Billing Chart Card -->
         <div class="analytics-card">
             <h2>📊 Billing Health Overview</h2>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: center; flex: 1;">
-                <div class="chart-container">
-                    <canvas id="billingChart"></canvas>
-                    <div style="position: absolute; text-align: center; pointer-events: none;">
-                        <div id="chartTotal" style="font-size: 1.5rem; font-weight: 900; color: var(--cashier-primary);">0</div>
-                        <div style="font-size: 0.6rem; font-weight: 800; color: var(--cashier-muted); text-transform: uppercase;">Students</div>
+            <div style="display: flex; flex-direction: column; gap: 16px; flex: 1; justify-content: center;">
+                <div class="mini-stat">
+                    <div class="mini-stat-label">Pending / Partial Bills</div>
+                    <div class="mini-stat-value" style="color: var(--cashier-pending); font-size: 2rem;">{{ pending_count }}</div>
+                </div>
+                <div class="mini-stat" style="background: #f0fdf4; border-color: #d1fae5;">
+                    <div class="mini-stat-label" style="color: #059669;">Action Required</div>
+                    <div style="font-size: .85rem; font-weight: 700; color: #065f46;">
+                        {% if pending_count > 0 %}{{ pending_count }} student{{ 's' if pending_count != 1 }} still have outstanding balances.{% else %}All bills are settled. 🎉{% endif %}
                     </div>
                 </div>
-                <div class="chart-stats">
-                    <div class="mini-stat">
-                        <div class="mini-stat-label">Pending/Partial</div>
-                        <div class="mini-stat-value" style="color: var(--cashier-pending);">{{ pending_count }}</div>
-                    </div>
-                    <div class="mini-stat">
-                        <div class="mini-stat-label">Fully Settled</div>
-                        <div class="mini-stat-value" style="color: var(--cashier-success);">{{ enrollments|selectattr('bill_status', 'equalto', 'paid')|list|length }}</div>
-                    </div>
-                    <div class="mini-stat" style="grid-column: span 2;">
-                        <div class="mini-stat-label">Total Active Enrollments</div>
-                        <div class="mini-stat-value">{{ enrollments|length }}</div>
-                    </div>
-                </div>
+                <a href="/cashier/billing-registry" style="display:inline-flex; align-items:center; gap:8px; padding:10px 20px; background:var(--cashier-primary); color:#fff; border-radius:10px; font-weight:700; font-size:.88rem; text-decoration:none; width:fit-content;">📋 Open Full Registry →</a>
             </div>
         </div>
     </div>
 
     <!-- Quick Actions -->
     <div class="action-row">
-        <a href="/cashier/search" class="btn-action btn-search">
-            <span>🔍 Search Student</span>
+
+        <a href="/cashier/billing-registry" class="btn-action btn-search" style="background: #6366f1; box-shadow: 0 4px 12px rgba(99,102,241,.25);">
+            <span>📋 Billing Registry</span>
         </a>
         <a href="/cashier/reservations" class="btn-action btn-history">
             <span>📚 Reservations</span>
@@ -376,129 +367,7 @@
         </a>
     </div>
 
-    <!-- Enrollments Table -->
-    <div class="data-container">
-        <div class="data-header">
-            <h2>📋 Billing & Settlement Registry</h2>
-        </div>
-        <div class="table-responsive">
-            <table class="modern-table">
-                <thead>
-                    <tr>
-                        <th>Student & ID</th>
-                        <th>Grade Level</th>
-                        <th>Status</th>
-                        <th>Outstanding</th>
-                        <th style="text-align: right;">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for e in enrollments %}
-                    <tr>
-                        <td>
-                            <div class="student-info">
-                                <span class="student-name">{{ e.student_name }}</span>
-                                <span class="student-id">ENRL-{{ e.branch_enrollment_no }}</span>
-                            </div>
-                        </td>
-                        <td>
-                            <span style="font-weight: 600; color: var(--cashier-muted);">{{ e.grade_level }}</span>
-                        </td>
-                        <td>
-                            {% if not e.bill_id %}
-                                <span class="badge-status badge-none">No Bill Generated</span>
-                            {% elif e.bill_status == 'paid' %}
-                                <span class="badge-status badge-paid">Settled</span>
-                            {% elif e.bill_status == 'partial' %}
-                                <span class="badge-status badge-partial">Partial</span>
-                            {% else %}
-                                <span class="badge-status badge-pending">Payment Due</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if e.balance %}
-                                <span style="font-weight: 800; color: #b91c1c;">₱{{ "{:,.2f}".format(e.balance) }}</span>
-                            {% else %}
-                                <span style="color: var(--cashier-muted); font-size: 0.85rem;">No Balance</span>
-                            {% endif %}
-                        </td>
-                        <td style="text-align: right;">
-                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                                {% if not e.bill_id %}
-                                    {% if is_branch_active_status %}
-                                        <a href="/cashier/create-bill/{{ e.enrollment_id }}" class="btn-action btn-search" style="padding: 8px 16px; font-size: 0.8rem; border-radius: 8px;">
-                                            Create Bill
-                                        </a>
-                                    {% endif %}
-                                {% else %}
-                                    <a href="/cashier/bill/{{ e.bill_id }}" class="btn-icon" title="View Statement">👁</a>
-                                    {% if e.bill_status != 'paid' and is_branch_active_status %}
-                                        <a href="/cashier/process-payment/{{ e.bill_id }}" class="btn-icon btn-pay" title="Process Payment">💵</a>
-                                    {% endif %}
-                                {% endif %}
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% if not enrollments %}
-        <div style="text-align: center; padding: 64px 32px; color: var(--cashier-muted);">
-            <div style="font-size: 4rem; margin-bottom: 24px;">📭</div>
-            <h3 style="font-weight: 800; color: var(--cashier-primary); margin-bottom: 8px;">No Records Found</h3>
-            <p>There are no active enrollments to display/bill currently.</p>
-        </div>
-        {% endif %}
-    </div>
-
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // ── Billing Status Analytics ──
-    const paidCount = {{ enrollments|selectattr('bill_status', 'equalto', 'paid')|list|length }};
-    const partCount = {{ enrollments|selectattr('bill_status', 'equalto', 'partial')|list|length }};
-    const pendCount = {{ enrollments|selectattr('bill_status', 'equalto', 'pending')|list|length }};
-    const noBillCount = {{ enrollments|rejectattr('bill_status')|list|length }};
-    
-    const chartTotalEl = document.getElementById('chartTotal');
-    if (chartTotalEl) chartTotalEl.innerText = {{ enrollments|length }};
-
-    const ctx = document.getElementById('billingChart')?.getContext('2d');
-    if (ctx) {
-        new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Settled', 'Partial', 'Pending', 'No Bill'],
-                datasets: [{
-                    data: [paidCount, partCount, pendCount, noBillCount],
-                    backgroundColor: ['#10b981', '#3b82f6', '#f59e0b', '#e2e8f0'],
-                    borderWidth: 2,
-                    borderColor: '#ffffff',
-                    hoverOffset: 6
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '75%',
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return ` ${context.label}: ${context.raw}`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-});
-</script>
 
 <style>
 @keyframes pulse {
@@ -507,4 +376,4 @@ document.addEventListener('DOMContentLoaded', function() {
     100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
 </style>
-{% endblock %}
+{% endblock %}

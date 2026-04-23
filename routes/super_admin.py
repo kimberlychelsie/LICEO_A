@@ -194,6 +194,16 @@ def super_admin_branches():
                 "INSERT INTO users (branch_id, username, password, role, email, full_name, gender, require_password_change) VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE)",
                 (branch_id, username, hashed, "branch_admin", admin_email, admin_name, gender)
             )
+            
+            # Auto-insert active school year for new branch
+            cursor.execute("SELECT label FROM school_years WHERE is_active=TRUE LIMIT 1")
+            active_sy = cursor.fetchone()
+            if active_sy:
+                cursor.execute(
+                    "INSERT INTO school_years (label, is_active, branch_id) VALUES (%s, TRUE, %s)",
+                    (active_sy["label"], branch_id)
+                )
+
             db.commit()
 
             db.commit()
@@ -469,6 +479,127 @@ def superadmin_faq_edit(faq_id):
         except Exception: pass
         db.close()
     return redirect(url_for("super_admin.superadmin_faqs"))
+@super_admin_bp.route("/superadmin/school-years", methods=["GET", "POST"])
+def superadmin_school_years():
+    if "user_id" not in session or session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cursor = db.cursor()
+
+    if request.method == "POST":
+        label = (request.form.get("label") or "").strip()
+        if not label:
+            flash("School Year label is required.", "error")
+        else:
+            try:
+                # Insert this label for EVERY active branch
+                cursor.execute("SELECT branch_id FROM branches WHERE is_active=TRUE")
+                branches = cursor.fetchall()
+
+                # Check if it already exists for any branch to avoid duplicates
+                cursor.execute("SELECT 1 FROM school_years WHERE label=%s LIMIT 1", (label,))
+                if cursor.fetchone():
+                    flash(f"School Year '{label}' already exists globally.", "error")
+                else:
+                    for b in branches:
+                        cursor.execute(
+                            "INSERT INTO school_years (label, is_active, branch_id) VALUES (%s, FALSE, %s)",
+                            (label, b[0])
+                        )
+                    db.commit()
+                    flash(f"Successfully broadcasted '{label}' to all active branches.", "success")
+            except Exception as e:
+                db.rollback()
+                flash(f"Error broadcasting school year: {e}", "error")
+        return redirect(url_for("super_admin.superadmin_school_years"))
+
+    # Display unique school years and their global active status
+    cursor.execute("""
+        SELECT label, bool_or(is_active) as is_active 
+        FROM school_years 
+        GROUP BY label 
+        ORDER BY label DESC
+    """)
+    unique_years = cursor.fetchall()
+    
+    cursor.close()
+    db.close()
+
+    return render_template("superadmin_school_years.html", unique_years=unique_years)
+
+@super_admin_bp.route("/superadmin/school-years/activate", methods=["POST"])
+def superadmin_set_active_year():
+    if "user_id" not in session or session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    label = (request.form.get("label") or "").strip()
+    if not label:
+        flash("School Year label is required.", "error")
+        return redirect(url_for("super_admin.superadmin_school_years"))
+
+    db = get_db_connection()
+    cursor = db.cursor()
+
+    try:
+        cursor.execute("BEGIN;")
+        # Find the new active year label
+        cursor.execute("SELECT branch_id FROM branches WHERE is_active = TRUE")
+        branches = cursor.fetchall()
+
+        for b in branches:
+            branch_id = b[0]
+            
+            # Get old active year for this branch
+            cursor.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
+            old = cursor.fetchone()
+            old_year_id = old[0] if old else None
+
+            # Deactivate all for this branch
+            cursor.execute("UPDATE school_years SET is_active = FALSE WHERE branch_id = %s", (branch_id,))
+
+            # Activate the new one and get its year_id
+            cursor.execute("UPDATE school_years SET is_active = TRUE WHERE label = %s AND branch_id = %s RETURNING year_id", (label, branch_id))
+            new = cursor.fetchone()
+            new_year_id = new[0] if new else None
+
+            if new_year_id and old_year_id and new_year_id != old_year_id:
+                # Check if sections already exist for the new year
+                cursor.execute("SELECT COUNT(*) FROM sections WHERE year_id = %s AND branch_id = %s", (new_year_id, branch_id))
+                if cursor.fetchone()[0] == 0:
+                    # Copy sections
+                    cursor.execute("""
+                        INSERT INTO sections (branch_id, year_id, section_name, grade_level_id, capacity)
+                        SELECT branch_id, %s, section_name, grade_level_id, capacity
+                        FROM sections
+                        WHERE year_id = %s AND branch_id = %s
+                    """, (new_year_id, old_year_id, branch_id))
+
+                    # Copy section teachers (without the teacher assignment)
+                    cursor.execute("""
+                        INSERT INTO section_teachers (section_id, subject_id, teacher_id)
+                        SELECT new_s.section_id, st.subject_id, NULL
+                        FROM section_teachers st
+                        JOIN sections old_s ON st.section_id = old_s.section_id
+                        JOIN sections new_s 
+                            ON new_s.section_name = old_s.section_name
+                            AND new_s.grade_level_id = old_s.grade_level_id
+                            AND new_s.branch_id = old_s.branch_id
+                            AND new_s.year_id = %s
+                        WHERE old_s.year_id = %s
+                        AND old_s.branch_id = %s
+                    """, (new_year_id, old_year_id, branch_id))
+
+        db.commit()
+        flash(f"'{label}' is now active globally and sections were copied where needed.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error setting active school year: {e}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(url_for("super_admin.superadmin_school_years"))
 
 
 @super_admin_bp.after_request

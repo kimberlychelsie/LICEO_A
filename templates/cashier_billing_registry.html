@@ -1,0 +1,573 @@
+{% extends "base.html" %}
+{% block title %}Billing & Settlement Registry{% endblock %}
+{% block page_title %}📋 Billing Registry{% endblock %}
+
+{% block styles %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+    :root {
+        --cashier-primary: #1e3a8a;
+        --cashier-accent: #3b82f6;
+        --cashier-success: #10b981;
+        --cashier-pending: #f59e0b;
+        --cashier-danger: #ef4444;
+        --cashier-total: #6366f1;
+        --cashier-bg: #f8fafc;
+        --cashier-card: #ffffff;
+        --cashier-text: #0f172a;
+        --cashier-muted: #64748b;
+        --cashier-border: #e2e8f0;
+        --cashier-shadow: 0 4px 6px -1px rgba(0, 0, 0, .1), 0 2px 4px -2px rgba(0, 0, 0, .1);
+    }
+
+    body {
+        background: var(--cashier-bg);
+        font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    }
+
+    .reg-wrap {
+        max-width: 1340px;
+        margin: 0 auto;
+        padding: 28px 20px 64px;
+    }
+
+    /* ── Page header ── */
+    .page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 16px;
+        margin-bottom: 28px;
+    }
+
+    .page-header h1 {
+        font-size: 1.85rem;
+        font-weight: 800;
+        color: var(--cashier-primary);
+        margin: 0;
+        letter-spacing: -.02em;
+    }
+
+    .page-header p {
+        margin: 4px 0 0;
+        color: var(--cashier-muted);
+        font-weight: 500;
+    }
+
+    /* ── Summary strip ── */
+    .summary-strip {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    @media (max-width: 900px) {
+        .summary-strip {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 540px) {
+        .summary-strip {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .stat-card {
+        background: var(--cashier-card);
+        border: 1px solid var(--cashier-border);
+        border-radius: 18px;
+        padding: 20px 22px;
+        box-shadow: var(--cashier-shadow);
+        cursor: pointer;
+        text-decoration: none;
+        display: block;
+        transition: transform .18s, box-shadow .18s;
+        border-left: 4px solid var(--c-accent, var(--cashier-accent));
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, .1);
+    }
+
+    .stat-card .stat-label {
+        font-size: .68rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: var(--cashier-muted);
+        margin-bottom: 6px;
+    }
+
+    .stat-card .stat-value {
+        font-size: 2rem;
+        font-weight: 900;
+        color: var(--c-accent, var(--cashier-accent));
+        line-height: 1;
+    }
+
+    /* ── Filter bar ── */
+    .filter-bar {
+        background: var(--cashier-card);
+        border: 1px solid var(--cashier-border);
+        border-radius: 16px;
+        padding: 18px 22px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: flex-end;
+        margin-bottom: 24px;
+        box-shadow: var(--cashier-shadow);
+    }
+
+    .filter-bar form {
+        display: contents;
+    }
+
+    .filter-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .filter-group label {
+        font-size: .72rem;
+        font-weight: 800;
+        color: var(--cashier-muted);
+        text-transform: uppercase;
+    }
+
+    .filter-group select,
+    .filter-group input[type="text"] {
+        padding: 9px 14px;
+        border: 1.5px solid var(--cashier-border);
+        border-radius: 10px;
+        font-size: .9rem;
+        font-family: inherit;
+        background: #f8fafc;
+        color: var(--cashier-text);
+        min-width: 160px;
+        transition: border-color .15s;
+    }
+
+    .filter-group select:focus,
+    .filter-group input:focus {
+        outline: none;
+        border-color: var(--cashier-accent);
+        background: #fff;
+    }
+
+    .filter-group.grow {
+        flex: 1;
+        min-width: 200px;
+    }
+
+    .btn-filter {
+        padding: 10px 22px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: .9rem;
+        cursor: pointer;
+        transition: all .18s;
+        border: none;
+    }
+
+    .btn-filter-apply {
+        background: var(--cashier-primary);
+        color: #fff;
+    }
+
+    .btn-filter-apply:hover {
+        background: #1e40af;
+    }
+
+    .btn-filter-reset {
+        background: #f1f5f9;
+        color: var(--cashier-muted);
+        border: 1px solid var(--cashier-border);
+    }
+
+    .btn-filter-reset:hover {
+        background: #e2e8f0;
+    }
+
+    /* ── Table ── */
+    .table-card {
+        background: var(--cashier-card);
+        border: 1px solid var(--cashier-border);
+        border-radius: 22px;
+        overflow: hidden;
+        box-shadow: var(--cashier-shadow);
+    }
+
+    .table-head-bar {
+        padding: 20px 28px;
+        border-bottom: 1px solid var(--cashier-border);
+        background: #fbfcfe;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .table-head-bar h2 {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--cashier-primary);
+        margin: 0;
+    }
+
+    .record-count {
+        font-size: .8rem;
+        font-weight: 700;
+        color: var(--cashier-muted);
+        background: #f1f5f9;
+        padding: 4px 12px;
+        border-radius: 99px;
+    }
+
+    .modern-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 820px;
+    }
+
+    .modern-table th {
+        background: #fbfcfe;
+        padding: 14px 24px;
+        text-align: left;
+        font-size: .72rem;
+        font-weight: 800;
+        color: var(--cashier-muted);
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        border-bottom: 1px solid var(--cashier-border);
+    }
+
+    .modern-table td {
+        padding: 15px 24px;
+        font-size: .93rem;
+        color: var(--cashier-text);
+        border-bottom: 1px solid var(--cashier-border);
+        vertical-align: middle;
+    }
+
+    .modern-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .modern-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .student-name {
+        font-weight: 700;
+        color: var(--cashier-primary);
+    }
+
+    .student-id {
+        font-size: .73rem;
+        color: var(--cashier-muted);
+        font-weight: 600;
+        margin-top: 1px;
+    }
+
+    .badge-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 13px;
+        border-radius: 999px;
+        font-size: .72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .02em;
+    }
+
+    .badge-paid {
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .badge-partial {
+        background: #dbeafe;
+        color: #1e40af;
+    }
+
+    .badge-pending {
+        background: #fff3c4;
+        color: #92400e;
+    }
+
+    .badge-none {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .btn-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        text-decoration: none;
+        transition: all .2s;
+        font-size: .95rem;
+        border: 1px solid var(--cashier-border);
+        background: #fff;
+        color: var(--cashier-muted);
+    }
+
+    .btn-icon:hover {
+        background: var(--cashier-primary);
+        color: #fff;
+        border-color: var(--cashier-primary);
+        transform: scale(1.1);
+    }
+
+    .btn-pay {
+        background: #ecfdf5;
+        color: #059669;
+        border-color: #bbf7d0;
+    }
+
+    .btn-pay:hover {
+        background: #059669;
+        color: #fff;
+        border-color: #059669;
+    }
+
+    .btn-create {
+        padding: 7px 14px;
+        border-radius: 8px;
+        font-size: .78rem;
+        font-weight: 700;
+        background: var(--cashier-primary);
+        color: #fff;
+        text-decoration: none;
+        transition: background .18s;
+    }
+
+    .btn-create:hover {
+        background: #1e40af;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 64px 32px;
+        color: var(--cashier-muted);
+    }
+
+    .empty-state .empty-icon {
+        font-size: 3.5rem;
+        margin-bottom: 16px;
+    }
+
+    .empty-state h3 {
+        font-weight: 800;
+        color: var(--cashier-primary);
+        margin-bottom: 6px;
+    }
+
+    .tbl-scroll {
+        overflow-x: auto;
+    }
+
+    @keyframes pulse {
+        0% {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, .4);
+        }
+
+        70% {
+            box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+        }
+
+        100% {
+            box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="reg-wrap">
+
+    <!-- Page Header -->
+    <div class="page-header">
+        <div>
+            <h1>📋 Billing &amp; Settlement Registry</h1>
+            <p>Financial overview for <strong>{{ session.get('branch_name', 'Main Campus') }}</strong></p>
+        </div>
+        <a href="/cashier"
+            style="padding:10px 20px; border-radius:10px; border:1px solid var(--cashier-border); background:#fff; color:var(--cashier-primary); font-weight:700; font-size:.9rem; text-decoration:none; display:flex; align-items:center; gap:6px;">
+            ← Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Summary Strip -->
+    <div class="summary-strip">
+        <a href="?status_filter=no_bill&grade_filter={{ grade_filter }}&q={{ search_q }}" class="stat-card"
+            style="--c-accent:#64748b;">
+            <div class="stat-label">No Bill Generated</div>
+            <div class="stat-value">{{ no_bill_count }}</div>
+        </a>
+        <a href="?status_filter=pending&grade_filter={{ grade_filter }}&q={{ search_q }}" class="stat-card"
+            style="--c-accent:#f59e0b;">
+            <div class="stat-label">Payment Due</div>
+            <div class="stat-value">{{ pending_count }}</div>
+        </a>
+        <a href="?status_filter=partial&grade_filter={{ grade_filter }}&q={{ search_q }}" class="stat-card"
+            style="--c-accent:#3b82f6;">
+            <div class="stat-label">Partial Payment</div>
+            <div class="stat-value">{{ partial_count }}</div>
+        </a>
+        <a href="?status_filter=paid&grade_filter={{ grade_filter }}&q={{ search_q }}" class="stat-card"
+            style="--c-accent:#10b981;">
+            <div class="stat-label">Fully Settled</div>
+            <div class="stat-value">{{ paid_count }}</div>
+        </a>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        <form method="get" action="/cashier/billing-registry" style="display:contents;">
+            <div class="filter-group grow">
+                <label>Search Student</label>
+                <input type="text" name="q" id="searchInput" placeholder="Name or enrollment no..."
+                    value="{{ search_q }}">
+            </div>
+            <div class="filter-group">
+                <label>Grade Level</label>
+                <select name="grade_filter" id="gradeFilter">
+                    <option value="">— All Grades —</option>
+                    {% for g in grade_levels %}
+                    <option value="{{ g }}" {% if g==grade_filter %}selected{% endif %}>{{ g }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-group">
+                <label>Payment Status</label>
+                <select name="status_filter" id="statusFilter">
+                    <option value="">— All Statuses —</option>
+                    <option value="no_bill" {% if status_filter=='no_bill' %}selected{% endif %}>No Bill Generated
+                    </option>
+                    <option value="pending" {% if status_filter=='pending' %}selected{% endif %}>Payment Due</option>
+                    <option value="partial" {% if status_filter=='partial' %}selected{% endif %}>Partial Payment
+                    </option>
+                    <option value="paid" {% if status_filter=='paid' %}selected{% endif %}>Fully Settled</option>
+                </select>
+            </div>
+            <button type="submit" class="btn-filter btn-filter-apply">🔍 Filter</button>
+            <a href="/cashier/billing-registry" class="btn-filter btn-filter-reset">✕ Reset</a>
+        </form>
+    </div>
+
+    <!-- Table -->
+    <div class="table-card">
+        <div class="table-head-bar">
+            <h2>Student Billing Records</h2>
+            <span class="record-count">{{ enrollments | length }} record{{ 's' if enrollments | length != 1 else ''
+                }}</span>
+        </div>
+
+        {% if enrollments %}
+        <div class="tbl-scroll">
+            <table class="modern-table">
+                <thead>
+                    <tr>
+                        <th>Student &amp; ID</th>
+                        <th>Grade Level</th>
+                        <th>Bill Status</th>
+                        <th>Total Bill</th>
+                        <th>Paid</th>
+                        <th>Balance</th>
+                        <th style="text-align:right;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in enrollments %}
+                    <tr>
+                        <td>
+                            <div class="student-name">{{ e.student_name }}</div>
+                            <div class="student-id">
+                                {% if e.username %}
+                                {{ e.username }}
+                                {% else %}
+                                <span style="font-style: italic; opacity: 0.7;">No account yet</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td style="font-weight:600; color:var(--cashier-muted);">{{ e.grade_level }}</td>
+                        <td>
+                            {% if not e.bill_id %}
+                            <span class="badge-status badge-none">No Bill</span>
+                            {% elif e.bill_status == 'paid' %}
+                            <span class="badge-status badge-paid">✅ Settled</span>
+                            {% elif e.bill_status == 'partial' %}
+                            <span class="badge-status badge-partial">⏳ Partial</span>
+                            {% else %}
+                            <span class="badge-status badge-pending">⚠️ Due</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if e.total_amount %}
+                            <span style="font-weight:700;">₱{{ "{:,.2f}".format(e.total_amount) }}</span>
+                            {% else %}
+                            <span style="color:var(--cashier-muted); font-size:.85rem;">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if e.amount_paid %}
+                            <span style="font-weight:600; color:var(--cashier-success);">₱{{
+                                "{:,.2f}".format(e.amount_paid) }}</span>
+                            {% else %}
+                            <span style="color:var(--cashier-muted); font-size:.85rem;">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if e.balance %}
+                            <span style="font-weight:800; color:#b91c1c;">₱{{ "{:,.2f}".format(e.balance) }}</span>
+                            {% elif e.bill_id and e.bill_status == 'paid' %}
+                            <span style="color:var(--cashier-success); font-weight:700;">Cleared</span>
+                            {% else %}
+                            <span style="color:var(--cashier-muted); font-size:.85rem;">—</span>
+                            {% endif %}
+                        </td>
+                        <td style="text-align:right;">
+                            <div style="display:flex; gap:8px; justify-content:flex-end; align-items:center;">
+                                {% if not e.bill_id %}
+                                {% if is_branch_active_status %}
+                                <a href="/cashier/create-bill/{{ e.enrollment_id }}" class="btn-create">
+                                    ＋ Create Bill
+                                </a>
+                                {% endif %}
+                                {% else %}
+                                <a href="/cashier/bill/{{ e.bill_id }}" class="btn-icon" title="View Statement">👁</a>
+                                {% if e.bill_status != 'paid' and is_branch_active_status %}
+                                <a href="/cashier/process-payment/{{ e.bill_id }}" class="btn-icon btn-pay"
+                                    title="Process Payment">💵</a>
+                                {% endif %}
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">📭</div>
+            <h3>No Records Found</h3>
+            <p>Try adjusting your filters or search term.</p>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}

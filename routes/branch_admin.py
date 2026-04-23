@@ -25,14 +25,14 @@ def generate_password(length: int = 8) -> str:
 # GRADE RANGE MAPPINGS (for inventory grade filter / display)
 # =======================
 GRADE_MAPPINGS = {
-    'Pre-Elementary Boys Set': ['Kinder', 'Grade 1', 'Grade 2', 'Grade 3'],
-    'Pre-Elementary Girls Set': ['Kinder', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6'],
+    'Pre-Elementary Boys Set': ['Nursery', 'Kinder', 'Grade 1', 'Grade 2', 'Grade 3'],
+    'Pre-Elementary Girls Set': ['Nursery', 'Kinder', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6'],
     'Elementary G4-6 Boys Set': ['Grade 4', 'Grade 5', 'Grade 6'],
     'JHS Boys Uniform Set': ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'],
     'JHS Girls Uniform Set': ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'],
     'SHS Boys Uniform Set': ['Grade 11', 'Grade 12'],
     'SHS Girls Uniform Set': ['Grade 11', 'Grade 12'],
-    'PE Uniform': ['Kinder'] + [f'Grade {i}' for i in range(1, 13)],
+    'PE Uniform': ['Nursery', 'Kinder'] + [f'Grade {i}' for i in range(1, 13)],
 }
 
 SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL"]  # xs to double XL
@@ -808,26 +808,29 @@ def branch_admin_grade_levels():
 
     if request.method == "POST":
         name = (request.form.get("name") or "").strip()
-        order = request.form.get("display_order") or None
-        description = (request.form.get("description") or "").strip()
 
         # ✅ validation
         if name not in VALID_GRADES:
             flash("Invalid grade level selected.", "error")
             return redirect(url_for('branch_admin.branch_admin_grade_levels'))
 
-        try:
-            order_int = int(order)
-        except (TypeError, ValueError):
-            order_int = 0
+        cursor.execute("SELECT COUNT(*) FROM grade_levels WHERE branch_id = %s", (branch_id,))
+        current_count = cursor.fetchone()[0]
 
-        if not name or order is None or order_int < 1:
-            flash("Name and order (must be 1 or greater) are required.", "error")
+        if current_count >= 20:
+            flash("Maximum limit of 20 grade levels reached. You cannot add more.", "error")
+            return redirect(url_for('branch_admin.branch_admin_grade_levels'))
+
+        cursor.execute("SELECT COALESCE(MAX(display_order), 0) + 1 FROM grade_levels WHERE branch_id = %s", (branch_id,))
+        order_int = cursor.fetchone()[0]
+
+        if not name:
+            flash("Name is required.", "error")
         else:
             try:
                 cursor.execute(
-                    "INSERT INTO grade_levels (name, display_order, description, branch_id) VALUES (%s, %s, %s, %s)",
-                    (name, order_int, description if description else None, branch_id)
+                    "INSERT INTO grade_levels (name, display_order, branch_id) VALUES (%s, %s, %s)",
+                    (name, order_int, branch_id)
                 )
                 db.commit()
                 flash("Grade level added!", "success")
@@ -844,11 +847,13 @@ def branch_admin_grade_levels():
         (branch_id,)
     )
     grades = cursor.fetchall()
+    
+    next_order = max([g[2] for g in grades]) + 1 if grades else 1
 
     cursor.close()
     db.close()
 
-    return render_template("branch_admin_grade_levels.html", grades=grades)
+    return render_template("branch_admin_grade_levels.html", grades=grades, next_order=next_order)
 
 @branch_admin_bp.route("/branch-admin/grade-levels/<int:grade_id>/edit", methods=["POST"])
 def branch_admin_grade_level_edit(grade_id):
@@ -857,15 +862,14 @@ def branch_admin_grade_level_edit(grade_id):
     branch_id = session.get("branch_id")
     name = (request.form.get("edit_name") or "").strip()
     order = request.form.get("edit_display_order") or None
-    description = (request.form.get("edit_description") or "").strip()
     if not name or order is None:
         flash("All fields required.", "error")
         return redirect(url_for("branch_admin.branch_admin_grade_levels"))
     db = get_db_connection()
     cursor = db.cursor()
     cursor.execute(
-        "UPDATE grade_levels SET name=%s, display_order=%s, description=%s WHERE id=%s AND branch_id=%s",
-        (name, int(order), description if description else None, grade_id, branch_id)
+        "UPDATE grade_levels SET name=%s, display_order=%s WHERE id=%s AND branch_id=%s",
+        (name, int(order), grade_id, branch_id)
     )
     db.commit()
     cursor.close(); db.close()
@@ -885,132 +889,7 @@ def branch_admin_grade_level_delete(grade_id):
     flash("Grade level deleted.", "success")
     return redirect(url_for("branch_admin.branch_admin_grade_levels"))
 
-# SCHOOL YEAR
-@branch_admin_bp.route('/branch_admin/add_year', methods=['GET', 'POST'])
-def add_year():
-    db = get_db_connection()
-    cursor = db.cursor()
 
-    branch_id = int(session.get("branch_id"))
-
-    if not branch_id:
-        flash("No branch found in session.", "error")
-        return redirect(url_for("auth.login"))
-
-    try:
-        # ── ADD NEW YEAR ──
-        if request.method == 'POST':
-            label = request.form['label'].strip()
-
-            # Check if exists first to avoid ON CONFLICT errors on DBs without unique constraints
-            cursor.execute("SELECT 1 FROM school_years WHERE label=%s AND branch_id=%s", (label, branch_id))
-            if not cursor.fetchone():
-                cursor.execute("""
-                    INSERT INTO school_years (label, branch_id)
-                    VALUES (%s, %s)
-                """, (label, branch_id))
-                db.commit()  # ✅ YOU MISSED THIS BEFORE
-                flash("School year added!", "success")
-            else:
-                flash("School year already exists.", "warning")
-                
-            return redirect(url_for('branch_admin.add_year'))
-
-        # ── ACTIVATE / DEACTIVATE ──
-        action = request.args.get('action')
-        year_id = request.args.get('year_id')
-
-        if action in ['activate', 'deactivate'] and year_id:
-            year_id = int(year_id)
-
-            if action == 'activate':
-                # ✅ 1. Get current active year (PER BRANCH ONLY)
-                cursor.execute("""
-                    SELECT year_id FROM school_years
-                    WHERE is_active = TRUE AND branch_id = %s
-                    LIMIT 1
-                """, (branch_id,))
-                old = cursor.fetchone()
-                old_year_id = old[0] if old else None
-
-                # ✅ 2. Deactivate ONLY this branch
-                cursor.execute("""
-                    UPDATE school_years
-                    SET is_active = FALSE
-                    WHERE branch_id = %s
-                """, (branch_id,))
-
-                # ✅ 3. Activate selected year (same branch only)
-                cursor.execute("""
-                    UPDATE school_years
-                    SET is_active = TRUE
-                    WHERE year_id = %s AND branch_id = %s
-                """, (year_id, branch_id))
-
-                # ✅ 4. Check sections for this year + branch
-                cursor.execute("""
-                    SELECT COUNT(*) FROM sections 
-                    WHERE year_id = %s AND branch_id = %s
-                """, (year_id, branch_id))
-                section_count = cursor.fetchone()[0]
-
-                if section_count == 0 and old_year_id:
-                    # ✅ 5. Copy sections from old year (same branch)
-                    cursor.execute("""
-                        INSERT INTO sections (branch_id, year_id, section_name, grade_level_id, capacity)
-                        SELECT branch_id, %s, section_name, grade_level_id, capacity
-                        FROM sections
-                        WHERE year_id = %s AND branch_id = %s
-                    """, (year_id, old_year_id, branch_id))
-
-                    # ✅ 6. Copy subjects (no teacher yet)
-                    cursor.execute("""
-                        INSERT INTO section_teachers (section_id, subject_id, teacher_id)
-                        SELECT new_s.section_id, st.subject_id, NULL
-                        FROM section_teachers st
-                        JOIN sections old_s ON st.section_id = old_s.section_id
-                        JOIN sections new_s 
-                            ON new_s.section_name = old_s.section_name
-                            AND new_s.grade_level_id = old_s.grade_level_id
-                            AND new_s.branch_id = old_s.branch_id
-                            AND new_s.year_id = %s
-                        WHERE old_s.year_id = %s
-                        AND old_s.branch_id = %s
-                    """, (year_id, old_year_id, branch_id))
-
-                    db.commit()
-                    flash("✅ School year activated and sections copied!", "success")
-                else:
-                    db.commit()
-                    flash("✅ School year activated! Sections already exist.", "success")
-
-            else:
-                # ── DEACTIVATE (branch-specific) ──
-                cursor.execute("""
-                    UPDATE school_years
-                    SET is_active = FALSE
-                    WHERE year_id = %s AND branch_id = %s
-                """, (year_id, branch_id))
-
-                db.commit()
-                flash("School year deactivated!", "success")
-
-            return redirect(url_for('branch_admin.add_year'))
-
-        # ── FETCH YEARS (branch only) ──
-        cursor.execute("""
-            SELECT year_id, label, is_active 
-            FROM school_years 
-            WHERE branch_id = %s
-            ORDER BY label DESC
-        """, (branch_id,))
-        years = cursor.fetchall()
-
-    finally:
-        cursor.close()
-        db.close()
-
-    return render_template('branch_admin_school_years.html', years=years)
 # =======================
 # SECTIONS (branch-scoped)
 @branch_admin_bp.route("/branch-admin/sections", methods=["GET", "POST"])

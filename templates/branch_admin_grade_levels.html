@@ -260,15 +260,13 @@
                             <option value="Grade 12">Grade 12</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>Order *</label>
-                        <input class="form-control" name="display_order" type="number" min="1" placeholder="1" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Description</label>
-                        <input class="form-control" name="description" placeholder="Optional description">
-                    </div>
+
+                    {% if grades|length >= 20 %}
+                    <button type="button" class="btn btn-primary" disabled style="opacity: 0.5; cursor: not-allowed;">Limit of 20 Reached</button>
+                    <div style="font-size: 0.8rem; color: #dc2626; margin-top: 8px; text-align: center;">You cannot add more than 20 grade levels.</div>
+                    {% else %}
                     <button type="submit" class="btn btn-primary">Add Grade Level</button>
+                    {% endif %}
                 </form>
             </div>
         </div>
@@ -284,7 +282,6 @@
                         <tr>
                             <th style="width: 80px;">Order</th>
                             <th>Name</th>
-                            <th>Description</th>
                             <th style="text-align: right;">Action</th>
                         </tr>
                     </thead>
@@ -293,11 +290,10 @@
                         <tr>
                             <td><strong style="color: #1e293b;">{{ g[2] }}</strong></td>
                             <td><strong style="color: #1e293b;">{{ g[1] }}</strong></td>
-                            <td style="color: #475569;">{{ g[3] or '<em style="color:#94a3b8;">None</em>'|safe }}</td>
                             <td style="text-align: right;">
                                 {% if is_branch_active_status %}
                                 <button class="btn btn-sm btn-secondary"
-                                    onclick='openEditModal({{ g[0] }}, {{ g[2] }}, {{ g[1]|tojson }}, {{ (g[3] or "")|tojson }})'>
+                                    onclick='openEditModal({{ g[0] }}, {{ g[2] }}, {{ g[1]|tojson }})'>
                                     ✎ Edit
                                 </button>
                                 <form
@@ -332,18 +328,14 @@
         <form id="editForm" method="post" action="">
             <div class="form-group">
                 <label>Order *</label>
-                <input type="number" name="edit_display_order" id="edit_display_order" class="form-control" min="1"
-                    required>
+                <input type="number" name="edit_display_order" id="edit_display_order" class="form-control" min="1" max="20"
+                    required onkeydown="if(event.key==='-' || event.key==='e' || event.key==='.') event.preventDefault();" oninput="if(this.value < 1 && this.value !== '') this.value = 1; else if(this.value > 20) this.value = 20;">
             </div>
             <div class="form-group">
                 <label>Name *</label>
                 <input type="text" name="edit_name" id="edit_name" class="form-control" required>
             </div>
-            <div class="form-group">
-                <label>Description</label>
-                <input type="text" name="edit_description" id="edit_description" class="form-control"
-                    placeholder="Optional description">
-            </div>
+
 
             <div style="display:flex; justify-content:flex-end; gap:8px; margin-top: 20px;">
                 <button type="button" class="btn btn-secondary" style="width:auto;"
@@ -357,20 +349,18 @@
 <script>
     let initialGradeData = {};
 
-    function openEditModal(gradeId, order, name, description) {
+    function openEditModal(gradeId, order, name) {
         var baseUrl = "{{ url_for('branch_admin.branch_admin_grade_level_edit', grade_id=999999) }}";
         var finalUrl = baseUrl.replace('999999', gradeId);
 
         document.getElementById('editForm').action = finalUrl;
         document.getElementById('edit_display_order').value = order;
         document.getElementById('edit_name').value = name;
-        document.getElementById('edit_description').value = description;
 
         // Capture initial state
         initialGradeData = {
             order: order,
-            name: name,
-            description: description
+            name: name
         };
 
         const submitBtn = document.getElementById('editSubmitBtn');
@@ -389,12 +379,10 @@
     document.getElementById('editForm').addEventListener('input', function () {
         const currentOrder = document.getElementById('edit_display_order').value;
         const currentName = document.getElementById('edit_name').value;
-        const currentDesc = document.getElementById('edit_description').value;
 
         const hasChanged = (
             currentOrder != initialGradeData.order ||
-            currentName != initialGradeData.name ||
-            currentDesc != initialGradeData.description
+            currentName != initialGradeData.name
         );
 
         const submitBtn = document.getElementById('editSubmitBtn');

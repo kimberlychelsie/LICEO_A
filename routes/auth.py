@@ -88,16 +88,18 @@ def login():
                     session["username"]  = user.get("username")
                     session["full_name"] = user.get("full_name")  # for display in sidebar
 
-                    # Fetch branch name for sidebar display
+                    # Fetch branch name and code for sidebar display
                     if user.get("branch_id"):
                         cursor.execute(
-                            "SELECT branch_name FROM branches WHERE branch_id = %s",
+                            "SELECT branch_name, branch_code FROM branches WHERE branch_id = %s",
                             (user["branch_id"],)
                         )
                         brow = cursor.fetchone()
                         session["branch_name"] = brow["branch_name"] if brow else None
+                        session["branch_code"] = brow["branch_code"] if brow else None
                     else:
                         session["branch_name"] = None
+                        session["branch_code"] = None
 
                     role = user["role"]
 
@@ -240,13 +242,15 @@ def login():
                     # Sidebar branch label for student logins (student_accounts path)
                     if branch_id:
                         cursor.execute(
-                            "SELECT branch_name FROM branches WHERE branch_id = %s",
+                            "SELECT branch_name, branch_code FROM branches WHERE branch_id = %s",
                             (branch_id,),
                         )
                         brow = cursor.fetchone()
                         session["branch_name"] = brow["branch_name"] if brow else None
+                        session["branch_code"] = brow["branch_code"] if brow else None
                     else:
                         session["branch_name"] = None
+                        session["branch_code"] = None
 
                     # ✅ enrollment reference for filters (THIS IS WHAT YOU NEED)
                     session["enrollment_id"] = enrollment_id

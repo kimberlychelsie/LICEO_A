@@ -1,0 +1,304 @@
+{% extends "base.html" %}
+{% block title %}Manage School Years{% endblock %}
+
+{% block content %}
+<style>
+    /* Superadmin Vault / Command Center Styling */
+    body {
+        background: #f4f6f9;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .registry-welcome {
+        background: linear-gradient(135deg, #1a3a8f, #0f256e);
+        padding: 40px;
+        border-radius: 16px;
+        color: #ffffff;
+        margin-bottom: 32px;
+        box-shadow: 0 10px 25px -5px rgba(26, 58, 143, 0.4);
+    }
+
+    .registry-welcome h1 {
+        font-size: 2.5rem;
+        font-weight: 900;
+        margin: 0 0 10px 0;
+        letter-spacing: -0.02em;
+    }
+
+    .registry-welcome p {
+        font-size: 1.05rem;
+        color: #cbd5e1;
+        margin: 0;
+        font-weight: 500;
+        max-width: 600px;
+        line-height: 1.5;
+    }
+
+    .modern-card {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 32px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        border: 1px solid #e2e8f0;
+        margin-bottom: 32px;
+    }
+
+    .form-node {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 24px;
+    }
+
+    .form-node label {
+        font-size: 0.85rem;
+        font-weight: 800;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .form-node input {
+        width: 100%;
+        padding: 14px 16px;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: 1rem;
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        color: #1e293b;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+
+    .form-node input:focus {
+        background: #ffffff;
+        border-color: #facc15;
+        box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.15);
+        outline: none;
+    }
+
+    .btn-prem {
+        padding: 14px 28px;
+        border-radius: 10px;
+        font-weight: 800;
+        font-size: 0.95rem;
+        letter-spacing: 0.02em;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: none;
+        text-decoration: none;
+    }
+
+    .btn-gold {
+        background: #facc15;
+        color: #1a3a8f;
+        box-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+    }
+
+    .btn-gold:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(250, 204, 21, 0.4);
+    }
+
+    /* Vault Table */
+    .vault-wrapper {
+        overflow-x: auto;
+    }
+
+    .vault-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .vault-table th {
+        background: #f8fafc;
+        padding: 16px;
+        text-align: left;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .vault-table td {
+        padding: 20px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+
+    .vault-table tr:hover td {
+        background: #fdfdfd;
+    }
+
+    .badge-prem {
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .status-active {
+        background: #ecfdf5;
+        color: #059669;
+    }
+
+    .status-standby {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    /* Flash Message */
+    .flash-alert {
+        padding: 16px 20px;
+        border-radius: 12px;
+        margin-bottom: 24px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideDown 0.4s ease-out forwards;
+    }
+
+    .flash-success {
+        background: #ecfdf5;
+        color: #065f46;
+        border-left: 4px solid #10b981;
+    }
+
+    .flash-error {
+        background: #fef2f2;
+        color: #991b1b;
+        border-left: 4px solid #ef4444;
+    }
+
+    .two-col {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+        align-items: flex-start;
+    }
+
+    .col-form {
+        flex: 0 0 380px;
+    }
+
+    .col-table {
+        flex: 1;
+        min-width: 400px;
+    }
+</style>
+
+<div class="ba-container" style="max-width: 1200px; margin: 0 auto; padding: 24px;">
+
+    <!-- Header -->
+    <div class="registry-welcome">
+        <h1>Global Timeline</h1>
+        <p>Centralized School Year Control • Generate and activate academic years across all branches simultaneously.</p>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for cat, msg in messages %}
+    <div class="flash-alert {{ 'flash-success' if cat == 'success' else 'flash-error' }}">
+        <i class="fas {{ 'fa-check-circle' if cat == 'success' else 'fa-exclamation-circle' }}"></i>
+        {{ msg }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="two-col">
+        <!-- Form Card -->
+        <div class="col-form">
+            <div class="modern-card">
+                <h2 style="margin: 0 0 20px 0; color: #1e293b; font-weight: 800; font-size: 1.25rem;">
+                    <i class="fas fa-calendar-plus" style="color: #1a3a8f; margin-right: 8px;"></i> Broadcast New Year
+                </h2>
+                <form method="post" action="{{ url_for('super_admin.superadmin_school_years') }}">
+                    <div class="form-node">
+                        <label for="label">School Year Title</label>
+                        <input type="text" name="label" id="label" placeholder="e.g. SY 2025-2026" required>
+                    </div>
+                    <div style="display:flex; justify-content:flex-end;">
+                        <button type="submit" class="btn-prem btn-gold" style="width: 100%; justify-content: center;">
+                            <i class="fas fa-broadcast-tower"></i> Deploy to Network
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Table Card -->
+        <div class="col-table">
+            <div class="modern-card" style="padding:0; overflow:hidden;">
+                <div style="padding: 24px 32px; border-bottom: 1px solid #e2e8f0;">
+                    <h2 style="margin:0; color: #1e293b; font-weight: 800; font-size: 1.25rem;">
+                        <i class="fas fa-globe" style="color: #facc15; margin-right: 8px;"></i> Global Academic Timeline
+                    </h2>
+                </div>
+                <div class="vault-wrapper">
+                    <table class="vault-table">
+                        <thead>
+                            <tr>
+                                <th>Timeline Label</th>
+                                <th style="text-align:center;">Network Status</th>
+                                <th style="text-align:right; padding-right: 32px;">Operations</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for year_label, is_active in unique_years %}
+                            <tr>
+                                <td>
+                                    <div style="font-weight: 850; font-size: 1.05rem; color: #1a3a8f;">
+                                        {{ year_label }}
+                                    </div>
+                                </td>
+                                <td style="text-align:center;">
+                                    {% if is_active %}
+                                    <span class="badge-prem status-active"><i class="fas fa-signal"></i> ACTIVE</span>
+                                    {% else %}
+                                    <span class="badge-prem status-standby"><i class="fas fa-power-off"></i> INACTIVE</span>
+                                    {% endif %}
+                                </td>
+                                <td style="text-align:right; padding-right: 32px;">
+                                    {% if not is_active %}
+                                    <form method="post" action="{{ url_for('super_admin.superadmin_set_active_year') }}" style="display:inline;">
+                                        <input type="hidden" name="label" value="{{ year_label }}">
+                                        <button type="submit" class="btn-prem" style="padding: 8px 16px; background: #facc15; color: #1a3a8f; font-size: 0.8rem;">
+                                            <i class="fas fa-bolt"></i> ACTIVATE GLOBALLY
+                                        </button>
+                                    </form>
+                                    {% else %}
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #94a3b8;"><i class="fas fa-check"></i> CURRENT</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" style="text-align:center; padding: 40px; color:#94a3b8;">
+                                    <i class="fas fa-calendar-times" style="font-size: 2.5rem; margin-bottom: 16px; display: block; color: #cbd5e1;"></i>
+                                    <span style="font-weight: 700;">No school years found. Deploy the first timeline.</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

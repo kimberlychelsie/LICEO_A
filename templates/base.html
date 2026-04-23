@@ -513,27 +513,31 @@
       .sidebar {
         transform: translateX(0) !important;
       }
+
       .topbar {
         left: var(--sidebar-w);
         width: calc(100% - var(--sidebar-w));
         transition: left 0.3s cubic-bezier(.4, 0, .2, 1), width 0.3s cubic-bezier(.4, 0, .2, 1);
       }
+
       .main-wrap {
         margin-left: var(--sidebar-w);
       }
-      
+
       /* Collapsed State */
       body.sidebar-collapsed .sidebar {
         width: 80px;
       }
+
       body.sidebar-collapsed .topbar {
         left: 80px;
         width: calc(100% - 80px);
       }
+
       body.sidebar-collapsed .main-wrap {
         margin-left: 80px;
       }
-      
+
       /* Collapsed UI Adjustments */
       body.sidebar-collapsed .sb-brand-name,
       body.sidebar-collapsed .sb-brand-sub,
@@ -544,7 +548,7 @@
       body.sidebar-collapsed .sb-section-label {
         display: none !important;
       }
-      
+
       body.sidebar-collapsed .sb-link,
       body.sidebar-collapsed .sb-dropdown-btn,
       body.sidebar-collapsed .sb-logout {
@@ -552,19 +556,19 @@
         white-space: nowrap;
         color: transparent !important;
       }
-      
+
       body.sidebar-collapsed .sb-icon {
         font-size: 1.3rem !important;
         color: var(--sidebar-muted) !important;
         display: inline-block;
         visibility: visible;
       }
-      
+
       body.sidebar-collapsed .sb-link:hover .sb-icon,
       body.sidebar-collapsed .sb-dropdown-btn:hover .sb-icon {
         color: var(--sidebar-active-text) !important;
       }
-      
+
       body.sidebar-collapsed .sb-link.active .sb-icon {
         color: var(--sidebar-active-text) !important;
       }
@@ -574,15 +578,18 @@
         padding-left: 0;
         padding-right: 0;
       }
+
       body.sidebar-collapsed .sb-brand {
         padding: 0;
         justify-content: center;
       }
+
       body.sidebar-collapsed .sb-brand-icon {
         width: 32px;
         height: 32px;
         margin-right: 0;
       }
+
       body.sidebar-collapsed .sb-link {
         padding: 14px 0 !important;
         justify-content: center;
@@ -590,20 +597,25 @@
         border-radius: 12px !important;
         gap: 0 !important;
       }
+
       body.sidebar-collapsed .sb-link:hover {
         padding: 14px 0 !important;
       }
+
       body.sidebar-collapsed .sb-icon {
         margin: 0 !important;
         width: auto !important;
       }
+
       body.sidebar-collapsed .sb-dropdown-btn {
         justify-content: center;
         padding: 14px 0 !important;
       }
+
       body.sidebar-collapsed .sb-dropdown-btn .sb-left {
         gap: 0 !important;
       }
+
       body.sidebar-collapsed .sb-logout {
         justify-content: center;
         padding: 14px 0 !important;
@@ -611,6 +623,7 @@
         border-radius: 12px !important;
         gap: 0 !important;
       }
+
       body.sidebar-collapsed .sb-dropdown-content {
         position: absolute;
         left: 85px;
@@ -1409,9 +1422,12 @@
       <a class="sb-link {% if request.path == '/cashier' %}active{% endif %}" href="/cashier">
         <span class="sb-icon">💰</span> Dashboard
       </a>
-      <a class="sb-link {% if request.path == '/cashier/search' %}active{% endif %}" href="/cashier/search">
-        <span class="sb-icon">🔍</span> Search Student
+
+      <div class="sb-section-label">Operations</div>
+      <a class="sb-link {% if request.path == '/cashier/billing-registry' %}active{% endif %}" href="/cashier/billing-registry">
+        <span class="sb-icon">📋</span> Billing Registry
       </a>
+
       <a class="sb-link {% if request.path == '/cashier/payment-history' %}active{% endif %}"
         href="/cashier/payment-history">
         <span class="sb-icon">📊</span> Payment History
@@ -1451,7 +1467,7 @@
 
       {% set acad_active = request.path == '/branch-admin/grade-levels' or request.path == '/branch-admin/sections' or
       request.path == '/branch-admin/subjects' or request.path == '/branch-admin/assign-teachers' or
-      request.path == '/branch-admin/assign-students' or request.path == '/branch_admin/add_year' %}
+      request.path == '/branch-admin/assign-students' %}
       <button class="sb-dropdown-btn {% if acad_active %}open{% endif %}"
         onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
         <div class="sb-left">
@@ -1464,10 +1480,7 @@
           href="/branch-admin/grade-levels">
           Grade Levels
         </a>
-        <a class="sb-link {% if request.path == '/branch_admin/add_year' %}active{% endif %}"
-          href="/branch_admin/add_year">
-          School Year
-        </a>
+
         <a class="sb-link {% if request.path == '/branch-admin/sections' %}active{% endif %}"
           href="/branch-admin/sections">
           Sections
@@ -1494,6 +1507,10 @@
       <a class="sb-link {% if request.path.startswith('/super-admin/branches') %}active{% endif %}"
         href="/super-admin/branches">
         <span class="sb-icon">🏢</span> Branches
+      </a>
+      <a class="sb-link {% if request.path.startswith('/superadmin/school-years') %}active{% endif %}"
+        href="/superadmin/school-years">
+        <span class="sb-icon">📅</span> School Years
       </a>
 
       {% else %}
@@ -1530,7 +1547,8 @@
       <span></span>
     </button>
 
-    <span class="topbar-title" onclick="toggleSidebar()" style="cursor: pointer;">{% block page_title %}{% endblock %}</span>
+    <span class="topbar-title" onclick="toggleSidebar()" style="cursor: pointer;">{% block page_title %}{% endblock
+      %}</span>
 
     <div class="topbar-right">
       {% if session.get('role') in ['student', 'branch_admin', 'super_admin'] %}
@@ -1626,9 +1644,11 @@
           {% set role_label = role_labels.get(role_raw, role_raw | title) %}
           {% set honorific = "" %}
           {% if session.get('role') == 'branch_admin' %}
-            {% if session.get('gender') == 'Male' %}{% set honorific = "Mr. " %}{% elif session.get('gender') == 'Female' %}{% set honorific = "Ms. " %}{% endif %}
+          {% if session.get('gender') == 'Male' %}{% set honorific = "Mr. " %}{% elif session.get('gender') == 'Female'
+          %}{% set honorific = "Ms. " %}{% endif %}
           {% endif %}
-          {% set disp = honorific ~ (session.get('full_name') or session.get('student_name') or session.get('username') or 'System User') %}
+          {% set disp = honorific ~ (session.get('full_name') or session.get('student_name') or session.get('username')
+          or 'System User') %}
 
           <div
             style="padding: 12px 10px 18px; text-align: center; border-bottom: 2px solid #f1f5f9; margin-bottom: 12px;">
@@ -1721,19 +1741,19 @@
       }
     }
 
-    function toggleSidebar() { 
+    function toggleSidebar() {
       if (window.innerWidth >= 1024) {
         document.body.classList.toggle('sidebar-collapsed');
       } else {
-        isOpen = !isOpen; 
-        applyState(); 
+        isOpen = !isOpen;
+        applyState();
       }
     }
-    
-    function closeSidebar() { 
+
+    function closeSidebar() {
       if (window.innerWidth < 1024) {
-        isOpen = false; 
-        applyState(); 
+        isOpen = false;
+        applyState();
       }
     }
 

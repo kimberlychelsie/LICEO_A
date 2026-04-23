@@ -71,11 +71,19 @@
     }
 
     @media (max-width: 1100px) {
-        .analytics-charts { grid-template-columns: 1fr; }
-        .dashboard-grid { grid-template-columns: 1fr 1fr; }
+        .analytics-charts {
+            grid-template-columns: 1fr;
+        }
+
+        .dashboard-grid {
+            grid-template-columns: 1fr 1fr;
+        }
     }
+
     @media (max-width: 600px) {
-        .dashboard-grid { grid-template-columns: 1fr; }
+        .dashboard-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
     .stat-card {
@@ -86,7 +94,11 @@
         box-shadow: var(--audit-shadow);
         transition: transform 0.2s;
     }
-    .stat-card:hover { transform: translateY(-4px); box-shadow: var(--audit-shadow-lg); }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--audit-shadow-lg);
+    }
 
     .chart-card {
         background: var(--audit-card);
@@ -194,7 +206,12 @@
         align-items: center;
         justify-content: center;
     }
-    .btn-clear:hover { background: #f8fafc; color: var(--audit-text); border-color: var(--audit-muted); }
+
+    .btn-clear:hover {
+        background: #f8fafc;
+        color: var(--audit-text);
+        border-color: var(--audit-muted);
+    }
 
     /* ── Table Styling ── */
     .table-container {
@@ -205,9 +222,16 @@
         overflow: hidden;
     }
 
-    .table-responsive { overflow-x: auto; }
+    .table-responsive {
+        overflow-x: auto;
+    }
 
-    .modern-table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+    .modern-table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 1000px;
+    }
+
     .modern-table th {
         padding: 20px 24px;
         background: #fbfcfe;
@@ -218,26 +242,33 @@
         border-bottom: 2px solid var(--audit-border);
         text-align: left;
     }
+
     .modern-table td {
         padding: 20px 24px;
         border-bottom: 1px solid var(--audit-border);
         font-size: 0.95rem;
         vertical-align: middle;
     }
-    .modern-table tr:last-child td { border-bottom: none; }
-    .modern-table tr:hover { background: #fbfcfe; }
 
-    .receipt-id { 
-        font-family: 'JetBrains Mono', monospace; 
-        font-weight: 800; 
-        color: var(--audit-primary); 
-        font-size: 0.85rem; 
-        padding: 6px 12px; 
-        background: #eff6ff; 
+    .modern-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .modern-table tr:hover {
+        background: #fbfcfe;
+    }
+
+    .receipt-id {
+        font-family: 'JetBrains Mono', monospace;
+        font-weight: 800;
+        color: var(--audit-primary);
+        font-size: 0.85rem;
+        padding: 6px 12px;
+        background: #eff6ff;
         border-radius: 8px;
         border: 1px solid #dbeafe;
     }
-    
+
     .badge-method {
         padding: 8px 16px;
         border-radius: 999px;
@@ -263,17 +294,24 @@
         border: 1.5px solid var(--audit-border);
         transition: all 0.2s;
     }
-    .btn-icon-action:hover { background: var(--audit-primary); color: #fff; transform: scale(1.1); border-color: var(--audit-primary); }
+
+    .btn-icon-action:hover {
+        background: var(--audit-primary);
+        color: #fff;
+        transform: scale(1.1);
+        border-color: var(--audit-primary);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="audit-container">
-    
+
     <div class="audit-header">
         <div class="header-content">
             <h1>Payment Audit History</h1>
-            <p>Advanced financial surveillance for <strong>{{ session.get('branch_name', 'Liceo de Alaminos') }}</strong></p>
+            <p>Advanced financial surveillance for <strong>{{ session.get('branch_name', 'Liceo de Alaminos')
+                    }}</strong></p>
         </div>
         <a href="{{ url_for('cashier.dashboard') }}" class="btn-clear" style="gap: 12px;">
             <span>⬅ Return to Command Center</span>
@@ -293,9 +331,9 @@
         <div class="stat-card" style="border-left: 6px solid var(--audit-total);">
             <span class="stat-label">📊 Avg. Transaction</span>
             {% if payments|length > 0 %}
-                <div class="stat-value">₱{{ "%.2f"|format(total_collected / payments|length) }}</div>
+            <div class="stat-value">₱{{ "%.2f"|format(total_collected / payments|length) }}</div>
             {% else %}
-                <div class="stat-value">₱0.00</div>
+            <div class="stat-value">₱0.00</div>
             {% endif %}
         </div>
     </div>
@@ -304,11 +342,15 @@
     <div class="analytics-charts">
         <div class="chart-card">
             <span class="stat-label">💳 Method Distribution</span>
-            <div style="height: 240px; width: 100%; position: relative; display: flex; align-items: center; justify-content: center;">
+            <div
+                style="height: 240px; width: 100%; position: relative; display: flex; align-items: center; justify-content: center;">
                 <canvas id="methodChart"></canvas>
                 <div style="position: absolute; text-align: center; pointer-events: none;">
-                    <div style="font-size: 0.65rem; font-weight: 800; color: var(--audit-muted); text-transform: uppercase; letter-spacing: 0.1em;">Total Registry</div>
-                    <div style="font-size: 1.5rem; font-weight: 950; color: var(--audit-primary);">{{ payments|length }}</div>
+                    <div
+                        style="font-size: 0.65rem; font-weight: 800; color: var(--audit-muted); text-transform: uppercase; letter-spacing: 0.1em;">
+                        Total Registry</div>
+                    <div style="font-size: 1.5rem; font-weight: 950; color: var(--audit-primary);">{{ payments|length }}
+                    </div>
                 </div>
             </div>
         </div>
@@ -357,26 +399,31 @@
                 <tbody>
                     {% for p in payments %}
                     <tr>
-                        <td><span class="receipt-id">{{ p.reference_number or 'OR-' ~ "%06d"|format(p.payment_id) }}</span></td>
+                        <td><span class="receipt-id">{{ p.reference_number or 'OR-' ~ "%06d"|format(p.payment_id)
+                                }}</span></td>
                         <td>
                             <div style="font-weight: 800;">{{ p.payment_date.strftime('%b %d, %Y') }}</div>
-                            <div style="font-size: 0.8rem; color: var(--audit-muted); font-weight: 600;">{{ p.payment_date.strftime('%I:%M %p') }}</div>
+                            <div style="font-size: 0.8rem; color: var(--audit-muted); font-weight: 600;">{{
+                                p.payment_date.strftime('%I:%M %p') }}</div>
                         </td>
                         <td>
                             <div style="font-weight: 900; color: var(--audit-primary);">{{ p.student_name }}</div>
-                            <div style="font-size: 0.8rem; color: var(--audit-muted); font-weight: 600;">Verified Payor</div>
+                            <div style="font-size: 0.8rem; color: var(--audit-muted); font-weight: 600;">Verified Payor
+                            </div>
                         </td>
                         <td>
-                            <span style="font-weight: 700; color: var(--audit-text);">Grade {{ p.grade_level }}</span>
+                            <span style="font-weight: 700; color: var(--audit-text);">{{ p.grade_level }}</span>
                         </td>
                         <td>
-                            <span style="font-weight: 950; color: var(--audit-text);">₱{{ "%.2f"|format(p.amount) }}</span>
+                            <span style="font-weight: 950; color: var(--audit-text);">₱{{ "%.2f"|format(p.amount)
+                                }}</span>
                         </td>
                         <td style="text-align: center;">
                             <span class="badge-method">{{ p.payment_method|title }}</span>
                         </td>
                         <td style="text-align: right;">
-                            <a href="{{ url_for('cashier.print_receipt', payment_id=p.payment_id) }}" class="btn-icon-action" title="Verify & View Receipt">👁️</a>
+                            <a href="{{ url_for('cashier.print_receipt', payment_id=p.payment_id) }}"
+                                class="btn-icon-action" title="Verify & View Receipt">👁️</a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -386,8 +433,10 @@
         {% else %}
         <div style="text-align: center; padding: 120px 48px; color: var(--audit-muted);">
             <div style="font-size: 5rem; margin-bottom: 32px; opacity: 0.5;">📭</div>
-            <h3 style="font-weight: 900; color: var(--audit-primary); font-size: 1.5rem; margin-bottom: 12px;">No Transactions Detected</h3>
-            <p style="font-weight: 600; font-size: 1.1rem;">No financial records found within the specified parameters.</p>
+            <h3 style="font-weight: 900; color: var(--audit-primary); font-size: 1.5rem; margin-bottom: 12px;">No
+                Transactions Detected</h3>
+            <p style="font-weight: 600; font-size: 1.1rem;">No financial records found within the specified parameters.
+            </p>
         </div>
         {% endif %}
     </div>
@@ -396,11 +445,11 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    {% if payments %}
-    // ── Prepare Data ──
-    const paymentsRaw = [
-        {% for p in payments %}
+    document.addEventListener('DOMContentLoaded', function () {
+        {% if payments %}
+        // ── Prepare Data ──
+        const paymentsRaw = [
+            {% for p in payments %}
         { date: '{{ p.payment_date.strftime("%m/%d") }}', amount: {{ p.amount }}, method: '{{ p.payment_method|lower }}' },
         {% endfor %}
     ];
@@ -485,7 +534,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         intersect: false,
                         padding: 12,
                         callbacks: {
-                            label: context => ` ₱${context.raw.toLocaleString(undefined, {minimumFractionDigits: 2})}`
+                            label: context => ` ₱${context.raw.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
                         }
                     }
                 },

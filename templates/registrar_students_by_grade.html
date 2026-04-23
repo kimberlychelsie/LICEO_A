@@ -325,6 +325,17 @@
     <div class="catalog-filters">
         <form method="GET" action="/registrar/students-by-grade" style="display:contents;">
             <div class="filter-group">
+                <label>School Year</label>
+                <select name="year_id" class="filter-control" onchange="this.form.submit()">
+                    {% for sy in school_years %}
+                    <option value="{{ sy.year_id }}" {% if sy.year_id|string == year_filter|string %}selected{% endif %}>
+                        {{ sy.label }} {% if sy.is_active %}(Active){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
                 <label>Target Grade Level</label>
                 <select name="grade" class="filter-control" onchange="this.form.submit()">
                     <option value="">— Select Grade —</option>
@@ -384,8 +395,8 @@
         <table class="modern-table" id="studentsTable">
             <thead>
                 <tr>
-                    <th>Access ID</th>
-                    <th>Student Identity</th>
+                    <th>Student ID</th>
+                    <th>Student Name</th>
                     <th>Grade</th>
                     <th>Section</th>
                     <th>Active Status</th>
@@ -395,8 +406,7 @@
             <tbody>
                 {% for s in students %}
                 <tr class="row-main" onclick="toggleRow('details-{{ s.enrollment_id }}', this)">
-                    <td><span style="font-weight: 700; color: var(--reg-muted);">#{{
-                            "%04d"|format(s.branch_enrollment_no|int) if s.branch_enrollment_no else s.enrollment_id
+                    <td><span style="font-weight: 700; color: var(--reg-muted);">{{ s.account_username or 'No Account'
                             }}</span></td>
                     <td><strong style="color: var(--reg-primary);">{{ s.student_name }}</strong></td>
                     <td><span style="font-weight: 600;">{{ s.grade_level }}</span></td>
@@ -568,6 +578,7 @@
 <script>
     const studentsData = {{ students | tojson | safe }};
     const currentGrade = "{{ grade_filter }}";
+    const currentYear = "{% for sy in school_years %}{% if sy.year_id|string == year_filter|string %}{{ sy.label }}{% endif %}{% endfor %}";
 
     function toggleRow(id, tr) {
         const detail = document.getElementById(id);
@@ -610,7 +621,7 @@
     function exportToExcel() {
         const wb = XLSX.utils.book_new();
         const rows = studentsData.map(s => ({
-            "Access ID": s.branch_enrollment_no ? String(s.branch_enrollment_no).padStart(4, '0') : s.enrollment_id,
+            "Student ID": s.account_username || "No Account",
             "Identity": s.student_name,
             "Grade": s.grade_level,
             "Section": s.section_name || "Unassigned",
@@ -633,23 +644,23 @@
         }));
         const ws = XLSX.utils.json_to_sheet(rows);
         XLSX.utils.book_append_sheet(wb, ws, "Students");
-        XLSX.writeFile(wb, `Registry_${currentGrade.replace(/\s/g, '_')}.xlsx`);
+        XLSX.writeFile(wb, `Registry_${currentGrade.replace(/\s/g, '_')}_${currentYear.replace(/\s/g, '_')}.xlsx`);
     }
 
     // Export PDF
     function exportToPDF() {
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF('l');
-        doc.setFontSize(16); doc.text(`Registry: ${currentGrade}`, 14, 15);
+        doc.setFontSize(16); doc.text(`Registry: ${currentGrade} (${currentYear})`, 14, 15);
         const rows = studentsData.map(s => [
-            s.branch_enrollment_no ? String(s.branch_enrollment_no).padStart(4, '0') : s.enrollment_id,
+            s.account_username || "No Account",
             s.student_name, s.gender || "", s.dob || "", s.contact_number || "", s.guardian_name || "", s.status || ""
         ]);
         doc.autoTable({
             head: [['ID', 'Name', 'Sex', 'DOB', 'Contact', 'Guardian', 'Status']],
             body: rows, startY: 22, theme: 'grid', headStyles: { fillColor: [30, 58, 138] }, styles: { fontSize: 8 }
         });
-        doc.save(`Registry_${currentGrade.replace(/\s/g, '_')}.pdf`);
+        doc.save(`Registry_${currentGrade.replace(/\s/g, '_')}_${currentYear.replace(/\s/g, '_')}.pdf`);
     }
 
     async function resetPassword(enrollmentId, studentName) {

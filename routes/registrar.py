@@ -1027,6 +1027,21 @@ def registrar_students_by_grade():
     try:
         grade_filter = request.args.get("grade", "")
         section_filter = request.args.get("section_id", "")
+        year_filter = request.args.get("year_id", "")
+
+        # Fetch school years for the dropdown
+        cursor.execute("SELECT year_id, label, is_active FROM school_years WHERE branch_id = %s ORDER BY start_date DESC", (branch_id,))
+        school_years = cursor.fetchall()
+        
+        # Determine the active year id or fallback
+        active_year_id = None
+        for sy in school_years:
+            if sy["is_active"]:
+                active_year_id = sy["year_id"]
+                break
+        
+        if not year_filter:
+            year_filter = active_year_id
 
         all_grades = [
             "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3", "Grade 4", 
@@ -1034,13 +1049,14 @@ def registrar_students_by_grade():
             "Grade 11", "Grade 12"
         ]
 
+        # Fetch sections filtered by year_id
         cursor.execute("""
             SELECT s.section_id, s.section_name, g.name AS grade_level
             FROM sections s
             JOIN grade_levels g ON g.id = s.grade_level_id
-            WHERE s.branch_id = %s
+            WHERE s.branch_id = %s AND s.year_id = %s
             ORDER BY g.id, s.section_name
-        """, (branch_id,))
+        """, (branch_id, year_filter))
         all_sections = cursor.fetchall()
 
         query = """
@@ -1059,10 +1075,10 @@ def registrar_students_by_grade():
             LEFT JOIN sections s ON s.section_id = e.section_id
             LEFT JOIN enrollment_documents d ON d.enrollment_id = e.enrollment_id
             LEFT JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
-            WHERE e.branch_id = %s 
+            WHERE e.branch_id = %s AND e.year_id = %s
               AND e.status IN ('enrolled', 'approved', 'open_for_enrollment')
         """
-        params = [branch_id]
+        params = [branch_id, year_filter]
 
         if grade_filter:
             query += " AND e.grade_level = %s"
@@ -1092,7 +1108,9 @@ def registrar_students_by_grade():
             all_grades=all_grades,
             all_sections=all_sections,
             grade_filter=grade_filter,
-            section_filter=section_filter
+            section_filter=section_filter,
+            school_years=school_years,
+            year_filter=str(year_filter) if year_filter else ""
         )
     except Exception as e:
         db.rollback()

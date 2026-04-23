@@ -326,6 +326,37 @@ def get_db_connection():
                 logger.warning(f"Could not migrate announcements table: {e}")
                 conn.rollback()
 
+            # ── Financial year_id migration ──
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'billing'")
+                bill_cols = [r[0] for r in cur.fetchall()]
+                if 'year_id' not in bill_cols:
+                    cur.execute("ALTER TABLE billing ADD COLUMN year_id INTEGER")
+                    # Backfill from enrollments
+                    cur.execute("""
+                        UPDATE billing b
+                        SET year_id = e.year_id
+                        FROM enrollments e
+                        WHERE b.enrollment_id = e.enrollment_id
+                          AND b.year_id IS NULL
+                    """)
+                
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'payments'")
+                pay_cols = [r[0] for r in cur.fetchall()]
+                if 'year_id' not in pay_cols:
+                    cur.execute("ALTER TABLE payments ADD COLUMN year_id INTEGER")
+                    # Backfill from billing
+                    cur.execute("""
+                        UPDATE payments p
+                        SET year_id = b.year_id
+                        FROM billing b
+                        WHERE p.bill_id = b.bill_id
+                          AND p.year_id IS NULL
+                    """)
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate financial tables: {e}")
+                conn.rollback()
 
             # ONE-TIME CLEANUP: Delete test Teacher9 accounts directly on boot
             try:

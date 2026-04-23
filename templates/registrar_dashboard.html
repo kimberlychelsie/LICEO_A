@@ -573,9 +573,9 @@
                 <tr class="new-enroll-row" data-grade="{{ enrollment.grade_level | lower }}"
                     data-name="{{ enrollment.student_name | lower }}">
                     <td>
-                        <span style="font-weight:800;">{{ "%04d"|format(enrollment.display_no|default(0)|int) if
+                        <span style="font-weight:800;">{{ session.get('branch_code') or 'ENRL' }}-{{ "%04d"|format(enrollment.display_no|default(0)|int) if
                             enrollment.display_no|int else enrollment.enrollment_id }}</span>
-                        <div class="muted-note">ID: {{ "%04d"|format(enrollment.display_no|default(0)|int) if
+                        <div class="muted-note">ID: {{ session.get('branch_code') or 'ENRL' }}-{{ "%04d"|format(enrollment.display_no|default(0)|int) if
                             enrollment.display_no|int else enrollment.enrollment_id }}</div>
                     </td>
                     <td>
@@ -1104,7 +1104,7 @@
                     data-name="{{ e.student_name | lower }}"
                     data-section="{{ e.section_name | lower if e.section_name else '' }}">
                     <td>
-                        <span style="font-weight:800; color: #1e293b;">{{ "%04d"|format(e.display_no|default(0)|int) if
+                        <span style="font-weight:800; color: #1e293b;">{{ session.get('branch_code') or 'ENRL' }}-{{ "%04d"|format(e.display_no|default(0)|int) if
                             e.display_no|int else e.enrollment_id }}</span>
                     </td>
                     <td>

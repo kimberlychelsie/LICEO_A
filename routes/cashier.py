@@ -37,6 +37,16 @@ def _require_cashier():
     return session.get("role") == "cashier"
 
 
+def _get_active_year_id(cursor, branch_id):
+    cursor.execute("""
+        SELECT year_id FROM school_years
+        WHERE branch_id = %s AND is_active = TRUE
+        LIMIT 1
+    """, (branch_id,))
+    res = cursor.fetchone()
+    return res["year_id"] if res else None
+
+
 @cashier_bp.route("/cashier")
 def dashboard():
     if not _require_cashier():
@@ -49,22 +59,8 @@ def dashboard():
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
-        cursor.execute("""
-            SELECT e.*, b.bill_id, b.balance, b.status AS bill_status
-            FROM enrollments e
-            LEFT JOIN billing b
-              ON e.enrollment_id = b.enrollment_id
-            WHERE e.branch_id = %s AND e.status IN ('approved', 'enrolled')
-            ORDER BY
-              CASE
-                WHEN b.bill_id IS NULL THEN 0
-                WHEN b.status = 'pending' THEN 1
-                WHEN b.status = 'partial' THEN 2
-                ELSE 3
-              END,
-              e.created_at DESC
-        """, (session.get("branch_id"),))
-        enrollments = cursor.fetchall()
+        active_year_id = _get_active_year_id(cursor, session.get("branch_id"))
+
 
         cursor.execute("""
             SELECT
@@ -74,23 +70,120 @@ def dashboard():
             WHERE payment_date::date = %s
               AND branch_id = %s
               AND received_by = %s
-        """, (_get_manila_today(), session.get("branch_id"), session.get("user_id")))
+              AND year_id = %s
+        """, (_get_manila_today(), session.get("branch_id"), session.get("user_id"), active_year_id))
         today_summary = cursor.fetchone() or {"payment_count": 0, "total_collected": 0}
 
         cursor.execute("""
             SELECT COUNT(*) AS pending_count
             FROM billing b
             JOIN enrollments e ON b.enrollment_id = e.enrollment_id
-            WHERE e.branch_id = %s
+            WHERE e.branch_id = %s AND b.year_id = %s
               AND b.status IN ('pending', 'partial')
-        """, (session.get("branch_id"),))
+        """, (session.get("branch_id"), active_year_id))
         pending_info = cursor.fetchone() or {"pending_count": 0}
 
         return render_template(
             "cashier_dashboard.html",
-            enrollments=enrollments,
             today_summary=today_summary,
             pending_count=pending_info["pending_count"]
+        )
+    finally:
+        cursor.close()
+        db.close()
+
+
+@cashier_bp.route("/cashier/billing-registry")
+def billing_registry():
+    if not _require_cashier():
+        return redirect("/")
+    if not session.get("branch_id"):
+        flash("No branch assigned. Please contact admin.", "error")
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        active_year_id = _get_active_year_id(cursor, session.get("branch_id"))
+
+        # Filters
+        status_filter = request.args.get("status_filter", "")
+        grade_filter  = request.args.get("grade_filter", "")
+        search_q      = request.args.get("q", "").strip()
+
+        query = """
+            SELECT e.*, b.bill_id, b.balance, b.status AS bill_status,
+                   b.total_amount, b.amount_paid,
+                   sa.username
+            FROM enrollments e
+            LEFT JOIN billing b
+              ON e.enrollment_id = b.enrollment_id
+            LEFT JOIN student_accounts sa
+              ON e.enrollment_id = sa.enrollment_id
+            WHERE e.branch_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled')
+        """
+        params = [session.get("branch_id"), active_year_id]
+
+        if grade_filter:
+            query += " AND e.grade_level = %s"
+            params.append(grade_filter)
+
+        if search_q:
+            query += " AND (e.student_name ILIKE %s OR CAST(e.branch_enrollment_no AS TEXT) ILIKE %s)"
+            params += [f"%{search_q}%", f"%{search_q}%"]
+
+        if status_filter == "no_bill":
+            query += " AND b.bill_id IS NULL"
+        elif status_filter == "paid":
+            query += " AND b.status = 'paid'"
+        elif status_filter == "partial":
+            query += " AND b.status = 'partial'"
+        elif status_filter == "pending":
+            query += " AND b.status = 'pending'"
+
+        query += """
+            ORDER BY
+              CASE
+                WHEN b.bill_id IS NULL THEN 0
+                WHEN b.status = 'pending' THEN 1
+                WHEN b.status = 'partial' THEN 2
+                ELSE 3
+              END,
+              e.student_name ASC
+        """
+
+        cursor.execute(query, params)
+        enrollments = cursor.fetchall()
+
+        # Grade levels for filter dropdown
+        cursor.execute("""
+            SELECT DISTINCT grade_level FROM enrollments
+            WHERE branch_id = %s AND year_id = %s AND status IN ('approved','enrolled')
+            ORDER BY grade_level
+        """, (session.get("branch_id"), active_year_id))
+        grade_levels = [r["grade_level"] for r in cursor.fetchall()]
+
+        # Summary stats
+        paid_count    = sum(1 for e in enrollments if e["bill_status"] == "paid")
+        partial_count = sum(1 for e in enrollments if e["bill_status"] == "partial")
+        pending_count = sum(1 for e in enrollments if e["bill_status"] == "pending")
+        no_bill_count = sum(1 for e in enrollments if not e["bill_id"])
+
+        is_branch_active_status = is_branch_active(session.get("branch_id"))
+
+        return render_template(
+            "cashier_billing_registry.html",
+            enrollments=enrollments,
+            grade_levels=grade_levels,
+            status_filter=status_filter,
+            grade_filter=grade_filter,
+            search_q=search_q,
+            paid_count=paid_count,
+            partial_count=partial_count,
+            pending_count=pending_count,
+            no_bill_count=no_bill_count,
+            is_branch_active_status=is_branch_active_status,
         )
     finally:
         cursor.close()
@@ -190,20 +283,24 @@ def create_bill(enrollment_id):
             try:
                 cursor.execute("""
                     INSERT INTO billing
-                      (enrollment_id, branch_id, tuition_fee, books_fee, uniform_fee, other_fees,
+                      (enrollment_id, branch_id, year_id, tuition_fee, books_fee, uniform_fee, other_fees,
                        total_amount, amount_paid, balance, status, created_by)
                     VALUES
-                      (%s, %s, %s, %s, %s, %s,
+                      (%s, %s, %s, %s, %s, %s, %s,
                        %s, %s, %s, 'pending', %s)
                     RETURNING bill_id
                 """, (
                     enrollment_id,
                     session.get("branch_id"),
-                    tuition_fee, books_fee, uniform_fee, other_fees,
+                    enrollment["year_id"],
+                    tuition_fee,
+                    books_fee,
+                    uniform_fee,
+                    other_fees,
                     total_amount,
-                    Decimal("0"),
+                    0,
                     total_amount,
-                    session.get("user_id"),
+                    session.get("user_id")
                 ))
                 bill_id = cursor.fetchone()["bill_id"]
                 db.commit()
@@ -314,16 +411,17 @@ def process_payment(bill_id):
 
                     cursor.execute("""
                         INSERT INTO payments
-                          (bill_id, enrollment_id, branch_id, amount, payment_method,
+                          (bill_id, enrollment_id, branch_id, year_id, amount, payment_method,
                            receipt_number, notes, received_by)
                         VALUES
-                          (%s, %s, %s, %s, %s,
+                          (%s, %s, %s, %s, %s, %s,
                            %s, %s, %s)
                         RETURNING payment_id
                     """, (
                         bill_id,
                         bill["enrollment_id"],
                         session.get("branch_id"),
+                        bill["year_id"],
                         amount,
                         payment_method,
                         receipt_number,
@@ -1347,6 +1445,52 @@ def export_reservation_detail_csv(reservation_id):
         mimetype="text/csv",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
+
+
+
+@cashier_bp.route("/cashier/unpaid-report")
+def unpaid_report():
+    if not _require_cashier():
+        return redirect("/")
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        branch_id = session.get("branch_id")
+        active_year_id = _get_active_year_id(cursor, branch_id)
+
+        if not active_year_id:
+            flash("No active school year found. Please contact admin.", "warning")
+            return redirect(url_for("cashier.dashboard"))
+
+        # Fetch year label
+        cursor.execute("SELECT label FROM school_years WHERE year_id = %s", (active_year_id,))
+        year_label = cursor.fetchone()["label"]
+
+        # Fetch students with balances > 0 for this year
+        cursor.execute("""
+            SELECT e.student_name, e.grade_level, e.branch_enrollment_no,
+                   b.bill_id, b.total_amount, b.amount_paid, b.balance, b.status
+            FROM billing b
+            JOIN enrollments e ON b.enrollment_id = e.enrollment_id
+            WHERE b.branch_id = %s AND b.year_id = %s AND b.balance > 0
+            ORDER BY b.balance DESC
+        """, (branch_id, active_year_id))
+        unpaid_students = cursor.fetchall()
+
+        # Calculate total outstanding
+        total_outstanding = sum(row["balance"] for row in unpaid_students)
+
+        return render_template(
+            "cashier_unpaid_report.html",
+            unpaid_students=unpaid_students,
+            year_label=year_label,
+            total_outstanding=total_outstanding
+        )
+    finally:
+        cursor.close()
+        db.close()
 
 
 @cashier_bp.after_request
