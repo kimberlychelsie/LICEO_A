@@ -251,13 +251,13 @@
       display: flex;
       align-items: center;
       gap: 14px;
-      padding: 11px 18px;
-      margin: 4px 15px;
+      padding: 12px 24px;
+      margin: 0;
       color: var(--sidebar-text);
       text-decoration: none;
       font-size: 0.88rem;
       font-weight: 600;
-      border-radius: 8px;
+      border-radius: 0;
       transition: all 0.2s ease;
       position: relative;
     }
@@ -301,17 +301,17 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      width: calc(100% - 30px);
-      margin: 4px 15px;
+      width: 100%;
+      margin: 0;
       background: transparent;
       border: none;
       cursor: pointer;
       font-family: inherit;
-      padding: 11px 18px;
+      padding: 12px 24px;
       color: var(--sidebar-text);
       font-size: 0.88rem;
       font-weight: 600;
-      border-radius: 8px;
+      border-radius: 0;
       transition: background 0.15s, color 0.15s;
       text-align: left;
     }
@@ -339,9 +339,9 @@
 
     .sb-dropdown-content {
       display: none;
-      background: var(--sidebar-dark);
-      border-radius: 8px;
-      margin: 0 15px 4px;
+      background: rgba(0, 0, 0, 0.05);
+      border-radius: 0;
+      margin: 0;
     }
 
     .sb-dropdown-content.show {
@@ -419,8 +419,11 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      margin-right: 20px;
+      width: var(--sidebar-w);
+      padding: 0 24px;
       text-decoration: none;
+      flex-shrink: 0;
+      transition: width 0.3s cubic-bezier(.4, 0, .2, 1);
     }
 
     .top-brand-icon {
@@ -453,17 +456,24 @@
       background: none;
       border: none;
       cursor: pointer;
-      padding: 10px;
-      border-radius: 8px;
+      padding: 8px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
       color: var(--topbar-text);
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
       transition: all 0.2s;
+      flex-shrink: 0;
+      margin-left: 0;
+      z-index: 1200;
     }
 
     .hamburger:hover {
-      background: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.15);
     }
 
     .hamburger span {
@@ -550,8 +560,8 @@
       }
 
       .topbar {
-        left: var(--sidebar-w);
-        width: calc(100% - var(--sidebar-w));
+        left: 0;
+        width: 100%;
         transition: left 0.3s cubic-bezier(.4, 0, .2, 1), width 0.3s cubic-bezier(.4, 0, .2, 1);
       }
 
@@ -564,9 +574,13 @@
         width: 80px;
       }
 
+      body.sidebar-collapsed .top-brand {
+        width: 80px;
+      }
+
       body.sidebar-collapsed .topbar {
-        left: 80px;
-        width: calc(100% - 80px);
+        left: 0;
+        width: 100%;
       }
 
       body.sidebar-collapsed .main-wrap {
@@ -576,6 +590,7 @@
       /* Collapsed UI Adjustments */
       body.sidebar-collapsed .sb-brand-name,
       body.sidebar-collapsed .sb-brand-sub,
+      body.sidebar-collapsed .top-brand-text,
       body.sidebar-collapsed .sb-user-name,
       body.sidebar-collapsed .sb-user-role,
       body.sidebar-collapsed .school-year-badge,
