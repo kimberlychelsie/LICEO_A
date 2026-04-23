@@ -331,7 +331,13 @@ def enroll(branch_id):
 
             # ── Previous School ──
             previous_school   = request.form.get("previous_school", "").strip() or None
-            enroll_type       = request.form.get("enroll_type", "").strip() or None
+            enroll_type_raw   = request.form.get("enroll_type", "").strip() or None
+            enroll_semester   = request.form.get("enroll_semester", "").strip() or None
+            # Combine Transferee + semester into a single stored value
+            if enroll_type_raw == "Transferee" and enroll_semester:
+                enroll_type = f"Transferee - {enroll_semester}"
+            else:
+                enroll_type = enroll_type_raw
             enroll_date       = request.form.get("enroll_date", "").strip() or None
             remarks           = request.form.get("remarks", "").strip() or None
 

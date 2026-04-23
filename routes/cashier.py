@@ -233,18 +233,14 @@ def create_bill(enrollment_id):
             JOIN inventory_items ii ON ri.item_id = ii.item_id
             WHERE r.branch_id = %s AND r.status != 'CANCELLED'
               AND (
-                r.student_user_id IN (
+                r.enrollment_id = %s
+                OR
+                (r.enrollment_id IS NULL AND r.student_user_id IN (
                     SELECT u.user_id
                     FROM users u
                     JOIN student_accounts sa ON u.username = sa.username
                     WHERE sa.enrollment_id = %s
-                )
-                OR
-                r.reserved_by_user_id IN (
-                    SELECT parent_id
-                    FROM parent_student
-                    WHERE student_id = %s
-                )
+                ))
               )
         """, (session.get("branch_id"), enrollment_id, enrollment_id))
         reservation_items = cursor.fetchall()

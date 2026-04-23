@@ -1149,14 +1149,29 @@
                         <br><br>
                         {% if not e.has_parent_account %}
                         {% if is_branch_active_status and can_modify %}
-                        <form method="post" action="/registrar/create-parent-account/{{ e.enrollment_id }}"
-                            style="display:inline;">
-                            <button type="submit" class="btn btn-secondary btn-sm">👨‍👩‍👧 Create Parent
-                                Account</button>
-                        </form>
+                            {% if e.existing_parent_user_id %}
+                                {# A parent account with the same guardian email already exists — link instead of create #}
+                                <form method="post" action="/registrar/link-parent/{{ e.enrollment_id }}"
+                                    style="display:inline;"
+                                    onsubmit="return confirm('Link this student to existing parent account \'{{ e.existing_parent_username }}\'?\nNo new account will be created.');">
+                                    <button type="submit" class="btn btn-warning btn-sm"
+                                        title="Guardian email matches existing parent: {{ e.existing_parent_username }}">
+                                        🔗 Link Child to Parent
+                                    </button>
+                                </form>
+                                <div class="muted-note" style="font-size:11px; margin-top:3px;">
+                                    Existing: <strong>{{ e.existing_parent_username }}</strong>
+                                </div>
+                            {% else %}
+                                <form method="post" action="/registrar/create-parent-account/{{ e.enrollment_id }}"
+                                    style="display:inline;">
+                                    <button type="submit" class="btn btn-secondary btn-sm">👨‍👩‍👧 Create Parent
+                                        Account</button>
+                                </form>
+                            {% endif %}
                         {% endif %}
                         {% else %}
-                        <span class="acct-ok">✓ Parent Account Created</span>
+                        <span class="acct-ok">✓ Parent Account Linked</span>
                         {% endif %}
                     </td>
                 </tr>

@@ -329,7 +329,24 @@ def registrar_enrollments():
                    s.section_name,
                    CASE WHEN sa.enrollment_id IS NOT NULL THEN TRUE ELSE FALSE END AS has_student_account,
                    CASE WHEN ps.student_id   IS NOT NULL THEN TRUE ELSE FALSE END AS has_parent_account,
-                   u.username AS parent_username
+                   u.username AS parent_username,
+                   -- Correlated subquery: find existing parent account from a sibling enrollment
+                   -- with the same guardian_email (returns at most 1 row — no duplication)
+                   (SELECT ps2.parent_id
+                    FROM enrollments e2
+                    JOIN parent_student ps2 ON ps2.student_id = e2.enrollment_id
+                    WHERE e.guardian_email IS NOT NULL
+                      AND LOWER(e2.guardian_email) = LOWER(e.guardian_email)
+                      AND e2.enrollment_id <> e.enrollment_id
+                    LIMIT 1) AS existing_parent_user_id,
+                   (SELECT u2.username
+                    FROM enrollments e2
+                    JOIN parent_student ps2 ON ps2.student_id = e2.enrollment_id
+                    JOIN users u2           ON u2.user_id     = ps2.parent_id
+                    WHERE e.guardian_email IS NOT NULL
+                      AND LOWER(e2.guardian_email) = LOWER(e.guardian_email)
+                      AND e2.enrollment_id <> e.enrollment_id
+                    LIMIT 1) AS existing_parent_username
             FROM enrollments e
             LEFT JOIN sections s          ON s.section_id    = e.section_id
             LEFT JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
@@ -721,6 +738,34 @@ def create_parent_account(enrollment_id):
         brow = cursor.fetchone()
         branch_code = (brow["branch_code"] if brow and brow.get("branch_code") else "").strip().upper() or f"B{branch_id}"
 
+        # ── Safety net: check if another enrollment with the same guardian_email already has a parent account ──
+        guardian_email = (enrollment.get("guardian_email") or "").strip().lower()
+        if guardian_email:
+            cursor.execute("""
+                SELECT u.user_id, u.username
+                FROM enrollments e_sib
+                JOIN parent_student ps_sib ON ps_sib.student_id = e_sib.enrollment_id
+                JOIN users u               ON u.user_id          = ps_sib.parent_id
+                WHERE LOWER(e_sib.guardian_email) = %s
+                  AND e_sib.enrollment_id <> %s
+                LIMIT 1
+            """, (guardian_email, enrollment_id))
+            existing_by_email = cursor.fetchone()
+            if existing_by_email:
+                cursor.execute("""
+                    INSERT INTO parent_student (parent_id, student_id, relationship)
+                    VALUES (%s, %s, 'guardian')
+                    ON CONFLICT DO NOTHING
+                """, (existing_by_email["user_id"], enrollment_id))
+                db.commit()
+                flash(
+                    f"A parent account for this guardian email already exists "
+                    f"('{existing_by_email['username']}'). "
+                    f"Student was linked to that account instead of creating a duplicate.",
+                    "success"
+                )
+                return redirect("/registrar/enrollments#enrolled")
+
         cursor.execute("""
             SELECT COUNT(*) AS cnt FROM users
             WHERE role='parent' AND branch_id=%s AND username ILIKE %s
@@ -845,6 +890,87 @@ def create_parent_account(enrollment_id):
         logger.error(f"Create parent account error: {str(e)}")
         flash("Something went wrong while creating parent account.", "error")
         return redirect("/registrar/enrollments")
+    finally:
+        cursor.close()
+        db.close()
+
+
+# ══════════════════════════════════════════
+# LINK EXISTING PARENT ACCOUNT TO STUDENT
+# ══════════════════════════════════════════
+
+@registrar_bp.route("/registrar/link-parent/<int:enrollment_id>", methods=["POST"])
+def link_parent_account(enrollment_id):
+    """Link an existing parent account (matched by guardian email) to this student
+    instead of creating a duplicate parent account."""
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("Missing branch in session. Please login again.", "error")
+        return redirect("/logout")
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT * FROM enrollments
+            WHERE enrollment_id=%s AND branch_id=%s
+              AND status IN ('approved', 'enrolled', 'open_for_enrollment')
+        """, (enrollment_id, branch_id))
+        enrollment = cursor.fetchone()
+
+        if not enrollment:
+            flash("Enrollment not found or not approved.", "error")
+            return redirect("/registrar/enrollments#enrolled")
+
+        # Guard: already linked?
+        cursor.execute("SELECT 1 FROM parent_student WHERE student_id = %s", (enrollment_id,))
+        if cursor.fetchone():
+            flash("This student already has a linked parent account.", "warning")
+            return redirect("/registrar/enrollments#enrolled")
+
+        guardian_email = (enrollment.get("guardian_email") or "").strip().lower()
+        if not guardian_email:
+            flash("No guardian email on record. Cannot auto-link.", "error")
+            return redirect("/registrar/enrollments#enrolled")
+
+        # Find existing parent account via another enrollment with the same guardian_email
+        cursor.execute("""
+            SELECT u.user_id, u.username
+            FROM enrollments e_sib
+            JOIN parent_student ps_sib ON ps_sib.student_id = e_sib.enrollment_id
+            JOIN users u               ON u.user_id          = ps_sib.parent_id
+            WHERE LOWER(e_sib.guardian_email) = %s
+              AND e_sib.enrollment_id <> %s
+            LIMIT 1
+        """, (guardian_email, enrollment_id))
+        parent_user = cursor.fetchone()
+
+        if not parent_user:
+            flash("No existing parent account found for that guardian email. Use Create Parent Account instead.", "warning")
+            return redirect("/registrar/enrollments#enrolled")
+
+        # Create the parent_student link
+        cursor.execute("""
+            INSERT INTO parent_student (parent_id, student_id, relationship)
+            VALUES (%s, %s, 'guardian')
+            ON CONFLICT DO NOTHING
+        """, (parent_user["user_id"], enrollment_id))
+        db.commit()
+
+        flash(
+            f"Student successfully linked to existing parent account '{parent_user['username']}'. No new account was created.",
+            "success"
+        )
+        return redirect("/registrar/enrollments#enrolled")
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Link parent account error: {str(e)}")
+        flash("Something went wrong while linking the parent account.", "error")
+        return redirect("/registrar/enrollments#enrolled")
     finally:
         cursor.close()
         db.close()

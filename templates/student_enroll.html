@@ -560,38 +560,69 @@
                     </div>
                     <div class="section-body">
                         <div class="grid">
-                            <div class="c12">
-                                <div class="pill-row">
-                                    <label class="pill">
-                                        <input type="radio" name="enroll_type" value="Old" required> Old
-                                    </label>
-                                    <label class="pill">
-                                        <input type="radio" name="enroll_type" value="New"> New
-                                    </label>
-                                    <label class="pill">
-                                        <input type="radio" name="enroll_type" value="Transferee"> Transferee
-                                    </label>
-                                    <label class="pill">
-                                        <input type="radio" name="enroll_type" value="First Semester"> First Semester
-                                    </label>
-                                    <label class="pill">
-                                        <input type="radio" name="enroll_type" value="Second Semester"> Second Semester
-                                    </label>
-                                </div>
-                            </div>
-                            <div class="c4">
+
+                            <!-- Row 1: Enrollment Date + School Year + Remarks -->
+                            <div class="c3">
                                 <div class="field">
-                                    <label>Date <span class="req">*</span></label>
-                                    <input type="date" name="enroll_date" required />
+                                    <label>Enrollment Date <span class="req">*</span></label>
+                                    <input type="date" id="enroll_date" name="enroll_date" required />
+                                    <small>Must be today's date</small>
                                 </div>
                             </div>
-                            <div class="c8">
+                            <div class="c3">
+                                <div class="field">
+                                    <label for="year_id">School Year <span class="req">*</span></label>
+                                    <select name="year_id" id="year_id" required>
+                                        {% for sy in school_years %}
+                                        <option value="{{ sy.year_id }}" {% if sy.is_active %}selected{% endif %}>
+                                            {{ sy.label }} {% if sy.is_active %}(Active){% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="c6">
                                 <div class="field">
                                     <label>Remarks (optional)</label>
                                     <input type="text" name="remarks"
                                         placeholder="e.g., Scholarship applicant, late enrollee..." />
                                 </div>
                             </div>
+
+                            <!-- Row 2: Enrollment Type (Old / New / Transferee only) -->
+                            <div class="c12">
+                                <div class="field" style="gap:8px">
+                                    <label>Enrollment Type <span class="req">*</span></label>
+                                    <div class="pill-row">
+                                        <label class="pill">
+                                            <input type="radio" name="enroll_type" id="et_old" value="Old" required> Old
+                                        </label>
+                                        <label class="pill">
+                                            <input type="radio" name="enroll_type" id="et_new" value="New"> New
+                                        </label>
+                                        <label class="pill">
+                                            <input type="radio" name="enroll_type" id="et_transferee" value="Transferee"> Transferee
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Row 3: Semester (separate field, shown only for Transferee) -->
+                            <div class="c12" id="semRow" style="display:none;">
+                                <div class="field" style="gap:8px">
+                                    <label>Semester <span class="req">*</span></label>
+                                    <div class="pill-row">
+                                        <label class="pill">
+                                            <input type="radio" name="enroll_semester" value="First Semester"> 1st Semester
+                                        </label>
+                                        <label class="pill">
+                                            <input type="radio" name="enroll_semester" value="Second Semester"> 2nd Semester
+                                        </label>
+                                    </div>
+                                    <small style="color:var(--primary); font-weight:600;">Select which semester you are enrolling for</small>
+                                </div>
+                            </div>
+
                         </div>
                     </div>
                 </div>
@@ -613,9 +644,12 @@
                             </div>
                             <div class="c5">
                                 <div class="field">
-                                    <label>Learner Reference Number (LRN)</label>
+                                    <label>Learner Reference Number (LRN) <span class="req">*</span></label>
                                     <input type="text" id="field_lrn" name="lrn"
-                                        placeholder="12-digit LRN" maxlength="12" />
+                                        placeholder="12-digit LRN" maxlength="12" minlength="12"
+                                        inputmode="numeric" pattern="\d{12}" required
+                                        oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
+                                    <small>Numbers only, exactly 12 digits</small>
                                 </div>
                             </div>
 
@@ -634,12 +668,13 @@
                                 <div class="field">
                                     <label>Birthday <span class="req">*</span></label>
                                     <input type="date" id="field_dob" name="dob" required />
+                                    <small>Must not be a future date</small>
                                 </div>
                             </div>
                             <div class="c4">
                                 <div class="field">
-                                    <label>Birthplace</label>
-                                    <input type="text" name="birthplace" placeholder="City / Municipality" />
+                                    <label>Birthplace <span class="req">*</span></label>
+                                    <input type="text" name="birthplace" placeholder="City / Municipality" required />
                                 </div>
                             </div>
 
@@ -653,11 +688,14 @@
                             </div>
                             <div class="c4">
                                 <div class="field">
-                                    <label>Cellphone No.</label>
+                                    <label>Cellphone No. <span class="req">*</span></label>
                                     <input type="tel" name="contact_number"
                                             pattern="^09\d{9}$"
                                             maxlength="11" minlength="11"
-                                            placeholder="09xxxxxxxxx" />
+                                            placeholder="09xxxxxxxxx" required
+                                            inputmode="numeric"
+                                            oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
+                                    <small>Numbers only, must start with 09</small>
                                 </div>
                             </div>
 
@@ -672,11 +710,12 @@
                                 </div>
                             </div>
 
-                            <!-- ✅ NEW: Student Email -->
+                            <!-- Student Email (duplicate allowed) -->
                             <div class="c8">
                                 <div class="field">
-                                    <label>Email Address</label>
-                                    <input type="email" name="email" placeholder="student@domain.com" />
+                                    <label>Email Address <span class="req">*</span></label>
+                                    <input type="email" name="email" placeholder="student@domain.com" required />
+                                    <small>Use any valid email; duplicates are allowed</small>
                                 </div>
                             </div>
 
@@ -694,52 +733,55 @@
 
                             <div class="c6">
                                 <div class="field">
-                                    <label>Father's Name</label>
+                                    <label>Father's Name <span class="req">*</span></label>
                                     <input type="text" name="father_name"
-                                        placeholder="Last Name, First Name, M.I." />
+                                        placeholder="Last Name, First Name, M.I." required />
                                 </div>
                             </div>
                             <div class="c3">
                                 <div class="field">
-                                    <label>Contact Number</label>
+                                    <label>Father's Contact <span class="req">*</span></label>
                                     <input type="tel"
                                         name="father_contact"
                                         pattern="^09\d{9}$"
                                         minlength="11"
                                         maxlength="11"
-                                        placeholder="09xxxxxxxxx" />
+                                        placeholder="09xxxxxxxxx" required
+                                        inputmode="numeric"
+                                        oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
                                 </div>
                             </div>
                             <div class="c3">
                                 <div class="field">
-                                    <label>Occupation</label>
-                                    <input type="text" name="father_occupation" />
+                                    <label>Father's Occupation <span class="req">*</span></label>
+                                    <input type="text" name="father_occupation" placeholder="e.g., Farmer" required />
                                 </div>
                             </div>
 
                             <div class="c6">
                                 <div class="field">
-                                    <label>Mother's Name</label>
+                                    <label>Mother's Name <span class="req">*</span></label>
                                     <input type="text" name="mother_name"
-                                        placeholder="Last Name, First Name, M.I." />
+                                        placeholder="Last Name, First Name, M.I." required />
                                 </div>
                             </div>
                             <div class="c3">
                                 <div class="field">
-                                    <label>Contact Number</label>
+                                    <label>Mother's Contact <span class="req">*</span></label>
                                     <input type="tel"
                                             name="mother_contact"
                                             pattern="^09\d{9}$"
                                             minlength="11"
                                             maxlength="11"
-                                            placeholder="09xxxxxxxxx" />
-
+                                            placeholder="09xxxxxxxxx" required
+                                            inputmode="numeric"
+                                            oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
                                 </div>
                             </div>
                             <div class="c3">
                                 <div class="field">
-                                    <label>Occupation</label>
-                                    <input type="text" name="mother_occupation" />
+                                    <label>Mother's Occupation <span class="req">*</span></label>
+                                    <input type="text" name="mother_occupation" placeholder="e.g., Housewife" required />
                                 </div>
                             </div>
 
@@ -756,12 +798,12 @@
                                     <input type="tel" name="guardian_contact"
                                             pattern="^09\d{9}$"
                                             maxlength="11" minlength="11"
-                                            placeholder="09xxxxxxxxx" required />
-
+                                            placeholder="09xxxxxxxxx" required
+                                            inputmode="numeric"
+                                            oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
                                 </div>
                             </div>
 
-                            <!-- ✅ NEW: Guardian Email -->
                             <div class="c3">
                                 <div class="field">
                                     <label>Guardian Email <span class="req">*</span></label>
@@ -781,22 +823,10 @@
                     </div>
                     <div class="section-body">
                         <div class="grid">
-                            <div class="c8">
+                            <div class="c12">
                                 <div class="field">
-                                    <label>Last School Attended</label>
-                                    <input type="text" name="previous_school" placeholder="School Name" />
-                                </div>
-                            </div>
-                            <div class="c4">
-                                <div class="field">
-                                    <label for="syear_id">School Year</label>
-<select name="year_id" id="year_id" required>
-    {% for sy in school_years %}
-        <option value="{{ sy.year_id }}" {% if sy.is_active %}selected{% endif %}>
-            {{ sy.label }} {% if sy.is_active %}(Active){% endif %}
-        </option>
-    {% endfor %}
-</select>
+                                    <label>Last School Attended <span class="req">*</span></label>
+                                    <input type="text" name="previous_school" placeholder="School Name" required />
                                 </div>
                             </div>
                         </div>
@@ -824,10 +854,10 @@
 
                             <div class="c6">
                                 <div class="field">
-                                    <label>Baptismal Certificate</label>
+                                    <label>Baptismal Certificate <span class="req">*</span></label>
                                     <input type="file" name="baptismal_cert"
-                                        accept=".pdf,.jpg,.jpeg,.png" />
-                                    <small>Optional — if applicable</small>
+                                        accept=".pdf,.jpg,.jpeg,.png" required />
+                                    <small>Photocopy / Original</small>
                                 </div>
                             </div>
 
@@ -842,19 +872,19 @@
 
                             <div class="c6">
                                 <div class="field">
-                                    <label>Good Moral Certificate</label>
+                                    <label>Good Moral Certificate <span class="req">*</span></label>
                                     <input type="file" name="good_moral"
-                                        accept=".pdf,.jpg,.jpeg,.png" />
-                                    <small>Certificate</small>
+                                        accept=".pdf,.jpg,.jpeg,.png" required />
+                                    <small>Certificate from previous school</small>
                                 </div>
                             </div>
 
                             <div class="c6">
                                 <div class="field">
-                                    <label>Form 137</label>
+                                    <label>Form 137 <span class="req">*</span></label>
                                     <input type="file" name="form_137"
-                                        accept=".pdf,.jpg,.jpeg,.png" />
-                                    <small>As required</small>
+                                        accept=".pdf,.jpg,.jpeg,.png" required />
+                                    <small>Permanent record / cumulative form</small>
                                 </div>
                             </div>
 
@@ -957,11 +987,54 @@
             var nameEl    = document.getElementById('field_name');
             var dobEl     = document.getElementById('field_dob');
             var lrnEl     = document.getElementById('field_lrn');
+            var enrollDateEl = document.getElementById('enroll_date');
             var submitBtn = document.getElementById('submitBtn');
             var dupWarn   = document.getElementById('dupWarning');
             var dupDetail = document.getElementById('dupDetail');
             var blocked   = false;
 
+            /* ── Set enrollment date to today and restrict to today only ── */
+            (function initEnrollDate() {
+                var today = new Date();
+                var yyyy  = today.getFullYear();
+                var mm    = String(today.getMonth() + 1).padStart(2, '0');
+                var dd    = String(today.getDate()).padStart(2, '0');
+                var todayStr = yyyy + '-' + mm + '-' + dd;
+                if (enrollDateEl) {
+                    enrollDateEl.value = todayStr;
+                    enrollDateEl.min   = todayStr;
+                    enrollDateEl.max   = todayStr;
+                }
+                /* Birthdate: no future dates allowed */
+                if (dobEl) {
+                    dobEl.max = todayStr;
+                }
+            })();
+
+            /* ── Enrollment type pill logic ── */
+            var semRow  = document.getElementById('semRow');
+            var typeRadios = document.querySelectorAll('input[name="enroll_type"]');
+
+            function updateSemVisibility() {
+                var selected = document.querySelector('input[name="enroll_type"]:checked');
+                var isTransferee = selected && selected.value === 'Transferee';
+                if (semRow) {
+                    semRow.style.display = isTransferee ? '' : 'none';
+                    if (!isTransferee) {
+                        /* Uncheck semester when switching to Old/New */
+                        document.querySelectorAll('input[name="enroll_semester"]').forEach(function(r) {
+                            r.checked = false;
+                        });
+                    }
+                }
+            }
+
+            typeRadios.forEach(function(r) {
+                r.addEventListener('change', updateSemVisibility);
+            });
+            updateSemVisibility(); // run once on load
+
+            /* ── Duplicate check ── */
             function setBlocked(val, detail) {
                 blocked = val;
                 if (val) {
@@ -984,8 +1057,6 @@
                 var name = nameEl ? nameEl.value.trim() : '';
                 var dob  = dobEl  ? dobEl.value.trim()  : '';
                 var lrn  = lrnEl  ? lrnEl.value.trim()  : '';
-
-                // Need at least name or LRN to bother checking
                 if (!name && !lrn) { setBlocked(false); return; }
 
                 fetch('/api/check-duplicate', {
@@ -1007,94 +1078,168 @@
                     .catch(function () { /* network error — fail open */ });
             }
 
-            // Trigger on blur of key fields
             if (lrnEl)  lrnEl.addEventListener('blur', runCheck);
             if (dobEl)  dobEl.addEventListener('change', runCheck);
             if (nameEl) nameEl.addEventListener('blur', runCheck);
 
-            // Final guard on submit (in case JS was slow)
+            /* ── Submit validation ── */
             document.getElementById('enrollForm').addEventListener('submit', function (e) {
-    // Blocked by duplicate checker
-    if (blocked) { e.preventDefault(); return false; }
+                if (blocked) { e.preventDefault(); return false; }
 
-    var errors = [];
-    var name = nameEl.value.trim();
-    var birthday = dobEl.value;
-    var gradeLevel = document.querySelector('select[name="grade_level"]').value;
-    var consent = document.querySelector('input[name="privacy_consent"]:checked');
-    var guardianName = document.querySelector('input[name="guardian_name"]').value.trim();
-    var guardianContact = document.querySelector('input[name="guardian_contact"]').value.trim();
-    var lrn = lrnEl.value.trim();
-    var studentContact = document.querySelector('input[name="contact_number"]').value.trim();
-    var fatherContact = document.querySelector('input[name="father_contact"]').value.trim();
-    var motherContact = document.querySelector('input[name="mother_contact"]').value.trim();
+                var errors = [];
+                var today = new Date();
+                today.setHours(0,0,0,0);
 
+                /* Enrollment type */
+                var enrollType = document.querySelector('input[name="enroll_type"]:checked');
+                if (!enrollType) {
+                    errors.push('Enrollment type is required.');
+                } else if (enrollType.value === 'Transferee') {
+                    var semChoice = document.querySelector('input[name="enroll_semester"]:checked');
+                    if (!semChoice) {
+                        errors.push('Please select a semester (1st or 2nd) for Transferee enrollment.');
+                    }
+                }
 
-    function isValidPHMobile(num) {
-        return /^09\d{9}$/.test(num) && num.length === 11;
-    }
+                /* Enrollment date — must be today */
+                var enrollDateVal = enrollDateEl ? enrollDateEl.value : '';
+                if (!enrollDateVal) {
+                    errors.push('Enrollment date is required.');
+                } else {
+                    var edParts = enrollDateVal.split('-');
+                    var ed = new Date(parseInt(edParts[0]), parseInt(edParts[1])-1, parseInt(edParts[2]));
+                    ed.setHours(0,0,0,0);
+                    if (ed.getTime() !== today.getTime()) {
+                        errors.push('Enrollment date must be today\'s date.');
+                    }
+                }
 
-    // Validate full name format (at least "Last, First")
-    if (name.split(',').length < 2 || name.length < 5) {
-        errors.push("Please enter the full name in 'Last Name, First Name, M.I.' format.");
-    }
+                var name = nameEl ? nameEl.value.trim() : '';
+                var birthday = dobEl ? dobEl.value : '';
+                var gradeLevel = document.querySelector('select[name="grade_level"]').value;
+                var consent = document.querySelector('input[name="privacy_consent"]:checked');
+                var guardianName = document.querySelector('input[name="guardian_name"]').value.trim();
+                var guardianContact = document.querySelector('input[name="guardian_contact"]').value.trim();
+                var guardianEmail = document.querySelector('input[name="guardian_email"]').value.trim();
+                var lrn = lrnEl ? lrnEl.value.trim() : '';
+                var studentContact = document.querySelector('input[name="contact_number"]').value.trim();
+                var studentEmail = document.querySelector('input[name="email"]').value.trim();
+                var address = document.querySelector('input[name="address"]').value.trim();
+                var birthplace = document.querySelector('input[name="birthplace"]').value.trim();
+                var gender = document.querySelector('select[name="gender"]').value;
+                var fatherName = document.querySelector('input[name="father_name"]').value.trim();
+                var fatherContact = document.querySelector('input[name="father_contact"]').value.trim();
+                var fatherOccupation = document.querySelector('input[name="father_occupation"]').value.trim();
+                var motherName = document.querySelector('input[name="mother_name"]').value.trim();
+                var motherContact = document.querySelector('input[name="mother_contact"]').value.trim();
+                var motherOccupation = document.querySelector('input[name="mother_occupation"]').value.trim();
+                var previousSchool = document.querySelector('input[name="previous_school"]').value.trim();
+                var psaFile = document.querySelector('input[name="psa_birth_cert"]').files.length;
+                var baptismalFile = document.querySelector('input[name="baptismal_cert"]').files.length;
+                var form138File = document.querySelector('input[name="form_138"]').files.length;
+                var goodMoralFile = document.querySelector('input[name="good_moral"]').files.length;
+                var form137File = document.querySelector('input[name="form_137"]').files.length;
+                var studentSig = document.querySelector('input[name="student_signature"]').value.trim();
+                var parentSig = document.querySelector('input[name="parent_signature"]').value.trim();
 
-    if (!birthday) {
-        errors.push("Birthday is required.");
-    } else if (isNaN(Date.parse(birthday))) {
-        errors.push("Birthday must be a valid date.");
-    }
+                function isValidPHMobile(num) {
+                    return /^09\d{9}$/.test(num) && num.length === 11;
+                }
 
-    if (!gradeLevel) {
-        errors.push("Grade level/strand is required.");
-    }
+                /* Full name */
+                if (name.split(',').length < 2 || name.length < 5) {
+                    errors.push('Please enter the full name in \'Last Name, First Name, M.I.\' format.');
+                }
 
-    // Guardian name/contact (PH format)
-    if (!guardianName) {
-        errors.push("Guardian name is required.");
-    }
-    if (!guardianContact) {
-        errors.push("Guardian contact number is required.");
-    } else if (!isValidPHMobile(guardianContact)) {
-        errors.push("Guardian contact must be an 11-digit PH mobile (09XXXXXXXXX).");
-    }
+                /* LRN — now required, exactly 12 digits numbers only */
+                if (!lrn) {
+                    errors.push('LRN is required.');
+                } else if (!/^\d{12}$/.test(lrn)) {
+                    errors.push('LRN must be exactly 12 digits (numbers only).');
+                }
 
-    // Student contact (optional)
-    if (studentContact) {
-        if (!isValidPHMobile(studentContact)) {
-            errors.push("Student contact must be an 11-digit PH mobile (09XXXXXXXXX) if entered.");
-        }
-    }
-    // Father contact (optional)
-    if (fatherContact) {
-        if (!isValidPHMobile(fatherContact)) {
-            errors.push("Father's contact must be an 11-digit PH mobile number (09XXXXXXXXX) if entered.");
-        }
-    }
+                /* Birthday — required, must not be future */
+                if (!birthday) {
+                    errors.push('Birthday is required.');
+                } else if (isNaN(Date.parse(birthday))) {
+                    errors.push('Birthday must be a valid date.');
+                } else {
+                    var bdParts = birthday.split('-');
+                    var bd = new Date(parseInt(bdParts[0]), parseInt(bdParts[1])-1, parseInt(bdParts[2]));
+                    bd.setHours(0,0,0,0);
+                    if (bd > today) {
+                        errors.push('Birthday cannot be a future date.');
+                    }
+                }
 
-    // Mother contact (optional)
-    if (motherContact) {
-        if (!isValidPHMobile(motherContact)) {
-            errors.push("Mother's contact must be an 11-digit PH mobile number (09XXXXXXXXX) if entered.");
-        }
-    }
+                /* Student detail required fields */
+                if (!gradeLevel)    errors.push('Grade level/strand is required.');
+                if (!birthplace)    errors.push('Birthplace is required.');
+                if (!address)       errors.push('Address is required.');
+                if (!gender)        errors.push('Sex is required.');
 
+                /* Student contact — required */
+                if (!studentContact) {
+                    errors.push('Student cellphone number is required.');
+                } else if (!isValidPHMobile(studentContact)) {
+                    errors.push('Student contact must be an 11-digit PH mobile (09XXXXXXXXX).');
+                }
 
-    // LRN optional, but if entered, must be 12 digit
-    if (lrn && !/^\d{12}$/.test(lrn)) {
-        errors.push("LRN must be a 12-digit number.");
-    }
+                /* Student email — required */
+                if (!studentEmail) errors.push('Student email address is required.');
 
-    if (!consent) {
-        errors.push("You must agree to the Data Privacy Consent.");
-    }
+                /* Father — all required */
+                if (!fatherName) errors.push('Father\'s name is required.');
+                if (!fatherContact) {
+                    errors.push('Father\'s contact number is required.');
+                } else if (!isValidPHMobile(fatherContact)) {
+                    errors.push('Father\'s contact must be an 11-digit PH mobile (09XXXXXXXXX).');
+                }
+                if (!fatherOccupation) errors.push('Father\'s occupation is required.');
 
-    if (errors.length) {
-        e.preventDefault();
-        alert(errors.join("\n"));
-        return false;
-    }
-});
+                /* Mother — all required */
+                if (!motherName) errors.push('Mother\'s name is required.');
+                if (!motherContact) {
+                    errors.push('Mother\'s contact number is required.');
+                } else if (!isValidPHMobile(motherContact)) {
+                    errors.push('Mother\'s contact must be an 11-digit PH mobile (09XXXXXXXXX).');
+                }
+                if (!motherOccupation) errors.push('Mother\'s occupation is required.');
+
+                /* Guardian — required */
+                if (!guardianName) errors.push('Guardian name is required.');
+                if (!guardianContact) {
+                    errors.push('Guardian contact number is required.');
+                } else if (!isValidPHMobile(guardianContact)) {
+                    errors.push('Guardian contact must be an 11-digit PH mobile (09XXXXXXXXX).');
+                }
+                if (!guardianEmail) errors.push('Guardian email is required.');
+
+                /* Previous school — required */
+                if (!previousSchool) errors.push('Last school attended is required.');
+
+                /* Requirements / Documents — all required */
+                if (!psaFile)       errors.push('PSA Birth Certificate is required.');
+                if (!baptismalFile) errors.push('Baptismal Certificate is required.');
+                if (!form138File)   errors.push('Card / Form 138 is required.');
+                if (!goodMoralFile) errors.push('Good Moral Certificate is required.');
+                if (!form137File)   errors.push('Form 137 is required.');
+
+                /* Signatures — required */
+                if (!studentSig) errors.push('Student signature (typed full name) is required.');
+                if (!parentSig)  errors.push('Parent/Guardian signature (typed full name) is required.');
+
+                /* Privacy consent */
+                if (!consent) {
+                    errors.push('You must agree to the Data Privacy Consent.');
+                }
+
+                if (errors.length) {
+                    e.preventDefault();
+                    alert(errors.join('\n'));
+                    return false;
+                }
+            });
         })();
     </script>
 
