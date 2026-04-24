@@ -301,7 +301,11 @@
             <div class="task-cat-badge cat-act">{{ act.category or 'Activity' }}</div>
             <h3 class="task-title">{{ act.title }}</h3>
             <div class="task-info-row">
-              {% if act.due_date %}
+              {% if act.individual_extension %}
+              <span class="status-badge" style="background:#d1fae5; color:#065f46; border:1px solid #10b981;">
+                  ⭐ Rescheduled to {{ act.effective_due.strftime('%b %d, %I:%M %p') }}
+              </span>
+              {% elif act.due_date %}
               <span>Due: {{ act.due_date.strftime('%b %d, %Y %I:%M %p') }}</span>
               {% if act.due_date < now %}<span style="color:#ef4444; font-weight:700;">Past Due</span>{% endif %}
               {% else %}
@@ -375,9 +379,9 @@
         {% for q in quizzes %}
         {% set q_done    = q.result_status in ('submitted', 'auto_submitted') %}
         {% set q_closed  = q.status == 'closed' %}
-        {% set q_notyet  = q.scheduled_start and now < q.scheduled_start %}
-        {% set q_expired = q.scheduled_start and now > (q.scheduled_start + timedelta(minutes=q.duration_mins)) %}
-        <div class="task-card" style="border-left-color: #7c3aed;">
+        {% set q_notyet  = q.effective_start and now < q.effective_start %}
+        {% set q_expired = q.effective_end and now > q.effective_end %}
+        <div class="task-card" style="border-left-color: {{ '#10b981' if q.individual_extension else '#7c3aed' }};">
           <div class="task-card-top">
             <div>
               <div class="task-cat-badge cat-quiz">Quiz</div>
@@ -388,7 +392,11 @@
                 {% if q.grading_period %}
                 <span class="status-badge" style="background:#f5f3ff; color:#5b21b6; border:1px solid #ddd6fe;">{{ q.grading_period }} Grading</span>
                 {% endif %}
-                {% if q.scheduled_start %}
+                {% if q.individual_extension %}
+                <span class="status-badge" style="background:#d1fae5; color:#065f46; border:1px solid #10b981;">
+                    ⭐ Rescheduled to {{ q.effective_start.strftime('%b %d, %I:%M %p') }}
+                </span>
+                {% elif q.scheduled_start %}
                 <span>Opens {{ q.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}</span>
                 {% endif %}
               </div>

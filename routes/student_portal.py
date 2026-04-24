@@ -488,20 +488,29 @@ def subject_view(subject_id):
         # Get activities for this subject/section/branch — section-based, not student-based
         if enrollment_id and student_user_id:
             cur.execute('''
-    SELECT a.*, subm.status as submission_status, subm.submission_id
-    FROM activities a
-    LEFT JOIN activity_submissions subm 
-        ON a.activity_id = subm.activity_id 
-        AND subm.student_id = %s 
-        AND subm.enrollment_id = %s
-    WHERE a.subject_id = %s 
-      AND a.section_id = %s 
-      AND a.branch_id = %s 
-      AND a.year_id = %s
-      AND a.status = 'Published'
-    ORDER BY a.due_date ASC
-''', (student_user_id, enrollment_id, subject_id, student_section_id, student_branch_id, student_year_id))
-            activities = cur.fetchall()
+                SELECT a.*, subm.status as submission_status, subm.submission_id,
+                       ext.new_due_date AS individual_extension
+                FROM activities a
+                LEFT JOIN activity_submissions subm 
+                    ON a.activity_id = subm.activity_id 
+                    AND subm.student_id = %s 
+                    AND subm.enrollment_id = %s
+                LEFT JOIN individual_extensions ext
+                    ON ext.item_id = a.activity_id AND ext.enrollment_id = %s AND ext.item_type = 'activity'
+                WHERE a.subject_id = %s 
+                  AND a.section_id = %s 
+                  AND a.branch_id = %s 
+                  AND a.year_id = %s
+                  AND a.status = 'Published'
+                ORDER BY a.due_date ASC
+            ''', (student_user_id, enrollment_id, enrollment_id, subject_id, student_section_id, student_branch_id, student_year_id))
+            activities_raw = cur.fetchall()
+            
+            activities = []
+            for a in activities_raw:
+                a = dict(a)
+                a["effective_due"] = _to_manila_naive(a.get("individual_extension") or a.get("due_date"))
+                activities.append(a)
         else:
             activities = []
             print("DEBUG VALUES:", student_user_id, enrollment_id, subject_id, student_section_id, student_branch_id)
@@ -509,16 +518,19 @@ def subject_view(subject_id):
         # Get quizzes for this subject/section — shown on the same page as activities
         cur.execute("""
             SELECT e.*,
-                   r.result_id, r.score, r.total_points, r.status AS result_status
+                   r.result_id, r.score, r.total_points, r.status AS result_status,
+                   ext.new_due_date AS individual_extension
             FROM exams e
             LEFT JOIN exam_results r ON r.exam_id = e.exam_id AND r.enrollment_id = %s
+            LEFT JOIN individual_extensions ext
+                ON ext.item_id = e.exam_id AND ext.enrollment_id = %s AND ext.item_type = 'quiz'
             WHERE e.subject_id = %s AND e.section_id = %s
               AND COALESCE(e.year_id, %s) = %s
               AND e.exam_type = 'quiz'
               AND LOWER(COALESCE(e.status, '')) IN ('published', 'closed')
               AND e.is_visible = TRUE
             ORDER BY e.created_at DESC
-        """, (enrollment_id, subject_id, student_section_id, student_year_id, student_year_id))
+        """, (enrollment_id, enrollment_id, subject_id, student_section_id, student_year_id, student_year_id))
         quizzes_raw = cur.fetchall() or []
 
         ph_tz = pytz.timezone("Asia/Manila")
@@ -527,8 +539,18 @@ def subject_view(subject_id):
         quizzes = []
         for q in quizzes_raw:
             q = dict(q)
-            if q.get("scheduled_start"):
-                q["scheduled_start"] = _to_manila_naive(q["scheduled_start"])
+            duration = int(q.get("duration_mins") or 0)
+            
+            if q.get("individual_extension"):
+                q["effective_start"] = _to_manila_naive(q["individual_extension"])
+                q["effective_end"] = q["effective_start"] + timedelta(minutes=duration)
+            else:
+                q["effective_start"] = _to_manila_naive(q.get("scheduled_start"))
+                if q["effective_start"]:
+                    q["effective_end"] = q["effective_start"] + timedelta(minutes=duration)
+                else:
+                    q["effective_end"] = None
+                    
             quizzes.append(q)
 
     finally:
@@ -644,7 +666,8 @@ def activity_detail(activity_id):
     ORDER BY sub.submitted_at DESC LIMIT 1
     ''', (activity_id, student_user_id, enrollment_id))
         submission = cur.fetchone() 
-        
+        if submission and submission.get("submitted_at"):
+            submission["submitted_at"] = _to_manila_naive(submission["submitted_at"])        
     finally:
         cur.close()
         db.close()
@@ -746,16 +769,16 @@ def submit_activity(activity_id):
             # Update existing submission
             cur.execute('''
                 UPDATE activity_submissions SET 
-                    file_path = %s, original_filename = %s, submitted_at = NOW(), is_late = %s, 
+                    file_path = %s, original_filename = %s, submitted_at = %s, is_late = %s, 
                     status = 'Resubmitted', allow_resubmit = FALSE
                 WHERE submission_id = %s
-            ''', (file_path, file.filename, is_late, existing_sub['submission_id']))
+            ''', (file_path, file.filename, now_naive, is_late, existing_sub['submission_id']))
         else:
             # Create new submission
             cur.execute('''
-                INSERT INTO activity_submissions (activity_id, student_id, enrollment_id, file_path, original_filename, is_late)
-                VALUES (%s, %s, %s, %s, %s, %s)
-            ''', (activity_id, student_user_id, enrollment_id, file_path, file.filename, is_late))
+                INSERT INTO activity_submissions (activity_id, student_id, enrollment_id, file_path, original_filename, submitted_at, is_late)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+            ''', (activity_id, student_user_id, enrollment_id, file_path, file.filename, now_naive, is_late))
             
         # Delete notification for this activity if it exists
         # Mark activity notification as read when student submits
@@ -862,14 +885,20 @@ def student_exams():
         exams = []
         for e in exams_raw:
             e = dict(e)
-            # Use individual_extension as the new start if present
-            effective_start = e.get("individual_extension") or e.get("scheduled_start")
+            # Treat individual_extension as a NEW START TIME (Reschedule)
+            # If present, it replaces the scheduled_start
+            duration = int(e.get("duration_mins") or 0)
             
-            if effective_start:
-                e["effective_start"] = _to_manila_naive(effective_start)
+            if e.get("individual_extension"):
+                e["effective_start"] = _to_manila_naive(e["individual_extension"])
+                e["effective_end"] = e["effective_start"] + timedelta(minutes=duration)
             else:
-                e["effective_start"] = None
-                
+                e["effective_start"] = _to_manila_naive(e.get("scheduled_start"))
+                if e["effective_start"]:
+                    e["effective_end"] = e["effective_start"] + timedelta(minutes=duration)
+                else:
+                    e["effective_end"] = None
+                    
             exams.append(e)
 
         return render_template(
@@ -932,14 +961,20 @@ def student_quizzes():
         quizzes = []
         for q in quizzes_raw:
             q = dict(q)
-            # Use individual_extension as the new start if present
-            effective_start = q.get("individual_extension") or q.get("scheduled_start")
+            # Treat individual_extension as a NEW START TIME (Reschedule)
+            # If present, it replaces the scheduled_start
+            duration = int(q.get("duration_mins") or 0)
             
-            if effective_start:
-                q["effective_start"] = _to_manila_naive(effective_start)
+            if q.get("individual_extension"):
+                q["effective_start"] = _to_manila_naive(q["individual_extension"])
+                q["effective_end"] = q["effective_start"] + timedelta(minutes=duration)
             else:
-                q["effective_start"] = None
-                
+                q["effective_start"] = _to_manila_naive(q.get("scheduled_start"))
+                if q["effective_start"]:
+                    q["effective_end"] = q["effective_start"] + timedelta(minutes=duration)
+                else:
+                    q["effective_end"] = None
+
             quizzes.append(q)
 
         return render_template(
@@ -988,22 +1023,22 @@ def student_exam_take(exam_id):
         back_url = url_for("student_portal.student_quizzes") if is_quiz else url_for("student_portal.student_exams")
 
         # ✅ Effective Timing Logic (Individual Rescheduling)
-        effective_start = exam["individual_extension"] or exam["scheduled_start"]
+        duration = int(exam["duration_mins"] or 0)
+        if exam["individual_extension"]:
+            effective_start = _to_manila_naive(exam["individual_extension"])
+            effective_end   = effective_start + timedelta(minutes=duration)
+        else:
+            effective_start = _to_manila_naive(exam["scheduled_start"])
+            effective_end   = (effective_start + timedelta(minutes=duration)) if effective_start else None
+
+        if effective_start and now_naive < effective_start:
+            flash("This quiz has not started yet." if is_quiz else "This exam has not started yet.", "warning")
+            return redirect(back_url)
+
+        if effective_end and now_naive > effective_end:
+            flash("This quiz has already ended." if is_quiz else "This exam has already ended.", "warning")
+            return redirect(back_url)
         
-        if effective_start:
-            start = _to_manila_naive(effective_start)
-
-            if now_naive < start:
-                flash("This quiz has not started yet." if is_quiz else "This exam has not started yet.", "warning")
-                return redirect(back_url)
-
-            # Deadline is Start + Duration
-            auto_end = start + timedelta(minutes=int(exam["duration_mins"]))
-
-            if now_naive > auto_end:
-                flash("This quiz has already ended." if is_quiz else "This exam has already ended.", "warning")
-                return redirect(back_url)
-
         # ✅ Max attempts check
         cur.execute("""
             SELECT COUNT(*) AS cnt FROM exam_results

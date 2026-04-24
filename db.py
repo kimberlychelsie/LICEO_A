@@ -262,9 +262,21 @@ def get_db_connection():
                         item_type VARCHAR(20) NOT NULL,
                         item_id INTEGER NOT NULL,
                         new_due_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+                        year_id INTEGER,
                         created_at TIMESTAMP DEFAULT NOW()
                     )
                 """)
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'individual_extensions'")
+                ext_cols = [r[0] for r in cur.fetchall()]
+                if 'year_id' not in ext_cols:
+                    cur.execute("ALTER TABLE individual_extensions ADD COLUMN year_id INTEGER")
+                    cur.execute("""
+                        UPDATE individual_extensions ie
+                        SET year_id = e.year_id
+                        FROM enrollments e
+                        WHERE ie.enrollment_id = e.enrollment_id AND ie.year_id IS NULL
+                    """)
+
                 cur.execute("""
                     SELECT constraint_name 
                     FROM information_schema.table_constraints 

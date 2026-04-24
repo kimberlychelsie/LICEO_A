@@ -188,7 +188,9 @@
     .filter-tab.active { background: #1e40af; color: #fff; border-color: #1e40af; }
   </style>
   <div class="filter-tabs">
-    <div class="filter-tab active" onclick="filterExams('1st', this)">1st Grading</div>
+    <div class="filter-tab active" onclick="filterExams('all', this)">All</div>
+    <div class="filter-tab" onclick="filterExams('1st', this)">1st Grading</div>
+    <div class="filter-tab" onclick="filterExams('none', this)">No Period</div>
     <div class="filter-tab" onclick="filterExams('2nd', this)">2nd Grading</div>
     <div class="filter-tab" onclick="filterExams('3rd', this)">3rd Grading</div>
     <div class="filter-tab" onclick="filterExams('4th', this)">4th Grading</div>
@@ -208,8 +210,7 @@
       {% set is_done    = e.result_status in ('submitted', 'auto_submitted') %}
       {% set is_closed  = e.status == 'closed' %}
       {% set is_notyet  = e.effective_start and now_utc < e.effective_start %}
-      {% set effective_end = (e.effective_start + timedelta(minutes=e.duration_mins)) if e.effective_start else none %}
-      {% set is_expired    = effective_end and now_utc > effective_end %}
+      {% set is_expired = e.effective_end and now_utc > e.effective_end %}
       
       <div class="task-card" data-period="{{ e.grading_period or 'none' }}" 
            {% if e.individual_extension %}style="border-left-color: #10b981;"{% endif %}>
@@ -291,7 +292,7 @@ function filterExams(period, el) {
 document.addEventListener("DOMContentLoaded", function() {
     const activeTab = document.querySelector('.filter-tab.active');
     if (activeTab) {
-        filterExams('1st', activeTab);
+        filterExams('all', activeTab);
     }
 });
 </script>

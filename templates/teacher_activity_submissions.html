@@ -149,7 +149,7 @@
                     <td>
                         {% if sub.file_path %}
                         {% set sub_ext = sub.original_filename.split('.')[-1].lower() if sub.original_filename and '.' in sub.original_filename else sub.file_path.split('.')[-1].lower() %}
-                        <a href="javascript:void(0)" onclick="viewFilePreview('{{ sub.file_path }}', '{{ sub_ext }}')" style="text-decoration:none; color:inherit; cursor:pointer;" title="Click to preview">
+                        <a href="javascript:void(0)" onclick="viewFilePreview('{{ sub.file_path }}', '{{ sub_ext }}', '{{ sub.submission_id }}')" style="text-decoration:none; color:inherit; cursor:pointer;" title="Click to preview">
                             <strong>{{ sub.student_name }}</strong>
                         </a>
                         {% else %}
@@ -179,7 +179,7 @@
                         {% set sub_ext = sub.original_filename.split('.')[-1].lower() if sub.original_filename and '.' in sub.original_filename else sub.file_path.split('.')[-1].lower() %}
                         <div style="display:flex; flex-direction:column; gap:4px;">
                             <a href="javascript:void(0)" 
-                               onclick="viewFilePreview('{{ sub.file_path }}', '{{ sub_ext }}')"
+                               onclick="viewFilePreview('{{ sub.file_path }}', '{{ sub_ext }}', '{{ sub.submission_id }}')"
                                class="btn btn-secondary btn-sm" 
                                title="{{ sub.original_filename }}"
                                style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">
@@ -241,7 +241,13 @@
 </div>
 
 <script>
-    function viewFilePreview(path, forcedExt = '') {
+    function viewFilePreview(path, forcedExt = '', submissionId = null) {
+        // Mark as viewed in background if submissionId provided
+        if (submissionId) {
+            fetch(`/teacher/submissions/${submissionId}/mark-viewed`, { method: 'POST' })
+                .catch(err => console.error("Viewed tracking error:", err));
+        }
+
         const ext = (forcedExt || path.split('.').pop().toLowerCase()).trim();
         let finalPath = path;
         const isDocOrPdf = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
@@ -309,6 +315,9 @@
             <div style="margin-bottom:20px;">
                 <label style="display:block; font-size:13px; margin-bottom:8px; color:var(--muted);">New Deadline (Date & Time)</label>
                 <input type="datetime-local" id="new_due_date" required min="{{ min_date }}"                       style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; font-family:inherit; background:var(--card); color:var(--text); box-sizing:border-box;">
+                <small style="color:var(--muted); font-size:11px; display:block; margin-top:4px;">
+                    The student can submit their work anytime from now until this new deadline.
+                </small>
             </div>
             
             <div style="display:flex; justify-content:flex-end; gap:10px;">

@@ -108,8 +108,7 @@
       {% set is_done    = q.result_status in ('submitted', 'auto_submitted') %}
       {% set is_closed  = q.status == 'closed' %}
       {% set is_notyet  = q.effective_start and now_utc < q.effective_start %}
-      {% set effective_end = (q.effective_start + timedelta(minutes=q.duration_mins)) if q.effective_start else none %}
-      {% set is_expired    = effective_end and now_utc > effective_end %}
+      {% set is_expired = q.effective_end and now_utc > q.effective_end %}
 
       <div class="task-card" data-period="{{ q.grading_period or 'none' }}"
            {% if q.individual_extension %}style="border-left-color: #10b981;"{% endif %}>

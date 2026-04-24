@@ -1973,12 +1973,9 @@ def teacher_exam_results(exam_id):
             if r.get("started_at"):
                 r["started_at"] = r["started_at"].replace(tzinfo=timezone.utc).astimezone(ph_tz)
             if r.get("individual_extension"):
-                # individual_extension is usually a naive datetime from DB, 
-                # but let's be safe and check if it has tzinfo.
-                ext_date = r["individual_extension"]
-                if ext_date.tzinfo is None:
-                    ext_date = ext_date.replace(tzinfo=timezone.utc)
-                r["individual_extension"] = ext_date.astimezone(ph_tz)
+                # individual_extension is a naive datetime (local wall-clock time)
+                # Just use it as-is for display.
+                r["individual_extension"] = r["individual_extension"].replace(tzinfo=None)
             results_display.append(r)
         # ✅ END ADD
 
@@ -3334,17 +3331,54 @@ def teacher_reschedule():
         if cur.fetchone():
             cur.execute("""
                 UPDATE individual_extensions 
-                SET new_due_date=%s 
+                SET new_due_date=%s, student_id=%s
                 WHERE enrollment_id=%s AND item_type=%s AND item_id=%s AND year_id=%s
-            """, (new_due_date, enrollment_id, item_type, item_id, year_id))
+            """, (new_due_date, student_id, enrollment_id, item_type, item_id, year_id))
         else:
             cur.execute("""
-                INSERT INTO individual_extensions (enrollment_id, item_type, item_id, new_due_date, year_id)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (enrollment_id, item_type, item_id, new_due_date, year_id))
+                INSERT INTO individual_extensions (enrollment_id, student_id, item_type, item_id, new_due_date, year_id)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (enrollment_id, student_id, item_type, item_id, new_due_date, year_id))
 
         db.commit()
         return jsonify({"ok": True, "message": "Rescheduled successfully!"})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        db.close()
+
+@teacher_bp.route("/teacher/submissions/<int:submission_id>/mark-viewed", methods=["POST"])
+def teacher_mark_viewed(submission_id):
+    if not _require_teacher():
+        return jsonify({"error": "Unauthorized"}), 403
+
+    user_id = session.get("user_id")
+    
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        # Verify teacher owns this activity via submission_id
+        cur.execute("""
+            SELECT 1 FROM activity_submissions sub
+            JOIN activities a ON sub.activity_id = a.activity_id
+            WHERE sub.submission_id = %s AND a.teacher_id = %s
+        """, (submission_id, user_id))
+        
+        if not cur.fetchone():
+            return jsonify({"error": "Unauthorized submission access"}), 403
+
+        # Update status to 'Viewed' ONLY if it's currently 'Submitted' or NULL
+        # Don't overwrite 'Graded' status
+        cur.execute("""
+            UPDATE activity_submissions 
+            SET status = 'Viewed' 
+            WHERE submission_id = %s AND (status IS NULL OR status = 'Submitted')
+        """, (submission_id,))
+        
+        db.commit()
+        return jsonify({"ok": True})
     except Exception as e:
         db.rollback()
         return jsonify({"error": str(e)}), 500
