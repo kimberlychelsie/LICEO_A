@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_weekly_schedule_grid.html" import render_weekly_schedule %}
 
 {% block title %}{{ child.student_name }} - Details{% endblock %}
 
@@ -216,6 +217,97 @@
         border-radius: 20px;
         font-size: 0.8rem;
         font-weight: 700;
+        max-width: 300px;
+        word-wrap: break-word;
+        overflow-wrap: anywhere;
+        white-space: normal;
+        vertical-align: middle;
+    }
+
+    /* 🔵 Grades Styles (from student portal) 🔵 */
+    .grade-table-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: var(--shadow-md);
+    }
+    .grade-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+    }
+    .grade-table th {
+        background: #f8fafc;
+        padding: 20px;
+        text-align: left;
+        font-weight: 800;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.72rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    .grade-table td {
+        padding: 20px;
+        border-bottom: 1px solid #f1f5f9;
+        color: var(--text);
+    }
+    .grade-table tr:hover { background: #f8fafc; }
+    .course-name { font-weight: 800; color: #1e293b; font-size: 1rem; }
+    .grade-cell { text-align: center; font-weight: 900; font-size: 1.15rem; width: 130px; }
+    .grade-pass { color: #16a34a; }
+    .grade-fail { color: #dc2626; }
+    .grade-empty { color: transparent; }
+    .final-avg-cell {
+        background: #f1f5f9;
+        text-align: center;
+        font-weight: 900;
+        font-size: 1.2rem;
+    }
+    .legend-card {
+        margin-top: 15px;
+        padding: 16px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        display: flex;
+        gap: 20px;
+        font-size: 0.85rem;
+        color: #475569;
+    }
+    .legend-item { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+    .l-dot { width: 10px; height: 10px; border-radius: 3px; }
+
+    /* 🎯 Period Filter Tabs 🎯 */
+    .period-filter-wrap {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        background: #f1f5f9;
+        padding: 6px;
+        border-radius: 12px;
+        width: fit-content;
+    }
+    .period-tab {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: #64748b;
+        border: none;
+        background: transparent;
+    }
+    .period-tab:hover {
+        background: rgba(255,255,255,0.5);
+        color: var(--btn);
+    }
+    .period-tab.active {
+        background: white;
+        color: #1e3a8a;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     }
 
 </style>
@@ -244,9 +336,9 @@
         </div>
     </div>
     
-    {% if child.status == 'approved' %}
+    {% if child.status|lower in ['approved', 'enrolled'] %}
     <div class="status-badge-lg approved">✓ Officially Enrolled</div>
-    {% elif child.status == 'rejected' %}
+    {% elif child.status|lower == 'rejected' %}
     <div class="status-badge-lg rejected">✕ Rejected</div>
     {% else %}
     <div class="status-badge-lg pending">⧗ Pending Review</div>
@@ -339,7 +431,12 @@
                         <tbody>
                             {% for book in books %}
                             <tr>
-                                <td>{{ book.book_name }}</td>
+                                <td>
+                                    {{ book.book_name }}
+                                    {% if book.is_reservation %}
+                                    <span style="font-size: 0.65rem; background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: 800; text-transform: uppercase; margin-left: 6px;">Reserved</span>
+                                    {% endif %}
+                                </td>
                                 <td style="text-align: right; font-weight: 700;">{{ book.quantity }}</td>
                             </tr>
                             {% endfor %}
@@ -370,7 +467,12 @@
                         <tbody>
                             {% for uniform in uniforms %}
                             <tr>
-                                <td>{{ uniform.uniform_type }}</td>
+                                <td>
+                                    {{ uniform.uniform_type }}
+                                    {% if uniform.is_reservation %}
+                                    <span style="font-size: 0.65rem; background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-weight: 800; text-transform: uppercase; margin-left: 6px;">Reserved</span>
+                                    {% endif %}
+                                </td>
                                 <td><span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-weight: 700;">{{ uniform.size }}</span></td>
                                 <td style="text-align: right; font-weight: 700;">{{ uniform.quantity }}</td>
                             </tr>
@@ -386,7 +488,87 @@
     </div>
 </div>
 
+<!-- ======================= CLASS SCHEDULE ======================= -->
+<div style="margin-bottom: 30px;">
+    {{ render_weekly_schedule(
+        schedules,
+        title="Class Schedule",
+        subtitle="Weekly class timetable for " ~ child.student_name,
+        show_teacher=true
+    ) }}
+</div>
+
+<!-- ======================= OFFICIAL GRADES ======================= -->
+<div class="info-card" style="margin-bottom: 24px;">
+    <div class="info-card-header" style="background: #1e3a8a; color: white; font-size: 1.2rem;">
+        🎓 Official Quarterly Grades
+    </div>
+    <div class="grade-table-card" style="border: none; border-radius: 0 0 16px 16px;">
+        <div class="table-responsive">
+            <table class="grade-table">
+                <thead>
+                    <tr>
+                        <th>Course / Subject</th>
+                        <th style="text-align: center;">1st</th>
+                        <th style="text-align: center;">2nd</th>
+                        <th style="text-align: center;">3rd</th>
+                        <th style="text-align: center;">4th</th>
+                        <th style="text-align: center;">Final Avg</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for subj in grade_data %}
+                    <tr>
+                        <td class="course-name">{{ subj.subject_name }}</td>
+                        
+                        <td class="grade-cell {% if subj.grades.get('1st') %}{% if subj.grades['1st'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                            {{ subj.grades.get('1st') if subj.grades.get('1st') else '' }}
+                        </td>
+                        <td class="grade-cell {% if subj.grades.get('2nd') %}{% if subj.grades['2nd'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                            {{ subj.grades.get('2nd') if subj.grades.get('2nd') else '' }}
+                        </td>
+                        <td class="grade-cell {% if subj.grades.get('3rd') %}{% if subj.grades['3rd'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                            {{ subj.grades.get('3rd') if subj.grades.get('3rd') else '' }}
+                        </td>
+                        <td class="grade-cell {% if subj.grades.get('4th') %}{% if subj.grades['4th'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                            {{ subj.grades.get('4th') if subj.grades.get('4th') else '' }}
+                        </td>
+                        
+                        <td class="grade-cell final-avg-cell {% if subj.final_grade %}{% if subj.final_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                            {{ subj.final_grade if subj.final_grade else '' }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 40px; color: #64748b;">
+                            No official grades have been posted yet.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="info-card-body" style="padding-top: 0;">
+        <div class="legend-card">
+            <div class="legend-item"><div class="l-dot" style="background:#16a34a;"></div> Passed (75-100)</div>
+            <div class="legend-item"><div class="l-dot" style="background:#dc2626;"></div> Failed (Below 75)</div>
+            <div class="legend-item"><div class="l-dot" style="background:#e2e8f0;"></div> Blank = Not yet posted</div>
+        </div>
+    </div>
+</div>
+
 <!-- ======================= SCORES SECTION ======================= -->
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; margin-top: 40px;">
+    <h2 style="margin:0; font-size: 1.5rem; font-weight: 800; color: var(--text);">Task Performance</h2>
+    <div class="period-filter-wrap">
+        <button class="period-tab active" data-period="all">All Periods</button>
+        <button class="period-tab" data-period="1st">1st Grading</button>
+        <button class="period-tab" data-period="2nd">2nd Grading</button>
+        <button class="period-tab" data-period="3rd">3rd Grading</button>
+        <button class="period-tab" data-period="4th">4th Grading</button>
+    </div>
+</div>
 
 <div class="info-card" style="margin-bottom: 24px;">
     <div class="info-card-header" style="background: #eff6ff; color: #2563eb; font-size: 1.2rem;">
@@ -401,25 +583,17 @@
                     <th>Activity</th>
                     <th>Date</th>
                     <th style="text-align: center;">Score</th>
-                    <th style="text-align: center;">%</th>
-                    <th style="text-align: right;">Remarks</th>
+                    <th style="text-align: right;">%</th>
                 </tr>
             </thead>
             <tbody>
                 {% for a in activity_scores %}
-                <tr>
+                <tr class="score-row" data-period="{{ a.grading_period }}">
                     <td><span style="font-weight: 700; color: #1e3a8a;">{{ a.subject_name }}</span></td>
                     <td>{{ a.activity_title }}</td>
                     <td>{{ a.due_date.strftime('%b %d, %Y') if a.due_date else '' }}</td>
                     <td style="text-align: center;"><span style="font-weight: 800; font-size: 1.1rem;">{{ a.raw_score|int }}</span></td>
-                    <td style="text-align: center;">{{ a.percentage|int }}%</td>
-                    <td style="text-align: right;">
-                        {% if a.remarks %}
-                        <span class="score-badge" style="background: #e0f2fe; color: #0284c7;">{{ a.remarks }}</span>
-                        {% else %}
-                        <span style="color: #cbd5e1;">—</span>
-                        {% endif %}
-                    </td>
+                    <td style="text-align: right;">{{ a.percentage|int }}%</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -449,7 +623,7 @@
             </thead>
             <tbody>
                 {% for q in quiz_scores %}
-                <tr>
+                <tr class="score-row" data-period="{{ q.grading_period }}">
                     <td><span style="font-weight: 700;">{{ q.subject_name }}</span></td>
                     <td>{{ q.exam_title }}</td>
                     <td>{{ q.submitted_at.strftime('%b %d, %Y') if q.submitted_at else '' }}</td>
@@ -498,7 +672,7 @@
             </thead>
             <tbody>
                 {% for e in exam_scores %}
-                <tr>
+                <tr class="score-row" data-period="{{ e.grading_period }}">
                     <td><span style="font-weight: 700;">{{ e.subject_name }}</span></td>
                     <td>{{ e.exam_title }}</td>
                     <td>{{ e.submitted_at.strftime('%b %d, %Y') if e.submitted_at else '' }}</td>
@@ -527,5 +701,26 @@
     <div class="empty-message" style="background: #fff; border-radius: 0 0 16px 16px;">No exam scores available yet.</div>
     {% endif %}
 </div>
+
+<script>
+document.querySelectorAll('.period-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        // Toggle active class
+        document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+
+        const selectedPeriod = tab.getAttribute('data-period');
+        
+        document.querySelectorAll('.score-row').forEach(row => {
+            const rowPeriod = row.getAttribute('data-period');
+            if (selectedPeriod === 'all' || rowPeriod === selectedPeriod) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
 
 {% endblock %}

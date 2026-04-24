@@ -195,15 +195,46 @@ def child_detail(enrollment_id):
         documents = cursor.fetchall()
 
         cursor.execute("SELECT * FROM enrollment_books WHERE enrollment_id=%s", (enrollment_id,))
-        books = cursor.fetchall()
+        books = cursor.fetchall() or []
 
         cursor.execute("SELECT * FROM enrollment_uniforms WHERE enrollment_id=%s", (enrollment_id,))
-        uniforms = cursor.fetchall()
+        uniforms = cursor.fetchall() or []
 
-        # -- Add activity/project scores --
+        # -- Fetch items from reservations system --
+        cursor.execute("""
+            SELECT
+                ii.item_name, ri.qty, ii.category
+            FROM reservation_items ri
+            JOIN reservations r ON r.reservation_id = ri.reservation_id
+            JOIN inventory_items ii ON ri.item_id = ii.item_id
+            WHERE (r.enrollment_id = %s OR r.student_user_id IN (
+                SELECT u.user_id FROM student_accounts sa 
+                JOIN users u ON sa.username = u.username 
+                WHERE sa.enrollment_id = %s
+            )) 
+            AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED')
+        """, (enrollment_id, enrollment_id))
+        reserved_items = cursor.fetchall()
+
+        # Merge reserved items into books/uniforms lists for unified display
+        for item in reserved_items:
+            if item['category'].lower() == 'book':
+                books.append({
+                    'book_name': item['item_name'],
+                    'quantity': item['qty'],
+                    'is_reservation': True
+                })
+            elif item['category'].lower() == 'uniform':
+                uniforms.append({
+                    'uniform_type': item['item_name'],
+                    'size': 'N/A', # Size info might be in item name for inventory items
+                    'quantity': item['qty'],
+                    'is_reservation': True
+                })
+
         cursor.execute("""
             SELECT s.name AS subject_name, a.title AS activity_title,
-                   g.raw_score, g.percentage, g.remarks, a.due_date
+                   g.raw_score, g.percentage, g.remarks, a.due_date, a.grading_period
             FROM activities a
             JOIN subjects s ON a.subject_id = s.subject_id
             JOIN activity_submissions sub ON sub.activity_id = a.activity_id
@@ -213,11 +244,10 @@ def child_detail(enrollment_id):
         """, (enrollment_id,))
         activity_scores = cursor.fetchall()
 
-        # -- Add quiz/exam scores --
         cursor.execute("""
             SELECT e.title AS exam_title, sub.name AS subject_name,
                    r.score, r.total_points, r.status AS result_status, r.submitted_at,
-                   e.exam_type, e.passing_score
+                   e.exam_type, e.passing_score, e.grading_period
             FROM exam_results r
             JOIN exams e ON r.exam_id = e.exam_id
             JOIN subjects sub ON e.subject_id = sub.subject_id
@@ -231,6 +261,74 @@ def child_detail(enrollment_id):
         quiz_scores = [e for e in all_exam_scores if e["exam_type"] == "quiz"]
         exam_scores = [e for e in all_exam_scores if e["exam_type"] != "quiz"]
 
+        # -- Fetch Posted Grades (Final Grades) --
+        grade_data = []
+        if child.get("section_id"):
+            # Get subjects for this section
+            cursor.execute("""
+                SELECT sub.subject_id, sub.name AS subject_name
+                FROM section_teachers st
+                JOIN subjects sub ON st.subject_id = sub.subject_id
+                WHERE st.section_id = %s
+                ORDER BY sub.name
+            """, (child["section_id"],))
+            subjects = cursor.fetchall() or []
+
+            # Get posted grades
+            cursor.execute("""
+                SELECT subject_id, grading_period, grade
+                FROM posted_grades
+                WHERE enrollment_id = %s
+            """, (enrollment_id,))
+            posted = cursor.fetchall() or []
+
+            posted_map = {}
+            for p in posted:
+                sid = p["subject_id"]
+                if sid not in posted_map: posted_map[sid] = {}
+                posted_map[sid][p["grading_period"]] = int(round(float(p["grade"])))
+
+            for s in subjects:
+                sid = s["subject_id"]
+                grades = posted_map.get(sid, {})
+                period_vals = [float(v) for v in grades.values()]
+                final_avg = int(round(sum(period_vals) / 4)) if len(period_vals) == 4 else None
+
+                grade_data.append({
+                    "subject_name": s["subject_name"],
+                    "units": 3,
+                    "grades": grades,
+                    "final_grade": final_avg
+                })
+
+        # -- Fetch Class Schedule --
+        schedules = []
+        if child.get("section_id"):
+            cursor.execute("""
+                SELECT sc.*,
+                       sub.name AS subject_name,
+                       u.full_name AS teacher_name
+                FROM schedules sc
+                LEFT JOIN subjects sub ON sc.subject_id = sub.subject_id
+                LEFT JOIN users u ON sc.teacher_id = u.user_id
+                WHERE sc.section_id = %s
+                  AND sc.year_id = %s
+                  AND sc.is_archived = FALSE
+                ORDER BY
+                    CASE sc.day_of_week
+                        WHEN 'Monday'    THEN 1
+                        WHEN 'Tuesday'   THEN 2
+                        WHEN 'Wednesday' THEN 3
+                        WHEN 'Thursday'  THEN 4
+                        WHEN 'Friday'    THEN 5
+                        WHEN 'Saturday'  THEN 6
+                        WHEN 'Sunday'    THEN 7
+                        ELSE 8
+                    END,
+                    sc.start_time
+            """, (child["section_id"], child.get("year_id")))
+            schedules = cursor.fetchall() or []
+
         return render_template(
             "parent_child_detail.html",
             child=child,
@@ -239,7 +337,10 @@ def child_detail(enrollment_id):
             uniforms=uniforms,
             activity_scores=activity_scores,
             quiz_scores=quiz_scores,
-            exam_scores=exam_scores
+            exam_scores=exam_scores,
+            grade_data=grade_data,
+            schedules=schedules,
+            grading_periods=['1st', '2nd', '3rd', '4th']
         )
 
     finally:
