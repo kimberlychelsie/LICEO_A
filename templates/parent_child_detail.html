@@ -91,17 +91,27 @@
     .status-badge-lg.rejected { color: #dc2626; }
     .status-badge-lg.pending { color: #d97706; }
 
-    .content-grid {
+    /* Row 1: personal + guardian side by side */
+    .info-row-top {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 24px;
-        margin-bottom: 24px;
+        gap: 16px;
+        margin-bottom: 16px;
     }
-
+    /* Row 2: books + uniforms + documents 3-col */
+    .info-row-bottom {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 20px;
+        align-items: start;
+    }
     @media (max-width: 900px) {
-        .content-grid {
-            grid-template-columns: 1fr;
-        }
+        .info-row-top  { grid-template-columns: 1fr; }
+        .info-row-bottom { grid-template-columns: 1fr; }
+    }
+    @media (min-width: 901px) and (max-width: 1100px) {
+        .info-row-bottom { grid-template-columns: 1fr 1fr; }
     }
 
     .info-card {
@@ -310,6 +320,81 @@
         box-shadow: 0 4px 6px rgba(0,0,0,0.05);
     }
 
+    /* 🔘 Quick Action Buttons 🔘 */
+    .quick-actions {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+    }
+    .action-card-btn {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 24px;
+        border-radius: 14px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: 700;
+        transition: all 0.25s cubic-bezier(.4,0,.2,1);
+        flex: 1;
+        min-width: 180px;
+        background: var(--card);
+        box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        text-align: left;
+    }
+    .action-card-btn .acb-icon {
+        font-size: 1.6rem;
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .action-card-btn .acb-text small {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 500;
+        opacity: 0.7;
+        margin-top: 2px;
+    }
+    .action-card-btn.grades-btn { border-color: #c7d2fe; color: #3730a3; }
+    .action-card-btn.grades-btn .acb-icon { background: #eef2ff; }
+    .action-card-btn.grades-btn:hover, .action-card-btn.grades-btn.open {
+        background: linear-gradient(135deg,#4f46e5,#6366f1);
+        color: white; border-color: #4f46e5;
+        box-shadow: 0 8px 20px rgba(79,70,229,0.25);
+        transform: translateY(-2px);
+    }
+    .action-card-btn.grades-btn:hover .acb-icon, .action-card-btn.grades-btn.open .acb-icon { background: rgba(255,255,255,0.2); }
+    .action-card-btn.schedule-btn { border-color: #bfdbfe; color: #1d4ed8; }
+    .action-card-btn.schedule-btn .acb-icon { background: #eff6ff; }
+    .action-card-btn.schedule-btn:hover, .action-card-btn.schedule-btn.open {
+        background: linear-gradient(135deg,#1e3a8a,#2563eb);
+        color: white; border-color: #1e3a8a;
+        box-shadow: 0 8px 20px rgba(30,58,138,0.25);
+        transform: translateY(-2px);
+    }
+    .action-card-btn.schedule-btn:hover .acb-icon, .action-card-btn.schedule-btn.open .acb-icon { background: rgba(255,255,255,0.2); }
+    .toggle-arrow { margin-left: auto; font-size: 0.8rem; transition: transform 0.3s; }
+    .action-card-btn.open .toggle-arrow { transform: rotate(180deg); }
+
+    /* 📦 Collapsible Panel 📦 */
+    .collapsible-panel {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.45s cubic-bezier(.4,0,.2,1), opacity 0.3s;
+        opacity: 0;
+    }
+    .collapsible-panel.open {
+        max-height: 3000px;
+        opacity: 1;
+    }
+    .panel-inner { padding-bottom: 24px; }
+
 </style>
 
 <div class="detail-header">
@@ -317,8 +402,8 @@
         <h1>Student Profile</h1>
         <p>Comprehensive academic and enrollment details</p>
     </div>
-    <div style="display: flex; gap: 12px;">
-        <a href="{{ url_for('parent.dashboard') }}" class="btn btn-secondary">⬅ Back to Dashboard</a>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <a href="{{ url_for('parent.dashboard') }}" class="btn btn-secondary">⬅ Back</a>
         <a href="{{ url_for('parent.child_bills', enrollment_id=child.enrollment_id) }}" class="btn btn-primary">💳 View Billing</a>
     </div>
 </div>
@@ -343,232 +428,221 @@
     {% else %}
     <div class="status-badge-lg pending">⧗ Pending Review</div>
     {% endif %}
+
+    <!-- Academic Status Badge -->
+    <div class="status-badge-lg" style="top: 80px; background: {{ status_color }}; color: white; border: none;">
+        {{ academic_status }}
+    </div>
 </div>
 
-<div class="content-grid">
-    <!-- LEFT COLUMN -->
-    <div style="display: flex; flex-direction: column; gap: 24px;">
-        <div class="info-card">
-            <div class="info-card-header" style="background: #f8fafc;">
-                👤 Personal Information
+<!-- ROW 1: Personal + Guardian -->
+<div class="info-row-top">
+    <div class="info-card">
+        <div class="info-card-header" style="background: #f8fafc;">👤 Personal Information</div>
+        <div class="info-card-body data-grid">
+            <div>
+                <div class="data-item-label">Gender</div>
+                <div class="data-item-value">{{ child.gender }}</div>
             </div>
-            <div class="info-card-body data-grid">
-                <div>
-                    <div class="data-item-label">Gender</div>
-                    <div class="data-item-value">{{ child.gender }}</div>
-                </div>
-                <div>
-                    <div class="data-item-label">Date of Birth</div>
-                    <div class="data-item-value">{{ child.dob }}</div>
-                </div>
-                <div>
-                    <div class="data-item-label">Contact Number</div>
-                    <div class="data-item-value">{{ child.contact_number }}</div>
-                </div>
-                <div>
-                    <div class="data-item-label">Previous School</div>
-                    <div class="data-item-value">{{ child.previous_school or 'N/A' }}</div>
-                </div>
+            <div>
+                <div class="data-item-label">Date of Birth</div>
+                <div class="data-item-value">{{ child.dob }}</div>
             </div>
-        </div>
-
-        <div class="info-card">
-            <div class="info-card-header" style="background: #f8fafc;">
-                👨‍👩‍👦 Guardian Information
+            <div>
+                <div class="data-item-label">Contact Number</div>
+                <div class="data-item-value">{{ child.contact_number }}</div>
             </div>
-            <div class="info-card-body data-grid" style="grid-template-columns: 1fr;">
-                <div>
-                    <div class="data-item-label">Guardian Name</div>
-                    <div class="data-item-value">{{ child.guardian_name }}</div>
-                </div>
-                <div>
-                    <div class="data-item-label">Contact Number</div>
-                    <div class="data-item-value">{{ child.guardian_contact }}</div>
-                </div>
-                <div>
-                    <div class="data-item-label">Home Address</div>
-                    <div class="data-item-value">{{ child.address }}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="info-card">
-            <div class="info-card-header" style="background: #f8fafc;">
-                📄 Uploaded Documents
-            </div>
-            <div class="info-card-body">
-                {% if documents %}
-                    <div style="display: flex; flex-direction: column;">
-                        {% for doc in documents %}
-                        <a href="{{ doc.file_path }}" target="_blank" class="doc-link">
-                            <span style="font-size: 1.2rem;">📎</span> {{ doc.file_name }}
-                        </a>
-                        {% endfor %}
-                    </div>
-                {% else %}
-                    <div class="empty-message">No documents have been uploaded yet.</div>
-                {% endif %}
+            <div>
+                <div class="data-item-label">Previous School</div>
+                <div class="data-item-value">{{ child.previous_school or 'N/A' }}</div>
             </div>
         </div>
     </div>
-
-    <!-- RIGHT COLUMN -->
-    <div style="display: flex; flex-direction: column; gap: 24px;">
-        <div class="info-card">
-            <div class="info-card-header" style="background: #eef2ff; color: #4f46e5;">
-                📚 Books Ordered
+    <div class="info-card">
+        <div class="info-card-header" style="background: #f8fafc;">👨‍👩‍👦 Guardian Information</div>
+        <div class="info-card-body data-grid" style="grid-template-columns: 1fr;">
+            <div>
+                <div class="data-item-label">Guardian Name</div>
+                <div class="data-item-value">{{ child.guardian_name }}</div>
             </div>
-            <div class="info-card-body">
-                {% if books %}
-                <div class="modern-table-container">
-                    <table class="modern-table">
-                        <thead>
-                            <tr>
-                                <th>Book Name</th>
-                                <th style="text-align: right;">Qty</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for book in books %}
-                            <tr>
-                                <td>
-                                    {{ book.book_name }}
-                                    {% if book.is_reservation %}
-                                    <span style="font-size: 0.65rem; background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-weight: 800; text-transform: uppercase; margin-left: 6px;">Reserved</span>
-                                    {% endif %}
-                                </td>
-                                <td style="text-align: right; font-weight: 700;">{{ book.quantity }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="empty-message">No books ordered.</div>
-                {% endif %}
+            <div>
+                <div class="data-item-label">Contact Number</div>
+                <div class="data-item-value">{{ child.guardian_contact }}</div>
             </div>
-        </div>
-
-        <div class="info-card">
-            <div class="info-card-header" style="background: #f0fdf4; color: #16a34a;">
-                👕 Uniforms Ordered
-            </div>
-            <div class="info-card-body">
-                {% if uniforms %}
-                <div class="modern-table-container">
-                    <table class="modern-table">
-                        <thead>
-                            <tr>
-                                <th>Uniform Type</th>
-                                <th>Size</th>
-                                <th style="text-align: right;">Qty</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for uniform in uniforms %}
-                            <tr>
-                                <td>
-                                    {{ uniform.uniform_type }}
-                                    {% if uniform.is_reservation %}
-                                    <span style="font-size: 0.65rem; background: #dcfce7; color: #166534; padding: 2px 6px; border-radius: 4px; font-weight: 800; text-transform: uppercase; margin-left: 6px;">Reserved</span>
-                                    {% endif %}
-                                </td>
-                                <td><span style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; font-weight: 700;">{{ uniform.size }}</span></td>
-                                <td style="text-align: right; font-weight: 700;">{{ uniform.quantity }}</td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-                {% else %}
-                <div class="empty-message">No uniforms ordered.</div>
-                {% endif %}
+            <div>
+                <div class="data-item-label">Home Address</div>
+                <div class="data-item-value">{{ child.address }}</div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- ======================= CLASS SCHEDULE ======================= -->
-<div style="margin-bottom: 30px;">
-    {{ render_weekly_schedule(
-        schedules,
-        title="Class Schedule",
-        subtitle="Weekly class timetable for " ~ child.student_name,
-        show_teacher=true
-    ) }}
-</div>
-
-<!-- ======================= OFFICIAL GRADES ======================= -->
-<div class="info-card" style="margin-bottom: 24px;">
-    <div class="info-card-header" style="background: #1e3a8a; color: white; font-size: 1.2rem;">
-        🎓 Official Quarterly Grades
-    </div>
-    <div class="grade-table-card" style="border: none; border-radius: 0 0 16px 16px;">
-        <div class="table-responsive">
-            <table class="grade-table">
-                <thead>
-                    <tr>
-                        <th>Course / Subject</th>
-                        <th style="text-align: center;">1st</th>
-                        <th style="text-align: center;">2nd</th>
-                        <th style="text-align: center;">3rd</th>
-                        <th style="text-align: center;">4th</th>
-                        <th style="text-align: center;">Final Avg</th>
-                    </tr>
-                </thead>
+<!-- ROW 2: Books + Uniforms + Documents -->
+<div class="info-row-bottom">
+    <div class="info-card">
+        <div class="info-card-header" style="background: #eef2ff; color: #4f46e5;">📚 Books Ordered</div>
+        <div class="info-card-body" style="padding: 0;">
+            {% if books %}
+            <table class="modern-table">
+                <thead><tr><th>Book Name</th><th style="text-align:right;">Qty</th></tr></thead>
                 <tbody>
-                    {% for subj in grade_data %}
+                    {% for book in books %}
                     <tr>
-                        <td class="course-name">{{ subj.subject_name }}</td>
-                        
-                        <td class="grade-cell {% if subj.grades.get('1st') %}{% if subj.grades['1st'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
-                            {{ subj.grades.get('1st') if subj.grades.get('1st') else '' }}
+                        <td>{{ book.book_name }}
+                            {% if book.is_reservation %}<span style="font-size:0.65rem;background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;font-weight:800;text-transform:uppercase;margin-left:6px;">Reserved</span>{% endif %}
                         </td>
-                        <td class="grade-cell {% if subj.grades.get('2nd') %}{% if subj.grades['2nd'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
-                            {{ subj.grades.get('2nd') if subj.grades.get('2nd') else '' }}
-                        </td>
-                        <td class="grade-cell {% if subj.grades.get('3rd') %}{% if subj.grades['3rd'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
-                            {{ subj.grades.get('3rd') if subj.grades.get('3rd') else '' }}
-                        </td>
-                        <td class="grade-cell {% if subj.grades.get('4th') %}{% if subj.grades['4th'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
-                            {{ subj.grades.get('4th') if subj.grades.get('4th') else '' }}
-                        </td>
-                        
-                        <td class="grade-cell final-avg-cell {% if subj.final_grade %}{% if subj.final_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
-                            {{ subj.final_grade if subj.final_grade else '' }}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="6" style="text-align: center; padding: 40px; color: #64748b;">
-                            No official grades have been posted yet.
-                        </td>
+                        <td style="text-align:right;font-weight:700;">{{ book.quantity }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+            {% else %}
+            <div class="empty-message">No books ordered.</div>
+            {% endif %}
         </div>
     </div>
-    <div class="info-card-body" style="padding-top: 0;">
-        <div class="legend-card">
-            <div class="legend-item"><div class="l-dot" style="background:#16a34a;"></div> Passed (75-100)</div>
-            <div class="legend-item"><div class="l-dot" style="background:#dc2626;"></div> Failed (Below 75)</div>
-            <div class="legend-item"><div class="l-dot" style="background:#e2e8f0;"></div> Blank = Not yet posted</div>
+    <div class="info-card">
+        <div class="info-card-header" style="background: #f0fdf4; color: #16a34a;">👕 Uniforms Ordered</div>
+        <div class="info-card-body" style="padding: 0;">
+            {% if uniforms %}
+            <table class="modern-table">
+                <thead><tr><th>Type</th><th>Size</th><th style="text-align:right;">Qty</th></tr></thead>
+                <tbody>
+                    {% for uniform in uniforms %}
+                    <tr>
+                        <td>{{ uniform.uniform_type }}
+                            {% if uniform.is_reservation %}<span style="font-size:0.65rem;background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;font-weight:800;text-transform:uppercase;margin-left:6px;">Reserved</span>{% endif %}
+                        </td>
+                        <td><span style="background:#f1f5f9;padding:2px 8px;border-radius:4px;font-weight:700;">{{ uniform.size }}</span></td>
+                        <td style="text-align:right;font-weight:700;">{{ uniform.quantity }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-message">No uniforms ordered.</div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="info-card">
+        <div class="info-card-header" style="background: #f8fafc;">📄 Documents</div>
+        <div class="info-card-body">
+            {% if documents %}
+            <div style="display:flex;flex-direction:column;gap:4px;">
+                {% for doc in documents %}
+                <a href="{{ doc.file_path }}" target="_blank" class="doc-link">📎 {{ doc.file_name }}</a>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-message">No documents uploaded yet.</div>
+            {% endif %}
         </div>
     </div>
 </div>
 
-<!-- ======================= SCORES SECTION ======================= -->
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; margin-top: 40px;">
-    <h2 style="margin:0; font-size: 1.5rem; font-weight: 800; color: var(--text);">Task Performance</h2>
-    <div class="period-filter-wrap">
-        <button class="period-tab active" data-period="all">All Periods</button>
-        <button class="period-tab" data-period="1st">1st Grading</button>
-        <button class="period-tab" data-period="2nd">2nd Grading</button>
-        <button class="period-tab" data-period="3rd">3rd Grading</button>
-        <button class="period-tab" data-period="4th">4th Grading</button>
+<!-- ======================= QUICK ACTION BUTTONS ======================= -->
+<div class="quick-actions">
+    <button class="action-card-btn grades-btn" id="btn-grades" onclick="togglePanel('grades')">
+        <div class="acb-icon">🎓</div>
+        <div class="acb-text">
+            View Grades
+            <small>Quarterly grades &amp; scores</small>
+        </div>
+        <span class="toggle-arrow">▼</span>
+    </button>
+    <button class="action-card-btn schedule-btn" id="btn-schedule" onclick="togglePanel('schedule')">
+        <div class="acb-icon">📅</div>
+        <div class="acb-text">
+            View Schedule
+            <small>Weekly class timetable</small>
+        </div>
+        <span class="toggle-arrow">▼</span>
+    </button>
+</div>
+
+<!-- ======================= CLASS SCHEDULE PANEL ======================= -->
+<div class="collapsible-panel" id="panel-schedule">
+    <div class="panel-inner">
+        {{ render_weekly_schedule(
+            schedules,
+            title="Class Schedule",
+            subtitle="Weekly class timetable for " ~ child.student_name,
+            show_teacher=true
+        ) }}
     </div>
 </div>
+
+<!-- ======================= OFFICIAL GRADES PANEL ======================= -->
+<div class="collapsible-panel" id="panel-grades">
+  <div class="panel-inner">
+    <div class="info-card" style="margin-bottom: 24px;">
+        <div class="info-card-header" style="background: #1e3a8a; color: white; font-size: 1.2rem;">
+            🎓 Official Quarterly Grades
+        </div>
+        <div class="grade-table-card" style="border: none; border-radius: 0 0 16px 16px;">
+            <div class="table-responsive">
+                <table class="grade-table">
+                    <thead>
+                        <tr>
+                            <th>Course / Subject</th>
+                            <th style="text-align: center;">1st</th>
+                            <th style="text-align: center;">2nd</th>
+                            <th style="text-align: center;">3rd</th>
+                            <th style="text-align: center;">4th</th>
+                            <th style="text-align: center;">Final Avg</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for subj in grade_data %}
+                        <tr>
+                            <td class="course-name">{{ subj.subject_name }}</td>
+                            <td class="grade-cell {% if subj.grades.get('1st') %}{% if subj.grades['1st'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                                {{ subj.grades.get('1st') if subj.grades.get('1st') else '' }}
+                            </td>
+                            <td class="grade-cell {% if subj.grades.get('2nd') %}{% if subj.grades['2nd'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                                {{ subj.grades.get('2nd') if subj.grades.get('2nd') else '' }}
+                            </td>
+                            <td class="grade-cell {% if subj.grades.get('3rd') %}{% if subj.grades['3rd'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                                {{ subj.grades.get('3rd') if subj.grades.get('3rd') else '' }}
+                            </td>
+                            <td class="grade-cell {% if subj.grades.get('4th') %}{% if subj.grades['4th'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                                {{ subj.grades.get('4th') if subj.grades.get('4th') else '' }}
+                            </td>
+                            <td class="grade-cell final-avg-cell {% if subj.final_grade %}{% if subj.final_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                                {{ subj.final_grade if subj.final_grade else '' }}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" style="text-align: center; padding: 40px; color: #64748b;">
+                                No official grades have been posted yet.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="info-card-body" style="padding-top: 0;">
+            <div class="legend-card">
+                <div class="legend-item"><div class="l-dot" style="background:#16a34a;"></div> Passed (75-100)</div>
+                <div class="legend-item"><div class="l-dot" style="background:#dc2626;"></div> Failed (Below 75)</div>
+                <div class="legend-item"><div class="l-dot" style="background:#e2e8f0;"></div> Blank = Not yet posted</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ======================= SCORES SECTION ======================= -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; margin-top: 24px; flex-wrap: wrap; gap: 12px;">
+        <h2 style="margin:0; font-size: 1.5rem; font-weight: 800; color: var(--text);">Task Performance</h2>
+        <div class="period-filter-wrap">
+            <button class="period-tab active" data-period="all">All Periods</button>
+            <button class="period-tab" data-period="1st">1st Grading</button>
+            <button class="period-tab" data-period="2nd">2nd Grading</button>
+            <button class="period-tab" data-period="3rd">3rd Grading</button>
+            <button class="period-tab" data-period="4th">4th Grading</button>
+        </div>
+    </div>
 
 <div class="info-card" style="margin-bottom: 24px;">
     <div class="info-card-header" style="background: #eff6ff; color: #2563eb; font-size: 1.2rem;">
@@ -700,24 +774,37 @@
     {% else %}
     <div class="empty-message" style="background: #fff; border-radius: 0 0 16px 16px;">No exam scores available yet.</div>
     {% endif %}
+    </div>
 </div>
+<!-- end panel-grades -->
 
 <script>
+// ── Toggle collapsible panels ──
+function togglePanel(name) {
+    const panel = document.getElementById('panel-' + name);
+    const btn   = document.getElementById('btn-' + name);
+    const isOpen = panel.classList.contains('open');
+    // Close all panels & buttons first
+    document.querySelectorAll('.collapsible-panel').forEach(p => p.classList.remove('open'));
+    document.querySelectorAll('.action-card-btn').forEach(b => b.classList.remove('open'));
+    // If it was closed, open it
+    if (!isOpen) {
+        panel.classList.add('open');
+        btn.classList.add('open');
+        // Smooth scroll into view
+        setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+    }
+}
+
+// ── Period Filter Tabs (inside grades panel) ──
 document.querySelectorAll('.period-tab').forEach(tab => {
     tab.addEventListener('click', () => {
-        // Toggle active class
         document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
-
         const selectedPeriod = tab.getAttribute('data-period');
-        
         document.querySelectorAll('.score-row').forEach(row => {
             const rowPeriod = row.getAttribute('data-period');
-            if (selectedPeriod === 'all' || rowPeriod === selectedPeriod) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
-            }
+            row.style.display = (selectedPeriod === 'all' || rowPeriod === selectedPeriod) ? '' : 'none';
         });
     });
 });

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, session, flash, url_for
+from flask import Blueprint, render_template, request, redirect, session, flash, url_for, jsonify
 from db import get_db_connection
 from werkzeug.security import generate_password_hash
 import logging
@@ -329,6 +329,85 @@ def child_detail(enrollment_id):
             """, (child["section_id"], child.get("year_id")))
             schedules = cursor.fetchall() or []
 
+        # -- Academic Status Calculation --
+        total_grades = []
+        for s in grade_data:
+            if s.get('final_grade'):
+                total_grades.append(s['final_grade'])
+            for g in s.get('grades', {}).values():
+                if g: total_grades.append(float(g))
+        
+        # Also consider quiz/exam scores if no official grades yet
+        if not total_grades:
+            for q in quiz_scores:
+                if q.get('score') and q.get('total_points'):
+                    total_grades.append((float(q['score']) / float(q['total_points'])) * 100)
+            for e in exam_scores:
+                if e.get('score') and e.get('total_points'):
+                    total_grades.append((float(e['score']) / float(e['total_points'])) * 100)
+
+        avg_grade = sum(total_grades) / len(total_grades) if total_grades else None
+        
+        # -- Check for Missing Activities (Nagpapabaya check) --
+        missing_count = 0
+        if child.get("section_id"):
+            cursor.execute("""
+                SELECT COUNT(*) as count
+                FROM activities a
+                WHERE a.section_id = %s 
+                  AND a.status = 'Published'
+                  AND a.due_date < NOW()
+                  AND NOT EXISTS (
+                      SELECT 1 FROM activity_submissions sub 
+                      WHERE sub.activity_id = a.activity_id AND sub.enrollment_id = %s
+                  )
+            """, (child["section_id"], enrollment_id))
+            m_row = cursor.fetchone()
+            missing_count = m_row['count'] if m_row else 0
+
+        academic_status = "Good Standing"
+        status_color = "#16a34a" # Success green
+        
+        if avg_grade is not None:
+            if avg_grade >= 90:
+                academic_status = "Excelling"
+                status_color = "#2563eb" # Info blue
+            elif avg_grade < 75:
+                academic_status = "Critical / Failing"
+                status_color = "#dc2626" # Error red
+            elif avg_grade < 80:
+                academic_status = "Needs Attention"
+                status_color = "#d97706" # Warning orange
+        
+        # Override if too many missing tasks
+        if missing_count >= 5:
+            academic_status = "At Risk (Neglecting Tasks)"
+            status_color = "#991b1b" # Dark red
+        elif missing_count >= 3 and academic_status == "Good Standing":
+            academic_status = "Needs Attention (Missing Tasks)"
+            status_color = "#d97706"
+
+        # Sync with DB if needed
+        if academic_status != child.get('academic_status'):
+            cursor.execute("UPDATE enrollments SET academic_status = %s WHERE enrollment_id = %s", (academic_status, enrollment_id))
+            db.commit()
+
+        # Notify parent if status is concerning
+        if academic_status in ["Critical / Failing", "Needs Attention", "At Risk (Neglecting Tasks)", "Needs Attention (Missing Tasks)"]:
+            cursor.execute("""
+                SELECT 1 FROM parent_notifications 
+                WHERE parent_id = %s AND student_id = %s AND title LIKE 'Academic Alert%%'
+                AND created_at > NOW() - INTERVAL '7 days'
+            """, (session.get("user_id"), enrollment_id))
+            if not cursor.fetchone():
+                notif_title = f"Academic Alert: {child['student_name']}"
+                notif_msg = f"Alert: {child['student_name']} is currently '{academic_status}'. Please review their performance and missing tasks in the portal."
+                cursor.execute("""
+                    INSERT INTO parent_notifications (parent_id, student_id, title, message, link)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (session.get("user_id"), enrollment_id, notif_title, notif_msg, url_for('parent.child_detail', enrollment_id=enrollment_id)))
+                db.commit()
+
         return render_template(
             "parent_child_detail.html",
             child=child,
@@ -340,7 +419,9 @@ def child_detail(enrollment_id):
             exam_scores=exam_scores,
             grade_data=grade_data,
             schedules=schedules,
-            grading_periods=['1st', '2nd', '3rd', '4th']
+            grading_periods=['1st', '2nd', '3rd', '4th'],
+            academic_status=academic_status,
+            status_color=status_color
         )
 
     finally:
@@ -475,6 +556,29 @@ def child_reserve(enrollment_id):
         # Redirect to the existing student reservation route, passing enrollment_id in query string
         return redirect(url_for("student.student_reservation", enrollment_id=enrollment_id))
 
+    finally:
+        cursor.close()
+        db.close()
+
+
+@parent_bp.route("/parent/notifications/mark-read", methods=["POST"])
+def parent_mark_notifs_read():
+    if not _require_parent():
+        return jsonify({"error": "Unauthorized"}), 403
+
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("""
+            UPDATE parent_notifications 
+            SET is_read = TRUE 
+            WHERE parent_id = %s AND is_read = FALSE
+        """, (session.get("user_id"),))
+        db.commit()
+        return jsonify({"success": True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()
         db.close()

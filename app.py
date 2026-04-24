@@ -212,6 +212,41 @@ def inject_student_notifications():
 
 
 @app.context_processor
+def inject_parent_notifications():
+    if session.get('role') == 'parent':
+        user_id = session.get('user_id')
+        from db import get_db_connection
+        import psycopg2.extras
+        from datetime import timezone
+        import pytz
+        db = get_db_connection()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            cursor.execute('''
+                SELECT * FROM parent_notifications
+                WHERE parent_id = %s
+                ORDER BY created_at DESC LIMIT 15
+            ''', (user_id,))
+            notifs = cursor.fetchall()
+            ph_tz = pytz.timezone("Asia/Manila")
+            for n in notifs:
+                ts = n.get("created_at")
+                if not ts:
+                    continue
+                if getattr(ts, "tzinfo", None) is None:
+                    ts = ts.replace(tzinfo=timezone.utc)
+                n["created_at"] = ts.astimezone(ph_tz).replace(tzinfo=None)
+            unread_count = sum(1 for n in notifs if not n.get('is_read'))
+            return dict(parent_global_notifs=notifs, parent_unread_count=unread_count)
+        except:
+            return dict(parent_global_notifs=[], parent_unread_count=0)
+        finally:
+            cursor.close()
+            db.close()
+    return dict(parent_global_notifs=[], parent_unread_count=0)
+
+
+@app.context_processor
 def inject_super_admin_notifications():
     if session.get('role') == 'super_admin':
         from db import get_db_connection

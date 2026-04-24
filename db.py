@@ -134,7 +134,8 @@ def get_db_connection():
                     ("mother_occupation", "VARCHAR(255)"),
                     ("school_year", "VARCHAR(255)"),
                     ("rejection_reason", "TEXT"),
-                    ("rejected_at", "TIMESTAMP")
+                    ("rejected_at", "TIMESTAMP"),
+                    ("academic_status", "VARCHAR(50)")
                 ]
                 for col_name, col_type in optional_cols:
                     if col_name not in enr_c:
@@ -309,6 +310,25 @@ def get_db_connection():
                 conn.commit()
             except Exception as e:
                 logger.warning(f"Could not migrate password_reset_tokens table: {e}")
+                conn.rollback()
+
+            # parent_notifications migration
+            try:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS parent_notifications (
+                        notif_id SERIAL PRIMARY KEY,
+                        parent_id INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+                        student_id INTEGER REFERENCES enrollments(enrollment_id) ON DELETE CASCADE,
+                        title VARCHAR(255) NOT NULL,
+                        message TEXT NOT NULL,
+                        link VARCHAR(255),
+                        is_read BOOLEAN DEFAULT FALSE,
+                        created_at TIMESTAMP DEFAULT NOW()
+                    )
+                """)
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate parent_notifications table: {e}")
                 conn.rollback()
 
             # schedules migration (is_archived)

@@ -1613,7 +1613,7 @@
     </span>
 
     <div class="topbar-right">
-      {% if session.get('role') in ['student', 'branch_admin', 'super_admin', 'librarian', 'teacher', 'registrar', 'cashier'] %}
+      {% if session.get('role') in ['student', 'branch_admin', 'super_admin', 'librarian', 'teacher', 'registrar', 'cashier', 'parent'] %}
       <div class="notif-wrapper" style="margin-right: 8px;">
         <button class="notif-btn" id="notifBtn" onclick="toggleNotifs()">
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
@@ -1632,6 +1632,10 @@
           {% elif session.get('role') == 'librarian' %}
           {% if librarian_unread_count and librarian_unread_count > 0 %}
           <span class="notif-badge" id="notifBadge">{{ librarian_unread_count }}</span>
+          {% endif %}
+          {% elif session.get('role') == 'parent' %}
+          {% if parent_unread_count and parent_unread_count > 0 %}
+          <span class="notif-badge" id="notifBadge">{{ parent_unread_count }}</span>
           {% endif %}
           {% endif %}
         </button>
@@ -1658,6 +1662,11 @@
             <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ librarian_unread_count }}
               New</span>
             {% endif %}
+            {% elif session.get('role') == 'parent' %}
+            {% if parent_unread_count and parent_unread_count > 0 %}
+            <span class="badge badge-red" id="notifNewLabel" style="font-size: 0.7rem;">{{ parent_unread_count }}
+              New</span>
+            {% endif %}
             {% endif %}
           </div>
           <div class="notif-list">
@@ -1670,6 +1679,8 @@
             {% set active_notifs = super_global_notifs %}
             {% elif session.get('role') == 'librarian' %}
             {% set active_notifs = librarian_global_notifs %}
+            {% elif session.get('role') == 'parent' %}
+            {% set active_notifs = parent_global_notifs %}
             {% endif %}
 
             {% for n in active_notifs %}
@@ -1856,7 +1867,12 @@
 
       // When opening — mark all as read and clear badge
       if (wasHidden && dropdown.classList.contains('show')) {
-        fetch('/student/notifications/mark-read', { method: 'POST' })
+        let markReadUrl = '/student/notifications/mark-read';
+        {% if session.get('role') == 'parent' %}
+          markReadUrl = '/parent/notifications/mark-read';
+        {% endif %}
+
+        fetch(markReadUrl, { method: 'POST' })
           .then(() => {
             // Remove the red badge counter immediately
             const badge = document.querySelector('.notif-badge');
