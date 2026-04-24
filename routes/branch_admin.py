@@ -1168,9 +1168,9 @@ def branch_admin_subjects():
             """, (section_id, subject_id))
             if not cursor.fetchone():
                 cursor.execute("""
-                    INSERT INTO section_teachers (section_id, teacher_id, subject_id)
-                    VALUES (%s, NULL, %s)
-                """, (section_id, subject_id))
+                    INSERT INTO section_teachers (section_id, teacher_id, subject_id, year_id)
+                    SELECT %s, NULL, %s, year_id FROM sections WHERE section_id = %s
+                """, (section_id, subject_id, section_id))
 
             db.commit()
             flash("Subject added and assigned to section!", "success")
@@ -1319,9 +1319,9 @@ def branch_admin_subject_edit(subject_id):
         """, (branch_id, subject_id))
         
         cursor.execute("""
-            INSERT INTO section_teachers (section_id, teacher_id, subject_id)
-            VALUES (%s, NULL, %s)
-        """, (section_id, subject_id))
+            INSERT INTO section_teachers (section_id, teacher_id, subject_id, year_id)
+            SELECT %s, NULL, %s, year_id FROM sections WHERE section_id = %s
+        """, (section_id, subject_id, section_id))
 
         db.commit()
         flash("Subject updated successfully.", "success")

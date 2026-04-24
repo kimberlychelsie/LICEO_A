@@ -577,8 +577,8 @@ def superadmin_set_active_year():
 
                     # Copy section teachers (without the teacher assignment)
                     cursor.execute("""
-                        INSERT INTO section_teachers (section_id, subject_id, teacher_id)
-                        SELECT new_s.section_id, st.subject_id, NULL
+                        INSERT INTO section_teachers (section_id, subject_id, teacher_id, year_id)
+                        SELECT new_s.section_id, st.subject_id, NULL, %s
                         FROM section_teachers st
                         JOIN sections old_s ON st.section_id = old_s.section_id
                         JOIN sections new_s 
@@ -588,7 +588,7 @@ def superadmin_set_active_year():
                             AND new_s.year_id = %s
                         WHERE old_s.year_id = %s
                         AND old_s.branch_id = %s
-                    """, (new_year_id, old_year_id, branch_id))
+                    """, (new_year_id, new_year_id, old_year_id, branch_id))
 
         db.commit()
         flash(f"'{label}' is now active globally and sections were copied where needed.", "success")
