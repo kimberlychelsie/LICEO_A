@@ -229,15 +229,19 @@
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label" for="tuition_fee">Tuition & Mandatory Fees (₱)</label>
-                        <input type="text" id="tuition_fee" name="tuition_fee" class="form-input" 
-                          value="0" required
-                          oninput="this.value = this.value.replace(/[^0-9]/g, ''); if(parseInt(this.value) > 20000) this.value = '20000'; calculateTotal()">
+                        <input type="number" id="tuition_fee" name="tuition_fee" class="form-input" 
+                          value="0" min="0" max="20000" step="0.01" required
+                          onkeydown="if(event.key==='-' || event.key==='+') return false;"
+                          oninput="if(parseFloat(this.value) > 20000) this.value = '20000'; calculateTotal()">
                         <span style="font-size: 0.7rem; color: var(--cashier-muted);">Maximum allowed: ₱20,000</span>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="other_fees">Misc. / Incidentals (₱)</label>
-                        <input type="text" id="other_fees" name="other_fees" class="form-input" 
-                          value="0" oninput="this.value = this.value.replace(/[^0-9]/g, ''); calculateTotal()">
+                        <input type="number" id="other_fees" name="other_fees" class="form-input" 
+                          value="0" min="0" max="10000" step="0.01"
+                          onkeydown="if(event.key==='-' || event.key==='+') return false;"
+                          oninput="if(parseFloat(this.value) > 10000) this.value = '10000'; calculateTotal()">
+                        <span style="font-size: 0.7rem; color: var(--cashier-muted);">Maximum allowed: ₱10,000</span>
                     </div>
                 </div>
             </div>
@@ -256,7 +260,11 @@
                 {% endif %}
                 <div class="form-group">
                     <label class="form-label" for="books_fee">Books Total Amount (₱)</label>
-                    <input type="number" id="books_fee" name="books_fee" class="form-input" step="0.01" min="0" value="{{ books_total|default(0) }}" oninput="calculateTotal()" required>
+                    <input type="number" id="books_fee" name="books_fee" class="form-input" 
+                      step="0.01" min="0" max="15000" value="{{ books_total|default(0) }}" 
+                      onkeydown="if(event.key==='-' || event.key==='+') return false;"
+                      oninput="if(parseFloat(this.value) > 15000) this.value = '15000'; calculateTotal()" required>
+                    <span style="font-size: 0.7rem; color: var(--cashier-muted);">Maximum allowed: ₱15,000</span>
                 </div>
             </div>
 
@@ -274,7 +282,11 @@
                 {% endif %}
                 <div class="form-group">
                     <label class="form-label" for="uniform_fee">Uniform Total Amount (₱)</label>
-                    <input type="number" id="uniform_fee" name="uniform_fee" class="form-input" step="0.01" min="0" value="{{ uniform_total|default(0) }}" oninput="calculateTotal()" required>
+                    <input type="number" id="uniform_fee" name="uniform_fee" class="form-input" 
+                      step="0.01" min="0" max="10000" value="{{ uniform_total|default(0) }}" 
+                      onkeydown="if(event.key==='-' || event.key==='+') return false;"
+                      oninput="if(parseFloat(this.value) > 10000) this.value = '10000'; calculateTotal()" required>
+                    <span style="font-size: 0.7rem; color: var(--cashier-muted);">Maximum allowed: ₱10,000</span>
                 </div>
             </div>
 

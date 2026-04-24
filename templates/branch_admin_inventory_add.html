@@ -394,10 +394,7 @@
             <div class="input-wrapper has-icon">
               <span class="input-icon">🏷️</span>
               <select name="category" required id="categorySelect">
-                <option value="">Select category...</option>
-                <option value="UNIFORM">Uniform</option>
-                <option value="BOOK">Book</option>
-                <option value="SUPPLIES">Supplies</option>
+                <option value="UNIFORM" selected>Uniform</option>
               </select>
             </div>
           </div>
@@ -454,7 +451,9 @@
             <label>Unit Price (₱) *</label>
             <div class="input-wrapper has-icon">
               <span class="input-icon">💰</span>
-              <input type="number" name="price" step="0.01" min="0" placeholder="0.00" required>
+              <input type="number" name="price" step="0.01" min="0" max="1000" placeholder="0.00" required
+                onkeydown="if(event.key==='-' || event.key==='+') return false;"
+                oninput="if(parseFloat(this.value) > 1000) this.value = '1000';">
             </div>
           </div>
 
@@ -462,7 +461,9 @@
             <label>Opening Stock *</label>
             <div class="input-wrapper has-icon">
               <span class="input-icon">📦</span>
-              <input type="number" name="stock_total" min="0" placeholder="0" required>
+              <input type="number" name="stock_total" min="0" max="500" placeholder="0" required
+                onkeydown="if(event.key==='-' || event.key==='+' || event.key==='.') return false;"
+                oninput="if(parseInt(this.value) > 500) this.value = '500';">
             </div>
           </div>
 
