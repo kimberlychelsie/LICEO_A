@@ -342,6 +342,103 @@
         border-color: #059669;
     }
 
+    .btn-action-text {
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        border: 1px solid transparent;
+    }
+
+    .btn-view-bill {
+        background: #f1f5f9;
+        color: #475569;
+        border-color: #e2e8f0;
+    }
+
+    .btn-view-bill:hover {
+        background: #e2e8f0;
+        color: #1e293b;
+    }
+
+    .btn-pay-now {
+        background: #dcfce7;
+        color: #166534;
+        border-color: #bbf7d0;
+    }
+
+    .btn-pay-now:hover {
+        background: #166534;
+        color: #fff;
+        border-color: #166534;
+    }
+
+    /* ── Guide Section ── */
+    .guide-box {
+        background: #fff;
+        border: 1px solid #3b82f6;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 24px;
+        display: flex;
+        gap: 20px;
+        align-items: flex-start;
+        box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.05);
+    }
+
+    .guide-icon {
+        background: #eff6ff;
+        color: #3b82f6;
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .guide-content h3 {
+        margin: 0 0 8px 0;
+        font-size: 1rem;
+        color: #1e3a8a;
+        font-weight: 800;
+    }
+
+    .guide-steps {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+
+    .step-item {
+        display: flex;
+        gap: 10px;
+        font-size: 0.85rem;
+        color: #64748b;
+        line-height: 1.4;
+    }
+
+    .step-num {
+        background: #3b82f6;
+        color: #fff;
+        width: 18px;
+        height: 18px;
+        border-radius: 99px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.65rem;
+        font-weight: 800;
+        flex-shrink: 0;
+        margin-top: 2px;
+    }
+
     .btn-create {
         padding: 7px 14px;
         border-radius: 8px;
@@ -407,6 +504,34 @@
             style="padding:10px 20px; border-radius:10px; border:1px solid var(--cashier-border); background:#fff; color:var(--cashier-primary); font-weight:700; font-size:.9rem; text-decoration:none; display:flex; align-items:center; gap:6px;">
             Back to Dashboard
         </a>
+    </div>
+
+    <!-- Cashier Guide -->
+    <div class="guide-box">
+        <div class="guide-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        </div>
+        <div class="guide-content">
+            <h3>Cashier Operations Guide</h3>
+            <div class="guide-steps">
+                <div class="step-item">
+                    <span class="step-num">1</span>
+                    <span><strong>Create Bill:</strong> Use this for students with "No Bill" to set up their accounts.</span>
+                </div>
+                <div class="step-item">
+                    <span class="step-num">2</span>
+                    <span><strong>View Bill:</strong> Click to see the detailed statement and balance history.</span>
+                </div>
+                <div class="step-item">
+                    <span class="step-num">3</span>
+                    <span><strong>Pay Now:</strong> Record payments. Balance updates automatically.</span>
+                </div>
+                <div class="step-item">
+                    <span class="step-num">4</span>
+                    <span><strong>Settled:</strong> Status turns green once the balance reaches ₱0.00.</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Summary Strip -->
@@ -562,23 +687,25 @@
                                 </a>
                                 {% endif %}
                                 {% else %}
-                                <a href="/cashier/bill/{{ e.bill_id }}" class="btn-icon" title="View Statement">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                <a href="/cashier/bill/{{ e.bill_id }}" class="btn-action-text btn-view-bill" title="View Statement">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                                         stroke-linejoin="round">
                                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                         <circle cx="12" cy="12" r="3"></circle>
                                     </svg>
+                                    View Bill
                                 </a>
                                 {% if e.bill_status != 'paid' and is_branch_active_status %}
-                                <a href="/cashier/process-payment/{{ e.bill_id }}" class="btn-icon btn-pay"
+                                <a href="/cashier/process-payment/{{ e.bill_id }}" class="btn-action-text btn-pay-now"
                                     title="Process Payment">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                                         stroke-linejoin="round">
                                         <rect x="2" y="4" width="20" height="16" rx="2"></rect>
                                         <line x1="2" y1="10" x2="22" y2="10"></line>
                                     </svg>
+                                    Pay Now
                                 </a>
                                 {% endif %}
                                 {% endif %}
