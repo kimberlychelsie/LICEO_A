@@ -3600,25 +3600,26 @@ def teacher_class_view(subject_id):
               AND e.subject_id = %s
               AND e.exam_type = 'monthly_exam'
               AND s.year_id = %s
+                    AND e.is_visible = TRUE
             ORDER BY e.created_at DESC
         """, (user_id, active_section_id, subject_id, year_id))
         monthly_exams = cur.fetchall() or []
 
-        # ✅ PERIODICAL EXAMS — goes into Quarterly Assessment (QA)
+        # ✅ PERIODICAL EXAMS + MONTHLY EXAMS — goes into Quarterly Assessment (QA) + Written Works (WW)
         cur.execute("""
-            SELECT e.exam_id, e.title, e.exam_type, e.scheduled_start, e.status, e.created_at, e.is_visible,
-                   e.grading_period, e.duration_mins,
-                   (SELECT COUNT(*) FROM exam_questions q WHERE q.exam_id = e.exam_id) AS question_count,
-                   (SELECT COUNT(*) FROM exam_results r WHERE r.exam_id = e.exam_id) AS attempt_count
-            FROM exams e
-            JOIN sections s ON e.section_id = s.section_id
-            WHERE e.teacher_id = %s
-              AND e.section_id = %s
-              AND e.subject_id = %s
-              AND e.exam_type = 'exam'
-              AND s.year_id = %s
-            ORDER BY e.created_at DESC
-        """, (user_id, active_section_id, subject_id, year_id))
+    SELECT e.exam_id, e.title, e.exam_type, e.scheduled_start, e.status, e.created_at, e.is_visible,
+           e.grading_period, e.duration_mins,
+           (SELECT COUNT(*) FROM exam_questions q WHERE q.exam_id = e.exam_id) AS question_count,
+           (SELECT COUNT(*) FROM exam_results r WHERE r.exam_id = e.exam_id) AS attempt_count
+    FROM exams e
+    JOIN sections s ON e.section_id = s.section_id
+    WHERE e.teacher_id = %s
+      AND e.section_id = %s
+      AND e.subject_id = %s
+      AND e.exam_type IN ('exam', 'monthly_exam')
+      AND s.year_id = %s
+    ORDER BY e.created_at DESC
+""", (user_id, active_section_id, subject_id, year_id))
         exams = cur.fetchall() or []
 
         # ✅ STATS (no change)
