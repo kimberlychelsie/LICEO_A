@@ -1135,6 +1135,31 @@ def student_reservation():
         for r in rows:
             if bool(r['is_common']) or is_item_visible_for_student(r['item_name'], r['grade_level'], student_grade):
                 available = int(r['stock_total'] or 0) - int(r['reserved_qty'] or 0)
+                
+                cursor.execute("""
+                    SELECT size_id, size_label, stock_total, reserved_qty 
+                    FROM inventory_item_sizes 
+                    WHERE item_id = %s
+                """, (r['item_id'],))
+                sizes_rows = cursor.fetchall() or []
+                
+                # Sort standard clothing sizes logically
+                def get_size_rank(lbl):
+                    lbl_up = str(lbl).upper().strip()
+                    mapping = {"XXS":1, "XS":2, "S":3, "M":4, "L":5, "XL":6, "XXL":7, "2XL":7, "3XL":8, "4XL":9}
+                    return mapping.get(lbl_up, 99)
+
+                sizes_rows = sorted(sizes_rows, key=lambda x: (get_size_rank(x['size_label']), x['size_label']))
+                
+                sizes = []
+                for s in sizes_rows:
+                    s_available = int(s['stock_total'] or 0) - int(s['reserved_qty'] or 0)
+                    sizes.append({
+                        "size_id": s['size_id'],
+                        "size_label": s['size_label'],
+                        "available": s_available
+                    })
+
                 items.append({
                     "item_id": r['item_id'],
                     "category": r['category'],
@@ -1144,7 +1169,8 @@ def student_reservation():
                     "size_label": r['size_label'],
                     "price": float(r['price'] or 0),
                     "available": available,
-                    "image_url": r['image_url']
+                    "image_url": r['image_url'],
+                    "sizes": sizes
                 })
 
         if request.method == "POST":
@@ -1206,7 +1232,28 @@ def student_reservation():
 
                     available = int(r['stock_total'] or 0) - int(r['reserved_qty'] or 0)
                     if qty > available:
-                        raise Exception(f"Not enough stock for: {r['item_name']}")
+                        raise Exception(f"Not enough overall stock for: {r['item_name']}")
+
+                    stored_size = size if size else r['size_label']
+
+                    if stored_size:
+                        cursor_tx.execute("""
+                            SELECT size_id, stock_total, reserved_qty
+                            FROM inventory_item_sizes
+                            WHERE item_id = %s AND size_label = %s
+                            FOR UPDATE
+                        """, (item_id, stored_size))
+                        s_row = cursor_tx.fetchone()
+                        if s_row:
+                            s_available = int(s_row['stock_total'] or 0) - int(s_row['reserved_qty'] or 0)
+                            if qty > s_available:
+                                raise Exception(f"Not enough stock for {r['item_name']} (Size: {stored_size})")
+                            
+                            cursor_tx.execute("""
+                                UPDATE inventory_item_sizes
+                                SET reserved_qty = reserved_qty + %s
+                                WHERE size_id = %s
+                            """, (qty, s_row['size_id']))
 
                     cursor_tx.execute("""
                         UPDATE inventory_items
@@ -1216,7 +1263,6 @@ def student_reservation():
 
                     unit_price = float(r['price'] or 0)
                     line_total = unit_price * qty
-                    stored_size = size if size else r['size_label']
 
                     cursor_tx.execute("""
                         INSERT INTO reservation_items (reservation_id, item_id, qty, size_label, unit_price, line_total)

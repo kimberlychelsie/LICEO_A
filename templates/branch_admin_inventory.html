@@ -79,9 +79,17 @@
     color: white;
   }
 
-  .btn-warning {
-    background: #ffc107;
-    color: #000;
+  .btn-warning:hover {
+    background: #e0a800;
+  }
+
+  .btn-danger {
+    background: #dc3545;
+    color: #fff;
+  }
+
+  .btn-danger:hover {
+    background: #c82333;
   }
 
   /* ── cards ── */
@@ -407,9 +415,39 @@
       flex-direction: column;
     }
 
-    .dash-right {
-      width: 100%;
     }
+  }
+
+  /* Status Tabs */
+  .status-tabs {
+    display: flex;
+    gap: 2px;
+    background: #e2e8f0;
+    padding: 4px;
+    border-radius: 10px;
+    width: fit-content;
+    margin-bottom: 20px;
+  }
+
+  .status-tab {
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    color: #64748b;
+    transition: all 0.2s;
+  }
+
+  .status-tab.active {
+    background: white;
+    color: #007bff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+
+  .status-tab:not(.active):hover {
+    background: rgba(255,255,255,0.5);
+    color: #1e293b;
   }
 </style>
 {% endblock %}
@@ -463,13 +501,8 @@
               {% endfor %}
             </select>
           </div>
-          <div class="filter-group">
-            <label>Status</label>
-            <select name="status" id="statusSelect">
-              <option value="active" {{ 'selected' if status_filter=='active' or not status_filter }}>Active</option>
-              <option value="inactive" {{ 'selected' if status_filter=='inactive' }}>Inactive</option>
-            </select>
-          </div>
+          <!-- Status hidden from form, handled by tabs -->
+          <input type="hidden" name="status" value="{{ status_filter or 'active' }}">
           <div class="filter-group" style="align-items: flex-end;">
             <button type="button" class="btn btn-secondary" style="width: 100%; justify-content: center;"
               onclick="clearFilters()"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Clear All</button>
@@ -557,8 +590,19 @@
 
   <!-- Inventory Table -->
   <div class="card">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; flex-wrap: wrap; gap: 16px;">
       <h2 style="margin:0; border:none; padding:0;"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg> Inventory List</h2>
+      
+      <div class="status-tabs">
+        <a href="{{ url_for('branch_admin.branch_admin_inventory', category=category_filter, grade=grade_filter, search=search, status='active') }}" 
+           class="status-tab {{ 'active' if status_filter != 'inactive' }}">
+           Active Items
+        </a>
+        <a href="{{ url_for('branch_admin.branch_admin_inventory', category=category_filter, grade=grade_filter, search=search, status='inactive') }}" 
+           class="status-tab {{ 'active' if status_filter == 'inactive' }}">
+           Deactivated Items
+        </a>
+      </div>
     </div>
 
     <div class="health-table-wrapper">
@@ -635,10 +679,19 @@
                   <button type="submit" class="btn btn-sm btn-warning"
                     title="{{ 'Deactivate' if item[10] else 'Activate' }}">
                     {% if item[10] %}
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> Disable
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg> Deactivate
                     {% else %}
-                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><polyline points="20 6 9 17 4 12"></polyline></svg> Enable
+                      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><polyline points="20 6 9 17 4 12"></polyline></svg> Activate
                     {% endif %}
+                  </button>
+                </form>
+
+                <form method="POST"
+                  action="{{ url_for('branch_admin.branch_admin_inventory_delete', item_id=item[0]) }}"
+                  style="display:inline; margin:0;"
+                  onsubmit="return confirm('Are you sure you want to PERMANENTLY delete this item? This cannot be undone.')">
+                  <button type="submit" class="btn btn-sm btn-danger" title="Delete Permanent">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg> Delete
                   </button>
                 </form>
               </div>

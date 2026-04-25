@@ -567,6 +567,7 @@ def branch_admin_inventory_add():
         grade_level = (request.form.get("grade_level") or "").strip()
         is_common = request.form.get("is_common") == "on"
         size_label = (request.form.get("size_label") or "").strip() or None
+        sizes = request.form.getlist("sizes")
         price = (request.form.get("price") or "").strip()
         stock_total = (request.form.get("stock_total") or "").strip()
         image_url = (request.form.get("image_url") or "").strip() or None
@@ -578,6 +579,8 @@ def branch_admin_inventory_add():
         db = get_db_connection()
         cursor = db.cursor()
         try:
+            total_initial_stock = (len(sizes) * int(stock_total)) if sizes else int(stock_total)
+
             cursor.execute("""
                 INSERT INTO inventory_items
                 (branch_id, category, item_name, grade_level, is_common, size_label,
@@ -585,8 +588,15 @@ def branch_admin_inventory_add():
                 VALUES (%s,%s,%s,%s,%s,%s,%s,%s,0,%s,TRUE)
                 RETURNING item_id
             """, (branch_id, category, item_name, grade_level, is_common, size_label,
-                  price, stock_total, image_url))
-            cursor.fetchone()
+                  price, total_initial_stock, image_url))
+            item_id = cursor.fetchone()[0]
+
+            for sz in sizes:
+                cursor.execute("""
+                    INSERT INTO inventory_item_sizes (item_id, size_label, stock_total, reserved_qty)
+                    VALUES (%s, %s, %s, 0)
+                """, (item_id, sz, int(stock_total)))
+
             db.commit()
 
             flash("Item added successfully!", "success")
@@ -783,6 +793,30 @@ def branch_admin_inventory_toggle(item_id):
     except Exception:
         db.rollback()
         flash("Failed to toggle item.", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(request.referrer or "/branch-admin/inventory?category=UNIFORM")
+
+@branch_admin_bp.route("/branch-admin/inventory/<int:item_id>/delete", methods=["POST"])
+def branch_admin_inventory_delete(item_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        # Check if item has reservations first?
+        # For simplicity, we just delete. DB foreign keys will prevent if needed.
+        cursor.execute("DELETE FROM inventory_item_sizes WHERE item_id = %s", (item_id,))
+        cursor.execute("DELETE FROM inventory_items WHERE item_id = %s AND branch_id = %s", (item_id, branch_id))
+        db.commit()
+        flash("Item permanently deleted.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Failed to delete item: {str(e)}", "error")
     finally:
         cursor.close()
         db.close()

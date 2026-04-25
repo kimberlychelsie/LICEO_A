@@ -203,7 +203,7 @@ def child_detail(enrollment_id):
         # -- Fetch items from reservations system --
         cursor.execute("""
             SELECT
-                ii.item_name, ri.qty, ii.category
+                ii.item_name, ri.qty, ii.category, ri.size_label
             FROM reservation_items ri
             JOIN reservations r ON r.reservation_id = ri.reservation_id
             JOIN inventory_items ii ON ri.item_id = ii.item_id
@@ -227,7 +227,7 @@ def child_detail(enrollment_id):
             elif item['category'].lower() == 'uniform':
                 uniforms.append({
                     'uniform_type': item['item_name'],
-                    'size': 'N/A', # Size info might be in item name for inventory items
+                    'size': item['size_label'] or 'N/A',
                     'quantity': item['qty'],
                     'is_reservation': True
                 })

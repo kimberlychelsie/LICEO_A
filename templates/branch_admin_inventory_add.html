@@ -246,7 +246,6 @@
     transform: translateX(20px);
   }
 
-  /* Image Preview */
   .image-preview-area {
     margin-top: 12px;
     width: 100%;
@@ -260,6 +259,35 @@
     background: #f8fafc;
     overflow: hidden;
     transition: var(--transition);
+  }
+
+  .size-checkboxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 8px;
+  }
+  .size-cb-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: #f1f5f9;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  .size-cb-label:has(input:checked) {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+  .size-cb-label input {
+    width: auto;
+    margin: 0;
   }
 
   .image-preview-area.has-image {
@@ -439,11 +467,30 @@
             </div>
           </div>
 
-          <div class="form-group">
-            <label>Size / Variant</label>
+          <div id="uniformSizesGroup" class="form-group full-width" style="display: none;">
+            <label>Select Uniform Sizes to Generate</label>
+            <div class="size-checkboxes">
+                <label class="size-cb-label"><input type="checkbox" name="sizes" value="XXS"> XXS</label>
+                <label class="size-cb-label"><input type="checkbox" name="sizes" value="XS"> XS</label>
+                <label class="size-cb-label"><input type="checkbox" name="sizes" value="S"> S</label>
+                <label class="size-cb-label"><input type="checkbox" name="sizes" value="M"> M</label>
+                <label class="size-cb-label"><input type="checkbox" name="sizes" value="L"> L</label>
+                <label class="size-cb-label"><input type="checkbox" name="sizes" value="XL"> XL</label>
+                <label class="size-cb-label"><input type="checkbox" name="sizes" value="XXL"> XXL</label>
+                <label class="size-cb-label"><input type="checkbox" name="sizes" value="3XL"> 3XL</label>
+                <label class="size-cb-label"><input type="checkbox" name="sizes" value="4XL"> 4XL</label>
+                <label class="size-cb-label"><input type="checkbox" name="sizes" value="Free Size"> Free Size</label>
+            </div>
+            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">
+                <i>ℹ️ The <b>Opening Stock</b> entered below will be applied to EACH selected size.</i>
+            </p>
+          </div>
+
+          <div id="customSizeGroup" class="form-group">
+            <label>Size / Variant (Optional)</label>
             <div class="input-wrapper has-icon">
               <span class="input-icon">📏</span>
-              <input type="text" name="size_label" placeholder="e.g. Medium, XL, Hardbound">
+              <input type="text" name="size_label" id="customSizeInput" placeholder="e.g. Hardbound, One Size">
             </div>
           </div>
 
@@ -458,7 +505,7 @@
           </div>
 
           <div class="form-group">
-            <label>Opening Stock *</label>
+            <label>Opening Stock (Per Size) *</label>
             <div class="input-wrapper has-icon">
               <span class="input-icon">📦</span>
               <input type="number" name="stock_total" min="0" max="500" placeholder="0" required
@@ -541,5 +588,28 @@
       // but we allow the user to override.
     }
   });
+
+  // Toggle Size Fields based on Category
+  const categorySelect = document.getElementById('categorySelect');
+  const uniformSizesGroup = document.getElementById('uniformSizesGroup');
+  const customSizeGroup = document.getElementById('customSizeGroup');
+  const customSizeInput = document.getElementById('customSizeInput');
+
+  function toggleSizeFields() {
+    if (categorySelect.value === 'UNIFORM') {
+        uniformSizesGroup.style.display = 'block';
+        customSizeGroup.style.display = 'none';
+        customSizeInput.value = '';
+    } else {
+        uniformSizesGroup.style.display = 'none';
+        customSizeGroup.style.display = 'block';
+        // Uncheck all size checkboxes
+        document.querySelectorAll('input[name="sizes"]').forEach(cb => cb.checked = false);
+    }
+  }
+
+  categorySelect.addEventListener('change', toggleSizeFields);
+  // Initial run
+  toggleSizeFields();
 </script>
 {% endblock %}

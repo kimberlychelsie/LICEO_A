@@ -415,7 +415,21 @@
                 </div>
 
                 <div class="controls-row">
-                    {% if it.category == 'UNIFORM' %}
+                    {% if it.sizes and it.sizes|length > 0 %}
+                    <div class="control-group">
+                        <label class="control-label">Select Size <span style="color:red;">*</span></label>
+                        <select class="size-select size-select-js" name="size_{{ it.item_id }}" data-item-id="{{ it.item_id }}" {% if it.available <= 0 %}disabled{% endif %}>
+                            <option value="">-- Size --</option>
+                            {% for s in it.sizes %}
+                                {% if s.available > 0 %}
+                                    <option value="{{ s.size_label }}">{{ s.size_label }}</option>
+                                {% else %}
+                                    <option value="{{ s.size_label }}" disabled>{{ s.size_label }} (Out of Stock)</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% elif it.category == 'UNIFORM' %}
                     <div class="control-group">
                         <label class="control-label">Select Size <span style="color:red;">*</span></label>
                         <select class="size-select size-select-js" name="size_{{ it.item_id }}" data-item-id="{{ it.item_id }}" {% if it.available <= 0 %}disabled{% endif %}>
