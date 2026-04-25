@@ -288,8 +288,8 @@ def dashboard():
         metrics=metrics
     )
 
-@branch_admin_bp.route("/branch-admin/announcements/<int:announcement_id>/hide", methods=["POST"])
-def announcement_hide(announcement_id):
+@branch_admin_bp.route("/branch-admin/announcements/<int:announcement_id>/toggle", methods=["POST"])
+def announcement_toggle(announcement_id):
     if session.get("role") != "branch_admin":
         return redirect("/")
 
@@ -300,17 +300,46 @@ def announcement_hide(announcement_id):
     db = get_db_connection()
     cur = db.cursor()
     try:
-        # ✅ correct column + scope by branch
         cur.execute("""
             UPDATE announcements
-            SET is_active = FALSE
+            SET is_active = NOT is_active
+            WHERE announcement_id = %s AND branch_id = %s
+            RETURNING is_active
+        """, (announcement_id, branch_id))
+        row = cur.fetchone()
+        db.commit()
+        
+        status = "published" if row[0] else "archived"
+        flash(f"Announcement is now {status}.", "success")
+    except Exception:
+        db.rollback()
+        flash("Could not update announcement status.", "error")
+    finally:
+        cur.close()
+        db.close()
+    return redirect(url_for("branch_admin.dashboard"))
+
+@branch_admin_bp.route("/branch-admin/announcements/<int:announcement_id>/delete", methods=["POST"])
+def announcement_delete(announcement_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        return redirect("/")
+
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            DELETE FROM announcements
             WHERE announcement_id = %s AND branch_id = %s
         """, (announcement_id, branch_id))
         db.commit()
-        flash("Announcement hidden from homepage.", "success")
-    except Exception:
+        flash("Announcement permanently deleted.", "success")
+    except Exception as e:
         db.rollback()
-        flash("Could not hide announcement.", "error")
+        flash(f"Could not delete announcement: {str(e)}", "error")
     finally:
         cur.close()
         db.close()
