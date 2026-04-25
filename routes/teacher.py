@@ -3626,7 +3626,18 @@ def teacher_class_view(subject_id):
             'closed': sum(1 for e in exams if e['status'].lower() == 'closed')
         }
 
-
+        # ✅ STUDENTS (Class List) - Filtered by Section, Branch, and Year
+        # We also ensure the status is 'approved' or 'enrolled'
+        cur.execute("""
+            SELECT e.enrollment_id, e.student_name, e.status, e.grade_level, e.lrn, e.gender
+            FROM enrollments e
+            WHERE e.section_id = %s 
+              AND e.branch_id = %s 
+              AND e.year_id = %s
+              AND e.status IN ('approved', 'enrolled')
+            ORDER BY e.student_name ASC
+        """, (active_section_id, branch_id, year_id))
+        enrolled_students = cur.fetchall() or []
 
     finally:
         cur.close()
@@ -3648,6 +3659,7 @@ def teacher_class_view(subject_id):
         exam_stats=exam_stats,
         section_id=active_section_id,
         subject_id=subject_id,
+        enrolled_students=enrolled_students,
         now=now_naive
     )
 

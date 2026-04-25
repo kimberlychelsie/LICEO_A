@@ -546,8 +546,7 @@
                     </select>
                 </div>
             </div>
-            <a href="{{ url_for('teacher.class_record', subject_id=subject_id, section_id=section_id, period='1st') }}"
-                class="btn-manage-cl" style="text-decoration:none;">
+            <button type="button" onclick="openClasslist()" class="btn-manage-cl" style="text-decoration:none; border:none; cursor:pointer;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
@@ -555,8 +554,8 @@
                     <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
                     <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
                 </svg>
-                Manage Class Record / Grades
-            </a>
+                Classlist
+            </button>
         </div>
     </div>
 
@@ -907,10 +906,103 @@
         </div>
     </div>
 
+    <!-- ── Classlist Modal (Side Drawer) ── -->
+    <div id="classlistModal" class="modal-overlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.6); z-index:9999; justify-content:flex-end; backdrop-filter:blur(4px);">
+        <div class="modal-content" style="width:min(420px, 90vw); height:100%; background:#fff; box-shadow:-10px 0 30px rgba(0,0,0,0.15); display:flex; flex-direction:column; animation:slideIn 0.3s ease-out;">
+            <div class="modal-header" style="background:#1e3a8a; color:#fff; padding:24px 20px; display:flex; justify-content:space-between; align-items:center;">
+                <h2 style="margin:0; font-size:1.4rem; font-weight:800; letter-spacing:-0.02em;">Classlist</h2>
+                <button onclick="closeClasslist()" style="background:none; border:none; color:#fff; font-size:1.8rem; cursor:pointer; line-height:1;">&times;</button>
+            </div>
+            <div class="modal-body" style="flex:1; overflow-y:auto; padding:20px;">
+                
+                <!-- Section Info Display -->
+                <div style="background:#f1f5f9; padding:12px; border-radius:10px; margin-bottom:15px; border:1px solid #e2e8f0;">
+                    <div style="font-size:0.8rem; color:#64748b; font-weight:700; text-transform:uppercase; margin-bottom:4px;">Current Context</div>
+                    <div style="font-weight:800; color:#1e3a8a; line-height:1.3;">
+                        {{ class_info.grade_level_name }} — {{ class_info.section_name }}<br>
+                        <span style="font-size:0.9rem; color:#3b82f6;">{{ class_info.subject_name }}</span>
+                    </div>
+                </div>
+
+                <!-- Add Student Button (Matching screenshot style) -->
+                <button class="btn-add-student" onclick="toggleAddStudentForm()" style="width:100%; padding:14px; background:#fef3c7; border:1px solid #fcd34d; border-radius:10px; color:#92400e; font-weight:800; font-size:0.95rem; margin-bottom:20px; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:8px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    Add Student
+                </button>
+
+                <!-- Add Student Inline Form (Hidden by default) -->
+                <div id="add-student-form" style="display:none; background:#fff; border:2px solid #3b82f6; border-radius:12px; padding:16px; margin-bottom:20px; box-shadow:0 10px 15px -3px rgba(59,130,246,0.1);">
+                    <h4 style="margin:0 0 12px 0; font-size:0.85rem; color:#1e40af; font-weight:800; text-transform:uppercase;">New Enrollee</h4>
+                    <input type="text" id="new_student_name" class="input-prem" placeholder="Last Name, First Name" style="width:100%; padding:12px; font-size:0.95rem; border-radius:8px; border:1.5px solid #d1d5db; margin-bottom:12px;">
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" class="btn-create" onclick="submitAddStudent()" style="flex:1; padding:10px; background:#3b82f6; color:#fff; border:none; border-radius:8px; font-weight:700; cursor:pointer;">Save Student</button>
+                        <button type="button" class="btn-action btn-act-gray" onclick="toggleAddStudentForm()" style="padding:10px 15px; border-radius:8px; cursor:pointer;">Cancel</button>
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; padding-bottom:8px; border-bottom:2px solid #f1f5f9;">
+                    <div style="font-size:0.75rem; font-weight:800; color:#94a3b8; text-transform:uppercase;"># &nbsp;&nbsp;&nbsp; Student Name</div>
+                    <div style="font-size:0.75rem; font-weight:800; color:#94a3b8; text-transform:uppercase;">{{ enrolled_students|length }} Students</div>
+                </div>
+
+                {% if enrolled_students %}
+                <div class="student-list-container">
+                    {% for s in enrolled_students %}
+                    <div class="student-row-item" style="display:flex; align-items:center; padding:14px 4px; border-bottom:1px solid #f1f5f9; transition:all 0.15s;">
+                        <div style="width:32px; font-size:0.85rem; color:#94a3b8; font-weight:600;">{{ loop.index }}</div>
+                        <div style="flex:1;">
+                            <div style="font-weight:700; color:#1e293b; font-size:1.05rem;">{{ s.student_name }}</div>
+                            <div style="font-size:0.7rem; color:#64748b; display:flex; gap:10px; margin-top:2px;">
+                                <span>LRN: {{ s.lrn or 'N/A' }}</span>
+                                <span>•</span>
+                                <span style="text-transform:capitalize;">{{ s.gender or '---' }}</span>
+                            </div>
+                        </div>
+                        <a href="{{ url_for('teacher.class_record', section_id=section_id, subject_id=subject_id) }}" title="View Grades" style="color:#3b82f6; display:flex; align-items:center; justify-content:center; width:36px; height:36px; border-radius:8px; background:#eff6ff;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+                        </a>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div style="text-align:center; padding:40px 20px; color:#94a3b8;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3; margin-bottom:12px;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <p style="margin:0; font-size:0.9rem;">No students enrolled yet.</p>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer" style="padding:20px; background:#f8fafc; border-top:1px solid #e2e8f0;">
+                <a href="{{ url_for('teacher.class_record', subject_id=subject_id, section_id=section_id, period='1st') }}" 
+                   class="btn-manage-cl" style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px; text-decoration:none; background:#fff; border:2px solid #e2e8f0; color:#1e3a8a; padding:14px; border-radius:12px; font-weight:800; font-size:0.95rem; transition:all 0.2s;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                    Manage Class Record / Grades
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        @keyframes slideIn {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+        .student-row-item:hover { background: #f8fafc; }
+        .btn-add-student:hover { background: #fde68a !important; transform: translateY(-1px); }
+    </style>
+
 </div>
 
 <script>
     function changeSection(secId) { window.location.href = "?section=" + secId; }
+
+    function openClasslist() {
+        document.getElementById('classlistModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+    }
+    function closeClasslist() {
+        document.getElementById('classlistModal').style.display = 'none';
+        document.body.style.overflow = 'auto';
+    }
 
     function switchMainTab(tab, btn) {
         document.querySelectorAll('.view-tab-content').forEach(el => el.classList.remove('active'));
@@ -976,5 +1068,39 @@
         const defaultExams = document.querySelector('.filter-tab-exam.active');
         if (defaultExams) filterItems('exam', '1st', defaultExams);
     });
+
+    function toggleAddStudentForm() {
+        const form = document.getElementById('add-student-form');
+        form.style.display = (form.style.display === 'none') ? 'block' : 'none';
+        if (form.style.display === 'block') document.getElementById('new_student_name').focus();
+    }
+
+    function submitAddStudent() {
+        const name = document.getElementById('new_student_name').value.trim();
+        const sectionId = "{{ section_id }}";
+        
+        if (!name) {
+            alert("Please enter the student's name.");
+            return;
+        }
+
+        fetch("/api/teacher/add-student", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ student_name: name, section_id: sectionId })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.ok) {
+                location.reload();
+            } else {
+                alert("Error: " + (data.error || "Unknown error"));
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Failed to add student.");
+        });
+    }
 </script>
 {% endblock %}
