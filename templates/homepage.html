@@ -4,7 +4,81 @@
 
 {% block styles %}
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
 <style>
+  /* ── Map Styling ── */
+  #homeMap {
+    width: 100%;
+    height: 450px;
+    border-radius: 20px;
+    margin-top: 32px;
+    margin-bottom: 24px;
+    border: 3px solid rgba(255, 255, 255, 0.8);
+    box-shadow: 0 12px 32px rgba(12, 36, 97, 0.15);
+    z-index: 5;
+  }
+  .leaflet-popup-content-wrapper {
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  }
+  .leaflet-popup-content {
+    margin: 16px;
+    text-align: center;
+  }
+  .popup-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #0c2461;
+    margin-bottom: 4px;
+    font-family: 'Playfair Display', serif;
+  }
+  .popup-loc {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-bottom: 12px;
+  }
+  .popup-btn {
+    display: inline-block;
+    background: linear-gradient(135deg, #a07c10, #c9a227);
+    color: #0c2461;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+    box-shadow: 0 4px 12px rgba(201, 162, 39, 0.3);
+    transition: transform 0.2s;
+  }
+  .popup-btn:hover {
+    transform: translateY(-2px);
+  }
+  .popup-btn-alt {
+    display: inline-block;
+    background: #e2e8f0;
+    color: #0f172a;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: background 0.2s, transform 0.2s;
+  }
+  .popup-btn-alt:hover {
+    background: #cbd5e1;
+    transform: translateY(-2px);
+  }
+  
+  /* Fix routing machine box styling */
+  .leaflet-routing-container {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    padding: 10px;
+    font-family: inherit;
+    max-height: 250px;
+    overflow-y: auto;
+  }
   /* ── Override base content padding for full-width hero ── */
   .pub-content {
     padding: 0 !important;
@@ -578,6 +652,17 @@
     background: rgba(255, 255, 255, 0.42);
   }
 
+  /* Pulse animation for user location */
+  .user-location-marker {
+    animation: pulse-blue 2s infinite;
+  }
+
+  @keyframes pulse-blue {
+    0% { transform: scale(1); opacity: 1; }
+    50% { transform: scale(1.2); opacity: 0.7; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
   .slider-btn.prev {
     left: 16px;
   }
@@ -1002,6 +1087,13 @@
       {% endfor %}
     </div>
     {% endif %}
+
+    <!-- MAP CONTAINER -->
+    <div id="campus-map" style="margin-top: 64px; text-align: center; padding-top: 60px;">
+      <h3 class="sec-title" style="font-size: clamp(1.4rem, 2.5vw, 1.8rem); margin-bottom: 6px;">Campuses Location</h3>
+      <p class="sec-sub" style="margin: 0 auto; margin-bottom: 24px;">Explore our school branches across the region using the interactive map below.</p>
+    </div>
+    <div id="homeMap" style="margin-top: 0;"></div>
   </section>
 
   <!-- ── ANNOUNCEMENTS ── -->
@@ -1112,6 +1204,8 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
 <script>
   function goToBranch(url) { if (url) window.location.href = url; }
 
@@ -1150,6 +1244,125 @@
     check();
   })();
 
-  document.addEventListener('DOMContentLoaded', _init);
+  document.addEventListener('DOMContentLoaded', function() {
+    _init();
+
+    // ── Leaflet Map Setup ──
+    const mapContainer = document.getElementById('homeMap');
+    if (mapContainer) {
+      const map = L.map('homeMap', {
+          scrollWheelZoom: true, // Enabled as per user request
+          minZoom: 10,
+          maxBounds: [ [13.9, 121.0], [14.6, 121.6] ], // Laguna bounds
+          maxBoundsViscosity: 1.0
+      }).setView([14.1500, 121.3110], 10);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors'
+      }).addTo(map);
+
+      // Branch Data from Backend
+      const branchesData = [
+        {% for b in branches %}
+          {% if b.latitude and b.longitude %}
+          {
+              id: "{{ b.branch_id }}",
+              name: "{{ b.branch_name }}",
+              loc: "{{ b.location }}",
+              lat: {{ b.latitude }},
+              lng: {{ b.longitude }}
+          },
+          {% endif %}
+        {% endfor %}
+      ];
+
+      // Add pins to map
+      let routingControl = null;
+      let userMarker = null;
+      let geoWatchId = null;
+
+      window.getDirections = function(destLat, destLng) {
+          if (!navigator.geolocation) {
+              alert("Geolocation is not supported by your browser.");
+              return;
+          }
+          
+          map.closePopup();
+          
+          // Clear previous tracking if any
+          if (geoWatchId !== null) {
+              navigator.geolocation.clearWatch(geoWatchId);
+          }
+          
+          // Request and TRACK location live
+          geoWatchId = navigator.geolocation.watchPosition(function(position) {
+              const userLat = position.coords.latitude;
+              const userLng = position.coords.longitude;
+              
+              if (routingControl) {
+                  map.removeControl(routingControl);
+              }
+              if (userMarker) {
+                  map.removeLayer(userMarker);
+              }
+              
+              // Add Routing
+              routingControl = L.Routing.control({
+                  waypoints: [
+                      L.latLng(userLat, userLng),
+                      L.latLng(destLat, destLng)
+                  ],
+                  routeWhileDragging: false,
+                  addWaypoints: false,
+                  fitSelectedRoutes: (routingControl === null), // Only fit on first update
+                  showAlternatives: false,
+                  createMarker: function() { return null; } 
+              }).addTo(map);
+              
+              // Add a blue pulse for user's location
+              userMarker = L.circleMarker([userLat, userLng], {
+                  color: '#ffffff',
+                  weight: 2,
+                  fillColor: '#3b82f6',
+                  fillOpacity: 0.9,
+                  radius: 8,
+                  className: 'user-location-marker'
+              }).addTo(map).bindPopup("<b>You are currently here</b>");
+
+          }, function(error) {
+              console.error("Geolocation error:", error);
+              if (error.code === error.PERMISSION_DENIED) {
+                  alert("LOCATION REQUIRED: Para makita ang ruta at live directions, kailangan mong i-ALLOW ang location permission sa iyong browser settings.");
+              } else {
+                  alert("Unable to retrieve your location. Please check your GPS signal and settings.");
+              }
+          }, {
+              enableHighAccuracy: true,
+              maximumAge: 10000,
+              timeout: 20000
+          });
+      };
+
+      branchesData.forEach(function(b) {
+          const marker = L.marker([b.lat, b.lng]).addTo(map);
+          const popupHtml = `
+              <div class="popup-title">${b.name}</div>
+              <div class="popup-loc"><i class="fas fa-map-marker-alt"></i> ${b.loc}</div>
+              <div style="display:flex; gap:8px; justify-content:center; margin-top:8px;">
+                <a href="/branch/${b.id}" class="popup-btn">Enroll Here</a>
+                <button onclick="getDirections(${b.lat}, ${b.lng})" class="popup-btn-alt" style="border:none; cursor:pointer;">
+                  <i class="fas fa-directions" style="color:#2563eb;"></i> Directions
+                </button>
+              </div>
+          `;
+          marker.bindPopup(popupHtml);
+          
+          // Open popup on hover (Wait, hover makes it hard to click the button. Let's make it click instead)
+          // marker.on('mouseover', function (e) {
+          //    this.openPopup();
+          // });
+      });
+    }
+  });
 </script>
 {% endblock %}

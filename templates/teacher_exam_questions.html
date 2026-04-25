@@ -2,33 +2,192 @@
 {% block title %}{{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }} Questions{% endblock %}
 {% block content %}
 <style>
-    .container { max-width:800px; margin:0 auto; padding:24px 20px; }
-    .card { background:#fff; border-radius:12px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.07); margin-bottom:20px; }
-    .card h2 { margin:0 0 16px 0; font-size:16px; border-bottom:2px solid #007bff; padding-bottom:8px; color:#2c3e50; }
-    .form-group { margin-bottom:14px; }
-    .form-group label { display:block; margin-bottom:5px; font-weight:700; font-size:13px; color:#333; }
-    .form-group input, .form-group select, .form-group textarea { width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; font-size:13px; box-sizing:border-box; }
-    .choices-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
-    .btn { padding:8px 16px; border:none; border-radius:7px; cursor:pointer; font-size:13px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px; transition:.2s; }
-    .btn-primary { background:#007bff; color:#fff; } .btn-primary:hover { background:#0056b3; }
-    .btn-success { background:#28a745; color:#fff; } .btn-success:hover { background:#1e7e34; }
-    .btn-secondary { background:#6c757d; color:#fff; }
-    .btn-danger { background:#dc3545; color:#fff; } .btn-danger:hover { background:#c82333; }
-    .btn-warning { background:#ffc107; color:#212529; }
-    .q-card { background:#f8f9fa; border-radius:10px; padding:16px; margin-bottom:12px; border-left:4px solid #007bff; }
-    .q-card .q-num { font-size:12px; color:#888; font-weight:700; margin-bottom:6px; }
-    .q-card .q-text { font-size:14px; font-weight:600; margin-bottom:8px; }
-    .q-choices { display:flex; flex-wrap:wrap; gap:8px; font-size:12px; }
-    .q-choice { background:#e9ecef; padding:3px 10px; border-radius:4px; }
-    .q-choice.correct { background:#d4edda; color:#155724; font-weight:700; }
-    .type-toggle { display:flex; gap:10px; margin-bottom:16px; }
-    .type-btn { padding:8px 16px; border:2px solid #dee2e6; border-radius:8px; cursor:pointer; font-size:13px; font-weight:600; background:#fff; transition:.15s; }
-    .type-btn.active { border-color:#007bff; background:#e7f1ff; color:#007bff; }
-    .badge-draft { background:#e9ecef; color:#495057; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:700; }
-    .badge-published { background:#d4edda; color:#155724; padding:3px 8px; border-radius:4px; font-size:12px; font-weight:700; }
+    .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 24px 20px;
+    }
+
+    .card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, .07);
+        margin-bottom: 20px;
+    }
+
+    .card h2 {
+        margin: 0 0 16px 0;
+        font-size: 16px;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 8px;
+        color: #2c3e50;
+    }
+
+    .form-group {
+        margin-bottom: 14px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: 700;
+        font-size: 13px;
+        color: #333;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 6px;
+        font-size: 13px;
+        box-sizing: border-box;
+    }
+
+    .choices-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+    }
+
+    .btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 7px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: .2s;
+    }
+
+    .btn-primary {
+        background: #007bff;
+        color: #fff;
+    }
+
+    .btn-primary:hover {
+        background: #0056b3;
+    }
+
+    .btn-success {
+        background: #28a745;
+        color: #fff;
+    }
+
+    .btn-success:hover {
+        background: #1e7e34;
+    }
+
+    .btn-secondary {
+        background: #6c757d;
+        color: #fff;
+    }
+
+    .btn-danger {
+        background: #dc3545;
+        color: #fff;
+    }
+
+    .btn-danger:hover {
+        background: #c82333;
+    }
+
+    .btn-warning {
+        background: #ffc107;
+        color: #212529;
+    }
+
+    .q-card {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 16px;
+        margin-bottom: 12px;
+        border-left: 4px solid #007bff;
+    }
+
+    .q-card .q-num {
+        font-size: 12px;
+        color: #888;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+
+    .q-card .q-text {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .q-choices {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        font-size: 12px;
+    }
+
+    .q-choice {
+        background: #e9ecef;
+        padding: 3px 10px;
+        border-radius: 4px;
+    }
+
+    .q-choice.correct {
+        background: #d4edda;
+        color: #155724;
+        font-weight: 700;
+    }
+
+    .type-toggle {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 16px;
+    }
+
+    .type-btn {
+        padding: 8px 16px;
+        border: 2px solid #dee2e6;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        background: #fff;
+        transition: .15s;
+    }
+
+    .type-btn.active {
+        border-color: #007bff;
+        background: #e7f1ff;
+        color: #007bff;
+    }
+
+    .badge-draft {
+        background: #e9ecef;
+        color: #495057;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 700;
+    }
+
+    .badge-published {
+        background: #d4edda;
+        color: #155724;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 700;
+    }
 </style>
 <div class="container">
-    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
+    <div
+        style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
         <div>
             <h1 style="margin:0; font-size:20px;">{{ exam.title }}</h1>
             <div style="font-size:13px; color:#888; margin-top:4px;">
@@ -39,17 +198,21 @@
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
             {% if exam.status == 'draft' %}
             <form method="POST" action="{{ url_for('teacher.teacher_exam_publish', exam_id=exam.exam_id) }}"
-                  onsubmit="return confirm('Create this {{ 'quiz' if exam.exam_type == 'quiz' else 'exam' }}? Students will be able to take it once you make it visible.');">
-                <button type="submit" class="btn btn-success">Create {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }}</button>
+                onsubmit="return confirm('Create this {{ 'quiz' if exam.exam_type == 'quiz' else 'exam' }}? Students will be able to take it once you make it visible.');">
+                <button type="submit" class="btn btn-success">Create {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam'
+                    }}</button>
             </form>
             {% elif exam.status == 'published' %}
             <form method="POST" action="{{ url_for('teacher.teacher_exam_close', exam_id=exam.exam_id) }}"
-                  onsubmit="return confirm('Close this {{ 'quiz' if exam.exam_type == 'quiz' else 'exam' }}?');">
-                <button type="submit" class="btn btn-secondary">Close {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }}</button>
+                onsubmit="return confirm('Close this {{ 'quiz' if exam.exam_type == 'quiz' else 'exam' }}?');">
+                <button type="submit" class="btn btn-secondary">Close {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam'
+                    }}</button>
             </form>
             {% endif %}
-            <a href="{{ url_for('teacher.teacher_exam_results', exam_id=exam.exam_id) }}" class="btn btn-warning">Results</a>
-            <a href="{{ url_for('teacher.teacher_class_view', subject_id=exam.subject_id, active_tab='quizzes' if exam.exam_type == 'quiz' else 'exams') }}" class="btn btn-secondary">Back to Class</a>
+            <a href="{{ url_for('teacher.teacher_exam_results', exam_id=exam.exam_id) }}"
+                class="btn btn-warning">Results</a>
+            <a href="{{ url_for('teacher.teacher_class_view', subject_id=exam.subject_id, active_tab='quizzes' if exam.exam_type == 'quiz' else 'exams') }}"
+                class="btn btn-secondary">Back to Class</a>
         </div>
     </div>
 
@@ -77,156 +240,165 @@
                 {% endfor %}
             </div>
             {% elif q.question_type == 'matching' %}
-            <div class="q-choices" style="padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
-                <span style="font-size: 0.85rem; font-weight: 600; color: #64748b; margin-right: 8px;">Correct Match:</span>
+            <div class="q-choices"
+                style="padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                <span style="font-size: 0.85rem; font-weight: 600; color: #64748b; margin-right: 8px;">Correct
+                    Match:</span>
                 <span style="font-weight: 700; color: #16a34a;">{{ q.correct_answer }} ✓</span>
             </div>
             {% else %}
             <div class="q-choices">
-                <span class="q-choice {% if q.correct_answer == 'True' %}correct{% endif %}">True{% if q.correct_answer == 'True' %} ✓{% endif %}</span>
-                <span class="q-choice {% if q.correct_answer == 'False' %}correct{% endif %}">False{% if q.correct_answer == 'False' %} ✓{% endif %}</span>
+                <span class="q-choice {% if q.correct_answer == 'True' %}correct{% endif %}">True{% if q.correct_answer
+                    == 'True' %} ✓{% endif %}</span>
+                <span class="q-choice {% if q.correct_answer == 'False' %}correct{% endif %}">False{% if
+                    q.correct_answer == 'False' %} ✓{% endif %}</span>
             </div>
             {% endif %}
             {% if exam.status == 'draft' %}
-<div style="display:flex; gap:8px; margin-top:8px;">
-    <form method="POST"
-          action="{{ url_for('teacher.teacher_exam_question_delete', exam_id=exam.exam_id, question_id=q.question_id) }}"
-          onsubmit="return confirm('Delete this question?');">
-        <button type="submit" class="btn btn-danger" style="padding:4px 10px; font-size:12px;">Delete</button>
-    </form>
-    <a href="{{ url_for('teacher.teacher_exam_question_edit', exam_id=exam.exam_id, question_id=q.question_id) }}"
-       class="btn btn-warning" style="padding:4px 10px; font-size:12px;">Edit</a>
-</div>
-{% endif %}
+            <div style="display:flex; gap:8px; margin-top:8px;">
+                <form method="POST"
+                    action="{{ url_for('teacher.teacher_exam_question_delete', exam_id=exam.exam_id, question_id=q.question_id) }}"
+                    onsubmit="return confirm('Delete this question?');">
+                    <button type="submit" class="btn btn-danger"
+                        style="padding:4px 10px; font-size:12px;">Delete</button>
+                </form>
+                <a href="{{ url_for('teacher.teacher_exam_question_edit', exam_id=exam.exam_id, question_id=q.question_id) }}"
+                    class="btn btn-warning" style="padding:4px 10px; font-size:12px;">Edit</a>
+            </div>
+            {% endif %}
         </div>
         {% else %}
         <div style="text-align:center; padding:30px; color:#aaa;">No questions yet. Add one below.</div>
         {% endfor %}
     </div>
     <div class="card" id="inline-builder">
-      <h2>Auto Build (Fill Inline)</h2>
-    
-      <!-- Step 1: choose counts (GET) -->
-      <form method="get" id="buildForm" style="display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
-        <div class="form-group" style="margin:0; width:120px;">
-          <label>MCQ</label>
-          <input type="number" name="mcq" min="0" max="100" step="1" value="{{ request.args.get('mcq','0') }}">
-        </div>
-        <div class="form-group" style="margin:0; width:120px;">
-          <label>True/False</label>
-          <input type="number" name="tf" min="0" max="100" step="1" value="{{ request.args.get('tf','0') }}">
-        </div>
-        <div class="form-group" style="margin:0; width:120px;">
-          <label>Matching</label>
-          <input type="number" name="match" min="0" max="100" step="1" value="{{ request.args.get('match','0') }}">
-        </div>
-        <div class="form-group" style="margin:0; width:120px;">
-          <label>Points each</label>
-          <input type="number" name="pts" min="1" max="5" step="1" value="{{ request.args.get('pts','1') }}">
-        </div>
-    
-        <button class="btn btn-primary" type="submit">Build Form</button>
-        <a class="btn btn-secondary" href="{{ url_for('teacher.teacher_exam_questions', exam_id=exam.exam_id) }}">Clear</a>
-      </form>
-    
-      {% set mcq_n = request.args.get('mcq', 0) | int %}
-{% set tf_n = request.args.get('tf', 0) | int %}
-{% set match_n = request.args.get('match', 0) | int %}
-{% set pts = request.args.get('pts', 1) | int %}
+        <h2>Auto Build (Fill Inline)</h2>
 
-{# clamp negatives #}
-{% set mcq_n = [mcq_n, 0] | max %}
-{% set tf_n = [tf_n, 0] | max %}
-{% set match_n = [match_n, 0] | max %}
-{% set pts = [pts, 1] | max %}
-{% set pts = [pts, 5] | min %}
+        <!-- Step 1: choose counts (GET) -->
+        <form method="get" id="buildForm" style="display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
+            <div class="form-group" style="margin:0; width:120px;">
+                <label>MCQ</label>
+                <input type="number" name="mcq" min="0" max="100" step="1" value="{{ request.args.get('mcq','0') }}">
+            </div>
+            <div class="form-group" style="margin:0; width:120px;">
+                <label>True/False</label>
+                <input type="number" name="tf" min="0" max="100" step="1" value="{{ request.args.get('tf','0') }}">
+            </div>
+            <div class="form-group" style="margin:0; width:120px;">
+                <label>Matching</label>
+                <input type="number" name="match" min="0" max="100" step="1"
+                    value="{{ request.args.get('match','0') }}">
+            </div>
+            <div class="form-group" style="margin:0; width:120px;">
+                <label>Points each</label>
+                <input type="number" name="pts" min="1" max="5" step="1" value="{{ request.args.get('pts','1') }}">
+            </div>
 
-{# clamp max 100 #}
-{% set mcq_n = [mcq_n, 100] | min %}
-{% set tf_n = [tf_n, 100] | min %}
-{% set match_n = [match_n, 100] | min %}
+            <button class="btn btn-primary" type="submit">Build Form</button>
+            <a class="btn btn-secondary"
+                href="{{ url_for('teacher.teacher_exam_questions', exam_id=exam.exam_id) }}">Clear</a>
+        </form>
 
-{% set total = mcq_n + tf_n + match_n %}
-    
-      {% if total > 0 %}
-      <hr style="border:none; border-top:1px solid #eee; margin:16px 0;">
-    
-      <!-- Step 2: fill questions (POST) -->
-      <form method="post" action="{{ url_for('teacher.teacher_exam_questions_bulk_add', exam_id=exam.exam_id) }}">
-        {% for i in range(mcq_n) %}
-          <div class="q-card">
-            <div class="q-num">MCQ #{{ i+1 }}</div>
-            <input type="hidden" name="q_type[]" value="mcq">
-            <div class="form-group">
-              <label>Question</label>
-              <textarea name="q_text[]" rows="2" required></textarea>
+        {% set mcq_n = request.args.get('mcq', 0) | int %}
+        {% set tf_n = request.args.get('tf', 0) | int %}
+        {% set match_n = request.args.get('match', 0) | int %}
+        {% set pts = request.args.get('pts', 1) | int %}
+
+        {# clamp negatives #}
+        {% set mcq_n = [mcq_n, 0] | max %}
+        {% set tf_n = [tf_n, 0] | max %}
+        {% set match_n = [match_n, 0] | max %}
+        {% set pts = [pts, 1] | max %}
+        {% set pts = [pts, 5] | min %}
+
+        {# clamp max 100 #}
+        {% set mcq_n = [mcq_n, 100] | min %}
+        {% set tf_n = [tf_n, 100] | min %}
+        {% set match_n = [match_n, 100] | min %}
+
+        {% set total = mcq_n + tf_n + match_n %}
+
+        {% if total > 0 %}
+        <hr style="border:none; border-top:1px solid #eee; margin:16px 0;">
+
+        <!-- Step 2: fill questions (POST) -->
+        <form method="post" action="{{ url_for('teacher.teacher_exam_questions_bulk_add', exam_id=exam.exam_id) }}">
+            {% for i in range(mcq_n) %}
+            <div class="q-card">
+                <div class="q-num">MCQ #{{ i+1 }}</div>
+                <input type="hidden" name="q_type[]" value="mcq">
+                <div class="form-group">
+                    <label>Question</label>
+                    <textarea name="q_text[]" rows="2" required></textarea>
+                </div>
+                <div class="form-group" style="max-width:160px;">
+                    <label>Points</label>
+                    <input type="number" name="q_points[]" value="{{ pts }}" min="1" required>
+                </div>
+
+                <div class="choices-grid">
+                    <div class="form-group"><label>A</label><input type="text" name="mcq_a[]" required></div>
+                    <div class="form-group"><label>B</label><input type="text" name="mcq_b[]" required></div>
+                    <div class="form-group"><label>C</label><input type="text" name="mcq_c[]" required></div>
+                    <div class="form-group"><label>D</label><input type="text" name="mcq_d[]" required></div>
+                </div>
+
+                <div class="form-group" style="max-width:200px;">
+                    <label>Correct</label>
+                    <select name="mcq_correct[]" required>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                    </select>
+                </div>
             </div>
-            <div class="form-group" style="max-width:160px;">
-              <label>Points</label>
-              <input type="number" name="q_points[]" value="{{ pts }}" min="1" required>
+            {% endfor %}
+
+            {% for i in range(tf_n) %}
+            <div class="q-card">
+                <div class="q-num">True/False #{{ i+1 }}</div>
+                <input type="hidden" name="q_type[]" value="truefalse">
+                <div class="form-group">
+                    <label>Statement</label>
+                    <textarea name="q_text[]" rows="2" required></textarea>
+                </div>
+                <div class="form-group" style="max-width:160px;">
+                    <label>Points</label>
+                    <input type="number" name="q_points[]" value="{{ pts }}" min="1" required>
+                </div>
+                <div class="form-group" style="max-width:220px;">
+                    <label>Correct</label>
+                    <select name="tf_correct[]" required>
+                        <option value="True">True</option>
+                        <option value="False">False</option>
+                    </select>
+                </div>
             </div>
-    
-            <div class="choices-grid">
-              <div class="form-group"><label>A</label><input type="text" name="mcq_a[]" required></div>
-              <div class="form-group"><label>B</label><input type="text" name="mcq_b[]" required></div>
-              <div class="form-group"><label>C</label><input type="text" name="mcq_c[]" required></div>
-              <div class="form-group"><label>D</label><input type="text" name="mcq_d[]" required></div>
+            {% endfor %}
+
+            {% for i in range(match_n) %}
+            <div class="q-card">
+                <div class="q-num">Matching (Prompt→Answer) #{{ i+1 }}</div>
+                <input type="hidden" name="q_type[]" value="matching">
+                <div class="form-group">
+                    <label>Prompt</label>
+                    <textarea name="q_text[]" rows="2" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Answer</label>
+                    <input type="text" name="match_answer[]" required>
+                </div>
+                <div class="form-group" style="max-width:160px;">
+                    <label>Points</label>
+                    <input type="number" name="q_points[]" value="{{ pts }}" min="1" required>
+                </div>
             </div>
-    
-            <div class="form-group" style="max-width:200px;">
-              <label>Correct</label>
-              <select name="mcq_correct[]" required>
-                <option value="A">A</option><option value="B">B</option>
-                <option value="C">C</option><option value="D">D</option>
-              </select>
-            </div>
-          </div>
-        {% endfor %}
-    
-        {% for i in range(tf_n) %}
-          <div class="q-card">
-            <div class="q-num">True/False #{{ i+1 }}</div>
-            <input type="hidden" name="q_type[]" value="truefalse">
-            <div class="form-group">
-              <label>Statement</label>
-              <textarea name="q_text[]" rows="2" required></textarea>
-            </div>
-            <div class="form-group" style="max-width:160px;">
-              <label>Points</label>
-              <input type="number" name="q_points[]" value="{{ pts }}" min="1" required>
-            </div>
-            <div class="form-group" style="max-width:220px;">
-              <label>Correct</label>
-              <select name="tf_correct[]" required>
-                <option value="True">True</option>
-                <option value="False">False</option>
-              </select>
-            </div>
-          </div>
-        {% endfor %}
-    
-        {% for i in range(match_n) %}
-          <div class="q-card">
-            <div class="q-num">Matching (Prompt→Answer) #{{ i+1 }}</div>
-            <input type="hidden" name="q_type[]" value="matching">
-            <div class="form-group">
-              <label>Prompt</label>
-              <textarea name="q_text[]" rows="2" required></textarea>
-            </div>
-            <div class="form-group">
-              <label>Answer</label>
-              <input type="text" name="match_answer[]" required>
-            </div>
-            <div class="form-group" style="max-width:160px;">
-              <label>Points</label>
-              <input type="number" name="q_points[]" value="{{ pts }}" min="1" required>
-            </div>
-          </div>
-        {% endfor %}
-    
-        <button class="btn btn-success" type="submit">Save All Questions</button>
-      </form>
-      {% endif %}
+            {% endfor %}
+
+            <button class="btn btn-success" type="submit">Save All Questions</button>
+        </form>
+        {% endif %}
     </div>
 
     <!-- Add question form (only if draft) -->
@@ -236,15 +408,18 @@
         <form method="POST" id="questionForm">
             <!-- Type toggle -->
             <div class="type-toggle">
-                <button type="button" class="type-btn active" id="btnMCQ" onclick="setType('mcq')">Multiple Choice</button>
+                <button type="button" class="type-btn active" id="btnMCQ" onclick="setType('mcq')">Multiple
+                    Choice</button>
                 <button type="button" class="type-btn" id="btnTF" onclick="setType('truefalse')">True / False</button>
-                <button type="button" class="type-btn" id="btnMatch" onclick="setType('matching')">Matching Type</button>
+                <button type="button" class="type-btn" id="btnMatch" onclick="setType('matching')">Matching
+                    Type</button>
             </div>
             <input type="hidden" name="question_type" id="question_type" value="mcq" />
 
             <div class="form-group" id="questionTextGroup">
                 <label>Question Text</label>
-                <textarea name="question_text" id="question_text_input" rows="3" required placeholder="Enter your question here..."></textarea>
+                <textarea name="question_text" id="question_text_input" rows="3" required
+                    placeholder="Enter your question here..."></textarea>
             </div>
 
             <!-- MCQ choices -->
@@ -291,15 +466,20 @@
 
             <!-- Matching Type pairs -->
             <div id="matchChoices" style="display:none;">
-                <p style="font-size:12px; color:#666; margin-bottom:10px;">Add matching pairs below. The student will see all these answers in a randomized dropdown for each question.</p>
+                <p style="font-size:12px; color:#666; margin-bottom:10px;">Add matching pairs below. The student will
+                    see all these answers in a randomized dropdown for each question.</p>
                 <div id="matchPairsList">
                     <div class="match-pair-row" style="display:flex; gap:10px; margin-bottom:10px;">
-                        <input type="text" name="match_prompt[]" placeholder="Prompt (e.g. Question 1)" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px;" />
-                        <input type="text" name="match_answer[]" placeholder="Correct Answer" style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px;" />
-                        <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()" style="padding:4px 8px;">✕</button>
+                        <input type="text" name="match_prompt[]" placeholder="Prompt (e.g. Question 1)"
+                            style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px;" />
+                        <input type="text" name="match_answer[]" placeholder="Correct Answer"
+                            style="flex:1; padding:8px; border:1px solid #ccc; border-radius:6px;" />
+                        <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()"
+                            style="padding:4px 8px;">✕</button>
                     </div>
                 </div>
-                <button type="button" class="btn btn-secondary btn-sm" onclick="addMatchPair()" style="margin-bottom:15px; font-size:12px; padding:6px 10px;">Add Another Pair</button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="addMatchPair()"
+                    style="margin-bottom:15px; font-size:12px; padding:6px 10px;">Add Another Pair</button>
                 <script>
                     function addMatchPair() {
                         const row = document.createElement('div');
@@ -325,114 +505,115 @@
     </div>
 
     <!-- Add this inside the draft block, alongside the Add Question form -->
-<div class="card">
-    <h2>Import Questions from File</h2>
-    <form method="POST"
-          action="{{ url_for('teacher.teacher_exam_import_questions', exam_id=exam.exam_id) }}"
-          enctype="multipart/form-data">
-        <div class="form-group">
-            <label>Upload File <span style="font-weight:400; color:#888;">.docx / .pdf / .csv / .xlsx</span></label>
-            <input type="file" name="question_file" accept=".docx,.pdf,.csv,.xls,.xlsx" required />
+    <div class="card">
+        <h2>Import Questions from File</h2>
+        <form method="POST" action="{{ url_for('teacher.teacher_exam_import_questions', exam_id=exam.exam_id) }}"
+            enctype="multipart/form-data">
+            <div class="form-group">
+                <label>Upload File <span style="font-weight:400; color:#888;">.docx / .pdf / .csv / .xlsx</span></label>
+                <input type="file" name="question_file" accept=".docx,.pdf,.csv,.xls,.xlsx" required />
+            </div>
+            <button type="submit" class="btn btn-primary">Import Questions</button>
+        </form>
+        <div style="margin-top:12px; font-size:12px; color:#888;">
+            <strong>Format:</strong><br>
+            DOCX/PDF: each question on lines starting with <code>Question:</code>, <code>A:</code>, <code>B:</code>,
+            <code>C:</code>, <code>D:</code>, <code>Answer:</code>, <code>Type:</code>, <code>Points:</code><br>
+            CSV/XLSX: columns →
+            <code>question_text, question_type, choice_a, choice_b, choice_c, choice_d, correct_answer, points</code>
         </div>
-        <button type="submit" class="btn btn-primary">Import Questions</button>
-    </form>
-    <div style="margin-top:12px; font-size:12px; color:#888;">
-        <strong>Format:</strong><br>
-        DOCX/PDF: each question on lines starting with <code>Question:</code>, <code>A:</code>, <code>B:</code>, <code>C:</code>, <code>D:</code>, <code>Answer:</code>, <code>Type:</code>, <code>Points:</code><br>
-        CSV/XLSX: columns → <code>question_text, question_type, choice_a, choice_b, choice_c, choice_d, correct_answer, points</code>
     </div>
-</div>
     {% endif %}
 </div>
 
 <script>
-function setType(type) {
-    document.getElementById('question_type').value = type;
-    
-    // reset UI
-    document.getElementById('mcqChoices').style.display = 'none';
-    document.getElementById('tfChoices').style.display = 'none';
-    document.getElementById('matchChoices').style.display = 'none';
-    document.getElementById('questionTextGroup').style.display = 'block';
-    document.getElementById('question_text_input').required = true;
-    
-    document.getElementById('btnMCQ').classList.remove('active');
-    document.getElementById('btnTF').classList.remove('active');
-    document.getElementById('btnMatch').classList.remove('active');
+    function setType(type) {
+        document.getElementById('question_type').value = type;
 
-    if (type === 'mcq') {
-        document.getElementById('mcqChoices').style.display = 'block';
-        document.getElementById('btnMCQ').classList.add('active');
-    } else if (type === 'truefalse') {
-        document.getElementById('tfChoices').style.display  = 'block';
-        document.getElementById('btnTF').classList.add('active');
-    } else if (type === 'matching') {
-        document.getElementById('matchChoices').style.display = 'block';
-        document.getElementById('btnMatch').classList.add('active');
-        document.getElementById('questionTextGroup').style.display = 'none';
-        document.getElementById('question_text_input').required = false;
-    }
-}
+        // reset UI
+        document.getElementById('mcqChoices').style.display = 'none';
+        document.getElementById('tfChoices').style.display = 'none';
+        document.getElementById('matchChoices').style.display = 'none';
+        document.getElementById('questionTextGroup').style.display = 'block';
+        document.getElementById('question_text_input').required = true;
 
-// Fix: merge correct_answer fields on submit
-document.getElementById('questionForm')?.addEventListener('submit', function(e) {
-    const type = document.getElementById('question_type').value;
-    const hidden = document.createElement('input');
-    hidden.type = 'hidden';
-    hidden.name = 'correct_answer';
+        document.getElementById('btnMCQ').classList.remove('active');
+        document.getElementById('btnTF').classList.remove('active');
+        document.getElementById('btnMatch').classList.remove('active');
 
-    if (type === 'truefalse') {
-        hidden.value = document.getElementById('correctTF').value;  // "True" or "False"
-    } else {
-        hidden.value = document.getElementById('correctMCQ').value;  // "A", "B", "C", "D"
+        if (type === 'mcq') {
+            document.getElementById('mcqChoices').style.display = 'block';
+            document.getElementById('btnMCQ').classList.add('active');
+        } else if (type === 'truefalse') {
+            document.getElementById('tfChoices').style.display = 'block';
+            document.getElementById('btnTF').classList.add('active');
+        } else if (type === 'matching') {
+            document.getElementById('matchChoices').style.display = 'block';
+            document.getElementById('btnMatch').classList.add('active');
+            document.getElementById('questionTextGroup').style.display = 'none';
+            document.getElementById('question_text_input').required = false;
+        }
     }
 
-    this.appendChild(hidden);
-});
-(function () {
-  const form = document.getElementById("buildForm");
-  if (!form) return;
+    // Fix: merge correct_answer fields on submit
+    document.getElementById('questionForm')?.addEventListener('submit', function (e) {
+        const type = document.getElementById('question_type').value;
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'correct_answer';
 
-  function clampRange(el, min, max) {
-    const v = parseInt(el.value || String(min), 10);
-    if (isNaN(v) || v < min) el.value = min;
-    else if (v > max) el.value = max;
-  }
+        if (type === 'truefalse') {
+            hidden.value = document.getElementById('correctTF').value;  // "True" or "False"
+        } else {
+            hidden.value = document.getElementById('correctMCQ').value;  // "A", "B", "C", "D"
+        }
 
-  const mcq = form.querySelector('input[name="mcq"]');
-  const tf = form.querySelector('input[name="tf"]');
-  const match = form.querySelector('input[name="match"]');
-  const pts = form.querySelector('input[name="pts"]');
+        this.appendChild(hidden);
+    });
+    (function () {
+        const form = document.getElementById("buildForm");
+        if (!form) return;
 
-  // Counts: 0..100
-  [mcq, tf, match].forEach(inp => {
-    if (!inp) return;
-    inp.addEventListener("input", () => clampRange(inp, 0, 100));
-    inp.addEventListener("change", () => clampRange(inp, 0, 100));
-  });
+        function clampRange(el, min, max) {
+            const v = parseInt(el.value || String(min), 10);
+            if (isNaN(v) || v < min) el.value = min;
+            else if (v > max) el.value = max;
+        }
 
-  // Points: 1..5
-  if (pts) {
-    pts.addEventListener("input", () => clampRange(pts, 1, 5));
-    pts.addEventListener("change", () => clampRange(pts, 1, 5));
-  }
+        const mcq = form.querySelector('input[name="mcq"]');
+        const tf = form.querySelector('input[name="tf"]');
+        const match = form.querySelector('input[name="match"]');
+        const pts = form.querySelector('input[name="pts"]');
 
-  form.addEventListener("submit", function (e) {
-    clampRange(mcq, 0, 100);
-    clampRange(tf, 0, 100);
-    clampRange(match, 0, 100);
-    if (pts) clampRange(pts, 1, 5);
+        // Counts: 0..100
+        [mcq, tf, match].forEach(inp => {
+            if (!inp) return;
+            inp.addEventListener("input", () => clampRange(inp, 0, 100));
+            inp.addEventListener("change", () => clampRange(inp, 0, 100));
+        });
 
-    const mcqN = parseInt(mcq.value || "0", 10) || 0;
-    const tfN = parseInt(tf.value || "0", 10) || 0;
-    const matchN = parseInt(match.value || "0", 10) || 0;
+        // Points: 1..5
+        if (pts) {
+            pts.addEventListener("input", () => clampRange(pts, 1, 5));
+            pts.addEventListener("change", () => clampRange(pts, 1, 5));
+        }
 
-    if ((mcqN + tfN + matchN) <= 0) {
-      e.preventDefault();
-      alert("Please enter at least 1 question (MCQ / True-False / Matching).");
-      return false;
-    }
-  });
-})();
+        form.addEventListener("submit", function (e) {
+            clampRange(mcq, 0, 100);
+            clampRange(tf, 0, 100);
+            clampRange(match, 0, 100);
+            if (pts) clampRange(pts, 1, 5);
+
+            const mcqN = parseInt(mcq.value || "0", 10) || 0;
+            const tfN = parseInt(tf.value || "0", 10) || 0;
+            const matchN = parseInt(match.value || "0", 10) || 0;
+
+            if ((mcqN + tfN + matchN) <= 0) {
+                e.preventDefault();
+                alert("Please enter at least 1 question (MCQ / True-False / Matching).");
+                return false;
+            }
+        });
+    })();
 </script>
 {% endblock %}

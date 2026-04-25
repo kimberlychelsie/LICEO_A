@@ -108,6 +108,20 @@ def get_db_connection():
                 logger.warning(f"Could not migrate school_years table: {e}")
                 conn.rollback()
 
+            # Branches location migration
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'branches'")
+                branch_cols = [r[0] for r in cur.fetchall()]
+                if branch_cols:
+                    if 'latitude' not in branch_cols:
+                        cur.execute("ALTER TABLE branches ADD COLUMN latitude NUMERIC(10, 7)")
+                    if 'longitude' not in branch_cols:
+                        cur.execute("ALTER TABLE branches ADD COLUMN longitude NUMERIC(10, 7)")
+                    conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate branches table: {e}")
+                conn.rollback()
+
             # Enrollments migrations (Missing columns found)
             try:
                 cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'enrollments'")

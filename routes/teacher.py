@@ -3587,7 +3587,7 @@ def teacher_class_view(subject_id):
 
         quizzes = cur.fetchall() or []
 
-        # ✅ MONTHLY EXAMS — goes into Written Works (WW)
+        # ✅ PERIODICAL EXAMS + MONTHLY EXAMS
         cur.execute("""
             SELECT e.exam_id, e.title, e.exam_type, e.scheduled_start, e.status, e.created_at, e.is_visible,
                    e.grading_period, e.duration_mins,
@@ -3598,28 +3598,10 @@ def teacher_class_view(subject_id):
             WHERE e.teacher_id = %s
               AND e.section_id = %s
               AND e.subject_id = %s
-              AND e.exam_type = 'monthly_exam'
+              AND e.exam_type IN ('exam', 'monthly_exam')
               AND s.year_id = %s
-                    AND e.is_visible = TRUE
             ORDER BY e.created_at DESC
         """, (user_id, active_section_id, subject_id, year_id))
-        monthly_exams = cur.fetchall() or []
-
-        # ✅ PERIODICAL EXAMS + MONTHLY EXAMS — goes into Quarterly Assessment (QA) + Written Works (WW)
-        cur.execute("""
-    SELECT e.exam_id, e.title, e.exam_type, e.scheduled_start, e.status, e.created_at, e.is_visible,
-           e.grading_period, e.duration_mins,
-           (SELECT COUNT(*) FROM exam_questions q WHERE q.exam_id = e.exam_id) AS question_count,
-           (SELECT COUNT(*) FROM exam_results r WHERE r.exam_id = e.exam_id) AS attempt_count
-    FROM exams e
-    JOIN sections s ON e.section_id = s.section_id
-    WHERE e.teacher_id = %s
-      AND e.section_id = %s
-      AND e.subject_id = %s
-      AND e.exam_type IN ('exam', 'monthly_exam')
-      AND s.year_id = %s
-    ORDER BY e.created_at DESC
-""", (user_id, active_section_id, subject_id, year_id))
         exams = cur.fetchall() or []
 
         # ✅ STATS (no change)
@@ -3644,12 +3626,7 @@ def teacher_class_view(subject_id):
             'closed': sum(1 for e in exams if e['status'].lower() == 'closed')
         }
 
-        monthly_exam_stats = {
-            'total': len(monthly_exams),
-            'published': sum(1 for e in monthly_exams if e['status'].lower() == 'published'),
-            'drafts': sum(1 for e in monthly_exams if e['status'].lower() == 'draft'),
-            'closed': sum(1 for e in monthly_exams if e['status'].lower() == 'closed')
-        }
+
 
     finally:
         cur.close()
@@ -3666,11 +3643,9 @@ def teacher_class_view(subject_id):
         activities=activities,
         quizzes=quizzes,
         exams=exams,
-        monthly_exams=monthly_exams,
         act_stats=act_stats,
         quiz_stats=quiz_stats,
         exam_stats=exam_stats,
-        monthly_exam_stats=monthly_exam_stats,
         section_id=active_section_id,
         subject_id=subject_id,
         now=now_naive

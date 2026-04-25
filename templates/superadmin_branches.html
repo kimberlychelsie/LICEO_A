@@ -1,6 +1,12 @@
 {% extends "base.html" %}
 {% block title %}Branch Registry | Super Admin{% endblock %}
 {% block content %}
+<!-- Leaflet & Geosearch Libraries -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+
 <style>
     :root {
         --ma-primary: #1a3a8f;
@@ -247,6 +253,37 @@
         width: 100%;
         max-width: 550px;
         box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.3);
+        max-height: 90vh;
+        overflow-y: auto;
+    }
+
+    /* ── Map Styling ── */
+    .map-container {
+        width: 100%;
+        height: 350px;
+        border-radius: 16px;
+        border: 2px solid var(--ma-border);
+        margin-top: 12px;
+        z-index: 10;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+    }
+    
+    .map-instruction {
+        background: #f8fafc;
+        border-left: 4px solid var(--ma-gold);
+        padding: 12px 16px;
+        border-radius: 8px;
+        margin-bottom: 12px;
+        font-size: 0.85rem;
+        color: var(--ma-text);
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+    .map-instruction i {
+        color: var(--ma-primary);
+        font-size: 1.2rem;
+        margin-top: 2px;
     }
 </style>
 
@@ -274,35 +311,15 @@
     <!-- Create New Branch -->
     <div class="modern-card">
         <h2><i class="fas fa-plus-circle" style="color: var(--ma-gold);"></i> Deploy New Branch Node</h2>
-        <form method="POST" action="{{ url_for('super_admin.super_admin_branches') }}">
+        <form method="POST" action="{{ url_for('super_admin.super_admin_branches') }}" onsubmit="return validateAddBranch(this);">
             <div class="entry-grid">
                 <div class="form-node">
                     <label>Branch Identity</label>
-                    <select id="branch_name_select" name="branch_name" required>
-                        <option value="">— Select Entity —</option>
-                        <option value="Liceo de Bay" data-code="LDBAY">Liceo de Bay</option>
-                        <option value="Liceo de Cabuyao" data-code="LDCAB">Liceo de Cabuyao</option>
-                        <option value="Liceo de Calamba" data-code="LDCAL">Liceo de Calamba</option>
-                        <option value="Liceo de Calauan" data-code="LDCAU">Liceo de Calauan</option>
-                        <option value="Liceo de Cavinti" data-code="LDCAV">Liceo de Cavinti</option>
-                        <option value="Liceo de Liliw" data-code="LDLIW">Liceo de Liliw</option>
-                        <option value="Liceo de Los Baños" data-code="LDLB">Liceo de Los Baños</option>
-                        <option value="Liceo de Luisiana" data-code="LDLUI">Liceo de Luisiana</option>
-                        <option value="Liceo de Majayjay" data-code="LDMAJ">Liceo de Majayjay</option>
-                        <option value="Liceo de Mamatid" data-code="LDMAM">Liceo de Mamatid</option>
-                        <option value="Liceo de Paete" data-code="LDPAE">Liceo de Paete</option>
-                        <option value="Liceo de Pagsanjan" data-code="LDPSJ">Liceo de Pagsanjan</option>
-                        <option value="Liceo de Pakil" data-code="LDPKL">Liceo de Pakil</option>
-                        <option value="Liceo de Pila" data-code="LDPILA">Liceo de Pila</option>
-                        <option value="Liceo de San Antonio" data-code="LDSANT">Liceo de San Antonio</option>
-                        <option value="Liceo de San Pablo" data-code="LDSPC">Liceo de San Pablo</option>
-                        <option value="Liceo de San Pedro" data-code="LDSPD">Liceo de San Pedro</option>
-                        <option value="Liceo de Victoria" data-code="LDVIC">Liceo de Victoria</option>
-                    </select>
+                    <input type="text" id="branch_name" name="branch_name" placeholder="e.g. Liceo de Majayjay" required>
                 </div>
                 <div class="form-node">
                     <label>Assigned Code</label>
-                    <input type="text" id="branch_code" name="branch_code" placeholder="AUTO-SYNC" readonly required>
+                    <input type="text" id="branch_code" name="branch_code" placeholder="e.g. LDMAJ" style="text-transform: uppercase;" required>
                 </div>
                 <div class="form-node">
                     <label>Location</label>
@@ -327,6 +344,22 @@
                     <input type="email" id="admin_email" name="admin_email" placeholder="admin@liceo.edu.ph" required>
                 </div>
             </div>
+            
+            <!-- MAP SECTION -->
+            <div class="map-section" style="margin-bottom: 24px;">
+                <label style="display:block; font-size:0.8rem; font-weight:800; color:var(--ma-muted); text-transform:uppercase; margin-bottom:8px;">Geographic Pinpoint (REQUIRED)</label>
+                <div class="map-instruction">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <div>
+                        <strong>How to pin location:</strong> Use the search icon 🔍 on the map to find the city/street, then <strong>drag the red pin</strong> exactly where the school is located.
+                    </div>
+                </div>
+                <div id="addBranchMap" class="map-container"></div>
+                <!-- Hidden fields for coordinates -->
+                <input type="hidden" name="latitude" id="addLatitude">
+                <input type="hidden" name="longitude" id="addLongitude">
+            </div>
+
             <div style="display:flex; justify-content:flex-end;">
                 <button type="submit" class="btn-prem btn-gold">🚀 Initialize Branch & Admin account</button>
             </div>
@@ -361,7 +394,7 @@
                 <tbody>
                     {% for b in branches %}
                     <tr>
-                        <td style="text-align: center; color: var(--ma-muted); font-weight: 800;">#{{ b.branch_id }}
+                        <td style="text-align: center; color: var(--ma-muted); font-weight: 800;">#{{ loop.revindex }}
                         </td>
                         <td>
                             <div style="font-weight: 850; color: var(--ma-primary);">{{ b.branch_name }}</div>
@@ -412,6 +445,7 @@
                                 data-name="{{ b.branch_name | e }}" data-code="{{ b.branch_code or '' }}"
                                 data-location="{{ b.location | e }}" data-email="{{ b.admin_email or '' }}"
                                 data-fullname="{{ b.admin_full_name or '' }}" data-gender="{{ b.admin_gender or '' }}"
+                                data-lat="{{ b.latitude or '' }}" data-lng="{{ b.longitude or '' }}"
                                 style="padding: 8px 14px; background: rgba(250, 204, 21, 0.1); color: #92400e; font-size: 0.75rem; margin-left: 8px;">
                                 <i class="fas fa-edit"></i> Edit
                             </button>
@@ -471,6 +505,17 @@
                     <label>Admin Email</label>
                     <input type="email" name="admin_email" id="editAdminEmail" required />
                 </div>
+                
+                <div class="map-section" style="margin-top: 16px;">
+                    <label style="display:block; font-size:0.8rem; font-weight:800; color:var(--ma-muted); text-transform:uppercase; margin-bottom:8px;">Update Map Pin</label>
+                    <div class="map-instruction" style="padding: 8px 12px; font-size: 0.8rem;">
+                        <i class="fas fa-hand-pointer"></i>
+                        <div>Drag the marker to correct the branch location.</div>
+                    </div>
+                    <div id="editBranchMap" class="map-container" style="height: 250px;"></div>
+                    <input type="hidden" name="latitude" id="editLatitude">
+                    <input type="hidden" name="longitude" id="editLongitude">
+                </div>
             </div>
             <div style="display: flex; justify-content: space-between; margin-top: 24px;">
                 <button type="button" onclick="closeEditBranch()" class="btn-prem"
@@ -482,25 +527,19 @@
 </div>
 
 <script>
-    (function () {
-        const select = document.getElementById('branch_name_select');
-        const codeInput = document.getElementById('branch_code');
-        function syncCode() {
-            const opt = select.options[select.selectedIndex];
-            codeInput.value = (opt && opt.dataset.code) ? opt.dataset.code : '';
-        }
-        if (select && codeInput) { select.addEventListener('change', syncCode); syncCode(); }
-    })();
+    // Auto-sync script removed as per user request (inputs are now manual)
 
     let originalEditData = {};
 
-    function openEditBranch(id, name, code, location, email, fullname, gender) {
+    function openEditBranch(id, name, code, location, email, fullname, gender, lat, lng) {
         document.getElementById('editBranchName').value = name;
         document.getElementById('editBranchCode').value = code;
         document.getElementById('editBranchLocation').value = location;
         document.getElementById('editAdminEmail').value = email;
         document.getElementById('editAdminName').value = fullname;
         document.getElementById('editGender').value = gender || 'Male';
+        document.getElementById('editLatitude').value = lat;
+        document.getElementById('editLongitude').value = lng;
 
         document.getElementById('editBranchForm').action = '/super-admin/branches/' + id + '/edit';
 
@@ -511,11 +550,14 @@
             location: (location || "").trim(),
             email: (email || "").trim(),
             fullname: (fullname || "").trim(),
-            gender: gender || 'Male'
+            gender: gender || 'Male',
+            lat: lat || "",
+            lng: lng || ""
         };
         checkEditChanges();
 
         document.getElementById('editBranchModal').style.display = 'flex';
+        initEditMap(lat, lng);
     }
 
     function checkEditChanges() {
@@ -525,7 +567,9 @@
             location: document.getElementById('editBranchLocation').value.trim(),
             email: document.getElementById('editAdminEmail').value.trim(),
             fullname: document.getElementById('editAdminName').value.trim(),
-            gender: document.getElementById('editGender').value
+            gender: document.getElementById('editGender').value,
+            lat: document.getElementById('editLatitude').value,
+            lng: document.getElementById('editLongitude').value
         };
 
         let hasChanged = false;
@@ -555,6 +599,18 @@
         document.getElementById('editBranchModal').style.display = 'none';
     }
 
+    // FORM VALIDATION: Ensure location is pinned on the map
+    function validateAddBranch(form) {
+        const lat = document.getElementById('addLatitude').value;
+        const lng = document.getElementById('addLongitude').value;
+        if (!lat || !lng) {
+            alert("ATTENTION: Please pin the branch location on the map before deploying.");
+            document.getElementById('addBranchMap').scrollIntoView({ behavior: 'smooth' });
+            return false;
+        }
+        return true;
+    }
+
     document.addEventListener('click', function (e) {
         const btn = e.target.closest('.edit-branch-btn');
         if (!btn) return;
@@ -565,7 +621,9 @@
             btn.dataset.location,
             btn.dataset.email,
             btn.dataset.fullname,
-            btn.dataset.gender
+            btn.dataset.gender,
+            btn.dataset.lat,
+            btn.dataset.lng
         );
     });
 
@@ -579,6 +637,162 @@
                 row.style.display = text.includes(query) ? '' : 'none';
             });
         });
+    }
+
+    // --- LEAFLET MAPS IMPLEMENTATION ---
+    let addMap, addMarker;
+    let editMap, editMarker;
+    
+    // Laguna Bounding Box
+    const lagunaBounds = [
+        [13.9, 121.0], // Southwest coords
+        [14.6, 121.6]  // Northeast coords
+    ];
+    // Default center (Majayjay)
+    const majayjayCenter = [14.1130, 121.5110];
+
+    // Red Icon for the Selector Pin
+    const redIcon = new L.Icon({
+        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41]
+    });
+
+    // Existing Branches Data
+    const branchesData = [
+      {% for b in branches %}
+        {% if b.latitude and b.longitude %}
+        {
+            name: "{{ b.branch_name | e }}",
+            lat: {{ b.latitude }},
+            lng: {{ b.longitude }}
+        },
+        {% endif %}
+      {% endfor %}
+    ];
+
+    function populateExistingBranches(mapObj) {
+        branchesData.forEach(function(b) {
+            L.marker([b.lat, b.lng]).addTo(mapObj).bindPopup(`<b>${b.name}</b>`);
+        });
+    }
+
+    function initAddMap() {
+        if(addMap) return;
+        
+        addMap = L.map('addBranchMap', {
+            maxBounds: lagunaBounds,
+            maxBoundsViscosity: 1.0,
+            minZoom: 10
+        }).setView(majayjayCenter, 12);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(addMap);
+        
+        // Show existing branches
+        populateExistingBranches(addMap);
+        
+        // Add Geocoder (Search)
+        L.Control.geocoder({
+            defaultMarkGeocode: false,
+            placeholder: "Search address in Laguna..."
+        })
+        .on('markgeocode', function(e) {
+            const latlng = e.geocode.center;
+            addMap.setView(latlng, 16);
+            addMarker.setLatLng(latlng);
+            document.getElementById('addLatitude').value = latlng.lat;
+            document.getElementById('addLongitude').value = latlng.lng;
+        })
+        .addTo(addMap);
+
+        // Add Marker with RED ICON
+        addMarker = L.marker(majayjayCenter, {
+            draggable: true,
+            icon: redIcon
+        }).addTo(addMap);
+        
+        addMarker.on('dragend', function(e) {
+            const position = addMarker.getLatLng();
+            document.getElementById('addLatitude').value = position.lat;
+            document.getElementById('addLongitude').value = position.lng;
+        });
+        
+        // Add click to map
+        addMap.on('click', function(e) {
+            addMarker.setLatLng(e.latlng);
+            document.getElementById('addLatitude').value = e.latlng.lat;
+            document.getElementById('addLongitude').value = e.latlng.lng;
+        });
+    }
+
+    // Call init after a small delay to ensure container is rendered
+    setTimeout(initAddMap, 500);
+
+    // Edit Map
+    function initEditMap(lat, lng) {
+        let center = (lat && lng) ? [parseFloat(lat), parseFloat(lng)] : majayjayCenter;
+        
+        if(!editMap) {
+            editMap = L.map('editBranchMap', {
+                maxBounds: lagunaBounds,
+                maxBoundsViscosity: 1.0,
+                minZoom: 10
+            }).setView(center, 15);
+            
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(editMap);
+
+            // Show existing branches
+            populateExistingBranches(editMap);
+
+            L.Control.geocoder({
+                defaultMarkGeocode: false,
+                placeholder: "Search new location..."
+            })
+            .on('markgeocode', function(e) {
+                const latlng = e.geocode.center;
+                editMap.setView(latlng, 16);
+                editMarker.setLatLng(latlng);
+                document.getElementById('editLatitude').value = latlng.lat;
+                document.getElementById('editLongitude').value = latlng.lng;
+                checkEditChanges();
+            })
+            .addTo(editMap);
+            
+            // Edit Marker with RED ICON
+            editMarker = L.marker(center, {
+                draggable: true,
+                icon: redIcon
+            }).addTo(editMap);
+            
+            editMarker.on('dragend', function(e) {
+                const position = editMarker.getLatLng();
+                document.getElementById('editLatitude').value = position.lat;
+                document.getElementById('editLongitude').value = position.lng;
+                checkEditChanges();
+            });
+            
+            editMap.on('click', function(e) {
+                editMarker.setLatLng(e.latlng);
+                document.getElementById('editLatitude').value = e.latlng.lat;
+                document.getElementById('editLongitude').value = e.latlng.lng;
+                checkEditChanges();
+            });
+        } else {
+            editMap.setView(center, 15);
+            editMarker.setLatLng(center);
+        }
+        
+        // Fix Leaflet tile loading issue in hidden modal
+        setTimeout(() => {
+            editMap.invalidateSize();
+        }, 300);
     }
 </script>
 {% endblock %}

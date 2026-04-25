@@ -322,6 +322,7 @@
         <div class="pub-nav-links">
             <a class="pub-link {% if request.path == '/' %}active{% endif %}" href="/">Home</a>
             <a class="pub-link" href="/#branches" onclick="smoothTo(event,'branches')">Enroll</a>
+            <a class="pub-link" href="/#campus-map" onclick="smoothTo(event,'campus-map')">Location</a>
             <a class="pub-link" href="/track">Track Status</a>
             <a class="pub-link" href="/#faq" onclick="smoothTo(event,'faq')">FAQ</a>
         </div>
@@ -401,6 +402,51 @@
                     input.setAttribute('max', todayLocal);
                 }
             });
+
+            // GLOBAL EMAIL DOMAIN DEFAULT
+            const enforceEmailDefault = () => {
+                const emailInputs = document.querySelectorAll('input[type="email"], input[name*="email"]');
+                emailInputs.forEach(input => {
+                    if (input.dataset.emailDefaulted) return;
+                    input.dataset.emailDefaulted = "true";
+
+                    if (!input.value) {
+                        input.value = '@gmail.com';
+                    } else if (!input.value.includes('@')) {
+                        input.value = input.value + '@gmail.com';
+                    }
+
+                    input.addEventListener('focus', function() {
+                        if (this.value === '@gmail.com') {
+                            setTimeout(() => this.setSelectionRange(0, 0), 10);
+                        }
+                    });
+
+                    input.addEventListener('input', function(e) {
+                        let val = this.value;
+                        let cursor = this.selectionStart;
+                        
+                        let username = val.split('@')[0];
+                        let newValue = username + '@gmail.com';
+                        
+                        if (this.value !== newValue) {
+                            this.value = newValue;
+                        }
+                        
+                        if (cursor > username.length) {
+                            cursor = username.length;
+                        }
+                        this.setSelectionRange(cursor, cursor);
+                    });
+                });
+            };
+            
+            enforceEmailDefault();
+            
+            const observer = new MutationObserver(() => {
+                enforceEmailDefault();
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
         });
     </script>
 </body>

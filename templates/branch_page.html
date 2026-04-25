@@ -7,6 +7,8 @@
     <title>Enrollment – {{ branch.branch_name }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
         rel="stylesheet">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
     <style>
         *,
         *::before,
@@ -526,6 +528,45 @@
             box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
             border-color: #94a3b8;
         }
+
+        /* ─── MAP SECTION ─── */
+        .map-wrapper {
+            background: #fff;
+            border-radius: 18px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(12, 36, 97, 0.06);
+            margin-bottom: 24px;
+        }
+        
+        .map-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .map-head .req-title {
+            margin-bottom: 0;
+        }
+
+        #branchMap {
+            width: 100%;
+            height: 350px;
+            border-radius: 12px;
+            border: 2px solid #e2e8f0;
+            z-index: 5;
+        }
+
+        /* Fix routing box */
+        .leaflet-routing-container {
+            background-color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+            padding: 10px;
+            font-family: inherit;
+            max-height: 250px;
+            overflow-y: auto;
+        }
     </style>
 </head>
 
@@ -700,6 +741,19 @@
             </div>
         </div>
 
+        <!-- Campus Map -->
+        {% if branch.latitude and branch.longitude %}
+        <div class="map-wrapper">
+            <div class="map-head">
+                <p class="req-title">&#128205; Campus Location</p>
+                <button class="btn-action" onclick="getBranchDirections({{ branch.latitude }}, {{ branch.longitude }})" style="padding: 8px 16px; font-size: 0.8rem; border-color: #3b82f6; color: #1d4ed8; background: #eff6ff; cursor: pointer;">
+                   &#128168; Get Directions
+                </button>
+            </div>
+            <div id="branchMap"></div>
+        </div>
+        {% endif %}
+
         <!-- Bottom actions -->
         <div class="bottom-actions">
             <a href="/" class="btn-action">&#8592; Back to Homepage</a>
@@ -708,6 +762,76 @@
 
     </main>
 
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <script>
+        {% if branch.latitude and branch.longitude %}
+        document.addEventListener('DOMContentLoaded', function() {
+            var branchLat = {{ branch.latitude }};
+            var branchLng = {{ branch.longitude }};
+            var branchName = "{{ branch.branch_name }}";
+            
+            var map = L.map('branchMap', {
+                maxBounds: [ [13.9, 121.0], [14.6, 121.6] ], // Laguna bounds
+                maxBoundsViscosity: 1.0,
+                minZoom: 10
+            }).setView([branchLat, branchLng], 15);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© OpenStreetMap'
+            }).addTo(map);
+
+            var marker = L.marker([branchLat, branchLng]).addTo(map);
+            marker.bindPopup(`<b>${branchName}</b>`).openPopup();
+
+            let routingControl = null;
+            let userMarker = null;
+
+            window.getBranchDirections = function(destLat, destLng) {
+                if (!navigator.geolocation) {
+                    alert("Geolocation is not supported by your browser.");
+                    return;
+                }
+                
+                map.closePopup();
+                
+                navigator.geolocation.getCurrentPosition(function(position) {
+                    const userLat = position.coords.latitude;
+                    const userLng = position.coords.longitude;
+                    
+                    if (routingControl) {
+                        map.removeControl(routingControl);
+                    }
+                    if (userMarker) {
+                        map.removeLayer(userMarker);
+                    }
+                    
+                    routingControl = L.Routing.control({
+                        waypoints: [
+                            L.latLng(userLat, userLng),
+                            L.latLng(destLat, destLng)
+                        ],
+                        routeWhileDragging: false,
+                        addWaypoints: false,
+                        fitSelectedRoutes: true,
+                        showAlternatives: false,
+                        createMarker: function() { return null; }
+                    }).addTo(map);
+                    
+                    userMarker = L.circleMarker([userLat, userLng], {
+                        color: '#2563eb',
+                        fillColor: '#3b82f6',
+                        fillOpacity: 1,
+                        radius: 8
+                    }).addTo(map).bindPopup("<b>You are here</b>");
+
+                }, function(error) {
+                    alert("Unable to retrieve your location. Please ensure location services are enabled.");
+                });
+            };
+        });
+        {% endif %}
+    </script>
 </body>
 
 </html>

@@ -61,7 +61,7 @@ def homepage():
     """)
 
     branches = query_all("""
-        SELECT branch_id, branch_name, location
+        SELECT branch_id, branch_name, location, latitude, longitude
         FROM branches
         WHERE is_active = TRUE
         ORDER BY branch_name ASC
@@ -77,7 +77,7 @@ def homepage():
 @public_bp.route("/branch/<int:branch_id>")
 def branch_page(branch_id):
     branch = query_one("""
-        SELECT branch_id, branch_name, location
+        SELECT branch_id, branch_name, location, latitude, longitude
         FROM branches
         WHERE branch_id = %s AND is_active = TRUE
     """, (branch_id,))
