@@ -3,406 +3,488 @@
 
 {% block styles %}
 <style>
-  .summary-bar {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 18px;
-  }
+    :root {
+        --ma-primary: #1a3a8f;
+        --ma-gold: #facc15;
+        --ma-bg: #f8fafc;
+        --ma-card: #ffffff;
+        --ma-border: rgba(26, 58, 143, 0.1);
+        --ma-text: #0f172a;
+        --ma-muted: #64748b;
+    }
 
-  .summary-chip {
-    padding: 8px 16px;
-    border-radius: 10px;
-    font-size: 0.83rem;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
+    .ba-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 32px 24px;
+    }
 
-  .chip-total {
-    background: #eff6ff;
-    color: #1e40af;
-    border: 1px solid #bfdbfe;
-  }
+    /* Premium Header */
+    .premium-welcome {
+        background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
+        border-radius: 24px;
+        padding: 40px;
+        color: white;
+        margin-bottom: 32px;
+        box-shadow: 0 10px 30px rgba(26, 58, 143, 0.2);
+    }
 
-  .chip-done {
-    background: #f0fdf4;
-    color: #166534;
-    border: 1px solid #bbf7d0;
-  }
+    .premium-welcome h1 {
+        font-size: 2.2rem;
+        font-weight: 800;
+        margin: 0 0 8px 0;
+        color: white;
+    }
 
-  .chip-pending {
-    background: #fef2f2;
-    color: #991b1b;
-    border: 1px solid #fecaca;
-  }
+    .status-line {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 500;
+        opacity: 0.9;
+        font-size: 0.9rem;
+    }
 
-  .filter-row {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-    margin-bottom: 16px;
-  }
+    .pulse-dot {
+        width: 10px;
+        height: 10px;
+        background: var(--ma-gold);
+        border-radius: 50%;
+        box-shadow: 0 0 10px var(--ma-gold);
+    }
 
-  .student-table tbody tr.hidden-row {
-    display: none;
-  }
+    /* Simple Instructions */
+    .guide-card {
+        background: white;
+        border-radius: 20px;
+        padding: 24px;
+        border: 1px solid var(--ma-border);
+        margin-bottom: 32px;
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    }
 
-  .section-select {
-    width: 100%;
-    padding: 7px 10px;
-    border: 1.5px solid var(--border);
-    border-radius: 8px;
-    font-size: 0.83rem;
-    background: var(--card);
-    color: var(--text);
-    font-family: 'Inter', sans-serif;
-    transition: border-color 0.15s;
-    cursor: pointer;
-  }
+    .guide-icon {
+        width: 56px;
+        height: 56px;
+        background: #fffbeb;
+        color: #92400e;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+    }
 
-  .section-select:focus {
-    outline: none;
-    border-color: var(--btn);
-  }
+    /* Tabs */
+    .grade-tabs {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 32px;
+    }
 
-  .section-select option:disabled {
-    color: #94a3b8;
-  }
+    .grade-tab {
+        padding: 12px 24px;
+        border-radius: 16px;
+        border: 1px solid var(--ma-border);
+        background: white;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--ma-muted);
+        text-decoration: none;
+        transition: all 0.3s ease;
+    }
 
-  .save-row-btn {
-    padding: 6px 14px;
-    border-radius: 8px;
-    border: none;
-    background: var(--btn);
-    color: #fff;
-    font-weight: 600;
-    font-size: 0.8rem;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: background 0.15s, opacity 0.15s;
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-  }
+    .grade-tab:hover {
+        transform: translateY(-2px);
+        background: #f1f5f9;
+        color: var(--ma-primary);
+        border-color: var(--ma-primary);
+    }
 
-  .save-row-btn:hover {
-    background: var(--btnHover);
-  }
+    .grade-tab.active {
+        background: var(--ma-primary);
+        color: white;
+        border-color: var(--ma-primary);
+        box-shadow: 0 8px 16px rgba(26, 58, 143, 0.2);
+    }
 
-  .save-row-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-  }
+    /* Layout Grid */
+    .main-layout-grid {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 32px;
+        align-items: flex-start;
+    }
 
-  .save-row-btn.saving {
-    background: #64748b;
-  }
+    @media (max-width: 1100px) {
+        .main-layout-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 
-  .save-row-btn.saved {
-    background: #16a34a;
-  }
+    /* Capacity Sidebar */
+    .sidebar-title {
+        font-weight: 800;
+        font-size: 0.8rem;
+        color: var(--ma-muted);
+        text-transform: uppercase;
+        margin-bottom: 16px;
+        letter-spacing: 0.05em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-  .save-row-btn.error {
-    background: #dc2626;
-  }
+    .capacity-card {
+        background: white;
+        border-radius: 20px;
+        padding: 20px;
+        border: 1px solid var(--ma-border);
+        margin-bottom: 16px;
+        transition: all 0.3s ease;
+    }
 
-  .row-status {
-    font-size: 0.75rem;
-    min-width: 50px;
-  }
+    .capacity-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
 
-  .toggle-unassigned {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 7px 14px;
-    border-radius: 8px;
-    border: 1.5px solid var(--border);
-    background: var(--card);
-    cursor: pointer;
-    font-size: 0.83rem;
-    font-weight: 600;
-    color: var(--text);
-    transition: border-color 0.15s, background 0.15s;
-    white-space: nowrap;
-  }
+    .capacity-name { font-weight: 800; font-size: 1rem; color: var(--ma-primary); }
+    .capacity-count { font-size: 0.8rem; font-weight: 700; color: var(--ma-muted); }
 
-  .toggle-unassigned.active {
-    border-color: #dc2626;
-    background: #fef2f2;
-    color: #991b1b;
-  }
+    .progress-outer { height: 8px; background: #f1f5f9; border-radius: 999px; overflow: hidden; }
+    .progress-inner { height: 100%; background: var(--ma-primary); border-radius: 999px; }
+    .progress-full { background: #ef4444 !important; }
 
-  .section-capacity-info {
-    font-size: 0.72rem;
-    color: var(--muted);
-    margin-top: 2px;
-  }
+    /* Filters */
+    .filter-section {
+        display: flex;
+        gap: 16px;
+        align-items: center;
+        margin-bottom: 20px;
+        background: white;
+        padding: 16px;
+        border-radius: 20px;
+        border: 1px solid var(--ma-border);
+    }
 
-  .cap-full {
-    color: #dc2626;
-    font-weight: 700;
-  }
+    .search-wrapper { position: relative; flex: 1; }
+    .search-wrapper i { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--ma-muted); }
 
-  .grade-tabs {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    margin-bottom: 18px;
-  }
+    .form-control {
+        width: 100%;
+        padding: 12px 16px 12px 48px;
+        border: 1.5px solid var(--ma-border);
+        border-radius: 14px;
+        font-size: 0.95rem;
+    }
 
-  .grade-tab {
-    padding: 7px 16px;
-    border-radius: 8px;
-    border: 1.5px solid var(--border);
-    background: var(--card);
-    font-size: 0.82rem;
-    font-weight: 600;
-    color: var(--muted);
-    text-decoration: none;
-    transition: all 0.15s;
-  }
+    .toggle-unassigned {
+        padding: 12px 20px;
+        border-radius: 14px;
+        border: 1.5px solid var(--ma-border);
+        background: white;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-  .grade-tab:hover {
-    background: var(--sidebar-hover);
-    color: var(--btn);
-    border-color: var(--btn);
-  }
+    .toggle-unassigned.active { background: #fee2e2; border-color: #ef4444; color: #991b1b; }
 
-  .grade-tab.active {
-    background: var(--btn);
-    color: #fff;
-    border-color: var(--btn);
-  }
+    /* Table */
+    .modern-card {
+        background: white;
+        border: 1px solid var(--ma-border);
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+    }
+
+    .vault-table { width: 100%; border-collapse: collapse; }
+    .vault-table th { text-align: left; padding: 20px; font-size: 0.75rem; font-weight: 800; color: var(--ma-muted); text-transform: uppercase; border-bottom: 1px solid var(--ma-border); background: #fafafa; }
+    .vault-table td { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; font-size: 0.95rem; }
+
+    .section-select {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1.5px solid var(--ma-border);
+        border-radius: 12px;
+        font-size: 0.85rem;
+        background: white;
+    }
+
+    .save-row-btn {
+        padding: 8px 16px;
+        border-radius: 10px;
+        border: none;
+        background: var(--ma-primary);
+        color: white;
+        font-weight: 700;
+        font-size: 0.8rem;
+        cursor: pointer;
+    }
+
+    .save-row-btn:disabled { opacity: 0.4; }
+    .save-row-btn.saved { background: #16a34a; }
+
+    .badge { padding: 4px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; }
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-red { background: #fee2e2; color: #991b1b; }
+
+    .hidden-row { display: none; }
 </style>
 {% endblock %}
 
 {% block content %}
-<div style="max-width:1100px;">
+<div class="ba-container">
 
-  <!-- Header -->
-  <div style="margin-bottom:18px;">
-    <h2 style="font-size:1.4rem;font-weight:800;margin-bottom:4px;">🎓 Assign Students to Sections</h2>
-    <p style="color:var(--muted);font-size:0.88rem;">Select a section for each approved student. Saving is instant — no
-      page reload needed.</p>
-  </div>
-
-  <!-- Grade level tabs -->
-  <div class="grade-tabs">
-    {% for g in grade_options %}
-    <a href="?grade={{ g.id }}" class="grade-tab {% if grade_filter == g.id|string %}active{% endif %}">{{ g.name }}</a>
-    {% endfor %}
-  </div>
-
-  {% if students %}
-  <!-- Summary chips -->
-  {% set assigned_count = students | selectattr('section_name') | list | length %}
-  {% set pending_count = students | length - assigned_count %}
-  <div class="summary-bar">
-    <div class="summary-chip chip-total">👥 {{ students | length }} Students</div>
-    <div class="summary-chip chip-done">✓ {{ assigned_count }} Assigned</div>
-    <div class="summary-chip chip-pending">⏳ {{ pending_count }} Pending</div>
-  </div>
-
-  <!-- Section capacity overview -->
-  {% if sections %}
-  <div class="card" style="margin-bottom:18px;padding:16px 20px;">
-    <div style="font-weight:700;font-size:0.88rem;margin-bottom:10px;color:var(--muted);">SECTION CAPACITY</div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      {% for sec in sections %}
-      {% set is_full = sec.current_count >= sec.capacity %}
-      <div
-        style="padding:8px 14px;border-radius:9px;border:1.5px solid {% if is_full %}#fecaca{% else %}var(--border){% endif %};background:{% if is_full %}#fef2f2{% else %}var(--card){% endif %};">
-        <div style="font-weight:700;font-size:0.82rem;">{{ sec.section_name }}</div>
-        <div
-          style="font-size:0.73rem;{% if is_full %}color:#dc2626;font-weight:700;{% else %}color:var(--muted);{% endif %}">
-          {{ sec.current_count }}/{{ sec.capacity }} {% if is_full %}• Full{% endif %}
+    <!-- Header -->
+    <div class="premium-welcome">
+        <h1>Assign Students to Sections</h1>
+        <div class="status-line">
+            <span class="pulse-dot"></span>
+            Sectioning & Capacity Management • Academic Year Deployment
         </div>
-      </div>
-      {% endfor %}
     </div>
-  </div>
-  {% endif %}
 
-  <!-- Filters -->
-  <div class="filter-row">
-    <input type="text" id="searchInput" class="form-input" style="max-width:280px;"
-      placeholder="🔍 Search student name…" oninput="applyFilters()">
-    <button class="toggle-unassigned" id="pendingToggle" onclick="togglePending()">
-      ⏳ Show Unassigned Only
-    </button>
-    <span style="margin-left:auto;font-size:0.8rem;color:var(--muted);" id="visibleCount"></span>
-  </div>
+    {% if is_branch_active_status %}
+    <!-- Instructions -->
+    <div class="guide-card">
+        <div class="guide-icon">💡</div>
+        <div style="flex: 1;">
+            <div style="font-weight: 800; color: var(--ma-primary); font-size: 1.1rem; margin-bottom: 4px;">Quick Guide</div>
+            <p style="font-size: 0.9rem; color: var(--ma-muted); margin: 0; line-height: 1.5;">
+                1. Select a <b>Grade Level</b> below. 2. Choose a <b>Section</b> for each student. 3. Click <b>Save</b> to confirm.
+            </p>
+        </div>
+    </div>
+    {% endif %}
 
-  <!-- Student table -->
-  <div class="card" style="padding:0;overflow:hidden;">
-    <div class="table-wrap">
-      <table class="student-table">
-        <thead>
-          <tr>
-            <th>ENROLLMENT ID</th>
-            <th>Student Name</th>
-            <th>Current Section</th>
-            {% if is_branch_active_status %}<th style="min-width:220px;">Assign Section</th>
-            <th></th>{% endif %}
-          </tr>
-        </thead>
-        <tbody id="studentTbody">
-          {% for s in students %}
-          <tr data-name="{{ s.student_name | lower }}" data-assigned="{{ '1' if s.section_name else '0' }}"
-            data-enrollment="{{ s.enrollment_id }}">
-            <td style="color:var(--muted);font-size:0.8rem;">#{{ s.branch_enrollment_no }}</td>
-            <td><strong>{{ s.student_name }}</strong></td>
-            <td id="sectionLabel_{{ s.enrollment_id }}">
-              {% if s.section_name %}
-              <span class="badge badge-green">{{ s.section_name }}</span>
-              {% else %}
-              <span class="badge badge-red">No Section</span>
-              {% endif %}
-            </td>
-            {% if is_branch_active_status %}
-            <td>
-              <select class="section-select" id="sel_{{ s.enrollment_id }}"
-                onchange="markChanged({{ s.enrollment_id }})">
-                <option value="">— No Section —</option>
-                {% for sec in sections %}
-                {% set is_full = sec.current_count >= sec.capacity %}
-                {% set is_current = (sec.section_id == s.section_id) %}
-                <option value="{{ sec.section_id }}" {{ 'selected' if is_current else '' }} {{ 'disabled' if is_full and
-                  not is_current else '' }}>
-                  {{ sec.section_name }}
-                  {% if is_full and not is_current %}(Full {{ sec.current_count }}/{{ sec.capacity }})
-                  {% else %}({{ sec.current_count }}/{{ sec.capacity }}){% endif %}
-                </option>
-                {% endfor %}
-              </select>
-            </td>
-            <td style="white-space:nowrap;">
-              <button class="save-row-btn" id="btn_{{ s.enrollment_id }}" disabled
-                onclick="saveStudent({{ s.enrollment_id }})">
-                Save
-              </button>
-              <span class="row-status" id="status_{{ s.enrollment_id }}"></span>
-            </td>
+    <!-- Tabs -->
+    <div class="grade-tabs">
+        {% for g in grade_options %}
+        <a href="?grade={{ g.id }}" class="grade-tab {% if grade_filter == g.id|string %}active{% endif %}">{{ g.name }}</a>
+        {% endfor %}
+    </div>
+
+    <div class="main-layout-grid">
+        <!-- Main Column: Table -->
+        <div class="table-column">
+            {% if students %}
+            <div class="filter-section">
+                <div class="search-wrapper">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" class="form-control" placeholder="Search student name..." oninput="applyFilters()">
+                </div>
+                <button class="toggle-unassigned" id="pendingToggle" onclick="togglePending()">
+                    <i class="fas fa-hourglass-half"></i> Unassigned Only
+                </button>
+                <div id="visibleCount" style="margin-left: auto; font-size: 0.8rem; font-weight: 800; color: var(--ma-primary);"></div>
+            </div>
+
+            <div class="modern-card">
+                <table class="vault-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Student Name</th>
+                            <th>Current</th>
+                            {% if is_branch_active_status %}
+                            <th style="min-width: 180px;">Assign Section</th>
+                            <th style="text-align: right;">Action</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody id="studentTbody">
+                        {% for s in students %}
+                        <tr data-name="{{ s.student_name | lower }}" data-assigned="{{ '1' if s.section_name else '0' }}" data-enrollment="{{ s.enrollment_id }}">
+                            <td style="color: var(--ma-muted); font-size: 0.75rem;">#{{ s.branch_enrollment_no }}</td>
+                            <td><div style="font-weight: 800; color: var(--ma-primary);">{{ s.student_name }}</div></td>
+                            <td id="sectionLabel_{{ s.enrollment_id }}">
+                                {% if s.section_name %}
+                                <span class="badge badge-green">{{ s.section_name }}</span>
+                                {% else %}
+                                <span class="badge badge-red">Pending</span>
+                                {% endif %}
+                            </td>
+                            {% if is_branch_active_status %}
+                            <td>
+                                <select class="section-select" id="sel_{{ s.enrollment_id }}" 
+                                        data-initial="{{ s.section_id or '' }}"
+                                        onchange="markChanged({{ s.enrollment_id }})">
+                                    <option value="">— No Section —</option>
+                                    {% for sec in sections %}
+                                    {% set is_full = sec.current_count >= sec.capacity %}
+                                    {% set is_current = (sec.section_id == s.section_id) %}
+                                    <option value="{{ sec.section_id }}" {{ 'selected' if is_current else '' }} {{ 'disabled' if is_full and not is_current else '' }}>
+                                        {{ sec.section_name }} ({{ sec.current_count }}/{{ sec.capacity }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                            <td style="text-align: right; white-space: nowrap;">
+                                <button class="save-row-btn" id="btn_{{ s.enrollment_id }}" disabled onclick="saveStudent({{ s.enrollment_id }})">
+                                    Save
+                                </button>
+                                <div class="row-status" id="status_{{ s.enrollment_id }}" style="margin-top: 4px; font-size: 0.7rem; font-weight: 700;"></div>
+                            </td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="modern-card" style="text-align: center; padding: 60px; color: var(--ma-muted);">
+                <i class="fas fa-folder-open" style="font-size: 3rem; opacity: 0.1; display: block; margin-bottom: 20px;"></i>
+                No approved students found.
+            </div>
             {% endif %}
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-  </div>
+        </div>
 
-  {% else %}
-  <div class="card" style="text-align:center;padding:48px;">
-    <div style="font-size:2.5rem;margin-bottom:10px;">📭</div>
-    <div style="color:var(--muted);">No approved students found for this grade level.</div>
-  </div>
-  {% endif %}
+        <!-- Sidebar Column: Capacity -->
+        <aside class="sidebar-column">
+            <div class="sidebar-title">
+                <i class="fas fa-chart-pie"></i> Section Capacity
+            </div>
+            {% if sections %}
+            {% for sec in sections %}
+            {% set is_full = sec.current_count >= sec.capacity %}
+            {% set percent = (sec.current_count / sec.capacity * 100) | round %}
+            <div class="capacity-card">
+                <div class="capacity-header">
+                    <span class="capacity-name">{{ sec.section_name }}</span>
+                    <span class="capacity-count">{{ sec.current_count }} / {{ sec.capacity }}</span>
+                </div>
+                <div class="progress-outer">
+                    <div class="progress-inner {% if is_full %}progress-full{% endif %}" style="width: {{ percent }}%;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.65rem; font-weight: 700; color: var(--ma-muted); margin-top: 8px; text-transform: uppercase;">
+                    <span>Utilization</span>
+                    <span>{{ percent }}%</span>
+                </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div style="font-size: 0.85rem; color: var(--ma-muted); text-align: center; padding: 20px; border: 1px dashed var(--ma-border); border-radius: 20px;">
+                No sections defined for this level.
+            </div>
+            {% endif %}
+        </aside>
+    </div>
 
 </div>
 
 <script>
-  let showPendingOnly = false;
+    let showPendingOnly = false;
 
-  function applyFilters() {
-    const search = document.getElementById('searchInput').value.toLowerCase();
-    const rows = document.querySelectorAll('#studentTbody tr');
-    let visible = 0;
-    rows.forEach(row => {
-      const name = row.dataset.name || '';
-      const assigned = row.dataset.assigned === '1';
-      const matchSearch = !search || name.includes(search);
-      const matchPending = !showPendingOnly || !assigned;
-      if (matchSearch && matchPending) {
-        row.classList.remove('hidden-row');
-        visible++;
-      } else {
-        row.classList.add('hidden-row');
-      }
-    });
-    const countEl = document.getElementById('visibleCount');
-    if (countEl) countEl.textContent = `Showing ${visible} of ${rows.length}`;
-  }
+    function applyFilters() {
+        const search = document.getElementById('searchInput').value.toLowerCase();
+        const rows = document.querySelectorAll('#studentTbody tr');
+        let visible = 0;
+        rows.forEach(row => {
+            const name = row.dataset.name || '';
+            const assigned = row.dataset.assigned === '1';
+            const matchSearch = !search || name.includes(search);
+            const matchPending = !showPendingOnly || !assigned;
+            if (matchSearch && matchPending) {
+                row.classList.remove('hidden-row');
+                visible++;
+            } else {
+                row.classList.add('hidden-row');
+            }
+        });
+        const countEl = document.getElementById('visibleCount');
+        if (countEl) countEl.textContent = `${visible} Students Found`;
+    }
 
-  function togglePending() {
-    showPendingOnly = !showPendingOnly;
-    const btn = document.getElementById('pendingToggle');
-    btn.classList.toggle('active', showPendingOnly);
-    btn.textContent = showPendingOnly ? '✕ Show All Students' : '⏳ Show Unassigned Only';
-    applyFilters();
-  }
+    function togglePending() {
+        showPendingOnly = !showPendingOnly;
+        const btn = document.getElementById('pendingToggle');
+        btn.classList.toggle('active', showPendingOnly);
+        btn.innerHTML = showPendingOnly ? '<i class="fas fa-times"></i> Show All' : '<i class="fas fa-hourglass-half"></i> Unassigned Only';
+        applyFilters();
+    }
 
-  function markChanged(enrollmentId) {
-    const btn = document.getElementById('btn_' + enrollmentId);
-    btn.disabled = false;
-    btn.className = 'save-row-btn';
-    btn.textContent = 'Save';
-    document.getElementById('status_' + enrollmentId).textContent = '';
-  }
+    function markChanged(enrollmentId) {
+        const sel = document.getElementById('sel_' + enrollmentId);
+        const btn = document.getElementById('btn_' + enrollmentId);
+        const initial = sel.dataset.initial;
+        const current = sel.value;
 
-  function saveStudent(enrollmentId) {
-    const sel = document.getElementById('sel_' + enrollmentId);
-    const btn = document.getElementById('btn_' + enrollmentId);
-    const statusEl = document.getElementById('status_' + enrollmentId);
-    const sectionId = sel.value ? parseInt(sel.value) : null;
-
-    btn.disabled = true;
-    btn.className = 'save-row-btn saving';
-    btn.textContent = '…';
-    statusEl.textContent = '';
-
-    fetch('/branch-admin/api/assign-student-section', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enrollment_id: enrollmentId, section_id: sectionId })
-    })
-      .then(r => r.json())
-      .then(data => {
-        if (data.success) {
-          btn.className = 'save-row-btn saved';
-          btn.textContent = '✓ Saved';
-
-          // Update the section label cell and row data
-          const row = btn.closest('tr');
-          const labelCell = document.getElementById('sectionLabel_' + enrollmentId);
-          const selectedText = sectionId ? sel.options[sel.selectedIndex].text.split('(')[0].trim() : null;
-
-          if (selectedText && sectionId) {
-            labelCell.innerHTML = `<span class="badge badge-green">${selectedText}</span>`;
-            row.dataset.assigned = '1';
-          } else {
-            labelCell.innerHTML = `<span class="badge badge-red">No Section</span>`;
-            row.dataset.assigned = '0';
-          }
-
-          setTimeout(() => {
+        if (current !== initial) {
+            btn.disabled = false;
             btn.textContent = 'Save';
             btn.className = 'save-row-btn';
-            btn.disabled = true;
-          }, 1500);
         } else {
-          btn.className = 'save-row-btn error';
-          btn.textContent = '✗';
-          btn.disabled = false;
-          statusEl.innerHTML = `<span style="color:#dc2626;font-size:0.73rem;">${data.message || 'Error'}</span>`;
-          setTimeout(() => {
-            btn.textContent = 'Save';
-            btn.className = 'save-row-btn';
-          }, 2000);
+            btn.disabled = true;
         }
-      })
-      .catch(() => {
-        btn.className = 'save-row-btn error';
-        btn.textContent = '✗';
-        btn.disabled = false;
-        statusEl.innerHTML = '<span style="color:#dc2626;font-size:0.73rem;">Network error</span>';
-      });
-  }
+        document.getElementById('status_' + enrollmentId).textContent = '';
+    }
 
-  // Init count
-  applyFilters();
+    function saveStudent(enrollmentId) {
+        const sel = document.getElementById('sel_' + enrollmentId);
+        const btn = document.getElementById('btn_' + enrollmentId);
+        const statusEl = document.getElementById('status_' + enrollmentId);
+        const sectionId = sel.value ? parseInt(sel.value) : null;
+
+        btn.disabled = true;
+        btn.textContent = '...';
+        statusEl.textContent = '';
+
+        fetch('/branch-admin/api/assign-student-section', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enrollment_id: enrollmentId, section_id: sectionId })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                btn.className = 'save-row-btn saved';
+                btn.textContent = 'Saved';
+                sel.dataset.initial = sel.value;
+
+                const labelCell = document.getElementById('sectionLabel_' + enrollmentId);
+                const selectedText = sectionId ? sel.options[sel.selectedIndex].text.split('(')[0].trim() : null;
+
+                if (selectedText && sectionId) {
+                    labelCell.innerHTML = `<span class="badge badge-green">${selectedText}</span>`;
+                    btn.closest('tr').dataset.assigned = '1';
+                } else {
+                    labelCell.innerHTML = `<span class="badge badge-red">Pending</span>`;
+                    btn.closest('tr').dataset.assigned = '0';
+                }
+
+                setTimeout(() => {
+                    btn.textContent = 'Save';
+                    btn.className = 'save-row-btn';
+                    btn.disabled = true;
+                    location.reload(); // Reload to update capacity numbers
+                }, 1000);
+            } else {
+                btn.className = 'save-row-btn error';
+                btn.textContent = 'Retry';
+                btn.disabled = false;
+                statusEl.innerHTML = `<span style="color:#dc2626;">${data.message || 'Failed'}</span>`;
+            }
+        })
+        .catch(() => {
+            btn.className = 'save-row-btn error';
+            btn.textContent = 'Retry';
+            btn.disabled = false;
+            statusEl.innerHTML = '<span style="color:#dc2626;">Error</span>';
+        });
+    }
+
+    applyFilters();
 </script>
 {% endblock %}

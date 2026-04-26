@@ -2,329 +2,312 @@
 {% block title %}Subjects Management{% endblock %}
 {% block content %}
 <style>
-    /* Base settings */
+    :root {
+        --ma-primary: #1a3a8f;
+        --ma-gold: #facc15;
+        --ma-bg: #f8fafc;
+        --ma-card: #ffffff;
+        --ma-border: rgba(26, 58, 143, 0.1);
+        --ma-text: #0f172a;
+        --ma-muted: #64748b;
+        --ma-accent: #3b82f6;
+    }
+
     body {
-        background: #f5f7fa;
-        color: #333;
+        background: var(--ma-bg);
+        color: var(--ma-text);
+        font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
     .ba-container {
-        max-width: 1060px;
+        max-width: 1400px;
         margin: 0 auto;
-        padding: 24px 20px;
+        padding: 32px 24px;
     }
 
-    .header-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 24px;
+    .premium-welcome {
+        background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
+        border-radius: 24px;
+        padding: 40px;
+        color: white;
+        margin-bottom: 32px;
+        box-shadow: 0 10px 30px rgba(26, 58, 143, 0.2);
     }
 
-    .header-row h1 {
+    .premium-welcome h1 {
+        font-size: 2.2rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+        letter-spacing: -0.02em;
+        color: white;
         margin: 0;
-        font-size: 24px;
-        color: #2c3e50;
     }
 
-    .back-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        color: #007bff;
-        text-decoration: none;
-        font-size: 14px;
-        margin-bottom: 14px;
-        font-weight: 600;
-    }
-
-    .back-link:hover {
-        text-decoration: underline;
-    }
-
-    /* Split Layout */
-    .two-col {
+    .status-line {
         display: flex;
-        gap: 24px;
-        flex-wrap: wrap;
-        align-items: flex-start;
+        align-items: center;
+        gap: 10px;
+        font-weight: 500;
+        opacity: 0.9;
+        font-size: 0.9rem;
     }
 
-    .col-form {
-        flex: 0 0 350px;
-    }
-
-    .col-table {
-        flex: 1;
-        min-width: 400px;
+    .pulse-dot {
+        width: 10px;
+        height: 10px;
+        background: var(--ma-gold);
+        border-radius: 50%;
+        box-shadow: 0 0 10px var(--ma-gold);
     }
 
     /* Cards */
-    .card {
-        background: #fff;
-        border-radius: 12px;
-        padding: 24px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, .07);
-        margin-bottom: 20px;
+    .modern-card {
+        background: var(--ma-card);
+        border: 1px solid var(--ma-border);
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        margin-bottom: 24px;
     }
 
-    .card h2 {
-        margin: 0 0 16px 0;
-        font-size: 16px;
-        font-weight: 700;
-        color: #2c3e50;
-        border-bottom: 2px solid #007bff;
-        padding-bottom: 10px;
+    .modern-card h2 {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--ma-primary);
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
 
     /* Form Elements */
-    .form-group {
-        margin-bottom: 16px;
+    .form-node {
+        margin-bottom: 20px;
     }
 
-    .form-group label {
+    .form-node label {
         display: block;
-        font-size: 13px;
-        font-weight: 700;
-        color: #334155;
-        margin-bottom: 6px;
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: var(--ma-muted);
+        text-transform: uppercase;
+        margin-bottom: 8px;
     }
 
     .form-control {
         width: 100%;
-        padding: 10px 12px;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-        font-size: 14px;
-        transition: border-color 0.2s, box-shadow 0.2s;
-        box-sizing: border-box;
+        padding: 12px 16px;
+        border: 1px solid var(--ma-border);
+        border-radius: 12px;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
     }
 
     .form-control:focus {
         outline: none;
-        border-color: #007bff;
-        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        border-color: var(--ma-primary);
+        box-shadow: 0 0 0 4px rgba(26, 58, 143, 0.05);
     }
 
     /* Buttons */
-    .btn {
-        padding: 10px 18px;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 13px;
+    .btn-prem {
+        padding: 12px 24px;
+        border-radius: 12px;
         font-weight: 700;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
-        transition: .2s;
-        text-decoration: none;
-    }
-
-    .btn-primary {
-        background: #007bff;
-        color: #fff;
-        width: 100%;
-    }
-
-    .btn-primary:hover {
-        background: #0056b3;
-    }
-
-    .btn-success {
-        background: #10b981;
-        color: #fff;
-    }
-
-    .btn-success:hover {
-        background: #059669;
-    }
-
-    .btn-danger {
-        background: #ef4444;
-        color: #fff;
-    }
-
-    .btn-danger:hover {
-        background: #dc2626;
-    }
-
-    .btn-secondary {
-        background: #6c757d;
-        color: #fff;
-    }
-
-    .btn-secondary:hover {
-        background: #5a6268;
-    }
-
-    .btn-sm {
-        padding: 6px 12px;
-        font-size: 11px;
-    }
-
-    /* Alerts */
-    .flash-alert {
-        padding: 12px 16px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        font-size: 13px;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
         gap: 8px;
     }
 
-    .flash-success {
-        background: #ecfdf5;
-        color: #065f46;
-        border: 1px solid #10b981;
+    .btn-prem:hover {
+        transform: translateY(-2px);
     }
 
-    .flash-error {
-        background: #fef2f2;
-        color: #991b1b;
-        border: 1px solid #ef4444;
+    .btn-primary {
+        background: var(--ma-primary);
+        color: white;
+    }
+
+    .btn-gold {
+        background: var(--ma-gold);
+        color: var(--ma-primary);
+    }
+
+    .btn-danger {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .btn-secondary {
+        background: #f1f5f9;
+        color: var(--ma-muted);
+    }
+
+    .btn-prem:disabled {
+        background: #f1f5f9 !important;
+        color: #94a3b8 !important;
+        cursor: not-allowed !important;
+        transform: none !important;
+        opacity: 0.7;
     }
 
     /* Table */
-    .health-table {
+    .vault-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 13px;
     }
 
-    .health-table th {
-        background: #f8fafc;
-        padding: 12px;
+    .vault-table th {
         text-align: left;
-        border-bottom: 2px solid #e2e8f0;
-        color: #475569;
-        font-weight: 700;
+        padding: 16px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--ma-muted);
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--ma-border);
     }
 
-    .health-table td {
-        padding: 12px;
+    .vault-table td {
+        padding: 20px 16px;
         border-bottom: 1px solid #f1f5f9;
-        vertical-align: middle;
+        font-size: 0.95rem;
     }
 
-    .health-table tr:hover td {
-        background: #f8fafc;
+    /* Modal Overlay */
+    .glass-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(8px);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .glass-modal {
+        background: white;
+        border-radius: 24px;
+        padding: 32px;
+        width: 100%;
+        max-width: 450px;
+        box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.3);
+    }
+
+    .confirm-modal {
+        text-align: center;
     }
 </style>
 
 <div class="ba-container">
 
-    <div class="header-row">
-        <h1>Subjects</h1>
+    <div class="premium-welcome">
+        <h1>Subjects Management</h1>
+        <div class="status-line">
+            <span class="pulse-dot"></span>
+            Curriculum Control • {{ subjects|length }} Active Subjects
+        </div>
     </div>
 
-    <!-- Flash messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    {% for cat, msg in messages %}
-    <div class="flash-alert {{ 'flash-success' if cat == 'success' else 'flash-error' }}">
-        {{ msg }}
-    </div>
-    {% endfor %}
-    {% endif %}
-    {% endwith %}
-
-    <div class="two-col">
+    <div class="two-col" style="display: grid; grid-template-columns: 350px 1fr; gap: 32px; align-items: flex-start;">
         <!-- Add Form -->
         {% if is_branch_active_status %}
         <div class="col-form">
-            <div class="card">
-                <h2>Add Subject</h2>
+            <div class="modern-card">
+                <h2>➕ Add Subject</h2>
                 <form method="post" action="{{ url_for('branch_admin.branch_admin_subjects') }}">
-                    <div class="form-group">
-                        <label>Subject Name *</label>
+                    <div class="form-node">
+                        <label>Subject Name</label>
                         <input type="text" name="name" class="form-control" placeholder="e.g. Mathematics" required>
                     </div>
-                    <div class="form-group">
-                        <label>Grade Level & Section *</label>
+                    <div class="form-node">
+                        <label>Grade Level & Section</label>
                         <select name="section_id" class="form-control" required>
-                            <option value="">Select Grade Level and Section</option>
+                            <option value="">Select Grade & Section</option>
                             {% for sec in section_options %}
                             <option value="{{ sec.section_id }}">{{ sec.grade_level_name }} – {{ sec.section_name }}
                             </option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>DepEd Category *</label>
+                    <div class="form-node">
+                        <label>DepEd Category</label>
                         <select name="deped_category" class="form-control" required>
                             <option value="language">Language / Values (WW 30%, PT 50%, QA 20%)</option>
                             <option value="science_math">Science / Math (WW 40%, PT 40%, QA 20%)</option>
                             <option value="skills">Skills (WW 20%, PT 60%, QA 20%)</option>
                         </select>
                     </div>
-                    <div style="font-size: 11.5px; color: #64748b; margin-bottom: 16px; line-height: 1.4;">
-                        <strong>Guide:</strong><br>
-                        • <strong>Language/Values:</strong> Filipino, English, AP, EsP, Religion / Values Education<br>
-                        • <strong>Science/Math:</strong> Science, Mathematics<br>
-                        • <strong>Skills:</strong> EPP, TLE, MAPEH, Computer / ICT
+                    <div
+                        style="font-size: 11.5px; color: var(--ma-muted); margin-bottom: 24px; line-height: 1.4; background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid var(--ma-border);">
+                        <strong>Category Guide:</strong><br>
+                        • <strong>Language:</strong> Fil, Eng, AP, EsP, Values<br>
+                        • <strong>Science/Math:</strong> Sci, Math<br>
+                        • <strong>Skills:</strong> EPP, TLE, MAPEH, ICT
                     </div>
-                    <button type="submit" class="btn btn-primary">Add Subject</button>
+                    <button type="submit" class="btn-prem btn-primary" style="width: 100%;">🚀 Deploy Subject</button>
                 </form>
             </div>
         </div>
         {% endif %}
 
         <!-- Existing Subjects -->
-        <div class="col-table" {% if not is_branch_active_status %}style="flex: 1 0 100%;" {% endif %}>
-            <div class="card">
-                <h2>Existing Subjects</h2>
+        <div class="col-table" {% if not is_branch_active_status %}style="grid-column: span 2;" {% endif %}>
+            <div class="modern-card">
+                <h2>📋 Curriculum Repository</h2>
                 {% if subjects %}
-                <table class="health-table">
+                <table class="vault-table">
                     <thead>
                         <tr>
-                            <th>Subject Name</th>
+                            <th>Identity</th>
                             <th>Assigned To</th>
-                            <th style="min-width:80px; text-align: right;">Action</th>
+                            <th style="text-align: right;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for subj in subjects %}
                         <tr>
                             <td>
-                                <strong style="color: #1e293b;">{{ subj.name }}</strong>
+                                <div style="font-weight: 700; color: var(--ma-primary);">{{ subj.name }}</div>
                                 {% if subj.deped_category == 'science_math' %}
-                                <span
-                                    style="display:inline-block; margin-left:8px; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700; background:#d1fae5; color:#065f46;">Science
-                                    / Math</span>
+                                <span class="badge-pill"
+                                    style="background: #dcfce7; color: #166534; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">SCI
+                                    / MATH</span>
                                 {% elif subj.deped_category == 'skills' %}
-                                <span
-                                    style="display:inline-block; margin-left:8px; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700; background:#fef3c7; color:#92400e;">Skills
-                                    Subject</span>
+                                <span class="badge-pill"
+                                    style="background: #fef3c7; color: #92400e; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">SKILLS</span>
                                 {% else %}
-                                <span
-                                    style="display:inline-block; margin-left:8px; padding:2px 8px; border-radius:12px; font-size:11px; font-weight:700; background:#dbeafe; color:#1d4ed8;">Language
-                                    / Values</span>
+                                <span class="badge-pill"
+                                    style="background: #dbeafe; color: #1e40af; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">LANGUAGE</span>
                                 {% endif %}
                             </td>
-                            <td style="color: #475569;">
+                            <td style="color: var(--ma-muted); font-size: 0.85rem;">
                                 {% if subject_to_sections.get(subj.subject_id) %}
                                 {% for item in subject_to_sections[subj.subject_id] %}
-                                <div style="font-size:13px; color:#444;">{{ item }}</div>
+                                <div style="margin-bottom: 2px;"><i class="fas fa-link"
+                                        style="font-size: 0.7rem; opacity: 0.5;"></i> {{ item }}</div>
                                 {% endfor %}
                                 {% else %}
-                                <span style="color:#94a3b8;"><em>Not assigned</em></span>
+                                <span style="opacity: 0.5;">Not assigned</span>
                                 {% endif %}
                             </td>
-                            <td style="text-align: right;">
+                            <td style="text-align: right; white-space: nowrap;">
                                 {% if is_branch_active_status %}
                                 {% set current_section_id = subject_first_section.get(subj.subject_id, '') %}
-                                <button class="btn btn-sm btn-secondary" type="button"
-                                    onclick='openEditModal({{ subj.subject_id }}, {{ subj.name | tojson }}, "{{ current_section_id }}", "{{ subj.deped_category }}")'>Edit</button>
-                                <form method="post"
-                                    action="{{ url_for('branch_admin.branch_admin_subject_delete', subject_id=subj.subject_id) }}"
-                                    onsubmit="return confirm('Delete subject {{ subj.name }}?');"
-                                    style="display:inline;">
-                                    <button class="btn btn-sm btn-danger" type="submit">Delete</button>
-                                </form>
+                                <button class="btn-prem btn-secondary" style="padding: 8px 14px; font-size: 0.75rem;"
+                                    onclick='openEditModal({{ subj.subject_id }}, {{ subj.name | tojson }}, "{{ current_section_id }}", "{{ subj.deped_category }}")'>
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <button class="btn-prem btn-danger"
+                                    style="padding: 8px 14px; font-size: 0.75rem; margin-left: 8px;"
+                                    onclick="confirmSubjectDelete({{ subj.subject_id }}, '{{ subj.name|e }}')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
                                 {% endif %}
                             </td>
                         </tr>
@@ -332,58 +315,74 @@
                     </tbody>
                 </table>
                 {% else %}
-                <div style="text-align:center; padding: 30px; color:#94a3b8; font-size: 14px;">No subjects found. Add
-                    one.</div>
+                <div style="text-align:center; padding: 40px; color: var(--ma-muted); font-size: 0.9rem;">
+                    <i class="fas fa-book-open"
+                        style="font-size: 2rem; display: block; margin-bottom: 12px; opacity: 0.5;"></i>
+                    No subjects detected in curriculum.
+                </div>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div id="deleteConfirmOverlay" class="glass-overlay">
+    <div class="glass-modal confirm-modal">
+        <div style="font-size: 3.5rem; margin-bottom: 20px;">🗑️</div>
+        <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 12px; color: #dc2626;">Remove Subject?</h2>
+        <p id="deleteConfirmMsg"
+            style="font-size: 0.9rem; color: var(--ma-muted); margin-bottom: 24px; line-height: 1.5;"></p>
+        <form id="deleteSubjectForm" method="POST">
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button type="button" onclick="closeDeleteModal()" class="btn-prem btn-secondary">Keep it</button>
+                <button type="submit" class="btn-prem" style="background: #dc2626; color: white;">Yes, Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Edit Modal -->
-<div id="editModal"
-    style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-    <div
-        style="background:#fff; padding:24px; border-radius:12px; width:90%; max-width:400px; box-shadow:0 8px 30px rgba(0,0,0,0.2);">
-        <h2
-            style="margin:0 0 16px 0; font-size:16px; font-weight:700; color:#2c3e50; border-bottom:2px solid #007bff; padding-bottom:10px;">
-            Edit Subject</h2>
+<div id="editModal" class="glass-overlay">
+    <div class="glass-modal">
+        <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 24px; color: var(--ma-primary);">✎ Edit Subject
+        </h2>
         <form id="editForm" method="post" action="">
-            <div class="form-group">
-                <label>Subject Name *</label>
+            <div class="form-node">
+                <label>Subject Identity</label>
                 <input type="text" name="name" id="edit_name" class="form-control" required>
             </div>
 
-            <div class="form-group">
-                <label>Grade Level & Section *</label>
+            <div class="form-node">
+                <label>Grade Level & Section</label>
                 <select name="section_id" id="edit_section_id" class="form-control" required>
-                    <option value="">Select Grade Level and Section</option>
+                    <option value="">Select Grade & Section</option>
                     {% for sec in section_options %}
                     <option value="{{ sec.section_id }}">{{ sec.grade_level_name }} – {{ sec.section_name }}</option>
                     {% endfor %}
                 </select>
             </div>
 
-            <div class="form-group">
-                <label>DepEd Category *</label>
+            <div class="form-node">
+                <label>DepEd Category</label>
                 <select name="deped_category" id="edit_deped_category" class="form-control" required>
                     <option value="language">Language / Values (WW 30%, PT 50%, QA 20%)</option>
                     <option value="science_math">Science / Math (WW 40%, PT 40%, QA 20%)</option>
                     <option value="skills">Skills (WW 20%, PT 60%, QA 20%)</option>
                 </select>
             </div>
-            <div style="font-size: 11.5px; color: #64748b; margin-bottom: 20px; line-height: 1.4;">
-                <strong>Guide:</strong><br>
-                • <strong>Language/Values:</strong> Filipino, English, AP, EsP, Religion / Values Education<br>
-                • <strong>Science/Math:</strong> Science, Mathematics<br>
-                • <strong>Skills:</strong> EPP, TLE, MAPEH, Computer / ICT
+
+            <div
+                style="font-size: 11.5px; color: var(--ma-muted); margin-bottom: 32px; line-height: 1.4; background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid var(--ma-border);">
+                <strong>Category Guide:</strong><br>
+                • <strong>Language:</strong> Fil, Eng, AP, EsP, Values<br>
+                • <strong>Science/Math:</strong> Sci, Math<br>
+                • <strong>Skills:</strong> EPP, TLE, MAPEH, ICT
             </div>
 
-            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
-                <button type="button" class="btn btn-secondary" style="width:auto;"
-                    onclick="closeEditModal()">Cancel</button>
-                <button type="submit" class="btn btn-success" id="editSubmitBtn" style="width:auto;">Save
-                    Changes</button>
+            <div style="display:flex; justify-content:flex-end; gap:12px;">
+                <button type="button" class="btn-prem btn-secondary" onclick="closeEditModal()">Dismiss</button>
+                <button type="submit" class="btn-prem btn-gold" id="editSubmitBtn" disabled>Commit Changes</button>
             </div>
         </form>
     </div>
@@ -403,7 +402,6 @@
         // Language/Values validation
         const langKeywords = ['filipino', 'english', 'ap', 'esp', 'religion', 'values', 'araling', 'pagpapakatao'];
         if (langKeywords.some(k => n.includes(k)) && cat !== 'language') {
-            // Only block if it's clearly one of these
             if (cat === 'science_math' || cat === 'skills') {
                 alert('Validation Error: This subject belongs to the "Language / Values" category according to the guide.');
                 return false;
@@ -418,7 +416,6 @@
                 return false;
             }
         }
-
         return true;
     }
 
@@ -432,15 +429,13 @@
 
         // Capture initial state
         initialSubjectData = {
-            name: name,
-            section: sectionId,
-            category: category || 'language'
+            name: String(name).trim(),
+            section: String(sectionId),
+            category: String(category || 'language')
         };
 
         const submitBtn = document.getElementById('editSubmitBtn');
         submitBtn.disabled = true;
-        submitBtn.style.opacity = '0.5';
-        submitBtn.style.cursor = 'not-allowed';
 
         document.getElementById('editModal').style.display = 'flex';
     }
@@ -449,22 +444,35 @@
         document.getElementById('editModal').style.display = 'none';
     }
 
+    function confirmSubjectDelete(id, name) {
+        const overlay = document.getElementById('deleteConfirmOverlay');
+        const msg = document.getElementById('deleteConfirmMsg');
+        const form = document.getElementById('deleteSubjectForm');
+
+        msg.innerText = `Are you sure you want to permanently remove "${name}" from the curriculum? This action cannot be undone.`;
+        form.action = `/branch-admin/subjects/${id}/delete`;
+        overlay.style.display = 'flex';
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteConfirmOverlay').style.display = 'none';
+    }
+
     // Monitor changes
-    document.getElementById('editForm').addEventListener('input', function () {
-        const currentName = document.getElementById('edit_name').value;
-        const currentSection = document.getElementById('edit_section_id').value;
-        const currentCat = document.getElementById('edit_deped_category').value;
+    ['edit_name', 'edit_section_id', 'edit_deped_category'].forEach(id => {
+        document.getElementById(id).addEventListener('input', function () {
+            const currentName = document.getElementById('edit_name').value.trim();
+            const currentSection = document.getElementById('edit_section_id').value;
+            const currentCat = document.getElementById('edit_deped_category').value;
 
-        const hasChanged = (
-            currentName !== initialSubjectData.name ||
-            currentSection != initialSubjectData.section ||
-            currentCat !== initialSubjectData.category
-        );
+            const hasChanged = (
+                currentName !== initialSubjectData.name ||
+                currentSection !== initialSubjectData.section ||
+                currentCat !== initialSubjectData.category
+            );
 
-        const submitBtn = document.getElementById('editSubmitBtn');
-        submitBtn.disabled = !hasChanged;
-        submitBtn.style.opacity = hasChanged ? '1' : '0.5';
-        submitBtn.style.cursor = hasChanged ? 'pointer' : 'not-allowed';
+            document.getElementById('editSubmitBtn').disabled = !hasChanged;
+        });
     });
 
     // Attach validation to both forms
