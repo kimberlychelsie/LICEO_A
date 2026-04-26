@@ -706,7 +706,7 @@
         ["SCHOOL NAME:", schoolName, "", "GRADE LEVEL:", grade],
         ["SECTION:", section, "", "", ""],
         ["", "", ""],
-        ["No.", "LRN", "NAME", "SEX", "BIRTHDATE", "AGE", "BIRTHPLACE", "ADDRESS", "FATHER", "MOTHER", "GUARDIAN"]
+        ["No.", "LRN", "NAME", "SEX", "BIRTHDATE", "AGE", "BIRTHPLACE", "ADDRESS", "FATHER", "MOTHER", "GUARDIAN", "GUARDIAN CONTACT"]
     ];
 
     studentsData.forEach((s, index) => {
@@ -721,7 +721,8 @@
             upper(s.address || ""),
             upper(s.father_name || ""),
             upper(s.mother_name || ""),
-            upper(s.guardian_name || "")
+            upper(s.guardian_name || ""),
+            upper(s.guardian_contact || "")
         ]);
     });
 
@@ -739,7 +740,8 @@
         { wch: 40 },
         { wch: 25 },
         { wch: 25 },
-        { wch: 25 }
+        { wch: 25 },
+        { wch: 20 }
     ];
 
     ws["!merges"] = [
@@ -832,12 +834,13 @@
                 (s.address || "").toUpperCase().substring(0, 20),
                 (s.father_name || "").toUpperCase().substring(0, 15),
                 (s.mother_name || "").toUpperCase().substring(0, 15),
-                (s.guardian_name || "").toUpperCase().substring(0, 15)
+                (s.guardian_name || "").toUpperCase().substring(0, 15),
+                (s.guardian_contact || "").substring(0, 15)
             ]);
 
             doc.autoTable({
                 startY: yPosition,
-                head: [['No.', 'LRN', 'Name', 'Sex', 'Birthdate', 'Age', 'Birthplace', 'Address', 'Father', 'Mother', 'Guardian']],
+                head: [['No.', 'LRN', 'Name', 'Sex', 'Birthdate', 'Age', 'Birthplace', 'Address', 'Father', 'Mother', 'Guardian', 'Contact']],
                 body: tableData,
                 theme: 'grid',
                 headStyles: {
