@@ -604,6 +604,32 @@
     const currentGrade = "{{ grade_filter }}";
     const currentYear = "{% for sy in school_years %}{% if sy.year_id|string == year_filter|string %}{{ sy.label }}{% endif %}{% endfor %}";
 
+    // ===== HELPER FUNCTIONS (DEFINE OUTSIDE) =====
+    function computeAge(dob) {
+        if (!dob) return "";
+        const birth = new Date(dob);
+        const today = new Date();
+        let age = today.getFullYear() - birth.getFullYear();
+        const m = today.getMonth() - birth.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
+            age--;
+        }
+        return age;
+    }
+
+    function formatDate(dob) {
+        if (!dob) return "";
+        const d = new Date(dob);
+        if (isNaN(d)) return "";
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        const yyyy = d.getFullYear();
+        return `${mm}/${dd}/${yyyy}`;
+    }
+
+    const upper = (val) =>
+        (val || "").toString().trim().replace(/\s+/g, " ").toUpperCase();
+
     function toggleRow(id, tr) {
         const detail = document.getElementById(id);
         const isOpen = detail.classList.contains('show');
@@ -641,50 +667,196 @@
         });
     }
 
-    // Export Excel
     function exportToExcel() {
-        const wb = XLSX.utils.book_new();
-        const rows = studentsData.map(s => ({
-            "Student ID": s.account_username || "No Account",
-            "Identity": s.student_name,
-            "Grade": s.grade_level,
-            "Section": s.section_name || "Unassigned",
-            "Gender": s.gender || "",
-            "DOB": s.dob || "",
-            "Email": s.email || "",
-            "Contact": s.contact_number || "",
-            "Address": s.address || "",
-            "Guardian": s.guardian_name || "",
-            "Guardian Contact": s.guardian_contact || "",
-            "Guardian Email": s.guardian_email || "",
-            "Father Name": s.father_name || "",
-            "Father Contact": s.father_contact || "",
-            "Father Occupation": s.father_occupation || "",
-            "Mother Name": s.mother_name || "",
-            "Mother Contact": s.mother_contact || "",
-            "Mother Occupation": s.mother_occupation || "",
-            "Previous School": s.previous_school || "",
-            "Enroll Type": s.enroll_type || ""
-        }));
-        const ws = XLSX.utils.json_to_sheet(rows);
-        XLSX.utils.book_append_sheet(wb, ws, "Students");
-        XLSX.writeFile(wb, `Registry_${currentGrade.replace(/\s/g, '_')}_${currentYear.replace(/\s/g, '_')}.xlsx`);
+    console.log("Export Excel triggered");
+
+    if (!studentsData || studentsData.length === 0) {
+        alert("No student data available to export.");
+        return;
     }
 
-    // Export PDF
-    function exportToPDF() {
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF('l');
-        doc.setFontSize(16); doc.text(`Registry: ${currentGrade} (${currentYear})`, 14, 15);
-        const rows = studentsData.map(s => [
-            s.account_username || "No Account",
-            s.student_name, s.gender || "", s.dob || "", s.contact_number || "", s.guardian_name || "", s.status || ""
+    const wb = XLSX.utils.book_new();
+
+    // 👉 force line break every ~35 chars to prevent cut
+    function wrapText(str, max = 35) {
+        if (!str) return "";
+        return str.replace(new RegExp(`(.{1,${max}})(\\s|$)`, "g"), "$1\n");
+    }
+
+    const schoolNameRaw = "{{ branch.branch_name | replace('\n', ' ') }}";
+    const schoolName = wrapText(schoolNameRaw, 40);
+
+    const schoolId = "{% if branch.school_id %}{{ branch.school_id }}{% else %}402556{% endif %}";
+
+    const section = (studentsData.length > 0 && studentsData[0].section_name) 
+        ? wrapText(studentsData[0].section_name, 25)
+        : "N/A";
+
+    const grade = wrapText(currentGrade || "", 20);
+    const year = wrapText(currentYear || "", 20);
+
+    const gradeSafe = (currentGrade || "GRADE").replace(/\s/g, "_");
+    const yearSafe = (currentYear || "YEAR").replace(/\s/g, "_");
+    const sectionSafe = (studentsData[0]?.section_name || "N/A").replace(/\s/g, "_");
+
+    const data = [
+        ["", "SCHOOL FORM 1 - SCHOOL REGISTER", ""],
+        ["", "", ""],
+        ["SCHOOL ID:", schoolId, "", "SCHOOL YEAR:", year],
+        ["SCHOOL NAME:", schoolName, "", "GRADE LEVEL:", grade],
+        ["SECTION:", section, "", "", ""],
+        ["", "", ""],
+        ["No.", "LRN", "NAME", "SEX", "BIRTHDATE", "AGE", "BIRTHPLACE", "ADDRESS", "FATHER", "MOTHER", "GUARDIAN"]
+    ];
+
+    studentsData.forEach((s, index) => {
+        data.push([
+            index + 1,
+            s.lrn || "",
+            upper(s.student_name),
+            upper(s.gender || ""),
+            formatDate(s.dob),
+            computeAge(s.dob),
+            upper(s.birthplace || ""),
+            upper(s.address || ""),
+            upper(s.father_name || ""),
+            upper(s.mother_name || ""),
+            upper(s.guardian_name || "")
         ]);
-        doc.autoTable({
-            head: [['ID', 'Name', 'Sex', 'DOB', 'Contact', 'Guardian', 'Status']],
-            body: rows, startY: 22, theme: 'grid', headStyles: { fillColor: [30, 58, 138] }, styles: { fontSize: 8 }
-        });
-        doc.save(`Registry_${currentGrade.replace(/\s/g, '_')}_${currentYear.replace(/\s/g, '_')}.pdf`);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+
+    // 👉 widen key columns so text fits better
+    ws["!cols"] = [
+        { wch: 5 },
+        { wch: 20 },
+        { wch: 45 }, // NAME / SCHOOL NAME wider
+        { wch: 10 },
+        { wch: 15 },
+        { wch: 8 },
+        { wch: 25 },
+        { wch: 40 },
+        { wch: 25 },
+        { wch: 25 },
+        { wch: 25 }
+    ];
+
+    ws["!merges"] = [
+        { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } }
+    ];
+
+    XLSX.utils.book_append_sheet(wb, ws, "SF1");
+
+    XLSX.writeFile(wb, `SF1_${gradeSafe}_${sectionSafe}_${yearSafe}.xlsx`);
+}
+
+    function exportToPDF() {
+        console.log("Export PDF triggered");
+        
+        if (!studentsData || studentsData.length === 0) {
+            alert("No student data available to export.");
+            return;
+        }
+
+        try {
+            const { jsPDF } = window.jspdf;
+            if (!jsPDF) {
+                console.error("jsPDF not loaded");
+                alert("PDF library not loaded. Please refresh the page.");
+                return;
+            }
+
+            const doc = new jsPDF('l');
+            const schoolName = "{{ branch.branch_name | replace('\n', ' ') }}";
+            const schoolId = "{% if branch.school_id %}{{ branch.school_id }}{% else %}402556{% endif %}";
+            const section = (studentsData.length > 0 && studentsData[0].section_name) 
+                ? studentsData[0].section_name 
+                : "N/A";
+
+            const pageWidth = doc.internal.pageSize.getWidth();
+            const pageHeight = doc.internal.pageSize.getHeight();
+            let yPosition = 10;
+
+            // Header
+            doc.setFontSize(11);
+            doc.text("REPUBLIC OF THE PHILIPPINES", pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 5;
+            
+            doc.setFontSize(10);
+            doc.text("DEPARTMENT OF EDUCATION", pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 5;
+            
+            doc.setFontSize(12);
+            doc.setFont(undefined, 'bold');
+            doc.text(schoolName.toUpperCase(), pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 5;
+            
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'normal');
+            doc.text(`School ID: ${schoolId}`, pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 8;
+
+            doc.setFontSize(11);
+            doc.setFont(undefined, 'bold');
+            doc.text("SCHOOL FORM 1 (SF1)", pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 4;
+            
+            doc.setFontSize(9);
+            doc.text("SCHOOL REGISTER", pageWidth / 2, yPosition, { align: 'center' });
+            yPosition += 8;
+
+            // Info Box
+            const infoBoxX = 14;
+            const infoBoxWidth = pageWidth - 28;
+            doc.rect(infoBoxX, yPosition, infoBoxWidth, 20);
+            
+            doc.setFont(undefined, 'normal');
+            doc.text(`Grade Level: ${currentGrade || 'N/A'}`, infoBoxX + 5, yPosition + 5);
+            doc.text(`Section: ${section}`, infoBoxX + 60, yPosition + 5);
+            doc.text(`School Year: ${currentYear || 'N/A'}`, infoBoxX + 120, yPosition + 5);
+            doc.text(`Total Students: ${studentsData.length}`, infoBoxX + 5, yPosition + 12);
+            doc.text(`Date Printed: ${new Date().toLocaleDateString('en-PH')}`, infoBoxX + 120, yPosition + 12);
+            
+            yPosition += 25;
+
+            // Table
+            const tableData = studentsData.map((s, i) => [
+                i + 1,
+                s.lrn || "",
+                (s.student_name || "").toUpperCase(),
+                (s.gender || "").substring(0, 1).toUpperCase(),
+                formatDate(s.dob),
+                computeAge(s.dob),
+                (s.birthplace || "").toUpperCase(),
+                (s.address || "").toUpperCase().substring(0, 20),
+                (s.father_name || "").toUpperCase().substring(0, 15),
+                (s.mother_name || "").toUpperCase().substring(0, 15),
+                (s.guardian_name || "").toUpperCase().substring(0, 15)
+            ]);
+
+            doc.autoTable({
+                startY: yPosition,
+                head: [['No.', 'LRN', 'Name', 'Sex', 'Birthdate', 'Age', 'Birthplace', 'Address', 'Father', 'Mother', 'Guardian']],
+                body: tableData,
+                theme: 'grid',
+                headStyles: {
+                    fillColor: [30, 58, 138],
+                    textColor: [255, 255, 255],
+                    fontSize: 8,
+                    fontStyle: 'bold'
+                },
+                bodyStyles: { fontSize: 8 },
+                margin: { left: 10, right: 10 }
+            });
+
+            const filename = `SF1_${(currentGrade || '').replace(/\s/g, '_')}_${section.replace(/\s/g, '_')}_${(currentYear || '').replace(/\s/g, '_')}.pdf`;
+            doc.save(filename);
+            console.log("PDF exported successfully");
+        } catch (err) {
+            console.error("PDF Export Error:", err);
+            alert("PDF Export Error: " + err.message);
+        }
     }
 
     async function resetPassword(enrollmentId, studentName) {
