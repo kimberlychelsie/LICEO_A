@@ -152,6 +152,21 @@
 
     .status-table tr:last-child td { border-bottom: none; }
 
+    .table-container {
+        max-height: 480px;
+        overflow-y: auto;
+        padding-right: 4px;
+    }
+
+    .table-container::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .table-container::-webkit-scrollbar-thumb {
+        background: #e2e8f0;
+        border-radius: 10px;
+    }
+
     /* ── Graph ── */
     .donut-container {
         position: relative;
@@ -267,9 +282,16 @@
     <div class="dashboard-grid">
         <!-- Branch Table -->
         <div class="content-card">
-            <h2><i class="fas fa-list"></i> Branch Status List</h2>
-            <div style="overflow-x: auto;">
-                <table class="status-table">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <h2 style="margin: 0;"><i class="fas fa-list"></i> Branch Status List</h2>
+                <div style="position: relative; max-width: 250px; width: 100%;">
+                    <i class="fas fa-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ma-muted); font-size: 0.8rem;"></i>
+                    <input type="text" id="branchSearch" placeholder="Search branch..." 
+                           style="width: 100%; padding: 8px 12px 8px 32px; border: 1px solid var(--ma-border); border-radius: 10px; font-size: 0.85rem; outline: none;">
+                </div>
+            </div>
+            <div class="table-container">
+                <table class="status-table" id="branchTable">
                     <thead>
                         <tr>
                             <th>Branch Name</th>
@@ -451,6 +473,19 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    // Branch Search Filter
+    const searchInput = document.getElementById('branchSearch');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', function() {
+            const query = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#branchTable tbody tr');
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                row.style.display = text.includes(query) ? '' : 'none';
+            });
+        });
+    }
 });
 </script>
 {% endblock %}
