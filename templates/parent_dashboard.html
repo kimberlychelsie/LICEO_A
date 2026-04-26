@@ -1,396 +1,390 @@
 {% extends "base.html" %}
-{% block title %}Parent Portal – My Children{% endblock %}
+
+{% block title %}Parent Dashboard{% endblock %}
 
 {% block styles %}
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
     :root {
         --par-primary: #1a3a8f;
-        --par-primary-light: #eff6ff;
+        --par-primary-soft: rgba(26, 58, 143, 0.05);
         --par-gold: #facc15;
-        --par-gold-dark: #ca8a04;
-        --par-text: #0f172a;
-        --par-muted: #64748b;
-        --par-border: rgba(226, 232, 240, 0.8);
-        --par-card: #ffffff;
-        --par-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
-        --par-shadow-hover: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+        --par-text: #1e293b;
+        --par-text-light: #64748b;
+        --par-bg: #f8fafc;
+        --par-border: #e2e8f0;
         --par-radius: 20px;
-        --par-radius-lg: 32px;
     }
 
     body {
-        background-color: #f8fafc;
+        background-color: var(--par-bg);
         font-family: 'Plus Jakarta Sans', sans-serif;
+        color: var(--par-text);
+        letter-spacing: -0.01em;
     }
 
     .par-container {
         max-width: 1400px;
         margin: 0 auto;
         padding: 32px 24px;
-        animation: fadeSlideUp 0.4s ease-out;
+        animation: fadeIn 0.4s ease-out;
     }
 
-    @keyframes fadeSlideUp {
-        from {
-            opacity: 0;
-            transform: translateY(15px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
 
-    /* ── Header ── */
-    .premium-header {
+    /* ── Slim Blue Header ── */
+    .dashboard-header {
         background: linear-gradient(135deg, var(--par-primary) 0%, #0c2461 100%);
-        border-radius: var(--par-radius-lg);
-        padding: 40px;
-        color: white;
+        border-radius: 16px;
+        padding: 32px 40px;
         margin-bottom: 32px;
-        box-shadow: 0 10px 30px rgba(26, 58, 143, 0.2);
-        position: relative;
-        overflow: hidden;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        color: white;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 12px 24px rgba(26, 58, 143, 0.15);
     }
 
-    .premium-header::after {
+    .dashboard-header::after {
         content: '';
         position: absolute;
         top: -50%;
         right: -10%;
-        width: 400px;
-        height: 400px;
-        background: radial-gradient(circle, rgba(250, 204, 21, 0.1) 0%, transparent 70%);
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
         border-radius: 50%;
     }
 
-    .header-content h1 {
+    .header-main h1 {
         margin: 0;
-        font-size: 2.25rem;
+        font-size: 1.8rem;
         font-weight: 900;
-        letter-spacing: -0.03em;
-        line-height: 1.1;
-    }
-
-    .status-line {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-size: 0.95rem;
-        margin-top: 12px;
-        font-weight: 500;
-        opacity: 0.9;
-    }
-
-    .pulse-dot {
-        width: 10px;
-        height: 10px;
-        background: var(--par-gold);
-        border-radius: 50%;
-        box-shadow: 0 0 10px var(--par-gold);
-        animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-        0% {
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7);
-        }
-
-        70% {
-            transform: scale(1);
-            box-shadow: 0 0 0 10px rgba(250, 204, 21, 0);
-        }
-
-        100% {
-            transform: scale(0.95);
-            box-shadow: 0 0 0 0 rgba(250, 204, 21, 0);
-        }
-    }
-
-    .btn-add-child {
-        background: var(--par-gold);
-        color: var(--par-primary);
-        padding: 16px 28px;
-        border-radius: 16px;
-        font-weight: 800;
-        text-decoration: none;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        box-shadow: 0 4px 15px rgba(250, 204, 21, 0.3);
-        z-index: 10;
-        font-size: 0.95rem;
-    }
-
-    .btn-add-child:hover {
-        transform: translateY(-3px);
-        background: white;
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-    }
-
-    /* ── Child Cards Grid ── */
-    .child-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
-        gap: 32px;
-    }
-
-    .child-card {
-        background: var(--par-card);
-        border: 1px solid var(--par-border);
-        border-radius: var(--par-radius-lg);
-        overflow: hidden;
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        box-shadow: var(--par-shadow);
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-        position: relative;
-    }
-
-    .child-card:hover {
-        transform: translateY(-12px);
-        box-shadow: var(--par-shadow-hover);
-        border-color: var(--par-primary);
-    }
-
-    .card-header {
-        padding: 32px;
-        background: linear-gradient(to bottom, #f8fafc, #ffffff);
-        border-bottom: 1px solid #f1f5f9;
-        display: flex;
-        align-items: center;
-        gap: 24px;
-        position: relative;
-    }
-
-    .avatar-box {
-        width: 80px;
-        height: 80px;
-        border-radius: 24px;
-        background: var(--par-primary);
         color: white;
         display: flex;
         align-items: center;
-        justify-content: center;
-        font-size: 2rem;
-        font-weight: 900;
-        box-shadow: 0 8px 16px rgba(26, 58, 143, 0.2);
-        flex-shrink: 0;
+        gap: 12px;
+        letter-spacing: -0.03em;
     }
 
-    .header-info h3 {
-        margin: 0;
-        font-size: 1.4rem;
-        font-weight: 900;
-        color: var(--par-primary);
-        letter-spacing: -0.02em;
-    }
-
-    .grade-badge {
-        display: inline-block;
+    .header-sub {
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.8);
+        font-weight: 500;
         margin-top: 6px;
-        padding: 4px 12px;
-        background: var(--par-primary-light);
+    }
+
+    .btn-add {
+        background: var(--par-gold);
         color: var(--par-primary);
-        border-radius: 10px;
-        font-size: 0.75rem;
+        padding: 12px 24px;
+        border-radius: 14px;
         font-weight: 800;
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: all 0.3s;
+        z-index: 2;
+    }
+
+    .btn-add:hover {
+        background: white;
+        transform: translateY(-2px);
+    }
+
+    /* ── Dashboard Grid Layout ── */
+    .dashboard-main-grid {
+        display: grid;
+        grid-template-columns: 1fr 350px;
+        gap: 32px;
+        align-items: flex-start;
+    }
+
+    .child-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    /* ── Sidebar Styling ── */
+    .dashboard-sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .sidebar-card {
+        background: white;
+        border: 1px solid var(--par-border);
+        border-radius: var(--par-radius);
+        padding: 24px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+    }
+
+    .sidebar-card h2 {
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--par-primary);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .parent-mini-profile {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .parent-avatar {
+        width: 50px;
+        height: 50px;
+        background: var(--par-primary);
+        color: white;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 1.2rem;
+    }
+
+    .parent-info h4 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: var(--par-text);
+    }
+
+    .parent-info p {
+        margin: 0;
+        font-size: 0.75rem;
+        color: var(--par-text-light);
+        font-weight: 600;
+    }
+
+    .quick-link {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: #f8fafc;
+        border-radius: 12px;
+        text-decoration: none;
+        color: var(--par-text);
+        font-size: 0.85rem;
+        font-weight: 700;
+        transition: all 0.2s;
+        margin-bottom: 10px;
+    }
+
+    .quick-link:hover {
+        background: var(--par-primary-soft);
+        color: var(--par-primary);
+        transform: translateX(4px);
+    }
+
+    .system-badge {
+        display: flex;
+        justify-content: space-between;
+        padding: 14px;
+        background: var(--par-primary-soft);
+        border-radius: 12px;
+        border: 1px solid rgba(26, 58, 143, 0.1);
+    }
+
+    .system-label {
+        font-size: 0.7rem;
+        font-weight: 800;
+        color: var(--par-primary);
         text-transform: uppercase;
     }
 
-    .status-pill {
-        position: absolute;
-        top: 32px;
-        right: 32px;
-        padding: 6px 14px;
-        border-radius: 12px;
+    .system-value {
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: var(--par-primary);
+    }
+
+    @media (max-width: 1100px) {
+        .dashboard-main-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .child-card {
+        background: white;
+        border: 1px solid var(--par-border);
+        border-radius: var(--par-radius);
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        transition: transform 0.3s ease;
+    }
+
+    .child-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+    }
+
+    .card-header-styled {
+        padding: 20px 30px;
+        background: #fdfdfd;
+        border-bottom: 1px solid var(--par-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .card-header-info {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .card-header-info h3 {
+        margin: 0;
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: var(--par-primary);
+    }
+
+    .card-header-info .grade-pill {
+        background: var(--par-primary-soft);
+        color: var(--par-primary);
+        padding: 4px 12px;
+        border-radius: 100px;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    .card-body-styled {
+        padding: 30px;
+    }
+
+    .info-group {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+
+    .info-box {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .info-label {
         font-size: 0.7rem;
         font-weight: 800;
+        color: var(--par-text-light);
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
 
-    .status-pill.enrolled {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    .status-pill.pending {
-        background: #fff7ed;
-        color: #9a3412;
-    }
-
-    .status-pill.rejected {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-
-    .card-body {
-        padding: 32px;
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        gap: 24px;
-    }
-
-    .meta-row {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-    }
-
-    .meta-label {
-        font-size: 0.7rem;
-        font-weight: 800;
-        color: var(--par-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-    }
-
-    .meta-value {
+    .info-value {
         font-size: 1rem;
         font-weight: 700;
         color: var(--par-text);
-        display: flex;
-        align-items: center;
-        gap: 8px;
     }
 
-    /* ── Billing Section ── */
-    .billing-card {
-        background: #fcfcfd;
-        border: 1px solid var(--par-border);
-        border-radius: 20px;
-        padding: 20px;
-        margin-top: auto;
-    }
-
-    .bill-top {
+    /* ── Billing & Actions ── */
+    .bill-section {
+        background: var(--par-primary-soft);
+        padding: 16px 24px;
+        border-radius: 14px;
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 16px;
+        margin-bottom: 24px;
     }
 
-    .bill-top span:first-child {
-        font-weight: 800;
+    .bill-title {
         font-size: 0.85rem;
+        font-weight: 700;
         color: var(--par-primary);
     }
 
-    .balance-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-    }
-
-    .bal-item {
-        padding: 12px;
-        background: white;
-        border-radius: 12px;
-        border: 1px solid #f1f5f9;
-        text-align: center;
-    }
-
-    .bal-label {
-        font-size: 0.65rem;
-        font-weight: 800;
-        color: var(--par-muted);
-        text-transform: uppercase;
-        margin-bottom: 4px;
-    }
-
-    .bal-val {
-        font-size: 1rem;
+    .bill-price {
+        font-size: 1.2rem;
         font-weight: 900;
-        color: var(--par-text);
     }
 
-    /* ── Actions ── */
     .card-actions {
-        padding: 24px 32px;
-        background: #f8fafc;
-        border-top: 1px solid #f1f5f9;
         display: grid;
-        grid-template-columns: 1.2fr 1fr;
+        grid-template-columns: 1fr 1fr 1fr;
         gap: 12px;
     }
 
-    .btn-main {
+    .btn-action {
         padding: 12px;
         border-radius: 12px;
-        font-weight: 800;
-        text-decoration: none;
-        text-align: center;
-        transition: all 0.2s;
         font-size: 0.85rem;
+        font-weight: 800;
+        text-align: center;
+        text-decoration: none;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
     }
 
-    .btn-blue {
+    .btn-outline {
+        border: 1.5px solid var(--par-border);
+        color: var(--par-text-light);
+        background: white;
+    }
+
+    .btn-outline:hover {
+        border-color: var(--par-primary);
+        color: var(--par-primary);
+    }
+
+    .btn-primary-solid {
         background: var(--par-primary);
         color: white;
     }
 
-    .btn-blue:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(26, 58, 143, 0.2);
+    .btn-primary-solid:hover {
+        background: #0c2461;
     }
 
-    .btn-outline {
-        border: 1px solid var(--par-border);
-        background: white;
-        color: var(--par-text);
+    .btn-gold {
+        background: var(--par-gold);
+        color: var(--par-primary);
     }
 
-    .btn-outline:hover {
-        background: #f1f5f9;
+    .btn-gold:hover {
+        background: #eab308;
     }
 
-    .btn-full {
-        grid-column: span 2;
-        background: #10b981;
-        color: white;
-        border: none;
+    .status-tag {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 4px 10px;
+        border-radius: 8px;
     }
 
-    .btn-full:hover {
-        background: #059669;
-    }
+    .status-enrolled { background: #dcfce7; color: #166534; }
+    .status-pending { background: #fef3c7; color: #92400e; }
 
-    /* ── Empty State ── */
-    .empty-state {
-        text-align: center;
-        padding: 100px 40px;
-        background: white;
-        border-radius: var(--par-radius-lg);
-        border: 2px dashed #cbd5e1;
-        box-shadow: var(--par-shadow);
-    }
-
-    .empty-icon {
-        font-size: 4rem;
-        margin-bottom: 24px;
-        display: block;
-    }
-
-    @media (max-width: 768px) {
-        .premium-header {
-            flex-direction: column;
-            text-align: center;
-            gap: 24px;
-            padding: 32px 24px;
+    @media (max-width: 600px) {
+        .card-actions {
+            grid-template-columns: 1fr;
         }
-
-        .child-grid {
+        .info-group {
             grid-template-columns: 1fr;
         }
     }
@@ -399,139 +393,116 @@
 
 {% block content %}
 <div class="par-container">
-    <!-- Header -->
-    <div class="premium-header">
-        <div class="header-content">
-            <h1>Parent Portal</h1>
-            <div class="status-line">
-                <span class="pulse-dot"></span>
-                Managing records for {{ children | length }} children.
-            </div>
+    <header class="dashboard-header">
+        <div class="header-main">
+            <p style="font-size: 0.85rem; font-weight: 600; opacity: 0.8; margin: 0 0 4px 0;">Welcome back,</p>
+            <h1><i class="fas fa-users-cog"></i> Parent Dashboard</h1>
+            <div class="header-sub">Connected to <strong>{{ children | length }} student profiles</strong></div>
         </div>
-        <a href="{{ url_for('parent.link_child') }}" class="btn-add-child">
-            <i class="fas fa-plus"></i> Add Child
+        <a href="{{ url_for('parent.link_child') }}" class="btn-add">
+            <i class="fas fa-plus"></i> Link Child
         </a>
-    </div>
+    </header>
 
-    {% if children %}
-    <div class="child-grid">
-        {% for child in children %}
-        <div class="child-card">
-            <!-- Status Pill -->
-            {% if child.status == 'approved' or child.status == 'enrolled' %}
-            <div class="status-pill enrolled">Enrolled</div>
-            {% elif child.status == 'rejected' %}
-            <div class="status-pill rejected">Rejected</div>
-            {% else %}
-            <div class="status-pill pending">Pending</div>
-            {% endif %}
-
-            <div class="card-header">
-                <div class="avatar-box">
-                    {{ child.student_name[0]|upper }}
-                </div>
-                <div class="header-info">
-                    <h3>{{ child.student_name }}</h3>
-                    <div class="grade-badge">{{ child.grade_level }}</div>
-                </div>
-            </div>
-
-            <div class="card-body">
-                <div class="meta-row">
-                    <span class="meta-label">Branch Location</span>
-                    <span class="meta-value">
-                        <i class="fas fa-landmark" style="color: var(--par-gold-dark); font-size: 0.8rem;"></i>
-                        {{ child.branch_name }}
-                    </span>
-                </div>
-
-                <div class="meta-row">
-                    <span class="meta-label">Access Level</span>
-                    <span class="meta-value">
-                        <span
-                            style="background: #f1f5f9; padding: 4px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 800; color: #475569;">
-                            {{ child.relationship|upper }} PORTAL
-                        </span>
-                    </span>
-                </div>
-
-                <!-- Billing Summary Card -->
-                <div class="billing-card">
-                    <div class="bill-top">
-                        <span><i class="fas fa-file-invoice-dollar"></i> Current Billing</span>
-                        {% if child.bill_id %}
-                        {% if child.bill_status == 'paid' %}
-                        <span class="status-pill enrolled" style="position:static; font-size: 0.65rem;">PAID</span>
-                        {% elif child.bill_status == 'partial' %}
-                        <span class="status-pill pending" style="position:static; font-size: 0.65rem;">PARTIAL</span>
+    <div class="dashboard-main-grid">
+        <!-- Main Content (Left) -->
+        <div class="dashboard-left">
+            {% if children %}
+            <div class="child-grid">
+                {% for child in children %}
+                <div class="child-card">
+                    <div class="card-header-styled">
+                        <div class="card-header-info">
+                            <h3>{{ child.student_name }}</h3>
+                            <span class="grade-pill">Grade {{ child.grade_level }}</span>
+                        </div>
+                        {% if child.status == 'approved' or child.status == 'enrolled' %}
+                        <span class="status-tag status-enrolled">Enrolled</span>
                         {% else %}
-                        <span class="status-pill rejected" style="position:static; font-size: 0.65rem;">UNPAID</span>
-                        {% endif %}
+                        <span class="status-tag status-pending">Pending</span>
                         {% endif %}
                     </div>
 
-                    {% if child.bill_id %}
-                    <div class="balance-grid">
-                        <div class="bal-item">
-                            <div class="bal-label">Paid</div>
-                            <div class="bal-val" style="color: #16a34a;">₱{{ "{:,.2f}".format(child.amount_paid) }}
+                    <div class="card-body-styled">
+                        <div class="info-group">
+                            <div class="info-box">
+                                <span class="info-label">School Branch</span>
+                                <span class="info-value">{{ child.branch_name }}</span>
+                            </div>
+                            <div class="info-box">
+                                <span class="info-label">Relationship</span>
+                                <span class="info-value">{{ child.relationship | capitalize }}</span>
                             </div>
                         </div>
-                        <div class="bal-item">
-                            <div class="bal-label">Balance</div>
-                            <div class="bal-val"
-                                style="color: {% if child.balance > 0 %}#dc2626{% else %}#1a3a8f{% endif %};">
-                                ₱{{ "{:,.2f}".format(child.balance) }}
-                            </div>
+
+                        <div class="bill-section">
+                            <span class="bill-title"><i class="fas fa-wallet"></i> Current Balance</span>
+                            <span class="bill-price" style="color: {% if child.balance > 0 %}#dc2626{% else %}#16a34a{% endif %};">
+                                ₱{{ "{:,.2f}".format(child.balance) if child.bill_id else '0.00' }}
+                            </span>
+                        </div>
+
+                        <div class="card-actions">
+                            <a href="{{ url_for('parent.child_detail', enrollment_id=child.enrollment_id) }}" class="btn-action btn-outline">
+                                <i class="fas fa-user-graduate"></i> View Profile
+                            </a>
+                            <a href="{{ url_for('parent.child_bills', enrollment_id=child.enrollment_id) }}" class="btn-action btn-primary-solid">
+                                <i class="fas fa-receipt"></i> Billing
+                            </a>
+                            {% if is_branch_active_status %}
+                            <a href="{{ url_for('parent.child_reserve', enrollment_id=child.enrollment_id) }}" class="btn-action btn-gold">
+                                <i class="fas fa-shopping-cart"></i> Reserve
+                            </a>
+                            {% endif %}
                         </div>
                     </div>
-                    {% else %}
-                    <div
-                        style="text-align: center; padding: 10px; font-size: 0.8rem; color: var(--par-muted); font-weight: 600;">
-                        No active bills found for this child.
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-card" style="text-align: center; padding: 80px; background: white; border-radius: 20px; border: 1px dashed var(--par-border);">
+                <i class="fas fa-user-plus" style="font-size: 3rem; color: var(--par-primary-soft); margin-bottom: 20px;"></i>
+                <h2>Welcome to the Portal</h2>
+                <p>No student records are linked to your account yet.</p>
+                <a href="{{ url_for('parent.link_child') }}" class="btn-add" style="display: inline-flex;">Link Your First Child</a>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Sidebar (Right) -->
+        <aside class="dashboard-sidebar">
+            <!-- Profile Card -->
+            <div class="sidebar-card">
+                <h2><i class="fas fa-user-circle"></i> Parent Account</h2>
+                <div class="parent-mini-profile">
+                    <div class="parent-avatar">
+                        {{ session.get('full_name', 'P')[0]|upper }}
                     </div>
-                    {% endif %}
+                    <div class="parent-info">
+                        <h4>{{ session.get('full_name', 'Parent User') }}</h4>
+                        <p>{{ session.get('email', 'No email set') }}</p>
+                    </div>
+                </div>
+                <div class="system-badge">
+                    <span class="system-label">Active School Year</span>
+                    <span class="system-value">{{ active_school_year or '2025-2026' }}</span>
                 </div>
             </div>
 
-            <div class="card-actions">
-                <a href="{{ url_for('parent.child_detail', enrollment_id=child.enrollment_id) }}"
-                    class="btn-main btn-outline">
-                    View Record
+            <!-- Quick Links -->
+            <div class="sidebar-card">
+                <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
+                <a href="{{ url_for('parent.link_child') }}" class="quick-link">
+                    <span><i class="fas fa-plus-circle" style="margin-right: 8px; opacity: 0.7;"></i> Link New Child</span>
+                    <i class="fas fa-chevron-right"></i>
                 </a>
-                <a href="{{ url_for('parent.child_bills', enrollment_id=child.enrollment_id) }}"
-                    class="btn-main btn-blue">
-                    Billing Details
+                <a href="{{ url_for('parent.parent_reserve') }}" class="quick-link">
+                    <span><i class="fas fa-shopping-cart" style="margin-right: 8px; opacity: 0.7;"></i> Reserve Items</span>
+                    <i class="fas fa-chevron-right"></i>
                 </a>
-                {% if is_branch_active_status %}
-                <a href="{{ url_for('parent.child_reserve', enrollment_id=child.enrollment_id) }}"
-                    class="btn-main btn-full">
-                    <i class="fas fa-shopping-bag"></i> Reserve Items
-                </a>
-                {% endif %}
             </div>
-        </div>
-        {% endfor %}
+
+        </aside>
     </div>
-    {% else %}
-    <div class="empty-state">
-        <div style="margin-bottom: 24px; display: flex; justify-content: center; color: #cbd5e1;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
-        </div>
-        <h2 style="font-weight:900; color:var(--par-primary); margin-bottom:12px;">No Children Linked</h2>
-        <p style="color:var(--par-muted); margin-bottom:32px; font-weight:500;">Link your children to view their
-            academic status, billing statements, and reserve school items.</p>
-        <a href="{{ url_for('parent.link_child') }}" class="btn-add-child"
-            style="display:inline-flex; width:auto; padding: 18px 40px; font-size: 1.1rem;">
-            Link Child Now
-        </a>
-    </div>
-    {% endif %}
 </div>
 {% endblock %}

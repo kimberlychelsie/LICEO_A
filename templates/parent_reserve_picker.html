@@ -1,174 +1,315 @@
 {% extends "base.html" %}
-{% block title %}Reservation Portal – Select Student{% endblock %}
+
+{% block title %}Reservation Portal{% endblock %}
 
 {% block styles %}
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
     :root {
-        --pick-primary: #1a3a8f;
-        --pick-gold: #facc15;
-        --pick-text: #0f172a;
-        --pick-muted: #64748b;
-        --pick-border: rgba(226, 232, 240, 0.8);
-        --pick-radius: 24px;
-        --pick-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
+        --par-primary: #1a3a8f;
+        --par-primary-soft: rgba(26, 58, 143, 0.05);
+        --par-gold: #facc15;
+        --par-text: #1e293b;
+        --par-text-light: #64748b;
+        --par-bg: #f8fafc;
+        --par-border: #e2e8f0;
+        --par-radius: 20px;
     }
 
     body {
-        background-color: #f8fafc;
+        background-color: var(--par-bg);
         font-family: 'Plus Jakarta Sans', sans-serif;
+        color: var(--par-text);
+        letter-spacing: -0.01em;
     }
 
-    .picker-container {
-        max-width: 550px;
-        margin: 80px auto;
-        padding: 24px;
-        animation: fadeSlideUp 0.4s ease-out;
+    .par-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 32px 24px;
+        animation: fadeIn 0.4s ease-out;
     }
 
-    @keyframes fadeSlideUp {
-        from { opacity: 0; transform: translateY(15px); }
-        to { opacity: 1; transform: translateY(0); }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
     }
 
-    .premium-card {
-        background: white;
-        border-radius: var(--pick-radius);
-        border: 1px solid var(--pick-border);
-        box-shadow: var(--pick-shadow);
-        overflow: hidden;
-    }
-
-    .premium-card-header {
-        background: linear-gradient(135deg, var(--pick-primary) 0%, #0c2461 100%);
-        padding: 40px 30px;
-        text-align: center;
+    /* ── Slim Blue Header ── */
+    .dashboard-header {
+        background: linear-gradient(135deg, var(--par-primary) 0%, #0c2461 100%);
+        border-radius: 16px;
+        padding: 32px 40px;
+        margin-bottom: 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         color: white;
         position: relative;
+        overflow: hidden;
+        box-shadow: 0 12px 24px rgba(26, 58, 143, 0.15);
     }
 
-    .premium-card-header h2 {
-        font-size: 1.75rem;
-        font-weight: 900;
+    .header-main h1 {
         margin: 0;
-        letter-spacing: -0.02em;
-    }
-
-    .premium-card-header p {
-        font-size: 0.95rem;
-        opacity: 0.8;
-        margin-top: 8px;
-        font-weight: 500;
-    }
-
-    .premium-card-body {
-        padding: 32px;
-        background: #ffffff;
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-    }
-
-    .student-link {
+        font-size: 1.8rem;
+        font-weight: 900;
+        color: white;
         display: flex;
         align-items: center;
-        gap: 20px;
-        padding: 20px;
-        background: #fcfcfd;
-        border: 1px solid var(--pick-border);
-        border-radius: 20px;
-        text-decoration: none;
-        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        gap: 12px;
+        letter-spacing: -0.03em;
     }
 
-    .student-link:hover {
-        transform: translateY(-5px);
+    .btn-nav {
         background: white;
-        border-color: var(--pick-primary);
-        box-shadow: 0 12px 20px rgba(26, 58, 143, 0.1);
+        color: var(--par-primary);
+        padding: 10px 20px;
+        border-radius: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        font-size: 0.85rem;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        z-index: 2;
     }
 
-    .avatar-circle {
-        width: 56px; height: 56px;
-        background: var(--pick-primary);
-        color: white;
-        border-radius: 18px;
-        display: flex; align-items: center; justify-content: center;
-        font-weight: 900; font-size: 1.5rem;
-        box-shadow: 0 4px 10px rgba(26, 58, 143, 0.2);
+    .btn-nav:hover {
+        background: var(--par-gold);
+        transform: translateY(-1px);
     }
 
-    .student-info { flex: 1; }
-    .student-name { font-weight: 800; font-size: 1.15rem; color: var(--pick-text); margin-bottom: 2px; }
-    .student-meta { font-size: 0.8rem; font-weight: 600; color: var(--pick-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    /* ── Main Layout ── */
+    .reserve-grid {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: 32px;
+        align-items: flex-start;
+    }
+
+    .student-picker-list {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    .student-link-card {
+        background: white;
+        border: 1px solid var(--par-border);
+        border-radius: var(--par-radius);
+        padding: 24px 32px;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        transition: all 0.3s;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+    }
+
+    .student-link-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+        border-color: var(--par-primary);
+    }
+
+    .avatar-box {
+        width: 64px;
+        height: 64px;
+        background: var(--par-primary-soft);
+        color: var(--par-primary);
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        font-weight: 900;
+    }
+
+    .student-info {
+        flex: 1;
+    }
+
+    .student-info h3 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--par-text);
+    }
+
+    .student-info p {
+        margin: 4px 0 0 0;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--par-text-light);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
 
     .arrow-icon {
-        color: var(--pick-primary);
-        font-weight: 900;
-        font-size: 1.25rem;
+        color: var(--par-primary);
+        font-size: 1.2rem;
         opacity: 0.3;
-        transition: all 0.2s;
+        transition: transform 0.2s;
     }
 
-    .student-link:hover .arrow-icon {
+    .student-link-card:hover .arrow-icon {
         opacity: 1;
         transform: translateX(5px);
     }
 
-    .btn-back {
+    /* ── Instruction Card ── */
+    .instruction-card {
+        background: white;
+        border: 1px solid var(--par-border);
+        border-radius: var(--par-radius);
+        padding: 30px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+    }
+
+    .instruction-card h2 {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--par-primary);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .step-item {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
+
+    .step-number {
+        width: 28px;
+        height: 28px;
+        background: var(--par-primary);
+        color: white;
+        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
-        margin-top: 24px;
-        color: var(--pick-muted);
-        text-decoration: none;
-        font-weight: 700;
-        font-size: 0.9rem;
-        transition: color 0.2s;
+        font-size: 0.8rem;
+        font-weight: 800;
+        flex-shrink: 0;
     }
 
-    .btn-back:hover { color: var(--pick-primary); }
+    .step-text h4 {
+        margin: 0 0 4px 0;
+        font-size: 0.9rem;
+        font-weight: 800;
+        color: var(--par-text);
+    }
 
-    .pulse-mark {
-        position: absolute;
-        top: 20px; right: 20px;
-        width: 8px; height: 8px;
-        background: var(--pick-gold);
-        border-radius: 50%;
-        box-shadow: 0 0 10px var(--pick-gold);
+    .step-text p {
+        margin: 0;
+        font-size: 0.8rem;
+        color: var(--par-text-light);
+        line-height: 1.5;
+        font-weight: 500;
+    }
+
+    .help-box {
+        margin-top: 10px;
+        padding: 16px;
+        background: var(--par-primary-soft);
+        border-radius: 12px;
+        border: 1px dashed var(--par-border);
+    }
+
+    .help-box p {
+        margin: 0;
+        font-size: 0.75rem;
+        color: var(--par-primary);
+        font-weight: 600;
+    }
+
+    @media (max-width: 1000px) {
+        .reserve-grid {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="picker-container">
-    <div class="premium-card">
-        <div class="premium-card-header">
-            <div class="pulse-mark"></div>
-            <h2>Select Student</h2>
-            <p>Choose which record you want to manage for reservations.</p>
+<div class="par-container">
+    <!-- Slim Blue Header -->
+    <header class="dashboard-header">
+        <div class="header-main">
+            <p style="font-size: 0.85rem; font-weight: 600; opacity: 0.8; margin: 0 0 4px 0;">Item Reservation</p>
+            <h1><i class="fas fa-shopping-cart"></i> Select Student</h1>
+            <div class="header-sub">Choose a student to start reserving items</div>
         </div>
+        <a href="{{ url_for('parent.dashboard') }}" class="btn-nav">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </header>
 
-        <div class="premium-card-body">
+    <div class="reserve-grid">
+        <!-- Student Picker (Left) -->
+        <div class="student-picker-list">
             {% for child in children %}
-            <a href="{{ url_for('student.student_reservation', enrollment_id=child.enrollment_id) }}" class="student-link">
-                <div class="avatar-circle">
+            <a href="{{ url_for('student.student_reservation', enrollment_id=child.enrollment_id) }}" class="student-link-card">
+                <div class="avatar-box">
                     {{ child.student_name[0] | upper }}
                 </div>
                 <div class="student-info">
-                    <div class="student-name">{{ child.student_name }}</div>
-                    <div class="student-meta">{{ child.grade_level }} &nbsp;•&nbsp; ID: #{{ child.enrollment_id }}</div>
+                    <h3>{{ child.student_name }}</h3>
+                    <p>Grade {{ child.grade_level }} &nbsp;•&nbsp; Enrollment ID #{{ child.enrollment_id }}</p>
                 </div>
-                <div class="arrow-icon"><i class="fas fa-chevron-right"></i></div>
+                <div class="arrow-icon"><i class="fas fa-arrow-right"></i></div>
             </a>
             {% endfor %}
-
-            <a href="{{ url_for('parent.dashboard') }}" class="btn-back">
-                <i class="fas fa-arrow-left"></i> Back to Dashboard
-            </a>
         </div>
+
+        <!-- Instructions (Right) -->
+        <aside class="instruction-sidebar">
+            <div class="instruction-card">
+                <h2><i class="fas fa-info-circle"></i> How to Reserve</h2>
+                
+                <div class="step-item">
+                    <div class="step-number">1</div>
+                    <div class="step-text">
+                        <h4>Select Student</h4>
+                        <p>Choose the student you want to reserve books or uniforms for.</p>
+                    </div>
+                </div>
+
+                <div class="step-item">
+                    <div class="step-number">2</div>
+                    <div class="step-text">
+                        <h4>Browse Inventory</h4>
+                        <p>You will be taken to our active inventory where you can pick items available for your child's grade.</p>
+                    </div>
+                </div>
+
+                <div class="step-item">
+                    <div class="step-number">3</div>
+                    <div class="step-text">
+                        <h4>Add to List</h4>
+                        <p>Specify the quantity and size (for uniforms). Maximum of 3 items per product.</p>
+                    </div>
+                </div>
+
+                <div class="step-item" style="margin-bottom: 0;">
+                    <div class="step-number">4</div>
+                    <div class="step-text">
+                        <h4>Confirm & Pay</h4>
+                        <p>Confirm the reservation. The total will be added to your child's billing record.</p>
+                    </div>
+                </div>
+
+                <div class="help-box">
+                    <p>Note: Reservations are subject to branch availability. Items will be released upon payment confirmation.</p>
+                </div>
+            </div>
+        </aside>
     </div>
 </div>
 {% endblock %}
