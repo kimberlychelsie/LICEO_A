@@ -1287,7 +1287,26 @@ def activity_submissions(activity_id):
             WHERE sub.activity_id = %s
             ORDER BY sub.submitted_at ASC
         ''', (activity_id, activity_id))
-        submissions_raw = {row['enrollment_id']: row for row in cur.fetchall()}
+        submissions_raw = {}
+        for row in cur.fetchall():
+            # Parse attachments JSON
+            if row.get("attachments"):
+                if isinstance(row["attachments"], str):
+                    try:
+                        row["attachments"] = json.loads(row["attachments"])
+                    except:
+                        row["attachments"] = []
+            else:
+                # Fallback for old submissions
+                if row.get("file_path"):
+                    row["attachments"] = [{
+                        "path": row["file_path"],
+                        "name": row.get("original_filename") or "Attachment",
+                        "type": row["file_path"].rsplit('.', 1)[-1].lower() if '.' in row["file_path"] else ''
+                    }]
+                else:
+                    row["attachments"] = []
+            submissions_raw[row['enrollment_id']] = row
         
         # Also need students who haven't submitted but might have extensions
         cur.execute('''
@@ -1325,6 +1344,33 @@ def activity_submissions(activity_id):
     ph_now = datetime.now(ph_tz)
     min_date = ph_now.strftime("%Y-%m-%d") + "T00:00"
     return render_template("teacher_activity_submissions.html", activity=activity, submissions=submissions_data, stats=stats, min_date=min_date)
+
+
+@teacher_bp.route("/teacher/activities/submissions/<int:submission_id>/mark-viewed", methods=["POST"])
+def mark_submission_viewed(submission_id):
+    """
+    Mark a submission as viewed by the teacher.
+    """
+    user_id = session.get("user_id")
+    if not user_id or session.get("role") != "teacher":
+        return {"error": "Unauthorized"}, 401
+    
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            UPDATE activity_submissions 
+            SET is_viewed = TRUE 
+            WHERE submission_id = %s
+        """, (submission_id,))
+        db.commit()
+        return {"ok": True}
+    except Exception as e:
+        print(f"Error marking viewed: {e}")
+        return {"error": str(e)}, 500
+    finally:
+        cur.close()
+        db.close()
 
 
 @teacher_bp.route("/teacher/activities/submissions/<int:submission_id>/grade", methods=["POST"])

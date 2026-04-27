@@ -16,6 +16,9 @@ app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 if os.getenv("FLASK_ENV") == "production" or os.getenv("RAILWAY_ENVIRONMENT"):
     app.config["SESSION_COOKIE_SECURE"] = True
 
+# Max upload size: 100MB total
+app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024
+
 @app.before_request
 def check_branch_active_status():
     if request.method in ['POST', 'PUT', 'DELETE']:
@@ -47,6 +50,11 @@ def check_branch_active_status():
                     fallback = url_for('parent.dashboard')
 
                 return redirect(request.referrer or fallback)
+
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    flash("The total size of your submission exceeds the 100MB limit.", "error")
+    return redirect(request.referrer or '/')
 
 @app.context_processor
 def inject_is_branch_active():

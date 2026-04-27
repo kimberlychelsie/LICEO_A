@@ -378,6 +378,20 @@ def get_db_connection():
                 logger.warning(f"Could not migrate announcements table: {e}")
                 conn.rollback()
 
+            # ── Activity Submissions attachments migration ──
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'activity_submissions'")
+                sub_cols = [r[0] for r in cur.fetchall()]
+                if 'attachments' not in sub_cols:
+                    cur.execute("ALTER TABLE activity_submissions ADD COLUMN attachments JSONB")
+                if 'is_viewed' not in sub_cols:
+                    cur.execute("ALTER TABLE activity_submissions ADD COLUMN is_viewed BOOLEAN DEFAULT FALSE")
+                
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate activity_submissions: {e}")
+                conn.rollback()
+
             # ── Financial year_id migration ──
             try:
                 cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'billing'")

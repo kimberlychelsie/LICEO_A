@@ -308,8 +308,9 @@
                     <input type="text" name="allowed_file_types" class="form-input" placeholder="pdf, jpg, docx — leave empty for any">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Reference Attachment <span style="font-weight:500; font-size:0.8rem; color:var(--muted);">(optional)</span></label>
-                    <input type="file" name="attachment" class="form-input" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+                    <label class="form-label">Reference Attachment <span style="font-weight:500; font-size:0.8rem; color:var(--muted);">(optional, Max 10MB)</span></label>
+                    <input type="file" name="attachment" id="attachmentInput" class="form-input" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+                    <small style="display:block; margin-top:4px; color:var(--muted); font-size:0.8rem;">Allowed: PDF, DOCX, PNG, JPG</small>
                 </div>
             </div>
 
@@ -353,13 +354,52 @@
         if (document.getElementById('subjectSelect').value) {
             updateSectionCheckboxes();
         }
+
+        // Enrollment-style real-time validation for Reference Attachment
+        const attachmentInput = document.getElementById('attachmentInput');
+        if (attachmentInput) {
+            attachmentInput.onchange = function() {
+                if (this.files.length > 0) {
+                    const file = this.files[0];
+                    const fileName = file.name;
+                    const fileSize = file.size / 1024 / 1024; // MB
+                    const ext = fileName.split('.').pop().toLowerCase();
+                    const allowedExts = ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg'];
+
+                    // Check Extension
+                    if (!allowedExts.includes(ext)) {
+                        alert(`Invalid file type: .${ext}\nOnly PDF, DOCX, and Images are allowed for reference attachments.`);
+                        this.value = ''; // Clear input
+                        return;
+                    }
+
+                    // Check Size (10MB)
+                    if (fileSize > 10) {
+                        alert(`File too large: ${fileSize.toFixed(2)}MB\nReference attachments must not exceed 10MB.`);
+                        this.value = ''; // Clear input
+                        return;
+                    }
+                }
+            };
+        }
     });
 
     document.getElementById('activityForm').onsubmit = function(e) {
+        // Section validation
         const checked = document.querySelectorAll('input[name="section_ids"]:checked');
         if (checked.length === 0) {
             alert('Please select at least one section.');
             e.preventDefault(); return false;
+        }
+
+        // File size validation (10MB)
+        const fileInput = document.getElementById('attachmentInput');
+        if (fileInput && fileInput.files.length > 0) {
+            const fileSize = fileInput.files[0].size / 1024 / 1024; // MB
+            if (fileSize > 10) {
+                alert('Reference attachment must not exceed 10MB.');
+                e.preventDefault(); return false;
+            }
         }
 
         const btn = this.querySelector('button[type="submit"]');

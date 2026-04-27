@@ -688,8 +688,27 @@ def activity_detail(activity_id):
     ORDER BY sub.submitted_at DESC LIMIT 1
     ''', (activity_id, student_user_id, enrollment_id))
         submission = cur.fetchone() 
-        if submission and submission.get("submitted_at"):
-            submission["submitted_at"] = _to_manila_naive(submission["submitted_at"])        
+        if submission:
+            if submission.get("submitted_at"):
+                submission["submitted_at"] = _to_manila_naive(submission["submitted_at"])
+            
+            # Parse attachments JSON if present
+            if submission.get("attachments"):
+                if isinstance(submission["attachments"], str):
+                    try:
+                        submission["attachments"] = json.loads(submission["attachments"])
+                    except:
+                        submission["attachments"] = []
+            else:
+                # Fallback for old submissions with only one file
+                if submission.get("file_path"):
+                    submission["attachments"] = [{
+                        "path": submission["file_path"],
+                        "name": submission.get("original_filename") or "Attachment",
+                        "type": submission["file_path"].rsplit('.', 1)[-1].lower() if '.' in submission["file_path"] else ''
+                    }]
+                else:
+                    submission["attachments"] = []
     finally:
         cur.close()
         db.close()
@@ -758,28 +777,42 @@ def submit_activity(activity_id):
                 return redirect(request.referrer)
             
         # Proceed with file upload
-        if 'submission_file' not in request.files:
-            flash("No file provided.", "error")
+        files = request.files.getlist('submission_file')
+        if not files or all(f.filename == '' for f in files):
+            flash("No files selected.", "error")
             return redirect(request.referrer)
             
-        file = request.files['submission_file']
-        if file.filename == '':
-            flash("No file selected.", "error")
-            return redirect(request.referrer)
+        uploaded_files = []
+        for file in files:
+            if file.filename == '': continue
             
-        # Basic extension check
-        if activity['allowed_file_types']:
-            allowed = [x.strip().lower() for x in str(activity['allowed_file_types']).split(',')]
-            ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
-            if ext not in allowed:
-                flash(f"Invalid file type. Allowed: {activity['allowed_file_types']}", "error")
+            # Basic extension check
+            if activity['allowed_file_types']:
+                allowed = [x.strip().lower() for x in str(activity['allowed_file_types']).split(',')]
+                ext = file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+                if ext not in allowed:
+                    flash(f"Invalid file type for {file.filename}. Allowed: {activity['allowed_file_types']}", "error")
+                    return redirect(request.referrer)
+            
+            try:
+                path = upload_file(file, folder="liceo_submissions")
+                uploaded_files.append({
+                    "path": path,
+                    "name": file.filename,
+                    "type": file.filename.rsplit('.', 1)[-1].lower() if '.' in file.filename else ''
+                })
+            except Exception as e:
+                flash(f"Upload failed for {file.filename}: {e}", "error")
                 return redirect(request.referrer)
-                
-        try:
-            file_path = upload_file(file, folder="liceo_submissions")
-        except Exception as e:
-            flash(f"File upload failed: {e}", "error")
+            
+        if not uploaded_files:
+            flash("No valid files uploaded.", "error")
             return redirect(request.referrer)
+
+        # Main file (for backward compatibility)
+        primary_path = uploaded_files[0]['path']
+        primary_name = uploaded_files[0]['name']
+        attachments_json = json.dumps(uploaded_files)
             
         ph_tz = pytz.timezone("Asia/Manila")
         now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
@@ -791,16 +824,18 @@ def submit_activity(activity_id):
             # Update existing submission
             cur.execute('''
                 UPDATE activity_submissions SET 
-                    file_path = %s, original_filename = %s, submitted_at = %s, is_late = %s, 
+                    file_path = %s, original_filename = %s, attachments = %s,
+                    submitted_at = %s, is_late = %s, 
                     status = 'Resubmitted', allow_resubmit = FALSE
                 WHERE submission_id = %s
-            ''', (file_path, file.filename, now_naive, is_late, existing_sub['submission_id']))
+            ''', (primary_path, primary_name, attachments_json, now_naive, is_late, existing_sub['submission_id']))
         else:
             # Create new submission
             cur.execute('''
-                INSERT INTO activity_submissions (activity_id, student_id, enrollment_id, file_path, original_filename, submitted_at, is_late)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
-            ''', (activity_id, student_user_id, enrollment_id, file_path, file.filename, now_naive, is_late))
+                INSERT INTO activity_submissions (
+                    activity_id, student_id, enrollment_id, file_path, original_filename, attachments, submitted_at, is_late
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (activity_id, student_user_id, enrollment_id, primary_path, primary_name, attachments_json, now_naive, is_late))
             
         # Delete notification for this activity if it exists
         # Mark activity notification as read when student submits

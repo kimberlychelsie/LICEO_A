@@ -73,7 +73,7 @@
         </div>
 
         <div class="form-group">
-            <label class="form-label">Reference Attachment</label>
+            <label class="form-label">Reference Attachment <span style="font-weight:500; font-size:0.8rem; color:var(--muted);">(optional, Max 10MB)</span></label>
             {% if activity.attachment_path %}
             {% set ext = activity.attachment_path.split('.')[-1].lower() %}
             <div style="margin-bottom:8px; font-size:0.9rem;">
@@ -82,15 +82,13 @@
                     {% if ext == 'pdf' %}View PDF
                     {% elif ext in ['jpg', 'jpeg', 'png', 'gif'] %}View Image
                     {% elif ext in ['doc', 'docx'] %}View Document
-                    {% elif ext in ['xls', 'xlsx'] %}View Spreadsheet
-                    {% elif ext in ['ppt', 'pptx'] %}View Presentation
                     {% else %}View File
                     {% endif %}
                 </a>
             </div>
             {% endif %}
-            <input type="file" name="attachment" class="form-input">
-            <small style="color:var(--muted)">Uploading a new file will replace the current one.</small>
+            <input type="file" name="attachment" id="attachmentInput" class="form-input" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+            <small style="display:block; margin-top:4px; color:var(--muted); font-size:0.8rem;">Allowed: PDF, DOCX, PNG, JPG. Uploading a new file will replace the current one.</small>
         </div>
 
         <hr style="border:0; border-top:1px solid var(--border); margin: 24px 0;">
@@ -103,8 +101,46 @@
 </div>
 </div>
 <script>
-    document.addEventListener("DOMContentLoaded", function () {
-        const dueDateInput = document.getElementById("due_date");
+    document.addEventListener('DOMContentLoaded', function() {
+        const attachmentInput = document.getElementById('attachmentInput');
+        if (attachmentInput) {
+            attachmentInput.onchange = function() {
+                if (this.files.length > 0) {
+                    const file = this.files[0];
+                    const fileName = file.name;
+                    const fileSize = file.size / 1024 / 1024; // MB
+                    const ext = fileName.split('.').pop().toLowerCase();
+                    const allowedExts = ['pdf', 'doc', 'docx', 'png', 'jpg', 'jpeg'];
+
+                    // Check Extension
+                    if (!allowedExts.includes(ext)) {
+                        alert(`Invalid file type: .${ext}\nOnly PDF, DOCX, and Images are allowed for reference attachments.`);
+                        this.value = ''; // Clear input
+                        return;
+                    }
+
+                    // Check Size (10MB)
+                    if (fileSize > 10) {
+                        alert(`File too large: ${fileSize.toFixed(2)}MB\nReference attachments must not exceed 10MB.`);
+                        this.value = ''; // Clear input
+                        return;
+                    }
+                }
+            };
+        }
     });
+
+    document.querySelector('form').onsubmit = function(e) {
+        // File size validation (10MB)
+        const fileInput = document.getElementById('attachmentInput');
+        if (fileInput && fileInput.files.length > 0) {
+            const fileSize = fileInput.files[0].size / 1024 / 1024; // MB
+            if (fileSize > 10) {
+                alert('Reference attachment must not exceed 10MB.');
+                e.preventDefault(); return false;
+            }
+        }
+        return true;
+    };
 </script>
 {% endblock %}

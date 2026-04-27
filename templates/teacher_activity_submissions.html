@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block title %}Activity Submissions{% endblock %}
 
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+{% endblock %}
+
 {% block styles %}
 <style>
     .sub-wrap {
@@ -95,7 +99,22 @@
     .close-btn:hover {
         color: var(--text);
     }
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid rgba(255,255,255,0.1);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
 </style>
+
+<!-- Mammoth.js for DOCX rendering -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 {% endblock %}
 
 {% block content %}
@@ -175,17 +194,18 @@
                         {% endif %}
                     </td>
                     <td>
-                        {% if sub.file_path %}
-                        {% set sub_ext = sub.original_filename.split('.')[-1].lower() if sub.original_filename and '.' in sub.original_filename else sub.file_path.split('.')[-1].lower() %}
-                        <div style="display:flex; flex-direction:column; gap:4px;">
+                        {% if sub.attachments %}
+                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; max-width: 300px;">
+                            {% for att in sub.attachments %}
                             <a href="javascript:void(0)" 
-                               onclick="viewFilePreview('{{ sub.file_path }}', '{{ sub_ext }}', '{{ sub.submission_id }}')"
+                               onclick="viewFilePreview('{{ att.path }}', '{{ att.type }}', '{{ sub.submission_id }}')"
                                class="btn btn-secondary btn-sm" 
-                               title="{{ sub.original_filename }}"
-                               style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;">
-                                {{ '📕' if sub_ext == 'pdf' else '🖼️' if sub_ext in ['jpg', 'jpeg', 'png', 'gif'] else '📄' if sub_ext in ['doc', 'docx'] else '📊' if sub_ext in ['xls', 'xlsx'] else '📈' if sub_ext in ['ppt', 'pptx'] else '📎' }}
-                                {{ sub.original_filename }}
+                               title="{{ att.name }}"
+                               style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; justify-content: flex-start; padding: 6px 8px; font-size: 0.75rem;">
+                                {{ '📕' if att.type == 'pdf' else '🖼️' if att.type in ['jpg', 'jpeg', 'png', 'gif', 'webp'] else '📄' if att.type in ['doc', 'docx'] else '🎥' if att.type in ['mp4', 'webm', 'ogg'] else '📊' if att.type in ['xls', 'xlsx'] else '📈' if att.type in ['ppt', 'pptx'] else '📎' }}
+                                {{ att.name }}
                             </a>
+                            {% endfor %}
                         </div>
                         {% else %}
                         —
@@ -240,9 +260,9 @@
     </div>
 </div>
 
+
 <script>
     function viewFilePreview(path, forcedExt = '', submissionId = null) {
-        // Mark as viewed in background if submissionId provided
         if (submissionId) {
             fetch(`/teacher/submissions/${submissionId}/mark-viewed`, { method: 'POST' })
                 .catch(err => console.error("Viewed tracking error:", err));
@@ -255,19 +275,53 @@
             finalPath = finalPath.replace('/image/upload/', '/raw/upload/');
         }
 
-        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext) || ext === 'pdf') {
+        if (ext === 'docx') {
+            const previewWin = window.open('', '_blank');
+            if (!previewWin) {
+                alert("Please allow popups to view this document.");
+                return;
+            }
+            previewWin.document.write(`<html><head><title>Loading...</title><style>body { display: flex; align-items: center; justify-content: center; height: 100vh; font-family: -apple-system, sans-serif; background: #f1f5f9; color: #64748b; } .loader { border: 3px solid #e2e8f0; border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-bottom: 12px; } @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } } .content { background: #fff; padding: 60px; max-width: 800px; margin: 40px auto; min-height: 100vh; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-radius: 8px; color: #334155; line-height: 1.6; display: none; }</style></head><body><div id="loading" style="text-align:center;"><div class="loader" style="margin: auto;"></div><div>Rendering document...</div></div><div id="output" class="content"></div></body></html>`);
+
+            fetch(finalPath)
+                .then(res => res.arrayBuffer())
+                .then(ab => mammoth.convertToHtml({arrayBuffer: ab}))
+                .then(res => {
+                    previewWin.document.getElementById('loading').style.display = 'none';
+                    const output = previewWin.document.getElementById('output');
+                    output.innerHTML = res.value;
+                    output.style.display = 'block';
+                    previewWin.document.title = path.split('/').pop();
+                })
+                .catch(err => {
+                    previewWin.location.href = finalPath;
+                });
+        } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'mp4', 'webm', 'ogg'].includes(ext)) {
             window.open(finalPath, '_blank');
-        } else if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
-            const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(finalPath)}&embedded=false`;
-            window.open(googleViewerUrl, '_blank');
         } else {
-            const link = document.createElement('a');
-            link.href = finalPath;
-            link.download = '';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            // Fallback for Office docs or download
+            if (['doc', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
+                const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(finalPath)}&embedded=false`;
+                window.open(googleViewerUrl, '_blank');
+            } else {
+                const link = document.createElement('a');
+                link.href = finalPath;
+                link.download = '';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
         }
+    }
+
+    function renderHtmlInNewTab(html, title) {
+        const newWin = window.open('', '_blank');
+        if (!newWin) {
+            alert("Please allow popups to view the document.");
+            return;
+        }
+        newWin.document.write(`<html><head><title>${title}</title><style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 50px; background: #f1f5f9; color: #334155; line-height: 1.6; } .content { background: #fff; padding: 60px; max-width: 800px; margin: auto; min-height: 100vh; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-radius: 8px; } h1, h2, h3 { color: #1e293b; }</style></head><body><div class="content">${html}</div></body></html>`);
+        newWin.document.close();
     }
 </script>
 
@@ -329,6 +383,57 @@
 </div>
 
 <script>
+    function viewFilePreview(path, forcedExt = '', submissionId = null) {
+        if (submissionId) {
+            fetch(`/teacher/activities/submissions/${submissionId}/mark-viewed`, { method: 'POST' })
+                .catch(err => console.error("Viewed tracking error:", err));
+        }
+
+        const ext = (forcedExt || path.split('.').pop().toLowerCase()).trim();
+        let finalPath = path;
+        const isDocOrPdf = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
+        if (isDocOrPdf && finalPath.includes('/image/upload/')) {
+            finalPath = finalPath.replace('/image/upload/', '/raw/upload/');
+        }
+
+        if (ext === 'docx') {
+            const previewWin = window.open('', '_blank');
+            if (!previewWin) {
+                alert("Please allow popups to view this document.");
+                return;
+            }
+            previewWin.document.write(`<html><head><title>Loading...</title><style>body { display: flex; align-items: center; justify-content: center; height: 100vh; font-family: -apple-system, sans-serif; background: #f1f5f9; color: #64748b; } .loader { border: 3px solid #e2e8f0; border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-bottom: 12px; } @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } } .content { background: #fff; padding: 60px; max-width: 800px; margin: 40px auto; min-height: 100vh; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-radius: 8px; color: #334155; line-height: 1.6; display: none; }</style></head><body><div id="loading" style="text-align:center;"><div class="loader" style="margin: auto;"></div><div>Rendering document...</div></div><div id="output" class="content"></div></body></html>`);
+
+            fetch(finalPath)
+                .then(res => res.arrayBuffer())
+                .then(ab => mammoth.convertToHtml({arrayBuffer: ab}))
+                .then(res => {
+                    previewWin.document.getElementById('loading').style.display = 'none';
+                    const output = previewWin.document.getElementById('output');
+                    output.innerHTML = res.value;
+                    output.style.display = 'block';
+                    previewWin.document.title = path.split('/').pop();
+                })
+                .catch(err => {
+                    previewWin.location.href = finalPath;
+                });
+        } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'mp4', 'webm', 'ogg'].includes(ext)) {
+            window.open(finalPath, '_blank');
+        } else {
+            if (['doc', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
+                const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(finalPath)}&embedded=false`;
+                window.open(googleViewerUrl, '_blank');
+            } else {
+                const link = document.createElement('a');
+                link.href = finalPath;
+                link.download = '';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+    }
+
     function openGradeModalFromBtn(btn) {
         const id = btn.getAttribute("data-sub-id");
         const name = btn.getAttribute("data-name");

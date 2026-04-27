@@ -86,18 +86,162 @@
     }
 
     .upload-area {
-        border: 2px dashed var(--border);
-        border-radius: 12px;
-        padding: 40px;
+        border: 2px dashed var(--line);
+        border-radius: 16px;
+        padding: 48px 24px;
         text-align: center;
-        background: #f8fafc;
-        transition: border-color 0.2s;
+        background: #fafbff;
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         cursor: pointer;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
     }
 
-    .upload-area:hover {
-        border-color: var(--btn);
-        background: #f0f4f9;
+    .upload-area:hover, .upload-area.dragover {
+        border-color: var(--primary);
+        background: var(--soft);
+        transform: translateY(-2px);
+    }
+
+    .upload-icon {
+        font-size: 2.5rem;
+        color: var(--primary);
+        margin-bottom: 8px;
+    }
+
+    .upload-text {
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .upload-hint {
+        font-size: 0.85rem;
+        color: var(--muted);
+    }
+
+    .file-preview-list {
+        display: none;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 16px;
+    }
+
+    .file-preview-item {
+        background: #fff;
+        border: 1.5px solid var(--primary);
+        border-radius: 12px;
+        padding: 12px 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .file-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .file-name {
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: var(--text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .file-size {
+        font-size: 0.7rem;
+        color: var(--muted);
+    }
+
+    .preview-btn-small {
+        background: var(--soft);
+        color: var(--primary);
+        border: 1px solid var(--primary);
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .preview-btn-small:hover {
+        background: var(--primary);
+        color: #fff;
+    }
+
+    .remove-file {
+        background: #fee2e2;
+        color: #dc2626;
+        border: none;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-weight: 800;
+    }
+
+    /* Pre-upload Preview Modal */
+    .pre-modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.85);
+        z-index: 10000;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    }
+
+    .pre-modal-content {
+        background: #fff;
+        width: 100%;
+        max-width: 900px;
+        height: 85vh;
+        border-radius: 16px;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .pre-modal-header {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .pre-modal-body {
+        flex: 1;
+        overflow: auto;
+        padding: 20px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        background: #f1f5f9;
     }
 
     .grade-box {
@@ -116,7 +260,21 @@
         line-height: 1;
         margin-bottom: 8px;
     }
+
+    .spinner {
+        width: 40px;
+        height: 40px;
+        border: 4px solid rgba(255,255,255,0.1);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
 <script>
     function switchTab(tabId) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -216,83 +374,64 @@
         </div>
     </div>
 
-    <!-- Media Viewer Modal -->
-    <div id="mediaViewer"
-        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:9999; justify-content:center; align-items:center; padding:40px;">
-        <button onclick="closeViewer()"
-            style="position:absolute; top:20px; right:20px; background:#fff; color:#000; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:1.2rem; font-weight:700; cursor:pointer; z-index:10; border:none;">×</button>
-        <div id="viewerContent"
-            style="max-width:1000px; width:100%; height:100%; background:#fff; border-radius:12px; overflow:hidden; position:relative;">
-        </div>
-    </div>
 
     <script>
     function viewFilePreview(path, forcedExt = '') {
         const ext = (forcedExt || path.split('.').pop().toLowerCase()).trim();
-        
-        // Sanitize Cloudinary URL: Ensure raw files use /raw/upload/
         let finalPath = path;
         const isDocOrPdf = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
         if (isDocOrPdf && finalPath.includes('/image/upload/')) {
             finalPath = finalPath.replace('/image/upload/', '/raw/upload/');
         }
 
-        if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext) || ext === 'pdf') {
-            // PDF and Images -> Direct preview in new tab
-            window.open(finalPath, '_blank');
-        } else if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
-            // DOCX and Office docs -> Google Viewer
-            const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(finalPath)}&embedded=false`;
-            window.open(googleViewerUrl, '_blank');
-        } else {
-            // Others -> Download
-            const link = document.createElement('a');
-            link.href = finalPath;
-            link.download = '';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-    }
-
-    function viewMedia(type, path) {
-        const viewer = document.getElementById('mediaViewer');
-        const content = document.getElementById('viewerContent');
-        content.innerHTML = '';
-
-        if (type === 'image') {
-            content.innerHTML = `<img src="${path}" style="width:100%; height:100%; object-fit:contain; background:#000;">`;
-        } else if (type === 'video') {
-            content.innerHTML = `
-                <video controls controlsList="nodownload" oncontextmenu="return false;" style="width:100%; height:100%; background:#000;">
-                    <source src="${path}">
-                    Your browser does not support the video tag.
-                </video>`;
-        } else if (type === 'pdf') {
-            // As requested by user, open PDFs in a new tab directly
-            if (path.includes('/image/upload/') && path.toLowerCase().endsWith('.pdf')) {
-                path = path.replace('/image/upload/', '/raw/upload/');
+        if (ext === 'docx') {
+            const previewWin = window.open('', '_blank');
+            if (!previewWin) {
+                alert("Please allow popups to view this document.");
+                return;
             }
-            window.open(path, '_blank');
-            return;
-        } else if (type === 'office') {
-            // ✅ Already using Google Docs Viewer — keep as is
-            const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(path)}&embedded=true`;
-            content.innerHTML = `<iframe src="${googleViewerUrl}" style="width:100%; height:100%; border:none;"></iframe>`;
+            previewWin.document.write(`<html><head><title>Loading...</title><style>body { display: flex; align-items: center; justify-content: center; height: 100vh; font-family: -apple-system, sans-serif; background: #f1f5f9; color: #64748b; } .loader { border: 3px solid #e2e8f0; border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-bottom: 12px; } @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } } .content { background: #fff; padding: 60px; max-width: 800px; margin: 40px auto; min-height: 100vh; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-radius: 8px; color: #334155; line-height: 1.6; display: none; }</style></head><body><div id="loading" style="text-align:center;"><div class="loader" style="margin: auto;"></div><div>Rendering document...</div></div><div id="output" class="content"></div></body></html>`);
+
+            fetch(finalPath)
+                .then(res => res.arrayBuffer())
+                .then(ab => mammoth.convertToHtml({arrayBuffer: ab}))
+                .then(res => {
+                    previewWin.document.getElementById('loading').style.display = 'none';
+                    const output = previewWin.document.getElementById('output');
+                    output.innerHTML = res.value;
+                    output.style.display = 'block';
+                    previewWin.document.title = path.split('/').pop();
+                })
+                .catch(err => {
+                    previewWin.location.href = finalPath;
+                });
+        } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'mp4', 'webm', 'ogg'].includes(ext)) {
+            window.open(finalPath, '_blank');
+        } else {
+            // Fallback for Office docs or download
+            if (['doc', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
+                const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(finalPath)}&embedded=false`;
+                window.open(googleViewerUrl, '_blank');
+            } else {
+                const link = document.createElement('a');
+                link.href = finalPath;
+                link.download = '';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
         }
-
-        viewer.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
     }
 
-    function closeViewer() {
-        const viewer = document.getElementById('mediaViewer');
-        const content = document.getElementById('viewerContent');
-        content.innerHTML = '';
-        viewer.style.display = 'none';
-        document.body.style.overflow = 'auto';
+    function renderHtmlInNewTab(html, title) {
+        const newWin = window.open('', '_blank');
+        if (!newWin) {
+            alert("Please allow popups to view the document.");
+            return;
+        }
+        newWin.document.write(`<html><head><title>${title}</title><style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 50px; background: #f1f5f9; color: #334155; line-height: 1.6; } .content { background: #fff; padding: 60px; max-width: 800px; margin: auto; min-height: 100vh; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-radius: 8px; } h1, h2, h3 { color: #1e293b; }</style></head><body><div class="content">${html}</div></body></html>`);
+        newWin.document.close();
     }
-    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeViewer(); });
     </script>
 
     <!-- My Work Tab -->
@@ -343,30 +482,32 @@
                     </div>
                     {% endif %}
                 </div>
-                {% if submission.file_path %}
-                {% set display_filename = submission.original_filename or 'Submission File' %}
-                {% set submission_ext = display_filename.split('.')[-1].lower() if '.' in display_filename else submission.file_path.split('.')[-1].lower() %}
-                <div class="submission-file-card" 
-                     onclick="viewFilePreview('{{ submission.file_path }}', '{{ submission_ext }}')"
-                     title="Click to preview {{ display_filename }}">
-                    <div style="font-size:1.4rem; flex-shrink: 0; display: flex; align-items: center;">
-                        {% if ext == 'pdf' %}📕
-                        {% elif ext in ['jpg', 'jpeg', 'png', 'gif'] %}🖼️
-                        {% elif ext in ['doc', 'docx'] %}📄
-                        {% elif ext in ['xls', 'xlsx'] %}📊
-                        {% elif ext in ['ppt', 'pptx'] %}📈
-                        {% else %}📎
-                        {% endif %}
-                    </div>
-                    <div style="flex:1; min-width: 0; display: flex; flex-direction: column; justify-content: center;">
-                        <div style="font-weight:700; font-size:0.95rem; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
-                            {{ display_filename }}
+                {% if submission.attachments %}
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; width: 100%;">
+                    {% for att in submission.attachments %}
+                    <div class="submission-file-card" onclick="viewFilePreview('{{ att.path }}', '{{ att.type }}')">
+                        <div style="font-size: 1.5rem; background: var(--soft); width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary);">
+                            {% if att.type == 'pdf' %}📕
+                            {% elif att.type in ['jpg', 'jpeg', 'png', 'gif', 'webp'] %}🖼️
+                            {% elif att.type in ['mp4', 'webm', 'ogg'] %}🎥
+                            {% elif att.type in ['doc', 'docx'] %}📄
+                            {% elif att.type in ['xls', 'xlsx'] %}📊
+                            {% elif att.type in ['ppt', 'pptx'] %}📈
+                            {% else %}📎
+                            {% endif %}
                         </div>
-                        <div style="font-size:0.75rem; color:var(--muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.02em;">
-                            {{ ext|upper }} File • Click to view
+                        <div style="flex:1; min-width: 0; display: flex; flex-direction: column; justify-content: center;">
+                            <div style="font-weight:700; font-size:0.9rem; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+                                {{ att.name }}
+                            </div>
+                            <div style="font-size:0.7rem; color:var(--muted); text-transform: uppercase; font-weight: 600; letter-spacing: 0.02em;">
+                                {{ att.type|upper }} File • Click to view
+                            </div>
                         </div>
                     </div>
+                    {% endfor %}
                 </div>
+                
                 <style>
                     .submission-file-card {
                         display: flex;
@@ -374,18 +515,16 @@
                         gap: 12px;
                         background: #f8fafc;
                         padding: 10px 14px;
-                        border-radius: 8px;
+                        border-radius: 12px;
                         border: 1px solid #e2e8f0;
                         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
                         cursor: pointer;
-                        flex: 1;
-                        max-width: 100%;
                     }
                     .submission-file-card:hover {
-                        border-color: var(--btn);
+                        border-color: var(--primary);
                         background: #fff;
                         transform: translateY(-2px);
-                        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
                     }
                     .submission-file-card:active {
                         transform: translateY(0);
@@ -419,29 +558,270 @@
 
                     {% if can_submit %}
                     <div style="margin-top: 24px; border-top: 1px solid var(--border); padding-top: 24px;">
-                        <h4 style="margin-top:0; margin-bottom:12px;">{{ 'Resubmit Work' if submission else 'Upload Your
-                            Work' }}</h4>
-                        <form action="{{ url_for('student_portal.submit_activity', activity_id=activity.activity_id) }}"
+                        <h4 style="margin-top:0; margin-bottom:12px;">{{ 'Resubmit Work' if submission else 'Upload Your Work' }}</h4>
+                        
+                        <form id="submissionForm" action="{{ url_for('student_portal.submit_activity', activity_id=activity.activity_id) }}"
                             method="POST" enctype="multipart/form-data">
+                            
                             <div class="form-group">
-                                <label class="form-label">
-                                    Select File
+                                <label class="form-label" style="display: block; margin-bottom: 8px;">
+                                    Submission File
                                     {% if activity.allowed_file_types %}
-                                    <span style="color:var(--muted); font-weight:normal;">(Allowed: {{
-                                        activity.allowed_file_types }})</span>
+                                    <span style="color:var(--muted); font-weight:normal; font-size: 0.85rem;">(Allowed: {{ activity.allowed_file_types }})</span>
                                     {% endif %}
                                 </label>
-                                <input type="file" name="submission_file" class="form-input"
-                                    accept="{{ ('.' + activity.allowed_file_types.replace(',', ',.').replace(' ', '')) if activity.allowed_file_types else '' }}"
-                                    required>
+                                
+                                <div class="upload-area" id="dropZone" onclick="document.getElementById('fileInput').click()">
+                                    <div class="upload-icon">📁</div>
+                                    <div class="upload-text" id="dropZoneText">Click to browse or drag and drop</div>
+                                    <div class="upload-hint">Up to 10 files (Max 100MB total)</div>
+                                    <input type="file" name="submission_file" id="fileInput" hidden multiple
+                                        accept="{{ ('.' + activity.allowed_file_types.replace(',', ',.').replace(' ', '')) if activity.allowed_file_types else '' }}">
+                                </div>
+
+                                <div id="filePreviewList" class="file-preview-list">
+                                    <!-- Dynamic file items here -->
+                                </div>
+                                
+                                <div id="totalSizeDisplay" style="display:none; margin-top:12px; font-size:0.85rem; font-weight:700; color:var(--muted); text-align:right;">
+                                    Total Size: <span id="totalSizeBytes">0 MB</span> / 100 MB
+                                </div>
+
+                                <div id="addMoreContainer" style="display:none; margin-top:12px; text-align:center;">
+                                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('fileInput').click()" 
+                                            style="font-size:0.85rem; padding: 8px 16px; border-radius: 10px;">
+                                        ➕ Add More Files
+                                    </button>
+                                </div>
                             </div>
-                            <div style="margin-top:16px;">
-                                <button type="submit" class="btn btn-primary"
-                                    style="width:100%; justify-content:center; padding: 12px;">📤 {{ 'Submit New File'
-                                    if submission else 'Turn in Activity' }}</button>
+
+                            <div style="margin-top:20px;">
+                                <button type="submit" id="submitBtn" class="btn btn-primary"
+                                    style="width:100%; justify-content:center; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 1rem; transition: all 0.2s;">
+                                    <span id="btnIcon">📤</span> 
+                                    <span id="btnText">{{ 'Submit New File' if submission else 'Turn in Activity' }}</span>
+                                </button>
                             </div>
                         </form>
                     </div>
+
+
+                    <script>
+                        const dropZone = document.getElementById('dropZone');
+                        const dropZoneText = document.getElementById('dropZoneText');
+                        const fileInput = document.getElementById('fileInput');
+                        const filePreviewList = document.getElementById('filePreviewList');
+                        const addMoreContainer = document.getElementById('addMoreContainer');
+                        const submitBtn = document.getElementById('submitBtn');
+                        const btnText = document.getElementById('btnText');
+                        const btnIcon = document.getElementById('btnIcon');
+                        const preUploadModal = document.getElementById('preUploadModal');
+                        const preModalBody = document.getElementById('preModalBody');
+                        const allowedTypes = "{{ activity.allowed_file_types or '' }}".split(',').map(t => t.trim().toLowerCase()).filter(t => t);
+                        const GLOBAL_ALLOWED = ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'webm', 'ogg'];
+                        const MAX_SIZE_MB = 100;
+                        const MAX_FILE_COUNT = 10;
+                        
+                        let selectedFiles = []; // Array of File objects
+                        let currentBlobUrl = null;
+
+                        // Drag & Drop handlers
+                        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
+                            dropZone.addEventListener(evt, e => {
+                                e.preventDefault(); e.stopPropagation();
+                            });
+                        });
+
+                        ['dragenter', 'dragover'].forEach(evt => {
+                            dropZone.addEventListener(evt, () => dropZone.classList.add('dragover'));
+                        });
+
+                        ['dragleave', 'drop'].forEach(evt => {
+                            dropZone.addEventListener(evt, () => dropZone.classList.remove('dragover'));
+                        });
+
+                        dropZone.addEventListener('drop', e => {
+                            addFiles(e.dataTransfer.files);
+                        });
+
+                        fileInput.addEventListener('change', () => {
+                            addFiles(fileInput.files);
+                        });
+
+                        function addFiles(files) {
+                            for (let file of files) {
+                                const ext = file.name.split('.').pop().toLowerCase();
+                                
+                                // Validation: Duplicate
+                                if (selectedFiles.some(f => f.name === file.name && f.size === file.size)) continue;
+
+                                // Validation: File Count (Max 10)
+                                if (selectedFiles.length >= MAX_FILE_COUNT) {
+                                    alert(`Maximum of ${MAX_FILE_COUNT} files allowed per submission.`);
+                                    break;
+                                }
+
+                                // Validation: Global File Type Check (PDF, DOCX, Images, Video)
+                                if (!GLOBAL_ALLOWED.includes(ext)) {
+                                    alert(`File type not allowed: .${ext}\nOnly PDF, DOCX, Images, and Videos are accepted.`);
+                                    continue;
+                                }
+
+                                // Validation: Activity-specific File Type
+                                if (allowedTypes.length > 0 && !allowedTypes.includes(ext)) {
+                                    alert(`This activity only accepts: ${allowedTypes.join(', ')}`);
+                                    continue;
+                                }
+
+                                // Validation: Individual File Size (Max 100MB)
+                                const sizeMB = file.size / (1024 * 1024);
+                                if (sizeMB > MAX_SIZE_MB) {
+                                    alert(`File is too large: ${file.name} (${sizeMB.toFixed(2)}MB). Max: ${MAX_SIZE_MB}MB.`);
+                                    continue;
+                                }
+
+                                // Validation: Total Cumulative Size (Max 100MB)
+                                const currentTotalSize = selectedFiles.reduce((acc, f) => acc + f.size, 0);
+                                if ((currentTotalSize + file.size) / (1024 * 1024) > MAX_SIZE_MB) {
+                                    alert(`Cannot add ${file.name}. Total submission would exceed 100MB limit.`);
+                                    break; // Stop adding more files
+                                }
+
+                                selectedFiles.push(file);
+                            }
+                            renderFileList();
+                        }
+
+                        function renderFileList() {
+                            filePreviewList.innerHTML = '';
+                            if (selectedFiles.length > 0) {
+                                selectedFiles.forEach((file, index) => {
+                                    const ext = file.name.split('.').pop().toLowerCase();
+                                    const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                                    
+                                    let icon = '📎';
+                                    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) icon = '🖼️';
+                                    else if (ext === 'pdf') icon = '📕';
+                                    else if (['mp4', 'webm', 'ogg'].includes(ext)) icon = '🎥';
+                                    else if (['doc', 'docx'].includes(ext)) icon = '📄';
+                                    
+                                    const isPreviewable = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'mp4', 'webm', 'ogg', 'docx'].includes(ext);
+
+                                    const item = document.createElement('div');
+                                    item.className = 'file-preview-item';
+                                    item.innerHTML = `
+                                        <div style="font-size: 1.5rem;">${icon}</div>
+                                        <div class="file-info">
+                                            <div class="file-name" title="${file.name}">${file.name}</div>
+                                            <div class="file-size">${sizeMB} MB</div>
+                                            <div style="margin-top: 4px; display: flex; gap: 8px;">
+                                                ${isPreviewable ? `
+                                                    <button type="button" class="preview-btn-small" onclick="openPreUploadPreview(${index})">👁️ Preview</button>
+                                                    <button type="button" class="preview-btn-small" onclick="openInNewTab(${index})" style="background:#f1f5f9; border-color:#cbd5e1; color:#475569;">↗️ Tab</button>
+                                                ` : ''}
+                                            </div>
+                                        </div>
+                                        <button type="button" class="remove-file" onclick="removeFile(${index})">×</button>
+                                    `;
+                                    filePreviewList.appendChild(item);
+                                });
+                                
+                                filePreviewList.style.display = 'flex';
+                                addMoreContainer.style.display = 'block';
+                                
+                                // Update total size display
+                                const totalBytes = selectedFiles.reduce((acc, f) => acc + f.size, 0);
+                                const totalMB = (totalBytes / (1024 * 1024)).toFixed(2);
+                                document.getElementById('totalSizeDisplay').style.display = 'block';
+                                document.getElementById('totalSizeBytes').textContent = `${totalMB} MB`;
+                                
+                                if (parseFloat(totalMB) >= 100 || selectedFiles.length >= MAX_FILE_COUNT) {
+                                    document.getElementById('totalSizeBytes').style.color = '#dc2626';
+                                    addMoreContainer.style.display = 'none';
+                                } else {
+                                    document.getElementById('totalSizeBytes').style.color = 'inherit';
+                                }
+
+                                dropZone.style.padding = '24px';
+                                dropZoneText.textContent = 'Drag more files here';
+                            } else {
+                                filePreviewList.style.display = 'none';
+                                addMoreContainer.style.display = 'none';
+                                document.getElementById('totalSizeDisplay').style.display = 'none';
+                                dropZone.style.display = 'flex';
+                                dropZone.style.padding = '48px 24px';
+                                dropZoneText.textContent = 'Click to browse or drag and drop';
+                            }
+                        }
+
+                        function removeFile(index) {
+                            selectedFiles.splice(index, 1);
+                            renderFileList();
+                        }
+
+                        function openPreUploadPreview(index) {
+                            const file = selectedFiles[index];
+                            const ext = file.name.split('.').pop().toLowerCase();
+                            
+                            if (ext === 'docx') {
+                                const previewWin = window.open('', '_blank');
+                                if (!previewWin) {
+                                    alert("Please allow popups to view this document.");
+                                    return;
+                                }
+                                previewWin.document.write(`<html><head><title>Loading...</title><style>body { display: flex; align-items: center; justify-content: center; height: 100vh; font-family: -apple-system, sans-serif; background: #f1f5f9; color: #64748b; } .loader { border: 3px solid #e2e8f0; border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-bottom: 12px; } @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } } .content { background: #fff; padding: 60px; max-width: 800px; margin: 40px auto; min-height: 100vh; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-radius: 8px; color: #334155; line-height: 1.6; display: none; }</style></head><body><div id="loading" style="text-align:center;"><div class="loader" style="margin: auto;"></div><div>Rendering document...</div></div><div id="output" class="content"></div></body></html>`);
+
+                                const reader = new FileReader();
+                                reader.onload = (e) => {
+                                    mammoth.convertToHtml({arrayBuffer: e.target.result})
+                                        .then(res => {
+                                            previewWin.document.getElementById('loading').style.display = 'none';
+                                            const output = previewWin.document.getElementById('output');
+                                            output.innerHTML = res.value;
+                                            output.style.display = 'block';
+                                            previewWin.document.title = file.name;
+                                        })
+                                        .catch(() => {
+                                            previewWin.close();
+                                            alert("Preview failed for this DOCX.");
+                                        });
+                                };
+                                reader.readAsArrayBuffer(file);
+                            } else {
+                                const url = URL.createObjectURL(file);
+                                window.open(url, '_blank');
+                            }
+                        }
+
+                        function openInNewTab(index) {
+                            openPreUploadPreview(index);
+                        }
+
+                        document.getElementById('submissionForm').addEventListener('submit', function(e) {
+                            if (!selectedFiles.length) {
+                                alert('Please select at least one file to submit.');
+                                e.preventDefault();
+                                return;
+                            }
+
+                            const isConfirmed = confirm(`Are you sure you want to turn in these ${selectedFiles.length} file(s)?`);
+                            if (!isConfirmed) {
+                                e.preventDefault();
+                                return;
+                            }
+                            
+                            // Synchronize fileInput with selectedFiles array using DataTransfer
+                            const dt = new DataTransfer();
+                            selectedFiles.forEach(file => dt.items.add(file));
+                            fileInput.files = dt.files;
+                            
+                            submitBtn.disabled = true;
+                            submitBtn.style.opacity = '0.7';
+                            submitBtn.style.cursor = 'wait';
+                            btnText.textContent = 'Uploading...';
+                            btnIcon.textContent = '⏳';
+                        });
+                    </script>
                     {% else %}
                     <div style="margin-top: 24px; text-align:center; color:var(--muted); font-size:0.9rem;">
                         {% if activity.status == 'Closed' %}
