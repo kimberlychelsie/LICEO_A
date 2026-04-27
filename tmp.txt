@@ -1,0 +1,197 @@
+GRADE_LEVELS = [
+    "Kinder", "Grade 1", "Grade 2", "Grade 3",
+    "Grade 4", "Grade 5", "Grade 6",
+    "Grade 7", "Grade 8", "Grade 9", "Grade 10",
+    "Grade 11", "Grade 12",
+def _normalize_grade(grade_str):
+    """Accept both '7' and 'Grade 7' — returns (grade_full, grade_short)."""
+    m = _re.match(r'^Grade\s+(\d+)$', grade_str, _re.IGNORECASE)
+    return grade_str, (num or grade_str)
+        SELECT COALESCE(g.name, u.grade_level) AS grade_level
+        LEFT JOIN grade_levels g ON u.grade_level_id = g.id
+        teacher_grade = row["grade_level"] if row else None
+    selected_grade = (request.args.get("grade") or teacher_grade or "").strip()
+    if selected_grade:
+        grade_full, grade_short = _normalize_grade(selected_grade)
+                    e.grade_level,
+                      e.grade_level ILIKE %(grade_full)s
+                      OR e.grade_level ILIKE %(grade_short)s
+                "grade_full":  grade_full,
+                "grade_short": grade_short,
+            # ── Announcements for this grade ──
+          a.grade_level ILIKE %(grade_full)s
+          OR a.grade_level ILIKE %(grade_short)s
+    "grade_full":  grade_full,
+    "grade_short": grade_short,
+                    g.name  AS grade_level_name,
+                JOIN grade_levels g ON s.grade_level_id = g.id
+        teacher_grade=teacher_grade,
+        selected_grade=selected_grade,
+        grade_levels=GRADE_LEVELS,
+# ── Save grade assignment ─────────────────────────────────
+@teacher_bp.route("/teacher/set-grade", methods=["POST"])
+def teacher_set_grade():
+    grade   = (request.form.get("grade_level") or "").strip()
+    if grade not in GRADE_LEVELS:
+        flash("Invalid grade level.", "error")
+        # Check if branch admin already assigned a grade — if so, block the change
+    SELECT g.name AS grade_level
+    LEFT JOIN grade_levels g ON u.grade_level_id = g.id
+        existing_grade = row[0] if row else None
+        if existing_grade:
+            flash(f"Your grade level ({existing_grade}) is assigned by the Branch Admin and cannot be changed.", "warning")
+            return redirect(url_for("teacher.teacher_dashboard") + f"?grade={existing_grade}")
+            "UPDATE users SET grade_level = %s WHERE user_id = %s",
+            (grade, user_id)
+        flash(f"Grade level set to {grade}.", "success")
+    return redirect(url_for("teacher.teacher_dashboard") + f"?grade={grade}")
+    grade     = (request.form.get("grade_level") or "").strip()
+    back_url = url_for("teacher.teacher_dashboard") + (f"?grade={grade}" if grade else "")
+    if not grade:
+        flash("Please select your grade level first.", "error")
+                (teacher_user_id, branch_id, grade_level, title, body)
+        """, (user_id, branch_id, grade, title, body or None))
+        if _re.match(r'^\d+$', grade.strip()):
+            grade_short = grade.strip()
+            grade_full  = "Grade " + grade_short
+            grade_full  = grade.strip()
+            _m2 = _re.match(r'^Grade\s+(\d+)$', grade_full, _re.IGNORECASE)
+            grade_short = _m2.group(1) if _m2 else grade_full
+              AND (e.grade_level ILIKE %s OR e.grade_level ILIKE %s)
+              AND (e.grade_level ILIKE %s OR e.grade_level ILIKE %s)
+        """, (branch_id, year_id, grade_full, grade_short, branch_id, year_id, grade_full, grade_short))
+    grade   = (request.form.get("grade_level") or "").strip()
+    back_url = url_for("teacher.teacher_dashboard") + (f"?grade={grade}" if grade else "")
+    grade   = (request.form.get("grade_level") or "").strip()
+    back_url = url_for("teacher.teacher_dashboard") + (f"?grade={grade}" if grade else "")
+        cur.execute("DELETE FROM activity_grades WHERE activity_id=%s", (activity_id,))
+    SELECT s.section_id, s.section_name, g.name AS grade_level_name, 
+    JOIN grade_levels g ON s.grade_level_id = g.id
+            SELECT sub.*, g.grade_id, g.raw_score, g.percentage, g.remarks,
+            LEFT JOIN activity_grades g ON sub.submission_id = g.submission_id
+            'graded': sum(1 for s in submissions_data if 'grade_id' in s and s['grade_id']),
+@teacher_bp.route("/teacher/activities/submissions/<int:submission_id>/grade", methods=["POST"])
+def grade_submission(submission_id):
+        # Proceed with upserting grade
+        cur.execute("SELECT grade_id FROM activity_grades WHERE submission_id = %s", (submission_id,))
+        grade = cur.fetchone()
+        if grade:
+                UPDATE activity_grades SET 
+                WHERE grade_id = %s
+            ''', (raw_score, percentage, remarks, grade['grade_id']))
+                INSERT INTO activity_grades (submission_id, activity_id, student_id, raw_score, max_score, percentage, remarks)
+            UPDATE activity_submissions SET status = 'Graded', graded_at = NOW(), graded_by = %s 
+        """, (sub['student_id'], "Activity Graded", f"Your submission for '{act_title}' has been graded.", f"/student/activities/{sub['activity_id']}"))
+        flash("Grade saved successfully.", "success")
+            SELECT e.*, s.section_name, g.name AS grade_level_name, sub.name AS subject_name
+            JOIN grade_levels g ON s.grade_level_id = g.id
+                g.name AS grade_level_name,
+            JOIN grade_levels g  ON s.grade_level_id = g.id
+            SELECT DISTINCT s.section_id, s.section_name, g.name AS grade_level_name
+            JOIN grade_levels g ON s.grade_level_id = g.id
+                   s.section_name, g.name AS grade_level_name
+            JOIN grade_levels g ON s.grade_level_id = g.id
+                g.name AS grade_level_name,
+            JOIN grade_levels g  ON s.grade_level_id = g.id
+            SELECT s.section_id, s.section_name, g.name AS grade_level_name,
+            JOIN grade_levels g ON s.grade_level_id = g.id
+                e.enrollment_id, e.student_name, e.grade_level,
+def _get_deped_transmuted_grade(initial_grade):
+    Returns an integer transmuted grade.
+        x = round(float(initial_grade), 2)
+def _get_transmutation_band(initial_grade):
+        x = round(float(initial_grade), 2)
+        SELECT st.section_id, s.section_name, g.name AS grade_level_name,
+        JOIN grade_levels g  ON s.grade_level_id = g.id
+def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, period, year_id):
+    """Compute grades using DepEd K-12 auto-weighting.
+      Performance Tasks (PT)  = Activities + Participation + Attendance (averaged)
+        'attendance_pct':    0,
+        FROM activity_grades ag
+    # Get Date Range for the Period to compute Attendance/Participation
+    # Attendance scores (from daily_attendance)
+    attendance_scores = {}
+            FROM daily_attendance
+              AND attendance_date BETWEEN %s AND %s
+            attendance_scores[row['enrollment_id']] = float(row['ps'] or 0)
+        att_score = _cap_0_100(attendance_scores.get(eid, 0))    # now part of PT
+        # Performance Tasks = average of all available: Activity, Participation, Attendance
+        has_attendance = eid in attendance_scores
+        if has_attendance: pt_components.append(att_score)
+        period_grade = round(
+        transmuted_grade = _get_deped_transmuted_grade(period_grade)
+        transmutation_band = _get_transmutation_band(period_grade)
+            'attendance':      round(att_score, 2),   # now part of PT
+            'has_attendance':  has_attendance,
+            'period_grade':    period_grade,
+            'transmuted_grade': transmuted_grade,
+            SELECT s.section_name, g.name AS grade_level_name, sub.name AS subject_name
+            JOIN grade_levels g ON s.grade_level_id = g.id
+        _, weights, records = _compute_period_grades(
+            SELECT s.section_name, g.name AS grade_level_name, sub.name AS subject_name
+            JOIN grade_levels g ON s.grade_level_id = g.id
+        _, weights, records = _compute_period_grades(
+            remarks = "PASS" if (r.get("transmuted_grade") or 0) >= 75 else "FAIL"
+                "Quarterly Grade (Transmuted)": r.get("transmuted_grade"),
+                "PT Attendance": r.get("attendance"),
+                "Initial Grade": r.get("period_grade"),
+                "Transmuted Grade": r.get("transmuted_grade"),
+                "Section": f"{context.get('grade_level_name')} - {context.get('section_name')}",
+@teacher_bp.route("/teacher/post-grades/<int:section_id>/<int:subject_id>/<string:period>", methods=["POST"])
+def teacher_post_grades(section_id, subject_id, period):
+        _, weights, records = _compute_period_grades(
+            flash(f"Cannot post grades: Weights not set for {period} Grading.", "error")
+            if r.get('transmuted_grade') is not None:
+                    INSERT INTO posted_grades
+                        (enrollment_id, section_id, subject_id, grading_period, grade, posted_by, posted_at, year_id)
+                    DO UPDATE SET grade = EXCLUDED.grade, posted_at = NOW(), posted_by = EXCLUDED.posted_by
+                """, (r['enrollment_id'], section_id, subject_id, period, r['transmuted_grade'], user_id, year_id))
+        flash(f"Grades for {period} Grading have been posted to the Student Portal!", "success")
+        flash(f"Error posting grades: {str(e)}", "error")
+# ── Attendance Scores ─────────────────────────────────────────────────────────
+@teacher_bp.route("/teacher/attendance/<int:section_id>/<int:subject_id>/<period>",
+def attendance_input(section_id, subject_id, period):
+                            INSERT INTO attendance_scores
+            flash("Attendance scores saved!", "success")
+            LEFT JOIN attendance_scores att
+    return render_template("teacher_attendance_input.html",
+            SELECT DISTINCT s.section_id, s.section_name, g.name AS grade_level_name, g.display_order
+            JOIN grade_levels g ON s.grade_level_id = g.id
+        # Don't overwrite 'Graded' status
+            SELECT s.section_id, s.section_name, g.name AS grade_level_name, sub.name AS subject_name
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            "grade_level_name": active_section["grade_level_name"]
+            SELECT e.enrollment_id, e.student_name, e.status, e.grade_level, e.lrn, e.gender
+        # Get grade level for the section to fill the enrollment record properly
+            SELECT g.name AS grade_level, s.year_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+        grade_row = cur.fetchone()
+        grade_level = grade_row['grade_level'] if grade_row else ""
+        year_id = grade_row['year_id'] if grade_row else None
+            INSERT INTO enrollments (student_name, branch_id, section_id, grade_level, status, year_id)
+        """, (student_name, branch_id, section_id, grade_level, year_id))
+                   g.name AS grade_level,
+            JOIN grade_levels g ON s.grade_level_id = g.id
+# ATTENDANCE & PARTICIPATION HUB (Teacher)
+@teacher_bp.route("/teacher/attendance", methods=["GET", "POST"])
+def teacher_attendance():
+            off_reason = "Attendance for past dates cannot be modified."
+                flash(f"Cannot record attendance: {off_reason}", "error")
+                flash("Cannot modify attendance for a past school year.", "error")
+                        # Save Attendance
+                            INSERT INTO daily_attendance (enrollment_id, subject_id, branch_id, year_id, attendance_date, status, points, recorded_by)
+                            ON CONFLICT (enrollment_id, subject_id, attendance_date) DO UPDATE
+                   g.name AS grade_name
+            JOIN grade_levels g ON s.grade_level_id = g.id
+                LEFT JOIN daily_attendance da ON e.enrollment_id = da.enrollment_id 
+                     AND da.subject_id = %s AND da.attendance_date = %s
+        return render_template("teacher_attendance.html", 
+@teacher_bp.route("/teacher/attendance/export")
+def teacher_attendance_export():
+        return redirect(url_for("teacher.teacher_attendance"))
+                   COALESCE(att.attendance_points, 0) AS attendance_points,
+                       COALESCE(SUM(points), 0) AS attendance_points,
+                FROM daily_attendance
+            "Attendance Points",
+                "attendance_points": "Attendance Points",
+        filename = f"Attendance_{sec_name}_{sub_name}_{datetime.now().strftime('%Y%m%d')}.xlsx"

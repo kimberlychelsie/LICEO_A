@@ -718,6 +718,103 @@ def teacher_announce_edit(announcement_id):
     return redirect(back_url)
 
 
+# ── ARCHIVE/UNARCHIVE ROUTES ────────────────────────────────
+
+@teacher_bp.route("/teacher/activities/<int:activity_id>/archive", methods=["POST"])
+def archive_activity(activity_id):
+    if not _require_teacher(): return redirect("/")
+    user_id = session.get("user_id")
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        active_tab = request.form.get("active_tab", "activities")
+        cur.execute("UPDATE activities SET is_archived = TRUE WHERE activity_id = %s AND teacher_id = %s RETURNING subject_id", (activity_id, user_id))
+        row = cur.fetchone()
+        db.commit()
+        if row:
+            flash("Activity archived.", "success")
+            return redirect(url_for("teacher.teacher_class_view", subject_id=row[0], active_tab=active_tab))
+        flash("Activity not found.", "error")
+    except Exception as e:
+        db.rollback()
+        flash(str(e), "error")
+    finally:
+        cur.close()
+        db.close()
+    return redirect(url_for("teacher.teacher_dashboard"))
+
+@teacher_bp.route("/teacher/activities/<int:activity_id>/unarchive", methods=["POST"])
+def unarchive_activity(activity_id):
+    if not _require_teacher(): return redirect("/")
+    user_id = session.get("user_id")
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        active_tab = request.form.get("active_tab", "activities")
+        cur.execute("UPDATE activities SET is_archived = FALSE WHERE activity_id = %s AND teacher_id = %s RETURNING subject_id", (activity_id, user_id))
+        row = cur.fetchone()
+        db.commit()
+        if row:
+            flash("Activity unarchived.", "success")
+            return redirect(url_for("teacher.teacher_class_view", subject_id=row[0], active_tab=active_tab))
+        flash("Activity not found.", "error")
+    except Exception as e:
+        db.rollback()
+        flash(str(e), "error")
+    finally:
+        cur.close()
+        db.close()
+    return redirect(url_for("teacher.teacher_dashboard"))
+
+@teacher_bp.route("/teacher/exams/<int:exam_id>/archive", methods=["POST"])
+def archive_exam(exam_id):
+    if not _require_teacher(): return redirect("/")
+    user_id = session.get("user_id")
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        active_tab = request.form.get("active_tab", "exams")
+        cur.execute("UPDATE exams SET is_archived = TRUE WHERE exam_id = %s AND teacher_id = %s RETURNING subject_id, exam_type", (exam_id, user_id))
+        row = cur.fetchone()
+        db.commit()
+        if row:
+            label = "Quiz" if row[1] == 'quiz' else "Exam"
+            flash(f"{label} archived.", "success")
+            return redirect(url_for("teacher.teacher_class_view", subject_id=row[0], active_tab=active_tab))
+        flash("Not found.", "error")
+    except Exception as e:
+        db.rollback()
+        flash(str(e), "error")
+    finally:
+        cur.close()
+        db.close()
+    return redirect(url_for("teacher.teacher_dashboard"))
+
+@teacher_bp.route("/teacher/exams/<int:exam_id>/unarchive", methods=["POST"])
+def unarchive_exam(exam_id):
+    if not _require_teacher(): return redirect("/")
+    user_id = session.get("user_id")
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        active_tab = request.form.get("active_tab", "exams")
+        cur.execute("UPDATE exams SET is_archived = FALSE WHERE exam_id = %s AND teacher_id = %s RETURNING subject_id, exam_type", (exam_id, user_id))
+        row = cur.fetchone()
+        db.commit()
+        if row:
+            label = "Quiz" if row[1] == 'quiz' else "Exam"
+            flash(f"{label} unarchived.", "success")
+            return redirect(url_for("teacher.teacher_class_view", subject_id=row[0], active_tab=active_tab))
+        flash("Not found.", "error")
+    except Exception as e:
+        db.rollback()
+        flash(str(e), "error")
+    finally:
+        cur.close()
+        db.close()
+    return redirect(url_for("teacher.teacher_dashboard"))
+
+
 # ── DELETE ROUTES ──────────────────────────────────────────
 
 @teacher_bp.route("/teacher/activities/<int:activity_id>/delete", methods=["POST"])
@@ -735,7 +832,7 @@ def delete_activity(activity_id):
             flash("No active school year.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
         cur.execute("""
-            SELECT a.activity_id, a.subject_id
+            SELECT a.activity_id, a.subject_id, a.is_archived
             FROM activities a
             JOIN sections s ON a.section_id = s.section_id
             WHERE a.activity_id = %s AND a.teacher_id = %s AND s.year_id = %s
@@ -747,6 +844,11 @@ def delete_activity(activity_id):
         
         # subject_id for redirect (works with both RealDictCursor and default)
         subject_id = row['subject_id'] if isinstance(row, dict) else row[1]
+        is_archived = row['is_archived'] if isinstance(row, dict) else row[2]
+
+        if not is_archived:
+            flash("You must archive the activity before you can delete it.", "warning")
+            return redirect(url_for("teacher.teacher_class_view", subject_id=subject_id, active_tab=active_tab))
 
         # Cascade delete only for this activity
         cur.execute("DELETE FROM activity_grades WHERE activity_id=%s", (activity_id,))
@@ -781,7 +883,7 @@ def delete_exam(exam_id):
         active_tab = request.form.get("active_tab")
         # Year+ownership check
         cur.execute("""
-            SELECT e.exam_id, e.exam_type, e.subject_id, e.section_id, e.batch_id
+            SELECT e.exam_id, e.exam_type, e.subject_id, e.section_id, e.batch_id, e.is_archived
             FROM exams e
             JOIN sections s ON e.section_id = s.section_id
             WHERE e.exam_id = %s AND e.teacher_id = %s AND s.year_id = %s
@@ -790,6 +892,10 @@ def delete_exam(exam_id):
         if not row:
             flash("Not found or unauthorized.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
+
+        if not row['is_archived']:
+            flash(f"You must archive the {row['exam_type']} before you can delete it.", "warning")
+            return redirect(url_for("teacher.teacher_class_view", subject_id=row['subject_id'], active_tab=active_tab))
 
         subject_id = row['subject_id']
 
@@ -1427,7 +1533,7 @@ def teacher_exams():
         cur.execute("""
             SELECT
                 e.exam_id, e.title, e.exam_type, e.duration_mins,
-                e.scheduled_start, e.status, e.created_at, e.grading_period, e.is_visible,
+                e.scheduled_start, e.status, e.created_at, e.grading_period, e.is_visible, e.is_archived,
                 s.section_name,
                 g.name AS grade_level_name,
                 sub.name AS subject_name,
@@ -2094,7 +2200,7 @@ def teacher_quizzes():
         cur.execute("""
             SELECT
                 e.exam_id, e.title, e.exam_type, e.duration_mins,
-                e.scheduled_start, e.status, e.created_at, e.grading_period, e.is_visible,
+                e.scheduled_start, e.status, e.created_at, e.grading_period, e.is_visible, e.is_archived,
                 s.section_name,
                 g.name AS grade_level_name,
                 sub.name AS subject_name,
@@ -3955,7 +4061,7 @@ def teacher_class_view(subject_id):
         # ✅ QUIZZES (FILTER BY YEAR)
         cur.execute("""
             SELECT e.exam_id, e.title, e.scheduled_start, e.status, e.created_at, e.is_visible,
-                   e.grading_period, e.duration_mins,
+                   e.grading_period, e.duration_mins, e.is_archived,
                    (SELECT COUNT(*) FROM exam_questions q WHERE q.exam_id = e.exam_id) AS question_count,
                    (SELECT COUNT(*) FROM exam_results r WHERE r.exam_id = e.exam_id) AS attempt_count
             FROM exams e
@@ -3973,7 +4079,7 @@ def teacher_class_view(subject_id):
         # ✅ PERIODICAL EXAMS + MONTHLY EXAMS
         cur.execute("""
             SELECT e.exam_id, e.title, e.exam_type, e.scheduled_start, e.status, e.created_at, e.is_visible,
-                   e.grading_period, e.duration_mins,
+                   e.grading_period, e.duration_mins, e.is_archived,
                    (SELECT COUNT(*) FROM exam_questions q WHERE q.exam_id = e.exam_id) AS question_count,
                    (SELECT COUNT(*) FROM exam_results r WHERE r.exam_id = e.exam_id) AS attempt_count
             FROM exams e

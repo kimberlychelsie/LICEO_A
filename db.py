@@ -41,6 +41,8 @@ def get_db_connection():
                 cur.execute("ALTER TABLE exams ADD COLUMN is_visible BOOLEAN DEFAULT FALSE")
             if 'batch_id' not in existing_cols:
                 cur.execute("ALTER TABLE exams ADD COLUMN batch_id VARCHAR(20)")
+            if 'is_archived' not in existing_cols:
+                cur.execute("ALTER TABLE exams ADD COLUMN is_archived BOOLEAN DEFAULT FALSE")
             conn.commit()
 
             # Simple migration for activities table
@@ -50,6 +52,8 @@ def get_db_connection():
                 cur.execute("ALTER TABLE activities ADD COLUMN grading_period VARCHAR(50)")
             if 'batch_id' not in act_cols:
                 cur.execute("ALTER TABLE activities ADD COLUMN batch_id VARCHAR(20)")
+            if 'is_archived' not in act_cols:
+                cur.execute("ALTER TABLE activities ADD COLUMN is_archived BOOLEAN DEFAULT FALSE")
             conn.commit()
 
             # Simple migration for attendance_scores table

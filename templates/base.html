@@ -2077,7 +2077,7 @@
               </svg>
               Change Password
             </a>
-            <a href="/logout" class="profile-dropdown-link"
+            <a href="/logout" class="profile-dropdown-link" onclick="return confirm('Are you sure you want to logout?');"
               style="color: #ef4444; border-top: 1px solid #f8fafc; margin-top: 4px; padding-top: 8px;">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2283,21 +2283,10 @@
           <option value="">— Select Section —</option>
         </select>
       </div>
-      <div id="addStudentWrap"
-        style="display: none; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
-        <div style="font-size: 0.8rem; font-weight: 700; color: #475569; margin-bottom: 6px;">Add Late Enrollee</div>
-        <input type="text" id="newStudentName" placeholder="Student Full Name"
-          style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem; margin-bottom: 8px;">
-        <div style="display: flex; gap: 8px;">
-          <button onclick="submitNewStudent()"
-            style="background: #10b981; color: #fff; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 700; cursor: pointer; flex: 1;">Save</button>
-          <button onclick="toggleAddStudent()"
-            style="background: #e2e8f0; color: #475569; border: none; padding: 6px 12px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer;">Cancel</button>
-        </div>
-      </div>
-      <button id="btnAddStudentBtn" onclick="toggleAddStudent()"
-        style="display: none; width: 100%; background: #fef3c7; color: #92400e; border: 1px solid #fde68a; padding: 8px; border-radius: 8px; font-size: 0.85rem; font-weight: 700; cursor: pointer;">
-        + Add Student
+      <button id="clRefreshBtn" onclick="fetchClasslist()"
+        style="width: 100%; background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 10px; border-radius: 10px; font-size: 0.85rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="cl-refresh-icon"><path d="M23 4v6h-6"></path><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path></svg>
+        Update List
       </button>
     </div>
     <div style="flex: 1; overflow-y: auto; background: var(--card);">
@@ -2351,54 +2340,18 @@
       document.getElementById('classlistSidebar').style.right = '-400px';
       document.getElementById('clOverlay').classList.remove('show');
     }
-    function toggleAddStudent() {
-      const wrap = document.getElementById('addStudentWrap');
-      const btn = document.getElementById('btnAddStudentBtn');
-      if (wrap.style.display === 'none') {
-        wrap.style.display = 'block';
-        btn.style.display = 'none';
-      } else {
-        wrap.style.display = 'none';
-        btn.style.display = 'block';
-        document.getElementById('newStudentName').value = '';
-      }
-    }
-    function submitNewStudent() {
-      const sec = document.getElementById('clSectionSelect').value;
-      const name = document.getElementById('newStudentName').value.trim();
-      if (!sec) return alert("Please select a section first.");
-      if (!name) return alert("Please enter a student name.");
-
-      fetch('/api/teacher/add-student', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ section_id: sec, student_name: name })
-      })
-        .then(r => r.json())
-        .then(data => {
-          if (data.ok) {
-            toggleAddStudent();
-            fetchClasslist();
-          } else {
-            alert("Error: " + (data.error || "Failed to add student"));
-          }
-        })
-        .catch(err => alert("Server error"));
-    }
     function fetchClasslist() {
       const sec = document.getElementById('clSectionSelect').value;
       const tb = document.getElementById('clTableBody');
-      const addBtn = document.getElementById('btnAddStudentBtn');
+      const icon = document.getElementById('cl-refresh-icon');
 
       if (!sec) {
         tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: var(--muted);">Select a section to view students</td></tr>';
-        addBtn.style.display = 'none';
-        document.getElementById('addStudentWrap').style.display = 'none';
         return;
       }
 
-      addBtn.style.display = 'block';
-      tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: var(--muted);">Loading...</td></tr>';
+      if (icon) icon.style.animation = "cl-spin 1s linear infinite";
+      tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: var(--muted);">Updating...</td></tr>';
 
       fetch('/api/teacher/classlist/' + sec)
         .then(r => r.json())
@@ -2417,8 +2370,21 @@
         })
         .catch(() => {
           tb.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: red;">Error loading classlist</td></tr>';
+        })
+        .finally(() => {
+            if (icon) icon.style.animation = "none";
         });
     }
+
+    // Add spin animation for global sidebar
+    const clStyle = document.createElement('style');
+    clStyle.innerHTML = `
+        @keyframes cl-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    `;
+    document.head.appendChild(clStyle);
   </script>
   {% endif %}
 

@@ -209,7 +209,7 @@
     </div>
     
     <div class="form-card">
-        <form action="{{ url_for('teacher.create_activity') }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ url_for('teacher.create_activity') }}" method="POST" enctype="multipart/form-data" id="activityForm">
 
             <div class="form-group">
                 <label class="form-label">Activity Title <span style="color:#ef4444">*</span></label>
@@ -355,12 +355,25 @@
         }
     });
 
-    document.querySelector('form').onsubmit = function(e) {
+    document.getElementById('activityForm').onsubmit = function(e) {
         const checked = document.querySelectorAll('input[name="section_ids"]:checked');
         if (checked.length === 0) {
             alert('Please select at least one section.');
             e.preventDefault(); return false;
         }
+
+        const btn = this.querySelector('button[type="submit"]');
+        if (btn) {
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+            btn.innerHTML = `<svg class="spinner" viewBox="0 0 50 50" style="width:18px; height:18px; animation: rotate 2s linear infinite; vertical-align:middle; margin-right:8px;"><circle cx="25" cy="25" r="20" fill="none" stroke="currentColor" stroke-width="5" stroke-dasharray="90,150" stroke-dashoffset="0" stroke-linecap="round"></circle></svg> Creating...`;
+        }
+        return true;
     };
+
+    // Add spinner animation
+    const style = document.createElement('style');
+    style.innerHTML = `@keyframes rotate { 100% { transform: rotate(360deg); } }`;
+    document.head.appendChild(style);
 </script>
 {% endblock %}

@@ -198,7 +198,7 @@
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
             {% if exam.status == 'draft' %}
             <form method="POST" action="{{ url_for('teacher.teacher_exam_publish', exam_id=exam.exam_id) }}"
-                onsubmit="return confirm('Create this {{ 'quiz' if exam.exam_type == 'quiz' else 'exam' }}? Students will be able to take it once you make it visible.');">
+                onsubmit="return handleBtnLoad(this, 'Creating...');">
                 <button type="submit" class="btn btn-success">Create {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam'
                     }}</button>
             </form>
@@ -209,10 +209,12 @@
                     }}</button>
             </form>
             {% endif %}
+            <a href="{{ url_for('teacher.teacher_exam_edit_settings', exam_id=exam.exam_id) }}"
+                class="btn btn-primary" style="background:#4b5563;">⚙️ Settings</a>
             <a href="{{ url_for('teacher.teacher_exam_results', exam_id=exam.exam_id) }}"
-                class="btn btn-warning">Results</a>
+                class="btn btn-warning">📊 Results</a>
             <a href="{{ url_for('teacher.teacher_class_view', subject_id=exam.subject_id, active_tab='quizzes' if exam.exam_type == 'quiz' else 'exams') }}"
-                class="btn btn-secondary">Back to Class</a>
+                class="btn btn-secondary">⬅ Back</a>
         </div>
     </div>
 
@@ -254,7 +256,6 @@
                     q.correct_answer == 'False' %} ✓{% endif %}</span>
             </div>
             {% endif %}
-            {% if exam.status == 'draft' %}
             <div style="display:flex; gap:8px; margin-top:8px;">
                 <form method="POST"
                     action="{{ url_for('teacher.teacher_exam_question_delete', exam_id=exam.exam_id, question_id=q.question_id) }}"
@@ -265,7 +266,6 @@
                 <a href="{{ url_for('teacher.teacher_exam_question_edit', exam_id=exam.exam_id, question_id=q.question_id) }}"
                     class="btn btn-warning" style="padding:4px 10px; font-size:12px;">Edit</a>
             </div>
-            {% endif %}
         </div>
         {% else %}
         <div style="text-align:center; padding:30px; color:#aaa;">No questions yet. Add one below.</div>
@@ -322,7 +322,7 @@
         <hr style="border:none; border-top:1px solid #eee; margin:16px 0;">
 
         <!-- Step 2: fill questions (POST) -->
-        <form method="post" action="{{ url_for('teacher.teacher_exam_questions_bulk_add', exam_id=exam.exam_id) }}">
+        <form method="post" action="{{ url_for('teacher.teacher_exam_questions_bulk_add', exam_id=exam.exam_id) }}" onsubmit="return handleBtnLoad(this, 'Saving Questions...');">
             {% for i in range(mcq_n) %}
             <div class="q-card">
                 <div class="q-num">MCQ #{{ i+1 }}</div>
@@ -402,10 +402,9 @@
     </div>
 
     <!-- Add question form (only if draft) -->
-    {% if exam.status == 'draft' %}
     <div class="card">
         <h2>Add Question</h2>
-        <form method="POST" id="questionForm">
+        <form method="POST" id="questionForm" onsubmit="return handleBtnLoad(this, 'Adding...');">
             <!-- Type toggle -->
             <div class="type-toggle">
                 <button type="button" class="type-btn active" id="btnMCQ" onclick="setType('mcq')">Multiple
@@ -508,7 +507,7 @@
     <div class="card">
         <h2>Import Questions from File</h2>
         <form method="POST" action="{{ url_for('teacher.teacher_exam_import_questions', exam_id=exam.exam_id) }}"
-            enctype="multipart/form-data">
+            enctype="multipart/form-data" onsubmit="return handleBtnLoad(this, 'Importing...');">
             <div class="form-group">
                 <label>Upload File <span style="font-weight:400; color:#888;">.docx / .pdf / .csv / .xlsx</span></label>
                 <input type="file" name="question_file" accept=".docx,.pdf,.csv,.xls,.xlsx" required />
@@ -523,7 +522,6 @@
             <code>question_text, question_type, choice_a, choice_b, choice_c, choice_d, correct_answer, points</code>
         </div>
     </div>
-    {% endif %}
 </div>
 
 <script>
@@ -615,5 +613,32 @@
             }
         });
     })();
+
+    function handleBtnLoad(form, loadingText) {
+        const btn = form.querySelector('button[type="submit"]');
+        if (!btn) return true;
+        
+        // If it's the publish form, we still want the confirm dialog
+        if (form.action.includes('/publish')) {
+            const label = "{{ 'quiz' if exam.exam_type == 'quiz' else 'exam' }}";
+            if (!confirm(`Create this ${label}? Students will be able to take it once you make it visible.`)) {
+                return false;
+            }
+        }
+
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+        btn.style.cursor = 'not-allowed';
+        btn.innerHTML = `<svg class="spinner" viewBox="0 0 50 50" style="width:16px; height:16px; animation: rotate 2s linear infinite;"><circle cx="25" cy="25" r="20" fill="none" stroke="currentColor" stroke-width="5" stroke-dasharray="90,150" stroke-dashoffset="0" stroke-linecap="round"></circle></svg> ` + loadingText;
+        return true;
+    }
+
+    // Add spinner keyframes if not present
+    const style = document.createElement('style');
+    style.innerHTML = `
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
+        .spinner { vertical-align: middle; margin-right: 4px; }
+    `;
+    document.head.appendChild(style);
 </script>
 {% endblock %}
