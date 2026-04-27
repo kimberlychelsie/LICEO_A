@@ -2546,18 +2546,13 @@ def teacher_exam_import_questions(exam_id):
             questions = parse_docx(file)
         elif ext == '.pdf':
             questions = parse_pdf(file)
-        elif ext == '.csv':
-            import pandas as pd
-            df = pd.read_csv(file).fillna('')
-            df.columns = [c.lower().strip() for c in df.columns]
-            questions = df.to_dict(orient='records')
         elif ext in ('.xls', '.xlsx'):
             import pandas as pd
             df = pd.read_excel(file).fillna('')
             df.columns = [c.lower().strip() for c in df.columns]
             questions = df.to_dict(orient='records')
         else:
-            flash("Unsupported file format. Use .docx, .pdf, .csv, or .xlsx", "error")
+            flash("STRICT POLICY: Only Documents (Docs, PDF, Excel) are allowed. Images and videos are prohibited.", "error")
             return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
 
         inserted = 0

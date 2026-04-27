@@ -1097,6 +1097,8 @@ def student_reservation():
 
     search = request.args.get('search', '').strip()
     category_filter = request.args.get('category', '').strip()
+    success_id = request.args.get('success_id', type=int)
+    success_data = None
 
     branch_id = None
     student_grade = None
@@ -1336,7 +1338,15 @@ def student_reservation():
                     """, (reservation_id, item_id, qty, stored_size, unit_price, line_total))
 
                 db_tx.commit()
-                return redirect(url_for("student.student_reservation_success", reservation_id=reservation_id))
+                
+                # Redirect back to the same page with success_id to avoid form re-submission
+                success_url = url_for("student.student_reservation", enrollment_id=target_enrollment_id)
+                if "?" in success_url:
+                    success_url += f"&success_id={reservation_id}"
+                else:
+                    success_url += f"?success_id={reservation_id}"
+                
+                return redirect(success_url)
 
             except Exception as e:
                 db_tx.rollback()
@@ -1344,6 +1354,33 @@ def student_reservation():
             finally:
                 cursor_tx.close()
                 db_tx.close()
+
+        # If success_id was provided, fetch the details to show the success message on the same page
+        if success_id:
+            try:
+                cursor.execute("""
+                    SELECT r.reservation_id, r.status, r.created_at
+                    FROM reservations r
+                    WHERE r.reservation_id = %s 
+                      AND (r.student_user_id = %s OR r.reserved_by_user_id = %s)
+                    LIMIT 1
+                """, (success_id, student_user_id, reserved_by_user_id))
+                res_row = cursor.fetchone()
+                if res_row:
+                    cursor.execute("""
+                        SELECT ii.item_name, ri.qty, ri.size_label, ri.unit_price, ri.line_total
+                        FROM reservation_items ri
+                        JOIN inventory_items ii ON ii.item_id = ri.item_id
+                        WHERE ri.reservation_id = %s
+                    """, (success_id,))
+                    res_items = cursor.fetchall()
+                    success_data = {
+                        "reservation": res_row,
+                        "reserved_items": res_items,
+                        "total": sum(float(x['line_total'] or 0) for x in res_items)
+                    }
+            except Exception as e:
+                logger.error(f"Error fetching success data: {e}")
 
     except Exception as e:
         error = str(e)
@@ -1359,7 +1396,8 @@ def student_reservation():
         search=search,
         category=category_filter,
         message=message,
-        error=error
+        error=error,
+        success_data=success_data
     )
 
 @student_bp.route("/student/reservations", methods=["GET"])
@@ -1409,70 +1447,15 @@ def student_reservations_list():
 
 @student_bp.route("/reservation/success/<int:reservation_id>")
 def student_reservation_success(reservation_id):
+    """Legacy route: Redirect to the new in-page confirmation flow."""
     role = session.get("role")
     if role not in ("student", "parent"):
         return redirect(url_for("auth.login"))
 
-    viewer_user_id = session.get("user_id")
-    if not viewer_user_id:
-        session.clear()
-        return redirect(url_for("auth.login"))
+    # Try to find the enrollment_id to redirect properly
+    enrollment_id = session.get("enrollment_id")
+    if role == "parent":
+        # We might not have it in session, but student_reservation will handle it if missing
+        pass
 
-    db = get_db_connection()
-    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-    try:
-        cursor.execute("""
-            SELECT
-                r.reservation_id,
-                r.student_grade_level,
-                r.status,
-                r.created_at,
-                r.student_user_id,
-                r.reserved_by_user_id
-            FROM reservations r
-            WHERE r.reservation_id = %s
-            LIMIT 1
-        """, (reservation_id,))
-        reservation = cursor.fetchone()
-
-        if not reservation:
-            return "Reservation not found", 404
-
-        if role == "student":
-            branch_id = session.get("branch_id")
-            student_user_id = session.get("user_id")
-            if not branch_id or not student_user_id:
-                session.clear()
-                return redirect(url_for("auth.login"))
-
-            if reservation.get("student_user_id") != student_user_id:
-                return "Unauthorized", 403
-
-        else:
-            # parent must be the one who reserved
-            if reservation.get("reserved_by_user_id") != viewer_user_id:
-                return "Unauthorized", 403
-
-        cursor.execute("""
-            SELECT ii.item_name, ri.qty, ri.size_label, ri.unit_price, ri.line_total
-            FROM reservation_items ri
-            JOIN inventory_items ii ON ii.item_id = ri.item_id
-            WHERE ri.reservation_id = %s
-            ORDER BY ii.category, ii.item_name
-        """, (reservation_id,))
-        items = cursor.fetchall() or []
-
-        total = sum(float(item.get('line_total') or 0) for item in items)
-
-        return render_template_safe(
-            "student_reservation_success.html",
-            reservation=reservation,
-            items=items,
-            total=total,
-            student_name=session.get("student_name"),
-            grade_level=session.get("student_grade_level")
-        )
-
-    finally:
-        cursor.close()
-        db.close()
+    return redirect(url_for("student.student_reservation", enrollment_id=enrollment_id, success_id=reservation_id))

@@ -260,9 +260,17 @@ document.addEventListener('DOMContentLoaded', function () {
                 alert('Please select both Start Date and End Date for all grading periods.');
                 return;
             }
-            if (new Date(start) >= new Date(end)) {
+            const dStart = new Date(start);
+            const dEnd = new Date(end);
+
+            // Calculate minimum end date (1 month + 15 days)
+            let minEnd = new Date(dStart);
+            minEnd.setMonth(minEnd.getMonth() + 1);
+            minEnd.setDate(minEnd.getDate() + 15);
+
+            if (dEnd < minEnd) {
                 e.preventDefault();
-                alert('For ' + p + ' Grading: Start Date must be before End Date.');
+                alert('For ' + p + ' Grading: The period must be at least 1.5 months long.');
                 return;
             }
         }

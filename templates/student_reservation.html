@@ -23,7 +23,6 @@
     body {
         background-color: var(--res-bg);
         font-family: 'Plus Jakarta Sans', sans-serif;
-        padding-bottom: 120px; /* Space for fixed bottom bar */
     }
 
     .res-container {
@@ -34,8 +33,15 @@
     }
 
     @keyframes fadeSlideUp {
-        from { opacity: 0; transform: translateY(15px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(15px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     /* ── Header ── */
@@ -71,7 +77,8 @@
     }
 
     .pulse-dot {
-        width: 10px; height: 10px;
+        width: 10px;
+        height: 10px;
         background: var(--res-gold);
         border-radius: 50%;
         box-shadow: 0 0 10px var(--res-gold);
@@ -79,9 +86,317 @@
     }
 
     @keyframes pulse {
-        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7); }
-        70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(250, 204, 21, 0); }
-        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(250, 204, 21, 0); }
+        0% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(250, 204, 21, 0.7);
+        }
+
+        70% {
+            transform: scale(1);
+            box-shadow: 0 0 0 10px rgba(250, 204, 21, 0);
+        }
+
+        100% {
+            transform: scale(0.95);
+            box-shadow: 0 0 0 0 rgba(250, 204, 21, 0);
+        }
+    }
+
+    @keyframes pulse-subtle {
+        0% {
+            transform: scale(1);
+        }
+
+        50% {
+            transform: scale(1.02);
+        }
+
+        100% {
+            transform: scale(1);
+        }
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
+    }
+
+    @keyframes modalSlideIn {
+        from {
+            transform: scale(0.8) translateY(30px);
+            opacity: 0;
+        }
+
+        to {
+            transform: scale(1) translateY(0);
+            opacity: 1;
+        }
+    }
+
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+
+    /* ── Processing Overlay ── */
+    .processing-spinner {
+        width: 64px;
+        height: 64px;
+        border: 5px solid #f1f5f9;
+        border-top: 5px solid var(--res-gold);
+        border-radius: 50%;
+        margin: 0 auto;
+        animation: spin 1s linear infinite;
+    }
+
+    /* ── Modal Styles ── */
+    /* ── Success Modal & Receipt ── */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(15, 23, 42, 0.9);
+        backdrop-filter: blur(12px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        animation: fadeIn 0.4s ease;
+        padding: 20px;
+    }
+
+    .modal-card {
+        background: white;
+        width: 100%;
+        max-width: 360px;
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.4);
+        animation: modalSlideIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        position: relative;
+    }
+
+    .modal-header-success {
+        background: linear-gradient(135deg, var(--res-primary) 0%, #0c2461 100%);
+        color: white;
+        padding: 30px 15px 20px;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .modal-header-success::before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(250, 204, 21, 0.15) 0%, transparent 70%);
+        animation: rotateShimmer 10s linear infinite;
+    }
+
+    @keyframes rotateShimmer {
+        from {
+            transform: rotate(0deg);
+        }
+
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    .success-icon {
+        width: 50px;
+        height: 50px;
+        background: var(--res-gold);
+        color: var(--res-primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin: 0 auto 12px;
+        box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+        z-index: 2;
+        position: relative;
+    }
+
+    .modal-header-success h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 900;
+        letter-spacing: -0.02em;
+        position: relative;
+        z-index: 2;
+    }
+
+    .modal-header-success p {
+        margin: 6px 0 0 0;
+        opacity: 0.9;
+        font-weight: 600;
+        font-size: 0.8rem;
+        position: relative;
+        z-index: 2;
+    }
+
+    .modal-body {
+        padding: 20px;
+    }
+
+    .receipt-container {
+        background: #f8fafc;
+        border: 1px dashed #e2e8f0;
+        border-radius: 16px;
+        padding: 16px;
+        position: relative;
+    }
+
+    .receipt-header {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+
+    .receipt-id {
+        font-family: 'Courier New', Courier, monospace;
+        font-weight: 800;
+        color: var(--res-primary);
+        font-size: 0.8rem;
+    }
+
+    .receipt-date {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--res-muted);
+    }
+
+    .receipt-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        font-size: 0.8rem;
+    }
+
+    .item-label {
+        font-weight: 700;
+        color: var(--res-text);
+    }
+
+    .item-sub {
+        font-size: 0.65rem;
+        color: var(--res-muted);
+        font-weight: 600;
+    }
+
+    .receipt-total {
+        margin-top: 15px;
+        padding-top: 10px;
+        border-top: 1px solid #e2e8f0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .total-val {
+        font-size: 1.25rem;
+        font-weight: 900;
+        color: var(--res-primary);
+    }
+
+    .success-stamp {
+        position: absolute;
+        bottom: 10px;
+        right: 10px;
+        width: 60px;
+        height: 60px;
+        border: 2px double rgba(26, 58, 143, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transform: rotate(-15deg);
+        color: rgba(26, 58, 143, 0.2);
+        font-weight: 900;
+        font-size: 0.5rem;
+        pointer-events: none;
+        text-transform: uppercase;
+        animation: stampIn 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        opacity: 0;
+    }
+
+    @keyframes stampIn {
+        from {
+            transform: rotate(-45deg) scale(2);
+            opacity: 0;
+        }
+
+        to {
+            transform: rotate(-15deg) scale(1);
+            opacity: 1;
+        }
+    }
+
+    .btn-done {
+        width: 100%;
+        padding: 12px;
+        background: var(--res-primary);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        font-weight: 900;
+        font-size: 0.9rem;
+        cursor: pointer;
+        transition: all 0.3s;
+        box-shadow: 0 6px 12px rgba(26, 58, 143, 0.15);
+    }
+
+    .btn-done:hover {
+        transform: translateY(-2px);
+        background: #0c2461;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    /* ── Toast Notification ── */
+    .res-toast {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%) translateY(100px);
+        background: #1e293b;
+        color: white;
+        padding: 16px 32px;
+        border-radius: 16px;
+        font-weight: 700;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        z-index: 12000;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        pointer-events: none;
+    }
+
+    .res-toast.show {
+        transform: translateX(-50%) translateY(0);
+    }
+
+    .res-toast i {
+        color: var(--res-gold);
     }
 
     /* ── Toolbar ── */
@@ -143,7 +458,10 @@
         gap: 8px;
     }
 
-    .btn-back:hover { color: var(--res-primary); background: var(--res-bg); }
+    .btn-back:hover {
+        color: var(--res-primary);
+        background: var(--res-bg);
+    }
 
     /* ── Main Layout Grid ── */
     .reservation-main-grid {
@@ -156,8 +474,14 @@
     /* ── Product Grid ── */
     .product-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        grid-template-columns: 1fr;
         gap: 16px;
+    }
+
+    @media (max-width: 768px) {
+        .product-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
     /* ── Sidebar Styling ── */
@@ -238,42 +562,85 @@
         border: 1px solid var(--res-border);
         border-radius: var(--res-radius);
         padding: 16px;
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        transition: all 0.3s;
         box-shadow: var(--res-shadow);
-        display: flex;
-        flex-direction: column;
+        display: grid;
+        grid-template-columns: 80px 1fr 240px;
+        gap: 24px;
+        align-items: center;
         position: relative;
     }
 
-    .product-card:hover {
-        transform: translateY(-10px);
-        box-shadow: var(--res-shadow-hover);
-        border-color: var(--res-primary);
+    .product-info {
+        min-width: 0; /* Prevents overflow from pushing columns */
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
 
-    .product-card.out-of-stock { opacity: 0.7; }
+    @media (max-width: 1024px) {
+        .product-card {
+            grid-template-columns: 80px 1fr 180px;
+            gap: 16px;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .product-card {
+            grid-template-columns: 80px 1fr;
+        }
+        .controls-grid {
+            grid-column: span 2;
+            border-top: 1px solid #f1f5f9;
+            padding-top: 12px;
+            margin-top: 8px;
+        }
+    }
+
+    .product-card:hover {
+        transform: scale(1.02);
+        box-shadow: var(--res-shadow-hover);
+        border-color: var(--res-primary);
+        z-index: 5;
+    }
+
+    .product-card.out-of-stock {
+        opacity: 0.7;
+    }
 
     .image-container {
-        width: 100%;
-        height: 140px;
-        border-radius: 14px;
+        width: 80px;
+        height: 80px;
+        border-radius: 12px;
         overflow: hidden;
         background: #f8fafc;
         border: 1px solid #f1f5f9;
-        margin-bottom: 12px;
-        display: flex; align-items: center; justify-content: center;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
-    .image-container img { width: 100%; height: 100%; object-fit: contain; }
+    .image-container img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+    }
 
-    .no-image { font-size: 3rem; opacity: 0.3; }
+    .no-image {
+        font-size: 3rem;
+        opacity: 0.3;
+    }
 
     .product-info h3 {
-        margin: 0 0 6px 0;
+        margin: 0 0 4px 0;
         font-size: 0.95rem;
         font-weight: 800;
         color: var(--res-text);
         line-height: 1.3;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
     }
 
     .category-badge {
@@ -297,67 +664,84 @@
         margin-bottom: 12px;
     }
 
-    .stock-info.in-stock { color: #16a34a; }
-    .stock-info.out-stock { color: #dc2626; }
+    .stock-info.in-stock {
+        color: #16a34a;
+    }
+
+    .stock-info.out-stock {
+        color: #dc2626;
+    }
 
     .price-tag {
-        font-size: 1.2rem;
+        font-size: 1rem;
         font-weight: 900;
         color: var(--res-primary);
-        margin-bottom: 16px;
+        margin-bottom: 8px;
     }
 
     /* ── Controls ── */
-    .controls-row {
-        margin-top: auto;
-        padding-top: 20px;
-        border-top: 1px solid #f1f5f9;
-        display: flex;
-        flex-direction: column;
+    .controls-grid {
+        display: grid;
+        grid-template-columns: 140px 1fr;
         gap: 12px;
+        background: #f8fafc;
+        padding: 12px;
+        border-radius: 14px;
+        border: 1px solid #f1f5f9;
+        width: 240px;
+        justify-self: end;
     }
 
     .control-group {
         display: flex;
-        justify-content: space-between;
-        align-items: center;
+        flex-direction: column;
+        gap: 6px;
     }
 
     .control-label {
-        font-size: 0.75rem;
+        font-size: 0.65rem;
         font-weight: 800;
         color: var(--res-muted);
         text-transform: uppercase;
+        letter-spacing: 0.02em;
     }
 
     .qty-input {
-        width: 80px;
-        padding: 8px;
-        border-radius: 10px;
-        border: 1px solid var(--res-border);
+        width: 100%;
+        padding: 6px;
+        border-radius: 8px;
+        border: 1.5px solid var(--res-border);
         text-align: center;
         font-weight: 800;
         color: var(--res-primary);
+        font-size: 0.8rem;
     }
 
     .size-select {
-        width: 140px;
-        padding: 8px;
-        border-radius: 10px;
-        border: 1px solid var(--res-border);
+        width: 100%;
+        padding: 6px;
+        border-radius: 8px;
+        border: 1.5px solid var(--res-border);
+        font-family: inherit;
         font-weight: 700;
-        font-size: 0.85rem;
+        color: var(--res-primary);
+        background: var(--res-bg);
+        cursor: pointer;
+        outline: none;
+        font-size: 0.8rem;
     }
 
     /* ── Bottom Summary ── */
     .summary-bar {
         position: fixed;
-        bottom: 0; left: 0; right: 0;
+        bottom: 0;
+        left: 0;
+        right: 0;
         background: rgba(255, 255, 255, 0.9);
         backdrop-filter: blur(20px);
         border-top: 1px solid var(--res-border);
         padding: 24px 40px;
-        box-shadow: 0 -10px 40px rgba(0,0,0,0.1);
+        box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.1);
         z-index: 1000;
         display: flex;
         justify-content: space-between;
@@ -365,11 +749,33 @@
         animation: slideUp 0.5s ease;
     }
 
-    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    @keyframes slideUp {
+        from {
+            transform: translateY(100%);
+        }
 
-    .total-info { display: flex; flex-direction: column; }
-    .total-label { font-size: 0.75rem; font-weight: 800; color: var(--res-muted); text-transform: uppercase; }
-    .total-amount { font-size: 2rem; font-weight: 900; color: var(--res-primary); }
+        to {
+            transform: translateY(0);
+        }
+    }
+
+    .total-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .total-label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--res-muted);
+        text-transform: uppercase;
+    }
+
+    .total-amount {
+        font-size: 2rem;
+        font-weight: 900;
+        color: var(--res-primary);
+    }
 
     .btn-reserve {
         padding: 18px 48px;
@@ -400,9 +806,22 @@
     }
 
     @media (max-width: 768px) {
-        .filter-toolbar { flex-direction: column; padding: 20px; text-align: center; }
-        .summary-bar { flex-direction: column; gap: 16px; padding: 20px; }
-        .btn-reserve { width: 100%; justify-content: center; }
+        .filter-toolbar {
+            flex-direction: column;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .summary-bar {
+            flex-direction: column;
+            gap: 16px;
+            padding: 20px;
+        }
+
+        .btn-reserve {
+            width: 100%;
+            justify-content: center;
+        }
     }
 </style>
 {% endblock %}
@@ -425,13 +844,15 @@
         </div>
 
         {% if error %}
-        <div style="background: #fee2e2; color: #991b1b; padding: 16px 24px; border-radius: 16px; margin-bottom: 24px; border: 1px solid #fecaca; font-weight: 700;">
+        <div
+            style="background: #fee2e2; color: #991b1b; padding: 16px 24px; border-radius: 16px; margin-bottom: 24px; border: 1px solid #fecaca; font-weight: 700;">
             <i class="fas fa-exclamation-circle"></i> {{ error }}
         </div>
         {% endif %}
 
         {% if message %}
-        <div style="background: #dcfce7; color: #166534; padding: 16px 24px; border-radius: 16px; margin-bottom: 24px; border: 1px solid #bbf7d0; font-weight: 700;">
+        <div
+            style="background: #dcfce7; color: #166534; padding: 16px 24px; border-radius: 16px; margin-bottom: 24px; border: 1px solid #bbf7d0; font-weight: 700;">
             <i class="fas fa-check-circle"></i> {{ message }}
         </div>
         {% endif %}
@@ -446,9 +867,14 @@
                     <option value="UNIFORM">👕 School Uniforms</option>
                 </select>
             </div>
-            
-            <div style="font-size: 0.85rem; color: var(--res-muted); font-weight: 500;">
-                <i class="fas fa-info-circle"></i> Max 3 items per product. Size required for uniforms.
+
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="font-size: 0.85rem; color: var(--res-muted); font-weight: 500;">
+                    <i class="fas fa-info-circle"></i> Max 3 items per product.
+                </div>
+                <button type="button" onclick="toggleGuidelines()" style="background: var(--res-primary); color: white; border: none; padding: 8px 16px; border-radius: 10px; font-size: 0.8rem; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-book-open"></i> Guidelines
+                </button>
             </div>
         </div>
 
@@ -465,9 +891,8 @@
                     </div>
                     {% else %}
                     {% for it in items %}
-                    <div class="product-card item-card-js {% if it.available <= 0 %}out-of-stock{% endif %}" 
-                         data-category="{{ it.category }}" 
-                         data-price="{{ it.price }}">
+                    <div class="product-card item-card-js {% if it.available <= 0 %}out-of-stock{% endif %}"
+                        data-category="{{ it.category }}" data-price="{{ it.price }}">
 
                         <div class="image-container">
                             {% if it.image_url %}
@@ -484,7 +909,7 @@
                                 {{ it.grade_level }}
                             </span>
                             {% endif %}
-                            
+
                             <h3>{{ it.item_name }}</h3>
 
                             <div class="stock-info {% if it.available > 0 %}in-stock{% else %}out-stock{% endif %}">
@@ -498,48 +923,36 @@
                             <div class="price-tag">₱{{ "{:,.2f}".format(it.price or 0.0) }}</div>
                         </div>
 
-                        <div class="controls-row">
-                            {% if it.sizes and it.sizes|length > 0 %}
+                        <div class="controls-grid">
+                            {% if it.category == "UNIFORM" %}
                             <div class="control-group">
-                                <label class="control-label">Select Size <span style="color:red;">*</span></label>
-                                <select class="size-select size-select-js" name="size_{{ it.item_id }}" data-item-id="{{ it.item_id }}" {% if it.available <= 0 %}disabled{% endif %}>
+                                <label class="control-label">Size <span style="color:red;">*</span></label>
+                                <select class="size-select size-select-js" name="size_{{ it.item_id }}"
+                                    data-item-id="{{ it.item_id }}" {% if it.available <=0 %}disabled{% endif %}>
                                     <option value="">-- Size --</option>
-                                    {% for s in it.sizes %}
-                                        {% if s.available > 0 %}
-                                            <option value="{{ s.size_label }}">{{ s.size_label }}</option>
-                                        {% else %}
-                                            <option value="{{ s.size_label }}" disabled>{{ s.size_label }} (Out of Stock)</option>
-                                        {% endif %}
-                                    {% endfor %}
+                                    {% if it.sizes and it.sizes|length > 0 %}
+                                        {% for s in it.sizes %}
+                                        <option value="{{ s.size_label }}" {% if s.available <= 0 %}disabled{% endif %}>
+                                            {{ s.size_label }}{% if s.available <= 0 %} (Out){% endif %}
+                                        </option>
+                                        {% endfor %}
+                                    {% else %}
+                                        <option value="XS">XS</option><option value="S">S</option>
+                                        <option value="M">M</option><option value="L">L</option>
+                                        <option value="XL">XL</option>
+                                    {% endif %}
                                 </select>
                             </div>
-                            {% elif it.category == 'UNIFORM' %}
-                            <div class="control-group">
-                                <label class="control-label">Select Size <span style="color:red;">*</span></label>
-                                <select class="size-select size-select-js" name="size_{{ it.item_id }}" data-item-id="{{ it.item_id }}" {% if it.available <= 0 %}disabled{% endif %}>
-                                    <option value="">-- Size --</option>
-                                    <option value="XS">Extra Small (XS)</option>
-                                    <option value="S">Small (S)</option>
-                                    <option value="M">Medium (M)</option>
-                                    <option value="L">Large (L)</option>
-                                    <option value="XL">Extra Large (XL)</option>
-                                    <option value="XXL">2X Large (XXL)</option>
-                                </select>
-                            </div>
+                            {% else %}
+                            <div></div>
                             {% endif %}
 
                             <div class="control-group">
-                                <label class="control-label">Quantity</label>
-                                <input type="number" 
-                                       name="qty_{{ it.item_id }}" 
-                                       min="0" max="3" value="0" 
-                                       class="qty-input"
-                                       data-item-id="{{ it.item_id }}" 
-                                       data-category="{{ it.category }}"
-                                       data-price="{{ it.price }}"
-                                       {% if it.available <= 0 %}disabled{% endif %} 
-                                       onchange="updateTotal()" 
-                                       onkeyup="updateTotal()">
+                                <label class="control-label">Qty</label>
+                                <input type="number" name="qty_{{ it.item_id }}" min="0" max="3" value="0"
+                                    class="qty-input" data-item-id="{{ it.item_id }}" data-category="{{ it.category }}"
+                                    data-price="{{ it.price }}" {% if it.available <=0 %}disabled{% endif %}
+                                    onchange="updateTotal()" onkeyup="updateTotal()">
                             </div>
                         </div>
                     </div>
@@ -550,60 +963,70 @@
 
             <!-- Right Side: Guidelines Sidebar -->
             <aside class="reservation-sidebar">
-                <div class="guide-card">
-                    <h2><i class="fas fa-clipboard-list"></i> Reservation Rules</h2>
-                    
-                    <div class="guide-item">
-                        <div class="guide-icon"><i class="fas fa-cubes"></i></div>
-                        <div class="guide-text">
-                            <h4>Item Limits</h4>
-                            <p>You can reserve up to 3 units per item to ensure all students have access to materials.</p>
+                <!-- Reservation Summary Card (The new "list" and confirm button) -->
+                <div class="guide-card" id="reservationSummaryCard"
+                    style="display: none; border-color: var(--res-primary); border-width: 2px; position: sticky; top: 20px;">
+                    <h2 style="margin-bottom: 15px;"><i class="fas fa-shopping-cart"></i> Your Reservation</h2>
+
+                    <div id="selectedItemsList"
+                        style="margin-bottom: 20px; max-height: 400px; overflow-y: auto; padding-right: 5px;">
+                        <!-- Items will be injected here via JS -->
+                    </div>
+
+                    <div style="border-top: 1px dashed var(--res-border); padding-top: 15px; margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span
+                                style="font-size: 0.8rem; font-weight: 800; color: var(--res-muted); text-transform: uppercase;">Total
+                                Amount</span>
+                            <span id="sideSumTotal"
+                                style="font-size: 1.5rem; font-weight: 900; color: var(--res-primary);">₱0.00</span>
                         </div>
                     </div>
 
-                    <div class="guide-item">
-                        <div class="guide-icon"><i class="fas fa-tshirt"></i></div>
-                        <div class="guide-text">
-                            <h4>Uniform Sizes</h4>
-                            <p>For all uniforms, a size selection is mandatory before you can confirm your reservation.</p>
-                        </div>
-                    </div>
+                    <button type="submit" class="btn-reserve" id="sideSubmitBtn" disabled
+                        style="width: 100%; justify-content: center; padding: 15px; font-size: 1rem;">
+                        Confirm Reservation <i class="fas fa-arrow-right"></i>
+                    </button>
 
-                    <div class="guide-item">
-                        <div class="guide-icon"><i class="fas fa-hourglass-half"></i></div>
-                        <div class="guide-text">
-                            <h4>Holding Period</h4>
-                            <p>Reserved items are held for 48 hours. Please settle the balance at the cashier to finalize.</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="info-alert-card">
-                    <h3 style="margin: 0; font-size: 1rem; font-weight: 800;"><i class="fas fa-lightbulb"></i> Pro Tip</h3>
-                    <p style="margin: 12px 0 0 0; font-size: 0.8rem; opacity: 0.9; line-height: 1.5; font-weight: 500;">
-                        The total amount will be added to your child's billing ledger automatically once you confirm.
+                    <p
+                        style="text-align: center; font-size: 0.7rem; color: var(--res-muted); margin-top: 12px; font-weight: 600;">
+                        <i class="fas fa-shield-alt"></i> Secure checkout
                     </p>
                 </div>
 
-                <div class="guide-card" style="border-style: dashed; background: #f8fafc;">
-                    <h4 style="margin: 0; font-size: 0.85rem; color: var(--res-primary);">Inventory Questions?</h4>
-                    <p style="margin: 8px 0 0 0; font-size: 0.75rem; color: var(--res-muted); font-weight: 600;">
-                        If an item is out of stock, please contact your branch registrar to check for incoming shipments.
-                    </p>
+                <div id="guidelinesPanel" class="guide-card" style="display: none; border-left: 4px solid var(--res-gold); background: #fdfcf0; animation: fadeIn 0.3s ease;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                        <h2 style="margin: 0; font-size: 1.1rem;"><i class="fas fa-clipboard-list"></i> Reservation Rules</h2>
+                        <button type="button" onclick="toggleGuidelines()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--res-muted);">&times;</button>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                        <div class="guide-item" style="padding: 10px; background: white; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            <div class="guide-text">
+                                <h4 style="font-size: 0.8rem; margin-bottom: 2px;">Item Limits</h4>
+                                <p style="font-size: 0.75rem;">Max 3 units per item.</p>
+                            </div>
+                        </div>
+                        <div class="guide-item" style="padding: 10px; background: white; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            <div class="guide-text">
+                                <h4 style="font-size: 0.8rem; margin-bottom: 2px;">Uniform Sizes</h4>
+                                <p style="font-size: 0.75rem;">Selection is mandatory.</p>
+                            </div>
+                        </div>
+                        <div class="guide-item" style="padding: 10px; background: white; border-radius: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+                            <div class="guide-text">
+                                <h4 style="font-size: 0.8rem; margin-bottom: 2px;">Holding Period</h4>
+                                <p style="font-size: 0.75rem;">Reserved for 48 hours.</p>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
+
             </aside>
         </div>
 
-        <!-- Fixed Bottom Summary -->
-        <div class="summary-bar" id="summaryBar" style="display: none;">
-            <div class="total-info">
-                <span class="total-label">Reservation Total</span>
-                <span class="total-amount" id="sumTotal">₱0.00</span>
-            </div>
-            <button type="submit" class="btn-reserve" id="submitBtn" disabled>
-                Confirm Reservation <i class="fas fa-arrow-right"></i>
-            </button>
-        </div>
+        <!-- Removed summary-bar as it's now in the sidebar -->
     </form>
 </div>
 
@@ -622,6 +1045,7 @@
         let total = 0;
         let selectedCount = 0;
         let meetsRequirements = true;
+        let itemsHtml = "";
 
         qtyInputs.forEach(input => {
             let qty = parseInt(input.value) || 0;
@@ -635,29 +1059,57 @@
 
                 const itemId = input.getAttribute("data-item-id");
                 const category = input.getAttribute("data-category");
-                
+                const itemCard = input.closest('.product-card');
+                const itemName = itemCard.querySelector('h3').innerText;
+
+                let sizeVal = "";
                 if (category === "UNIFORM") {
                     const sizeSelect = document.querySelector(`select[name="size_${itemId}"]`);
-                    if (!sizeSelect || !sizeSelect.value) {
+                    sizeVal = sizeSelect ? sizeSelect.value : "";
+                    if (!sizeVal) {
                         meetsRequirements = false;
                     }
                 }
+
+                itemsHtml += `
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 12px; color: var(--res-text); background: #f8fafc; padding: 10px; border-radius: 12px; border: 1px solid var(--res-border);">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 800; color: var(--res-primary); margin-bottom: 2px;">${itemName}</div>
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="background: var(--res-primary); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">Qty: ${qty}</span>
+                                ${sizeVal ? `<span style="background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">Size: ${sizeVal}</span>` : ''}
+                            </div>
+                        </div>
+                        <div style="font-weight: 900; color: var(--res-text); align-self: center;">₱${(qty * price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                    </div>
+                `;
             }
         });
 
-        const bar = document.getElementById("summaryBar");
-        bar.style.display = selectedCount > 0 ? "flex" : "none";
-        
-        document.getElementById("sumTotal").innerText = "₱" + total.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
-        
-        const submitBtn = document.getElementById("submitBtn");
-        submitBtn.disabled = !(selectedCount > 0 && meetsRequirements);
+        const sideCard = document.getElementById("reservationSummaryCard");
+        const listContainer = document.getElementById("selectedItemsList");
+        const sideTotalDisplay = document.getElementById("sideSumTotal");
+        const sideSubmitBtn = document.getElementById("sideSubmitBtn");
+
+        if (selectedCount > 0) {
+            sideCard.style.display = "block";
+            listContainer.innerHTML = itemsHtml;
+            sideTotalDisplay.innerText = "₱" + total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            sideSubmitBtn.disabled = !meetsRequirements;
+
+            // Apply slight animation when items change
+            sideCard.style.animation = 'none';
+            sideCard.offsetHeight; // trigger reflow
+            sideCard.style.animation = 'pulse-subtle 0.3s ease-out';
+        } else {
+            sideCard.style.display = "none";
+        }
     }
 
-    document.getElementById("reservationForm").addEventListener("submit", function(e) {
+    document.getElementById("reservationForm").addEventListener("submit", function (e) {
         const qtyInputs = document.querySelectorAll(".qty-input");
         let hasErrors = false;
-        
+
         qtyInputs.forEach(input => {
             const qty = parseInt(input.value) || 0;
             if (qty > 0) {
@@ -678,10 +1130,57 @@
         if (hasErrors) {
             e.preventDefault();
             alert("Please select a size for all reserved uniforms.");
+        } else {
+            // High-end feedback logic
+            const submitBtn = document.getElementById("sideSubmitBtn");
+            const processingOverlay = document.getElementById("processingOverlay");
+
+            // Disable button and show spinner
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-circle-notch fa-spin"></i> Processing...';
+            submitBtn.style.opacity = "0.8";
+
+            // Show Toast Message
+            const toast = document.createElement('div');
+            toast.className = 'res-toast';
+            toast.innerHTML = '<i class="fas fa-clock"></i> Preparing your items...';
+            document.body.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 100);
+
+            // Show full-page processing overlay
+            if (processingOverlay) {
+                processingOverlay.style.display = "flex";
+            }
         }
     });
+</script>
 
-    document.addEventListener('change', function(e) {
+<!-- Processing Overlay -->
+<div id="processingOverlay"
+    style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(10px); z-index: 11000; flex-direction: column; align-items: center; justify-content: center; animation: fadeIn 0.3s ease;">
+    <div
+        style="background: white; padding: 50px; border-radius: 40px; box-shadow: 0 30px 60px rgba(0,0,0,0.12); text-align: center; max-width: 400px; border: 1px solid var(--res-border);">
+        <div class="processing-spinner"></div>
+        <h2
+            style="color: var(--res-primary); margin: 24px 0 8px 0; font-size: 1.5rem; font-weight: 900; letter-spacing: -0.02em;">
+            Securing Reservation</h2>
+        <p style="color: var(--res-muted); font-size: 0.95rem; font-weight: 600; line-height: 1.5;">We're updating the
+            inventory and preparing your confirmation...</p>
+    </div>
+</div>
+
+<!-- Removed redundant style block -->
+<script>
+    function toggleGuidelines() {
+        const panel = document.getElementById("guidelinesPanel");
+        if (panel.style.display === "none") {
+            panel.style.display = "block";
+        } else {
+            panel.style.display = "none";
+        }
+    }
+
+    document.addEventListener('change', function (e) {
         if (e.target.classList.contains('qty-input') || e.target.classList.contains('size-select-js')) {
             updateTotal();
         }
@@ -691,4 +1190,89 @@
     filterItems();
     updateTotal();
 </script>
+
+{% if success_data %}
+<!-- Success Modal -->
+<div id="successModal" class="modal-overlay">
+    <div class="modal-card">
+        <div class="modal-header-success">
+            <div class="success-icon">
+                <i class="fas fa-check"></i>
+            </div>
+            <h2 style="text-transform: uppercase; letter-spacing: 0.05em;">Reservation Successful!</h2>
+            <p>Ang iyong mga gamit ay matagumpay na na-reserve.</p>
+        </div>
+
+        <div class="modal-body">
+            <div class="receipt-container">
+                <div class="receipt-header">
+                    <div class="receipt-id">#{{ success_data.reservation.reservation_id }}</div>
+                    <div class="receipt-date">{% if success_data.reservation.created_at %}{{
+                        success_data.reservation.created_at.strftime('%b %d, %Y') }}{% else %}N/A{% endif %}</div>
+                </div>
+
+                <div class="receipt-items-list" style="max-height: 250px; overflow-y: auto;">
+                    {% if success_data.reserved_items %}
+                    {% for item in success_data.reserved_items %}
+                    <div class="receipt-item">
+                        <div>
+                            <div class="item-label">{{ item.item_name }}</div>
+                            <div class="item-sub">Qty: {{ item.qty }} | {% if item.size_label %}Size: {{ item.size_label
+                                }}{% else %}Standard{% endif %}</div>
+                        </div>
+                        <div class="item-price" style="font-weight: 800; color: var(--res-text);">₱{{
+                            "{:,.2f}".format(item.line_total) }}</div>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                </div>
+
+                <div class="receipt-total">
+                    <div
+                        style="font-weight: 800; color: var(--res-muted); text-transform: uppercase; font-size: 0.8rem;">
+                        Amount to Pay</div>
+                    <div class="total-val">₱{{ "{:,.2f}".format(success_data.total) }}</div>
+                </div>
+
+                <div class="success-stamp">RESERVED</div>
+            </div>
+
+            <div
+                style="margin-top: 24px; background: #fffbeb; border: 1px solid #fef3c7; padding: 16px; border-radius: 20px; display: flex; gap: 12px; align-items: center;">
+                <div
+                    style="width: 40px; height: 40px; background: #fef3c7; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                    <i class="fas fa-info-circle" style="color: #d97706;"></i>
+                </div>
+                <p style="margin: 0; font-size: 0.8rem; color: #92400e; font-weight: 600; line-height: 1.5;">
+                    Please present this Receipt ID at the cashier within 48 hours to finalize payment.
+                </p>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <button onclick="closeSuccessModal()" class="btn-done">Great, Continue Browsing</button>
+        </div>
+    </div>
+</div>
+
+<!-- Removed redundant style block -->
+
+<script>
+    function closeSuccessModal() {
+        const modal = document.getElementById("successModal");
+        if (!modal) return;
+
+        modal.style.opacity = "0";
+        modal.style.transition = "opacity 0.3s ease";
+
+        setTimeout(() => {
+            // Remove success_id from URL without reloading
+            const url = new URL(window.location.href);
+            url.searchParams.delete('success_id');
+            window.history.replaceState({}, '', url);
+            modal.remove();
+        }, 300);
+    }
+</script>
+{% endif %}
 {% endblock %}

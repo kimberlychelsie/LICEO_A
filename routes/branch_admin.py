@@ -2618,6 +2618,12 @@ def branch_admin_academic_calendar():
                         end_d_str   = request.form.get(f"{p}_end")
                         
                         if start_d_str and end_d_str:
+                            # Server-side validation: end date at least 1.5 months (approx 45 days) after start
+                            s_dt = datetime.strptime(start_d_str, '%Y-%m-%d')
+                            e_dt = datetime.strptime(end_d_str, '%Y-%m-%d')
+                            if (e_dt - s_dt).days < 45:
+                                flash(f"For {p} Grading: Period must be at least 45 days (1.5 months).", "error")
+                                continue
 
                             cur.execute("""
                                 INSERT INTO grading_period_ranges (branch_id, year_id, period_name, start_date, end_date)

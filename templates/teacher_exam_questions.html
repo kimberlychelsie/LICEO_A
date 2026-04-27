@@ -506,19 +506,30 @@
     <!-- Add this inside the draft block, alongside the Add Question form -->
     <div class="card">
         <h2>Import Questions from File</h2>
-        <form method="POST" action="{{ url_for('teacher.teacher_exam_import_questions', exam_id=exam.exam_id) }}"
-            enctype="multipart/form-data" onsubmit="return handleBtnLoad(this, 'Importing...');">
+        <form id="importForm" method="POST" action="{{ url_for('teacher.teacher_exam_import_questions', exam_id=exam.exam_id) }}"
+            enctype="multipart/form-data">
             <div class="form-group">
-                <label>Upload File <span style="font-weight:400; color:#888;">.docx / .pdf / .csv / .xlsx</span></label>
-                <input type="file" name="question_file" accept=".docx,.pdf,.csv,.xls,.xlsx" required />
+                <label>Select File <span style="font-weight:400; color:#888;">(Import starts automatically)</span></label>
+                <input type="file" name="question_file" id="question_file_input" accept=".docx,.pdf,.xlsx" required 
+                       onchange="if(this.value) handleAutoImport(this.form)"/>
             </div>
-            <button type="submit" class="btn btn-primary">Import Questions</button>
+            <button type="submit" id="importBtn" class="btn btn-primary" style="display:none;">Import Questions</button>
         </form>
+        <script>
+            function handleAutoImport(form) {
+                const btn = document.getElementById('importBtn');
+                if (btn) btn.style.display = 'inline-flex';
+                
+                if (handleBtnLoad(form, 'Reading file...')) {
+                    form.submit();
+                }
+            }
+        </script>
         <div style="margin-top:12px; font-size:12px; color:#888;">
             <strong>Format:</strong><br>
             DOCX/PDF: each question on lines starting with <code>Question:</code>, <code>A:</code>, <code>B:</code>,
             <code>C:</code>, <code>D:</code>, <code>Answer:</code>, <code>Type:</code>, <code>Points:</code><br>
-            CSV/XLSX: columns →
+            XLSX: columns →
             <code>question_text, question_type, choice_a, choice_b, choice_c, choice_d, correct_answer, points</code>
         </div>
     </div>
