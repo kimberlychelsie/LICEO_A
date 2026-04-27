@@ -3,272 +3,423 @@
 
 {% block title %}{{ child.student_name }} - Details{% endblock %}
 
-{% block styles %}
+{% block content %}
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
-
-    :root {
-        --par-primary: #1a3a8f;
-        --par-primary-soft: rgba(26, 58, 143, 0.05);
-        --par-gold: #facc15;
-        --par-gold-muted: #eab308;
-        --par-text: #1e293b;
-        --par-text-light: #64748b;
-        --par-bg: #f8fafc;
-        --par-border: #e2e8f0;
-        --par-radius: 16px;
-    }
-
-    body {
-        background-color: var(--par-bg);
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        color: var(--par-text);
-        letter-spacing: -0.01em;
-    }
-
-    .par-container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 32px 20px;
-        animation: fadeIn 0.4s ease-out;
-    }
-
-    @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
-    }
-
-    /* ── Slim Blue Header ── */
-    .dashboard-header {
-        background: linear-gradient(135deg, var(--par-primary) 0%, #0c2461 100%);
-        border-radius: var(--par-radius);
-        padding: 32px 40px;
-        margin-bottom: 32px;
+    .detail-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+    }
+
+    .detail-title h1 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin: 0;
+        color: var(--text);
+    }
+
+    .detail-title p {
+        color: var(--muted);
+        font-size: 0.9rem;
+        margin-top: 4px;
+    }
+
+    .profile-card {
+        background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+        border-radius: 16px;
+        padding: 30px;
         color: white;
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        box-shadow: 0 10px 25px rgba(37, 99, 235, 0.15);
+        margin-bottom: 24px;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 12px 24px rgba(26, 58, 143, 0.15);
     }
 
-    .dashboard-header::after {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -10%;
-        width: 300px;
-        height: 300px;
-        background: radial-gradient(circle, rgba(255, 255, 255, 0.05) 0%, transparent 70%);
+    .profile-avatar {
+        width: 80px;
+        height: 80px;
         border-radius: 50%;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(8px);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        font-weight: 800;
+        flex-shrink: 0;
     }
 
-    .header-main h1 {
-        margin: 0;
+    .profile-info {
+        flex: 1;
+        z-index: 1;
+    }
+
+    .profile-name {
         font-size: 1.8rem;
-        font-weight: 900;
-        color: white;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        letter-spacing: -0.03em;
+        font-weight: 800;
+        margin: 0 0 4px 0;
+        letter-spacing: -0.02em;
     }
 
-    .header-sub {
-        font-size: 0.9rem;
-        color: rgba(255, 255, 255, 0.8);
+    .profile-meta {
+        font-size: 1rem;
+        opacity: 0.9;
         font-weight: 500;
-        margin-top: 6px;
         display: flex;
-        align-items: center;
-        gap: 12px;
+        gap: 16px;
         flex-wrap: wrap;
     }
 
-    .header-pill {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 4px 12px;
-        border-radius: 100px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    .btn-nav {
-        background: white;
-        color: var(--par-primary);
-        padding: 10px 20px;
-        border-radius: 12px;
-        font-weight: 700;
-        text-decoration: none;
+    .status-badge-lg {
+        position: absolute;
+        top: 30px;
+        right: 30px;
+        padding: 8px 16px;
+        border-radius: 20px;
+        font-weight: 800;
         font-size: 0.85rem;
-        transition: all 0.2s;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        z-index: 2;
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        background: rgba(255, 255, 255, 0.95);
+        color: #1e3a8a;
     }
 
-    .btn-nav:hover {
-        background: var(--par-gold);
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    .status-badge-lg.approved {
+        color: #16a34a;
     }
 
-    .btn-nav.alt {
-        background: rgba(255, 255, 255, 0.1);
-        color: white;
-        border: 1px solid rgba(255, 255, 255, 0.3);
+    .status-badge-lg.rejected {
+        color: #dc2626;
     }
 
-    .btn-nav.alt:hover {
-        background: rgba(255, 255, 255, 0.2);
+    .status-badge-lg.pending {
+        color: #d97706;
     }
 
-    /* ── Clean Section Cards ── */
-    .section-card {
-        background: white;
-        border: 1px solid var(--par-border);
-        border-radius: var(--par-radius);
-        margin-bottom: 24px;
+    /* Row 1: personal + guardian side by side */
+    .info-row-top {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
+    }
+
+    /* Row 2: books + uniforms + documents 3-col */
+    .info-row-bottom {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 20px;
+        align-items: start;
+    }
+
+    @media (max-width: 900px) {
+        .info-row-top {
+            grid-template-columns: 1fr;
+        }
+
+        .info-row-bottom {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (min-width: 901px) and (max-width: 1100px) {
+        .info-row-bottom {
+            grid-template-columns: 1fr 1fr;
+        }
+    }
+
+    .info-card {
+        background: var(--card);
+        border-radius: 16px;
+        border: 1px solid var(--border);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.02);
         overflow: hidden;
     }
 
-    .section-card-header {
-        padding: 16px 24px;
-        background: #fdfdfd;
-        border-bottom: 1px solid var(--par-border);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-    }
-
-    .section-card-header h2 {
-        margin: 0;
-        font-size: 1.1rem;
-        font-weight: 800;
-        color: var(--par-primary);
+    .info-card-header {
+        padding: 16px 20px;
+        font-weight: 700;
+        border-bottom: 1px solid var(--border);
         display: flex;
         align-items: center;
         gap: 10px;
+        font-size: 1.1rem;
+        color: var(--text);
     }
 
-    .section-card-body {
-        padding: 24px;
+    .info-card-body {
+        padding: 20px;
     }
 
-    /* ── Data Grids ── */
-    .info-grid {
+    .data-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 24px;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
     }
 
-    .info-item {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
-    .info-label {
-        font-size: 0.7rem;
-        font-weight: 700;
-        color: var(--par-text-light);
+    .data-item-label {
+        font-size: 0.75rem;
         text-transform: uppercase;
+        color: var(--muted);
         letter-spacing: 0.05em;
+        font-weight: 600;
+        margin-bottom: 4px;
     }
 
-    .info-value {
-        font-size: 0.95rem;
-        font-weight: 700;
-        color: var(--par-text);
+    .data-item-value {
+        font-size: 1rem;
+        color: var(--text);
+        font-weight: 600;
     }
 
-    /* ── Academic Status Banner ── */
-    .status-banner {
-        padding: 12px 24px;
-        border-radius: 12px;
-        margin-bottom: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        font-weight: 700;
-        font-size: 0.9rem;
-    }
-
-    /* ── Modern Tables ── */
-    .table-wrap {
+    .modern-table-container {
+        border: 1px solid var(--border);
         border-radius: 12px;
         overflow: hidden;
-        border: 1px solid var(--par-border);
     }
 
-    .m-table {
+    .modern-table {
         width: 100%;
         border-collapse: collapse;
         font-size: 0.9rem;
     }
 
-    .m-table th {
+    .modern-table th {
         background: #f8fafc;
-        padding: 12px 16px;
         text-align: left;
-        font-size: 0.7rem;
-        font-weight: 800;
+        padding: 12px 16px;
+        color: var(--muted);
         text-transform: uppercase;
-        color: var(--par-text-light);
-        border-bottom: 1px solid var(--par-border);
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+        font-weight: 700;
+        border-bottom: 1px solid var(--border);
     }
 
-    .m-table td {
-        padding: 14px 16px;
-        border-bottom: 1px solid var(--par-border);
-        font-weight: 600;
+    .modern-table td {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text);
+        font-weight: 500;
     }
 
-    .m-table tr:last-child td {
+    .modern-table tr:last-child td {
         border-bottom: none;
     }
 
-    /* ── Quick Actions ── */
-    .action-row {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
-        margin-bottom: 32px;
+    .empty-message {
+        padding: 30px;
+        text-align: center;
+        color: var(--muted);
+        font-style: italic;
+        background: #f8fafc;
+        border-radius: 12px;
     }
 
-    .action-btn {
-        background: white;
-        border: 1.5px solid var(--par-border);
-        padding: 16px 20px;
-        border-radius: 14px;
+    .doc-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 16px;
+        background: #f1f5f9;
+        color: #2563eb;
+        border-radius: 8px;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background 0.2s;
+        margin-bottom: 8px;
+        width: 100%;
+    }
+
+    .doc-link:hover {
+        background: #e2e8f0;
+    }
+
+    .score-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        max-width: 300px;
+        word-wrap: break-word;
+        overflow-wrap: anywhere;
+        white-space: normal;
+        vertical-align: middle;
+    }
+
+    /* 🔵 Grades Styles (from student portal) 🔵 */
+    .grade-table-card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: var(--shadow-md);
+    }
+
+    .grade-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+    }
+
+    .grade-table th {
+        background: #f8fafc;
+        padding: 20px;
+        text-align: left;
+        font-weight: 800;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.72rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+
+    .grade-table td {
+        padding: 20px;
+        border-bottom: 1px solid #f1f5f9;
+        color: var(--text);
+    }
+
+    .grade-table tr:hover {
+        background: #f8fafc;
+    }
+
+    .course-name {
+        font-weight: 800;
+        color: #1e293b;
+        font-size: 1rem;
+    }
+
+    .grade-cell {
+        text-align: center;
+        font-weight: 900;
+        font-size: 1.15rem;
+        width: 130px;
+    }
+
+    .grade-pass {
+        color: #16a34a;
+    }
+
+    .grade-fail {
+        color: #dc2626;
+    }
+
+    .grade-empty {
+        color: transparent;
+    }
+
+    .final-avg-cell {
+        background: #f1f5f9;
+        text-align: center;
+        font-weight: 900;
+        font-size: 1.2rem;
+    }
+
+    .legend-card {
+        margin-top: 15px;
+        padding: 16px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        display: flex;
+        gap: 20px;
+        font-size: 0.85rem;
+        color: #475569;
+    }
+
+    .legend-item {
         display: flex;
         align-items: center;
-        gap: 14px;
+        gap: 8px;
+        font-weight: 600;
+    }
+
+    .l-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+    }
+
+    /* 🎯 Period Filter Tabs 🎯 */
+    .period-filter-wrap {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        background: #f1f5f9;
+        padding: 6px;
+        border-radius: 12px;
+        width: fit-content;
+    }
+
+    .period-tab {
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.85rem;
         cursor: pointer;
-        transition: all 0.3s;
+        transition: all 0.2s;
+        color: #64748b;
+        border: none;
+        background: transparent;
+    }
+
+    .period-tab:hover {
+        background: rgba(255, 255, 255, 0.5);
+        color: var(--btn);
+    }
+
+    .period-tab.active {
+        background: white;
+        color: #1e3a8a;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+    }
+
+    /* 🔘 Quick Action Buttons 🔘 */
+    .quick-actions {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+    }
+
+    .action-card-btn {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px 24px;
+        border-radius: 14px;
+        border: 2px solid transparent;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: 700;
+        transition: all 0.25s cubic-bezier(.4, 0, .2, 1);
+        flex: 1;
+        min-width: 180px;
+        background: var(--card);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
         text-align: left;
     }
 
-    .action-btn:hover, .action-btn.open {
-        border-color: var(--par-primary);
-        background: var(--par-primary-soft);
-        transform: translateY(-2px);
-    }
-
-    .action-btn .icon-circle {
-        width: 40px;
-        height: 40px;
+    .action-card-btn .acb-icon {
+        font-size: 1.6rem;
+        width: 44px;
+        height: 44px;
         border-radius: 10px;
-        background: var(--par-bg);
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.2rem;
-        transition: all 0.3s;
+        flex-shrink: 0;
     }
+
     .action-card-btn .acb-text small {
         display: block;
         font-size: 0.75rem;
@@ -276,382 +427,303 @@
         opacity: 0.7;
         margin-top: 2px;
     }
-    .action-card-btn.grades-btn { border-color: #c7d2fe; color: #3730a3; }
-    .action-card-btn.grades-btn .acb-icon { background: #eef2ff; }
-    .action-card-btn.grades-btn:hover, .action-card-btn.grades-btn.open {
-        background: linear-gradient(135deg,#4f46e5,#6366f1);
-        color: white; border-color: #4f46e5;
-        box-shadow: 0 8px 20px rgba(79,70,229,0.25);
-        transform: translateY(-2px);
-    }
-    .action-card-btn.grades-btn:hover .acb-icon, .action-card-btn.grades-btn.open .acb-icon { background: rgba(255,255,255,0.2); }
-    .action-card-btn.schedule-btn { border-color: #bfdbfe; color: #1d4ed8; }
-    .action-card-btn.schedule-btn .acb-icon { background: #eff6ff; }
-    .action-card-btn.schedule-btn:hover, .action-card-btn.schedule-btn.open {
-        background: linear-gradient(135deg,#1e3a8a,#2563eb);
-        color: white; border-color: #1e3a8a;
-        box-shadow: 0 8px 20px rgba(30,58,138,0.25);
-        transform: translateY(-2px);
-    }
-    .action-card-btn.schedule-btn:hover .acb-icon, .action-card-btn.schedule-btn.open .acb-icon { background: rgba(255,255,255,0.2); }
 
-    .action-card-btn.attendance-btn { border-color: #fecaca; color: #b91c1c; }
-    .action-card-btn.attendance-btn .acb-icon { background: #fef2f2; }
-    .action-card-btn.attendance-btn:hover, .action-card-btn.attendance-btn.open {
-        background: linear-gradient(135deg,#dc2626,#ef4444);
-        color: white; border-color: #dc2626;
-        box-shadow: 0 8px 20px rgba(220,38,38,0.25);
-        transform: translateY(-2px);
+    .action-card-btn.grades-btn {
+        border-color: #c7d2fe;
+        color: #3730a3;
     }
-    .action-card-btn.attendance-btn:hover .acb-icon, .action-card-btn.attendance-btn.open .acb-icon { background: rgba(255,255,255,0.2); }
 
-    .toggle-arrow { margin-left: auto; font-size: 0.8rem; transition: transform 0.3s; }
-    .action-card-btn.open .toggle-arrow { transform: rotate(180deg); }
+    .action-card-btn.grades-btn .acb-icon {
+        background: #eef2ff;
+    }
 
-    .action-btn:hover .icon-circle, .action-btn.open .icon-circle {
-        background: var(--par-primary);
+    .action-card-btn.grades-btn:hover,
+    .action-card-btn.grades-btn.open {
+        background: linear-gradient(135deg, #4f46e5, #6366f1);
         color: white;
+        border-color: #4f46e5;
+        box-shadow: 0 8px 20px rgba(79, 70, 229, 0.25);
+        transform: translateY(-2px);
     }
 
-    .action-btn .btn-text strong {
-        display: block;
-        font-size: 0.95rem;
-        font-weight: 800;
-        color: var(--par-primary);
+    .action-card-btn.grades-btn:hover .acb-icon,
+    .action-card-btn.grades-btn.open .acb-icon {
+        background: rgba(255, 255, 255, 0.2);
     }
 
-    .action-btn .btn-text span {
-        font-size: 0.75rem;
-        color: var(--par-text-light);
-        font-weight: 600;
+    .action-card-btn.schedule-btn {
+        border-color: #bfdbfe;
+        color: #1d4ed8;
     }
 
-    /* ── Panels ── */
+    .action-card-btn.schedule-btn .acb-icon {
+        background: #eff6ff;
+    }
+
+    .action-card-btn.schedule-btn:hover,
+    .action-card-btn.schedule-btn.open {
+        background: linear-gradient(135deg, #1e3a8a, #2563eb);
+        color: white;
+        border-color: #1e3a8a;
+        box-shadow: 0 8px 20px rgba(30, 58, 138, 0.25);
+        transform: translateY(-2px);
+    }
+
+    .action-card-btn.schedule-btn:hover .acb-icon,
+    .action-card-btn.schedule-btn.open .acb-icon {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .action-card-btn.attendance-btn {
+        border-color: #fecaca;
+        color: #b91c1c;
+    }
+
+    .action-card-btn.attendance-btn .acb-icon {
+        background: #fef2f2;
+    }
+
+    .action-card-btn.attendance-btn:hover,
+    .action-card-btn.attendance-btn.open {
+        background: linear-gradient(135deg, #dc2626, #ef4444);
+        color: white;
+        border-color: #dc2626;
+        box-shadow: 0 8px 20px rgba(220, 38, 38, 0.25);
+        transform: translateY(-2px);
+    }
+
+    .action-card-btn.attendance-btn:hover .acb-icon,
+    .action-card-btn.attendance-btn.open .acb-icon {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .toggle-arrow {
+        margin-left: auto;
+        font-size: 0.8rem;
+        transition: transform 0.3s;
+    }
+
+    .action-card-btn.open .toggle-arrow {
+        transform: rotate(180deg);
+    }
+
+    /* 📦 Collapsible Panel 📦 */
     .collapsible-panel {
         max-height: 0;
         overflow: hidden;
-        transition: max-height 0.4s ease-out, opacity 0.3s;
+        transition: max-height 0.45s cubic-bezier(.4, 0, .2, 1), opacity 0.3s;
         opacity: 0;
     }
 
     .collapsible-panel.open {
         max-height: 3000px;
         opacity: 1;
-        margin-bottom: 32px;
     }
 
-    /* ── Grade Specific ── */
-    .grade-badge {
-        display: inline-block;
-        padding: 4px 10px;
-        border-radius: 6px;
-        font-weight: 800;
-        font-size: 0.9rem;
-    }
-
-    .grade-pass { color: #16a34a; }
-    .grade-fail { color: #dc2626; }
-
-    .period-tabs {
-        display: flex;
-        gap: 6px;
-        background: #f1f5f9;
-        padding: 4px;
-        border-radius: 10px;
-    }
-
-    .p-tab {
-        padding: 6px 14px;
-        border-radius: 8px;
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: var(--par-text-light);
-        cursor: pointer;
-        transition: all 0.2s;
-    }
-
-    .p-tab.active {
-        background: white;
-        color: var(--par-primary);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-
-    .doc-link {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 12px 16px;
-        background: #f8fafc;
-        border: 1px solid var(--par-border);
-        border-radius: 10px;
-        text-decoration: none;
-        color: var(--par-text);
-        font-weight: 700;
-        font-size: 0.85rem;
-        margin-bottom: 8px;
-        transition: all 0.2s;
-    }
-
-    .doc-link:hover {
-        background: white;
-        border-color: var(--par-primary);
-        color: var(--par-primary);
+    .panel-inner {
+        padding-bottom: 24px;
     }
 </style>
-{% endblock %}
 
-{% block content %}
-<div class="par-container">
-    <!-- Slim Blue Header -->
-    <header class="dashboard-header">
-        <div class="header-main">
-            <p style="font-size: 0.85rem; font-weight: 600; opacity: 0.8; margin: 0 0 4px 0;">Student Record</p>
-            <h1><i class="fas fa-user-graduate"></i> {{ child.student_name }}</h1>
-            <div class="header-sub">
-                <div class="header-pill">🎓 Grade {{ child.grade_level }}</div>
-                <div class="header-pill">🆔 #{{ child.branch_enrollment_no }}</div>
-                <div class="header-pill">📍 {{ child.branch_name }}</div>
-            </div>
-        </div>
-        <div style="display: flex; gap: 12px; z-index: 2;">
-            <a href="{{ url_for('parent.dashboard') }}" class="btn-nav alt">
-                <i class="fas fa-arrow-left"></i> Back
-            </a>
-            <a href="{{ url_for('parent.child_bills', enrollment_id=child.enrollment_id) }}" class="btn-nav">
-                <i class="fas fa-receipt"></i> Billing
-            </a>
-        </div>
-    </header>
-
-    <!-- Academic Status Banner -->
-    <div class="status-banner" style="background: {{ status_color }}15; color: {{ status_color }}; border: 1px solid {{ status_color }}30;">
-        <span>Current Academic Standing: <strong>{{ academic_status }}</strong></span>
-        <span>{% if child.status|lower in ['approved', 'enrolled'] %}✓ Officially Enrolled{% else %}⧗ {{ child.status|capitalize }}{% endif %}</span>
+<div class="detail-header">
+    <div class="detail-title">
+        <h1>Student Profile</h1>
+        <p>Comprehensive academic and enrollment details</p>
     </div>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <a href="{{ url_for('parent.dashboard') }}" class="btn btn-secondary">⬅ Back</a>
+        <a href="{{ url_for('parent.child_bills', enrollment_id=child.enrollment_id) }}" class="btn btn-primary">💳 View
+            Billing</a>
+    </div>
+</div>
 
-    <!-- ROW 1: Info & Guardian -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-bottom: 24px;">
-        <div class="section-card">
-            <div class="section-card-header">
-                <h2><i class="fas fa-id-card"></i> Personal Details</h2>
-            </div>
-            <div class="section-card-body info-grid">
-                <div class="info-item">
-                    <span class="info-label">Gender</span>
-                    <span class="info-value">{{ child.gender }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Birth Date</span>
-                    <span class="info-value">{{ child.dob }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Contact</span>
-                    <span class="info-value">{{ child.contact_number }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Prev. School</span>
-                    <span class="info-value">{{ child.previous_school or 'N/A' }}</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="section-card">
-            <div class="section-card-header">
-                <h2><i class="fas fa-user-shield"></i> Guardian Info</h2>
-            </div>
-            <div class="section-card-body info-grid">
-                <div class="info-item" style="grid-column: span 2;">
-                    <span class="info-label">Guardian Name</span>
-                    <span class="info-value">{{ child.guardian_name }} ({{ child.relationship|capitalize }})</span>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Guardian Contact</span>
-                    <span class="info-value">{{ child.guardian_contact }}</span>
-                </div>
-                <div class="info-item" style="grid-column: span 2;">
-                    <span class="info-label">Address</span>
-                    <span class="info-value">{{ child.address }}</span>
-                </div>
-            </div>
+<div class="profile-card">
+    <div class="profile-avatar">
+        {{ child.student_name[0]|upper }}
+    </div>
+    <div class="profile-info">
+        <h2 class="profile-name">{{ child.student_name }}</h2>
+        <div class="profile-meta">
+            <span>🎓 Grade {{ child.grade_level }}</span>
+            <span>📍 {{ child.branch_name }} ({{ child.location }})</span>
+            <span>🆔 #{{ child.branch_enrollment_no }}</span>
         </div>
     </div>
 
-    <!-- Quick Action Buttons -->
-    <div class="action-row">
-        <div class="action-btn" id="btn-grades" onclick="togglePanel('grades')">
-            <div class="icon-circle">🎓</div>
-            <div class="btn-text">
-                <strong>Quarterly Grades</strong>
-                <span>Performance & Scores</span>
+    {% if child.status|lower in ['approved', 'enrolled'] %}
+    <div class="status-badge-lg approved">✓ Officially Enrolled</div>
+    {% elif child.status|lower == 'rejected' %}
+    <div class="status-badge-lg rejected">✕ Rejected</div>
+    {% else %}
+    <div class="status-badge-lg pending">⧗ Pending Review</div>
+    {% endif %}
+
+    <!-- Academic Status Badge -->
+    <div class="status-badge-lg" style="top: 80px; background: {{ status_color }}; color: white; border: none;">
+        {{ academic_status }}
+    </div>
+</div>
+
+<!-- ROW 1: Personal + Guardian -->
+<div class="info-row-top">
+    <div class="info-card">
+        <div class="info-card-header" style="background: #f8fafc;">👤 Personal Information</div>
+        <div class="info-card-body data-grid">
+            <div>
+                <div class="data-item-label">Gender</div>
+                <div class="data-item-value">{{ child.gender }}</div>
             </div>
-        </div>
-        <div class="action-btn" id="btn-schedule" onclick="togglePanel('schedule')">
-            <div class="icon-circle">📅</div>
-            <div class="btn-text">
-                <strong>Class Schedule</strong>
-                <span>Weekly Timetable</span>
+            <div>
+                <div class="data-item-label">Date of Birth</div>
+                <div class="data-item-value">{{ child.dob }}</div>
             </div>
-        </div>
-        <div class="action-btn" id="btn-docs" onclick="togglePanel('docs')">
-            <div class="icon-circle">📄</div>
-            <div class="btn-text">
-                <strong>Documents</strong>
-                <span>Uploaded Files</span>
+            <div>
+                <div class="data-item-label">Contact Number</div>
+                <div class="data-item-value">{{ child.contact_number }}</div>
+            </div>
+            <div>
+                <div class="data-item-label">Previous School</div>
+                <div class="data-item-value">{{ child.previous_school or 'N/A' }}</div>
             </div>
         </div>
     </div>
-
-    <!-- SCHEDULE PANEL -->
-    <div class="collapsible-panel" id="panel-schedule">
-        <div class="section-card">
-            <div class="section-card-header">
-                <h2><i class="fas fa-calendar-alt"></i> Weekly Class Timetable</h2>
+    <div class="info-card">
+        <div class="info-card-header" style="background: #f8fafc;">👨‍👩‍👦 Guardian Information</div>
+        <div class="info-card-body data-grid" style="grid-template-columns: 1fr;">
+            <div>
+                <div class="data-item-label">Guardian Name</div>
+                <div class="data-item-value">{{ child.guardian_name }}</div>
             </div>
-            <div class="section-card-body" style="padding: 0;">
-                {{ render_weekly_schedule(
-                    schedules,
-                    title="",
-                    subtitle="",
-                    show_teacher=true
-                ) }}
+            <div>
+                <div class="data-item-label">Contact Number</div>
+                <div class="data-item-value">{{ child.guardian_contact }}</div>
+            </div>
+            <div>
+                <div class="data-item-label">Home Address</div>
+                <div class="data-item-value">{{ child.address }}</div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- DOCUMENTS PANEL -->
-    <div class="collapsible-panel" id="panel-docs">
-        <div class="section-card">
-            <div class="section-card-header">
-                <h2><i class="fas fa-file-pdf"></i> Academic Documents</h2>
-            </div>
-            <div class="section-card-body">
-                {% if documents %}
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px;">
-                    {% for doc in documents %}
-                    <a href="{{ doc.file_path }}" target="_blank" class="doc-link">
-                        <i class="fas fa-file-alt" style="color: var(--par-primary);"></i>
-                        {{ doc.file_name }}
-                    </a>
+<!-- ROW 2: Books + Uniforms + Documents -->
+<div class="info-row-bottom">
+    <div class="info-card">
+        <div class="info-card-header" style="background: #eef2ff; color: #4f46e5;">📚 Books Ordered</div>
+        <div class="info-card-body" style="padding: 0;">
+            {% if books %}
+            <table class="modern-table">
+                <thead>
+                    <tr>
+                        <th>Book Name</th>
+                        <th style="text-align:right;">Qty</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for book in books %}
+                    <tr>
+                        <td>{{ book.book_name }}
+                            {% if book.is_reservation %}<span
+                                style="font-size:0.65rem;background:#e0f2fe;color:#0369a1;padding:2px 6px;border-radius:4px;font-weight:800;text-transform:uppercase;margin-left:6px;">Reserved</span>{%
+                            endif %}
+                        </td>
+                        <td style="text-align:right;font-weight:700;">{{ book.quantity }}</td>
+                    </tr>
                     {% endfor %}
-                </div>
-                {% else %}
-                <p style="text-align: center; color: var(--par-text-light); font-weight: 600;">No documents uploaded yet.</p>
-                {% endif %}
-            </div>
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-message">No books ordered.</div>
+            {% endif %}
         </div>
     </div>
-
-    <!-- GRADES PANEL -->
-    <div class="collapsible-panel" id="panel-grades">
-        <!-- Official Grades -->
-        <div class="section-card">
-            <div class="section-card-header">
-                <h2><i class="fas fa-star"></i> Official Quarterly Grades</h2>
-                <div style="font-size: 0.7rem; color: var(--par-text-light); font-weight: 700;">PASSING: 75%</div>
-            </div>
-            <div class="section-card-body" style="padding: 0;">
-                <div class="table-wrap" style="border: none; border-radius: 0;">
-                    <table class="m-table">
-                        <thead>
-                            <tr>
-                                <th>Course / Subject</th>
-                                <th style="text-align: center;">1st</th>
-                                <th style="text-align: center;">2nd</th>
-                                <th style="text-align: center;">3rd</th>
-                                <th style="text-align: center;">4th</th>
-                                <th style="text-align: center; background: #f1f5f9;">Final</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for subj in grade_data %}
-                            <tr>
-                                <td style="font-weight: 800; color: var(--par-primary);">{{ subj.subject_name }}</td>
-                                <td style="text-align: center;" class="grade-badge {% if subj.grades.get('1st') %}{% if subj.grades['1st'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% endif %}">
-                                    {{ subj.grades.get('1st') or '—' }}
-                                </td>
-                                <td style="text-align: center;" class="grade-badge {% if subj.grades.get('2nd') %}{% if subj.grades['2nd'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% endif %}">
-                                    {{ subj.grades.get('2nd') or '—' }}
-                                </td>
-                                <td style="text-align: center;" class="grade-badge {% if subj.grades.get('3rd') %}{% if subj.grades['3rd'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% endif %}">
-                                    {{ subj.grades.get('3rd') or '—' }}
-                                </td>
-                                <td style="text-align: center;" class="grade-badge {% if subj.grades.get('4th') %}{% if subj.grades['4th'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% endif %}">
-                                    {{ subj.grades.get('4th') or '—' }}
-                                </td>
-                                <td style="text-align: center; background: #f8fafc; font-weight: 900;" class="grade-badge {% if subj.final_grade %}{% if subj.final_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% endif %}">
-                                    {{ subj.final_grade or '—' }}
-                                </td>
-                            </tr>
-                            {% else %}
-                            <tr><td colspan="6" style="text-align: center; padding: 32px;">No official grades posted yet.</td></tr>
-                            {% endfor %}
+    <div class="info-card">
+        <div class="info-card-header" style="background: #f0fdf4; color: #16a34a;">👕 Uniforms Ordered</div>
+        <div class="info-card-body" style="padding: 0;">
+            {% if uniforms %}
+            <table class="modern-table">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Size</th>
+                        <th style="text-align:right;">Qty</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for uniform in uniforms %}
+                    <tr>
+                        <td>{{ uniform.uniform_type }}
+                            {% if uniform.is_reservation %}<span
+                                style="font-size:0.65rem;background:#dcfce7;color:#166534;padding:2px 6px;border-radius:4px;font-weight:800;text-transform:uppercase;margin-left:6px;">Reserved</span>{%
+                            endif %}
+                        </td>
+                        <td><span style="background:#f1f5f9;padding:2px 8px;border-radius:4px;font-weight:700;">{{
+                                uniform.size }}</span></td>
+                        <td style="text-align:right;font-weight:700;">{{ uniform.quantity }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-message">No uniforms ordered.</div>
+            {% endif %}
         </div>
     </div>
-
-        <!-- Task Performance -->
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 32px;">
-            <h3 style="margin:0; font-size: 1.2rem; font-weight: 900; color: var(--par-text);">Task Performance</h3>
-            <div class="period-tabs">
-                <div class="p-tab active" data-period="all">All</div>
-                <div class="p-tab" data-period="1st">1st</div>
-                <div class="p-tab" data-period="2nd">2nd</div>
-                <div class="p-tab" data-period="3rd">3rd</div>
-                <div class="p-tab" data-period="4th">4th</div>
+    <div class="info-card">
+        <div class="info-card-header" style="background: #f8fafc;">📄 Documents</div>
+        <div class="info-card-body">
+            {% if documents %}
+            <div style="display:flex;flex-direction:column;gap:4px;">
+                {% for doc in documents %}
+                <a href="{{ doc.file_path }}" target="_blank" class="doc-link">📎 {{ doc.file_name }}</a>
+                {% endfor %}
             </div>
-        </div>
-
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px;">
-            <!-- Activities -->
-            <div class="section-card">
-                <div class="section-card-header">
-                    <h2><i class="fas fa-edit"></i> Activities & Projects</h2>
-                </div>
-                <div class="section-card-body" style="padding: 0;">
-                    <div class="table-wrap" style="border: none; border-radius: 0;">
-                        <table class="m-table">
-                            <thead><tr><th>Title</th><th>Subject</th><th style="text-align: center;">Score</th></tr></thead>
-                            <tbody>
-                                {% for a in activity_scores %}
-                                <tr class="score-row" data-period="{{ a.grading_period }}">
-                                    <td>{{ a.activity_title }}</td>
-                                    <td style="color: var(--par-text-light); font-size: 0.8rem;">{{ a.subject_name }}</td>
-                                    <td style="text-align: center; font-weight: 800;">{{ a.raw_score|int }}%</td>
-                                </tr>
-                                {% else %}
-                                <tr><td colspan="3" style="text-align: center; padding: 20px;">No records.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quizzes -->
-            <div class="section-card">
-                <div class="section-card-header">
-                    <h2><i class="fas fa-pencil-alt"></i> Quiz Scores</h2>
-                </div>
-                <div class="section-card-body" style="padding: 0;">
-                    <div class="table-wrap" style="border: none; border-radius: 0;">
-                        <table class="m-table">
-                            <thead><tr><th>Title</th><th>Subject</th><th style="text-align: center;">Score</th></tr></thead>
-                            <tbody>
-                                {% for q in quiz_scores %}
-                                <tr class="score-row" data-period="{{ q.grading_period }}">
-                                    <td>{{ q.exam_title }}</td>
-                                    <td style="color: var(--par-text-light); font-size: 0.8rem;">{{ q.subject_name }}</td>
-                                    <td style="text-align: center; font-weight: 800;">{{ q.score|int }}/{{ q.total_points|int }}</td>
-                                </tr>
-                                {% else %}
-                                <tr><td colspan="3" style="text-align: center; padding: 20px;">No records.</td></tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+            {% else %}
+            <div class="empty-message">No documents uploaded yet.</div>
+            {% endif %}
         </div>
     </div>
+</div>
+
+<!-- ======================= QUICK ACTION BUTTONS ======================= -->
+<div class="quick-actions">
+    <button class="action-card-btn grades-btn" id="btn-grades" onclick="togglePanel('grades')">
+        <div class="acb-icon">🎓</div>
+        <div class="acb-text">
+            View Grades
+            <small>Quarterly grades &amp; scores</small>
+        </div>
+        <span class="toggle-arrow">▼</span>
+    </button>
+    <button class="action-card-btn schedule-btn" id="btn-schedule" onclick="togglePanel('schedule')">
+        <div class="acb-icon">📅</div>
+        <div class="acb-text">
+            View Schedule
+            <small>Weekly class timetable</small>
+        </div>
+        <span class="toggle-arrow">▼</span>
+    </button>
+    <button class="action-card-btn attendance-btn" id="btn-attendance" onclick="togglePanel('attendance')">
+        <div class="acb-icon">✋</div>
+        <div class="acb-text">
+            View Attendance
+            <small>Daily presence &amp; absences</small>
+        </div>
+        <span class="toggle-arrow">▼</span>
+    </button>
+</div>
+
+<!-- ======================= CLASS SCHEDULE PANEL ======================= -->
+<div class="collapsible-panel" id="panel-schedule">
+    <div class="panel-inner">
+        {{ render_weekly_schedule(
+        schedules,
+        title="Class Schedule",
+        subtitle="Weekly class timetable for " ~ child.student_name,
+        show_teacher=true
+        ) }}
+    </div>
+</div>
 
 <!-- ======================= ATTENDANCE PANEL ======================= -->
 <div class="collapsible-panel" id="panel-attendance">
@@ -660,7 +732,8 @@
             <div class="info-card-header" style="background: #fef2f2; color: #b91c1c; font-size: 1.2rem;">
                 📊 Overall Attendance Summary
             </div>
-            <div class="modern-table-container" style="border: none; border-top: 1px solid var(--border); border-radius: 0 0 16px 16px;">
+            <div class="modern-table-container"
+                style="border: none; border-top: 1px solid var(--border); border-radius: 0 0 16px 16px;">
                 {% if attendance_summary %}
                 <table class="modern-table">
                     <thead>
@@ -698,7 +771,8 @@
             <div class="info-card-header" style="background: #fff7ed; color: #c2410c; font-size: 1.2rem;">
                 ⚠️ Recent Absences & Lates
             </div>
-            <div class="modern-table-container" style="border: none; border-top: 1px solid var(--border); border-radius: 0 0 16px 16px;">
+            <div class="modern-table-container"
+                style="border: none; border-top: 1px solid var(--border); border-radius: 0 0 16px 16px;">
                 {% if recent_absences %}
                 <table class="modern-table">
                     <thead>
@@ -715,13 +789,17 @@
                             <td>{{ r.subject_name }}</td>
                             <td>
                                 {% if r.status == 'Absent' %}
-                                <span style="background: #fee2e2; color: #dc2626; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 0.8rem;">Absent</span>
+                                <span
+                                    style="background: #fee2e2; color: #dc2626; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 0.8rem;">Absent</span>
                                 {% elif r.status == 'Late' %}
-                                <span style="background: #fef3c7; color: #d97706; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 0.8rem;">Late</span>
+                                <span
+                                    style="background: #fef3c7; color: #d97706; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 0.8rem;">Late</span>
                                 {% elif r.status == 'Excused' %}
-                                <span style="background: #dbeafe; color: #2563eb; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 0.8rem;">Excused</span>
+                                <span
+                                    style="background: #dbeafe; color: #2563eb; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 0.8rem;">Excused</span>
                                 {% elif r.status == 'Half-day' %}
-                                <span style="background: #f3e8ff; color: #6d28d9; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 0.8rem;">Half-day</span>
+                                <span
+                                    style="background: #f3e8ff; color: #6d28d9; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 0.8rem;">Half-day</span>
                                 {% endif %}
                             </td>
                         </tr>
@@ -729,95 +807,275 @@
                     </tbody>
                 </table>
                 {% else %}
-                <div class="empty-message" style="color: #16a34a; font-weight: 600;">Great! No recent absences or lates found.</div>
+                <div class="empty-message" style="color: #16a34a; font-weight: 600;">Great! No recent absences or lates
+                    found.</div>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
 
-    <!-- Books & Uniforms -->
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
-        <div class="section-card">
-            <div class="section-card-header">
-                <h2><i class="fas fa-book"></i> Books Ordered</h2>
+<!-- ======================= OFFICIAL GRADES PANEL ======================= -->
+<div class="collapsible-panel" id="panel-grades">
+    <div class="panel-inner">
+        <div class="info-card" style="margin-bottom: 24px;">
+            <div class="info-card-header" style="background: #1e3a8a; color: white; font-size: 1.2rem;">
+                🎓 Official Quarterly Grades
             </div>
-            <div class="section-card-body" style="padding: 0;">
-                <table class="m-table">
-                    <thead><tr><th>Book Name</th><th style="text-align: right;">Qty</th></tr></thead>
-                    <tbody>
-                        {% for book in books %}
-                        <tr>
-                            <td>{{ book.book_name }} {% if book.is_reservation %}<span style="font-size: 0.6rem; background: var(--par-primary-soft); color: var(--par-primary); padding: 2px 6px; border-radius: 4px;">RESERVED</span>{% endif %}</td>
-                            <td style="text-align: right;">{{ book.quantity }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+            <div class="grade-table-card" style="border: none; border-radius: 0 0 16px 16px;">
+                <div class="table-responsive">
+                    <table class="grade-table">
+                        <thead>
+                            <tr>
+                                <th>Course / Subject</th>
+                                <th style="text-align: center;">1st</th>
+                                <th style="text-align: center;">2nd</th>
+                                <th style="text-align: center;">3rd</th>
+                                <th style="text-align: center;">4th</th>
+                                <th style="text-align: center;">Final Avg</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for subj in grade_data %}
+                            <tr>
+                                <td class="course-name">{{ subj.subject_name }}</td>
+                                <td
+                                    class="grade-cell {% if subj.grades.get('1st') %}{% if subj.grades['1st'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                                    {{ subj.grades.get('1st') if subj.grades.get('1st') else '' }}
+                                </td>
+                                <td
+                                    class="grade-cell {% if subj.grades.get('2nd') %}{% if subj.grades['2nd'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                                    {{ subj.grades.get('2nd') if subj.grades.get('2nd') else '' }}
+                                </td>
+                                <td
+                                    class="grade-cell {% if subj.grades.get('3rd') %}{% if subj.grades['3rd'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                                    {{ subj.grades.get('3rd') if subj.grades.get('3rd') else '' }}
+                                </td>
+                                <td
+                                    class="grade-cell {% if subj.grades.get('4th') %}{% if subj.grades['4th'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                                    {{ subj.grades.get('4th') if subj.grades.get('4th') else '' }}
+                                </td>
+                                <td
+                                    class="grade-cell final-avg-cell {% if subj.final_grade %}{% if subj.final_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                                    {{ subj.final_grade if subj.final_grade else '' }}
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" style="text-align: center; padding: 40px; color: #64748b;">
+                                    No official grades have been posted yet.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="info-card-body" style="padding-top: 0;">
+                <div class="legend-card">
+                    <div class="legend-item">
+                        <div class="l-dot" style="background:#16a34a;"></div> Passed (75-100)
+                    </div>
+                    <div class="legend-item">
+                        <div class="l-dot" style="background:#dc2626;"></div> Failed (Below 75)
+                    </div>
+                    <div class="legend-item">
+                        <div class="l-dot" style="background:#e2e8f0;"></div> Blank = Not yet posted
+                    </div>
+                </div>
             </div>
         </div>
-        <div class="section-card">
-            <div class="section-card-header">
-                <h2><i class="fas fa-tshirt"></i> Uniforms Ordered</h2>
+
+        <!-- ======================= SCORES SECTION ======================= -->
+        <div
+            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; margin-top: 24px; flex-wrap: wrap; gap: 12px;">
+            <h2 style="margin:0; font-size: 1.5rem; font-weight: 800; color: var(--text);">Task Performance</h2>
+            <div class="period-filter-wrap">
+                <button class="period-tab active" data-period="all">All Periods</button>
+                <button class="period-tab" data-period="1st">1st Grading</button>
+                <button class="period-tab" data-period="2nd">2nd Grading</button>
+                <button class="period-tab" data-period="3rd">3rd Grading</button>
+                <button class="period-tab" data-period="4th">4th Grading</button>
             </div>
-            <div class="section-card-body" style="padding: 0;">
-                <table class="m-table">
-                    <thead><tr><th>Type</th><th>Size</th><th style="text-align: right;">Qty</th></tr></thead>
-                    <tbody>
-                        {% for uniform in uniforms %}
+        </div>
+
+        <div class="info-card" style="margin-bottom: 24px;">
+            <div class="info-card-header" style="background: #eff6ff; color: #2563eb; font-size: 1.2rem;">
+                📝 Activities & Project Scores
+            </div>
+            {% if activity_scores %}
+            <div class="modern-table-container"
+                style="border: none; border-top: 1px solid var(--border); border-radius: 0 0 16px 16px;">
+                <table class="modern-table">
+                    <thead>
                         <tr>
-                            <td>{{ uniform.uniform_type }} {% if uniform.is_reservation %}<span style="font-size: 0.6rem; background: #ecfdf5; color: #10b981; padding: 2px 6px; border-radius: 4px;">RESERVED</span>{% endif %}</td>
-                            <td>{{ uniform.size }}</td>
-                            <td style="text-align: right;">{{ uniform.quantity }}</td>
+                            <th>Subject</th>
+                            <th>Activity</th>
+                            <th>Date</th>
+                            <th style="text-align: center;">Score</th>
+                            <th style="text-align: right;">%</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in activity_scores %}
+                        <tr class="score-row" data-period="{{ a.grading_period }}">
+                            <td><span style="font-weight: 700; color: #1e3a8a;">{{ a.subject_name }}</span></td>
+                            <td>{{ a.activity_title }}</td>
+                            <td>{{ a.due_date.strftime('%b %d, %Y') if a.due_date else '' }}</td>
+                            <td style="text-align: center;"><span style="font-weight: 800; font-size: 1.1rem;">{{
+                                    a.raw_score|int }}</span></td>
+                            <td style="text-align: right;">{{ a.percentage|int }}%</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+            {% else %}
+            <div class="empty-message" style="background: #fff; border-radius: 0 0 16px 16px;">No graded activities
+                available yet.</div>
+            {% endif %}
+        </div>
+
+        <div class="info-card" style="margin-bottom: 24px;">
+            <div class="info-card-header" style="background: #fefce8; color: #ca8a04; font-size: 1.2rem;">
+                🎯 Quiz Scores
+            </div>
+            {% if quiz_scores %}
+            <div class="modern-table-container"
+                style="border: none; border-top: 1px solid var(--border); border-radius: 0 0 16px 16px;">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Quiz Title</th>
+                            <th>Date</th>
+                            <th style="text-align: center;">Score</th>
+                            <th style="text-align: center;">Status</th>
+                            <th style="text-align: right;">Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for q in quiz_scores %}
+                        <tr class="score-row" data-period="{{ q.grading_period }}">
+                            <td><span style="font-weight: 700;">{{ q.subject_name }}</span></td>
+                            <td>{{ q.exam_title }}</td>
+                            <td>{{ q.submitted_at.strftime('%b %d, %Y') if q.submitted_at else '' }}</td>
+                            <td style="text-align: center;">
+                                <span style="font-weight: 800; font-size: 1.1rem;">{{ q.score|int }}</span> <span
+                                    style="color:var(--muted); font-size:0.8rem;">/ {{ q.total_points|int }}</span>
+                            </td>
+                            <td style="text-align: center;">
+                                <span class="score-badge"
+                                    style="background: #f1f5f9; color: #475569; text-transform: uppercase; font-size: 0.7rem;">{{
+                                    q.result_status }}</span>
+                            </td>
+                            <td style="text-align: right;">
+                                {% set q_total = q.total_points|float or 1 %}
+                                {% set q_score = q.score|float or 0 %}
+                                {% set q_pct = (q_score / q_total) * 100 %}
+                                {% if q_pct >= (q.passing_score or 75) %}
+                                <span class="score-badge" style="background: #dcfce7; color: #166534;">Passed</span>
+                                {% else %}
+                                <span class="score-badge" style="background: #fee2e2; color: #991b1b;">Failed</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-message" style="background: #fff; border-radius: 0 0 16px 16px;">No quiz scores available
+                yet.</div>
+            {% endif %}
+        </div>
+
+        <div class="info-card" style="margin-bottom: 40px;">
+            <div class="info-card-header" style="background: #fdf2f8; color: #be185d; font-size: 1.2rem;">
+                🎓 Exam Scores
+            </div>
+            {% if exam_scores %}
+            <div class="modern-table-container"
+                style="border: none; border-top: 1px solid var(--border); border-radius: 0 0 16px 16px;">
+                <table class="modern-table">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th>Exam Title</th>
+                            <th>Date</th>
+                            <th style="text-align: center;">Score</th>
+                            <th style="text-align: center;">Status</th>
+                            <th style="text-align: right;">Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in exam_scores %}
+                        <tr class="score-row" data-period="{{ e.grading_period }}">
+                            <td><span style="font-weight: 700;">{{ e.subject_name }}</span></td>
+                            <td>{{ e.exam_title }}</td>
+                            <td>{{ e.submitted_at.strftime('%b %d, %Y') if e.submitted_at else '' }}</td>
+                            <td style="text-align: center;">
+                                <span style="font-weight: 800; font-size: 1.1rem;">{{ e.score|int }}</span> <span
+                                    style="color:var(--muted); font-size:0.8rem;">/ {{ e.total_points|int }}</span>
+                            </td>
+                            <td style="text-align: center;">
+                                <span class="score-badge"
+                                    style="background: #f1f5f9; color: #475569; text-transform: uppercase; font-size: 0.7rem;">{{
+                                    e.result_status }}</span>
+                            </td>
+                            <td style="text-align: right;">
+                                {% set e_total = e.total_points|float or 1 %}
+                                {% set e_score = e.score|float or 0 %}
+                                {% set e_pct = (e_score / e_total) * 100 %}
+                                {% if e_pct >= (e.passing_score or 75) %}
+                                <span class="score-badge" style="background: #dcfce7; color: #166534;">Passed</span>
+                                {% else %}
+                                <span class="score-badge" style="background: #fee2e2; color: #991b1b;">Failed</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-message" style="background: #fff; border-radius: 0 0 16px 16px;">No exam scores available
+                yet.</div>
+            {% endif %}
         </div>
     </div>
-</div>
+    <!-- end panel-grades -->
 
-<script>
-function togglePanel(name) {
-    const panel = document.getElementById('panel-' + name);
-    const btn = document.getElementById('btn-' + name);
-    const isOpen = panel.classList.contains('open');
-    
-    // Toggle the targeted panel
-    if (isOpen) {
-        panel.classList.remove('open');
-        btn.classList.remove('open');
-    } else {
-        // Close other panels first
-        document.querySelectorAll('.collapsible-panel').forEach(p => p.classList.remove('open'));
-        document.querySelectorAll('.action-btn').forEach(b => b.classList.remove('open'));
-        
-        panel.classList.add('open');
-        btn.classList.add('open');
-        setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-    }
-}
-
-// Period Filtering
-document.querySelectorAll('.p-tab').forEach(tab => {
-    tab.addEventListener('click', function() {
-        const period = this.dataset.period;
-        const parent = this.closest('.collapsible-panel');
-        
-        // Update tabs
-        parent.querySelectorAll('.p-tab').forEach(t => t.classList.remove('active'));
-        this.classList.add('active');
-        
-        // Filter rows
-        parent.querySelectorAll('.score-row').forEach(row => {
-            if (period === 'all' || row.dataset.period === period) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
+    <script>
+        // ── Toggle collapsible panels ──
+        function togglePanel(name) {
+            const panel = document.getElementById('panel-' + name);
+            const btn = document.getElementById('btn-' + name);
+            const isOpen = panel.classList.contains('open');
+            // Close all panels & buttons first
+            document.querySelectorAll('.collapsible-panel').forEach(p => p.classList.remove('open'));
+            document.querySelectorAll('.action-card-btn').forEach(b => b.classList.remove('open'));
+            // If it was closed, open it
+            if (!isOpen) {
+                panel.classList.add('open');
+                btn.classList.add('open');
+                // Smooth scroll into view
+                setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
             }
+        }
+
+        // ── Period Filter Tabs (inside grades panel) ──
+        document.querySelectorAll('.period-tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.period-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                const selectedPeriod = tab.getAttribute('data-period');
+                document.querySelectorAll('.score-row').forEach(row => {
+                    const rowPeriod = row.getAttribute('data-period');
+                    row.style.display = (selectedPeriod === 'all' || rowPeriod === selectedPeriod) ? '' : 'none';
+                });
+            });
         });
-    });
-});
-</script>
-{% endblock %}
+    </script>
+
+    {% endblock %}
