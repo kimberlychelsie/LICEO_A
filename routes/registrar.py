@@ -1328,15 +1328,16 @@ def list_and_add_schedules():
     # Only show combos for SECTIONS in ACTIVE years for THIS branch:
     cursor.execute("""
         SELECT st.section_id, sec.section_name, st.subject_id, subj.name AS subject_name,
-               st.teacher_id, u.full_name AS teacher_name, sec.year_id
+               st.teacher_id, u.full_name AS teacher_name, sec.year_id, g.name AS grade_name
         FROM section_teachers st
         JOIN sections sec ON st.section_id = sec.section_id
+        JOIN grade_levels g ON sec.grade_level_id = g.id
         JOIN school_years y ON sec.year_id = y.year_id
         JOIN subjects subj ON st.subject_id = subj.subject_id
         JOIN users u ON st.teacher_id = u.user_id
         WHERE sec.branch_id = %s
           AND y.is_active = TRUE
-        ORDER BY y.label DESC, sec.section_name, subj.name, u.full_name
+        ORDER BY g.id ASC, sec.section_name ASC, subj.name ASC
     """, (branch_id,))
     combinations = cursor.fetchall()
 

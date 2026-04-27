@@ -10,6 +10,7 @@
         --sch-blue-light: #eff6ff;
         --sch-blue-soft: #dbeafe;
         --sch-gold: #facc15;
+        --sch-gold-soft: #fef9c3;
         --sch-gold-dark: #ca8a04;
         --sch-text-main: #0f172a;
         --sch-text-muted: #64748b;
@@ -238,11 +239,15 @@
     .room-badge {
         background: var(--sch-gold-soft);
         color: var(--sch-gold-dark);
-        border: 1px solid var(--sch-gold);
-        padding: 4px 10px;
-        border-radius: 8px;
-        font-weight: 700;
-        font-size: 0.85rem;
+        border: 1px solid rgba(202, 138, 4, 0.2);
+        padding: 6px 14px;
+        border-radius: 10px;
+        font-weight: 800;
+        font-size: 0.8rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        white-space: nowrap;
     }
 
     /* ── Action Buttons ── */
@@ -330,10 +335,14 @@
                     <label class="form-label">Class Details</label>
                     <select name="combo" class="premium-input" required>
                         <option value="">-- Select --</option>
-                        {% for c in combinations %}
-                        <option value="{{c.section_id}}|{{c.subject_id}}|{{c.teacher_id}}">
-                            {{c.section_name}} — {{c.subject_name}} ({{c.teacher_name}})
-                        </option>
+                        {% for grade_name, items in combinations|groupby('grade_name') %}
+                        <optgroup label="{{ grade_name }}">
+                            {% for c in items %}
+                            <option value="{{c.section_id}}|{{c.subject_id}}|{{c.teacher_id}}">
+                                {{c.section_name}} — {{c.subject_name}} ({{c.teacher_name}})
+                            </option>
+                            {% endfor %}
+                        </optgroup>
                         {% endfor %}
                     </select>
                 </div>
@@ -415,6 +424,7 @@
                 <thead>
                     <tr>
                         <th>Year</th>
+                        <th>Grade</th>
                         <th>Class & Info</th>
                         <th>Teacher</th>
                         <th>Day</th>
@@ -427,6 +437,7 @@
                     {% for sched in schedules %}
                     <tr class="schedule-row" data-grade="{{ sched.grade_name }}" data-section-id="{{ sched.section_id }}">
                         <td><span style="color: var(--sch-blue); font-weight: 800;">{{sched.year_label}}</span></td>
+                        <td><span style="background: var(--sch-blue-soft); color: var(--sch-blue); padding: 4px 10px; border-radius: 8px; font-weight: 800; font-size: 0.8rem;">{{sched.grade_name}}</span></td>
                         <td>
                             <div class="class-info">
                                 <span class="class-main">{{sched.section_name}}</span>
@@ -438,7 +449,7 @@
                         <td>
                             <div class="time-slot">{{ sched.start_time.strftime('%H:%M') }} - {{ sched.end_time.strftime('%H:%M') }}</div>
                         </td>
-                        <td><span class="room-badge">Room {{sched.room}}</span></td>
+                        <td><span class="room-badge"><i class="fas fa-door-open"></i> Room {{sched.room}}</span></td>
                         <td>
                             <div style="display: flex; gap: 8px;">
                                 {% if not show_archived %}
@@ -500,10 +511,14 @@
                     <label class="form-label">Class Details</label>
                     <select name="combo" id="edit_combo" class="premium-input" required>
                         <option value="">-- Select --</option>
-                        {% for c in combinations %}
-                        <option value="{{c.section_id}}|{{c.subject_id}}|{{c.teacher_id}}">
-                            {{c.section_name}} — {{c.subject_name}} ({{c.teacher_name}})
-                        </option>
+                        {% for grade_name, items in combinations|groupby('grade_name') %}
+                        <optgroup label="{{ grade_name }}">
+                            {% for c in items %}
+                            <option value="{{c.section_id}}|{{c.subject_id}}|{{c.teacher_id}}">
+                                {{c.section_name}} — {{c.subject_name}} ({{c.teacher_name}})
+                            </option>
+                            {% endfor %}
+                        </optgroup>
                         {% endfor %}
                     </select>
                 </div>
