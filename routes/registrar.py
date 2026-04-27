@@ -1016,8 +1016,14 @@ def registrar_profile_pictures():
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
+    # Get connection info for debugging
+    import os
+    db_host = os.getenv("DB_HOST", "127.0.0.1")
+    db_name = os.getenv("DB_NAME", "liceo_db")
+
     try:
         if request.method == "POST":
+            print(f"[DEBUG] POST Connection: Host={db_host}, DB={db_name}")
             user_type = request.form.get("user_type") # 'student' or 'teacher'
             target_id = request.form.get("target_id") # enrollment_id or user_id
             
@@ -1035,21 +1041,60 @@ def registrar_profile_pictures():
                     # Upload to Cloudinary (returns a secure URL)
                     file_url = upload_file_to_subfolder(file, "profiles")
 
+                    # DEBUG: Print to console for local monitoring
+                    print(f"[DEBUG] Profile Upload: type={user_type}, id={target_id}, file={file.filename}")
+
                     if user_type == 'student':
-                        # Update enrollments
-                        cursor.execute("UPDATE enrollments SET profile_image = %s WHERE enrollment_id = %s", (file_url, target_id))
+                        # Explicitly cast target_id to int for PostgreSQL compatibility
+                        t_id = int(target_id)
                         
-                        # Also update student_accounts if they have one (though most templates use enrollments table for student profile images)
-                        # We do this as a fallback to keep data synchronized
-                        try:
-                            cursor.execute("UPDATE student_accounts SET profile_image = %s WHERE enrollment_id = %s", (file_url, target_id))
-                        except:
-                            pass # Column might not exist in all versions of the schema
+                        # 1. Primary update: enrollments
+                        cursor.execute("UPDATE enrollments SET profile_image = %s WHERE enrollment_id = %s", (file_url, t_id))
+                        affected = cursor.rowcount
+                        
+                        if affected > 0:
+                            # 2. Sync with users table (students have a users row for portal access)
+                            try:
+                                cursor.execute("SAVEPOINT user_sync")
+                                cursor.execute("UPDATE users SET profile_image = %s WHERE enrollment_id = %s", (file_url, t_id))
+                                cursor.execute("RELEASE SAVEPOINT user_sync")
+                            except Exception as e:
+                                cursor.execute("ROLLBACK TO SAVEPOINT user_sync")
+                                print(f"[DEBUG] users sync failed: {e}")
+
+                            # 3. Sync with student_accounts table
+                            try:
+                                cursor.execute("SAVEPOINT sa_sync")
+                                cursor.execute("UPDATE student_accounts SET profile_image = %s WHERE enrollment_id = %s", (file_url, t_id))
+                                cursor.execute("RELEASE SAVEPOINT sa_sync")
+                            except Exception as e:
+                                cursor.execute("ROLLBACK TO SAVEPOINT sa_sync")
+                                print(f"[DEBUG] student_accounts fallback failed: {e}")
+                        
+                        # IMMEDIATE RE-CHECK for debug logs
+                        cursor.execute("SELECT student_name, profile_image FROM enrollments WHERE enrollment_id = %s", (t_id,))
+                        recheck = cursor.fetchone()
+                        print(f"[DEBUG] Student Update Affected: {affected}")
+                        print(f"[DEBUG] Verification Fetch (ID={t_id}): {recheck}")
+                        
+                        if affected == 0:
+                            db.rollback()
+                            flash("Upload failed: No student record found with ID #" + str(target_id), "error")
+                            return redirect(request.referrer or url_for('registrar.registrar_profile_pictures'))
 
                     elif user_type == 'teacher':
-                        cursor.execute("UPDATE users SET profile_image = %s WHERE user_id = %s", (file_url, target_id))
+                        t_id = int(target_id)
+                        cursor.execute("UPDATE users SET profile_image = %s WHERE user_id = %s", (file_url, t_id))
+                        affected = cursor.rowcount
+                        print(f"[DEBUG] Teacher Update Affected: {affected}")
+                        
+                        if affected == 0:
+                            db.rollback()
+                            flash("Upload failed: No faculty record found with ID #" + str(target_id), "error")
+                            return redirect(request.referrer or url_for('registrar.registrar_profile_pictures'))
                     
                     db.commit()
+                    print(f"[DEBUG] Database COMMITTED successfully.")
                     flash("Profile picture uploaded successfully!", "success")
                 except Exception as e:
                     db.rollback()
@@ -1061,6 +1106,7 @@ def registrar_profile_pictures():
             return redirect(request.referrer or url_for('registrar.registrar_profile_pictures'))
 
         # GET request
+        print(f"[DEBUG] GET Connection: Host={db_host}, DB={db_name}")
         tab = request.args.get("tab", "students")
         grade_filter = request.args.get("grade", "")
         section_filter = request.args.get("section_id", "")
@@ -1090,13 +1136,14 @@ def registrar_profile_pictures():
 
             query = """
                 SELECT e.enrollment_id, e.branch_enrollment_no, e.student_name, e.grade_level, 
-                       s.section_name, e.profile_image, e.status
+                       s.section_name, e.profile_image AS student_pic, e.status
                 FROM enrollments e
                 LEFT JOIN sections s ON e.section_id = s.section_id
                 WHERE e.branch_id = %s AND e.status IN ('enrolled', 'approved', 'open_for_enrollment')
             """
             params = [branch_id]
             
+            # ... (rest of filtering logic)
             if grade_filter:
                 query += " AND e.grade_level = %s"
                 params.append(grade_filter)
@@ -1104,7 +1151,6 @@ def registrar_profile_pictures():
                 query += " AND e.section_id = %s"
                 params.append(section_filter)
 
-            # Sort by Logical Grade Level then by Student Name
             query += """
                 ORDER BY CASE e.grade_level
                     WHEN 'Nursery' THEN 1 WHEN 'Kinder' THEN 2 WHEN 'Grade 1' THEN 3
@@ -1117,6 +1163,11 @@ def registrar_profile_pictures():
             
             cursor.execute(query, tuple(params))
             students = cursor.fetchall()
+
+            # DEBUG: Print first 5 students to console to verify DB values
+            print(f"[DEBUG] GET Profile Pictures - Branch: {branch_id}, Tab: {tab}")
+            for s in students[:5]:
+                print(f"  > Student: {s['student_name']} (ID:{s['enrollment_id']}), Path: {s['student_pic']}")
 
         elif tab == "teachers":
             cursor.execute("""

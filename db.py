@@ -268,6 +268,8 @@ def get_db_connection():
                         cur.execute("ALTER TABLE student_accounts ADD COLUMN require_password_change BOOLEAN DEFAULT FALSE")
                     if 'last_password_change' not in sa_cols:
                         cur.execute("ALTER TABLE student_accounts ADD COLUMN last_password_change TIMESTAMP")
+                    if 'profile_image' not in sa_cols:
+                        cur.execute("ALTER TABLE student_accounts ADD COLUMN profile_image VARCHAR(255)")
                     conn.commit()
             except Exception as e:
                 logger.warning(f"Could not migrate student_accounts table: {e}")

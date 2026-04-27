@@ -384,8 +384,8 @@
                 <tr class="member-row" data-name="{{ s.student_name | lower }}">
                     <td>
                         <div class="avatar-modern">
-                            {% if s.profile_image %}
-                            <img src="{% if s.profile_image.startswith('http') %}{{ s.profile_image }}{% elif s.profile_image.startswith('/') %}{{ s.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ s.profile_image) }}{% endif %}"
+                            {% if s.student_pic %}
+                            <img src="{% if s.student_pic.startswith('http') %}{{ s.student_pic }}{% elif s.student_pic.startswith('/') %}{{ s.student_pic }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ s.student_pic) }}{% endif %}"
                                 alt="">
                             {% else %}
                             {{ s.student_name[0]|upper }}
@@ -394,8 +394,14 @@
                     </td>
                     <td>
                         <div style="font-weight: 800; color: var(--reg-primary);">{{ s.student_name }}</div>
-                        <div style="font-size: 0.75rem; font-weight: 700; color: var(--reg-muted);">ID #{{
-                            s.branch_enrollment_no or s.enrollment_id }}</div>
+                        <div style="font-size: 0.75rem; font-weight: 700; color: var(--reg-muted);">
+                            ID #{{ s.branch_enrollment_no or s.enrollment_id }} 
+                            {% if s.student_pic %}
+                            <span style="color:var(--reg-success); font-size: 10px;">(Path: {{ s.student_pic[:20] }}...)</span>
+                            {% else %}
+                            <span style="color:var(--reg-danger); font-size: 10px;">(Path: EMPTY)</span>
+                            {% endif %}
+                        </div>
                     </td>
                     <td>
                         <div style="display: flex; gap: 4px;">

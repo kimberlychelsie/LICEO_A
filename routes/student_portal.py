@@ -51,7 +51,7 @@ def dashboard():
             cursor.execute("""
                 SELECT sa.account_id, sa.enrollment_id, sa.username, sa.email,
                        e.student_name, e.grade_level, e.status, e.branch_id,
-                       e.branch_enrollment_no, e.section_id,
+                       e.branch_enrollment_no, e.section_id, e.profile_image,
                        br.branch_name, br.location
                 FROM student_accounts sa
                 JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
@@ -64,7 +64,7 @@ def dashboard():
                 SELECT NULL AS account_id, e.enrollment_id,
                        e.branch_enrollment_no, e.section_id,
                        CAST(%s AS text) AS username, NULL AS email,
-                       e.student_name, e.grade_level, e.status, e.branch_id,
+                       e.student_name, e.grade_level, e.status, e.branch_id, e.profile_image,
                        br.branch_name, br.location
                 FROM enrollments e
                 LEFT JOIN branches br ON e.branch_id = br.branch_id

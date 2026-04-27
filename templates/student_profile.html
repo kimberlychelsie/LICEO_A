@@ -96,7 +96,7 @@
   
   <div class="profile-avatar-wrapper">
     {% if student.profile_image %}
-    <img src="{% if student.profile_image.startswith('http') %}{{ student.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ student.profile_image) }}{% endif %}" class="profile-avatar" alt="Profile Picture">
+    <img src="{% if student.profile_image.startswith('http') %}{{ student.profile_image }}{% elif student.profile_image.startswith('/') %}{{ student.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ student.profile_image) }}{% endif %}" class="profile-avatar" alt="Profile Picture">
     {% else %}
     {{ student.student_name[0]|upper }}
     {% endif %}

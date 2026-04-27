@@ -114,7 +114,7 @@
   
   <div class="profile-avatar-wrapper">
     {% if teacher.profile_image %}
-    <img src="{% if teacher.profile_image.startswith('http') %}{{ teacher.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ teacher.profile_image) }}{% endif %}" class="profile-avatar" alt="Profile Picture">
+    <img src="{% if teacher.profile_image.startswith('http') %}{{ teacher.profile_image }}{% elif teacher.profile_image.startswith('/') %}{{ teacher.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ teacher.profile_image) }}{% endif %}" class="profile-avatar" alt="Profile Picture">
     {% else %}
     {{ (teacher.full_name or teacher.username)[0]|upper }}
     {% endif %}

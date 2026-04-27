@@ -258,8 +258,13 @@
     <!-- ── Hero info ── -->
     <div class="sd-hero">
         <div class="sd-hero-top">
-            <div class="sd-avatar">
+            <div class="sd-avatar" style="overflow: hidden;">
+                {% if student.profile_image %}
+                <img src="{% if student.profile_image.startswith('http') %}{{ student.profile_image }}{% elif student.profile_image.startswith('/') %}{{ student.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ student.profile_image) }}{% endif %}" 
+                     style="width: 100%; height: 100%; object-fit: cover;">
+                {% else %}
                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+                {% endif %}
             </div>
             <div>
                 <div class="sd-hero-name">{{ student.student_name }}</div>
