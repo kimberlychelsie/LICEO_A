@@ -652,8 +652,19 @@
                                             style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
                                             <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">DOB:
                                             </div>
-                                            <input type="date" name="dob" class="track-change"
+                                            <input type="date" name="dob" class="track-change dob-field"
                                                 value="{{ enrollment.dob.strftime('%Y-%m-%d') if enrollment.dob else '' }}"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
+                                        </div>
+
+                                        <div class="form-row"
+                                            style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                            <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">Birthplace:
+                                            </div>
+                                            <input type="text" name="birthplace" class="track-change"
+                                                value="{{ enrollment.birthplace or '' }}"
+                                                placeholder="City, Province" required minlength="3" maxlength="100"
+                                                oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s,]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',')"
                                                 style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                         </div>
 
@@ -663,6 +674,7 @@
                                             </div>
                                             <input type="text" name="lrn" class="track-change"
                                                 value="{{ enrollment.lrn or '' }}"
+                                                maxlength="12"
                                                 style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                         </div>
 
@@ -672,6 +684,11 @@
                                             </div>
                                             <input type="email" name="email" class="track-change"
                                                 value="{{ enrollment.email or '' }}"
+                                                placeholder="username@domain.com" required
+                                                minlength="5" maxlength="60"
+                                                pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+                                                oninput="this.value = this.value.replace(/[^a-zA-Z0-9@._-]/g, '').replace(/\.\.+/g, '.').replace(/--+/g, '-').replace(/__+/g, '_').replace(/(@.*)@/g, '$1')"
+                                                title="Please enter a valid email address"
                                                 style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                         </div>
 
@@ -681,6 +698,7 @@
                                                 Contact:</div>
                                             <input type="text" name="contact_number" class="track-change"
                                                 value="{{ enrollment.contact_number or '' }}"
+                                                maxlength="11"
                                                 style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                         </div>
 
@@ -689,8 +707,9 @@
                                             <div
                                                 style="font-size:0.78rem; font-weight:800; color:var(--muted); padding-top:8px;">
                                                 Address:</div>
-                                            <textarea name="address" class="track-change" rows="2"
-                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px; resize:vertical;">{{ enrollment.address or '' }}</textarea>
+                                            <textarea name="address" class="track-change" rows="2" maxlength="255" required minlength="10"
+                                                oninput="this.value = this.value.replace(/[^A-Za-z0-9ñÑ\s,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',').replace(/--+/g, '-')"
+                                                style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px; resize:none;">{{ enrollment.address or '' }}</textarea>
                                         </div>
                                     </div>
 
@@ -706,6 +725,8 @@
                                                 Guardian:</div>
                                             <input type="text" name="guardian_name" class="track-change"
                                                 value="{{ enrollment.guardian_name or '' }}"
+                                                maxlength="100"
+                                                oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')"
                                                 style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                         </div>
                                         <div class="form-row"
@@ -714,6 +735,7 @@
                                                 Contact:</div>
                                             <input type="text" name="guardian_contact" class="track-change"
                                                 value="{{ enrollment.guardian_contact or '' }}"
+                                                maxlength="11"
                                                 style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                         </div>
                                         <div class="form-row"
@@ -722,6 +744,11 @@
                                             </div>
                                             <input type="email" name="guardian_email" class="track-change"
                                                 value="{{ enrollment.guardian_email or '' }}"
+                                                placeholder="username@domain.com" required
+                                                minlength="5" maxlength="60"
+                                                pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+                                                oninput="this.value = this.value.replace(/[^a-zA-Z0-9@._-]/g, '').replace(/\.\.+/g, '.').replace(/--+/g, '-').replace(/__+/g, '_').replace(/(@.*)@/g, '$1')"
+                                                title="Please enter a valid email address"
                                                 style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                         </div>
 
@@ -733,6 +760,8 @@
                                             </div>
                                             <input type="text" name="father_name" class="track-change"
                                                 value="{{ enrollment.father_name or '' }}"
+                                                maxlength="100"
+                                                oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')"
                                                 style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                         </div>
                                         <div class="form-row"
@@ -741,6 +770,7 @@
                                                 Contact:</div>
                                             <input type="text" name="father_contact" class="track-change"
                                                 value="{{ enrollment.father_contact or '' }}"
+                                                maxlength="11"
                                                 style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                         </div>
                                         <div class="form-row"
@@ -749,6 +779,8 @@
                                             </div>
                                             <input type="text" name="mother_name" class="track-change"
                                                 value="{{ enrollment.mother_name or '' }}"
+                                                maxlength="100"
+                                                oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')"
                                                 style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                         </div>
                                         <div class="form-row"
@@ -757,6 +789,7 @@
                                                 Contact:</div>
                                             <input type="text" name="mother_contact" class="track-change"
                                                 value="{{ enrollment.mother_contact or '' }}"
+                                                maxlength="11"
                                                 style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                         </div>
                                     </div>
@@ -794,6 +827,8 @@
                                                 School:</div>
                                             <input type="text" name="previous_school" class="track-change"
                                                 value="{{ enrollment.previous_school or '' }}"
+                                                maxlength="100"
+                                                oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')"
                                                 style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                         </div>
                                         <div
@@ -802,12 +837,16 @@
                                             </div>
                                             <select name="enroll_type" class="track-change"
                                                 style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px; background:#fff;">
-                                                <option value="">—</option>
                                                 {% for t in ['New', 'Transferee', 'Old', 'Returnee'] %}
-                                                <option value="{{ t }}" {{ 'selected' if enrollment.enroll_type==t }}>{{
+                                                <option value="{{ t }}" {{ 'selected' if enrollment.enroll_type and enrollment.enroll_type.startswith(t) }}>{{
                                                     t }}</option>
                                                 {% endfor %}
                                             </select>
+                                            {% if ' - ' in (enrollment.enroll_type or '') %}
+                                            <div style="font-size: 0.65rem; color: #1e3a8a; font-weight: 700; margin-top: 4px;">
+                                                Full Detail: {{ enrollment.enroll_type }}
+                                            </div>
+                                            {% endif %}
                                         </div>
                                         <button type="submit"
         class="btn btn-primary btn-sm save-inline-btn"
@@ -1293,6 +1332,19 @@
         if (countEl) countEl.textContent = visible + ' applications';
     }
 
+    // ── Set Dynamic Min Age (3 years) ──
+    function initMinAge() {
+        var today = new Date();
+        var yyyy = today.getFullYear() - 3;
+        var mm = String(today.getMonth() + 1).padStart(2, '0');
+        var dd = String(today.getDate()).padStart(2, '0');
+        var maxDate = yyyy + '-' + mm + '-' + dd;
+        document.querySelectorAll('.dob-field').forEach(function(f) {
+            f.setAttribute('max', maxDate);
+        });
+    }
+    initMinAge();
+
     // ── Filter: Enrolled Students ──
     function filterEnrolled() {
         var gradeVal = document.getElementById('gradeFilter').value;
@@ -1352,6 +1404,33 @@
 
     document.getElementById('createStudentModal').addEventListener('click', function (e) {
         if (e.target === this) closeCreateModal();
+    });
+
+    document.addEventListener('submit', function(e) {
+        const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9-]+\.[a-zA-Z.]{2,}$/;
+        const emailField = e.target.querySelector('input[name="email"]');
+        const guardianEmailField = e.target.querySelector('input[name="guardian_email"]');
+        let errors = [];
+
+        if (emailField && emailField.value && !emailRegex.test(emailField.value)) {
+            errors.push('Student email is invalid. Please use format name@domain.com and avoid special characters like # % &.');
+        }
+        if (guardianEmailField && guardianEmailField.value && !emailRegex.test(guardianEmailField.value)) {
+            errors.push('Guardian email is invalid. Please use format name@domain.com and avoid special characters like # % &.');
+        }
+
+        if (errors.length > 0) {
+            alert(errors.join('\n'));
+            e.preventDefault();
+            return false;
+        }
+    });
+
+    // Set max date for Birthday (Minimum age: 3 years)
+    document.querySelectorAll('input[name="dob"]').forEach(input => {
+        const today = new Date();
+        const maxDate = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
+        input.setAttribute('max', maxDate.toISOString().split('T')[0]);
     });
 </script>
 {% endblock %}

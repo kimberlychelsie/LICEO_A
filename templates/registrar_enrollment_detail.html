@@ -336,7 +336,8 @@
                 <div class="card-body">
                     <div class="field-group">
                         <label>Full Legal Name</label>
-                        <input type="text" name="student_name" class="field-input track-change" value="{{ enrollment.student_name }}" required>
+                        <input type="text" name="student_name" class="field-input track-change" value="{{ enrollment.student_name }}" required maxlength="100"
+                            oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
                     </div>
                     <div class="field-group">
                         <label>Gender Identity</label>
@@ -360,7 +361,9 @@
                     </div>
                     <div class="field-group">
                         <label>Birthplace</label>
-                        <input type="text" name="birthplace" class="field-input track-change" value="{{ enrollment.birthplace or '' }}">
+                        <input type="text" name="birthplace" class="field-input track-change" value="{{ enrollment.birthplace or '' }}" 
+                            placeholder="City, Province" required minlength="3" maxlength="100"
+                            oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s,]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',')">
                     </div>
                     <div class="field-group">
                         <label>Learner Reference # (LRN)</label>
@@ -368,7 +371,9 @@
                     </div>
                     <div class="field-group" style="grid-column: span 2;">
                         <label>Physical Home Address</label>
-                        <input type="text" name="address" class="field-input track-change" value="{{ enrollment.address or '' }}">
+                        <input type="text" name="address" class="field-input track-change" value="{{ enrollment.address or '' }}" required minlength="10" maxlength="255" 
+                            oninput="this.value = this.value.replace(/[^A-Za-z0-9ñÑ\s,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',').replace(/--+/g, '-')"
+                            style="resize: none;">
                     </div>
                 </div>
             </div>
@@ -379,15 +384,21 @@
                 <div class="card-body" style="grid-template-columns: 1fr;">
                     <div class="field-group">
                         <label>Primary Guardian Name</label>
-                        <input type="text" name="guardian_name" class="field-input track-change" value="{{ enrollment.guardian_name or '' }}">
+                        <input type="text" name="guardian_name" class="field-input track-change" value="{{ enrollment.guardian_name or '' }}" maxlength="100"
+                            oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
                     </div>
                     <div class="field-group">
                         <label>Guardian Contact #</label>
-                        <input type="text" name="guardian_contact" class="field-input track-change" value="{{ enrollment.guardian_contact or '' }}">
+                        <input type="text" name="guardian_contact" class="field-input track-change" value="{{ enrollment.guardian_contact or '' }}" maxlength="11">
                     </div>
                     <div class="field-group">
                         <label>Guardian Email</label>
-                        <input type="email" name="guardian_email" class="field-input track-change" value="{{ enrollment.guardian_email or '' }}">
+                        <input type="email" name="guardian_email" class="field-input track-change" value="{{ enrollment.guardian_email or '' }}"
+                            placeholder="username@domain.com" required
+                            minlength="5" maxlength="60"
+                            pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+                            oninput="this.value = this.value.replace(/[^a-zA-Z0-9@._-]/g, '').replace(/\.\.+/g, '.').replace(/--+/g, '-').replace(/__+/g, '_').replace(/(@.*)@/g, '$1')"
+                            title="Please enter a valid email address">
                     </div>
                 </div>
             </div>
@@ -400,13 +411,17 @@
                         <label>Enrollment Type</label>
                         <select name="enroll_type" class="field-input track-change">
                             {% for t in ['New', 'Transferee', 'Old', 'Returnee'] %}
-                            <option value="{{ t }}" {{ 'selected' if enrollment.enroll_type == t }}>{{ t }}</option>
+                            <option value="{{ t }}" {{ 'selected' if enrollment.enroll_type and enrollment.enroll_type.startswith(t) }}>{{ t }}</option>
                             {% endfor %}
                         </select>
+                        {% if ' - ' in (enrollment.enroll_type or '') %}
+                        <small style="color:var(--btn); font-weight:700;">Full: {{ enrollment.enroll_type }}</small>
+                        {% endif %}
                     </div>
                     <div class="field-group">
                         <label>Previous School Attended</label>
-                        <input type="text" name="previous_school" class="field-input track-change" value="{{ enrollment.previous_school or '' }}">
+                        <input type="text" name="previous_school" class="field-input track-change" value="{{ enrollment.previous_school or '' }}" maxlength="100"
+                            oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
                     </div>
                     <div class="field-group">
                         <label>Cycle Assessment Remarks</label>
@@ -506,11 +521,38 @@
             f.addEventListener('input', checkChanges);
             f.addEventListener('change', checkChanges);
         });
+
+        // ── EMAIL VALIDATION ON SUBMIT ──
+        form.addEventListener('submit', function(e) {
+            const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9-]+\.[a-zA-Z.]{2,}$/;
+            const emailField = form.querySelector('input[name="email"]');
+            const guardianEmailField = form.querySelector('input[name="guardian_email"]');
+            let errors = [];
+
+            if (emailField && emailField.value && !emailRegex.test(emailField.value)) {
+                errors.push('Student email is invalid. Please follow the format name@domain.com and avoid special characters like # % &.');
+            }
+            if (guardianEmailField && guardianEmailField.value && !emailRegex.test(guardianEmailField.value)) {
+                errors.push('Guardian email is invalid. Please follow the format name@domain.com and avoid special characters like # % &.');
+            }
+
+            if (errors.length > 0) {
+                alert(errors.join('\n'));
+                e.preventDefault();
+                return false;
+            }
+        });
     });
 
     // Backdrop Click Exit
     document.getElementById('rejectModal').addEventListener('click', (e) => {
         if(e.target === document.getElementById('rejectModal')) closeRejectModal();
+    });
+    // Set max date for Birthday (Minimum age: 3 years)
+    document.querySelectorAll('input[name="dob"]').forEach(input => {
+        const today = new Date();
+        const maxDate = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
+        input.setAttribute('max', maxDate.toISOString().split('T')[0]);
     });
 </script>
 {% endblock %}

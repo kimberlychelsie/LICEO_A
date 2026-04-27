@@ -8,6 +8,7 @@ import psycopg2.extras
 import json
 from utils.send_email import send_email
 from flask import abort
+import re
 
 # Setup logging
 logging.basicConfig(level=logging.ERROR)
@@ -18,6 +19,16 @@ registrar_bp = Blueprint("registrar", __name__)
 def generate_password(length=8):
     characters = string.ascii_letters + string.digits
     return ''.join(secrets.choice(characters) for _ in range(length))
+
+def is_valid_email(email):
+    # Strict email validation: username@domain.com
+    # Username: a-z, 0-9, ., _, -
+    # Explicitly block #, %, &, spaces
+    if not email:
+        return False
+    import re
+    email_regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    return bool(re.match(email_regex, email))
 
 
 # ══════════════════════════════════════════
@@ -439,9 +450,12 @@ def enrollment_detail(enrollment_id):
                 raw = request.form.get(f)
                 if raw is not None:
                     val = raw.strip() or None
-                    # dob needs special handling for empty string
-                    if f == "dob" and not val:
-                        val = None
+                    # ── EMAIL VALIDATION ──
+                    if f in ["email", "guardian_email"] and val:
+                        if not is_valid_email(val):
+                            flash(f"The email address '{val}' is invalid. Please follow the correct format (e.g., name@domain.com) and avoid special characters like # % &.", "error")
+                            return redirect(request.url)
+
                     sets.append(f"{f} = %s")
                     vals.append(val)
 
@@ -453,7 +467,7 @@ def enrollment_detail(enrollment_id):
                 )
                 db.commit()
                 flash("Enrollment details updated!", "success")
-            return redirect(f"/registrar/enrollment/{enrollment_id}")
+            return redirect("/registrar/enrollments")
 
         cursor.execute("""
             SELECT e.*, s.section_name, sy.label AS school_year_label

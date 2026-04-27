@@ -2,6 +2,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, sessio
 from werkzeug.utils import secure_filename
 import os
 import uuid
+import re
 import psycopg2.extras
 from db import get_db_connection, is_branch_active
 from cloudinary_helper import upload_enrollment_document
@@ -14,13 +15,36 @@ logger = logging.getLogger(__name__)
 student_bp = Blueprint("student", __name__)
 
 ALLOWED_EXTENSIONS = {"pdf", "jpg", "jpeg", "png"}
+MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 UPLOAD_FOLDER = os.path.join(os.getcwd(), "uploads")
-ALLOWED_EXTENSIONS = {"pdf", "jpg", "jpeg", "png"}
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+def is_valid_email(email):
+    # Strict email validation: username@domain.com
+    # Username: a-z, 0-9, ., _, -
+    # Explicitly block #, %, &, spaces
+    if not email:
+        return False
+    import re
+    email_regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+    return bool(re.match(email_regex, email))
+
 def save_doc_file(cursor, enrollment_id, fileobj, doc_type):
-    if fileobj and fileobj.filename and allowed_file(fileobj.filename):
+    if fileobj and fileobj.filename:
+        if not allowed_file(fileobj.filename):
+            logger.warning(f"File type not allowed: {fileobj.filename}")
+            return False, "Invalid file type. Only PDF, JPG, JPEG, and PNG are allowed."
+            
+        # Check size
+        fileobj.seek(0, os.SEEK_END)
+        size = fileobj.tell()
+        fileobj.seek(0)
+        
+        if size > MAX_FILE_SIZE:
+            logger.warning(f"File too large: {fileobj.filename} ({size} bytes)")
+            return False, f"File '{doc_type}' is too large. Maximum limit is 10MB."
+
         original = secure_filename(fileobj.filename)
         try:
             url_path = upload_enrollment_document(fileobj)
@@ -28,8 +52,11 @@ def save_doc_file(cursor, enrollment_id, fileobj, doc_type):
                 INSERT INTO enrollment_documents (enrollment_id, file_name, file_path, doc_type)
                 VALUES (%s, %s, %s, %s)
             """, (enrollment_id, original, url_path, doc_type))
+            return True, None
         except Exception as e:
             logger.error(f"Failed to upload document {original}: {e}")
+            return False, "Upload failed. Please try again."
+    return True, None
 
 # =======================
 # GRADE RANGE MAPPINGS
@@ -363,6 +390,15 @@ def enroll(branch_id):
                 flash("You must agree to the Data Privacy Consent.", "error")
                 return redirect(request.url)
 
+            # ── EMAIL VALIDATION ──
+            if email and not is_valid_email(email):
+                flash(f"The student email '{email}' is invalid. Please follow the correct format (e.g., name@domain.com) and avoid special characters like # % &.", "error")
+                return redirect(request.url)
+            
+            if guardian_email and not is_valid_email(guardian_email):
+                flash(f"The guardian email '{guardian_email}' is invalid. Please follow the correct format (e.g., name@domain.com) and avoid special characters like # % &.", "error")
+                return redirect(request.url)
+
             # ── SERVER-SIDE DUPLICATE CHECK ──
             cursor.execute("""
                 SELECT student_name, dob, lrn, grade_level
@@ -416,23 +452,31 @@ def enroll(branch_id):
                 enroll_type, enroll_date, remarks, selected_sy_id
             ))
             enrollment_id = cursor.fetchone()["enrollment_id"]
-            db.commit()
 
-            # ── Documents ──
-            for file_field, doc_name in [
+            # ── Process & Save Documents ──
+            document_fields = [
                 ("psa_birth_cert", "PSA Birth Certificate"),
                 ("baptismal_cert", "Baptismal Certificate"),
                 ("form_138", "Form 138"),
                 ("good_moral", "Good Moral Certificate"),
                 ("form_137", "Form 137")
-            ]:
-                save_doc_file(cursor, enrollment_id, request.files.get(file_field), doc_name)
+            ]
+
+            for file_field, doc_name in document_fields:
+                fileobj = request.files.get(file_field)
+                if fileobj and fileobj.filename:
+                    # Save each doc file
+                    save_doc_file(cursor, enrollment_id, fileobj, doc_name)
+
             db.commit()
 
             # ── Trigger Email Notification ──
             if email:
-                trigger_enrollment_email(email, student_name, next_no, branch["branch_name"])
+                # Format the display ID: BRANCH-NO (e.g., MAIN-0005)
+                display_id = f"{branch['branch_name'][:4].upper()}-{next_no:04d}"
+                trigger_enrollment_email(email, student_name, display_id, branch["branch_name"])
 
+            flash("Enrollment submitted successfully! Please wait for registrar approval.", "success")
             return redirect(url_for("student.enrollment_success", branch_id=branch_id, enrollment_id=enrollment_id))
 
         # ── GET: Render form ──
@@ -968,6 +1012,13 @@ def enroll_edit(enrollment_id):
             for field in possible_fields:
                 if field in request.form:
                     val = request.form.get(field, "").strip()
+                    
+                    # ── EMAIL VALIDATION ──
+                    if field in ["email", "guardian_email"] and val:
+                        if not is_valid_email(val):
+                            flash(f"The email address '{val}' is invalid. Please follow the correct format (e.g., name@domain.com) and avoid special characters like # % &.", "error")
+                            return redirect(request.url)
+
                     if field == "grade_level":
                         val = normalize_grade_level(val)
                     
@@ -984,16 +1035,31 @@ def enroll_edit(enrollment_id):
                 cursor.execute(final_query, update_values)
 
             # ── Handle Document Re-uploads ──
-            for file_field, doc_name in [
+            document_fields = [
                 ("psa_birth_cert", "PSA Birth Certificate"),
                 ("baptismal_cert", "Baptismal Certificate"),
                 ("form_138", "Form 138"),
                 ("good_moral", "Good Moral Certificate"),
                 ("form_137", "Form 137")
-            ]:
+            ]
+            
+            # Pre-validate re-uploads
+            for file_field, doc_name in document_fields:
+                f = request.files.get(file_field)
+                if f and f.filename:
+                    if not allowed_file(f.filename):
+                        flash(f"Invalid file type for {doc_name}. Only PDF, JPG, JPEG, and PNG are allowed.", "error")
+                        return redirect(request.url)
+                    f.seek(0, os.SEEK_END)
+                    if f.tell() > MAX_FILE_SIZE:
+                        flash(f"File {doc_name} is too large. Maximum limit is 10MB.", "error")
+                        return redirect(request.url)
+                    f.seek(0)
+
+            for file_field, doc_name in document_fields:
                 fileobj = request.files.get(file_field)
                 if fileobj and fileobj.filename:
-                    # Delete old record if it exists (Cloudinary cleanup could be added here)
+                    # Delete old record if it exists
                     cursor.execute("DELETE FROM enrollment_documents WHERE enrollment_id=%s AND doc_type=%s", (enrollment_id, doc_name))
                     save_doc_file(cursor, enrollment_id, fileobj, doc_name)
 
