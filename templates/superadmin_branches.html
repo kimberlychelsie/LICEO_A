@@ -149,11 +149,32 @@
         box-shadow: 0 8px 16px rgba(250, 204, 21, 0.4);
     }
 
+    .btn-prem:disabled {
+        background: #f1f5f9 !important;
+        color: #94a3b8 !important;
+        cursor: not-allowed !important;
+        transform: none !important;
+        box-shadow: none !important;
+        border: 1px solid var(--ma-border) !important;
+        opacity: 0.7;
+    }
+
     /* ── Vault Table ── */
     .vault-wrapper {
         border-radius: 20px;
         overflow: hidden;
         border: 1px solid var(--ma-border);
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    .vault-wrapper::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .vault-wrapper::-webkit-scrollbar-thumb {
+        background: #e2e8f0;
+        border-radius: 10px;
     }
 
     .vault-table {
@@ -208,6 +229,37 @@
     .status-incomplete {
         background: #fff1f2;
         color: #be123c;
+    }
+
+    /* ── Confirmation Prompt ── */
+    .btn-prem:disabled {
+        background: #f1f5f9 !important;
+        color: #94a3b8 !important;
+        cursor: not-allowed !important;
+        transform: none !important;
+        box-shadow: none !important;
+        opacity: 0.7;
+    }
+
+    .confirm-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+        z-index: 3000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .confirm-modal {
+        background: white;
+        padding: 32px;
+        border-radius: 20px;
+        max-width: 400px;
+        width: 90%;
+        text-align: center;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
     }
 
     /* ── Search Bar ── */
@@ -265,9 +317,9 @@
         border: 2px solid var(--ma-border);
         margin-top: 12px;
         z-index: 10;
-        box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05);
     }
-    
+
     .map-instruction {
         background: #f8fafc;
         border-left: 4px solid var(--ma-gold);
@@ -280,6 +332,7 @@
         align-items: flex-start;
         gap: 12px;
     }
+
     .map-instruction i {
         color: var(--ma-primary);
         font-size: 1.2rem;
@@ -290,80 +343,86 @@
 <div class="br-container">
     <!-- Header -->
     <div class="registry-welcome">
-        <h1>Welcome to Registry</h1>
-        <p>Centralized Branch Control • Manage and audit your network of Liceo branches with precision and high-level
-            oversight.</p>
+        <h1>Manage Liceo Branches</h1>
+
     </div>
 
-    <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}{% for cat, msg in messages %}
-    <div style="padding:16px 20px; border-radius:16px; margin-bottom:24px; font-weight:700; display:flex; align-items:center; gap:12px;
-        background:{{ '#dcfce7' if cat=='success' else '#fee2e2' }};
-        color:{{ '#166534' if cat=='success' else '#b91c1c' }};
-        box-shadow: 0 4px 12px {{ 'rgba(22, 101, 52, 0.08)' if cat=='success' else 'rgba(185, 28, 28, 0.08)' }};">
-        <i class="fas {{ 'fa-check-circle' if cat=='success' else 'fa-exclamation-triangle' }}"></i>
-        {{ msg }}
-    </div>
-    {% endfor %}{% endif %}
-    {% endwith %}
 
     <!-- Create New Branch -->
     <div class="modern-card">
-        <h2><i class="fas fa-plus-circle" style="color: var(--ma-gold);"></i> Deploy New Branch Node</h2>
-        <form method="POST" action="{{ url_for('super_admin.super_admin_branches') }}" onsubmit="return validateAddBranch(this);">
-            <div class="entry-grid">
-                <div class="form-node">
-                    <label>Branch Identity</label>
-                    <input type="text" id="branch_name" name="branch_name" placeholder="e.g. Liceo de Majayjay" required>
-                </div>
-                <div class="form-node">
-                    <label>Assigned Code</label>
-                    <input type="text" id="branch_code" name="branch_code" placeholder="e.g. LDMAJ" style="text-transform: uppercase;" required>
-                </div>
-                <div class="form-node">
-                    <label>Location</label>
-                    <input type="text" name="location" id="branch_location" class="no-numbers"
-                        placeholder="e.g. Majayjay, Laguna" required>
-                </div>
-                <div class="form-node">
-                    <label>Admin Leader Name</label>
-                    <input type="text" id="admin_name" name="admin_name" class="no-numbers"
-                        placeholder="e.g. Jocelyn Ramirez" required>
-                </div>
-                <div class="form-node">
-                    <label>Gender</label>
-                    <select name="gender" required>
-                        <option value="">— Select —</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
-                    </select>
-                </div>
-                <div class="form-node">
-                    <label>Admin Protocol Email</label>
-                    <input type="email" id="admin_email" name="admin_email" placeholder="admin@liceo.edu.ph" required>
-                </div>
-            </div>
-            
-            <!-- MAP SECTION -->
-            <div class="map-section" style="margin-bottom: 24px;">
-                <label style="display:block; font-size:0.8rem; font-weight:800; color:var(--ma-muted); text-transform:uppercase; margin-bottom:8px;">Geographic Pinpoint (REQUIRED)</label>
-                <div class="map-instruction">
-                    <i class="fas fa-map-marked-alt"></i>
-                    <div>
-                        <strong>How to pin location:</strong> Use the search icon 🔍 on the map to find the city/street, then <strong>drag the red pin</strong> exactly where the school is located.
+        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;"
+            onclick="toggleAddForm()">
+            <h2 style="margin: 0;"><i class="fas fa-plus-circle" style="color: var(--ma-gold);"></i> Deploy New Branch
+                Node</h2>
+            <button class="btn-prem"
+                style="background: var(--ma-primary-soft); color: var(--ma-primary); padding: 8px 16px;">
+                <span id="toggleIcon"><i class="fas fa-chevron-down"></i></span>
+            </button>
+        </div>
+
+        <div id="addBranchSection"
+            style="display: none; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--ma-border);">
+            <form method="POST" action="{{ url_for('super_admin.super_admin_branches') }}"
+                onsubmit="return validateAddBranch(this);">
+                <div class="entry-grid">
+                    <div class="form-node">
+                        <label>Branch Identity</label>
+                        <input type="text" id="branch_name" name="branch_name" placeholder="e.g. Liceo de Majayjay"
+                            required>
+                    </div>
+                    <div class="form-node">
+                        <label>Assigned Code</label>
+                        <input type="text" id="branch_code" name="branch_code" placeholder="e.g. LDMAJ"
+                            style="text-transform: uppercase;" required>
+                    </div>
+                    <div class="form-node">
+                        <label>Location</label>
+                        <input type="text" name="location" id="branch_location" class="no-numbers"
+                            placeholder="e.g. Majayjay, Laguna" required>
+                    </div>
+                    <div class="form-node">
+                        <label>Admin Leader Name</label>
+                        <input type="text" id="admin_name" name="admin_name" class="no-numbers"
+                            placeholder="e.g. Jocelyn Ramirez" required>
+                    </div>
+                    <div class="form-node">
+                        <label>Gender</label>
+                        <select name="gender" required>
+                            <option value="">— Select —</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                    <div class="form-node">
+                        <label>Admin Protocol Email</label>
+                        <input type="email" id="admin_email" name="admin_email" placeholder="admin@liceo.edu.ph"
+                            required>
                     </div>
                 </div>
-                <div id="addBranchMap" class="map-container"></div>
-                <!-- Hidden fields for coordinates -->
-                <input type="hidden" name="latitude" id="addLatitude">
-                <input type="hidden" name="longitude" id="addLongitude">
-            </div>
 
-            <div style="display:flex; justify-content:flex-end;">
-                <button type="submit" class="btn-prem btn-gold">🚀 Initialize Branch & Admin account</button>
-            </div>
-        </form>
+                <!-- MAP SECTION -->
+                <div class="map-section" style="margin-bottom: 24px;">
+                    <label
+                        style="display:block; font-size:0.8rem; font-weight:800; color:var(--ma-muted); text-transform:uppercase; margin-bottom:8px;">Geographic
+                        Pinpoint (REQUIRED)</label>
+                    <div class="map-instruction">
+                        <i class="fas fa-map-marked-alt"></i>
+                        <div>
+                            <strong>How to pin location:</strong> Use the search icon 🔍 on the map to find the
+                            city/street, then <strong>drag the red pin</strong> exactly where the school is located.
+                        </div>
+                    </div>
+                    <div id="addBranchMap" class="map-container"></div>
+                    <!-- Hidden fields for coordinates -->
+                    <input type="hidden" name="latitude" id="addLatitude">
+                    <input type="hidden" name="longitude" id="addLongitude">
+                </div>
+
+                <div style="display:flex; justify-content:flex-end;">
+                    <button type="submit" class="btn-prem btn-gold">🚀 Initialize Branch & Admin account</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Branch Inventory -->
@@ -434,11 +493,12 @@
                         </td>
                         <td style="text-align: right; padding-right: 32px; white-space: nowrap;">
                             <form method="POST" action="/super-admin/branch/{{ b.branch_id }}/toggle-status"
-                                style="display:inline;">
+                                style="display:inline;"
+                                onsubmit="return confirmStatusToggle(event, '{{ b.branch_name }}', {{ 'true' if b.is_active else 'false' }});">
                                 <button type="submit" class="btn-prem"
                                     style="padding: 8px 14px; background: #f1f5f9; color: var(--ma-muted); font-size: 0.75rem;">
-                                    {% if b.is_active %}<i class="fas fa-pause"></i> Deactivated{% else %}<i
-                                        class="fas fa-play"></i> Activated{% endif %}
+                                    {% if b.is_active %}<i class="fas fa-pause"></i> Deactivate{% else %}<i
+                                        class="fas fa-play"></i> Activate{% endif %}
                                 </button>
                             </form>
                             <button type="button" class="btn-prem edit-branch-btn" data-id="{{ b.branch_id }}"
@@ -463,6 +523,23 @@
                 entries.</span>
         </div>
         {% endif %}
+    </div>
+</div>
+
+<!-- Status Toggle Modal -->
+<div id="statusConfirmOverlay" class="confirm-overlay">
+    <div class="confirm-modal">
+        <div id="confirmIcon" style="font-size: 3rem; margin-bottom: 20px;"></div>
+        <h2 id="confirmTitle"
+            style="font-size: 1.25rem; font-weight: 900; margin-bottom: 12px; color: var(--ma-primary);"></h2>
+        <p id="confirmMessage"
+            style="font-size: 0.9rem; color: var(--ma-muted); margin-bottom: 24px; line-height: 1.5;"></p>
+        <div style="display: flex; gap: 12px; justify-content: center;">
+            <button type="button" onclick="cancelStatusToggle()" class="btn-prem"
+                style="background: #f1f5f9; color: var(--ma-muted);">Wait, Cancel</button>
+            <button id="confirmExecuteBtn" class="btn-prem" style="background: var(--ma-primary); color: white;">Yes,
+                Proceed</button>
+        </div>
     </div>
 </div>
 
@@ -505,9 +582,11 @@
                     <label>Admin Email</label>
                     <input type="email" name="admin_email" id="editAdminEmail" required />
                 </div>
-                
+
                 <div class="map-section" style="margin-top: 16px;">
-                    <label style="display:block; font-size:0.8rem; font-weight:800; color:var(--ma-muted); text-transform:uppercase; margin-bottom:8px;">Update Map Pin</label>
+                    <label
+                        style="display:block; font-size:0.8rem; font-weight:800; color:var(--ma-muted); text-transform:uppercase; margin-bottom:8px;">Update
+                        Map Pin</label>
                     <div class="map-instruction" style="padding: 8px 12px; font-size: 0.8rem;">
                         <i class="fas fa-hand-pointer"></i>
                         <div>Drag the marker to correct the branch location.</div>
@@ -639,10 +718,52 @@
         });
     }
 
+    // --- STATUS TOGGLE CONFIRMATION ---
+    let pendingStatusForm = null;
+
+    function confirmStatusToggle(event, branchName, isActive) {
+        event.preventDefault();
+        pendingStatusForm = event.target;
+
+        const overlay = document.getElementById('statusConfirmOverlay');
+        const icon = document.getElementById('confirmIcon');
+        const title = document.getElementById('confirmTitle');
+        const msg = document.getElementById('confirmMessage');
+        const btn = document.getElementById('confirmExecuteBtn');
+
+        if (isActive) {
+            icon.innerHTML = '⚠️';
+            title.innerText = 'Confirm Deactivation';
+            msg.innerText = `Are you sure you want to deactivate ${branchName}? 
+            
+            By proceeding, all administrators, staff, and students of this branch will be instantly locked out of the system.`;
+            btn.style.background = '#dc2626';
+            btn.innerText = 'Yes, Deactivate Node';
+        } else {
+            icon.innerHTML = '🚀';
+            title.innerText = 'Reactivate Branch?';
+            msg.innerText = `Bring ${branchName} back online? All branch users will regain access to their dashboards immediately.`;
+            btn.style.background = 'var(--ma-primary)';
+            btn.innerText = 'Yes, Reactivate';
+        }
+
+        btn.onclick = function () {
+            pendingStatusForm.submit();
+        };
+
+        overlay.style.display = 'flex';
+        return false;
+    }
+
+    function cancelStatusToggle() {
+        document.getElementById('statusConfirmOverlay').style.display = 'none';
+        pendingStatusForm = null;
+    }
+
     // --- LEAFLET MAPS IMPLEMENTATION ---
     let addMap, addMarker;
     let editMap, editMarker;
-    
+
     // Laguna Bounding Box
     const lagunaBounds = [
         [13.9, 121.0], // Southwest coords
@@ -663,7 +784,7 @@
 
     // Existing Branches Data
     const branchesData = [
-      {% for b in branches %}
+        {% for b in branches %}
         {% if b.latitude and b.longitude %}
         {
             name: "{{ b.branch_name | e }}",
@@ -671,59 +792,59 @@
             lng: {{ b.longitude }}
         },
         {% endif %}
-      {% endfor %}
+        {% endfor %}
     ];
 
     function populateExistingBranches(mapObj) {
-        branchesData.forEach(function(b) {
+        branchesData.forEach(function (b) {
             L.marker([b.lat, b.lng]).addTo(mapObj).bindPopup(`<b>${b.name}</b>`);
         });
     }
 
     function initAddMap() {
-        if(addMap) return;
-        
+        if (addMap) return;
+
         addMap = L.map('addBranchMap', {
             maxBounds: lagunaBounds,
             maxBoundsViscosity: 1.0,
             minZoom: 10
         }).setView(majayjayCenter, 12);
-        
+
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '© OpenStreetMap contributors'
         }).addTo(addMap);
-        
+
         // Show existing branches
         populateExistingBranches(addMap);
-        
+
         // Add Geocoder (Search)
         L.Control.geocoder({
             defaultMarkGeocode: false,
             placeholder: "Search address in Laguna..."
         })
-        .on('markgeocode', function(e) {
-            const latlng = e.geocode.center;
-            addMap.setView(latlng, 16);
-            addMarker.setLatLng(latlng);
-            document.getElementById('addLatitude').value = latlng.lat;
-            document.getElementById('addLongitude').value = latlng.lng;
-        })
-        .addTo(addMap);
+            .on('markgeocode', function (e) {
+                const latlng = e.geocode.center;
+                addMap.setView(latlng, 16);
+                addMarker.setLatLng(latlng);
+                document.getElementById('addLatitude').value = latlng.lat;
+                document.getElementById('addLongitude').value = latlng.lng;
+            })
+            .addTo(addMap);
 
         // Add Marker with RED ICON
         addMarker = L.marker(majayjayCenter, {
             draggable: true,
             icon: redIcon
         }).addTo(addMap);
-        
-        addMarker.on('dragend', function(e) {
+
+        addMarker.on('dragend', function (e) {
             const position = addMarker.getLatLng();
             document.getElementById('addLatitude').value = position.lat;
             document.getElementById('addLongitude').value = position.lng;
         });
-        
+
         // Add click to map
-        addMap.on('click', function(e) {
+        addMap.on('click', function (e) {
             addMarker.setLatLng(e.latlng);
             document.getElementById('addLatitude').value = e.latlng.lat;
             document.getElementById('addLongitude').value = e.latlng.lng;
@@ -736,14 +857,14 @@
     // Edit Map
     function initEditMap(lat, lng) {
         let center = (lat && lng) ? [parseFloat(lat), parseFloat(lng)] : majayjayCenter;
-        
-        if(!editMap) {
+
+        if (!editMap) {
             editMap = L.map('editBranchMap', {
                 maxBounds: lagunaBounds,
                 maxBoundsViscosity: 1.0,
                 minZoom: 10
             }).setView(center, 15);
-            
+
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '© OpenStreetMap'
             }).addTo(editMap);
@@ -755,30 +876,30 @@
                 defaultMarkGeocode: false,
                 placeholder: "Search new location..."
             })
-            .on('markgeocode', function(e) {
-                const latlng = e.geocode.center;
-                editMap.setView(latlng, 16);
-                editMarker.setLatLng(latlng);
-                document.getElementById('editLatitude').value = latlng.lat;
-                document.getElementById('editLongitude').value = latlng.lng;
-                checkEditChanges();
-            })
-            .addTo(editMap);
-            
+                .on('markgeocode', function (e) {
+                    const latlng = e.geocode.center;
+                    editMap.setView(latlng, 16);
+                    editMarker.setLatLng(latlng);
+                    document.getElementById('editLatitude').value = latlng.lat;
+                    document.getElementById('editLongitude').value = latlng.lng;
+                    checkEditChanges();
+                })
+                .addTo(editMap);
+
             // Edit Marker with RED ICON
             editMarker = L.marker(center, {
                 draggable: true,
                 icon: redIcon
             }).addTo(editMap);
-            
-            editMarker.on('dragend', function(e) {
+
+            editMarker.on('dragend', function (e) {
                 const position = editMarker.getLatLng();
                 document.getElementById('editLatitude').value = position.lat;
                 document.getElementById('editLongitude').value = position.lng;
                 checkEditChanges();
             });
-            
-            editMap.on('click', function(e) {
+
+            editMap.on('click', function (e) {
                 editMarker.setLatLng(e.latlng);
                 document.getElementById('editLatitude').value = e.latlng.lat;
                 document.getElementById('editLongitude').value = e.latlng.lng;
@@ -788,11 +909,24 @@
             editMap.setView(center, 15);
             editMarker.setLatLng(center);
         }
-        
+
         // Fix Leaflet tile loading issue in hidden modal
         setTimeout(() => {
             editMap.invalidateSize();
         }, 300);
+    }
+
+    function toggleAddForm() {
+        const section = document.getElementById('addBranchSection');
+        const icon = document.getElementById('toggleIcon');
+        if (section.style.display === 'none') {
+            section.style.display = 'block';
+            icon.innerHTML = '<i class="fas fa-chevron-up"></i>';
+            setTimeout(initAddMap, 300);
+        } else {
+            section.style.display = 'none';
+            icon.innerHTML = '<i class="fas fa-chevron-down"></i>';
+        }
     }
 </script>
 {% endblock %}

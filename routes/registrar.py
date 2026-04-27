@@ -1173,6 +1173,12 @@ def registrar_students_by_grade():
             "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", 
             "Grade 11", "Grade 12"
         ]
+        cursor.execute("""
+    SELECT branch_id, branch_name
+    FROM branches
+    WHERE branch_id = %s
+""", (branch_id,))
+        branch = cursor.fetchone()
 
         # Fetch sections filtered by year_id
         cursor.execute("""
@@ -1235,7 +1241,8 @@ def registrar_students_by_grade():
             grade_filter=grade_filter,
             section_filter=section_filter,
             school_years=school_years,
-            year_filter=str(year_filter) if year_filter else ""
+            year_filter=str(year_filter) if year_filter else "",
+            branch=branch
         )
     except Exception as e:
         db.rollback()

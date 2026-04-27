@@ -2,251 +2,233 @@
 {% block title %}Sections Management{% endblock %}
 {% block content %}
 <style>
-    /* Base settings */
+    :root {
+        --ma-primary: #1a3a8f;
+        --ma-gold: #facc15;
+        --ma-bg: #f8fafc;
+        --ma-card: #ffffff;
+        --ma-border: rgba(26, 58, 143, 0.1);
+        --ma-text: #0f172a;
+        --ma-muted: #64748b;
+        --ma-accent: #3b82f6;
+    }
+
     body {
-        background: #f5f7fa;
-        color: #333;
+        background: var(--ma-bg);
+        color: var(--ma-text);
+        font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
     .ba-container {
-        max-width: 1060px;
+        max-width: 1400px;
         margin: 0 auto;
-        padding: 24px 20px;
+        padding: 32px 24px;
     }
 
-    .header-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 24px;
+    .premium-welcome {
+        background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
+        border-radius: 24px;
+        padding: 40px;
+        color: white;
+        margin-bottom: 32px;
+        box-shadow: 0 10px 30px rgba(26, 58, 143, 0.2);
     }
 
-    .header-row h1 {
+    .premium-welcome h1 {
+        font-size: 2.2rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+        letter-spacing: -0.02em;
+        color: white;
         margin: 0;
-        font-size: 24px;
-        color: #2c3e50;
     }
 
-    .back-link {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        color: #007bff;
-        text-decoration: none;
-        font-size: 14px;
-        margin-bottom: 14px;
-        font-weight: 600;
-    }
-
-    .back-link:hover {
-        text-decoration: underline;
-    }
-
-    /* Split Layout */
-    .two-col {
+    .status-line {
         display: flex;
-        gap: 24px;
-        flex-wrap: wrap;
-        align-items: flex-start;
+        align-items: center;
+        gap: 10px;
+        font-weight: 500;
+        opacity: 0.9;
+        font-size: 0.9rem;
     }
 
-    .col-form {
-        flex: 0 0 350px;
-    }
-
-    .col-table {
-        flex: 1;
-        min-width: 400px;
+    .pulse-dot {
+        width: 10px;
+        height: 10px;
+        background: var(--ma-gold);
+        border-radius: 50%;
+        box-shadow: 0 0 10px var(--ma-gold);
     }
 
     /* Cards */
-    .card {
-        background: #fff;
-        border-radius: 12px;
-        padding: 24px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, .07);
-        margin-bottom: 20px;
+    .modern-card {
+        background: var(--ma-card);
+        border: 1px solid var(--ma-border);
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        margin-bottom: 24px;
     }
 
-    .card h2 {
-        margin: 0 0 16px 0;
-        font-size: 16px;
-        font-weight: 700;
-        color: #2c3e50;
-        border-bottom: 2px solid #007bff;
-        padding-bottom: 10px;
+    .modern-card h2 {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--ma-primary);
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
 
     /* Form Elements */
-    .form-group {
-        margin-bottom: 16px;
+    .form-node {
+        margin-bottom: 20px;
     }
 
-    .form-group label {
+    .form-node label {
         display: block;
-        font-size: 13px;
-        font-weight: 700;
-        color: #334155;
-        margin-bottom: 6px;
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: var(--ma-muted);
+        text-transform: uppercase;
+        margin-bottom: 8px;
     }
 
     .form-control {
         width: 100%;
-        padding: 10px 12px;
-        border: 1px solid #cbd5e1;
-        border-radius: 8px;
-        font-size: 14px;
-        transition: border-color 0.2s, box-shadow 0.2s;
-        box-sizing: border-box;
+        padding: 12px 16px;
+        border: 1px solid var(--ma-border);
+        border-radius: 12px;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
     }
 
     .form-control:focus {
         outline: none;
-        border-color: #007bff;
-        box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1);
+        border-color: var(--ma-primary);
+        box-shadow: 0 0 0 4px rgba(26, 58, 143, 0.05);
     }
 
     /* Buttons */
-    .btn {
-        padding: 10px 18px;
-        border: none;
-        border-radius: 8px;
-        cursor: pointer;
-        font-size: 13px;
+    .btn-prem {
+        padding: 12px 24px;
+        border-radius: 12px;
         font-weight: 700;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 6px;
-        transition: .2s;
-        text-decoration: none;
-    }
-
-    .btn-primary {
-        background: #007bff;
-        color: #fff;
-        width: 100%;
-    }
-
-    .btn-primary:hover {
-        background: #0056b3;
-    }
-
-    .btn-success {
-        background: #10b981;
-        color: #fff;
-    }
-
-    .btn-success:hover {
-        background: #059669;
-    }
-
-    .btn-danger {
-        background: #ef4444;
-        color: #fff;
-    }
-
-    .btn-danger:hover {
-        background: #dc2626;
-    }
-
-    .btn-secondary {
-        background: #6c757d;
-        color: #fff;
-    }
-
-    .btn-secondary:hover {
-        background: #5a6268;
-    }
-
-    .btn-sm {
-        padding: 6px 12px;
-        font-size: 11px;
-    }
-
-    /* Alerts */
-    .flash-alert {
-        padding: 12px 16px;
-        border-radius: 8px;
-        margin-bottom: 20px;
-        font-size: 13px;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
         gap: 8px;
     }
 
-    .flash-success {
-        background: #ecfdf5;
-        color: #065f46;
-        border: 1px solid #10b981;
+    .btn-prem:hover {
+        transform: translateY(-2px);
     }
 
-    .flash-error {
-        background: #fef2f2;
-        color: #991b1b;
-        border: 1px solid #ef4444;
+    .btn-primary {
+        background: var(--ma-primary);
+        color: white;
+    }
+
+    .btn-gold {
+        background: var(--ma-gold);
+        color: var(--ma-primary);
+    }
+
+    .btn-danger {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .btn-secondary {
+        background: #f1f5f9;
+        color: var(--ma-muted);
+    }
+
+    .btn-prem:disabled {
+        background: #f1f5f9 !important;
+        color: #94a3b8 !important;
+        cursor: not-allowed !important;
+        transform: none !important;
+        opacity: 0.7;
     }
 
     /* Table */
-    .health-table {
+    .vault-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 13px;
     }
 
-    .health-table th {
-        background: #f8fafc;
-        padding: 12px;
+    .vault-table th {
         text-align: left;
-        border-bottom: 2px solid #e2e8f0;
-        color: #475569;
-        font-weight: 700;
+        padding: 16px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--ma-muted);
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--ma-border);
     }
 
-    .health-table td {
-        padding: 12px;
+    .vault-table td {
+        padding: 20px 16px;
         border-bottom: 1px solid #f1f5f9;
-        vertical-align: middle;
+        font-size: 0.95rem;
     }
 
-    .health-table tr:hover td {
-        background: #f8fafc;
+    /* Modal Overlay */
+    .glass-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(8px);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .glass-modal {
+        background: white;
+        border-radius: 24px;
+        padding: 32px;
+        width: 100%;
+        max-width: 450px;
+        box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.3);
+    }
+
+    .confirm-modal {
+        text-align: center;
     }
 </style>
 
 <div class="ba-container">
 
-    <div class="header-row">
-        <h1>🏫 Sections</h1>
+
+    <div class="premium-welcome">
+        <h1>Sections Management</h1>
+        <div class="status-line">
+            <span class="pulse-dot"></span>
+            Operational Units • {{ sections|length }} Total Sections
+        </div>
     </div>
 
-    <!-- Flash messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    {% for cat, msg in messages %}
-    <div class="flash-alert {{ 'flash-success' if cat == 'success' else 'flash-error' }}">
-        <span style="font-size:16px;">{{ '✅' if cat == 'success' else '⚠️' }}</span>
-        {{ msg }}
-    </div>
-    {% endfor %}
-    {% endif %}
-    {% endwith %}
-
-    <div class="two-col">
+    <div class="two-col" style="display: grid; grid-template-columns: 350px 1fr; gap: 32px; align-items: flex-start;">
         <!-- Add Form -->
         {% if is_branch_active_status %}
         <div class="col-form">
-            <div class="card">
+            <div class="modern-card">
                 <h2>➕ Add New Section</h2>
                 <form method="post" action="{{ url_for('branch_admin.branch_admin_sections') }}">
-                    <div class="form-group">
-                        <label>Section Name *</label>
+                    <div class="form-node">
+                        <label>Section Name</label>
                         <input class="form-control" type="text" name="section_name" placeholder="e.g. Section A"
                             required>
                     </div>
-                    <div class="form-group">
-                        <label>Grade Level *</label>
+                    <div class="form-node">
+                        <label>Grade Level</label>
                         <select name="grade_level_id" class="form-control" required>
                             <option value="">Select Grade Level</option>
                             {% for g in grades %}
@@ -254,8 +236,8 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label>School Year *</label>
+                    <div class="form-node">
+                        <label>School Year</label>
                         <select name="year_id" class="form-control" required>
                             <option value="">Select School Year</option>
                             {% for y in years %}
@@ -263,50 +245,50 @@
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class="form-node">
                         <label>Capacity (Max 50)</label>
                         <input class="form-control" type="number" name="capacity" value="50" min="1" max="50" required
                             oninput="if(this.value.length > 2) this.value = this.value.slice(0,2); if(parseInt(this.value) > 50) this.value = 50;">
                     </div>
-                    <button type="submit" class="btn btn-primary">Add Section</button>
+                    <button type="submit" class="btn-prem btn-primary" style="width: 100%;">🚀 Deploy Section</button>
                 </form>
             </div>
         </div>
         {% endif %}
 
         <!-- Existing Sections -->
-        <div class="col-table" {% if not is_branch_active_status %}style="flex: 1 0 100%;" {% endif %}>
-            <div class="card">
-                <h2>📋 Existing Sections</h2>
+        <div class="col-table" {% if not is_branch_active_status %}style="grid-column: span 2;" {% endif %}>
+            <div class="modern-card">
+                <h2>📋 Section Repository</h2>
                 {% if sections %}
-                <table class="health-table">
+                <table class="vault-table">
                     <thead>
                         <tr>
-                            <th>Section Name</th>
+                            <th>Identity</th>
                             <th>Grade Level</th>
-                            <th>School Year</th>
-                            <th>Capacity</th>
+                            <th>Academic Cycle</th>
+                            <th>Cap.</th>
                             <th style="text-align: right;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for sec in sections %}
                         <tr>
-                            <td><strong style="color: #1e293b;">{{ sec.section_name }}</strong></td>
-                            <td><strong style="color: #1e293b;">{{ sec.grade_level_name }}</strong></td>
-                            <td style="color: #475569;">{{ sec.school_year_label }}</td>
-                            <td style="color: #475569;">{{ sec.capacity }}</td>
-                            <td style="text-align: right;">
+                            <td><strong style="color: var(--ma-primary);">{{ sec.section_name }}</strong></td>
+                            <td><strong style="color: var(--ma-primary);">{{ sec.grade_level_name }}</strong></td>
+                            <td style="color: var(--ma-muted); font-size: 0.85rem;">{{ sec.school_year_label }}</td>
+                            <td style="color: var(--ma-muted); font-size: 0.85rem;">{{ sec.capacity }}</td>
+                            <td style="text-align: right; white-space: nowrap;">
                                 {% if is_branch_active_status %}
-                                <button class="btn btn-sm btn-secondary" type="button"
-                                    onclick='openEditModal({{ sec.section_id }}, {{ sec.section_name | tojson }}, {{ sec.grade_level_id }}, {{ sec.capacity | default(50) }})'>✎
-                                    Edit</button>
-                                <form method="post"
-                                    action="{{ url_for('branch_admin.branch_admin_section_delete', section_id=sec.section_id) }}"
-                                    onsubmit="return confirm('Delete section {{ sec.section_name }}?');"
-                                    style="display:inline;">
-                                    <button class="btn btn-sm btn-danger" type="submit">🗑 Delete</button>
-                                </form>
+                                <button class="btn-prem btn-secondary" style="padding: 8px 14px; font-size: 0.75rem;"
+                                    onclick='openEditModal({{ sec.section_id }}, {{ sec.section_name | tojson }}, {{ sec.grade_level_id }}, {{ sec.capacity | default(50) }})'>
+                                    <i class="fas fa-edit"></i> Edit
+                                </button>
+                                <button class="btn-prem btn-danger"
+                                    style="padding: 8px 14px; font-size: 0.75rem; margin-left: 8px;"
+                                    onclick="confirmSectionDelete({{ sec.section_id }}, '{{ sec.section_name|e }}')">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
                                 {% endif %}
                             </td>
                         </tr>
@@ -314,30 +296,46 @@
                     </tbody>
                 </table>
                 {% else %}
-                <div style="text-align:center; padding: 30px; color:#94a3b8; font-size: 14px;">No sections found. Add
-                    one.</div>
+                <div style="text-align:center; padding: 40px; color: var(--ma-muted); font-size: 0.9rem;">
+                    <i class="fas fa-folder-open"
+                        style="font-size: 2rem; display: block; margin-bottom: 12px; opacity: 0.5;"></i>
+                    No sections detected in repository.
+                </div>
                 {% endif %}
             </div>
         </div>
     </div>
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div id="deleteConfirmOverlay" class="glass-overlay">
+    <div class="glass-modal confirm-modal">
+        <div style="font-size: 3.5rem; margin-bottom: 20px;">🗑️</div>
+        <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 12px; color: #dc2626;">Remove Section?</h2>
+        <p id="deleteConfirmMsg"
+            style="font-size: 0.9rem; color: var(--ma-muted); margin-bottom: 24px; line-height: 1.5;"></p>
+        <form id="deleteSectionForm" method="POST">
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button type="button" onclick="closeDeleteModal()" class="btn-prem btn-secondary">Keep it</button>
+                <button type="submit" class="btn-prem" style="background: #dc2626; color: white;">Yes, Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Edit Modal -->
-<div id="editModal"
-    style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; align-items:center; justify-content:center;">
-    <div
-        style="background:#fff; padding:24px; border-radius:12px; width:90%; max-width:400px; box-shadow:0 8px 30px rgba(0,0,0,0.2);">
-        <h2
-            style="margin:0 0 16px 0; font-size:16px; font-weight:700; color:#2c3e50; border-bottom:2px solid #007bff; padding-bottom:10px;">
-            ✎ Edit Section</h2>
+<div id="editModal" class="glass-overlay">
+    <div class="glass-modal">
+        <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 24px; color: var(--ma-primary);">✎ Edit Section
+        </h2>
         <form id="editForm" method="post" action="">
-            <div class="form-group">
-                <label>Section Name *</label>
+            <div class="form-node">
+                <label>Section Identity</label>
                 <input class="form-control" type="text" name="section_name" id="edit_section_name" required>
             </div>
 
-            <div class="form-group">
-                <label>Grade Level *</label>
+            <div class="form-node">
+                <label>Grade Level</label>
                 <select name="grade_level_id" id="edit_grade_level_id" class="form-control" required>
                     <option value="">Select Grade Level</option>
                     {% for g in grades %}
@@ -346,17 +344,15 @@
                 </select>
             </div>
 
-            <div class="form-group">
-                <label>Capacity (Max 50) *</label>
+            <div class="form-node">
+                <label>Capacity (Max 50)</label>
                 <input class="form-control" type="number" name="capacity" id="edit_capacity" min="1" max="50" required
                     oninput="if(this.value.length > 2) this.value = this.value.slice(0,2); if(parseInt(this.value) > 50) this.value = 50;">
             </div>
 
-            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px;">
-                <button type="button" class="btn btn-secondary" style="width:auto;"
-                    onclick="closeEditModal()">Cancel</button>
-                <button type="submit" class="btn btn-success" id="editSubmitBtn" style="width:auto;">Save
-                    Changes</button>
+            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:32px;">
+                <button type="button" class="btn-prem btn-secondary" onclick="closeEditModal()">Dismiss</button>
+                <button type="submit" class="btn-prem btn-gold" id="editSubmitBtn" disabled>Commit Changes</button>
             </div>
         </form>
     </div>
@@ -373,15 +369,13 @@
 
         // Capture initial state
         initialSectionData = {
-            name: sectionName,
-            grade: gradeLevelId,
-            capacity: capacity
+            name: String(sectionName).trim(),
+            grade: String(gradeLevelId),
+            capacity: String(capacity)
         };
 
         const submitBtn = document.getElementById('editSubmitBtn');
         submitBtn.disabled = true;
-        submitBtn.style.opacity = '0.5';
-        submitBtn.style.cursor = 'not-allowed';
 
         document.getElementById('editModal').style.display = 'flex';
     }
@@ -390,22 +384,35 @@
         document.getElementById('editModal').style.display = 'none';
     }
 
+    function confirmSectionDelete(id, name) {
+        const overlay = document.getElementById('deleteConfirmOverlay');
+        const msg = document.getElementById('deleteConfirmMsg');
+        const form = document.getElementById('deleteSectionForm');
+
+        msg.innerText = `Are you sure you want to permanently remove "${name}" from the system? This action cannot be undone.`;
+        form.action = `/branch-admin/sections/${id}/delete`;
+        overlay.style.display = 'flex';
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteConfirmOverlay').style.display = 'none';
+    }
+
     // Monitor changes
-    document.getElementById('editForm').addEventListener('input', function () {
-        const currentName = document.getElementById('edit_section_name').value;
-        const currentGrade = document.getElementById('edit_grade_level_id').value;
-        const currentCap = document.getElementById('edit_capacity').value;
+    ['edit_section_name', 'edit_grade_level_id', 'edit_capacity'].forEach(id => {
+        document.getElementById(id).addEventListener('input', function () {
+            const currentName = document.getElementById('edit_section_name').value.trim();
+            const currentGrade = document.getElementById('edit_grade_level_id').value;
+            const currentCap = document.getElementById('edit_capacity').value;
 
-        const hasChanged = (
-            currentName !== initialSectionData.name ||
-            currentGrade != initialSectionData.grade ||
-            currentCap != initialSectionData.capacity
-        );
+            const hasChanged = (
+                currentName !== initialSectionData.name ||
+                currentGrade !== initialSectionData.grade ||
+                currentCap !== initialSectionData.capacity
+            );
 
-        const submitBtn = document.getElementById('editSubmitBtn');
-        submitBtn.disabled = !hasChanged;
-        submitBtn.style.opacity = hasChanged ? '1' : '0.5';
-        submitBtn.style.cursor = hasChanged ? 'pointer' : 'not-allowed';
+            document.getElementById('editSubmitBtn').disabled = !hasChanged;
+        });
     });
 </script>
 {% endblock %}

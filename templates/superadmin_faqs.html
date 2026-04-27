@@ -1,311 +1,439 @@
 {% extends "base.html" %}
 
-{% block title %}Manage General FAQs{% endblock %}
+{% block title %}Manage General FAQs | Super Admin{% endblock %}
 
 {% block styles %}
 <style>
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
-  body {
-    background: #f5f7fa;
-    color: #333;
-  }
+    :root {
+        --ma-primary: #1a3a8f;
+        --ma-gold: #facc15;
+        --ma-bg: #f8fafc;
+        --ma-card: #ffffff;
+        --ma-border: rgba(26, 58, 143, 0.1);
+        --ma-text: #0f172a;
+        --ma-muted: #64748b;
+    }
 
-  .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 40px 20px;
-  }
+    body {
+        background-color: var(--ma-bg);
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        color: var(--ma-text);
+        letter-spacing: -0.01em;
+    }
 
-  header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 30px;
-    padding-bottom: 20px;
-    border-bottom: 2px solid #ddd;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
+    .sa-container {
+        padding: 32px 24px;
+        max-width: 1400px;
+        margin: 0 auto;
+        animation: fadeIn 0.4s ease-out;
+    }
 
-  h1 {
-    font-size: 28px;
-    color: #222;
-  }
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
 
-  .btn {
-    padding: 10px 16px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    background: #f8f8f8;
-    color: #222;
-    cursor: pointer;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 14px;
-    font-weight: 500;
-    transition: background 0.2s;
-  }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 
-  .btn:hover {
-    background: #efefef;
-  }
+    /* ── Slim Blue Header ── */
+    .dashboard-header {
+        background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
+        border-radius: 20px;
+        padding: 40px;
+        margin-bottom: 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: white;
+        box-shadow: 0 10px 30px rgba(26, 58, 143, 0.2);
+    }
 
-  .btn-primary {
-    background: #28a745;
-    color: white;
-    border-color: #28a745;
-  }
+    .header-main h1 {
+        margin: 0;
+        font-size: 2rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+    }
 
-  .btn-primary:hover {
-    background: #218838;
-  }
+    .btn-nav {
+        background: rgba(255, 255, 255, 0.1);
+        color: white;
+        padding: 10px 20px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.85rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.2s;
+    }
 
-  .btn-danger {
-    background: #dc3545;
-    color: white;
-    border-color: #dc3545;
-    padding: 6px 12px;
-    font-size: 12px;
-  }
+    .btn-nav:hover {
+        background: white;
+        color: var(--ma-primary);
+    }
 
-  .btn-danger:hover {
-    background: #c82333;
-  }
+    /* ── Two-Column Form Grid ── */
+    .entry-grid {
+        display: grid;
+        grid-template-columns: 1fr 400px;
+        gap: 32px;
+        margin-bottom: 40px;
+    }
 
-  .btn-secondary {
-    background: #007bff;
-    color: white;
-    border-color: #007bff;
-    padding: 6px 12px;
-    font-size: 12px;
-  }
+    .modern-card {
+        background: var(--ma-card);
+        border: 1px solid var(--ma-border);
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    }
 
-  .btn-secondary:hover {
-    background: #0056b3;
-  }
+    .form-group {
+        margin-bottom: 24px;
+    }
 
-  .card {
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-    padding: 24px;
-    margin-bottom: 20px;
-  }
+    .form-group label {
+        display: block;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--ma-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 8px;
+    }
 
-  .card h2 {
-    font-size: 20px;
-    margin-bottom: 16px;
-    color: #222;
-  }
+    .form-control {
+        width: 100%;
+        padding: 14px 18px;
+        background: #fdfdfd;
+        border: 1.5px solid var(--ma-border);
+        border-radius: 14px;
+        font-family: inherit;
+        font-weight: 600;
+        color: var(--ma-text);
+        font-size: 0.95rem;
+        transition: all 0.2s;
+    }
 
-  .faq-list {
-    display: grid;
-    gap: 12px;
-  }
+    .form-control:focus {
+        border-color: var(--ma-gold);
+        outline: none;
+        box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.1);
+    }
 
-  .faq-item {
-    background: #f8f9fa;
-    border-radius: 8px;
-    padding: 16px;
-    border-left: 4px solid #17a2b8;
-  }
+    .btn-prem {
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 800;
+        font-size: 0.9rem;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
 
-  .faq-question {
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: #222;
-  }
+    .btn-gold {
+        background: var(--ma-gold);
+        color: var(--ma-primary);
+    }
 
-  .faq-answer {
-    color: #666;
-    font-size: 14px;
-    margin-bottom: 12px;
-  }
+    .btn-gold:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(250, 204, 21, 0.3);
+    }
 
-  .faq-actions {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
+    .btn-gold:disabled {
+        background: #f1f5f9 !important;
+        color: #94a3b8 !important;
+        cursor: not-allowed;
+        opacity: 0.7;
+    }
 
-  .form-group {
-    margin-bottom: 16px;
-  }
+    /* ── Instruction Card ── */
+    .instruction-card {
+        background: #f1f5f9;
+        border-radius: 24px;
+        padding: 32px;
+        border: 1px solid var(--ma-border);
+    }
 
-  label {
-    display: block;
-    font-weight: 600;
-    margin-bottom: 8px;
-    color: #555;
-  }
+    .instruction-card h3 {
+        font-size: 1rem;
+        font-weight: 850;
+        margin-bottom: 20px;
+        color: var(--ma-primary);
+    }
 
-  input,
-  textarea {
-    width: 100%;
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 8px;
-    font-size: 14px;
-    font-family: inherit;
-  }
+    .ins-step {
+        display: flex;
+        gap: 16px;
+        margin-bottom: 24px;
+    }
 
-  textarea {
-    resize: vertical;
-    min-height: 100px;
-  }
+    .ins-icon {
+        width: 32px;
+        height: 32px;
+        background: white;
+        color: var(--ma-primary);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+        flex-shrink: 0;
+    }
 
-  input:focus,
-  textarea:focus {
-    outline: none;
-    border-color: #17a2b8;
-    box-shadow: 0 0 0 3px rgba(23, 162, 184, 0.1);
-  }
+    .ins-text h4 {
+        margin: 0 0 4px 0;
+        font-size: 0.85rem;
+        font-weight: 800;
+    }
 
-  .badge {
-    display: inline-block;
-    padding: 4px 8px;
-    border-radius: 12px;
-    font-size: 11px;
-    font-weight: 600;
-    margin-left: 8px;
-    background: #d1ecf1;
-    color: #0c5460;
-  }
+    .ins-text p {
+        margin: 0;
+        font-size: 0.75rem;
+        color: var(--ma-muted);
+        line-height: 1.5;
+        font-weight: 600;
+    }
 
-  .edit-form {
-    display: none;
-    margin-top: 12px;
-    padding: 12px;
-    background: white;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-  }
+    /* ── FAQ List ── */
+    .faq-item {
+        background: white;
+        border: 1px solid var(--ma-border);
+        border-radius: 20px;
+        padding: 24px;
+        margin-bottom: 16px;
+        position: relative;
+        transition: all 0.2s;
+    }
 
-  .edit-form.active {
-    display: block;
-  }
+    .faq-item:hover {
+        border-color: var(--ma-gold);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.03);
+    }
 
-  .message {
-    padding: 12px 16px;
-    border-radius: 8px;
-    margin-bottom: 20px;
-    font-weight: 500;
-  }
+    .faq-actions {
+        display: flex;
+        gap: 8px;
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        opacity: 0;
+        transition: all 0.2s;
+    }
 
-  .message-success {
-    background: #d1e7dd;
-    color: #0f5132;
-    border: 1px solid #badbcc;
-  }
+    .faq-item:hover .faq-actions {
+        opacity: 1;
+    }
 
-  .message-error {
-    background: #f8d7da;
-    color: #842029;
-    border: 1px solid #f5c2c7;
-  }
+    .btn-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+    }
+
+    /* ── Confirmation Modal ── */
+    .confirm-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.4);
+        backdrop-filter: blur(4px);
+        z-index: 3000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .confirm-modal {
+        background: white;
+        padding: 32px;
+        border-radius: 20px;
+        max-width: 400px;
+        width: 90%;
+        text-align: center;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container">
-  <header>
-    <h1>🤖 Manage General FAQs</h1>
-    <a href="{{ url_for('super_admin.super_admin_dashboard') }}" class="btn">⬅ Back</a>
-  </header>
+<div class="sa-container">
+    <header class="dashboard-header">
+        <div class="header-main">
+            <p style="font-size: 0.85rem; font-weight: 600; opacity: 0.8; margin-bottom: 4px;">Knowledge Hub</p>
+            <h1>Manage General FAQs</h1>
+        </div>
+    </header>
 
-  {% if message %}
-  <div class="message message-success">✅ {{ message }}</div>
-  {% endif %}
-
-  {% if error %}
-  <div class="message message-error">❌ {{ error }}</div>
-  {% endif %}
-
-  <!-- Add New General FAQ -->
-  <div class="card">
-    <h2>➕ Add New General FAQ</h2>
-    <p style="color:#666; margin-bottom:16px; font-size:14px;">
-      General FAQs are visible to <strong>all branches</strong> and public users.
-    </p>
-    <form method="POST">
-      <div class="form-group">
-        <label>❓ Question *</label>
-        <input type="text" name="question" placeholder="e.g., What are the school hours?" required>
-      </div>
-
-      <div class="form-group">
-        <label>💬 Answer *</label>
-        <textarea name="answer" placeholder="Enter the answer here..." required></textarea>
-      </div>
-
-      <button type="submit" class="btn btn-primary">✅ Add General FAQ</button>
-    </form>
-  </div>
-
-  <!-- Existing General FAQs -->
-  <div class="card">
-    <h2>📚 General FAQs (All Branches) <span class="badge">{{ faqs|length }} FAQs</span></h2>
-    <p style="color:#666; margin-bottom:16px; font-size:14px;">
-      These FAQs are shown to all branches and public users.
-    </p>
-
-    {% if faqs %}
-    <div class="faq-list">
-      {% for faq in faqs %}
-      <div class="faq-item">
-        <div class="faq-question">{{ faq[1] }}</div>
-        <div class="faq-answer">{{ faq[2] }}</div>
-
-        <div class="faq-actions">
-          <button type="button" class="btn btn-secondary" onclick="toggleEdit({{ faq[0] }})">✏️ Edit</button>
-
-          <form method="POST" action="{{ url_for('super_admin.superadmin_faq_delete', faq_id=faq[0]) }}"
-            style="display:inline;">
-            <button type="submit" class="btn btn-danger"
-              onclick="return confirm('Delete this General FAQ? All branches will lose access to it.')">
-              🗑️ Delete
-            </button>
-          </form>
+    <div class="entry-grid">
+        <!-- Add Form -->
+        <div class="modern-card">
+            <h3><i class="fas fa-plus-circle" style="color: var(--ma-gold);"></i> Add General FAQs</h3>
+            <form method="POST">
+                <div class="form-group">
+                    <label>Standardized Question</label>
+                    <input type="text" name="question" class="form-control" placeholder="What are the school hours?"
+                        required>
+                </div>
+                <div class="form-group">
+                    <label>Verified Answer</label>
+                    <textarea name="answer" class="form-control" style="min-height: 100px;"
+                        placeholder="Provide a clear, concise answer..." required></textarea>
+                </div>
+                <button type="submit" class="btn-prem btn-gold">
+                    <i class="fas fa-plus"></i> Add General FAQ
+                </button>
+            </form>
         </div>
 
-        <!-- Edit Form -->
-        <div class="edit-form" id="edit-{{ faq[0] }}">
-          <form method="POST" action="{{ url_for('super_admin.superadmin_faq_edit', faq_id=faq[0]) }}">
-            <div class="form-group">
-              <label>Question</label>
-              <input type="text" name="question" value="{{ faq[1] }}" required>
+        <!-- Instructions -->
+        <aside class="instruction-card">
+            <h3>Guidelines</h3>
+            <div class="ins-step">
+                <div class="ins-icon"><i class="fas fa-globe"></i></div>
+                <div class="ins-text">
+                    <h4>Global Visibility</h4>
+                    <p>These FAQs are pushed to all branches automatically. Keep answers universal.</p>
+                </div>
             </div>
-            <div class="form-group">
-              <label>Answer</label>
-              <textarea name="answer" required>{{ faq[2] }}</textarea>
+            <div class="ins-step">
+                <div class="ins-icon"><i class="fas fa-check"></i></div>
+                <div class="ins-text">
+                    <h4>Clarity is Key</h4>
+                    <p>Use short sentences and avoid branch-specific terminology here.</p>
+                </div>
             </div>
-            <button type="submit" class="btn btn-primary">💾 Save Changes</button>
-            <button type="button" class="btn" onclick="toggleEdit({{ faq[0] }})">Cancel</button>
-          </form>
-        </div>
-
-      </div>
-      {% endfor %}
+        </aside>
     </div>
-    {% else %}
-    <p style="color:#999; text-align:center; padding:20px;">
-      No general FAQs yet. Add your first FAQ above!
-    </p>
-    {% endif %}
-  </div>
-</div>
-{% endblock %}
 
-{% block scripts %}
+    <!-- FAQ List -->
+    <div class="modern-card">
+        <h3 style="margin-bottom: 32px;">📚 Active General FAQs ({{ faqs|length }})</h3>
+        {% if faqs %}
+        <div class="faq-list">
+            {% for faq in faqs %}
+            <div class="faq-item">
+                <div style="font-weight: 800; color: var(--ma-primary); font-size: 1.1rem; margin-bottom: 8px;">{{
+                    faq[1] }}</div>
+                <div style="font-size: 0.9rem; color: var(--ma-muted); font-weight: 600; line-height: 1.6;">{{ faq[2] }}
+                </div>
+
+                <div class="faq-actions">
+                    <button type="button" class="btn-prem btn-icon" style="background: #f1f5f9; color: var(--ma-muted);"
+                        onclick="toggleEdit({{ faq[0] }})">
+                        <i class="fas fa-pen"></i>
+                    </button>
+                    <button type="button" class="btn-prem btn-icon" style="background: #fee2e2; color: #dc2626;"
+                        onclick="confirmDelete(event, {{ faq[0] }}, '{{ faq[1] | e }}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+
+                <!-- Edit Form (Inline) -->
+                <div id="edit-{{ faq[0] }}"
+                    style="display:none; margin-top: 24px; padding-top: 24px; border-top: 1px dashed var(--ma-border);">
+                    <form method="POST" action="{{ url_for('super_admin.superadmin_faq_edit', faq_id=faq[0]) }}">
+                        <div class="form-group">
+                            <label>Update Question</label>
+                            <input type="text" name="question" id="q-{{ faq[0] }}" class="form-control"
+                                value="{{ faq[1] }}" required oninput="checkChanges({{ faq[0] }})">
+                        </div>
+                        <div class="form-group">
+                            <label>Update Answer</label>
+                            <textarea name="answer" id="a-{{ faq[0] }}" class="form-control" required
+                                oninput="checkChanges({{ faq[0] }})">{{ faq[2] }}</textarea>
+                        </div>
+                        <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                            <button type="button" class="btn-prem" style="background:#f1f5f9; color:var(--ma-muted);"
+                                onclick="toggleEdit({{ faq[0] }})">Cancel</button>
+                            <button type="submit" id="save-{{ faq[0] }}" class="btn-prem btn-gold" disabled>Save
+                                Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="text-align: center; padding: 60px;">
+            <i class="fas fa-brain" style="font-size: 3rem; color: #e2e8f0; margin-bottom: 20px; display: block;"></i>
+            <span style="font-weight: 700; color: #94a3b8;">The Knowledge Base is currently empty.</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteOverlay" class="confirm-overlay">
+    <div class="confirm-modal">
+        <div style="font-size: 3.5rem; margin-bottom: 20px;">🗑️</div>
+        <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 12px; color: #dc2626;">Delete FAQ Node?</h2>
+        <p id="deleteMsg" style="font-size: 0.9rem; color: var(--ma-muted); margin-bottom: 24px; line-height: 1.5;"></p>
+        <form id="deleteForm" method="POST">
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button type="button" onclick="closeDelete()" class="btn-prem"
+                    style="background: #f1f5f9; color: var(--ma-muted);">Keep it</button>
+                <button type="submit" class="btn-prem" style="background: #dc2626; color: white;">Yes, Delete
+                    Node</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
-  function toggleEdit(faqId) {
-    const form = document.getElementById('edit-' + faqId);
-    if (form) form.classList.toggle('active');
-  }
+    let originalData = {};
+
+    function toggleEdit(id) {
+        const form = document.getElementById('edit-' + id);
+        const isVisible = form.style.display !== 'none';
+
+        if (!isVisible) {
+            form.style.display = 'block';
+            originalData[id] = {
+                q: document.getElementById('q-' + id).value.trim(),
+                a: document.getElementById('a-' + id).value.trim()
+            };
+            checkChanges(id);
+        } else {
+            form.style.display = 'none';
+        }
+    }
+
+    function checkChanges(id) {
+        const currentQ = document.getElementById('q-' + id).value.trim();
+        const currentA = document.getElementById('a-' + id).value.trim();
+        const saveBtn = document.getElementById('save-' + id);
+
+        const hasChanged = (currentQ !== originalData[id].q) || (currentA !== originalData[id].a);
+        saveBtn.disabled = !hasChanged;
+    }
+
+    function confirmDelete(event, id, name) {
+        const overlay = document.getElementById('deleteOverlay');
+        const form = document.getElementById('deleteForm');
+        const msg = document.getElementById('deleteMsg');
+
+        msg.innerText = `Are you sure you want to permanently remove this FAQ: "${name}"? This will affect all branches.`;
+        form.action = `/super-admin/faq/${id}/delete`;
+        overlay.style.display = 'flex';
+    }
+
+    function closeDelete() {
+        document.getElementById('deleteOverlay').style.display = 'none';
+    }
 </script>
 {% endblock %}

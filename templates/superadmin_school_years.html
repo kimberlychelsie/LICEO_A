@@ -200,7 +200,7 @@
     }
 </style>
 
-<div class="ba-container" style="max-width: 1200px; margin: 0 auto; padding: 24px;">
+<div class="sa-container" style="max-width: 1400px; margin: 0 auto; padding: 32px 24px;">
 
     <!-- Header -->
     <div class="registry-welcome">
@@ -275,12 +275,13 @@
                                 </td>
                                 <td style="text-align:right; padding-right: 32px;">
                                     {% if not is_active %}
-                                    <form method="post" action="{{ url_for('super_admin.superadmin_set_active_year') }}" style="display:inline;">
-                                        <input type="hidden" name="label" value="{{ year_label }}">
-                                        <button type="submit" class="btn-prem" style="padding: 8px 16px; background: #facc15; color: #1a3a8f; font-size: 0.8rem;">
-                                            <i class="fas fa-bolt"></i> ACTIVATE GLOBALLY
-                                        </button>
-                                    </form>
+                                    <form method="post" action="{{ url_for('super_admin.superadmin_set_active_year') }}" style="display:inline;" 
+                                          onsubmit="return confirm('CRITICAL ACTION: Are you sure you want to ACTIVATE {{ year_label }} GLOBALLY? This will update the current academic year for ALL branches immediately.');">
+                                         <input type="hidden" name="label" value="{{ year_label }}">
+                                         <button type="submit" class="btn-prem" style="padding: 8px 16px; background: #facc15; color: #1a3a8f; font-size: 0.8rem;">
+                                             <i class="fas fa-bolt"></i> ACTIVATE GLOBALLY
+                                         </button>
+                                     </form>
                                     {% else %}
                                     <span style="font-size: 0.8rem; font-weight: 700; color: #94a3b8;"><i class="fas fa-check"></i> CURRENT</span>
                                     {% endif %}
