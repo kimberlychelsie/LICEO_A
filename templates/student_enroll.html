@@ -639,7 +639,8 @@
                                 <div class="field">
                                     <label>Full Name <span class="req">*</span></label>
                                     <input type="text" id="field_name" name="student_name"
-                                        placeholder="Last Name, First Name, M.I." required />
+                                        placeholder="Last Name, First Name, M.I." required maxlength="100"
+                                        oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')" />
                                 </div>
                             </div>
                             <div class="c5">
@@ -668,13 +669,15 @@
                                 <div class="field">
                                     <label>Birthday <span class="req">*</span></label>
                                     <input type="date" id="field_dob" name="dob" required />
+                                    <small>Minimum age is 3 years old</small>
                                     <small>Must not be a future date</small>
                                 </div>
                             </div>
                             <div class="c4">
                                 <div class="field">
                                     <label>Birthplace <span class="req">*</span></label>
-                                    <input type="text" name="birthplace" placeholder="City / Municipality" required />
+                                    <input type="text" name="birthplace" placeholder="City, Province" required minlength="3" maxlength="100"
+                                         oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s,]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',')" />
                                 </div>
                             </div>
 
@@ -682,8 +685,9 @@
                                 <div class="field">
                                     <label>Address <span class="req">*</span></label>
                                     <input type="text" name="address"
-                                        placeholder="House No., Street, Barangay, City/Municipality, Province"
-                                        required />
+                                        placeholder="House No., Street, Barangay, City, Province"
+                                        required minlength="10" maxlength="255"
+                                        oninput="this.value = this.value.replace(/[^A-Za-z0-9ñÑ\s,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',').replace(/--+/g, '-')" />
                                 </div>
                             </div>
                             <div class="c4">
@@ -714,8 +718,12 @@
                             <div class="c8">
                                 <div class="field">
                                     <label>Email Address <span class="req">*</span></label>
-                                    <input type="email" name="email" placeholder="student@domain.com" required />
-                                    <small>Use any valid email; duplicates are allowed</small>
+                                    <input type="email" name="email" placeholder="username@domain.com" required 
+                                        minlength="5" maxlength="60"
+                                        pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+                                        oninput="this.value = this.value.replace(/[^a-zA-Z0-9@._-]/g, '').replace(/\.\.+/g, '.').replace(/--+/g, '-').replace(/__+/g, '_').replace(/(@.*)@/g, '$1')"
+                                        title="Please enter a valid email address (e.g. username@domain.com)" />
+                                    <small>Use any valid email; no spaces or special symbols like # % &</small>
                                 </div>
                             </div>
 
@@ -735,7 +743,8 @@
                                 <div class="field">
                                     <label>Father's Name <span class="req">*</span></label>
                                     <input type="text" name="father_name"
-                                        placeholder="Last Name, First Name, M.I." required />
+                                        placeholder="Last Name, First Name, M.I." required maxlength="100"
+                                        oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')" />
                                 </div>
                             </div>
                             <div class="c3">
@@ -754,15 +763,17 @@
                             <div class="c3">
                                 <div class="field">
                                     <label>Father's Occupation <span class="req">*</span></label>
-                                    <input type="text" name="father_occupation" placeholder="e.g., Farmer" required />
+                                    <input type="text" name="father_occupation" placeholder="e.g., Farmer" required maxlength="100"
+                                        oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')" />
                                 </div>
                             </div>
 
                             <div class="c6">
                                 <div class="field">
-                                    <label>Mother's Name <span class="req">*</span></label>
+                                    <label>Mother's Name (Maiden Name) <span class="req">*</span></label>
                                     <input type="text" name="mother_name"
-                                        placeholder="Last Name, First Name, M.I." required />
+                                        placeholder="Last Name (Maiden), First Name, M.I." required maxlength="100"
+                                        oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')" />
                                 </div>
                             </div>
                             <div class="c3">
@@ -781,7 +792,8 @@
                             <div class="c3">
                                 <div class="field">
                                     <label>Mother's Occupation <span class="req">*</span></label>
-                                    <input type="text" name="mother_occupation" placeholder="e.g., Housewife" required />
+                                    <input type="text" name="mother_occupation" placeholder="e.g., Housewife" required maxlength="100"
+                                        oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')" />
                                 </div>
                             </div>
 
@@ -789,7 +801,8 @@
                                 <div class="field">
                                     <label>Guardian Name <span class="req">*</span></label>
                                     <input type="text" name="guardian_name"
-                                        placeholder="Name / Relationship" required />
+                                        placeholder="Name / Relationship" required maxlength="100"
+                                        oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')" />
                                 </div>
                             </div>
                             <div class="c3">
@@ -808,7 +821,11 @@
                                 <div class="field">
                                     <label>Guardian Email <span class="req">*</span></label>
                                     <input type="email" name="guardian_email"
-                                        placeholder="guardian@domain.com" required />
+                                        placeholder="username@domain.com" required 
+                                        minlength="5" maxlength="60"
+                                        pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+                                        oninput="this.value = this.value.replace(/[^a-zA-Z0-9@._-]/g, '').replace(/\.\.+/g, '.').replace(/--+/g, '-').replace(/__+/g, '_').replace(/(@.*)@/g, '$1')"
+                                        title="Please enter a valid email address (e.g. username@domain.com)" />
                                 </div>
                             </div>
 
@@ -826,7 +843,8 @@
                             <div class="c12">
                                 <div class="field">
                                     <label>Last School Attended <span class="req">*</span></label>
-                                    <input type="text" name="previous_school" placeholder="School Name" required />
+                                    <input type="text" name="previous_school" placeholder="School Name" required maxlength="100"
+                                        oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')" />
                                 </div>
                             </div>
                         </div>
@@ -838,7 +856,7 @@
                 <div class="section">
                     <div class="section-head">
                         <h3>Requirement/s Submitted</h3>
-                        <small>PDF, JPG, PNG accepted</small>
+                        <small>PDF, JPG, JPEG, PNG accepted (Max 10MB per file)</small>
                     </div>
                     <div class="section-body">
                         <div class="grid">
@@ -847,7 +865,7 @@
                                  <div class="field">
                                      <label>PSA Birth Certificate <span class="req">*</span></label>
                                      <input type="file" name="psa_birth_cert"
-                                         accept="application/pdf, image/jpeg, image/png" required />
+                                         accept=".pdf,.jpg,.jpeg,.png" required />
                                      <small>Photocopy / Original</small>
                                  </div>
                              </div>
@@ -856,7 +874,7 @@
                                  <div class="field">
                                      <label>Baptismal Certificate <span class="req">*</span></label>
                                      <input type="file" name="baptismal_cert"
-                                         accept="application/pdf, image/jpeg, image/png" required />
+                                         accept=".pdf,.jpg,.jpeg,.png" required />
                                      <small>Photocopy / Original</small>
                                  </div>
                              </div>
@@ -865,7 +883,7 @@
                                  <div class="field">
                                      <label>Card / Form 138 <span class="req">*</span></label>
                                      <input type="file" name="form_138"
-                                         accept="application/pdf, image/jpeg, image/png" required />
+                                         accept=".pdf,.jpg,.jpeg,.png" required />
                                      <small>Latest report card</small>
                                  </div>
                              </div>
@@ -874,7 +892,7 @@
                                  <div class="field">
                                      <label>Good Moral Certificate <span class="req">*</span></label>
                                      <input type="file" name="good_moral"
-                                         accept="application/pdf, image/jpeg, image/png" required />
+                                         accept=".pdf,.jpg,.jpeg,.png" required />
                                      <small>Certificate from previous school</small>
                                  </div>
                              </div>
@@ -883,7 +901,7 @@
                                  <div class="field">
                                      <label>Form 137 <span class="req">*</span></label>
                                      <input type="file" name="form_137"
-                                         accept="application/pdf, image/jpeg, image/png" required />
+                                         accept=".pdf,.jpg,.jpeg,.png" required />
                                      <small>Permanent record / cumulative form</small>
                                  </div>
                              </div>
@@ -929,7 +947,8 @@
                                 <div class="field">
                                     <label>Student's Signature (type full name) <span class="req">*</span></label>
                                     <input type="text" name="student_signature"
-                                        placeholder="Full Name as Signature" required />
+                                        placeholder="Full Name as Signature" required maxlength="100"
+                                        oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '')" />
                                 </div>
                             </div>
                             <div class="c6">
@@ -937,7 +956,8 @@
                                     <label>Parent / Guardian's Signature (type full name)
                                         <span class="req">*</span></label>
                                     <input type="text" name="parent_signature"
-                                        placeholder="Full Name as Signature" required />
+                                        placeholder="Full Name as Signature" required maxlength="100"
+                                        oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '')" />
                                 </div>
                             </div>
                         </div>
@@ -1032,7 +1052,45 @@
             typeRadios.forEach(function(r) {
                 r.addEventListener('change', updateSemVisibility);
             });
+            /* ── Set Dynamic Min Age (3 years) ── */
+            (function initMinAge() {
+                var today = new Date();
+                var yyyy = today.getFullYear() - 3;
+                var mm = String(today.getMonth() + 1).padStart(2, '0');
+                var dd = String(today.getDate()).padStart(2, '0');
+                var maxDate = yyyy + '-' + mm + '-' + dd;
+                if (dobEl) dobEl.setAttribute('max', maxDate);
+            })();
+
             updateSemVisibility(); // run once on load
+
+            /* ── Immediate File Validation ── */
+            document.querySelectorAll('input[type="file"]').forEach(function(input) {
+                input.addEventListener('change', function() {
+                    if (this.files.length > 0) {
+                        var file = this.files[0];
+                        var allowedExts = ['.pdf', '.jpg', '.jpeg', '.png'];
+                        var fileName = file.name.toLowerCase();
+                        var isAllowed = allowedExts.some(ext => fileName.endsWith(ext));
+                        
+                        var maxSizeBytes = 10 * 1024 * 1024; // 10MB
+                        
+                        if (!isAllowed) {
+                            alert('Invalid file type! Only PDF, JPG, JPEG, and PNG are allowed.');
+                            input.value = '';
+                            if (input.value) { input.type = "text"; input.type = "file"; }
+                            return;
+                        }
+                        
+                        if (file.size > maxSizeBytes) {
+                            alert('File is too large! Maximum size is 10MB.');
+                            input.value = '';
+                            if (input.value) { input.type = "text"; input.type = "file"; }
+                            return;
+                        }
+                    }
+                });
+            });
 
             /* ── Duplicate check ── */
             function setBlocked(val, detail) {
@@ -1082,13 +1140,80 @@
             if (dobEl)  dobEl.addEventListener('change', runCheck);
             if (nameEl) nameEl.addEventListener('blur', runCheck);
 
-            /* ── Submit validation ── */
-            document.getElementById('enrollForm').addEventListener('submit', function (e) {
-                if (blocked) { e.preventDefault(); return false; }
+                /* ── Submit validation ── */
+                var isSubmitting = false;
+                document.getElementById('enrollForm').addEventListener('submit', function (e) {
+                    if (isSubmitting) { e.preventDefault(); return false; }
+                    if (blocked) { e.preventDefault(); return false; }
 
-                var errors = [];
-                var today = new Date();
-                today.setHours(0,0,0,0);
+                    var errors = [];
+                    var today = new Date();
+                    today.setHours(0,0,0,0);
+
+
+
+                /* Age validation (Min 3 years) */
+                if (dobEl && dobEl.value) {
+                    var birthDate = new Date(dobEl.value);
+                    var minDate = new Date();
+                    minDate.setFullYear(minDate.getFullYear() - 3);
+                    if (birthDate > minDate) {
+                        errors.push('Student must be at least 3 years old.');
+                    }
+                }
+
+                /* Birthplace validation (No numbers) */
+                var birthplaceEl = document.querySelector('input[name="birthplace"]');
+                if (birthplaceEl && /\d/.test(birthplaceEl.value)) {
+                    errors.push('Birthplace should not contain numbers.');
+                }
+
+                /* Occupation validation */
+                var occInputs = document.querySelectorAll('input[name*="occupation"]');
+                var alphaValidRegex = /^[A-Za-z\s.,-]*$/;
+                occInputs.forEach(function(inp) {
+                    if (inp.value && !alphaValidRegex.test(inp.value)) {
+                        errors.push('Occupation contains invalid characters.');
+                    }
+                    if (inp.value.includes('  ')) {
+                        errors.push('Double spaces are not allowed in occupation fields.');
+                    }
+                });
+
+                /* Signature validation (Allowed chars only) */
+                var studentSig = document.querySelector('input[name="student_signature"]');
+                var parentSig = document.querySelector('input[name="parent_signature"]');
+                var nameValidRegex = /^[A-Za-z\s.,-]*$/;
+                if (studentSig && !nameValidRegex.test(studentSig.value)) {
+                    errors.push('Student signature contains invalid characters.');
+                }
+                if (parentSig && !nameValidRegex.test(parentSig.value)) {
+                    errors.push('Parent signature contains invalid characters.');
+                }
+
+                /* Double space validation */
+                var nameInputs = document.querySelectorAll('input[name*="name"]');
+                nameInputs.forEach(function(inp) {
+                    if (inp.value.includes('  ')) {
+                        errors.push('Double spaces are not allowed in name fields.');
+                    }
+                });
+
+                /* File Size and Type Validation */
+                var fileInputs = document.querySelectorAll('input[type="file"]');
+                var maxSizeBytes = 10 * 1024 * 1024; // 10MB
+                fileInputs.forEach(function(input) {
+                    if (input.files.length > 0) {
+                        var file = input.files[0];
+                        if (file.size > maxSizeBytes) {
+                            errors.push('File "' + (input.name.replace(/_/g, ' ')) + '" is too large. Maximum size is 10MB.');
+                        }
+                        var allowedTypes = ['application/pdf', 'image/jpeg', 'image/pjpeg', 'image/png'];
+                        if (allowedTypes.indexOf(file.type) === -1 && !file.name.toLowerCase().endsWith('.jpg') && !file.name.toLowerCase().endsWith('.jpeg') && !file.name.toLowerCase().endsWith('.pdf') && !file.name.toLowerCase().endsWith('.png')) {
+                             errors.push('File "' + (input.name.replace(/_/g, ' ')) + '" has an invalid type. Only PDF, JPG, JPEG, and PNG are allowed.');
+                        }
+                    }
+                });
 
                 /* Enrollment type */
                 var enrollType = document.querySelector('input[name="enroll_type"]:checked');
@@ -1139,8 +1264,8 @@
                 var form138File = document.querySelector('input[name="form_138"]').files.length;
                 var goodMoralFile = document.querySelector('input[name="good_moral"]').files.length;
                 var form137File = document.querySelector('input[name="form_137"]').files.length;
-                var studentSig = document.querySelector('input[name="student_signature"]').value.trim();
-                var parentSig = document.querySelector('input[name="parent_signature"]').value.trim();
+                var studentSigVal = document.querySelector('input[name="student_signature"]').value.trim();
+                var parentSigVal = document.querySelector('input[name="parent_signature"]').value.trim();
 
                 function isValidPHMobile(num) {
                     return /^09\d{9}$/.test(num) && num.length === 11;
@@ -1213,7 +1338,22 @@
                 } else if (!isValidPHMobile(guardianContact)) {
                     errors.push('Guardian contact must be an 11-digit PH mobile (09XXXXXXXXX).');
                 }
-                if (!guardianEmail) errors.push('Guardian email is required.');
+                if (!guardianEmail) {
+                    errors.push('Guardian email is required.');
+                } else {
+                    var emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9-]+\.[a-zA-Z.]{2,}$/;
+                    if (!emailRegex.test(guardianEmail)) {
+                        errors.push('Guardian email is invalid. Please follow the format name@domain.com and avoid special characters like # % &.');
+                    }
+                }
+
+                var studentEmail = document.querySelector('input[name="email"]').value.trim();
+                if (studentEmail) {
+                    var emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9-]+\.[a-zA-Z.]{2,}$/;
+                    if (!emailRegex.test(studentEmail)) {
+                        errors.push('Student email is invalid. Please follow the format name@domain.com and avoid special characters like # % &.');
+                    }
+                }
 
                 /* Previous school — required */
                 if (!previousSchool) errors.push('Last school attended is required.');
@@ -1226,22 +1366,47 @@
                 if (!form137File)   errors.push('Form 137 is required.');
 
                 /* Signatures — required */
-                if (!studentSig) errors.push('Student signature (typed full name) is required.');
-                if (!parentSig)  errors.push('Parent/Guardian signature (typed full name) is required.');
+                if (!studentSigVal) errors.push('Student signature (typed full name) is required.');
+                if (!parentSigVal)  errors.push('Parent/Guardian signature (typed full name) is required.');
 
                 /* Privacy consent */
                 if (!consent) {
                     errors.push('You must agree to the Data Privacy Consent.');
                 }
 
-                if (errors.length) {
-                    e.preventDefault();
+                /* Double hyphen validation */
+                var allTextInputs = document.querySelectorAll('input[type="text"]');
+                allTextInputs.forEach(function(inp) {
+                    if (inp.value.includes('--')) {
+                        errors.push('Consecutive hyphens are not allowed.');
+                    }
+                });
+
+                if (errors.length > 0) {
                     alert(errors.join('\n'));
+                    e.preventDefault();
                     return false;
                 }
+
+                isSubmitting = true;
+
+                /* Disable button to prevent double submit */
+                submitBtn.disabled = true;
+                submitBtn.innerText = 'Enrolling...';
+                submitBtn.style.opacity = '0.7';
+                submitBtn.style.cursor = 'wait';
+
+                return true;
             });
         })();
-    </script>
+        // Set max date for Birthday (Minimum age: 3 years)
+    const dobInput = document.querySelector('input[name="dob"]');
+    if (dobInput) {
+        const today = new Date();
+        const maxDate = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
+        dobInput.setAttribute('max', maxDate.toISOString().split('T')[0]);
+    }
+</script>
 
 </body>
 

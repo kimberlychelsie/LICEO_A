@@ -463,15 +463,28 @@
 
                                         <strong>Birthday:</strong> <input type="date" name="dob"
                                             class="input-edit track-{{ s.enrollment_id }}" value="{{ s.dob or '' }}">
-                                        <strong>LRN:</strong> <input type="text" name="lrn"
-                                            class="input-edit track-{{ s.enrollment_id }}" value="{{ s.lrn or '' }}">
+                                        
+                                        <strong>Birthplace:</strong> <input type="text" name="birthplace"
+                                            placeholder="City, Province" required minlength="3" maxlength="100"
+                                            class="input-edit track-{{ s.enrollment_id }}" value="{{ s.birthplace or '' }}"
+                                            oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s,]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',')">
+
+                                        <strong>LRN:</strong> <input type="text" name="lrn" maxlength="12"
+                                            class="input-edit track-{{ s.enrollment_id }}" value="{{ s.lrn or '' }}"
+                                            oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+
                                         <strong>Email:</strong> <input type="email" name="email"
-                                            class="input-edit track-{{ s.enrollment_id }}" value="{{ s.email or '' }}">
-                                        <strong>Contact:</strong> <input type="text" name="contact_number"
-                                            class="input-edit track-{{ s.enrollment_id }}"
-                                            value="{{ s.contact_number or '' }}">
-                                        <strong style="align-self: flex-start;">Address:</strong>
+                                            placeholder="username@domain.com" required minlength="5" maxlength="60"
+                                            pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+                                            class="input-edit track-{{ s.enrollment_id }}" value="{{ s.email or '' }}"
+                                            oninput="this.value = this.value.replace(/[^a-zA-Z0-9@._-]/g, '').replace(/\.\.+/g, '.').replace(/--+/g, '-').replace(/__+/g, '_').replace(/(@.*)@/g, '$1')">
+
+                                        <strong>Contact:</strong> <input type="text" name="contact_number" maxlength="11"
+                                            class="input-edit track-{{ s.enrollment_id }}" value="{{ s.contact_number or '' }}"
+                                            oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                                         <textarea name="address" class="input-edit track-{{ s.enrollment_id }}" rows="2"
+                                            placeholder="House No., Street, Barangay, City, Province" required minlength="10" maxlength="255"
+                                            oninput="this.value = this.value.replace(/[^A-Za-z0-9ñÑ\s,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',').replace(/--+/g, '-')"
                                             style="resize: none;">{{ s.address or '' }}</textarea>
 
                                         <div
@@ -507,31 +520,50 @@
                                     <div class="grid-data">
                                         <strong>Guardian:</strong> <input type="text" name="guardian_name"
                                             class="input-edit track-{{ s.enrollment_id }}"
-                                            value="{{ s.guardian_name or '' }}">
-                                        <strong>Contact:</strong> <input type="text" name="guardian_contact"
+                                            value="{{ s.guardian_name or '' }}" maxlength="100"
+                                            oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
+                                        
+                                        <strong>Contact:</strong> <input type="text" name="guardian_contact" maxlength="11"
                                             class="input-edit track-{{ s.enrollment_id }}"
-                                            value="{{ s.guardian_contact or '' }}">
+                                            value="{{ s.guardian_contact or '' }}"
+                                            oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+
                                         <strong>Email:</strong> <input type="email" name="guardian_email"
+                                            placeholder="username@domain.com" required minlength="5" maxlength="60"
+                                            pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
                                             class="input-edit track-{{ s.enrollment_id }}"
-                                            value="{{ s.guardian_email or '' }}">
+                                            value="{{ s.guardian_email or '' }}"
+                                            oninput="this.value = this.value.replace(/[^a-zA-Z0-9@._-]/g, '').replace(/\.\.+/g, '.').replace(/--+/g, '-').replace(/__+/g, '_').replace(/(@.*)@/g, '$1')">
+
                                         <strong>Father:</strong> <input type="text" name="father_name"
                                             class="input-edit track-{{ s.enrollment_id }}"
-                                            value="{{ s.father_name or '' }}">
-                                        <strong>Father Contact:</strong> <input type="text" name="father_contact"
+                                            value="{{ s.father_name or '' }}" maxlength="100"
+                                            oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
+
+                                        <strong>Father Contact:</strong> <input type="text" name="father_contact" maxlength="11"
                                             class="input-edit track-{{ s.enrollment_id }}"
-                                            value="{{ s.father_contact or '' }}">
+                                            value="{{ s.father_contact or '' }}"
+                                            oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+
                                         <strong>Father Occupation:</strong> <input type="text" name="father_occupation"
                                             class="input-edit track-{{ s.enrollment_id }}"
-                                            value="{{ s.father_occupation or '' }}">
+                                            value="{{ s.father_occupation or '' }}" maxlength="100"
+                                            oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
+
                                         <strong>Mother:</strong> <input type="text" name="mother_name"
                                             class="input-edit track-{{ s.enrollment_id }}"
-                                            value="{{ s.mother_name or '' }}">
-                                        <strong>Mother Contact:</strong> <input type="text" name="mother_contact"
+                                            value="{{ s.mother_name or '' }}" maxlength="100"
+                                            oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
+
+                                        <strong>Mother Contact:</strong> <input type="text" name="mother_contact" maxlength="11"
                                             class="input-edit track-{{ s.enrollment_id }}"
-                                            value="{{ s.mother_contact or '' }}">
+                                            value="{{ s.mother_contact or '' }}"
+                                            oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+
                                         <strong>Mother Occupation:</strong> <input type="text" name="mother_occupation"
                                             class="input-edit track-{{ s.enrollment_id }}"
-                                            value="{{ s.mother_occupation or '' }}">
+                                            value="{{ s.mother_occupation or '' }}" maxlength="100"
+                                            oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
                                     </div>
 
                                     <div
@@ -539,7 +571,8 @@
                                         <div class="grid-data">
                                             <strong>Prev School:</strong> <input type="text" name="previous_school"
                                                 class="input-edit track-{{ s.enrollment_id }}"
-                                                value="{{ s.previous_school or '' }}">
+                                                value="{{ s.previous_school or '' }}" maxlength="100"
+                                                oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
                                             <strong>Type:</strong>
                                             <select name="enroll_type" class="input-edit track-{{ s.enrollment_id }}">
                                                 {% for t in ['New', 'Transferee', 'Continuing', 'Returning'] %}
@@ -892,5 +925,12 @@
             btn.innerHTML = originalText;
         }
     }
+
+    // Set max date for Birthday (Minimum age: 3 years)
+    document.querySelectorAll('input[name="dob"]').forEach(input => {
+        const today = new Date();
+        const maxDate = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
+        input.setAttribute('max', maxDate.toISOString().split('T')[0]);
+    });
 </script>
 {% endblock %}

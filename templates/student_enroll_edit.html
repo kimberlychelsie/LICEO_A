@@ -297,7 +297,7 @@
                         <div class="c12">
                             <div class="field">
                                 <label>Remarks / Notes</label>
-                                <input type="text" name="remarks" value="{{ enrollment.remarks or '' }}" placeholder="e.g. Scholarship applicant...">
+                                <input type="text" name="remarks" value="{{ enrollment.remarks or '' }}" placeholder="e.g. Scholarship applicant..." maxlength="500">
                             </div>
                         </div>
                     </div>
@@ -313,7 +313,8 @@
                         <div class="c8">
                             <div class="field">
                                 <label>Full Name</label>
-                                <input type="text" name="student_name" value="{{ enrollment.student_name }}" required readonly>
+                                <input type="text" name="student_name" value="{{ enrollment.student_name }}" required readonly maxlength="100"
+                                    oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
                             </div>
                         </div>
                         <div class="c4">
@@ -340,6 +341,13 @@
                         </div>
                         <div class="c4">
                             <div class="field">
+                                <label>Birthplace</label>
+                                <input type="text" name="birthplace" value="{{ enrollment.birthplace or '' }}" required readonly minlength="3" maxlength="100"
+                                    oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s,]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',')">
+                            </div>
+                        </div>
+                        <div class="c4">
+                            <div class="field">
                                 <label>Sex</label>
                                 <select name="gender" disabled>
                                     <option value="Male" {% if enrollment.gender == 'Male' %}selected{% endif %}>Male</option>
@@ -350,7 +358,20 @@
                         <div class="c12">
                             <div class="field">
                                 <label>Address</label>
-                                <input type="text" name="address" value="{{ enrollment.address }}" required readonly>
+                                <input type="text" name="address" value="{{ enrollment.address }}" required readonly minlength="10" maxlength="255"
+                                    oninput="this.value = this.value.replace(/[^A-Za-z0-9ñÑ\s,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',').replace(/--+/g, '-')">
+                            </div>
+                        </div>
+                        <div class="c12">
+                            <div class="field">
+                                <label>Student Email Address</label>
+                                <input type="email" name="email" value="{{ enrollment.email or '' }}" required readonly 
+                                    placeholder="username@domain.com"
+                                    minlength="5" maxlength="60"
+                                    pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+                                    oninput="this.value = this.value.replace(/[^a-zA-Z0-9@._-]/g, '').replace(/\.\.+/g, '.').replace(/--+/g, '-').replace(/__+/g, '_').replace(/(@.*)@/g, '$1')"
+                                    title="Please enter a valid email address">
+                                <small style="color:var(--muted); font-size:10px;">Note: This is the student's personal/school email.</small>
                             </div>
                         </div>
                     </div>
@@ -367,7 +388,8 @@
                         <div class="c6">
                             <div class="field">
                                 <label>Father's Name</label>
-                                <input type="text" name="father_name" value="{{ enrollment.father_name or '' }}" readonly>
+                                <input type="text" name="father_name" value="{{ enrollment.father_name or '' }}" readonly maxlength="100"
+                                    oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
                             </div>
                         </div>
                         <div class="c3">
@@ -379,15 +401,17 @@
                         <div class="c3">
                             <div class="field">
                                 <label>Occupation</label>
-                                <input type="text" name="father_occupation" value="{{ enrollment.father_occupation or '' }}" readonly>
+                                <input type="text" name="father_occupation" value="{{ enrollment.father_occupation or '' }}" readonly maxlength="100"
+                                    oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
                             </div>
                         </div>
                         
                         <!-- Mother -->
                         <div class="c6">
                             <div class="field">
-                                <label>Mother's Name</label>
-                                <input type="text" name="mother_name" value="{{ enrollment.mother_name or '' }}" readonly>
+                                <label>Mother's Name (Maiden Name)</label>
+                                <input type="text" name="mother_name" value="{{ enrollment.mother_name or '' }}" placeholder="Last Name (Maiden), First Name, M.I." readonly maxlength="100"
+                                    oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
                             </div>
                         </div>
                         <div class="c3">
@@ -399,7 +423,8 @@
                         <div class="c3">
                             <div class="field">
                                 <label>Occupation</label>
-                                <input type="text" name="mother_occupation" value="{{ enrollment.mother_occupation or '' }}" readonly>
+                                <input type="text" name="mother_occupation" value="{{ enrollment.mother_occupation or '' }}" readonly maxlength="100"
+                                    oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
                             </div>
                         </div>
 
@@ -407,7 +432,8 @@
                         <div class="c6">
                             <div class="field">
                                 <label>Guardian Name <span style="color:red">*</span></label>
-                                <input type="text" name="guardian_name" value="{{ enrollment.guardian_name }}" required readonly>
+                                <input type="text" name="guardian_name" value="{{ enrollment.guardian_name }}" required readonly maxlength="100"
+                                    oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
                             </div>
                         </div>
                         <div class="c3">
@@ -419,7 +445,12 @@
                         <div class="c3">
                             <div class="field">
                                 <label>Email <span style="color:red">*</span></label>
-                                <input type="email" name="guardian_email" value="{{ enrollment.guardian_email or '' }}" required readonly>
+                                <input type="email" name="guardian_email" value="{{ enrollment.guardian_email or '' }}" required readonly 
+                                    placeholder="username@domain.com"
+                                    minlength="5" maxlength="60"
+                                    pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
+                                    oninput="this.value = this.value.replace(/[^a-zA-Z0-9@._-]/g, '').replace(/\.\.+/g, '.').replace(/--+/g, '-').replace(/__+/g, '_').replace(/(@.*)@/g, '$1')"
+                                    title="Please enter a valid email address">
                             </div>
                         </div>
                     </div>
@@ -435,7 +466,8 @@
                         <div class="c10">
                             <div class="field">
                                 <label>Last School Attended</label>
-                                <input type="text" name="previous_school" value="{{ enrollment.previous_school or '' }}" readonly>
+                                <input type="text" name="previous_school" value="{{ enrollment.previous_school or '' }}" readonly maxlength="100"
+                                    oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
                             </div>
                         </div>
                         <div class="c2">
@@ -492,6 +524,17 @@
         </div>
     </div>
     <script>
+        /* ── Set Dynamic Min Age (3 years) ── */
+        (function initMinAge() {
+            var today = new Date();
+            var yyyy = today.getFullYear() - 3;
+            var mm = String(today.getMonth() + 1).padStart(2, '0');
+            var dd = String(today.getDate()).padStart(2, '0');
+            var maxDate = yyyy + '-' + mm + '-' + dd;
+            var dobField = document.querySelector('input[name="dob"]');
+            if (dobField) dobField.setAttribute('max', maxDate);
+        })();
+
         function toggleSection(sectionId) {
             const section = document.getElementById(sectionId);
             const btn = section.querySelector('.btn-unlock');
@@ -515,11 +558,68 @@
             }
         }
 
-        // Before submitting, we need to temporarily enable selects so they are sent in the POST
-        document.querySelector('form').addEventListener('submit', function() {
+        document.querySelector('form').addEventListener('submit', function(e) {
             document.querySelectorAll('select[disabled]').forEach(s => s.disabled = false);
+
+            var errors = [];
+            var dob = document.querySelector('input[name="dob"]');
+            if (dob && dob.value) {
+                var birthDate = new Date(dob.value);
+                var minDate = new Date();
+                minDate.setFullYear(minDate.getFullYear() - 3);
+                if (birthDate > minDate) {
+                    errors.push('Student must be at least 3 years old.');
+                }
+            }
+
+            var nameInputs = document.querySelectorAll('input[name*="name"], input[name*="occupation"]');
+            var nameValidRegex = /^[A-Za-z\s.,-]*$/;
+            nameInputs.forEach(function(inp) {
+                if (inp.value.includes('  ')) {
+                    errors.push('Double spaces are not allowed in name/occupation fields.');
+                }
+                if (inp.value.includes('--')) {
+                    errors.push('Consecutive hyphens are not allowed.');
+                }
+                if (inp.value && !nameValidRegex.test(inp.value)) {
+                    errors.push('Field "' + inp.name + '" contains invalid characters.');
+                }
+            });
+
+            /* Email Validation */
+            var emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9-]+\.[a-zA-Z.]{2,}$/;
+            var emailField = document.querySelector('input[name="email"]');
+            var guardianEmailField = document.querySelector('input[name="guardian_email"]');
+            
+            if (emailField && emailField.value && !emailRegex.test(emailField.value)) {
+                errors.push('Student email is invalid. Please use format name@domain.com and avoid special characters like # % &.');
+            }
+            if (guardianEmailField && guardianEmailField.value && !emailRegex.test(guardianEmailField.value)) {
+                errors.push('Guardian email is invalid. Please use format name@domain.com and avoid special characters like # % &.');
+            }
+
+            if (errors.length > 0) {
+                alert(errors.join('\n'));
+                e.preventDefault();
+                return false;
+            }
+
+            /* Disable button to prevent double submit */
+            const submitBtn = document.querySelector('button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerText = 'Saving Changes...';
+                submitBtn.style.opacity = '0.7';
+                submitBtn.style.cursor = 'wait';
+            }
         });
-    </script>
+        // Set max date for Birthday (Minimum age: 3 years)
+    document.querySelectorAll('input[name="dob"]').forEach(input => {
+        const today = new Date();
+        const maxDate = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
+        input.setAttribute('max', maxDate.toISOString().split('T')[0]);
+    });
+</script>
 </body>
 
 </html>
