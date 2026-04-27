@@ -1,0 +1,333 @@
+{% extends "base.html" %}
+{% block title %}Attendance Oversight{% endblock %}
+
+{% block styles %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+    :root {
+        --royal-blue: #1e3a8a;
+        --royal-light: #3b82f6;
+        --glass-bg: rgba(255, 255, 255, 0.95);
+        --premium-shadow: 0 20px 40px rgba(0,0,0,0.08);
+    }
+
+    .dashboard-wrap {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 40px 24px;
+        font-family: 'Outfit', sans-serif;
+        background: #f8fafc;
+        min-height: 100vh;
+    }
+
+    /* ── Premium Header ── */
+    .hero-banner {
+        background: linear-gradient(135deg, var(--royal-blue) 0%, #0c2461 100%);
+        border-radius: 28px;
+        padding: 48px;
+        color: white;
+        margin-bottom: 40px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        box-shadow: 0 15px 35px rgba(30, 58, 138, 0.2);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .hero-banner::after {
+        content: '';
+        position: absolute;
+        top: -50%;
+        right: -20%;
+        width: 600px;
+        height: 600px;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        border-radius: 50%;
+    }
+
+    .hero-banner .title {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin: 0 0 12px;
+        letter-spacing: -0.03em;
+    }
+
+    .hero-banner .subtitle {
+        opacity: 0.85;
+        font-size: 1.1rem;
+        font-weight: 400;
+        margin: 0;
+    }
+
+    .date-badge {
+        background: rgba(255,255,255,0.15);
+        backdrop-filter: blur(10px);
+        padding: 14px 28px;
+        border-radius: 16px;
+        font-weight: 700;
+        border: 1px solid rgba(255,255,255,0.2);
+        font-size: 1.1rem;
+    }
+
+    /* ── Glass Stat Cards ── */
+    .grid-4 {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 24px;
+        margin-bottom: 40px;
+    }
+
+    .stat-card {
+        background: var(--glass-bg);
+        backdrop-filter: blur(10px);
+        border-radius: 24px;
+        padding: 32px;
+        text-align: left;
+        box-shadow: var(--premium-shadow);
+        border: 1px solid rgba(255, 255, 255, 0.5);
+        transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        position: relative;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-8px);
+    }
+    
+    .stat-value {
+        font-size: 3.2rem;
+        font-weight: 800;
+        margin-bottom: 4px;
+        line-height: 1;
+        letter-spacing: -0.04em;
+    }
+    .stat-label {
+        font-size: 0.85rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-weight: 700;
+    }
+
+    .stat-icon {
+        position: absolute;
+        top: 32px;
+        right: 32px;
+        width: 48px;
+        height: 48px;
+        background: #f1f5f9;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--royal-blue);
+    }
+
+    /* ── Content Sections ── */
+    .section-card {
+        background: white;
+        border-radius: 28px;
+        box-shadow: var(--premium-shadow);
+        margin-bottom: 32px;
+        overflow: hidden;
+        border: 1px solid #f1f5f9;
+    }
+
+    .section-header {
+        padding: 28px 32px;
+        font-weight: 800;
+        font-size: 1.4rem;
+        display: flex;
+        flex-direction: column;
+        border-bottom: 1px solid #f1f5f9;
+    }
+
+    .section-header .subtext {
+        font-size: 0.9rem;
+        font-weight: 500;
+        opacity: 0.7;
+        margin-top: 6px;
+    }
+
+    .modern-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+    .modern-table th {
+        background: #f8fafc;
+        text-align: left;
+        padding: 20px 32px;
+        color: #64748b;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-weight: 800;
+    }
+
+    .modern-table td {
+        padding: 22px 32px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 1rem;
+        color: #1e293b;
+    }
+
+    .modern-table tr:hover td {
+        background: #f8fafc;
+    }
+
+    .badge {
+        padding: 6px 14px;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+
+    .badge-danger { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+    .badge-warning { background: #fff7ed; color: #c2410c; border: 1px solid #ffedd5; }
+    .badge-success { background: #f0fdf4; color: #166534; border: 1px solid #dcfce7; }
+
+    .empty-state {
+        padding: 80px 40px;
+        text-align: center;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        margin-bottom: 16px;
+        display: block;
+    }
+
+    @media (max-width: 1100px) {
+        .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 768px) {
+        .hero-banner { padding: 32px; }
+        .hero-banner .title { font-size: 1.8rem; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrap">
+    
+    <div class="hero-banner">
+        <div>
+            <h1 class="title">Attendance Oversight</h1>
+            <p class="subtitle">Monitor daily attendance and early interventions</p>
+        </div>
+        <div style="background: rgba(255,255,255,0.2); padding: 12px 24px; border-radius: 12px; font-weight: 700;">
+            📅 {{ today_date }}
+        </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="grid-4">
+        <div class="stat-card" style="border-left: 6px solid #16a34a;">
+            <div class="stat-icon"><i class="fas fa-percent"></i></div>
+            <div class="stat-value" style="color: #16a34a;">{{ attendance_rate }}%</div>
+            <div class="stat-label">Daily Attendance</div>
+        </div>
+        <div class="stat-card" style="border-left: 6px solid var(--royal-light);">
+            <div class="stat-icon"><i class="fas fa-user-check"></i></div>
+            <div class="stat-value" style="color: var(--royal-blue);">{{ today_stats['P'] }}</div>
+            <div class="stat-label">Present Students</div>
+        </div>
+        <div class="stat-card" style="border-left: 6px solid #dc2626;">
+            <div class="stat-icon"><i class="fas fa-user-times"></i></div>
+            <div class="stat-value" style="color: #dc2626;">{{ today_stats['A'] }}</div>
+            <div class="stat-label">Absent Students</div>
+        </div>
+        <div class="stat-card" style="border-left: 6px solid #d97706;">
+            <div class="stat-icon"><i class="fas fa-clock"></i></div>
+            <div class="stat-value" style="color: #d97706;">{{ today_stats['L'] }}</div>
+            <div class="stat-label">Late Arrivals</div>
+        </div>
+    </div>
+
+    <!-- Habitual Absentees -->
+    <div class="section-card">
+        <div class="section-header" style="background: #fef2f2; color: #b91c1c; border-left: 8px solid #b91c1c;">
+            🚨 Habitual Absentees (Action Required)
+            <span class="subtext">Students with 3 or more total absences. Guidance intervention is recommended.</span>
+        </div>
+        <div class="table-responsive">
+            {% if habitual_absentees %}
+            <table class="modern-table">
+                <thead>
+                    <tr>
+                        <th>Student Name</th>
+                        <th>Grade & Section</th>
+                        <th style="text-align: center;">Total Absences</th>
+                        <th>Last Absence</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for h in habitual_absentees %}
+                    <tr>
+                        <td style="font-weight: 700;">{{ h.student_name }}</td>
+                        <td>{{ h.grade_level }} - {{ h.section_name }}</td>
+                        <td style="text-align: center;">
+                            <span class="badge badge-danger" style="font-size: 1rem;">{{ h.absent_count }}</span>
+                        </td>
+                        <td style="color: var(--muted); font-weight: 500;">
+                            {{ h.last_absence.strftime('%B %d, %Y') if h.last_absence else 'N/A' }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <span class="empty-icon">🌟</span>
+                <p style="color: #166534; font-size: 1.2rem; font-weight: 700; margin: 0;">Excellent! No habitual absentees in this branch.</p>
+                <p style="color: #64748b; margin-top: 8px;">All students are maintaining good attendance records.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Missing Teacher Attendance -->
+    <div class="section-card">
+        <div class="section-header" style="background: #fff7ed; color: #c2410c; border-left: 8px solid #c2410c;">
+            ⚠️ Pending Teacher Attendance Checks (Today)
+            <span class="subtext">Teachers with active schedules today who have not yet submitted their attendance records.</span>
+        </div>
+        <div class="table-responsive">
+            {% if missing_attendance %}
+            <table class="modern-table">
+                <thead>
+                    <tr>
+                        <th>Teacher Name</th>
+                        <th>Subject</th>
+                        <th>Grade & Section</th>
+                        <th>Schedule Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in missing_attendance %}
+                    <tr>
+                        <td style="font-weight: 700;">{{ m.teacher_name }}</td>
+                        <td>{{ m.subject_name }}</td>
+                        <td>{{ m.grade_level }} - {{ m.section_name }}</td>
+                        <td>{{ m.start_time.strftime('%I:%M %p') }} - {{ m.end_time.strftime('%I:%M %p') }}</td>
+                        <td><span class="badge badge-warning">Not Checked</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <div class="empty-state">
+                <span class="empty-icon">✅</span>
+                <p style="color: #166534; font-size: 1.2rem; font-weight: 700; margin: 0;">Perfect Compliance!</p>
+                <p style="color: #64748b; margin-top: 8px;">All teachers have successfully submitted their attendance for today.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

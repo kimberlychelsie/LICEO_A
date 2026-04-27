@@ -34,6 +34,90 @@ def _normalize_grade(grade_str):
     num = m.group(1) if m else None
     return grade_str, (num or grade_str)
 
+def _get_grading_period_by_date(cur, branch_id, year_id, date_obj):
+    """Auto-detect grading period based on academic calendar dates."""
+    cur.execute("""
+        SELECT period_name 
+        FROM grading_period_ranges 
+        WHERE branch_id = %s AND year_id = %s 
+          AND %s BETWEEN start_date AND end_date
+        LIMIT 1
+    """, (branch_id, year_id, date_obj))
+    row = cur.fetchone()
+    return row["period_name"] if row else None
+
+def _normalize_period_name(value):
+    if not value:
+        return ""
+    return str(value).replace("Grading", "").strip()
+
+def _get_unlocked_grading_periods(cur, branch_id, year_id, as_of_date=None):
+    """
+    Grading periods that are already open based on admin date ranges.
+    If no ranges are configured, allow all periods to avoid blocking operations.
+    """
+    if as_of_date is None:
+        ph_tz = pytz.timezone("Asia/Manila")
+        as_of_date = datetime.now(ph_tz).date()
+
+    cur.execute("""
+        SELECT period_name, start_date
+        FROM grading_period_ranges
+        WHERE branch_id = %s AND year_id = %s
+    """, (branch_id, year_id))
+    rows = cur.fetchall() or []
+    if not rows:
+        return GRADING_PERIODS[:]
+
+    start_map = {}
+    for r in rows:
+        pname = _normalize_period_name(r.get("period_name"))
+        if pname in GRADING_PERIODS:
+            sdate = r.get("start_date")
+            if pname not in start_map or (sdate and sdate < start_map[pname]):
+                start_map[pname] = sdate
+
+    return [p for p in GRADING_PERIODS if p in start_map and start_map[p] and start_map[p] <= as_of_date]
+
+def _is_holiday_or_weekend(cur, branch_id, year_id, date_obj):
+    """Check if a date is a weekend or a holiday (global or local)."""
+    # Weekend check (DISABLED FOR TESTING)
+    # if date_obj.weekday() >= 5: # 5=Saturday, 6=Sunday
+    #     return True, "Weekend"
+    
+    # Holiday check
+    cur.execute("""
+        SELECT holiday_name 
+        FROM holidays 
+        WHERE (branch_id = %s OR branch_id IS NULL) 
+          AND year_id = %s AND holiday_date = %s
+        LIMIT 1
+    """, (branch_id, year_id, date_obj))
+    row = cur.fetchone()
+    if row:
+        return True, row["holiday_name"]
+    
+    return False, None
+
+def _count_school_days(cur, branch_id, year_id, start_date, end_date):
+    """Count non-weekend, non-holiday days in range."""
+    # Fetch all holidays in range
+    cur.execute("""
+        SELECT holiday_date 
+        FROM holidays 
+        WHERE (branch_id = %s OR branch_id IS NULL) 
+          AND year_id = %s AND holiday_date BETWEEN %s AND %s
+    """, (branch_id, year_id, start_date, end_date))
+    holidays = {r["holiday_date"] for r in cur.fetchall()}
+    
+    total = 0
+    curr = start_date
+    while curr <= end_date:
+        if curr.weekday() < 5 and curr not in holidays:
+            total += 1
+        curr += pd.Timedelta(days=1)
+    return total
+
 
 def parse_docx(file):
     """Parse questions from a .docx file (robust to multi-field/concatenated lines)."""
@@ -165,6 +249,53 @@ def _get_active_school_year(cur, branch_id):
     if isinstance(row, tuple):
         return row[0]
     return row["year_id"]
+
+
+def _sync_matching_options_for_exam(cur, exam_id, user_id, branch_id, year_id):
+    """
+    Ensures all matching-type questions in an exam (or batch of exams) share the same 
+    set of choices (all possible correct answers).
+    """
+    # 1. Check if batch_id exists to sync across multiple sections' copies of this exam
+    cur.execute("SELECT batch_id FROM exams WHERE exam_id = %s", (exam_id,))
+    row = cur.fetchone()
+    batch_id = row["batch_id"] if row else None
+    
+    target_exam_ids = [exam_id]
+    if batch_id:
+        cur.execute("""
+            SELECT e.exam_id FROM exams e
+            JOIN sections s ON e.section_id = s.section_id
+            WHERE e.batch_id = %s AND e.teacher_id = %s AND e.branch_id = %s AND s.year_id = %s
+        """, (batch_id, user_id, branch_id, year_id))
+        target_exam_ids = [r["exam_id"] for r in (cur.fetchall() or [])]
+    
+    for t_id in target_exam_ids:
+        # 2. Collect all correct answers for matching questions in THIS specific exam copy
+        cur.execute("""
+            SELECT DISTINCT correct_answer FROM exam_questions
+            WHERE exam_id = %s AND question_type = 'matching'
+        """, (t_id,))
+        rows = cur.fetchall() or []
+        
+        # Deduplicate and sort
+        all_opts = []
+        seen = set()
+        for r in rows:
+            ans = str(r["correct_answer"] or "").strip()
+            if ans and ans not in seen:
+                all_opts.append(ans)
+                seen.add(ans)
+        all_opts.sort()
+        
+        choices_json = json.dumps({"options": all_opts}) if all_opts else None
+        
+        # 3. Update all matching questions for this exam with the new shared pool
+        cur.execute("""
+            UPDATE exam_questions
+            SET choices = %s
+            WHERE exam_id = %s AND question_type = 'matching'
+        """, (choices_json, t_id))
 
 
 
@@ -747,6 +878,7 @@ def create_activity():
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     
+    unlocked_periods = GRADING_PERIODS[:]
     try:
         year_id = _get_active_school_year(cur, branch_id)
         if not year_id:
@@ -763,7 +895,24 @@ def create_activity():
             due_date = request.form.get("due_date", "")
             status = request.form.get("status", "Draft")
             allowed_file_types = request.form.get("allowed_file_types", "").strip()
-            grading_period = request.form.get("grading_period")
+            
+            # Respect explicitly selected period (from subject tab), then fallback to auto-detect.
+            grading_period = (request.form.get("grading_period") or "").strip()
+            if not grading_period and due_date:
+                dt_obj = datetime.strptime(due_date.split('T')[0], '%Y-%m-%d').date()
+                grading_period = _get_grading_period_by_date(cur, branch_id, year_id, dt_obj)
+            grading_period = _normalize_period_name(grading_period)
+                
+            if not grading_period:
+                flash("The selected Due Date does not fall within any configured Grading Period. Please check the Academic Calendar or contact your admin.", "error")
+                return redirect(url_for("teacher.create_activity", subject_id=subject_id))
+            if grading_period not in GRADING_PERIODS:
+                flash("Invalid grading period selected.", "error")
+                return redirect(url_for("teacher.create_activity", subject_id=subject_id))
+            unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
+            if grading_period not in unlocked_periods:
+                flash(f"{grading_period} Grading is not open yet based on the Academic Calendar.", "error")
+                return redirect(url_for("teacher.create_activity", subject_id=subject_id, period=grading_period))
             
             if not subject_id or not section_ids:
                 flash("Subject and at least one section are required.", "error")
@@ -828,7 +977,13 @@ def create_activity():
             db.commit()
             
             flash("Activity created successfully!", "success")
-            return redirect(url_for("teacher.teacher_class_view", subject_id=subject_id))
+            return redirect(url_for(
+                "teacher.teacher_class_view",
+                subject_id=subject_id,
+                section=int(section_ids[0]),
+                active_tab="activities",
+                period=grading_period
+            ))
         
         # GET: fetch sections and subjects for this teacher
         cur.execute('''
@@ -842,6 +997,7 @@ def create_activity():
     ORDER BY g.display_order, s.section_name, sub.name
 ''', (user_id, branch_id, year_id))
         teacher_assignments = cur.fetchall()
+        unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
         
     finally:
         cur.close()
@@ -853,11 +1009,14 @@ def create_activity():
     min_date = ph_now.strftime("%Y-%m-%d") + "T00:00"
     
     subject_id = request.args.get("subject_id")
+    selected_period = _normalize_period_name(request.args.get("period"))
     
     return render_template("teacher_create_activity.html", 
                          teacher_assignments=teacher_assignments, 
                          min_date=min_date,
-                         subject_id=subject_id)
+                         subject_id=subject_id,
+                         selected_period=selected_period,
+                         unlocked_periods=unlocked_periods)
 
 
 @teacher_bp.route("/teacher/activities/<int:activity_id>/edit", methods=["GET", "POST"])
@@ -895,7 +1054,24 @@ def edit_activity(activity_id):
             due_date = request.form.get("due_date", "")
             status = request.form.get("status", "Draft")
             allowed_file_types = request.form.get("allowed_file_types", "").strip()
-            grading_period = request.form.get("grading_period")
+            
+            # Smart Auto-detect Grading Period on Edit
+            grading_period = (request.form.get("grading_period") or "").strip()
+            if not grading_period and due_date:
+                dt_obj = datetime.strptime(due_date.split('T')[0], '%Y-%m-%d').date()
+                grading_period = _get_grading_period_by_date(cur, branch_id, year_id, dt_obj)
+            grading_period = _normalize_period_name(grading_period)
+                
+            if not grading_period:
+                flash("The updated Due Date does not fall within any configured Grading Period. Please check the date.", "error")
+                return redirect(url_for("teacher.edit_activity", activity_id=activity_id))
+            if grading_period not in GRADING_PERIODS:
+                flash("Invalid grading period selected.", "error")
+                return redirect(url_for("teacher.edit_activity", activity_id=activity_id))
+            unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
+            if grading_period not in unlocked_periods:
+                flash(f"{grading_period} Grading is not open yet based on the Academic Calendar.", "error")
+                return redirect(url_for("teacher.edit_activity", activity_id=activity_id))
             
             attachment_path = activity['attachment_path']
             if 'attachment' in request.files:
@@ -1145,6 +1321,94 @@ def allow_resubmission(submission_id):
 # EXAM ROUTES — TEACHER
 # ══════════════════════════════════════════
 
+@teacher_bp.route("/teacher/exams/<int:exam_id>/settings", methods=["GET", "POST"])
+def teacher_exam_edit_settings(exam_id):
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        # Verify ownership
+        cur.execute("""
+            SELECT e.*, s.section_name, g.name AS grade_level_name, sub.name AS subject_name
+            FROM exams e
+            JOIN sections s ON e.section_id = s.section_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            JOIN subjects sub ON e.subject_id = sub.subject_id
+            WHERE e.exam_id = %s AND e.teacher_id = %s AND s.year_id = %s
+        """, (exam_id, user_id, year_id))
+        exam = cur.fetchone()
+        if not exam:
+            flash("Exam/Quiz not found or unauthorized.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        if request.method == "POST":
+            title = (request.form.get("title") or "").strip()
+            duration_mins = int(request.form.get("duration_mins", 60))
+            scheduled_start = request.form.get("scheduled_start") or None
+            max_attempts = int(request.form.get("max_attempts", 1))
+            passing_score = int(request.form.get("passing_score", 60))
+            randomize = request.form.get("randomize") == "1"
+            instructions = (request.form.get("instructions") or "").strip() or None
+            grading_period = request.form.get("grading_period")
+
+            # Smart Auto-detect Grading Period
+            try:
+                if scheduled_start:
+                    dt_obj = datetime.strptime(scheduled_start.split('T')[0], '%Y-%m-%d').date()
+                    detected_period = _get_grading_period_by_date(cur, branch_id, year_id, dt_obj)
+                    if detected_period:
+                        grading_period = detected_period
+            except:
+                pass
+
+            if not grading_period:
+                flash("The updated Scheduled Start date does not fall within any configured Grading Period.", "error")
+                return redirect(url_for("teacher.teacher_exam_edit_settings", exam_id=exam_id))
+
+            if not title:
+                flash("Title is required.", "error")
+                return redirect(url_for("teacher.teacher_exam_edit_settings", exam_id=exam_id))
+
+            cur.execute("""
+                UPDATE exams SET
+                    title = %s, duration_mins = %s, scheduled_start = %s,
+                    max_attempts = %s, passing_score = %s, randomize = %s,
+                    instructions = %s, grading_period = %s
+                WHERE exam_id = %s
+            """, (title, duration_mins, scheduled_start, max_attempts, passing_score,
+                  randomize, instructions, grading_period, exam_id))
+            db.commit()
+
+            flash("Settings updated successfully.", "success")
+            if exam["exam_type"] == "quiz":
+                return redirect(url_for("teacher.teacher_quizzes"))
+            else:
+                return redirect(url_for("teacher.teacher_exams"))
+
+        ph_tz = pytz.timezone("Asia/Manila")
+        ph_now = datetime.now(ph_tz)
+        min_date = ph_now.strftime("%Y-%m-%d") + "T00:00"
+
+        return render_template("teacher_exam_edit_settings.html", exam=exam, min_date=min_date)
+
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not update settings: {str(e)}", "error")
+        return redirect(url_for("teacher.teacher_dashboard"))
+    finally:
+        cur.close()
+        db.close()
+
 @teacher_bp.route("/teacher/exams")
 def teacher_exams():
     if not _require_teacher():
@@ -1207,6 +1471,29 @@ def teacher_exam_create():
         randomize       = request.form.get("randomize") == "1"
         instructions    = (request.form.get("instructions") or "").strip() or None
         grading_period  = request.form.get("grading_period")
+
+        # Smart Auto-detect Grading Period
+        try:
+            year_id = _get_active_school_year(cur, branch_id)
+            if scheduled_start:
+                dt_obj = datetime.strptime(scheduled_start.split('T')[0], '%Y-%m-%d').date()
+                detected_period = _get_grading_period_by_date(cur, branch_id, year_id, dt_obj)
+                if detected_period:
+                    grading_period = detected_period
+        except:
+            pass
+        grading_period = _normalize_period_name(grading_period)
+
+        if not grading_period:
+            flash("Could not determine the Grading Period. Please set a valid Scheduled Start date or ensure you are in a specific grading period view.", "error")
+            return redirect(url_for("teacher.teacher_exam_create", subject_id=subject_id))
+        if grading_period not in GRADING_PERIODS:
+            flash("Invalid grading period selected.", "error")
+            return redirect(url_for("teacher.teacher_exam_create", subject_id=subject_id))
+        unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
+        if grading_period not in unlocked_periods:
+            flash(f"{grading_period} Grading is not open yet based on the Academic Calendar.", "error")
+            return redirect(url_for("teacher.teacher_exam_create", subject_id=subject_id, period=grading_period))
 
         if not title or not subject_id or not section_ids:
             flash("Title, subject, and at least one section are required.", "error")
@@ -1288,11 +1575,15 @@ def teacher_exam_create():
         ph_now = datetime.now(ph_tz)
         min_date = ph_now.strftime("%Y-%m-%d") + "T00:00"
         subject_id = request.args.get("subject_id")
+        selected_period = _normalize_period_name(request.args.get("period"))
+        unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
         return render_template("teacher_exam_create.html",
                                sections=sections,
                                assignments=assignments,
                                min_date=min_date,
-                               subject_id=subject_id)
+                               subject_id=subject_id,
+                               selected_period=selected_period,
+                               unlocked_periods=unlocked_periods)
     finally:
         cur.close()
         db.close()
@@ -1355,6 +1646,10 @@ def teacher_exam_questions(exam_id):
                                 (exam_id, question_text, question_type, choices, correct_answer, points, order_num)
                             VALUES (%s, %s, %s, %s, %s, %s, %s)
                         """, (t_id, prompt, 'matching', choices, answer, points, max_order_num + 1 + i))
+                
+                # Sync all matching options for this exam to ensure the dropdown is complete
+                _sync_matching_options_for_exam(cur, exam_id, user_id, branch_id, year_id)
+                
                 db.commit()
                 sync_msg = " (synced across batch)" if len(target_exams) > 1 else ""
                 flash(f"Added {len(pairs)} matching pairs!{sync_msg}", "success")
@@ -1393,6 +1688,8 @@ def teacher_exam_questions(exam_id):
                         (SELECT COALESCE(MAX(order_num),0)+1 FROM exam_questions WHERE exam_id=%s))
                 """, (exam_id, question_text, question_type,
                       choices, correct_answer, points, exam_id))
+                if question_type == 'matching':
+                    _sync_matching_options_for_exam(cur, exam_id, user_id, branch_id, year_id)
                 db.commit()
                 flash("Question added!", "success")
             except Exception as e:
@@ -1566,6 +1863,9 @@ def teacher_exam_questions_bulk_add(exam_id):
                 VALUES (%s,%s,%s,%s,%s,%s,%s)
             """, (exam_id, text, t, choices, correct, pts, order_num))
             inserted += 1
+
+        # Final sync for matching options in case new matching questions were added
+        _sync_matching_options_for_exam(cur, exam_id, user_id, branch_id, year_id)
 
         db.commit()
         flash(f"Saved {inserted} question(s).", "success")
@@ -1843,6 +2143,28 @@ def teacher_quiz_create():
             instructions = (request.form.get("instructions") or "").strip() or None
             grading_period = request.form.get("grading_period")
 
+            # Smart Auto-detect Grading Period
+            try:
+                if scheduled_start:
+                    dt_obj = datetime.strptime(scheduled_start.split('T')[0], '%Y-%m-%d').date()
+                    detected_period = _get_grading_period_by_date(cur, branch_id, year_id, dt_obj)
+                    if detected_period:
+                        grading_period = detected_period
+            except:
+                pass
+            grading_period = _normalize_period_name(grading_period)
+
+            if not grading_period:
+                flash("Could not determine the Grading Period. Please set a valid Scheduled Start date or ensure you are in a specific grading period view.", "error")
+                return redirect(url_for("teacher.teacher_quiz_create", subject_id=subject_id))
+            if grading_period not in GRADING_PERIODS:
+                flash("Invalid grading period selected.", "error")
+                return redirect(url_for("teacher.teacher_quiz_create", subject_id=subject_id))
+            unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
+            if grading_period not in unlocked_periods:
+                flash(f"{grading_period} Grading is not open yet based on the Academic Calendar.", "error")
+                return redirect(url_for("teacher.teacher_quiz_create", subject_id=subject_id, period=grading_period))
+
             if not title or not subject_id or not section_ids:
                 flash("Title, Subject and at least one Section are required.", "error")
                 return redirect(url_for("teacher.teacher_quiz_create", subject_id=subject_id))
@@ -1904,10 +2226,14 @@ def teacher_quiz_create():
         ph_now = datetime.now(ph_tz)
         min_date = ph_now.strftime("%Y-%m-%d") + "T00:00"
         subject_id = request.args.get("subject_id")
+        selected_period = _normalize_period_name(request.args.get("period"))
+        unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
         return render_template("teacher_quiz_create.html",
                                teacher_assignments=teacher_assignments,
                                min_date=min_date,
-                               subject_id=subject_id)
+                               subject_id=subject_id,
+                               selected_period=selected_period,
+                               unlocked_periods=unlocked_periods)
     except Exception as e:
         db.rollback()
         flash(f"Could not create quiz: {str(e)}", "error")
@@ -2037,6 +2363,10 @@ def teacher_exam_question_delete(exam_id, question_id):
             cur.execute("DELETE FROM exam_questions WHERE question_id=%s AND exam_id=%s", (question_id, exam_id))
             sync_msg = ""
 
+        # If it was a matching question, sync options to remove the answer from the pool if necessary
+        if q_type == 'matching':
+            _sync_matching_options_for_exam(cur, exam_id, user_id, branch_id, year_id)
+
         db.commit()
         flash(f"Question deleted!{sync_msg}", "success")
     except Exception as e:
@@ -2129,14 +2459,18 @@ def teacher_exam_import_questions(exam_id):
         errors   = []
 
         # Gather pool of all correct answers for matching in this batch
-        matching_answers_pool = [
-            str(q.get('correct_answer', '') or '').strip()
-            for q in questions
-            if (
-                (str(q.get('question_type', '') or '').strip().lower() in ['matching', ''])
-                and str(q.get('correct_answer', '') or '').strip()
-            )
-        ]
+        matching_answers_pool = []
+        for q in questions:
+            q_type = str(q.get('question_type', '') or '').strip().lower()
+            ans = str(q.get('correct_answer', '') or '').strip()
+            # If it's matching or auto-detects as matching (not mcq/tf)
+            is_mcq = any([str(q.get('choice_a','')), str(q.get('choice_b','')), str(q.get('choice_c','')), str(q.get('choice_d',''))])
+            is_tf = ans.lower() in ('true', 'false')
+            
+            if ans and (q_type in ('matching', '') and not is_mcq and not is_tf):
+                matching_answers_pool.append(ans)
+            elif q_type == 'matching' and ans:
+                matching_answers_pool.append(ans)
         # Deduplicate, preserve order
         unique_matching_options = []
         seen = set()
@@ -2211,8 +2545,8 @@ def teacher_exam_import_questions(exam_id):
                     continue
 
             elif question_type == 'matching':
-    # Each matching question’s dropdown is just its own answer!
-                choices = json.dumps({"options": [correct_answer]})
+                # Use the global pool of answers for this import batch so all answers show in dropdown
+                choices = json.dumps({"options": unique_matching_options})
 
             elif question_type == 'truefalse':
                 if correct_answer.lower() == 'true':
@@ -2242,6 +2576,9 @@ def teacher_exam_import_questions(exam_id):
                       choices, correct_answer, points, t_id))
             
             inserted += 1
+
+        # Final sync for matching options after import
+        _sync_matching_options_for_exam(cur, exam_id, user_id, branch_id, year_id)
 
         db.commit()
 
@@ -2321,6 +2658,9 @@ def teacher_exam_question_edit(exam_id, question_id):
                     flash("All 4 choices are required for MCQ.", "error")
                     return redirect(request.url)
                 choices = json.dumps({"A": a, "B": b, "C": c, "D": d})
+            elif question_type == "matching":
+                # Preserve existing choices JSON for now; we'll sync the pool later
+                choices = json.dumps(question["choices"]) if question["choices"] else None
 
             if not question_text or not correct_answer:
                 flash("Question text and correct answer are required.", "error")
@@ -2361,6 +2701,10 @@ def teacher_exam_question_edit(exam_id, question_id):
                 """, (question_text, question_type, choices,
                       correct_answer, points, question_id, exam_id))
                 sync_msg = ""
+
+            # If it's a matching question, sync the options pool for the whole exam
+            if question_type == 'matching':
+                _sync_matching_options_for_exam(cur, exam_id, user_id, branch_id, year_id)
 
             db.commit()
             flash(f"Question updated!{sync_msg}", "success")
@@ -2475,6 +2819,49 @@ DEPED_WEIGHTS = {
     'skills':       {'ww': 0.20, 'pt': 0.60, 'qa': 0.20},  # EPP, TLE, MAPEH
 }
 
+TRANSMUTATION_RANGES = [
+    (98.40, 99.99, 99),
+    (96.80, 98.39, 98),
+    (95.20, 96.79, 97),
+    (93.60, 95.19, 96),
+    (92.00, 93.59, 95),
+    (90.40, 91.99, 94),
+    (88.80, 90.39, 93),
+    (87.20, 88.79, 92),
+    (85.60, 87.19, 91),
+    (84.00, 85.59, 90),
+    (82.40, 83.99, 89),
+    (80.80, 82.39, 88),
+    (79.20, 80.79, 87),
+    (77.60, 79.19, 86),
+    (76.00, 77.59, 85),
+    (74.40, 75.99, 84),
+    (72.80, 74.39, 83),
+    (71.20, 72.79, 82),
+    (69.60, 71.19, 81),
+    (68.00, 69.59, 80),
+    (66.40, 67.99, 79),
+    (64.80, 66.39, 78),
+    (63.20, 64.79, 77),
+    (61.60, 63.19, 76),
+    (60.00, 61.59, 75),
+    (56.00, 59.99, 74),
+    (52.00, 55.99, 73),
+    (48.00, 51.99, 72),
+    (44.00, 47.99, 71),
+    (40.00, 43.99, 70),
+    (36.00, 39.99, 69),
+    (32.00, 35.99, 68),
+    (28.00, 31.99, 67),
+    (24.00, 27.99, 66),
+    (20.00, 23.99, 65),
+    (16.00, 19.99, 64),
+    (12.00, 15.99, 63),
+    (8.00, 11.99, 62),
+    (4.00, 7.99, 61),
+    (0.00, 3.99, 60),
+]
+
 def _get_deped_transmuted_grade(initial_grade):
     """
     DepEd Order No. 8, s. 2015 — Transmutation Table (Initial 0-100 -> Final 60-100).
@@ -2495,56 +2882,25 @@ def _get_deped_transmuted_grade(initial_grade):
     if x >= 100:
         return 100
 
-    # Each tuple: (min_initial_inclusive, max_initial_inclusive, transmuted_grade)
-    ranges = [
-        (98.40, 99.99, 99),
-        (96.80, 98.39, 98),
-        (95.20, 96.79, 97),
-        (93.60, 95.19, 96),
-        (92.00, 93.59, 95),
-        (90.40, 91.99, 94),
-        (88.80, 90.39, 93),
-        (87.20, 88.79, 92),
-        (85.60, 87.19, 91),
-        (84.00, 85.59, 90),
-        (82.40, 83.99, 89),
-        (80.80, 82.39, 88),
-        (79.20, 80.79, 87),
-        (77.60, 79.19, 86),
-        (76.00, 77.59, 85),
-        (74.40, 75.99, 84),
-        (72.80, 74.39, 83),
-        (71.20, 72.79, 82),
-        (69.60, 71.19, 81),
-        (68.00, 69.59, 80),
-        (66.40, 67.99, 79),
-        (64.80, 66.39, 78),
-        (63.20, 64.79, 77),
-        (61.60, 63.19, 76),
-        (60.00, 61.59, 75),
-        (56.00, 59.99, 74),
-        (52.00, 55.99, 73),
-        (48.00, 51.99, 72),
-        (44.00, 47.99, 71),
-        (40.00, 43.99, 70),
-        (36.00, 39.99, 69),
-        (32.00, 35.99, 68),
-        (28.00, 31.99, 67),
-        (24.00, 27.99, 66),
-        (20.00, 23.99, 65),
-        (16.00, 19.99, 64),
-        (12.00, 15.99, 63),
-        (8.00, 11.99, 62),
-        (4.00, 7.99, 61),
-        (0.00, 3.99, 60),
-    ]
-
-    for min_g, max_g, transmuted in ranges:
+    for min_g, max_g, transmuted in TRANSMUTATION_RANGES:
         if min_g <= x <= max_g:
             return transmuted
 
     # Fallback: should not happen due to 0-3.99 => 60 range.
     return 60
+
+def _get_transmutation_band(initial_grade):
+    """Human-readable transmutation bracket for display/debugging."""
+    try:
+        x = round(float(initial_grade), 2)
+    except (TypeError, ValueError):
+        return None
+    if x >= 100:
+        return "100.00-100.00 => 100"
+    for min_g, max_g, transmuted in TRANSMUTATION_RANGES:
+        if min_g <= x <= max_g:
+            return f"{min_g:.2f}-{max_g:.2f} => {transmuted}"
+    return "0.00-3.99 => 60"
 
 
 def _get_teacher_assignments(cur, user_id, branch_id, year_id):
@@ -2711,43 +3067,65 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
     for row in act_raw:
         activity_scores[row['enrollment_id']] = float(row['ps'] or 0)
 
-    # Participation scores (part of PT)
+    # Get Date Range for the Period to compute Attendance/Participation
+    cur.execute("""
+        SELECT start_date, end_date 
+        FROM grading_period_ranges 
+        WHERE branch_id = %s AND year_id = %s AND period_name = %s
+    """, (branch_id, year_id, period))
+    range_row = cur.fetchone()
+    
+    total_school_days = 0
+    if range_row:
+        total_school_days = _count_school_days(cur, branch_id, year_id, range_row["start_date"], range_row["end_date"])
+
+    # Participation scores (from daily_participation)
     participation_scores = {}
     cur.execute("""
-        SELECT ps.enrollment_id, ps.score
-        FROM participation_scores ps
-        JOIN sections s ON ps.section_id = s.section_id
-        WHERE ps.section_id = %s AND ps.subject_id = %s AND ps.grading_period = %s AND s.year_id = %s
-    """, (section_id, subject_id, period, year_id))
+        SELECT enrollment_id, AVG(points) * 20 AS ps -- Scale 1-5 to 1-100
+        FROM daily_participation
+        WHERE subject_id = %s AND branch_id = %s AND year_id = %s
+          AND participation_date BETWEEN %s AND %s
+        GROUP BY enrollment_id
+    """, (subject_id, branch_id, year_id, range_row["start_date"] if range_row else '1900-01-01', range_row["end_date"] if range_row else '1900-01-01'))
     for row in cur.fetchall():
-        participation_scores[row['enrollment_id']] = float(row['score'] or 0)
+        participation_scores[row['enrollment_id']] = float(row['ps'] or 0)
 
-    # Attendance scores — now included in PT (school policy)
+    # Attendance scores (from daily_attendance)
     attendance_scores = {}
-    cur.execute("""
-        SELECT at.enrollment_id, at.score
-        FROM attendance_scores at
-        JOIN sections s ON at.section_id = s.section_id
-        WHERE at.section_id = %s AND at.subject_id = %s AND at.grading_period = %s AND s.year_id = %s
-    """, (section_id, subject_id, period, year_id))
-    for row in cur.fetchall():
-        attendance_scores[row['enrollment_id']] = float(row['score'] or 0)
+    if total_school_days > 0:
+        cur.execute("""
+            SELECT enrollment_id, (SUM(points) / %s) * 100 AS ps
+            FROM daily_attendance
+            WHERE subject_id = %s AND branch_id = %s AND year_id = %s
+              AND attendance_date BETWEEN %s AND %s
+            GROUP BY enrollment_id
+        """, (total_school_days, subject_id, branch_id, year_id, range_row["start_date"], range_row["end_date"]))
+        for row in cur.fetchall():
+            attendance_scores[row['enrollment_id']] = float(row['ps'] or 0)
+
+    def _cap_0_100(value):
+        return max(0.0, min(100.0, float(value or 0)))
 
     records = []
     for s in students:
         eid = s['enrollment_id']
-        ww_score  = quiz_scores.get(eid, 0)          # Written Works (Quiz + Monthly Exam)
-        qa_score  = exam_scores.get(eid, 0)           # Quarterly Assessment (Periodical Exam)
-        act_score = activity_scores.get(eid, 0)
-        par_score = participation_scores.get(eid, 0)
-        att_score = attendance_scores.get(eid, 0)     # now part of PT
+        ww_score  = _cap_0_100(quiz_scores.get(eid, 0))          # Written Works (Quiz + Monthly Exam)
+        qa_score  = _cap_0_100(exam_scores.get(eid, 0))          # Quarterly Assessment (Periodical Exam)
+        act_score = _cap_0_100(activity_scores.get(eid, 0))
+        par_score = _cap_0_100(participation_scores.get(eid, 0))
+        att_score = _cap_0_100(attendance_scores.get(eid, 0))    # now part of PT
 
         # Performance Tasks = average of all available: Activity, Participation, Attendance
+        has_activity = eid in activity_scores
+        has_participation = eid in participation_scores
+        has_attendance = eid in attendance_scores
+
         pt_components = []
-        if act_score > 0: pt_components.append(act_score)
-        if par_score > 0: pt_components.append(par_score)
-        if att_score > 0: pt_components.append(att_score)
-        pt_score = sum(pt_components) / len(pt_components) if pt_components else 0
+        if has_activity: pt_components.append(act_score)
+        if has_participation: pt_components.append(par_score)
+        if has_attendance: pt_components.append(att_score)
+        pt_score = _cap_0_100(sum(pt_components) / len(pt_components) if pt_components else 0)
 
         # DepEd auto-computation (weights unchanged)
         period_grade = round(
@@ -2758,6 +3136,7 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
         )
 
         transmuted_grade = _get_deped_transmuted_grade(period_grade)
+        transmutation_band = _get_transmutation_band(period_grade)
 
         records.append({
             'enrollment_id':   eid,
@@ -2766,10 +3145,14 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
             'activity':        round(act_score, 2),
             'participation':   round(par_score, 2),
             'attendance':      round(att_score, 2),   # now part of PT
+            'has_activity':    has_activity,
+            'has_participation': has_participation,
+            'has_attendance':  has_attendance,
             'pt_score':        round(pt_score, 2),    # Combined PT
             'exam':            round(qa_score, 2),    # QA (Periodical Exam)
             'period_grade':    period_grade,
             'transmuted_grade': transmuted_grade,
+            'transmutation_band': transmutation_band,
             'deped_category':  category,
         })
     return students, weights, records
@@ -3638,6 +4021,7 @@ def teacher_class_view(subject_id):
             ORDER BY e.student_name ASC
         """, (active_section_id, branch_id, year_id))
         enrolled_students = cur.fetchall() or []
+        unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
 
     finally:
         cur.close()
@@ -3660,7 +4044,8 @@ def teacher_class_view(subject_id):
         section_id=active_section_id,
         subject_id=subject_id,
         enrolled_students=enrolled_students,
-        now=now_naive
+        now=now_naive,
+        unlocked_periods=unlocked_periods
     )
 
 @teacher_bp.route("/api/teacher/add-student", methods=["POST"])
@@ -3806,3 +4191,319 @@ def teacher_schedules():
     cursor.close(); db.close()
 
     return render_template("teacher_schedules.html", schedules=schedules)
+
+# =======================
+# ATTENDANCE & PARTICIPATION HUB (Teacher)
+# =======================
+@teacher_bp.route("/teacher/attendance", methods=["GET", "POST"])
+def teacher_attendance():
+    if not _require_teacher():
+        return redirect(url_for("auth.login"))
+
+    teacher_id = session.get("user_id")
+    branch_id  = session.get("branch_id")
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        # All school years for this branch (for the year switcher)
+        cur.execute("""
+            SELECT year_id, label, is_active
+            FROM school_years
+            WHERE branch_id = %s
+            ORDER BY label DESC
+        """, (branch_id,))
+        school_years = cur.fetchall() or []
+
+        # 1. Filters
+        sel_year_id    = request.args.get("year_id", type=int) or year_id
+        sel_section_id = request.args.get("section_id", type=int)
+        sel_subject_id = request.args.get("subject_id", type=int)
+        sel_date_str   = request.args.get("date")
+        if not sel_date_str:
+            sel_date_str = datetime.now().strftime('%Y-%m-%d')
+            
+        try:
+            sel_date = datetime.strptime(sel_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            sel_date = datetime.now().date()
+            sel_date_str = sel_date.strftime('%Y-%m-%d')
+
+        # 2. Check if holiday/weekend/past date
+        is_off, off_reason = _is_holiday_or_weekend(cur, branch_id, year_id, sel_date)
+        
+        # Restriction: No marking for past dates
+        is_past = sel_date < datetime.now().date()
+        if is_past:
+            is_off = True
+            off_reason = "Attendance for past dates cannot be modified."
+
+        # 3. Handle Save (POST)
+        if request.method == "POST":
+            post_year_id = request.form.get("year_id", type=int) or year_id
+            if is_off:
+                flash(f"Cannot record attendance: {off_reason}", "error")
+            elif post_year_id != year_id:
+                flash("Cannot modify attendance for a past school year.", "error")
+            else:
+                data = request.form
+                enrollment_ids = [k.split('_')[1] for k in data.keys() if k.startswith('status_')]
+                
+                # Points mapping
+                pts_map = {'P': 1.0, 'A': 0.0, 'H': 0.5, 'L': 0.75, 'E': 1.0}
+
+                try:
+                    # FETCH EXISTING STATUS AND NECESSARY INFO BEFORE UPDATE
+                    eids_int = [int(eid) for eid in enrollment_ids if eid.isdigit()]
+                    existing_status = {}
+                    student_info = {}
+                    
+                    if eids_int and sel_subject_id:
+                        # Get existing attendance status
+                        cur.execute("""
+                            SELECT enrollment_id, status FROM daily_attendance
+                            WHERE branch_id = %s AND year_id = %s AND subject_id = %s AND attendance_date = %s
+                              AND enrollment_id = ANY(%s)
+                        """, (branch_id, year_id, sel_subject_id, sel_date, eids_int))
+                        for r in cur.fetchall():
+                            existing_status[r['enrollment_id']] = r['status']
+                            
+                        # Get student info for emails and notifications
+                        cur.execute("""
+                            SELECT e.enrollment_id, e.student_name, e.guardian_email,
+                                   (SELECT name FROM subjects WHERE subject_id = %s LIMIT 1) as subject_name,
+                                   ps.parent_id
+                            FROM enrollments e
+                            LEFT JOIN parent_student ps ON ps.student_id = e.enrollment_id
+                            WHERE e.enrollment_id = ANY(%s)
+                        """, (sel_subject_id, eids_int))
+                        for r in cur.fetchall():
+                            student_info[r['enrollment_id']] = r
+
+                    from utils.send_email import send_email
+
+                    for eid in enrollment_ids:
+                        eid_int = int(eid)
+                        status   = data.get(f"status_{eid}")
+                        pts      = pts_map.get(status, 1.0)
+                        part_pts = data.get(f"part_{eid}", type=float, default=0.0)
+
+                        # Save Attendance
+                        cur.execute("""
+                            INSERT INTO daily_attendance (enrollment_id, subject_id, branch_id, year_id, attendance_date, status, points, recorded_by)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (enrollment_id, subject_id, attendance_date) DO UPDATE
+                            SET status = EXCLUDED.status, points = EXCLUDED.points, recorded_by = EXCLUDED.recorded_by
+                        """, (eid_int, sel_subject_id, branch_id, year_id, sel_date, status, pts, teacher_id))
+
+                        # Check if changed to Absent
+                        if status == 'A' and existing_status.get(eid_int) != 'A':
+                            info = student_info.get(eid_int)
+                            if info:
+                                subj_name = info['subject_name'] or "class"
+                                student_name = info['student_name']
+                                display_date = sel_date.strftime("%B %d, %Y")
+                                msg_body = f"Alert: {student_name} was marked absent in {subj_name} for today ({display_date})."
+                                
+                                # Insert Parent Notification
+                                if info['parent_id']:
+                                    cur.execute("""
+                                        INSERT INTO parent_notifications (parent_id, student_id, title, message)
+                                        VALUES (%s, %s, %s, %s)
+                                    """, (info['parent_id'], eid_int, "Absence Alert", msg_body))
+                                
+                                # Send Email
+                                if info['guardian_email']:
+                                    html_body = f"""
+                                    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+                                        <h2 style="color: #e53e3e;">Attendance Alert</h2>
+                                        <p>Dear Parent/Guardian,</p>
+                                        <p>Please be advised that <strong>{student_name}</strong> was marked <strong>ABSENT</strong> in <strong>{subj_name}</strong> for today, <strong>{display_date}</strong>.</p>
+                                        <p>If you believe this is an error or if you have any concerns, please log in to the Parent Portal or contact the school administration.</p>
+                                        <br>
+                                        <p>Best regards,<br>Liceo Administration</p>
+                                    </div>
+                                    """
+                                    send_email(info['guardian_email'], f"Absence Alert: {student_name}", msg_body, html_body=html_body, use_background=True)
+
+                        # Save Participation (always upsert so 0 clears previous)
+                        cur.execute("""
+                            INSERT INTO daily_participation (enrollment_id, subject_id, branch_id, year_id, participation_date, points, recorded_by)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                            ON CONFLICT (enrollment_id, subject_id, participation_date) DO UPDATE
+                            SET points = EXCLUDED.points, recorded_by = EXCLUDED.recorded_by
+                        """, (eid_int, sel_subject_id, branch_id, year_id, sel_date, part_pts, teacher_id))
+                    
+                    db.commit()
+                    flash("Records saved successfully.", "success")
+                except Exception as e:
+                    db.rollback()
+                    flash(f"Error saving: {str(e)}", "error")
+
+        # 4. Fetch assigned sections/subjects for the dropdown
+        cur.execute("""
+            SELECT s.section_id, s.section_name, sub.subject_id, sub.name AS subject_name,
+                   g.name AS grade_name
+            FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            JOIN subjects sub ON st.subject_id = sub.subject_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            WHERE st.teacher_id = %s AND s.year_id = %s
+            ORDER BY g.name, s.section_name
+        """, (teacher_id, sel_year_id))
+        assignments = cur.fetchall()
+
+        # 5. Fetch students if section/subject selected
+        students = []
+        if sel_section_id and sel_subject_id:
+            cur.execute("""
+                SELECT e.enrollment_id, COALESCE(u.full_name, e.student_name) AS full_name, e.lrn, e.gender,
+                       da.status AS cur_status, dp.points AS cur_part
+                FROM enrollments e
+                LEFT JOIN users u ON e.user_id = u.user_id
+                LEFT JOIN daily_attendance da ON e.enrollment_id = da.enrollment_id 
+                     AND da.subject_id = %s AND da.attendance_date = %s
+                LEFT JOIN daily_participation dp ON e.enrollment_id = dp.enrollment_id 
+                     AND dp.subject_id = %s AND dp.participation_date = %s
+                WHERE e.section_id = %s AND e.branch_id = %s AND e.year_id = %s
+                  AND e.status IN ('approved', 'enrolled')
+                ORDER BY e.student_name ASC
+            """, (sel_subject_id, sel_date, sel_subject_id, sel_date, sel_section_id, branch_id, sel_year_id))
+            students = cur.fetchall()
+
+        return render_template("teacher_attendance.html", 
+                               assignments=assignments, 
+                               students=students,
+                               sel_section_id=sel_section_id,
+                               sel_subject_id=sel_subject_id,
+                               sel_date=sel_date_str,
+                               is_off=is_off,
+                               off_reason=off_reason,
+                               school_years=school_years,
+                               sel_year_id=sel_year_id,
+                               active_year_id=year_id)
+    finally:
+        cur.close()
+        db.close()
+
+@teacher_bp.route("/teacher/attendance/export")
+def teacher_attendance_export():
+    if not _require_teacher():
+        return redirect(url_for("auth.login"))
+
+    teacher_id = session.get("user_id")
+    branch_id  = session.get("branch_id")
+    
+    sel_section_id = request.args.get("section_id", type=int)
+    sel_subject_id = request.args.get("subject_id", type=int)
+    
+    if not sel_section_id or not sel_subject_id:
+        flash("Please select section and subject first.", "error")
+        return redirect(url_for("teacher.teacher_attendance"))
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        year_id = _get_active_school_year(cur, branch_id)
+        
+        # Get metadata
+        cur.execute("SELECT section_name FROM sections WHERE section_id = %s", (sel_section_id,))
+        sec_name = cur.fetchone()["section_name"]
+        cur.execute("SELECT name FROM subjects WHERE subject_id = %s", (sel_subject_id,))
+        sub_name = cur.fetchone()["name"]
+
+        # Fetch students and their tallies
+        cur.execute("""
+            SELECT COALESCE(u.full_name, e.student_name) AS student_name,
+                   e.lrn,
+                   COALESCE(att.attendance_points, 0) AS attendance_points,
+                   COALESCE(att.present_days, 0) AS present_days,
+                   COALESCE(att.days_recorded, 0) AS days_recorded,
+                   COALESCE(part.participation_avg, 0) AS participation_avg
+            FROM enrollments e
+            LEFT JOIN users u ON e.user_id = u.user_id
+            LEFT JOIN (
+                SELECT enrollment_id,
+                       COALESCE(SUM(points), 0) AS attendance_points,
+                       COUNT(*) AS days_recorded,
+                       SUM(CASE WHEN status = 'P' THEN 1 ELSE 0 END) AS present_days
+                FROM daily_attendance
+                WHERE subject_id = %s AND branch_id = %s AND year_id = %s
+                GROUP BY enrollment_id
+            ) att ON e.enrollment_id = att.enrollment_id
+            LEFT JOIN (
+                SELECT enrollment_id,
+                       COALESCE(AVG(points), 0) AS participation_avg
+                FROM daily_participation
+                WHERE subject_id = %s AND branch_id = %s AND year_id = %s
+                GROUP BY enrollment_id
+            ) part ON e.enrollment_id = part.enrollment_id
+            WHERE e.section_id = %s
+              AND e.branch_id = %s
+              AND e.year_id = %s
+              AND e.status IN ('approved', 'enrolled')
+            ORDER BY student_name ASC
+        """, (
+            sel_subject_id, branch_id, year_id,
+            sel_subject_id, branch_id, year_id,
+            sel_section_id, branch_id, year_id
+        ))
+        data = cur.fetchall()
+
+        export_columns = [
+            "Student Name",
+            "LRN",
+            "Attendance Points",
+            "Present Days",
+            "Days Recorded",
+            "Participation Avg"
+        ]
+        if data:
+            df = pd.DataFrame(data)
+            df = df.rename(columns={
+                "student_name": "Student Name",
+                "lrn": "LRN",
+                "attendance_points": "Attendance Points",
+                "present_days": "Present Days",
+                "days_recorded": "Days Recorded",
+                "participation_avg": "Participation Avg"
+            })
+            df = df[export_columns]
+        else:
+            # Keep headers visible even when there are no rows.
+            df = pd.DataFrame(columns=export_columns)
+        
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='Sheet1')
+            workbook = writer.book
+            worksheet = writer.sheets['Sheet1']
+
+            header_format = workbook.add_format({
+                'bold': True,
+                'bg_color': '#D9E1F2',
+                'border': 1,
+                'align': 'center',
+                'valign': 'vcenter'
+            })
+            cell_format = workbook.add_format({'border': 1})
+
+            for col_idx, col_name in enumerate(df.columns):
+                worksheet.write(0, col_idx, col_name, header_format)
+                max_len = max(df[col_name].astype(str).map(len).max() if not df.empty else 0, len(col_name))
+                worksheet.set_column(col_idx, col_idx, min(max_len + 2, 40), cell_format)
+
+        output.seek(0)
+
+        filename = f"Attendance_{sec_name}_{sub_name}_{datetime.now().strftime('%Y%m%d')}.xlsx"
+        return send_file(output, download_name=filename, as_attachment=True)
+
+    finally:
+        cur.close()
+        db.close()

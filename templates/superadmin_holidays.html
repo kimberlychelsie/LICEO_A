@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Global Holiday Manager{% endblock %}
+
+{% block content %}
+<style>
+    body { background: #f4f6f9; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .registry-welcome {
+        background: linear-gradient(135deg, #1a3a8f, #0f256e);
+        padding: 40px; border-radius: 16px; color: #ffffff;
+        margin-bottom: 32px; box-shadow: 0 10px 25px -5px rgba(26, 58, 143, 0.4);
+    }
+    .registry-welcome h1 { font-size: 2.5rem; font-weight: 900; margin: 0 0 10px 0; }
+    .modern-card {
+        background: #ffffff; border-radius: 16px; padding: 32px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0;
+        margin-bottom: 32px;
+    }
+    .form-node { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+    .form-node label { font-size: 0.85rem; font-weight: 800; color: #64748b; text-transform: uppercase; }
+    .form-node input {
+        width: 100%; padding: 12px 16px; border: 1.5px solid #e2e8f0; border-radius: 10px;
+        font-weight: 600; outline: none; transition: all 0.3s;
+    }
+    .form-node input:focus { border-color: #facc15; box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.15); }
+    .btn-gold {
+        background: #facc15; color: #1a3a8f; padding: 12px 24px; border-radius: 10px;
+        font-weight: 800; border: none; cursor: pointer; transition: 0.3s;
+    }
+    .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(250, 204, 21, 0.3); }
+    .vault-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .vault-table th {
+        background: #f8fafc; padding: 16px; text-align: left; font-size: 0.75rem;
+        font-weight: 800; color: #64748b; text-transform: uppercase; border-bottom: 2px solid #e2e8f0;
+    }
+    .vault-table td { padding: 16px; border-bottom: 1px solid #f1f5f9; font-weight: 600; color: #1e293b; }
+</style>
+
+<div class="ba-container" style="max-width: 1100px; margin: 0 auto; padding: 24px;">
+    <div class="registry-welcome">
+        <h1>Global Holiday Manager</h1>
+        <p>Define national holidays and events that apply to all school branches across the network.</p>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for cat, msg in messages %}
+            <div style="padding: 16px; border-radius: 12px; margin-bottom: 24px; font-weight: 700; background: {{ '#ecfdf5' if cat == 'success' else '#fef2f2' }}; color: {{ '#065f46' if cat == 'success' else '#991b1b' }};">
+                <i class="fas {{ 'fa-check-circle' if cat == 'success' else 'fa-exclamation-circle' }}"></i> {{ msg }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 32px;">
+        <!-- Add Holiday Form -->
+        <div>
+            <div class="modern-card">
+                <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 24px; color: #1e293b;">New Global Holiday</h2>
+                <p style="font-size: 0.8rem; color: #64748b; margin: -16px 0 20px 0; font-weight: 600;">Hindi na kailangan ng year — recurring holiday ito every year.</p>
+                <form method="POST">
+                    <div class="form-node">
+                        <label>Month</label>
+                        <select name="holiday_month" required style="width:100%; padding:12px 16px; border:1.5px solid #e2e8f0; border-radius:10px; font-weight:600; outline:none; background:#fff; cursor:pointer;">
+                            <option value="" disabled selected>-- Select Month --</option>
+                            <option value="01">January</option>
+                            <option value="02">February</option>
+                            <option value="03">March</option>
+                            <option value="04">April</option>
+                            <option value="05">May</option>
+                            <option value="06">June</option>
+                            <option value="07">July</option>
+                            <option value="08">August</option>
+                            <option value="09">September</option>
+                            <option value="10">October</option>
+                            <option value="11">November</option>
+                            <option value="12">December</option>
+                        </select>
+                    </div>
+                    <div class="form-node">
+                        <label>Day</label>
+                        <select name="holiday_day" required style="width:100%; padding:12px 16px; border:1.5px solid #e2e8f0; border-radius:10px; font-weight:600; outline:none; background:#fff; cursor:pointer;">
+                            <option value="" disabled selected>-- Select Day --</option>
+                            {% for d in range(1, 32) %}
+                            <option value="{{ '%02d' % d }}">{{ d }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-node">
+                        <label>Holiday Name</label>
+                        <input type="text" name="holiday_name" placeholder="e.g. Christmas Day" required style="width:100%; padding:12px 16px; border:1.5px solid #e2e8f0; border-radius:10px; font-weight:600; outline:none;">
+                    </div>
+                    <button type="submit" class="btn-gold" style="width: 100%;">Add Global Holiday</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Holiday List -->
+        <div>
+            <div class="modern-card" style="padding: 0; overflow: hidden;">
+                <div style="padding: 24px; border-bottom: 1px solid #e2e8f0;">
+                    <h2 style="margin:0; font-size: 1.25rem; font-weight: 800; color: #1e293b;">Active Global Timeline</h2>
+                </div>
+                <table class="vault-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Event Name</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for h in holidays %}
+                        <tr>
+                            <td>{{ h.holiday_date.strftime('%b %d') }}</td>
+                            <td>{{ h.holiday_name }}</td>
+                            <td style="text-align: right;">
+                                <form action="{{ url_for('super_admin.superadmin_delete_holiday', holiday_id=h.id) }}" method="POST" onsubmit="return confirm('Delete this global holiday?');">
+                                    <button type="submit" style="background:none; border:none; color:#ef4444; font-weight:800; cursor:pointer;">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" style="text-align:center; padding: 40px; color:#94a3b8;">No global holidays defined yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

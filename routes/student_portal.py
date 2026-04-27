@@ -389,7 +389,7 @@ def billing():
         payments = []
         if bill:
             cursor.execute("""
-                SELECT p.*, u.username as received_by_name
+                SELECT p.*, p.receipt_number as reference_number, u.username as received_by_name
                 FROM payments p
                 LEFT JOIN users u ON p.received_by = u.user_id
                 WHERE p.bill_id=%s
@@ -418,8 +418,30 @@ def billing():
             active_res_total = sum(float(r['total_amount'] or 0) for r in reservations)
             tuition = float(bill['tuition_fee'] or 0)
             other = float(bill['other_fees'] or 0)
+            
+            # If there are active reservations, we trust the dynamic total from them.
+            # However, we must also account for books_fee and uniform_fee if they were 
+            # manually entered without a reservation record (e.g. legacy or direct sale).
+            # To avoid double counting, we only add them if active_res_total is 0 OR 
+            # if we want to support both. Given the system design, reservations usually 
+            # populate these fields. 
+            
+            # Improved logic: If a reservation exists, it contributes to active_res_total.
+            # The bill.books_fee and bill.uniform_fee are snapshots.
+            # We'll include them in the expected total if they are set.
+            books = float(bill['books_fee'] or 0)
+            uniform = float(bill['uniform_fee'] or 0)
+            
+            # Note: If active_res_total is used, it usually covers what would be in books/uniform.
+            # But the sync logic was wiping out manual fees.
+            # Let's check if the reservations already account for the type of fees.
             expected_total = tuition + other + active_res_total
             
+            # If active_res_total is 0, then we MUST include the bill's books/uniform fees 
+            # because they might be manual entries.
+            if active_res_total == 0:
+                expected_total += books + uniform
+
             if abs(float(bill['total_amount'] or 0) - expected_total) > 0.01:
                 new_balance = max(expected_total - float(bill['amount_paid'] or 0), 0)
                 new_status = 'paid' if new_balance == 0 and expected_total > 0 else ('pending' if float(bill['amount_paid'] or 0) == 0 else 'partial')

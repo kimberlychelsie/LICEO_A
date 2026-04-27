@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+{% block title %}Academic Calendar & Grading Periods{% endblock %}
+
+{% block content %}
+<!-- Flatpickr CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+
+<style>
+    body { background: #f4f6f9; font-family: 'Plus Jakarta Sans', sans-serif; }
+    .registry-welcome {
+        background: linear-gradient(135deg, #1a3a8f, #0f256e);
+        padding: 40px; border-radius: 16px; color: #ffffff;
+        margin-bottom: 32px; box-shadow: 0 10px 25px -5px rgba(26, 58, 143, 0.4);
+    }
+    .modern-card {
+        background: #ffffff; border-radius: 16px; padding: 32px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0;
+        margin-bottom: 32px;
+    }
+    .form-node { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+    .form-node label { font-size: 0.85rem; font-weight: 800; color: #64748b; text-transform: uppercase; }
+    .form-node input,
+    .form-node .flatpickr-input {
+        width: 100%; padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px;
+        font-weight: 600; outline: none; transition: 0.3s; background: #fff;
+        font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.9rem; color: #1e293b;
+        box-sizing: border-box; cursor: pointer;
+    }
+    .form-node input:focus,
+    .form-node .flatpickr-input:focus {
+        border-color: #facc15; box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.15);
+    }
+    .btn-prem {
+        padding: 12px 24px; border-radius: 10px; font-weight: 800; border: none; cursor: pointer; transition: 0.3s;
+    }
+    .btn-gold { background: #facc15; color: #1a3a8f; box-shadow: 0 4px 12px rgba(250, 204, 21, 0.3); }
+    .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(250, 204, 21, 0.4); }
+    .vault-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .vault-table th {
+        background: #f8fafc; padding: 14px; text-align: left; font-size: 0.75rem;
+        font-weight: 800; color: #64748b; text-transform: uppercase; border-bottom: 2px solid #e2e8f0;
+    }
+    .vault-table td { padding: 14px; border-bottom: 1px solid #f1f5f9; font-weight: 600; }
+    .badge-global { background: #eff6ff; color: #1e40af; padding: 4px 8px; border-radius: 6px; font-size: 0.65rem; }
+
+    /* Flatpickr Custom Theme */
+    .flatpickr-calendar {
+        border-radius: 14px !important;
+        box-shadow: 0 20px 40px -8px rgba(26, 58, 143, 0.2) !important;
+        border: 1px solid #e2e8f0 !important;
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
+    }
+    .flatpickr-months .flatpickr-month {
+        background: #1a3a8f !important; border-radius: 14px 14px 0 0 !important;
+    }
+    .flatpickr-current-month .flatpickr-monthDropdown-months,
+    .flatpickr-current-month input.cur-year {
+        font-weight: 800 !important; color: #fff !important;
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
+    }
+    .flatpickr-current-month .flatpickr-monthDropdown-months option {
+        color: #1e293b !important;
+        background: #ffffff !important;
+    }
+    .flatpickr-weekday { color: #1a3a8f !important; font-weight: 800 !important; }
+    .flatpickr-day.selected, .flatpickr-day.selected:hover {
+        background: #1a3a8f !important; border-color: #1a3a8f !important;
+        font-weight: 800 !important;
+    }
+    .flatpickr-day:hover { background: #eff6ff !important; color: #1a3a8f !important; }
+    .flatpickr-day.today { border-color: #facc15 !important; color: #1a3a8f !important; font-weight: 800 !important; }
+    .flatpickr-months .flatpickr-prev-month svg,
+    .flatpickr-months .flatpickr-next-month svg { fill: #fff !important; }
+    .flatpickr-months .flatpickr-prev-month:hover svg,
+    .flatpickr-months .flatpickr-next-month:hover svg { fill: #facc15 !important; }
+    .numInputWrapper span.arrowUp:after { border-bottom-color: #fff !important; }
+    .numInputWrapper span.arrowDown:after { border-top-color: #fff !important; }
+    .flatpickr-current-month .numInputWrapper { width: 6ch !important; }
+</style>
+
+<div class="ba-container" style="max-width: 1200px; margin: 0 auto; padding: 24px;">
+    <div class="registry-welcome">
+        <h1>Academic Calendar Setup</h1>
+        <p>Define grading period ranges and manage local holidays for this branch.</p>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px;">
+        <!-- Grading Periods -->
+        <div>
+            <div class="modern-card">
+                <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 24px; color: #1e293b;">Grading Period Ranges</h2>
+                <form method="POST" id="grading-form">
+                    <input type="hidden" name="action" value="save_ranges">
+                    {% for p in ['1st', '2nd', '3rd', '4th'] %}
+                    <div style="margin-bottom: 24px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+                        <h3 style="margin: 0 0 12px 0; font-size: 0.95rem; font-weight: 800; color: #1a3a8f;">{{ p }} Grading</h3>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                            <div class="form-node">
+                                <label>Start Date</label>
+                                <!-- hidden real input for form submission -->
+                                <input type="hidden" name="{{ p }}_start" id="{{ p }}_start_val"
+                                    value="{{ ranges[p].start_date if p in ranges else '' }}">
+                                <!-- Flatpickr display input -->
+                                <input type="text" class="grading-date-picker"
+                                    id="{{ p }}_start_display"
+                                    data-target="{{ p }}_start_val"
+                                    placeholder="e.g. June 1, 2026"
+                                    value="{{ ranges[p].start_date.strftime('%B %d, %Y') if p in ranges and ranges[p].start_date else '' }}"
+                                    readonly>
+                            </div>
+                            <div class="form-node">
+                                <label>End Date</label>
+                                <input type="hidden" name="{{ p }}_end" id="{{ p }}_end_val"
+                                    value="{{ ranges[p].end_date if p in ranges else '' }}">
+                                <input type="text" class="grading-date-picker"
+                                    id="{{ p }}_end_display"
+                                    data-target="{{ p }}_end_val"
+                                    placeholder="e.g. August 15, 2026"
+                                    value="{{ ranges[p].end_date.strftime('%B %d, %Y') if p in ranges and ranges[p].end_date else '' }}"
+                                    readonly>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                    <button type="submit" class="btn-prem btn-gold" style="width: 100%;">Save Academic Calendar</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Holidays -->
+        <div style="display: flex; flex-direction: column; gap: 32px;">
+            <div class="modern-card">
+                <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 20px; color: #1e293b;">Add Local Holiday</h2>
+                <form method="POST">
+                    <input type="hidden" name="action" value="add_holiday">
+                    <div class="form-node">
+                        <label>Date</label>
+                        <input type="hidden" name="holiday_date" id="holiday_date_val">
+                        <input type="text" id="holiday_date_picker" placeholder="Select holiday date" readonly
+                            style="width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:10px;
+                                   font-weight:600; outline:none; background:#fff; cursor:pointer;
+                                   font-family:'Plus Jakarta Sans',sans-serif; font-size:0.9rem;">
+                    </div>
+                    <div class="form-node">
+                        <label>Holiday Name</label>
+                        <input type="text" name="holiday_name" placeholder="e.g. City Fiesta" required>
+                    </div>
+                    <button type="submit" class="btn-prem btn-gold" style="width: 100%;">Add Local Holiday</button>
+                </form>
+            </div>
+
+            <div class="modern-card" style="padding: 0; overflow: hidden;">
+                <div style="padding: 20px 24px; border-bottom: 1px solid #e2e8f0;">
+                    <h2 style="margin:0; font-size: 1.1rem; font-weight: 800; color: #1e293b;">Holiday Registry</h2>
+                </div>
+                <table class="vault-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Event</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for h in holidays %}
+                        <tr>
+                            <td>{{ h.holiday_date.strftime('%b %d') }}</td>
+                            <td>
+                                {{ h.holiday_name }}
+                                {% if h.branch_id is none %}
+                                <span class="badge-global">GLOBAL</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: right;">
+                                {% if h.branch_id is not none %}
+                                <form action="{{ url_for('branch_admin.branch_admin_delete_holiday', holiday_id=h.id) }}" method="POST" onsubmit="return confirm('Delete this local holiday?');">
+                                    <button type="submit" style="background:none; border:none; color:#ef4444; font-weight:800; cursor:pointer;">Delete</button>
+                                </form>
+                                {% else %}
+                                <span style="font-size: 0.7rem; color: #94a3b8;">LOCKED</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="3" style="text-align:center; padding: 30px; color: #94a3b8;">No events scheduled.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Flatpickr JS -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ── Grading Period Date Pickers ─────────────────────────────────────────
+    document.querySelectorAll('.grading-date-picker').forEach(function (el) {
+        const targetId = el.getAttribute('data-target');
+        const hiddenInput = document.getElementById(targetId);
+
+        flatpickr(el, {
+            dateFormat: 'Y-m-d',          // value stored in hidden input (backend format)
+            altInput: false,               // we handle display ourselves
+            allowInput: false,
+            disableMobile: true,           // always use flatpickr on mobile too
+            defaultDate: hiddenInput.value || null,
+
+            // ── On date selected: push YYYY-MM-DD to hidden, show "June 1, 2026" on display ──
+            onChange: function (selectedDates, dateStr) {
+                hiddenInput.value = dateStr;    // YYYY-MM-DD for backend
+                if (selectedDates.length > 0) {
+                    const d = selectedDates[0];
+                    const opts = { year: 'numeric', month: 'long', day: 'numeric' };
+                    el.value = d.toLocaleDateString('en-US', opts);
+                }
+            },
+
+            onReady: function (selectedDates, dateStr, instance) {
+                // Show human-readable value if already set
+                if (hiddenInput.value) {
+                    const d = new Date(hiddenInput.value);
+                    // Fix timezone offset so date doesn't shift
+                    const fixed = new Date(d.getTime() + d.getTimezoneOffset() * 60000);
+                    const opts = { year: 'numeric', month: 'long', day: 'numeric' };
+                    el.value = fixed.toLocaleDateString('en-US', opts);
+                }
+            }
+        });
+    });
+
+    // ── Holiday Date Picker ─────────────────────────────────────────────────
+    flatpickr('#holiday_date_picker', {
+        dateFormat: 'Y-m-d',
+        allowInput: false,
+        disableMobile: true,
+        onChange: function (selectedDates, dateStr) {
+            document.getElementById('holiday_date_val').value = dateStr;
+            if (selectedDates.length > 0) {
+                const d = selectedDates[0];
+                const opts = { year: 'numeric', month: 'long', day: 'numeric' };
+                document.getElementById('holiday_date_picker').value =
+                    d.toLocaleDateString('en-US', opts);
+            }
+        }
+    });
+
+    // ── Validate hidden inputs before grading form submit ───────────────────
+    document.getElementById('grading-form').addEventListener('submit', function (e) {
+        const periods = ['1st', '2nd', '3rd', '4th'];
+        for (const p of periods) {
+            const start = document.getElementById(p + '_start_val').value;
+            const end   = document.getElementById(p + '_end_val').value;
+            if (!start || !end) {
+                e.preventDefault();
+                alert('Please select both Start Date and End Date for all grading periods.');
+                return;
+            }
+            if (new Date(start) >= new Date(end)) {
+                e.preventDefault();
+                alert('For ' + p + ' Grading: Start Date must be before End Date.');
+                return;
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

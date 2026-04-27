@@ -98,7 +98,8 @@ def super_admin_dashboard():
                 u.full_name AS admin_name,
                 {login_col} AS last_active,
                 COALESCE(e_all.cnt, 0)     AS total_students,
-                COALESCE(e_pend.cnt, 0)    AS pending_count
+                COALESCE(e_pend.cnt, 0)    AS pending_count,
+                COALESCE(att.rate, 0)      AS attendance_rate
             FROM branches b
             LEFT JOIN users u ON u.branch_id = b.branch_id AND u.role = 'branch_admin'
             LEFT JOIN (
@@ -111,9 +112,22 @@ def super_admin_dashboard():
                 FROM enrollments WHERE status = 'pending'
                 GROUP BY branch_id
             ) e_pend ON e_pend.branch_id = b.branch_id
+            LEFT JOIN (
+                SELECT branch_id,
+                       ROUND( (SUM(CASE WHEN status IN ('P', 'L', 'H', 'E') THEN 1 ELSE 0 END)::numeric / NULLIF(COUNT(*), 0)::numeric) * 100, 1) as rate
+                FROM daily_attendance
+                GROUP BY branch_id
+            ) att ON att.branch_id = b.branch_id
             ORDER BY total_students DESC
         """)
         branch_health = cursor.fetchall() or []
+        
+        # ── Global Attendance Rate ──
+        cursor.execute("""
+            SELECT ROUND( (SUM(CASE WHEN status IN ('P', 'L', 'H', 'E') THEN 1 ELSE 0 END)::numeric / NULLIF(COUNT(*), 0)::numeric) * 100, 1) as rate
+            FROM daily_attendance
+        """)
+        global_attendance_rate = cursor.fetchone()["rate"] or 0
         
         top_branches = branch_health[:3]
 
@@ -128,6 +142,7 @@ def super_admin_dashboard():
             funnel_stats=funnel_stats,
             branch_health=branch_health,
             top_branches=top_branches,
+            global_attendance_rate=global_attendance_rate,
             missing_code=missing_code,
             missing_admin=missing_admin,
             inactive_branches=inactive_branches
@@ -609,6 +624,83 @@ def superadmin_set_active_year():
         db.close()
 
     return redirect(url_for("super_admin.superadmin_school_years"))
+
+# =======================
+# GLOBAL HOLIDAYS (Super Admin)
+# =======================
+@super_admin_bp.route("/superadmin/holidays", methods=["GET", "POST"])
+def superadmin_holidays():
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        # Get active year (global reference)
+        cur.execute("SELECT year_id FROM school_years WHERE is_active = TRUE LIMIT 1")
+        year_row = cur.fetchone()
+        year_id = year_row["year_id"] if year_row else None
+
+        if request.method == "POST":
+            h_month = request.form.get("holiday_month")
+            h_day   = request.form.get("holiday_day")
+            h_name  = request.form.get("holiday_name")
+
+            if not h_month or not h_day or not h_name:
+                flash("All fields are required.", "error")
+            elif not year_id:
+                flash("No active school year found.", "error")
+            else:
+                # Use year 2000 as a fixed reference — only month/day matter for recurring holidays
+                h_date = f"2000-{h_month}-{h_day}"
+                try:
+                    cur.execute("""
+                        INSERT INTO holidays (branch_id, year_id, holiday_date, holiday_name)
+                        VALUES (NULL, %s, %s, %s)
+                        ON CONFLICT (branch_id, year_id, holiday_date) DO UPDATE
+                        SET holiday_name = EXCLUDED.holiday_name
+                    """, (year_id, h_date, h_name))
+                    db.commit()
+                    flash("Global holiday added successfully.", "success")
+                except Exception as e:
+                    db.rollback()
+                    flash(f"Error saving holiday: {str(e)}", "error")
+
+        # Fetch global holidays
+        cur.execute("""
+            SELECT id, holiday_date, holiday_name 
+            FROM holidays 
+            WHERE branch_id IS NULL 
+            ORDER BY holiday_date ASC
+        """)
+        holidays = cur.fetchall() or []
+
+        return render_template("superadmin_holidays.html", holidays=holidays)
+
+    finally:
+        cur.close()
+        db.close()
+
+@super_admin_bp.route("/superadmin/holidays/delete/<int:holiday_id>", methods=["POST"])
+def superadmin_delete_holiday(holiday_id):
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        cur.execute("DELETE FROM holidays WHERE id = %s AND branch_id IS NULL", (holiday_id,))
+        db.commit()
+        flash("Global holiday deleted.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+    return redirect(url_for("super_admin.superadmin_holidays"))
+
 
 
 @super_admin_bp.after_request

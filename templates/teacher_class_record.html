@@ -526,16 +526,6 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                     Back
                 </a>
-                <a href="{{ url_for('teacher.participation_input', section_id=section_id, subject_id=subject_id, period=period) }}"
-                    class="cr-btn cr-btn-ghost">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M19 8v2"></path><path d="M19 12h.01"></path></svg>
-                    Participation
-                </a>
-                <a href="{{ url_for('teacher.attendance_input', section_id=section_id, subject_id=subject_id, period=period) }}"
-                    class="cr-btn cr-btn-ghost">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                    Attendance
-                </a>
                 <a href="{{ url_for('teacher.class_record_export', section_id=section_id, subject_id=subject_id, period=period) }}"
                     class="cr-btn cr-btn-ghost">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
@@ -592,6 +582,8 @@
             <strong>Activity + Participation + Attendance</strong> → Performance Tasks &nbsp;|&nbsp;
             <strong>Periodical Exam</strong> → Quarterly Assessment.
             Percentages are <strong>auto-set</strong> by subject type — no manual setup needed.
+            <br>
+            <strong>Note:</strong> Participation and Attendance here are auto-computed from daily records in the Attendance Hub.
         </div>
     </div>
     {% endif %}
@@ -651,9 +643,9 @@
                     <td class="col-pt">
                         {{ "%0.1f" | format(r.pt_score | float) }}
                         <div class="pt-breakdown">
-                            {% if r.activity > 0 %}Act: {{ "%0.1f" | format(r.activity|float) }}{% endif %}
-                            {% if r.participation > 0 %} · Par: {{ "%0.1f" | format(r.participation|float) }}{% endif %}
-                            {% if r.attendance > 0 %} · Att: {{ "%0.1f" | format(r.attendance|float) }}{% endif %}
+                            {% if r.has_activity %}Act: {{ "%0.1f" | format(r.activity|float) }}{% endif %}
+                            {% if r.has_participation %} · Par: {{ "%0.1f" | format(r.participation|float) }}{% endif %}
+                            {% if r.has_attendance %} · Att: {{ "%0.1f" | format(r.attendance|float) }}{% endif %}
                         </div>
                     </td>
                     <td class="col-qa">{{ "%0.1f" | format(r.exam | float) }}</td>
@@ -680,6 +672,7 @@
                                 "qa": {{ (r.exam or 0)|float }},
                                 "initial": {{ (r.period_grade or 0)|float }},
                                 "final": {{ (r.transmuted_grade or 0)|float }},
+                                "band": {{ (r.transmutation_band or "")|tojson }},
                                 "ww_pct": {{ (weights.quiz_pct or 0)|float }},
                                 "pt_pct": {{ (weights.activity_pct or 0)|float }},
                                 "qa_pct": {{ (weights.exam_pct or 0)|float }}
@@ -721,6 +714,7 @@
                 <div class="tm-item"><div class="tm-label">QA Weight</div><div class="tm-val" id="tmQaPct">0%</div></div>
                 <div class="tm-item"><div class="tm-label">Initial Grade</div><div class="tm-val" id="tmInitial">0</div></div>
                 <div class="tm-item"><div class="tm-label">Transmuted Grade</div><div class="tm-val" id="tmFinal">0</div></div>
+                <div class="tm-item"><div class="tm-label">Transmutation Range</div><div class="tm-val" id="tmBand">—</div></div>
             </div>
             <div class="tm-note" id="tmFormula"></div>
         </div>
@@ -738,6 +732,7 @@ function openTransmutation(data) {
     document.getElementById("tmQaPct").textContent = Number(data.qa_pct || 0).toFixed(0) + "%";
     document.getElementById("tmInitial").textContent = Number(data.initial || 0).toFixed(2);
     document.getElementById("tmFinal").textContent = Number(data.final || 0).toFixed(2);
+    document.getElementById("tmBand").textContent = data.band || "N/A";
 
     const wwW = (Number(data.ww || 0) * (Number(data.ww_pct || 0) / 100)).toFixed(2);
     const ptW = (Number(data.pt || 0) * (Number(data.pt_pct || 0) / 100)).toFixed(2);

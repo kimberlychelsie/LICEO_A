@@ -1,0 +1,476 @@
+{% extends "base.html" %}
+{% block title %}Daily Attendance Hub{% endblock %}
+
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+    :root {
+        --primary-blue: #1e3a8a;
+        --success: #16a34a;
+        --danger: #dc2626;
+        --warning: #d97706;
+        --purple: #7c3aed;
+        --sky: #0284c7;
+    }
+
+    .attendance-hub {
+        background: #f0f4f8;
+        min-height: 100vh;
+        font-family: 'Outfit', sans-serif;
+        padding-bottom: 100px;
+    }
+
+    .hub-header {
+        background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+        padding: 36px 32px;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .hub-header::before {
+        content: '';
+        position: absolute;
+        top: -60%; right: -5%;
+        width: 400px; height: 400px;
+        background: rgba(255,255,255,0.04);
+        border-radius: 50%;
+    }
+
+    .hub-header h1 { font-size: 2rem; font-weight: 800; letter-spacing: -0.03em; margin: 0 0 4px; }
+    .hub-header p { opacity: 0.75; font-size: 0.95rem; margin: 0; }
+
+    .filter-card {
+        background: white;
+        border-radius: 20px;
+        padding: 20px 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+        border: 1px solid #e8edf3;
+        margin-top: -24px;
+        position: relative;
+        z-index: 10;
+    }
+
+    .filter-grid {
+        display: grid;
+        grid-template-columns: 1fr 150px 130px auto;
+        gap: 16px;
+        align-items: flex-end;
+    }
+
+    .fl-label {
+        font-size: 0.7rem;
+        font-weight: 800;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        display: block;
+        margin-bottom: 6px;
+    }
+
+    .fl-input {
+        height: 44px;
+        border-radius: 12px;
+        border: 1.5px solid #e2e8f0;
+        font-weight: 600;
+        font-size: 0.9rem;
+        padding: 0 14px;
+        width: 100%;
+        box-sizing: border-box;
+        cursor: pointer;
+        color: #0f172a;
+        background: #f8fafc;
+        transition: border-color 0.2s;
+    }
+
+    .fl-input:focus { outline: none; border-color: var(--primary-blue); background: white; }
+
+    /* Compact Student Row */
+    .att-table-wrap {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid #e8edf3;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        overflow: hidden;
+        margin-top: 20px;
+    }
+
+    .att-table-header {
+        padding: 16px 24px;
+        border-bottom: 1px solid #f1f5f9;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: #f8fafc;
+    }
+
+    .att-table-header h3 {
+        font-size: 1rem;
+        font-weight: 800;
+        color: #0f172a;
+        margin: 0;
+    }
+
+    .student-row {
+        display: grid;
+        grid-template-columns: 220px 1fr auto;
+        align-items: center;
+        padding: 12px 24px;
+        border-bottom: 1px solid #f1f5f9;
+        gap: 16px;
+        transition: background 0.15s;
+    }
+
+    .student-row:last-child { border-bottom: none; }
+    .student-row:hover { background: #f8fafc; }
+    .student-row.changed { background: #eff6ff; border-left: 3px solid var(--primary-blue); }
+    .student-row.disabled { opacity: 0.6; pointer-events: none; }
+
+    .student-name { font-weight: 700; font-size: 0.95rem; color: #0f172a; }
+    .student-meta { font-size: 0.78rem; color: #94a3b8; }
+
+    /* Chips */
+    .status-group {
+        display: flex;
+        gap: 6px;
+    }
+
+    .chip-label { cursor: pointer; }
+
+    .chip-label input[type="radio"] { display: none; }
+
+    .chip {
+        padding: 6px 14px;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.78rem;
+        color: #64748b;
+        background: #f1f5f9;
+        border: 1.5px solid transparent;
+        transition: all 0.15s;
+        display: block;
+        white-space: nowrap;
+        user-select: none;
+    }
+
+    .chip:hover { background: #e2e8f0; }
+
+    .chip-label input[type="radio"]:checked + .chip[data-s="P"] { background: #dcfce7; color: #166534; border-color: #86efac; }
+    .chip-label input[type="radio"]:checked + .chip[data-s="A"] { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
+    .chip-label input[type="radio"]:checked + .chip[data-s="H"] { background: #fef3c7; color: #92400e; border-color: #fcd34d; }
+    .chip-label input[type="radio"]:checked + .chip[data-s="L"] { background: #f3e8ff; color: #6d28d9; border-color: #c4b5fd; }
+    .chip-label input[type="radio"]:checked + .chip[data-s="E"] { background: #e0f2fe; color: #075985; border-color: #7dd3fc; }
+
+    /* Part input */
+    .part-wrap {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+        background: #f8fafc;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 10px;
+        padding: 6px 12px;
+        min-width: 140px;
+    }
+
+    .part-label { font-size: 0.65rem; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.06em; }
+
+    .part-row { display: flex; align-items: center; gap: 6px; width: 100%; }
+
+    .part-input {
+        width: 36px;
+        border: none;
+        background: transparent;
+        font-weight: 800;
+        font-size: 1rem;
+        color: var(--primary-blue);
+        text-align: center;
+        outline: none;
+    }
+
+    .part-max { font-size: 0.75rem; font-weight: 600; color: #94a3b8; }
+
+    /* Legend pills */
+    .legend-wrap { display: flex; gap: 10px; flex-wrap: wrap; }
+    .legend-pill { font-size: 0.72rem; font-weight: 700; padding: 4px 10px; border-radius: 6px; border: 1px solid #e2e8f0; background: white; color: #64748b; display: flex; align-items: center; gap: 5px; }
+
+    /* Save Bar */
+    .save-bar {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 200;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        background: white;
+        border-radius: 50px;
+        padding: 8px 8px 8px 20px;
+        box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+        border: 1px solid #e2e8f0;
+        min-width: 320px;
+        transition: all 0.3s;
+    }
+
+    .save-bar .info-text {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #64748b;
+        flex: 1;
+    }
+
+    .btn-save {
+        background: #cbd5e1;
+        color: #94a3b8;
+        padding: 10px 28px;
+        border-radius: 40px;
+        font-weight: 800;
+        font-size: 0.9rem;
+        border: none;
+        cursor: not-allowed;
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        pointer-events: none;
+    }
+
+    .btn-save.active {
+        background: var(--primary-blue);
+        color: white;
+        cursor: pointer;
+        pointer-events: all;
+        box-shadow: 0 6px 20px rgba(30, 58, 138, 0.3);
+    }
+
+    .btn-save.active:hover { background: #1e40af; transform: scale(1.02); }
+
+    .btn-save.saved {
+        background: var(--success);
+        color: white;
+        pointer-events: none;
+        cursor: default;
+    }
+
+    .badge-unsaved {
+        background: #fef3c7;
+        color: #92400e;
+        font-size: 0.72rem;
+        font-weight: 800;
+        padding: 3px 10px;
+        border-radius: 20px;
+        display: none;
+    }
+
+    .badge-unsaved.show { display: inline-block; }
+
+    .view-only-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: #f1f5f9;
+        color: #475569;
+        padding: 6px 14px;
+        border-radius: 10px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        border: 1px solid #e2e8f0;
+    }
+</style>
+
+<div class="attendance-hub">
+    <div class="hub-header">
+        <div style="max-width: 1100px; margin: 0 auto;">
+            <h1>Attendance Hub</h1>
+            <p>Effortless daily logging for your students.</p>
+        </div>
+    </div>
+
+    <div style="max-width: 1100px; margin: 0 auto; padding: 0 20px;">
+        <!-- Filter Card -->
+        <div class="filter-card">
+            <form method="GET" class="filter-grid" id="filterForm">
+                <div>
+                    <label class="fl-label">Select Class</label>
+                    <select name="section_subject" class="fl-input" onchange="updateFilter(this.value)">
+                        <option value="">Choose section & subject...</option>
+                        {% for a in assignments %}
+                        <option value="{{ a.section_id }},{{ a.subject_id }}"
+                            {% if a.section_id == sel_section_id and a.subject_id == sel_subject_id %}selected{% endif %}>
+                            {{ a.grade_name }} — {{ a.section_name }} | {{ a.subject_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    <input type="hidden" name="section_id" id="h_section_id" value="{{ sel_section_id or '' }}">
+                    <input type="hidden" name="subject_id" id="h_subject_id" value="{{ sel_subject_id or '' }}">
+                </div>
+                <div>
+                    <label class="fl-label">School Year</label>
+                    <select name="year_id" class="fl-input" onchange="this.form.submit()">
+                        {% for y in school_years %}
+                        <option value="{{ y.year_id }}" {% if y.year_id == sel_year_id %}selected{% endif %}>
+                            {{ y.label }}{% if y.is_active %} ✓{% endif %}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="fl-label">Date</label>
+                    <input type="date" name="date" value="{{ sel_date }}" class="fl-input" onchange="this.form.submit()">
+                </div>
+                {% if sel_section_id and sel_subject_id %}
+                <a href="{{ url_for('teacher.teacher_attendance_export', section_id=sel_section_id, subject_id=sel_subject_id) }}&year_id={{ sel_year_id }}"
+                   style="height: 44px; border-radius: 12px; padding: 0 18px; font-weight: 800; font-size: 0.85rem; background: #16a34a; color: white; display: flex; align-items: center; gap: 8px; text-decoration: none; white-space: nowrap;">
+                   <i class="fas fa-file-excel"></i> Export
+                </a>
+                {% endif %}
+            </form>
+        </div>
+
+        <div style="margin-top: 20px;">
+            {% if is_off %}
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                <div class="view-only-badge"><i class="fas fa-eye"></i> View Only</div>
+                <span style="color: #dc2626; font-weight: 700; font-size: 0.85rem;"><i class="fas fa-exclamation-circle"></i> {{ off_reason }}</span>
+            </div>
+            {% elif sel_year_id != active_year_id %}
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px;">
+                <div class="view-only-badge" style="background:#fef3c7; color:#92400e; border-color:#fcd34d;"><i class="fas fa-history"></i> Historical View</div>
+                <span style="color: #d97706; font-weight: 700; font-size: 0.85rem;">You are viewing a past school year. Editing is disabled to protect archived data.</span>
+            </div>
+            {% endif %}
+
+            {% if students %}
+            <form method="POST" id="attendanceForm">
+                <input type="hidden" name="year_id" value="{{ sel_year_id }}">
+                <div class="att-table-wrap">
+                    <div class="att-table-header">
+                        <h3>📋 Student Attendance — {{ students|length }} students</h3>
+                        <div class="legend-wrap">
+                            <span class="legend-pill" style="background:#dcfce7;color:#166534;border-color:#86efac;">P = Present <strong>(1.0)</strong></span>
+                            <span class="legend-pill" style="background:#fee2e2;color:#991b1b;border-color:#fca5a5;">A = Absent <strong>(0.0)</strong></span>
+                            <span class="legend-pill" style="background:#fef3c7;color:#92400e;border-color:#fcd34d;">H = Half-day <strong>(0.5)</strong></span>
+                            <span class="legend-pill" style="background:#f3e8ff;color:#6d28d9;border-color:#c4b5fd;">L = Late <strong>(0.75)</strong></span>
+                            <span class="legend-pill" style="background:#e0f2fe;color:#075985;border-color:#7dd3fc;">E = Excused <strong>(1.0)</strong></span>
+                            <span class="legend-pill" style="background:#f1f5f9;color:#475569;border-color:#cbd5e1;">Part. = Participation <strong>(0–10)</strong></span>
+                        </div>
+                    </div>
+
+                    {% for s in students %}
+                    <div class="student-row {% if is_off %}disabled{% endif %}" id="row_{{ s.enrollment_id }}">
+                        <div>
+                            <div class="student-name">{{ s.full_name }}</div>
+                            <div class="student-meta">{{ s.lrn }} · {{ s.gender }}</div>
+                        </div>
+
+                        <div class="status-group">
+                            {% for code, label in [('P','Present'),('A','Absent'),('H','Half-day'),('L','Late'),('E','Excused')] %}
+                            <label class="chip-label">
+                                <input type="radio" name="status_{{ s.enrollment_id }}" value="{{ code }}"
+                                    {% if s.cur_status == code or (not s.cur_status and code == 'P') %}checked{% endif %}
+                                    {% if is_off %}disabled{% endif %}
+                                    onchange="markChanged('{{ s.enrollment_id }}')">
+                                <div class="chip" data-s="{{ code }}">{{ label }}</div>
+                            </label>
+                            {% endfor %}
+                        </div>
+
+                        <div class="part-wrap">
+                            <span class="part-label">Participation</span>
+                            <div class="part-row">
+                                <input type="number" name="part_{{ s.enrollment_id }}" min="0" max="10"
+                                    value="{{ s.cur_part | int if s.cur_part is not none else 0 }}" class="part-input"
+                                    {% if is_off %}disabled{% endif %}
+                                    oninput="if(this.value>10)this.value=10;if(this.value<0)this.value=0; markChanged('{{ s.enrollment_id }}')"
+                                    data-orig="{{ s.cur_part or 0 }}">
+                                <span class="part-max">/ 10 pts</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% if not is_off and sel_year_id == active_year_id %}
+                <div class="save-bar">
+                    <span class="info-text" id="saveInfo">No unsaved changes</span>
+                    <span class="badge-unsaved" id="changesBadge">● Changes</span>
+                    <button type="submit" class="btn-save" id="saveBtn" disabled>
+                        <i class="fas fa-cloud-upload-alt"></i> Save Records
+                    </button>
+                </div>
+                {% endif %}
+            </form>
+
+            {% elif sel_section_id %}
+            <div style="text-align:center; padding:80px 20px; background:white; border-radius:20px;">
+                <div style="font-size:3rem;margin-bottom:16px;">🔍</div>
+                <h3 style="font-weight:800;color:#1e293b;">No students found</h3>
+                <p style="color:#64748b;">No active enrollments in this section.</p>
+            </div>
+            {% else %}
+            <div style="text-align:center; padding:100px 20px; background:white; border-radius:20px; border: 2px dashed #e2e8f0;">
+                <div style="font-size:3.5rem;margin-bottom:20px;">🎯</div>
+                <h3 style="font-weight:900;color:#1e293b;">Ready to Log?</h3>
+                <p style="color:#64748b;">Select a class above to start recording today's performance.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    /* ── Filter helpers ── */
+    function updateFilter(val) {
+        if (!val) return;
+        const [sid, subid] = val.split(',');
+        document.getElementById('h_section_id').value = sid;
+        document.getElementById('h_subject_id').value = subid;
+        document.getElementById('filterForm').submit();
+    }
+
+    /* ── Change detection ── */
+    let changedRows = new Set();
+
+    function markChanged(enrollmentId) {
+        changedRows.add(enrollmentId);
+        document.getElementById('row_' + enrollmentId).classList.add('changed');
+        updateSaveBtn();
+    }
+
+    function updateSaveBtn() {
+        const btn = document.getElementById('saveBtn');
+        const info = document.getElementById('saveInfo');
+        const badge = document.getElementById('changesBadge');
+        if (!btn) return;
+        if (changedRows.size > 0) {
+            btn.disabled = false;
+            btn.classList.add('active');
+            btn.classList.remove('saved');
+            info.textContent = changedRows.size + ' student' + (changedRows.size > 1 ? 's' : '') + ' modified';
+            badge.classList.add('show');
+        } else {
+            btn.disabled = true;
+            btn.classList.remove('active');
+            info.textContent = 'No unsaved changes';
+            badge.classList.remove('show');
+        }
+    }
+
+    /* ── On form submit: show saved state ── */
+    {% if not is_off and sel_year_id == active_year_id %}
+    document.getElementById('attendanceForm').addEventListener('submit', function(e) {
+        const btn = document.getElementById('saveBtn');
+        if (btn) {
+            btn.innerHTML = '<i class="fas fa-check-circle"></i> Saved!';
+            btn.classList.remove('active');
+            btn.classList.add('saved');
+            btn.disabled = true;
+        }
+    });
+    {% endif %}
+</script>
+{% endblock %}
+

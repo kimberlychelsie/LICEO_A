@@ -276,6 +276,7 @@
                             <th>Admin Identity</th>
                             <th>Total Students</th>
                             <th>Pending</th>
+                            <th>Attendance Rate</th>
                             <th>Last Active</th>
                             <th>Status</th>
                         </tr>
@@ -297,6 +298,14 @@
                                 {% else %}
                                 <span style="color: #aaa;">None</span>
                                 {% endif %}
+                            </td>
+                            <td>
+                                <div style="font-weight: 800; font-size: 1rem; color: {% if b.attendance_rate >= 90 %}#16a34a{% elif b.attendance_rate >= 75 %}#d97706{% else %}#dc2626{% endif %};">
+                                    {{ b.attendance_rate | round | int if b.attendance_rate % 1 == 0 else b.attendance_rate }}%
+                                </div>
+                                <div style="width: 80px; height: 6px; background: #e2e8f0; border-radius: 3px; margin-top: 4px; overflow: hidden;">
+                                    <div style="width: {{ b.attendance_rate }}%; height: 100%; background: {% if b.attendance_rate >= 90 %}#16a34a{% elif b.attendance_rate >= 75 %}#facc15{% else %}#ef4444{% endif %}; transition: width 1s ease-in-out;"></div>
+                                </div>
                             </td>
                             <td>
                                 {% if b.last_active %}
@@ -346,14 +355,18 @@
                 </div>
             </div>
 
-            <div style="margin-top: 24px; padding: 18px; background: #f8fafc; border: 1px solid var(--ma-border); border-radius: 20px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="margin-top: 24px; padding: 18px; background: #f8fafc; border: 1px solid var(--ma-border); border-radius: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
                 <div style="text-align: left;">
-                    <div style="font-size: 0.7rem; color: var(--ma-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Intelligence Nodes</div>
-                    <div style="font-size: 1.4rem; font-weight: 900; color: var(--ma-primary);">{{ active_branches }} / {{ total_branches }}</div>
+                    <div style="font-size: 0.65rem; color: var(--ma-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Active Nodes</div>
+                    <div style="font-size: 1.1rem; font-weight: 900; color: var(--ma-primary);">{{ active_branches }}/{{ total_branches }}</div>
+                </div>
+                <div style="text-align: center; border-left: 1px solid var(--ma-border); border-right: 1px solid var(--ma-border);">
+                    <div style="font-size: 0.65rem; color: var(--ma-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">Avg Attendance</div>
+                    <div style="font-size: 1.1rem; font-weight: 900; color: #8b5cf6;">{{ global_attendance_rate | round | int if global_attendance_rate % 1 == 0 else global_attendance_rate }}%</div>
                 </div>
                 <div style="text-align: right;">
-                    <div style="font-size: 0.7rem; color: var(--ma-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">System Health</div>
-                    <div style="font-size: 1.4rem; font-weight: 900; color: #10b981;">{{ ((active_branches / total_branches * 100)|round|int) if total_branches > 0 else 100 }}%</div>
+                    <div style="font-size: 0.65rem; color: var(--ma-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">System Health</div>
+                    <div style="font-size: 1.1rem; font-weight: 900; color: #10b981;">{{ ((active_branches / total_branches * 100)|round|int) if total_branches > 0 else 100 }}%</div>
                 </div>
             </div>
 

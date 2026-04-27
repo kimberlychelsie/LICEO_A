@@ -379,6 +379,40 @@ def child_detail(enrollment_id):
                 academic_status = "Needs Attention"
                 status_color = "#d97706" # Warning orange
         
+        # -- Fetch Attendance Summary --
+        cursor.execute("""
+            SELECT s.name AS subject_name,
+                   COUNT(*) AS total_days,
+                   SUM(CASE WHEN da.status = 'P' THEN 1 ELSE 0 END) AS present_count,
+                   SUM(CASE WHEN da.status = 'A' THEN 1 ELSE 0 END) AS absent_count,
+                   SUM(CASE WHEN da.status = 'L' THEN 1 ELSE 0 END) AS late_count,
+                   SUM(CASE WHEN da.status = 'E' THEN 1 ELSE 0 END) AS excused_count,
+                   SUM(CASE WHEN da.status = 'H' THEN 1 ELSE 0 END) AS halfday_count
+            FROM daily_attendance da
+            JOIN subjects s ON da.subject_id = s.subject_id
+            WHERE da.enrollment_id = %s
+            GROUP BY s.name
+            ORDER BY s.name
+        """, (enrollment_id,))
+        attendance_summary = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT s.name AS subject_name, da.attendance_date, 
+                   CASE 
+                     WHEN da.status = 'A' THEN 'Absent'
+                     WHEN da.status = 'L' THEN 'Late'
+                     WHEN da.status = 'E' THEN 'Excused'
+                     WHEN da.status = 'H' THEN 'Half-day'
+                     ELSE da.status
+                   END as status
+            FROM daily_attendance da
+            JOIN subjects s ON da.subject_id = s.subject_id
+            WHERE da.enrollment_id = %s AND da.status IN ('A', 'L', 'E', 'H')
+            ORDER BY da.attendance_date DESC
+            LIMIT 10
+        """, (enrollment_id,))
+        recent_absences = cursor.fetchall()
+        
         # Override if too many missing tasks
         if missing_count >= 5:
             academic_status = "At Risk (Neglecting Tasks)"
@@ -419,6 +453,8 @@ def child_detail(enrollment_id):
             exam_scores=exam_scores,
             grade_data=grade_data,
             schedules=schedules,
+            attendance_summary=attendance_summary,
+            recent_absences=recent_absences,
             grading_periods=['1st', '2nd', '3rd', '4th'],
             academic_status=academic_status,
             status_color=status_color
@@ -456,7 +492,7 @@ def child_bills(enrollment_id):
         payments = []
         if bill:
             cursor.execute("""
-                SELECT p.*, u.username as received_by_name
+                SELECT p.*, p.receipt_number as reference_number, u.username as received_by_name
                 FROM payments p
                 LEFT JOIN users u ON p.received_by = u.user_id
                 WHERE p.bill_id=%s

@@ -268,6 +268,11 @@
         border-color: #1a3a8f;
         color: #1a3a8f;
     }
+    .filter-tab.disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
 
     .filter-tab-act.active {
         background: #2563eb;
@@ -576,10 +581,10 @@
         </div>
 
         <div class="filter-tabs">
-            <div class="filter-tab filter-tab-act active" onclick="filterItems('act', '1st', this)">1st Grading</div>
-            <div class="filter-tab filter-tab-act" onclick="filterItems('act', '2nd', this)">2nd Grading</div>
-            <div class="filter-tab filter-tab-act" onclick="filterItems('act', '3rd', this)">3rd Grading</div>
-            <div class="filter-tab filter-tab-act" onclick="filterItems('act', '4th', this)">4th Grading</div>
+            <div class="filter-tab filter-tab-act active {% if '1st' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('act', '1st', this)">1st Grading</div>
+            <div class="filter-tab filter-tab-act {% if '2nd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('act', '2nd', this)">2nd Grading</div>
+            <div class="filter-tab filter-tab-act {% if '3rd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('act', '3rd', this)">3rd Grading</div>
+            <div class="filter-tab filter-tab-act {% if '4th' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('act', '4th', this)">4th Grading</div>
         </div>
 
         <div class="stats-card">
@@ -694,10 +699,10 @@
         </div>
 
         <div class="filter-tabs">
-            <div class="filter-tab filter-tab-quiz active" onclick="filterItems('quiz', '1st', this)">1st Grading</div>
-            <div class="filter-tab filter-tab-quiz" onclick="filterItems('quiz', '2nd', this)">2nd Grading</div>
-            <div class="filter-tab filter-tab-quiz" onclick="filterItems('quiz', '3rd', this)">3rd Grading</div>
-            <div class="filter-tab filter-tab-quiz" onclick="filterItems('quiz', '4th', this)">4th Grading</div>
+            <div class="filter-tab filter-tab-quiz active {% if '1st' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('quiz', '1st', this)">1st Grading</div>
+            <div class="filter-tab filter-tab-quiz {% if '2nd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('quiz', '2nd', this)">2nd Grading</div>
+            <div class="filter-tab filter-tab-quiz {% if '3rd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('quiz', '3rd', this)">3rd Grading</div>
+            <div class="filter-tab filter-tab-quiz {% if '4th' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('quiz', '4th', this)">4th Grading</div>
         </div>
 
         <div class="table-card">
@@ -801,10 +806,10 @@
         </div>
 
         <div class="filter-tabs">
-            <div class="filter-tab filter-tab-exam active" onclick="filterItems('exam', '1st', this)">1st Grading</div>
-            <div class="filter-tab filter-tab-exam" onclick="filterItems('exam', '2nd', this)">2nd Grading</div>
-            <div class="filter-tab filter-tab-exam" onclick="filterItems('exam', '3rd', this)">3rd Grading</div>
-            <div class="filter-tab filter-tab-exam" onclick="filterItems('exam', '4th', this)">4th Grading</div>
+            <div class="filter-tab filter-tab-exam active {% if '1st' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('exam', '1st', this)">1st Grading</div>
+            <div class="filter-tab filter-tab-exam {% if '2nd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('exam', '2nd', this)">2nd Grading</div>
+            <div class="filter-tab filter-tab-exam {% if '3rd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('exam', '3rd', this)">3rd Grading</div>
+            <div class="filter-tab filter-tab-exam {% if '4th' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('exam', '4th', this)">4th Grading</div>
         </div>
 
         <div class="table-card">
@@ -993,6 +998,7 @@
 </div>
 
 <script>
+    const unlockedPeriods = {{ unlocked_periods|tojson }};
     function changeSection(secId) { window.location.href = "?section=" + secId; }
 
     function openClasslist() {
@@ -1011,7 +1017,15 @@
         btn.classList.add('active');
     }
 
+    function normalizePeriod(value) {
+        return String(value || '')
+            .toLowerCase()
+            .replace(/\s+grading$/, '')
+            .trim();
+    }
+
     function filterItems(type, period, el) {
+        if (!unlockedPeriods.includes(period)) return;
         const allTabs = el.parentElement.querySelectorAll('.filter-tab');
         allTabs.forEach(t => { t.classList.remove('active'); });
         el.classList.add('active');
@@ -1026,8 +1040,10 @@
 
         const rows = document.querySelectorAll('.js-' + type + '-row');
         let visibleCount = 0;
+        const targetPeriod = normalizePeriod(period);
         rows.forEach(row => {
-            if (period === 'all' || row.dataset.period === period) {
+            const rowPeriod = normalizePeriod(row.dataset.period);
+            if (targetPeriod === 'all' || rowPeriod === targetPeriod) {
                 row.style.display = type === 'act' ? 'flex' : '';
                 visibleCount++;
             } else {
@@ -1057,16 +1073,23 @@
     document.addEventListener("DOMContentLoaded", function () {
         const urlParams = new URLSearchParams(window.location.search);
         const activeTab = urlParams.get('active_tab');
+        const urlPeriod = urlParams.get('period');
+        const initialPeriod = unlockedPeriods.includes(urlPeriod)
+            ? urlPeriod
+            : (unlockedPeriods[0] || '1st');
         if (activeTab) {
             const tabBtn = document.getElementById('tab-btn-' + activeTab);
             if (tabBtn) switchMainTab(activeTab, tabBtn);
         }
-        const defaultActs = document.querySelector('.filter-tab-act.active');
-        if (defaultActs) filterItems('act', '1st', defaultActs);
-        const defaultQuizzes = document.querySelector('.filter-tab-quiz.active');
-        if (defaultQuizzes) filterItems('quiz', '1st', defaultQuizzes);
-        const defaultExams = document.querySelector('.filter-tab-exam.active');
-        if (defaultExams) filterItems('exam', '1st', defaultExams);
+        const defaultActs = document.querySelector('.filter-tab-act[onclick*="' + initialPeriod + '"]')
+            || document.querySelector('.filter-tab-act.active');
+        if (defaultActs) filterItems('act', initialPeriod, defaultActs);
+        const defaultQuizzes = document.querySelector('.filter-tab-quiz[onclick*="' + initialPeriod + '"]')
+            || document.querySelector('.filter-tab-quiz.active');
+        if (defaultQuizzes) filterItems('quiz', initialPeriod, defaultQuizzes);
+        const defaultExams = document.querySelector('.filter-tab-exam[onclick*="' + initialPeriod + '"]')
+            || document.querySelector('.filter-tab-exam.active');
+        if (defaultExams) filterItems('exam', initialPeriod, defaultExams);
     });
 
     function toggleAddStudentForm() {

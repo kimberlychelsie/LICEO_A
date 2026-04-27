@@ -1,4 +1,6 @@
-from flask import Blueprint, render_template, request, session, redirect, flash, url_for
+from flask import Blueprint, render_template, request, session, redirect, flash, url_for, jsonify
+from datetime import datetime
+import pytz
 from db import get_db_connection
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
@@ -2568,4 +2570,224 @@ def get_filtered_accounts_api():
         return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()
+        db.close()
+
+def _get_active_school_year(cur, branch_id):
+    cur.execute("""
+        SELECT year_id 
+        FROM school_years 
+        WHERE is_active = TRUE AND branch_id = %s
+        LIMIT 1
+    """, (branch_id,))
+    row = cur.fetchone()
+    if not row:
+        return None
+    if isinstance(row, tuple):
+        return row[0]
+    return row["year_id"]
+
+# =======================
+# ACADEMIC CALENDAR (Branch Admin)
+# =======================
+@branch_admin_bp.route("/branch-admin/academic-calendar", methods=["GET", "POST"])
+def branch_admin_academic_calendar():
+    if session.get("role") != "branch_admin":
+        return redirect(url_for("auth.login"))
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year found for this branch.", "error")
+            return redirect(url_for("branch_admin.branch_admin_dashboard"))
+
+        today = datetime.now().date()
+        today_str = today.strftime('%Y-%m-%d')
+
+        if request.method == "POST":
+            action = request.form.get("action")
+
+            if action == "save_ranges":
+                periods = ["1st", "2nd", "3rd", "4th"]
+                try:
+                    for p in periods:
+                        start_d_str = request.form.get(f"{p}_start")
+                        end_d_str   = request.form.get(f"{p}_end")
+                        
+                        if start_d_str and end_d_str:
+
+                            cur.execute("""
+                                INSERT INTO grading_period_ranges (branch_id, year_id, period_name, start_date, end_date)
+                                VALUES (%s, %s, %s, %s, %s)
+                                ON CONFLICT (branch_id, year_id, period_name) DO UPDATE
+                                SET start_date = EXCLUDED.start_date, end_date = EXCLUDED.end_date
+                            """, (branch_id, year_id, p, start_d_str, end_d_str))
+                    db.commit()
+                    flash("Grading periods updated successfully.", "success")
+                except Exception as e:
+                    db.rollback()
+                    flash(f"Error saving ranges: {str(e)}", "error")
+
+            elif action == "add_holiday":
+                h_date_str = request.form.get("holiday_date")
+                h_name = request.form.get("holiday_name")
+                if h_date_str and h_name:
+                    try:
+                        cur.execute("""
+                                INSERT INTO holidays (branch_id, year_id, holiday_date, holiday_name)
+                                VALUES (%s, %s, %s, %s)
+                                ON CONFLICT (branch_id, year_id, holiday_date) DO UPDATE
+                                SET holiday_name = EXCLUDED.holiday_name
+                            """, (branch_id, year_id, h_date_str, h_name))
+                        db.commit()
+                        flash("Local holiday added.", "success")
+                    except Exception as e:
+                        db.rollback()
+                        flash(f"Error: {str(e)}", "error")
+
+        # Fetch ranges
+        cur.execute("""
+            SELECT period_name, start_date, end_date 
+            FROM grading_period_ranges 
+            WHERE branch_id = %s AND year_id = %s
+        """, (branch_id, year_id))
+        ranges_raw = cur.fetchall() or []
+        ranges = {r["period_name"]: r for r in ranges_raw}
+
+        # Fetch holidays (Local and Global)
+        cur.execute("""
+            SELECT id, holiday_date, holiday_name, branch_id
+            FROM holidays 
+            WHERE (branch_id = %s OR branch_id IS NULL) AND year_id = %s
+            ORDER BY holiday_date ASC
+        """, (branch_id, year_id))
+        holidays = cur.fetchall() or []
+
+        return render_template("branch_admin_academic_calendar.html", 
+                               ranges=ranges, holidays=holidays, today=today_str)
+
+    finally:
+        cur.close()
+        db.close()
+
+@branch_admin_bp.route("/branch-admin/academic-calendar/delete-holiday/<int:holiday_id>", methods=["POST"])
+def branch_admin_delete_holiday(holiday_id):
+    if session.get("role") != "branch_admin":
+        return redirect(url_for("auth.login"))
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        # Only allow deleting local holidays
+        cur.execute("DELETE FROM holidays WHERE id = %s AND branch_id = %s", (holiday_id, branch_id))
+        db.commit()
+        flash("Local holiday deleted.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+    return redirect(url_for("branch_admin.branch_admin_academic_calendar"))
+
+@branch_admin_bp.route("/branch-admin/attendance")
+def branch_admin_attendance():
+    if session.get("role") != "branch_admin":
+        return redirect(url_for("auth.login"))
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    
+    try:
+        year_id = _get_active_school_year(cur, branch_id)
+        
+        ph_tz = pytz.timezone("Asia/Manila")
+        today = datetime.now(ph_tz).date()
+
+        # 1. Teachers Missing Attendance Today
+        # We find all schedules for today, and check if there's a daily_attendance record for that section/subject today.
+        today_name = today.strftime('%A')
+        cur.execute("""
+            SELECT sc.teacher_id, u.full_name AS teacher_name, sub.name AS subject_name,
+                   g.name AS grade_level, s.section_name, sc.start_time, sc.end_time
+            FROM schedules sc
+            JOIN users u ON sc.teacher_id = u.user_id
+            JOIN subjects sub ON sc.subject_id = sub.subject_id
+            JOIN sections s ON sc.section_id = s.section_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            WHERE sc.branch_id = %s AND sc.year_id = %s AND sc.day_of_week = %s
+              AND NOT EXISTS (
+                  SELECT 1 FROM daily_attendance da
+                  JOIN enrollments e ON da.enrollment_id = e.enrollment_id
+                  WHERE da.subject_id = sc.subject_id 
+                    AND da.attendance_date = %s
+                    AND e.section_id = sc.section_id
+              )
+            ORDER BY sc.start_time
+        """, (branch_id, year_id, today_name, today))
+        missing_attendance = cur.fetchall()
+
+        # 2. Habitual Absentees (>= 3 absences across any subject)
+        cur.execute("""
+            SELECT e.enrollment_id, e.student_name, g.name AS grade_level, s.section_name,
+                   COUNT(da.id) as absent_count,
+                   MAX(da.attendance_date) as last_absence
+            FROM daily_attendance da
+            JOIN enrollments e ON da.enrollment_id = e.enrollment_id
+            LEFT JOIN sections s ON e.section_id = s.section_id
+            LEFT JOIN grade_levels g ON (e.grade_level = g.name AND g.branch_id = %s)
+            WHERE da.branch_id = %s AND da.year_id = %s AND da.status = 'A'
+            GROUP BY e.enrollment_id, e.student_name, g.name, s.section_name
+            HAVING COUNT(da.id) >= 3
+            ORDER BY absent_count DESC
+        """, (branch_id, branch_id, year_id))
+        habitual_absentees = cur.fetchall()
+
+        # 3. Overall Branch Attendance Stats for Today
+        cur.execute("""
+            SELECT status, COUNT(*) as count
+            FROM daily_attendance
+            WHERE branch_id = %s AND year_id = %s AND attendance_date = %s
+            GROUP BY status
+        """, (branch_id, year_id, today))
+        today_stats_rows = cur.fetchall()
+        
+        today_stats = {'P': 0, 'A': 0, 'L': 0, 'E': 0, 'H': 0}
+        total_records = 0
+        for row in today_stats_rows:
+            status = row['status']
+            count = row['count']
+            if status in today_stats:
+                today_stats[status] = count
+            total_records += count
+            
+        attendance_rate = 0
+        if total_records > 0:
+            # P, L, E, H are all considered "Present/Excused" in the rate calculation
+            present_total = today_stats['P'] + today_stats['L'] + today_stats['H'] + today_stats['E']
+            attendance_rate = (present_total / total_records) * 100
+            if attendance_rate % 1 == 0:
+                attendance_rate = int(attendance_rate)
+            else:
+                attendance_rate = round(attendance_rate, 1)
+
+        return render_template(
+            "branch_admin_attendance.html",
+            missing_attendance=missing_attendance,
+            habitual_absentees=habitual_absentees,
+            today_stats=today_stats,
+            attendance_rate=attendance_rate,
+            today_date=today.strftime('%B %d, %Y')
+        )
+
+    except Exception as e:
+        flash(f"Error fetching attendance data: {str(e)}", "error")
+        return redirect(url_for("branch_admin.dashboard"))
+    finally:
+        cur.close()
         db.close()

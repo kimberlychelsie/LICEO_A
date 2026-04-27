@@ -253,16 +253,23 @@
                 <div class="form-group">
                     <label class="form-label" style="display: flex; align-items: center; gap: 6px;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                        Grading Period <span style="color:#ef4444">*</span>
+                        Grading Period
                     </label>
-                    <select name="grading_period" class="form-select" required>
-                        {% set p = request.args.get('period', '') %}
-                        <option value="">— Select Grading Period —</option>
-                        <option value="1st" {% if p == '1st' %}selected{% endif %}>1st Grading</option>
-                        <option value="2nd" {% if p == '2nd' %}selected{% endif %}>2nd Grading</option>
-                        <option value="3rd" {% if p == '3rd' %}selected{% endif %}>3rd Grading</option>
-                        <option value="4th" {% if p == '4th' %}selected{% endif %}>4th Grading</option>
-                    </select>
+                    <div style="padding: 12px 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; color: #1e40af; font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-magic" style="color: #3b82f6;"></i>
+                        {% set p = selected_period or '' %}
+                        {% if p %}
+                            <span>Set to <b>{{ p }} Grading</b> <small style="font-weight:normal; margin-left:4px;">(Locked to selected grading period)</small></span>
+                        {% else %}
+                            <span>Automatically assigned based on the <b>Scheduled Start</b> date.</span>
+                        {% endif %}
+                    </div>
+                    <input type="hidden" name="grading_period" value="{{ selected_period or '' }}">
+                    {% if p and p not in unlocked_periods %}
+                    <small style="display:block; margin-top:6px; color:#b45309; font-weight:600;">
+                        {{ p }} Grading is not open yet based on Admin calendar.
+                    </small>
+                    {% endif %}
                 </div>
             </div>
 
@@ -311,7 +318,7 @@
 
             <div class="action-bar">
                 <a href="{{ url_for('teacher.teacher_class_view', subject_id=subject_id) if subject_id else url_for('teacher.teacher_exams') }}" class="btn btn-cancel">Cancel</a>
-                <button type="submit" class="btn btn-create" style="gap: 8px;">
+                <button type="submit" class="btn btn-create" style="gap: 8px;" {% if selected_period and selected_period not in unlocked_periods %}disabled title="This grading period is not open yet"{% endif %}>
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     Create & Add Questions →
                 </button>
