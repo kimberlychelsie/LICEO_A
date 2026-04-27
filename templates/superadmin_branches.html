@@ -350,79 +350,66 @@
 
     <!-- Create New Branch -->
     <div class="modern-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;"
-            onclick="toggleAddForm()">
-            <h2 style="margin: 0;"><i class="fas fa-plus-circle" style="color: var(--ma-gold);"></i> Deploy New Branch
-                Node</h2>
-            <button class="btn-prem"
-                style="background: var(--ma-primary-soft); color: var(--ma-primary); padding: 8px 16px;">
-                <span id="toggleIcon"><i class="fas fa-chevron-down"></i></span>
-            </button>
-        </div>
+        <h2><i class="fas fa-plus-circle" style="color: var(--ma-gold);"></i> Deploy New Branch Node</h2>
+        <form method="POST" action="{{ url_for('super_admin.super_admin_branches') }}"
+            onsubmit="return validateAddBranch(this);">
+            <div class="entry-grid">
+                <div class="form-node">
+                    <label>Branch Identity</label>
+                    <input type="text" id="branch_name" name="branch_name" placeholder="e.g. Liceo de Majayjay"
+                        required>
+                </div>
+                <div class="form-node">
+                    <label>Assigned Code</label>
+                    <input type="text" id="branch_code" name="branch_code" placeholder="e.g. LDMAJ"
+                        style="text-transform: uppercase;" required>
+                </div>
+                <div class="form-node">
+                    <label>Location</label>
+                    <input type="text" name="location" id="branch_location" class="no-numbers"
+                        placeholder="e.g. Majayjay, Laguna" required>
+                </div>
+                <div class="form-node">
+                    <label>Admin Leader Name</label>
+                    <input type="text" id="admin_name" name="admin_name" class="no-numbers"
+                        placeholder="e.g. Jocelyn Ramirez" required>
+                </div>
+                <div class="form-node">
+                    <label>Gender</label>
+                    <select name="gender" required>
+                        <option value="">— Select —</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </div>
+                <div class="form-node">
+                    <label>Admin Protocol Email</label>
+                    <input type="email" id="admin_email" name="admin_email" placeholder="admin@liceo.edu.ph" required>
+                </div>
+            </div>
 
-        <div id="addBranchSection"
-            style="display: none; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--ma-border);">
-            <form method="POST" action="{{ url_for('super_admin.super_admin_branches') }}"
-                onsubmit="return validateAddBranch(this);">
-                <div class="entry-grid">
-                    <div class="form-node">
-                        <label>Branch Identity</label>
-                        <input type="text" id="branch_name" name="branch_name" placeholder="e.g. Liceo de Majayjay"
-                            required>
-                    </div>
-                    <div class="form-node">
-                        <label>Assigned Code</label>
-                        <input type="text" id="branch_code" name="branch_code" placeholder="e.g. LDMAJ"
-                            style="text-transform: uppercase;" required>
-                    </div>
-                    <div class="form-node">
-                        <label>Location</label>
-                        <input type="text" name="location" id="branch_location" class="no-numbers"
-                            placeholder="e.g. Majayjay, Laguna" required>
-                    </div>
-                    <div class="form-node">
-                        <label>Admin Leader Name</label>
-                        <input type="text" id="admin_name" name="admin_name" class="no-numbers"
-                            placeholder="e.g. Jocelyn Ramirez" required>
-                    </div>
-                    <div class="form-node">
-                        <label>Gender</label>
-                        <select name="gender" required>
-                            <option value="">— Select —</option>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                        </select>
-                    </div>
-                    <div class="form-node">
-                        <label>Admin Protocol Email</label>
-                        <input type="email" id="admin_email" name="admin_email" placeholder="admin@liceo.edu.ph"
-                            required>
+            <!-- MAP SECTION -->
+            <div class="map-section" style="margin-bottom: 24px;">
+                <label
+                    style="display:block; font-size:0.8rem; font-weight:800; color:var(--ma-muted); text-transform:uppercase; margin-bottom:8px;">Geographic
+                    Pinpoint (REQUIRED)</label>
+                <div class="map-instruction">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <div>
+                        <strong>How to pin location:</strong> Use the search icon 🔍 on the map to find the city/street,
+                        then <strong>drag the red pin</strong> exactly where the school is located.
                     </div>
                 </div>
+                <div id="addBranchMap" class="map-container"></div>
+                <!-- Hidden fields for coordinates -->
+                <input type="hidden" name="latitude" id="addLatitude">
+                <input type="hidden" name="longitude" id="addLongitude">
+            </div>
 
-                <!-- MAP SECTION -->
-                <div class="map-section" style="margin-bottom: 24px;">
-                    <label
-                        style="display:block; font-size:0.8rem; font-weight:800; color:var(--ma-muted); text-transform:uppercase; margin-bottom:8px;">Geographic
-                        Pinpoint (REQUIRED)</label>
-                    <div class="map-instruction">
-                        <i class="fas fa-map-marked-alt"></i>
-                        <div>
-                            <strong>How to pin location:</strong> Use the search icon 🔍 on the map to find the
-                            city/street, then <strong>drag the red pin</strong> exactly where the school is located.
-                        </div>
-                    </div>
-                    <div id="addBranchMap" class="map-container"></div>
-                    <!-- Hidden fields for coordinates -->
-                    <input type="hidden" name="latitude" id="addLatitude">
-                    <input type="hidden" name="longitude" id="addLongitude">
-                </div>
-
-                <div style="display:flex; justify-content:flex-end;">
-                    <button type="submit" class="btn-prem btn-gold">🚀 Initialize Branch & Admin account</button>
-                </div>
-            </form>
-        </div>
+            <div style="display:flex; justify-content:flex-end;">
+                <button type="submit" class="btn-prem btn-gold">🚀 Initialize Branch & Admin account</button>
+            </div>
+        </form>
     </div>
 
     <!-- Branch Inventory -->
@@ -493,12 +480,11 @@
                         </td>
                         <td style="text-align: right; padding-right: 32px; white-space: nowrap;">
                             <form method="POST" action="/super-admin/branch/{{ b.branch_id }}/toggle-status"
-                                style="display:inline;"
-                                onsubmit="return confirmStatusToggle(event, '{{ b.branch_name }}', {{ 'true' if b.is_active else 'false' }});">
+                                style="display:inline;">
                                 <button type="submit" class="btn-prem"
                                     style="padding: 8px 14px; background: #f1f5f9; color: var(--ma-muted); font-size: 0.75rem;">
-                                    {% if b.is_active %}<i class="fas fa-pause"></i> Deactivate{% else %}<i
-                                        class="fas fa-play"></i> Activate{% endif %}
+                                    {% if b.is_active %}<i class="fas fa-pause"></i> Deactivated{% else %}<i
+                                        class="fas fa-play"></i> Activated{% endif %}
                                 </button>
                             </form>
                             <button type="button" class="btn-prem edit-branch-btn" data-id="{{ b.branch_id }}"
@@ -785,14 +771,14 @@
     // Existing Branches Data
     const branchesData = [
         {% for b in branches %}
-        {% if b.latitude and b.longitude %}
-        {
-            name: "{{ b.branch_name | e }}",
-            lat: {{ b.latitude }},
-            lng: {{ b.longitude }}
-        },
-        {% endif %}
-        {% endfor %}
+    {% if b.latitude and b.longitude %}
+    {
+        name: "{{ b.branch_name | e }}",
+        lat: {{ b.latitude }},
+        lng: {{ b.longitude }}
+    },
+    {% endif %}
+    {% endfor %}
     ];
 
     function populateExistingBranches(mapObj) {
