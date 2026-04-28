@@ -349,36 +349,37 @@
             font-size: 0.8rem;
         }
 
-        /* ── Table-to-Card Transformation ── */
-        .health-table thead {
+        /* ── All Tables to Card Transformation ── */
+        .health-table thead, .vault-table thead, .attendance-table thead {
             display: none;
         }
 
-        .health-table tbody {
+        .health-table tbody, .vault-table tbody, .attendance-table tbody {
             display: flex;
             flex-direction: column;
             gap: 12px;
         }
 
-        .health-table tr {
+        .health-table tr, .vault-table tr, .attendance-table tr {
             display: block;
             background: #fff;
             border-radius: 20px;
             padding: 16px;
             border: 1px solid var(--ma-glass-border);
             box-shadow: var(--ma-shadow);
+            width: 100%;
         }
 
-        .health-table td {
+        .health-table td, .vault-table td, .attendance-table td {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 8px 0;
             border: none;
-            font-size: 0.75rem;
+            font-size: 0.8rem;
         }
 
-        .health-table td::before {
+        .health-table td::before, .vault-table td::before, .attendance-table td::before {
             content: attr(data-label);
             font-weight: 800;
             color: var(--ma-muted);
@@ -386,7 +387,18 @@
             text-transform: uppercase;
         }
 
-        .health-table td:last-child {
+        .health-table td:first-child, .vault-table td:first-child, .attendance-table td:first-child {
+            background: #f8fafc;
+            margin: -16px -16px 12px -16px;
+            padding: 12px 16px;
+            border-radius: 20px 20px 0 0;
+            justify-content: flex-start;
+            font-weight: 900;
+            color: var(--ma-primary);
+        }
+        .health-table td:first-child::before, .vault-table td:first-child::before, .attendance-table td:first-child::before { display: none; }
+
+        .health-table td:last-child, .vault-table td:last-child, .attendance-table td:last-child {
             border-bottom: none;
         }
 
@@ -443,7 +455,7 @@
 <div class="ma-container">
     <header class="premium-header">
         <div class="header-text">
-            <h1>Attendance <span>OversightS</span></h1>
+            <h1>Attendance <span>Oversight</span></h1>
             <p>Institutional attendance intelligence and faculty monitoring</p>
         </div>
         <div class="date-badge">
@@ -528,20 +540,17 @@
                             <tbody>
                                 {% for m in missing_attendance %}
                                 <tr>
-                                    <td>
+                                    <td data-label="Faculty Member">
                                         <div style="display: flex; align-items: center; gap: 16px;">
-                                            <div class="user-avatar" style="background: #fef3c7; color: #d97706;">{{
-                                                m.teacher_name[0] }}</div>
+                                            <div class="user-avatar" style="background: #fef3c7; color: #d97706;">{{ m.teacher_name[0] }}</div>
                                             <strong style="color: var(--ma-primary);">{{ m.teacher_name }}</strong>
                                         </div>
                                     </td>
-                                    <td style="font-weight: 800;">{{ m.subject_name }}</td>
-                                    <td style="color: var(--ma-muted);">{{ m.grade_level }} — {{ m.section_name }}</td>
-                                    <td style="font-size: 0.85rem;">
-                                        <span
-                                            style="background: #f8fafc; padding: 4px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                            {{ m.start_time.strftime('%I:%M %p') }} - {{ m.end_time.strftime('%I:%M %p')
-                                            }}
+                                    <td data-label="Subject" style="font-weight: 800;">{{ m.subject_name }}</td>
+                                    <td data-label="Target" style="color: var(--ma-muted);">{{ m.grade_level }} — {{ m.section_name }}</td>
+                                    <td data-label="Schedule" style="font-size: 0.85rem;">
+                                        <span style="background: #f8fafc; padding: 4px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                            {{ m.start_time.strftime('%I:%M %p') }} - {{ m.end_time.strftime('%I:%M %p') }}
                                         </span>
                                     </td>
                                 </tr>
