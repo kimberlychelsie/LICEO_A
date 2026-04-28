@@ -6,6 +6,8 @@ from datetime import datetime, date
 from decimal import Decimal
 import secrets
 import psycopg2.extras
+import pandas as pd
+from openpyxl.styles import Font, Fill, Alignment, PatternFill, Border, Side
 
 cashier_bp = Blueprint("cashier", __name__)
 
@@ -1222,8 +1224,8 @@ def reservation_receipt(reservation_id):
 # =======================
 
 @cashier_bp.route("/cashier/reservations/export")
-def export_reservations_csv():
-    """Export ALL reservations for this branch as a CSV file."""
+def export_reservations_excel():
+    """Export ALL reservations for this branch as a styled Excel file."""
     if not _require_cashier():
         return redirect(url_for("auth.login"))
 
@@ -1232,29 +1234,33 @@ def export_reservations_csv():
     cur = None
     try:
         cur = conn.cursor()
+        
+        # Get Branch and Admin info for header
+        cur.execute("""
+            SELECT b.branch_name, u.full_name
+            FROM branches b
+            LEFT JOIN users u ON u.branch_id = b.branch_id AND u.role = 'branch_admin'
+            WHERE b.branch_id = %s
+            LIMIT 1
+        """, (branch_id,))
+        branch_info = cur.fetchone()
+        branch_name = branch_info[0] if branch_info else "Unknown Branch"
+        admin_name = branch_info[1] if branch_info else "System Administrator"
+
         cur.execute("""
             SELECT
                 r.reservation_id,
                 COALESCE(u.username, '') AS username,
-                COALESCE(
-                    e.student_name,
-                    svp.student_name,
-                    u.username,
-                    ''
-                ) AS full_name,
+                COALESCE(e.student_name, svp.student_name, u.username, '') AS full_name,
                 COALESCE(r.student_grade_level, svp.grade_level) AS grade_level,
                 r.status,
                 r.created_at,
                 CASE
-                  WHEN r.reserved_by_user_id IS NOT NULL
-                       AND reserved_by.role = 'parent'
-                  THEN 'Parent'
+                  WHEN r.reserved_by_user_id IS NOT NULL AND reserved_by.role = 'parent' THEN 'Parent'
                   ELSE 'Student'
                 END AS reserved_by_role,
                 CASE
-                  WHEN r.reserved_by_user_id IS NOT NULL
-                       AND reserved_by.role = 'parent'
-                  THEN COALESCE(svp.guardian_name, reserved_by.username)
+                  WHEN r.reserved_by_user_id IS NOT NULL AND reserved_by.role = 'parent' THEN COALESCE(svp.guardian_name, reserved_by.username)
                   ELSE NULL
                 END AS parent_name,
                 (
@@ -1274,16 +1280,11 @@ def export_reservations_csv():
             LEFT JOIN enrollments e ON e.enrollment_id = sa.enrollment_id
             LEFT JOIN users reserved_by ON reserved_by.user_id = r.reserved_by_user_id
             LEFT JOIN LATERAL (
-                SELECT
-                    e2.student_name,
-                    e2.grade_level,
-                    e2.guardian_name,
-                    ps2.relationship
+                SELECT e2.student_name, e2.grade_level, e2.guardian_name, ps2.relationship
                 FROM parent_student ps2
                 JOIN enrollments e2 ON e2.enrollment_id = ps2.student_id
                 WHERE ps2.parent_id = r.reserved_by_user_id
-                ORDER BY ps2.student_id
-                LIMIT 1
+                ORDER BY ps2.student_id LIMIT 1
             ) svp ON (reserved_by.role = 'parent')
             WHERE r.branch_id = %s
             ORDER BY r.created_at DESC
@@ -1291,50 +1292,100 @@ def export_reservations_csv():
         rows = cur.fetchall() or []
     finally:
         if cur:
-            try:
-                cur.close()
-            except Exception:
-                pass
+            try: cur.close()
+            except Exception: pass
         conn.close()
 
-    output = io.StringIO()
-    writer = csv.writer(output)
-
-    # Header row
-    writer.writerow([
-        "Reservation ID", "Student Username", "Full Name", "Grade Level",
-        "Status", "Date Reserved", "Reserved By", "Parent Name",
-        "Item Categories", "Grand Total (PHP)"
-    ])
-
+    # Create Data
+    data = []
     for r in rows:
-        res_id   = f"RES-{r[0]:04d}"
-        username = r[1] or ""
-        fullname = r[2] or username
-        grade    = r[3] or ""
-        status   = r[4] or ""
-        date_str = r[5].strftime("%Y-%m-%d %H:%M") if r[5] else ""
-        role     = r[6] or "Student"
-        parent   = r[7] or ""
-        cats     = r[8] or ""
-        total    = f"{float(r[9]):.2f}" if r[9] else "0.00"
+        data.append({
+            "Reservation ID": f"RES-{r[0]:04d}",
+            "Student Username": r[1] or "",
+            "Full Name": r[2] or r[1],
+            "Grade Level": r[3] or "",
+            "Status": r[4] or "",
+            "Date Reserved": r[5].strftime("%Y-%m-%d %H:%M") if r[5] else "",
+            "Reserved By": r[6] or "Student",
+            "Parent Name": r[7] or "",
+            "Item Categories": r[8] or "",
+            "Grand Total (PHP)": float(r[9] or 0)
+        })
 
-        writer.writerow([res_id, username, fullname, grade, status,
-                         date_str, role, parent, cats, total])
+    df = pd.DataFrame(data)
+    
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, startrow=4, sheet_name='Reservations')
+        workbook = writer.book
+        worksheet = writer.sheets['Reservations']
+
+        # Styling
+        blue_fill = PatternFill(start_color='1A3A8F', end_color='1A3A8F', fill_type='solid')
+        white_font = Font(color='FFFFFF', bold=True, name='Arial', size=10)
+        gold_font = Font(color='1A3A8F', bold=True, size=16, name='Arial') # Changed to blue for better print contrast
+        header_font = Font(bold=True, size=11, name='Arial')
+        thin_border = Border(
+            left=Side(style='thin', color='CBD5E1'),
+            right=Side(style='thin', color='CBD5E1'),
+            top=Side(style='thin', color='CBD5E1'),
+            bottom=Side(style='thin', color='CBD5E1')
+        )
+
+        # Header Info
+        worksheet['A1'] = f"LICEO DE MAJAYJAY - {branch_name.upper()}"
+        worksheet['A1'].font = gold_font
+        worksheet['A2'] = f"OFFICIAL RESERVATION REGISTRY"
+        worksheet['A2'].font = header_font
+        worksheet['A3'] = f"Administrator: {admin_name} | Generated: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        worksheet['A3'].font = Font(size=9, color='64748B', name='Arial')
+        
+        # Format Table Headers
+        for cell in worksheet[5]:
+            cell.fill = blue_fill
+            cell.font = white_font
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = thin_border
+
+        # Auto-adjust columns and add borders
+        for row in worksheet.iter_rows(min_row=6, max_row=worksheet.max_row):
+            for cell in row:
+                cell.border = thin_border
+                cell.font = Font(name='Arial', size=9)
+                cell.alignment = Alignment(vertical='center')
+
+        for column in worksheet.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except: pass
+            adjusted_width = min(max_length + 4, 40)
+            worksheet.column_dimensions[column_letter].width = adjusted_width
+
+        # Page Setup for Printing (Long Bond Paper / Legal)
+        worksheet.page_setup.orientation = worksheet.ORIENTATION_LANDSCAPE
+        worksheet.page_setup.paperSize = worksheet.PAPERSIZE_LEGAL # 8.5 x 14
+        worksheet.page_setup.fitToPage = True
+        worksheet.page_setup.fitToWidth = 1
+        worksheet.page_setup.fitToHeight = 0
+        worksheet.print_options.horizontalCentered = True
 
     today = date.today().strftime("%Y-%m-%d")
-    filename = f"reservations_{today}.csv"
+    filename = f"reservations_{today}.xlsx"
     output.seek(0)
     return Response(
         output.getvalue(),
-        mimetype="text/csv",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 
 
 @cashier_bp.route("/cashier/reservations/<int:reservation_id>/export")
-def export_reservation_detail_csv(reservation_id):
-    """Export a single reservation (summary + items) as a CSV file."""
+def export_reservation_detail_excel(reservation_id):
+    """Export a single reservation as a styled Excel file."""
     if not _require_cashier():
         return redirect(url_for("auth.login"))
 
@@ -1343,31 +1394,33 @@ def export_reservation_detail_csv(reservation_id):
     cur = None
     try:
         cur = conn.cursor()
+        
+        # Get Branch and Admin info
+        cur.execute("""
+            SELECT b.branch_name, u.full_name
+            FROM branches b
+            LEFT JOIN users u ON u.branch_id = b.branch_id AND u.role = 'branch_admin'
+            WHERE b.branch_id = %s
+            LIMIT 1
+        """, (branch_id,))
+        branch_info = cur.fetchone()
+        branch_name = branch_info[0] if branch_info else "Unknown Branch"
+        admin_name = branch_info[1] if branch_info else "System Administrator"
 
-        # -- Header / summary info
         cur.execute("""
             SELECT
                 r.reservation_id,
                 COALESCE(u.username, '') AS username,
-                COALESCE(
-                    e.student_name,
-                    svp.student_name,
-                    u.username,
-                    ''
-                ) AS full_name,
+                COALESCE(e.student_name, svp.student_name, u.username, '') AS full_name,
                 COALESCE(r.student_grade_level, svp.grade_level) AS grade_level,
                 r.status,
                 r.created_at,
                 CASE
-                  WHEN r.reserved_by_user_id IS NOT NULL
-                       AND reserved_by.role = 'parent'
-                  THEN 'Parent'
+                  WHEN r.reserved_by_user_id IS NOT NULL AND reserved_by.role = 'parent' THEN 'Parent'
                   ELSE 'Student'
                 END AS reserved_by_role,
                 CASE
-                  WHEN r.reserved_by_user_id IS NOT NULL
-                       AND reserved_by.role = 'parent'
-                  THEN COALESCE(svp.guardian_name, reserved_by.username)
+                  WHEN r.reserved_by_user_id IS NOT NULL AND reserved_by.role = 'parent' THEN COALESCE(svp.guardian_name, reserved_by.username)
                   ELSE NULL
                 END AS parent_name,
                 svp.relationship
@@ -1377,27 +1430,20 @@ def export_reservation_detail_csv(reservation_id):
             LEFT JOIN enrollments e ON e.enrollment_id = sa.enrollment_id
             LEFT JOIN users reserved_by ON reserved_by.user_id = r.reserved_by_user_id
             LEFT JOIN LATERAL (
-                SELECT
-                    e2.student_name,
-                    e2.grade_level,
-                    e2.guardian_name,
-                    ps2.relationship
+                SELECT e2.student_name, e2.grade_level, e2.guardian_name, ps2.relationship
                 FROM parent_student ps2
                 JOIN enrollments e2 ON e2.enrollment_id = ps2.student_id
                 WHERE ps2.parent_id = r.reserved_by_user_id
-                ORDER BY ps2.student_id
-                LIMIT 1
+                ORDER BY ps2.student_id LIMIT 1
             ) svp ON (reserved_by.role = 'parent')
             WHERE r.reservation_id = %s AND r.branch_id = %s
             LIMIT 1
         """, (reservation_id, branch_id))
         header = cur.fetchone()
-
         if not header:
             flash("Reservation not found.", "error")
             return redirect(url_for("cashier.cashier_reservations"))
 
-        # -- Items
         cur.execute("""
             SELECT ii.category, ii.item_name, ri.qty,
                    COALESCE(NULLIF(TRIM(ri.size_label), ''), ii.publisher, ii.size_label) AS display_label,
@@ -1409,56 +1455,113 @@ def export_reservation_detail_csv(reservation_id):
         """, (reservation_id,))
         items = cur.fetchall() or []
         grand_total = sum(float(it[5] or 0) for it in items)
-
     finally:
         if cur:
-            try:
-                cur.close()
-            except Exception:
-                pass
+            try: cur.close()
+            except Exception: pass
         conn.close()
 
-    output = io.StringIO()
-    writer = csv.writer(output)
-
-    # ── Section 1: Reservation Summary ──
-    writer.writerow(["=== RESERVATION SUMMARY ==="])
-    writer.writerow(["Reservation ID", f"RES-{header[0]:04d}"])
-    writer.writerow(["Student Name",   header[2] or header[1] or ""])
-    writer.writerow(["Username",       header[1] or ""])
-    writer.writerow(["Grade Level",    header[3] or ""])
-    writer.writerow(["Status",         header[4] or ""])
-    writer.writerow(["Date Reserved",  header[5].strftime("%Y-%m-%d %H:%M") if header[5] else ""])
-    writer.writerow(["Reserved By",    header[6] or "Student"])
-    if header[7]:  # parent name
-        writer.writerow(["Parent Name",  header[7]])
-    if header[8]:  # relationship
-        writer.writerow(["Relationship", header[8]])
-    writer.writerow([])  # blank separator
-
-    # ── Section 2: Item List ──
-    writer.writerow(["=== RESERVED ITEMS ==="])
-    writer.writerow(["Category", "Item Name", "Qty", "Size / Publisher", "Unit Price (PHP)", "Line Total (PHP)"])
-
+    # Create Item List Data
+    item_data = []
     for it in items:
-        writer.writerow([
-            it[0] or "",
-            it[1] or "",
-            it[2] or 0,
-            it[3] or "",
-            f"{float(it[4] or 0):.2f}",
-            f"{float(it[5] or 0):.2f}",
-        ])
+        item_data.append({
+            "Category": it[0] or "",
+            "Item Name": it[1] or "",
+            "Qty": it[2] or 0,
+            "Size / Publisher": it[3] or "",
+            "Unit Price (PHP)": float(it[4] or 0),
+            "Line Total (PHP)": float(it[5] or 0)
+        })
 
-    writer.writerow([])
-    writer.writerow(["", "", "", "", "GRAND TOTAL", f"{grand_total:.2f}"])
+    df_items = pd.DataFrame(item_data)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df_items.to_excel(writer, index=False, startrow=10, sheet_name='Details')
+        workbook = writer.book
+        worksheet = writer.sheets['Details']
 
-    today = date.today().strftime("%Y-%m-%d")
-    filename = f"reservation_RES-{header[0]:04d}_{today}.csv"
+        # Styling
+        blue_fill = PatternFill(start_color='1A3A8F', end_color='1A3A8F', fill_type='solid')
+        white_font = Font(color='FFFFFF', bold=True, name='Arial', size=10)
+        gold_font = Font(color='1A3A8F', bold=True, size=18, name='Arial')
+        label_font = Font(bold=True, name='Arial', size=10)
+        thin_border = Border(
+            left=Side(style='thin', color='CBD5E1'),
+            right=Side(style='thin', color='CBD5E1'),
+            top=Side(style='thin', color='CBD5E1'),
+            bottom=Side(style='thin', color='CBD5E1')
+        )
+
+        # Header Section
+        worksheet['A1'] = f"LICEO DE MAJAYJAY - {branch_name.upper()}"
+        worksheet['A1'].font = gold_font
+        worksheet['A2'] = f"INDIVIDUAL RESERVATION REPORT"
+        worksheet['A2'].font = Font(bold=True, size=12, name='Arial')
+        worksheet['A3'] = f"Branch Administrator: {admin_name} | Exported: {datetime.now().strftime('%Y-%m-%d %H:%M')}"
+        worksheet['A3'].font = Font(size=9, color='64748B', name='Arial')
+
+        # Summary Section
+        worksheet['A5'] = "RESERVATION SUMMARY"
+        worksheet['A5'].font = Font(bold=True, size=12, color='1A3A8F', name='Arial')
+        
+        summary_rows = [
+            ("Reservation ID", f"RES-{header[0]:04d}"),
+            ("Student Name",   header[2] or header[1] or ""),
+            ("Grade Level",    header[3] or ""),
+            ("Status",         header[4] or ""),
+            ("Date Reserved",  header[5].strftime("%Y-%m-%d %H:%M") if header[5] else "")
+        ]
+        for i, (label, val) in enumerate(summary_rows):
+            worksheet[f'A{6+i}'] = label
+            worksheet[f'A{6+i}'].font = label_font
+            worksheet[f'B{6+i}'] = val
+            worksheet[f'B{6+i}'].font = Font(name='Arial', size=10)
+
+        # Table Header Styling
+        for cell in worksheet[11]:
+            cell.fill = blue_fill
+            cell.font = white_font
+            cell.alignment = Alignment(horizontal='center', vertical='center')
+            cell.border = thin_border
+
+        # Data Row Styling
+        for row in worksheet.iter_rows(min_row=12, max_row=11+len(items)):
+            for cell in row:
+                cell.border = thin_border
+                cell.font = Font(name='Arial', size=9)
+
+        # Total Row
+        last_row = 12 + len(items)
+        worksheet[f'E{last_row}'] = "GRAND TOTAL"
+        worksheet[f'E{last_row}'].font = label_font
+        worksheet[f'F{last_row}'] = grand_total
+        worksheet[f'F{last_row}'].font = Font(bold=True, size=11, name='Arial')
+        worksheet[f'F{last_row}'].border = thin_border
+
+        # Auto-adjust columns
+        for column in worksheet.columns:
+            max_length = 0
+            column_letter = column[0].column_letter
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except: pass
+            worksheet.column_dimensions[column_letter].width = min(max_length + 4, 50)
+
+        # Page Setup
+        worksheet.page_setup.orientation = worksheet.ORIENTATION_PORTRAIT
+        worksheet.page_setup.paperSize = worksheet.PAPERSIZE_LEGAL # Long Bond Paper
+        worksheet.page_setup.fitToPage = True
+        worksheet.page_setup.fitToWidth = 1
+        worksheet.page_setup.fitToHeight = 0
+        worksheet.print_options.horizontalCentered = True
+
+    filename = f"reservation_RES-{header[0]:04d}.xlsx"
     output.seek(0)
     return Response(
         output.getvalue(),
-        mimetype="text/csv",
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         headers={"Content-Disposition": f"attachment; filename={filename}"}
     )
 

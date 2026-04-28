@@ -92,33 +92,6 @@
         justify-content: center;
     }
 
-    .analytics-stats {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 16px;
-    }
-
-    .stat-pill {
-        padding: 16px;
-        background: #fbfcfe;
-        border-radius: 16px;
-        border: 1px solid var(--cashier-border);
-    }
-
-    .stat-pill-label {
-        font-size: 0.65rem;
-        font-weight: 800;
-        color: var(--cashier-muted);
-        text-transform: uppercase;
-        margin-bottom: 4px;
-    }
-
-    .stat-pill-value {
-        font-size: 1.25rem;
-        font-weight: 900;
-        color: var(--cashier-text);
-    }
-
     /* ── Filter Card ── */
     .filter-card {
         background: #fbfcfe;
@@ -146,7 +119,7 @@
     }
     .filter-control:focus { border-color: var(--cashier-accent); outline: none; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
 
-    /* ── Table Styling ── */
+    /* ── Table Styling (Modernized) ── */
     .data-table-wrap {
         background: #fff;
         border: 1px solid var(--cashier-border);
@@ -155,10 +128,11 @@
         box-shadow: var(--cashier-shadow);
     }
 
-    .modern-table { width: 100%; border-collapse: collapse; min-width: 1000px; }
+    .modern-table { width: 100%; border-collapse: collapse; min-width: 1100px; }
+    
     .modern-table th {
         background: #fbfcfe;
-        padding: 16px 24px;
+        padding: 18px 24px;
         text-align: left;
         font-size: 0.7rem;
         font-weight: 800;
@@ -167,15 +141,32 @@
         letter-spacing: 0.05em;
         border-bottom: 1px solid var(--cashier-border);
     }
-    .modern-table td { padding: 16px 24px; border-bottom: 1px solid var(--cashier-border); font-size: 0.9rem; vertical-align: middle; }
-    .modern-table tr:last-child td { border-bottom: none; }
+
+    .modern-table td { 
+        padding: 20px 24px; 
+        border-bottom: 1px solid var(--cashier-border); 
+        font-size: 0.9rem; 
+        vertical-align: middle;
+        color: var(--cashier-text);
+    }
+
     .modern-table tr:hover { background: #f8fafc; }
 
-    .reservation-id { font-family: monospace; font-weight: 800; color: var(--cashier-primary); font-size: 0.85rem; }
+    .reservation-id { 
+        font-family: monospace; 
+        font-weight: 800; 
+        color: var(--cashier-primary); 
+        background: #eff6ff;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.8rem;
+    }
 
     /* Badges */
     .badge-status {
         display: inline-flex;
+        align-items: center;
+        gap: 6px;
         padding: 6px 12px;
         border-radius: 999px;
         font-size: 0.7rem;
@@ -230,6 +221,13 @@
         color: #fff;
     }
     .btn-export:hover { background: #059669; transform: translateY(-2px); }
+
+    /* Horizontal Scroll Support */
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
 </style>
 {% endblock %}
 
@@ -289,9 +287,9 @@
             <h2 style="margin-bottom: 8px;">Quick Export</h2>
             <p style="font-size: 0.9rem; color: var(--cashier-muted); margin-bottom: 32px; font-weight: 600;">Download the complete reservation list as a CSV file for manual auditing or external reporting.</p>
             
-            <a href="{{ url_for('cashier.export_reservations_csv') }}" class="btn-export" style="width: 100%; justify-content: center; padding: 18px; font-size: 1rem;">
+            <a href="{{ url_for('cashier.export_reservations_excel') }}" class="btn-export" style="width: 100%; justify-content: center; padding: 18px; font-size: 1rem;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                <span>Download Registry (CSV)</span>
+                <span>Download Registry (Excel)</span>
             </a>
         </div>
     </div>
@@ -365,32 +363,35 @@
 
                     <tr data-role="{{ role }}" data-status="{{ status|upper }}" data-grade="{{ grade }}" data-name="{{ fullname|lower }}" data-categories="{{ categories|upper }}" data-resid="{{ r[0] }}">
                         <td>
-                            <div class="reservation-id">REF-{{ "%05d"|format(r[0]) }}</div>
-                            <div style="margin-top: 4px;">
+                            <div class="reservation-id">RES-{{ "%04d"|format(r[0]) }}</div>
+                            <div style="margin-top: 8px;">
                                 {% if 'BOOK' in categories|upper %}<span class="cat-pill cat-book">BOOK</span>{% endif %}
                                 {% if 'UNIFORM' in categories|upper %}<span class="cat-pill cat-uniform">UNIFORM</span>{% endif %}
                             </div>
                         </td>
                         <td>
-                            <div style="font-weight: 800; color: var(--cashier-primary);">{{ fullname or '-' }}</div>
-                            <div style="font-size: 0.75rem; color: var(--cashier-muted); font-weight: 600;">{{ r[1] or '' }}</div>
+                            <div style="font-weight: 700; color: var(--cashier-text); font-size: 1rem;">{{ fullname or '-' }}</div>
+                            <div style="font-size: 0.8rem; color: var(--cashier-muted); font-weight: 500;">{{ r[1] or '' }}</div>
                         </td>
                         <td>
-                            <span style="font-weight: 700; color: var(--cashier-text);">{{ grade or '-' }}</span>
+                            <div style="font-weight: 600; color: var(--cashier-text);">{{ grade or '-' }}</div>
                         </td>
                         <td>
                             {% if role == 'parent' %}
-                                <div style="font-weight: 700;">{{ r[10] or '-' }}</div>
+                                <div style="font-weight: 600; font-size: 0.9rem;">{{ r[10] or '-' }}</div>
                                 <span class="badge-role role-parent">Parent Entry</span>
                             {% else %}
                                 <span class="badge-role role-student">Student Entry</span>
                             {% endif %}
                         </td>
                         <td>
-                            <span class="badge-status badge-{{ status|lower }}">{{ status }}</span>
+                            <span class="badge-status badge-{{ status|lower }}">
+                                <span style="width: 8px; height: 8px; border-radius: 50%; background: currentColor;"></span>
+                                {{ status }}
+                            </span>
                         </td>
                         <td>
-                            <div style="font-size: 0.85rem; font-weight: 600;">{{ r[8].strftime('%Y-%m-%d') if r[8] else '-' }}</div>
+                            <div style="font-size: 0.9rem; font-weight: 600;">{{ r[8].strftime('%b %d, %Y') if r[8] else '-' }}</div>
                             <div style="font-size: 0.75rem; color: var(--cashier-muted);">{{ r[8].strftime('%I:%M %p') if r[8] else '-' }}</div>
                         </td>
                         <td style="text-align: right;">
