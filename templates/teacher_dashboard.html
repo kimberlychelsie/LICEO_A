@@ -770,7 +770,19 @@
         }
 
         .td-title {
-            font-size: 1.5rem !important;
+            font-size: 1.8rem !important;
+        }
+        .td-header {
+            padding: 16px !important;
+        }
+        header[style*="padding: 48px 40px 0;"] {
+            padding: 32px 20px 0 !important;
+            text-align: center !important;
+        }
+        header[style*="padding: 48px 40px 0;"] .td-sub {
+            justify-content: center !important;
+            flex-direction: column !important;
+            gap: 8px !important;
         }
     }
 </style>
@@ -779,20 +791,32 @@
 {% block content %}
 <div class="td-wrap">
 
-    <!-- Header -->
+    <!-- Plain Text Header (Command Center Style) -->
+    <header style="margin-bottom: 32px; padding: 48px 40px 0;">
+        <h1 class="td-title" style="font-size: 3rem; font-weight: 900; letter-spacing: -0.04em; line-height: 1; margin-bottom: 12px; color: #1a3a8f;">
+            Teacher <span>Dashboard</span>
+        </h1>
+        <div class="td-sub" style="font-size: 1.1rem; font-weight: 600; color: #64748b; display: flex; align-items: center; gap: 12px;">
+            {% if selected_grade %}
+            Viewing class: <span class="date-pill" style="padding: 4px 14px; font-size: 0.85rem; background: #f1f5f9; color: #1a3a8f; border-radius: 99px; border: 1px solid rgba(26, 58, 143, 0.1);">{{ selected_grade }}</span>
+            {% else %}
+            Select your grade level to view your class roster.
+            {% endif %}
+        </div>
+    </header>
+
+    <!-- Header Stats & Actions Card -->
     <header class="td-header"
-        style="background: linear-gradient(to bottom, #f8fafc, #ffffff); padding: 20px; border-radius: 24px; border: 1px solid #e2e8f0; margin-bottom: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
+        style="background: linear-gradient(to bottom, #f8fafc, #ffffff); padding: 24px; border-radius: 28px; border: 1px solid #e2e8f0; margin-bottom: 40px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02);">
         <div style="display: flex; flex-direction: column; gap: 24px;">
-            <!-- Title & Sub -->
-            <div>
-                <h1 class="td-title" style="font-size: 1.8rem; margin-bottom: 4px;">Teacher <span>Dashboard</span></h1>
-                <div class="td-sub">
-                    {% if selected_grade %}
-                    Viewing class: <span class="date-pill" style="padding: 2px 10px; font-size: 0.75rem;">{{
-                        selected_grade }}</span>
-                    {% else %}
-                    Select your grade level to view your class roster.
-                    {% endif %}
+            <!-- Class Status Info -->
+            <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 10px; color: #1e3a8a; font-weight: 800; font-size: 0.9rem;">
+                    <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                    System Status: <span style="color: #64748b; font-weight: 600;">Active Session</span>
+                </div>
+                <div style="font-size: 0.85rem; font-weight: 700; color: #94a3b8;">
+                    {{ current_day }} • {{ current_time }}
                 </div>
             </div>
 
