@@ -1,147 +1,451 @@
 {% extends "base.html" %}
-
 {% block title %}My Billing{% endblock %}
 
-{% block content %}
-<div class="card">
-    <div class="card-header">My Billing Information</div>
+{% block styles %}
+<style>
+    :root {
+        --sd-primary: #1a3a8f;
+        --sd-primary-dark: #142e75;
+        --sd-accent: #f59e0b; /* Gold for Billing */
+        --sd-bg: #f8fafc;
+        --sd-card: #ffffff;
+        --sd-text: #0f172a;
+        --sd-muted: #64748b;
+        --sd-border: #e2e8f0;
+        --sd-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --sd-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
 
-    <!-- Student Basic Info -->
-    <div style="margin-bottom: 2rem; padding: 1rem; background: #f9fafb; border-radius: 6px;">
-        <p><strong>Student Name:</strong> {{ student.student_name }}</p>
-        <p><strong>Grade Level:</strong> {{ student.grade_level }}</p>
-        <p><strong>Enrollment ID:</strong> #{{ student.branch_enrollment_no }}</p>
-    </div>
+    .sd-container {
+        padding: 40px 32px;
+        max-width: 1500px;
+        margin: 0 auto;
+        font-family: 'Inter', sans-serif;
+    }
+
+    @media (max-width: 1024px) {
+        .sd-container { padding: 32px 20px; }
+    }
+
+    @media (max-width: 768px) {
+        .sd-container { padding: 24px 16px; }
+    }
+
+    /* ── Hero Header ── */
+    .billing-hero {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1a3a8f 50%, #1e40af 100%);
+        border-radius: 24px;
+        padding: 48px;
+        color: #fff;
+        margin-bottom: 32px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--sd-shadow-lg);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 32px;
+        animation: fadeInDown 0.6s ease-out;
+    }
+
+    .billing-hero::before {
+        content: '';
+        position: absolute;
+        top: -50px;
+        right: -50px;
+        width: 250px;
+        height: 250px;
+        background: radial-gradient(circle, rgba(245, 158, 11, 0.2) 0%, rgba(245, 158, 11, 0) 70%);
+        border-radius: 50%;
+    }
+
+    .billing-hero-content h1 {
+        font-size: 3rem;
+        font-weight: 900;
+        margin: 0 0 12px;
+        letter-spacing: -0.04em;
+        line-height: 1.1;
+    }
+
+    .billing-hero-content h1 span {
+        background: linear-gradient(135deg, #fbbf24, #f59e0b);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .billing-hero-content p {
+        font-size: 1.1rem;
+        font-weight: 600;
+        opacity: 0.9;
+        margin: 0;
+    }
+
+    .status-badge-hero {
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(12px);
+        padding: 8px 20px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        font-weight: 800;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    /* ── Metrics Grid ── */
+    .metrics-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+        margin-bottom: 32px;
+    }
+
+    @media (max-width: 900px) {
+        .metrics-grid { grid-template-columns: 1fr; }
+    }
+
+    .metric-card {
+        background: #fff;
+        border: 1px solid var(--sd-border);
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: var(--sd-shadow);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--sd-shadow-lg);
+    }
+
+    .metric-label {
+        font-size: 0.85rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: var(--sd-muted);
+        letter-spacing: 0.05em;
+    }
+
+    .metric-value {
+        font-size: 2rem;
+        font-weight: 900;
+        color: var(--sd-primary);
+    }
+
+    .metric-value.balance { color: #ef4444; }
+    .metric-value.paid { color: #16a34a; }
+    .metric-value.zero { color: #16a34a; }
+
+    /* ── Layout Sections ── */
+    .billing-content-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 32px;
+        align-items: start;
+    }
+
+    @media (max-width: 1100px) {
+        .billing-content-grid { grid-template-columns: 1fr; }
+    }
+
+    .sd-card {
+        background: #fff;
+        border: 1px solid var(--sd-border);
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: var(--sd-shadow);
+    }
+
+    .sd-card-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--sd-text);
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .sd-card-title svg {
+        width: 24px;
+        height: 24px;
+        color: var(--sd-primary);
+    }
+
+    /* ── Billing Table ── */
+    .bill-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .bill-table tr td {
+        padding: 16px 0;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 1rem;
+        font-weight: 500;
+        color: var(--sd-text);
+    }
+
+    .bill-table tr:last-child td { border-bottom: none; }
+
+    .bill-table tr td.amount {
+        text-align: right;
+        font-weight: 700;
+        color: var(--sd-primary);
+    }
+
+    .bill-table tr.total td {
+        padding-top: 24px;
+        font-weight: 900;
+        font-size: 1.1rem;
+        border-bottom: none;
+    }
+
+    /* ── History Table ── */
+    .history-table-wrap {
+        overflow-x: auto;
+    }
+
+    .history-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.9rem;
+    }
+
+    .history-table th {
+        background: #f8fafc;
+        padding: 14px 16px;
+        text-align: left;
+        font-weight: 800;
+        color: var(--sd-muted);
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: 0.05em;
+        border-bottom: 2px solid var(--sd-border);
+    }
+
+    .history-table td {
+        padding: 16px;
+        border-bottom: 1px solid #f1f5f9;
+        font-weight: 600;
+    }
+
+    /* ── Info Box ── */
+    .payment-notice {
+        background: #fffbeb;
+        border: 1px solid #fef3c7;
+        border-radius: 18px;
+        padding: 24px;
+        margin-top: 32px;
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+    }
+
+    .notice-icon {
+        background: #f59e0b;
+        color: #fff;
+        width: 32px;
+        height: 32px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .notice-text {
+        font-size: 0.95rem;
+        color: #92400e;
+        font-weight: 600;
+        line-height: 1.5;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sd-container">
+    <!-- Hero Header -->
+    <header class="billing-hero">
+        <div class="billing-hero-content">
+            <h1>Financial <span>Account</span></h1>
+            <p>Account Statement for {{ student.student_name }}</p>
+        </div>
+        
+        <div class="status-badge-wrap" style="display: flex; flex-direction: column; align-items: flex-end; gap: 16px;">
+            {% if bill %}
+                {% if bill.status == 'paid' %}
+                    <div class="status-badge-hero" style="background: rgba(22, 163, 74, 0.2); color: #4ade80;">Fully Settled</div>
+                {% elif bill.status == 'partial' %}
+                    <div class="status-badge-hero" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24;">Partial Payment</div>
+                {% else %}
+                    <div class="status-badge-hero" style="background: rgba(239, 68, 68, 0.2); color: #fca5a5;">Outstanding</div>
+                {% endif %}
+            {% endif %}
+
+            <a href="{{ url_for('student_portal.enrollment_status') }}" style="text-decoration: none; font-weight: 700; color: #fff; padding: 10px 20px; background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 12px; font-size: 0.85rem; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px;">
+                Enrollment Details
+                <svg xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+            </a>
+        </div>
+    </header>
 
     {% if bill %}
-    <!-- Bill Details -->
-    <h3 style="margin-bottom: 1rem;">Bill Breakdown</h3>
-    <table style="margin-bottom: 2rem;">
-        <tr>
-            <td>Tuition Fee</td>
-            <td class="text-right">₱{{ "%.2f"|format(bill.tuition_fee) }}</td>
-        </tr>
-        {% if reservations and reservations|length > 0 %}
-        {% for r in reservations %}
-        <tr>
-            <td style="color: #4b5563;">
-                <span style="color: #9ca3af; font-size: 0.85em;">[RES-{{ "%04d"|format(r.reservation_id) }}]</span>
-                {{ r.get('items', '') }}
-            </td>
-            <td class="text-right">₱{{ "%.2f"|format(r.total_amount) }}</td>
-        </tr>
-        {% endfor %}
-        {% endif %}
-        {% if bill.books_fee > 0 %}
-        <tr>
-            <td>Books Fee</td>
-            <td class="text-right">₱{{ "%.2f"|format(bill.books_fee) }}</td>
-        </tr>
-        {% endif %}
-        {% if bill.uniform_fee > 0 %}
-        <tr>
-            <td>Uniform Fee</td>
-            <td class="text-right">₱{{ "%.2f"|format(bill.uniform_fee) }}</td>
-        </tr>
-        {% endif %}
-        {% if bill.other_fees > 0 %}
-        <tr>
-            <td>Other Fees</td>
-            <td class="text-right">₱{{ "%.2f"|format(bill.other_fees) }}</td>
-        </tr>
-        {% endif %}
-        <tr style="font-weight: bold; border-top: 2px solid #333;">
-            <td>Total Amount</td>
-            <td class="text-right">₱{{ "%.2f"|format(bill.total_amount) }}</td>
-        </tr>
-        <tr style="font-weight: bold;">
-            <td>Amount Paid</td>
-            <td class="text-right" style="color: #10b981;">₱{{ "%.2f"|format(bill.amount_paid) }}</td>
-        </tr>
-        <tr style="font-weight: bold; font-size: 1.1rem;">
-            <td>Balance</td>
-            <td class="text-right" style="color: {{ 'green' if bill.balance == 0 else '#ef4444' }};">
-                ₱{{ "%.2f"|format(bill.balance) }}
-            </td>
-        </tr>
-    </table>
+        <!-- Metrics Grid -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <span class="metric-label">Total Assessment</span>
+                <span class="metric-value">₱{{ "%.2f"|format(bill.total_amount) }}</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Amount Paid</span>
+                <span class="metric-value paid">₱{{ "%.2f"|format(bill.amount_paid) }}</span>
+            </div>
+            <div class="metric-card">
+                <span class="metric-label">Remaining Balance</span>
+                <span class="metric-value balance {% if bill.balance == 0 %}zero{% endif %}">₱{{ "%.2f"|format(bill.balance) }}</span>
+            </div>
+        </div>
 
-    <div style="margin-bottom: 2rem;">
-        <strong>Payment Status:</strong>
-        {% if bill.status == 'paid' %}
-        <span class="badge badge-paid">Fully Paid</span>
-        <p style="margin-top: 0.5rem; color: #065f46;">
-            ✓ Your account is fully settled. Thank you!
-        </p>
-        {% elif bill.status == 'partial' %}
-        <span class="badge badge-partial">Partially Paid</span>
-        <p style="margin-top: 0.5rem; color: #92400e;">
-            You have a remaining balance of ₱{{ "%.2f"|format(bill.balance) }}
-        </p>
-        {% else %}
-        <span class="badge badge-unpaid">Unpaid</span>
-        <p style="margin-top: 0.5rem; color: #991b1b;">
-            Please settle your account at the cashier's office.
-        </p>
-        {% endif %}
-    </div>
+        <div class="billing-content-grid">
+            <!-- Payment History -->
+            <div class="sd-card">
+                <div class="sd-card-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Payment History
+                </div>
+                {% if payments %}
+                    <div class="history-table-wrap">
+                        <table class="history-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Amount</th>
+                                    <th>Method</th>
+                                    <th>Reference</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for payment in payments %}
+                                <tr>
+                                    <td>{{ payment.payment_date.strftime('%b %d, %Y') }}</td>
+                                    <td style="color: var(--sd-primary); font-weight: 800;">₱{{ "%.2f"|format(payment.amount) }}</td>
+                                    <td>{{ payment.payment_method|title }}</td>
+                                    <td style="color: var(--sd-muted); font-size: 0.8rem;">{{ payment.reference_number or 'N/A' }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div style="text-align: center; padding: 40px 0; color: var(--sd-muted);">
+                        <p style="font-weight: 600;">No payment records found yet.</p>
+                    </div>
+                {% endif %}
+            </div>
 
-    <!-- Payment History -->
-    <h3 style="margin-bottom: 1rem;">Payment History</h3>
-    {% if payments %}
-    <table>
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Amount</th>
-                <th>Method</th>
-                <th>Reference</th>
-                <th>Received By</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for payment in payments %}
-            <tr>
-                <td>{{ payment.payment_date.strftime('%Y-%m-%d %H:%M') }}</td>
-                <td>₱{{ "%.2f"|format(payment.amount) }}</td>
-                <td>{{ payment.payment_method|title }}</td>
-                <td>{{ payment.reference_number or '-' }}</td>
-                <td>{{ payment.received_by_name }}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+            <!-- Bill Breakdown -->
+            <div class="sd-card">
+                <div class="sd-card-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Fee Breakdown
+                </div>
+                <table class="bill-table">
+                    <tr>
+                        <td>Tuition Fee</td>
+                        <td class="amount">₱{{ "%.2f"|format(bill.tuition_fee) }}</td>
+                    </tr>
+                    {% if reservations %}
+                        {% for r in reservations %}
+                        <tr>
+                            <td>
+                                <div style="display: flex; flex-direction: column;">
+                                    <span>{{ r.get('items', 'Reservation') }}</span>
+                                    <span style="font-size: 0.75rem; color: var(--sd-muted);">Ref: #RES-{{ "%04d"|format(r.reservation_id) }}</span>
+                                </div>
+                            </td>
+                            <td class="amount">₱{{ "%.2f"|format(r.total_amount) }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% endif %}
+                    {% if bill.books_fee > 0 %}
+                    <tr>
+                        <td>Books & Materials</td>
+                        <td class="amount">₱{{ "%.2f"|format(bill.books_fee) }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if bill.uniform_fee > 0 %}
+                    <tr>
+                        <td>Uniforms</td>
+                        <td class="amount">₱{{ "%.2f"|format(bill.uniform_fee) }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if bill.other_fees > 0 %}
+                    <tr>
+                        <td>Miscellaneous / Other Fees</td>
+                        <td class="amount">₱{{ "%.2f"|format(bill.other_fees) }}</td>
+                    </tr>
+                    {% endif %}
+                    <tr class="total">
+                        <td style="border-top: 2px solid var(--sd-border);">Total Assessment</td>
+                        <td class="amount" style="border-top: 2px solid var(--sd-border); font-size: 1.3rem;">₱{{ "%.2f"|format(bill.total_amount) }}</td>
+                    </tr>
+                </table>
+
+                {% if bill.balance > 0 %}
+                <div class="payment-notice">
+                    <div class="notice-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div class="notice-text">
+                        <strong>Action Required:</strong> Please visit the branch cashier's office to settle your remaining balance of ₱{{ "%.2f"|format(bill.balance) }}.
+                    </div>
+                </div>
+                {% else %}
+                <div class="payment-notice" style="background: #ecfdf5; border-color: #d1fae5;">
+                    <div class="notice-icon" style="background: #10b981;">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                        </svg>
+                    </div>
+                    <div class="notice-text" style="color: #065f46;">
+                        <strong>Account Settled:</strong> Your account is fully paid for this enrollment period. Thank you!
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
     {% else %}
-    <p style="color: #6b7280;">No payments recorded yet</p>
+        <!-- No Bill State -->
+        <div style="text-align: center; padding: 100px 24px; background: white; border-radius: 32px; border: 1px solid var(--sd-border); box-shadow: var(--sd-shadow);">
+            <div style="font-size: 4rem; margin-bottom: 24px; opacity: 0.2;">💳</div>
+            <h3 style="font-weight: 900; color: var(--sd-primary); font-size: 1.5rem; margin-bottom: 12px;">No Statement Available</h3>
+            <p style="color: var(--sd-muted); font-size: 1rem; max-width: 450px; margin: 0 auto; line-height: 1.6; font-weight: 500;">A financial statement has not been generated for your current enrollment yet. This usually occurs during the initial verification phase.</p>
+        </div>
     {% endif %}
 
-    {% if bill.balance > 0 %}
-    <div style="margin-top: 2rem; padding: 1rem; background: #fef3c7; border-radius: 6px;">
-        <p style="color: #92400e; font-weight: 500;">
-            <strong>Payment Information:</strong><br>
-            Please visit the cashier's office at your branch to make a payment.
-        </p>
-    </div>
-    {% endif %}
-
-    {% else %}
-    <!-- No Bill Created -->
-    <div style="text-align: center; padding: 3rem;">
-        <p style="font-size: 1.2rem; color: #6b7280; margin-bottom: 1rem;">
-            No bill has been created yet for your enrollment.
-        </p>
-        <p style="color: #6b7280;">
-            The cashier will create a bill once your enrollment is fully processed.
-        </p>
-    </div>
-    {% endif %}
-
-    <!-- Actions -->
-    <div style="margin-top: 2rem; display: flex; gap: 1rem;">
-        <a href="{{ url_for('student_portal.enrollment_status') }}" class="btn btn-secondary">
-            View Enrollment Details
+    <!-- Global Actions -->
+    <div style="margin-top: 40px; display: flex; gap: 16px; justify-content: center;">
+        <a href="{{ url_for('student_portal.dashboard') }}" style="text-decoration: none; font-weight: 700; color: var(--sd-muted); padding: 12px 24px; border: 1px solid var(--sd-border); border-radius: 12px; transition: all 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            Back to Dashboard
         </a>
-        <a href="{{ url_for('student_portal.dashboard') }}" class="btn btn-secondary">⬅ Back</a>
     </div>
 </div>
 {% endblock %}

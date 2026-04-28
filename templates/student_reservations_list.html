@@ -1,102 +1,261 @@
 {% extends "base.html" %}
 {% block title %}History of Reservation{% endblock %}
 
-{% block content %}
-<div class="container" style="max-width: 1000px; margin: 0 auto; padding: 20px;">
-  <div class="card" style="padding: 16px; border-radius: 12px;">
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
-      <h2 style="margin:0;">📜 History of Reservation</h2>
-      <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <a class="btn btn-secondary" href="{{ url_for('student_portal.dashboard') }}">⬅ Back</a>
-        <a class="btn btn-success" href="{{ url_for('student.student_reservation') }}">🛒 New Reservation</a>
-      </div>
-    </div>
+{% block styles %}
+<style>
+    :root {
+        --sd-primary: #1a3a8f;
+        --sd-primary-dark: #142e75;
+        --sd-accent: #10b981;
+        --sd-bg: #f8fafc;
+        --sd-card: #ffffff;
+        --sd-text: #0f172a;
+        --sd-muted: #64748b;
+        --sd-border: #e2e8f0;
+        --sd-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --sd-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
 
-    <hr style="margin: 14px 0;">
+    .sd-container {
+        padding: 40px 32px;
+        max-width: 1500px;
+        margin: 0 auto;
+        font-family: 'Inter', sans-serif;
+    }
+
+    @media (max-width: 1024px) {
+        .sd-container { padding: 32px 20px; }
+    }
+
+    @media (max-width: 768px) {
+        .sd-container { padding: 24px 16px; }
+    }
+
+    /* ── Hero Header ── */
+    .res-hero {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1a3a8f 50%, #1e40af 100%);
+        border-radius: 24px;
+        padding: 48px;
+        color: #fff;
+        margin-bottom: 32px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--sd-shadow-lg);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 32px;
+        animation: fadeInDown 0.6s ease-out;
+    }
+
+    .res-hero::before {
+        content: '';
+        position: absolute;
+        top: -100px;
+        right: -100px;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+        border-radius: 50%;
+    }
+
+    .res-hero-content h1 {
+        font-size: 3rem;
+        font-weight: 900;
+        margin: 0 0 12px;
+        letter-spacing: -0.04em;
+        line-height: 1.1;
+    }
+
+    .res-hero-content p {
+        font-size: 1.1rem;
+        font-weight: 600;
+        opacity: 0.9;
+        margin: 0;
+    }
+
+    .btn-hero {
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(12px);
+        padding: 12px 24px;
+        border-radius: 14px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        color: #fff;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-hero:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+    }
+
+    /* ── Table Card ── */
+    .table-card {
+        background: #fff;
+        border: 1px solid var(--sd-border);
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: var(--sd-shadow);
+        animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .table-responsive { overflow-x: auto; }
+
+    .res-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+    }
+
+    .res-table th {
+        background: #f8fafc;
+        padding: 20px 24px;
+        text-align: left;
+        font-weight: 800;
+        color: var(--sd-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.72rem;
+        border-bottom: 2px solid var(--sd-border);
+    }
+
+    .res-table td {
+        padding: 20px 24px;
+        border-bottom: 1px solid #f1f5f9;
+        color: var(--sd-text);
+        vertical-align: middle;
+    }
+
+    .res-table tr:last-child td { border-bottom: none; }
+    .res-table tr:hover { background: #fbfcfe; }
+
+    .res-id {
+        font-weight: 800;
+        color: var(--sd-primary);
+        font-family: 'JetBrains Mono', monospace;
+    }
+
+    .res-items {
+        font-weight: 600;
+        color: var(--sd-text);
+        max-width: 300px;
+    }
+
+    /* ── Status Badges ── */
+    .badge {
+        padding: 6px 12px;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        display: inline-block;
+    }
+
+    .status-reserved  { background: #fef9c3; color: #713f12; }
+    .status-paid      { background: #dcfce7; color: #15803d; }
+    .status-claimed   { background: #dbeafe; color: #1e40af; }
+    .status-cancelled { background: #fee2e2; color: #991b1b; }
+
+    /* ── Animations ── */
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .empty-box {
+        text-align: center;
+        padding: 100px 24px;
+        background: white;
+        border-radius: 32px;
+        border: 1px solid var(--sd-border);
+        box-shadow: var(--sd-shadow);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sd-container">
+    <!-- Hero Header -->
+    <header class="res-hero">
+        <div class="res-hero-content">
+            <h1>Reservation <span>History</span></h1>
+            <p>Track your academic materials and supplies</p>
+        </div>
+        
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end;">
+            <a class="btn-hero" href="{{ url_for('student_portal.dashboard') }}">
+                <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Dashboard
+            </a>
+            <a class="btn-hero" href="{{ url_for('student.student_reservation') }}" style="background: #fff; color: #1a3a8f; border: none;">
+                <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                New Reservation
+            </a>
+        </div>
+    </header>
 
     {% if rows and rows|length > 0 %}
-    <div style="overflow:auto;">
-      <table style="width:100%; border-collapse:collapse;">
-        <thead>
-          <tr style="background:#f3f4f6;">
-            <th style="text-align:left; padding:10px; border-bottom:1px solid #e5e7eb;">Reservation ID</th>
-            <th style="text-align:left; padding:10px; border-bottom:1px solid #e5e7eb;">Items</th>
-            <th style="text-align:left; padding:10px; border-bottom:1px solid #e5e7eb;">Date</th>
-            <th style="text-align:left; padding:10px; border-bottom:1px solid #e5e7eb;">Status</th>
-            <th style="text-align:right; padding:10px; border-bottom:1px solid #e5e7eb;">Total Qty</th>
-            <th style="text-align:right; padding:10px; border-bottom:1px solid #e5e7eb;">Total</th>
-
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in rows %}
-          {# This line converts the RealDictRow into a standard list so val[0], val[1] works #}
-          {% set val = r.values() | list %}
-          <tr>
-            <td style="padding:10px; border-bottom:1px solid #f0f0f0;"><strong>RES-{{ "%04d"|format(val[0]|int)
-                }}</strong></td>
-            <td style="padding:10px; border-bottom:1px solid #f0f0f0;">{{ val[5] if val[5] else 'N/A' }}</td>
-            <td style="padding:10px; border-bottom:1px solid #f0f0f0;">
-              {{ val[2].strftime('%Y-%m-%d') if val[2] and val[2].strftime else val[2] }}
-            </td>
-            <td style="padding:10px; border-bottom:1px solid #f0f0f0;">
-              <span class="badge status-{{ val[1]|lower }}">{{ val[1] }}</span>
-            </td>
-            <td style="padding:10px; border-bottom:1px solid #f0f0f0; text-align:right;">{{ val[4] }}</td>
-            <td style="padding:10px; border-bottom:1px solid #f0f0f0; text-align:right;">
-              ₱{{ "%.2f"|format(val[3]|float) }}
-            </td>
-
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+    <div class="table-card">
+        <div class="table-responsive">
+            <table class="res-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Academic Items</th>
+                        <th>Transaction Date</th>
+                        <th>Current Status</th>
+                        <th style="text-align: right;">Quantity</th>
+                        <th style="text-align: right;">Total Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in rows %}
+                    {% set val = r.values() | list %}
+                    <tr>
+                        <td class="res-id">RES-{{ "%04d"|format(val[0]|int) }}</td>
+                        <td class="res-items">{{ val[5] if val[5] else 'N/A' }}</td>
+                        <td style="font-weight: 600; color: var(--sd-muted);">
+                            {{ val[2].strftime('%b %d, %Y') if val[2] and val[2].strftime else val[2] }}
+                        </td>
+                        <td>
+                            <span class="badge status-{{ val[1]|lower }}">{{ val[1] }}</span>
+                        </td>
+                        <td style="text-align: right; font-weight: 700;">{{ val[4] }}</td>
+                        <td style="text-align: right; font-weight: 900; color: var(--sd-primary);">
+                            ₱{{ "%.2f"|format(val[3]|float) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
     {% else %}
-    <div style="padding:12px; background:#fef3c7; border-radius:8px; margin-top:10px;">
-      Wala ka pang reservations.
+    <div class="empty-box">
+        <div style="font-size: 4rem; margin-bottom: 24px; opacity: 0.2;">🛒</div>
+        <h3 style="font-weight: 900; color: var(--sd-primary); font-size: 1.5rem; margin-bottom: 12px;">No Reservations Found</h3>
+        <p style="color: var(--sd-muted); font-size: 1rem; max-width: 450px; margin: 0 auto; line-height: 1.6; font-weight: 500;">You haven't made any reservations for academic materials yet. Start a new reservation to get your books and uniforms.</p>
+        <div style="margin-top: 32px;">
+            <a href="{{ url_for('student.student_reservation') }}" class="btn-hero" style="background: var(--sd-accent); color: white; border: none; padding: 14px 32px;">
+                Start Reservation
+            </a>
+        </div>
     </div>
     {% endif %}
-  </div>
 </div>
-
-<style>
-  .btn-success {
-    background: #10b981;
-    color: #fff;
-    border-color: #10b981;
-  }
-
-  .btn-success:hover {
-    background: #059669;
-  }
-
-  .badge {
-    padding: 4px 10px;
-    border-radius: 999px;
-    background: #e5e7eb;
-    font-size: 0.75rem;
-    font-weight: 700;
-  }
-
-  .status-reserved {
-    background: #fef9c3;
-    color: #713f12;
-  }
-
-  .status-paid {
-    background: #dcfce7;
-    color: #15803d;
-  }
-
-  .status-claimed {
-    background: #dbeafe;
-    color: #1e40af;
-  }
-
-  .status-cancelled {
-    background: #fee2e2;
-    color: #991b1b;
-  }
-</style>
 {% endblock %}

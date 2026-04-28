@@ -1,77 +1,396 @@
 {% extends "base.html" %}
-
 {% block title %}Enrollment Details{% endblock %}
 
-{% block content %}
-<div class="card">
-    <div class="card-header">My Enrollment Details</div>
+{% block styles %}
+<style>
+    :root {
+        --sd-primary: #1a3a8f;
+        --sd-primary-dark: #142e75;
+        --sd-accent: #3b82f6;
+        --sd-bg: #f8fafc;
+        --sd-card: #ffffff;
+        --sd-text: #0f172a;
+        --sd-muted: #64748b;
+        --sd-border: #e2e8f0;
+        --sd-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --sd-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
 
-    <!-- Student Information -->
-    <div style="margin-bottom: 2rem; padding: 1rem; background: #f9fafb; border-radius: 6px;">
-        <h3 style="margin-bottom: 1rem;">Student Information</h3>
-        <div class="grid grid-2">
-            <div>
-                <p><strong>Name:</strong> {{ enrollment.student_name }}</p>
-                <p><strong>Grade Level:</strong> {{ enrollment.grade_level }}</p>
-                <p><strong>Gender:</strong> {{ enrollment.gender }}</p>
-                <p><strong>Date of Birth:</strong> {{ enrollment.dob }}</p>
+    .sd-container {
+        padding: 40px 32px;
+        max-width: 1500px;
+        margin: 0 auto;
+        font-family: 'Inter', sans-serif;
+    }
+
+    @media (max-width: 1024px) {
+        .sd-container { padding: 32px 20px; }
+    }
+
+    @media (max-width: 768px) {
+        .sd-container { padding: 24px 16px; }
+    }
+
+    /* ── Hero Header ── */
+    .status-hero {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1a3a8f 50%, #1e40af 100%);
+        border-radius: 24px;
+        padding: 48px;
+        color: #fff;
+        margin-bottom: 32px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--sd-shadow-lg);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 32px;
+        animation: fadeInDown 0.6s ease-out;
+    }
+
+    .status-hero::before {
+        content: '';
+        position: absolute;
+        top: -100px;
+        right: -100px;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 0%, rgba(255, 255, 255, 0) 70%);
+        border-radius: 50%;
+    }
+
+    .status-hero-content h1 {
+        font-size: 3rem;
+        font-weight: 900;
+        margin: 0 0 12px;
+        letter-spacing: -0.04em;
+        line-height: 1.1;
+    }
+
+    .status-hero-content p {
+        font-size: 1.1rem;
+        font-weight: 600;
+        opacity: 0.9;
+        margin: 0;
+    }
+
+    .status-badge-hero {
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(12px);
+        padding: 12px 28px;
+        border-radius: 18px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        font-weight: 800;
+        font-size: 1.1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    /* ── Data Grid ── */
+    .status-grid {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: 32px;
+        margin-bottom: 32px;
+    }
+
+    @media (max-width: 1100px) {
+        .status-grid { grid-template-columns: 1fr; }
+    }
+
+    .sd-card {
+        background: #fff;
+        border: 1px solid var(--sd-border);
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: var(--sd-shadow);
+        transition: all 0.3s ease;
+    }
+
+    .sd-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--sd-shadow-lg);
+    }
+
+    .sd-card-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--sd-text);
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .sd-card-title svg {
+        width: 24px;
+        height: 24px;
+        color: var(--sd-primary);
+    }
+
+    /* ── Info Rows ── */
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+    }
+
+    @media (max-width: 640px) {
+        .info-grid { grid-template-columns: 1fr; }
+    }
+
+    .info-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .info-label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: var(--sd-muted);
+        letter-spacing: 0.05em;
+    }
+
+    .info-value {
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--sd-text);
+    }
+
+    /* ── Documents ── */
+    .doc-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .doc-item {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px;
+        background: #f8fafc;
+        border: 1px solid var(--sd-border);
+        border-radius: 14px;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .doc-item:hover {
+        background: #f1f5f9;
+        border-color: var(--sd-primary);
+        transform: translateX(4px);
+    }
+
+    .doc-icon {
+        width: 40px;
+        height: 40px;
+        background: #fff;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--sd-primary);
+        box-shadow: var(--sd-shadow);
+    }
+
+    .doc-name {
+        font-weight: 700;
+        color: var(--sd-text);
+        font-size: 0.95rem;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .action-row {
+        display: flex;
+        gap: 16px;
+        justify-content: center;
+        margin-top: 40px;
+    }
+
+    .btn-premium {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 14px 28px;
+        border-radius: 14px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .btn-primary {
+        background: var(--sd-primary);
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(26, 58, 143, 0.2);
+    }
+
+    .btn-primary:hover {
+        background: var(--sd-primary-dark);
+        transform: translateY(-2px);
+    }
+
+    .btn-outline {
+        border: 1px solid var(--sd-border);
+        color: var(--sd-muted);
+    }
+
+    .btn-outline:hover {
+        background: #f1f5f9;
+        color: var(--sd-text);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sd-container">
+    <!-- Hero Header -->
+    <header class="status-hero">
+        <div class="status-hero-content">
+            <h1>Enrollment <span>Status</span></h1>
+            <p>Verification Portal for {{ enrollment.student_name }}</p>
+        </div>
+        
+        <div class="status-badge-wrap" style="display: flex; flex-direction: column; align-items: flex-end; gap: 16px;">
+            {% if enrollment.status == 'approved' %}
+                <div class="status-badge-hero" style="background: rgba(22, 163, 74, 0.2); color: #4ade80; border-color: rgba(74, 222, 128, 0.4);">✓ Approved</div>
+            {% elif enrollment.status == 'rejected' %}
+                <div class="status-badge-hero" style="background: rgba(239, 68, 68, 0.2); color: #fca5a5; border-color: rgba(252, 165, 165, 0.4);">✕ Rejected</div>
+            {% else %}
+                <div class="status-badge-hero" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border-color: rgba(251, 191, 36, 0.4);">⏳ Pending Review</div>
+            {% endif %}
+
+            <a href="{{ url_for('student_portal.billing') }}" class="btn-premium btn-primary" style="background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); font-size: 0.85rem; padding: 10px 20px;">
+                Financial Statement
+                <svg xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+            </a>
+        </div>
+    </header>
+
+    <div class="status-grid">
+        <!-- Student & Guardian Information -->
+        <div style="display: flex; flex-direction: column; gap: 32px;">
+            <div class="sd-card">
+                <div class="sd-card-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Student Information
+                </div>
+                <div class="info-grid">
+                    <div class="info-group">
+                        <span class="info-label">Full Name</span>
+                        <span class="info-value">{{ enrollment.student_name }}</span>
+                    </div>
+                    <div class="info-group">
+                        <span class="info-label">Grade Level</span>
+                        <span class="info-value">{{ enrollment.grade_level }}</span>
+                    </div>
+                    <div class="info-group">
+                        <span class="info-label">Gender</span>
+                        <span class="info-value" style="text-transform: capitalize;">{{ enrollment.gender }}</span>
+                    </div>
+                    <div class="info-group">
+                        <span class="info-label">Date of Birth</span>
+                        <span class="info-value">{{ enrollment.dob }}</span>
+                    </div>
+                    <div class="info-group">
+                        <span class="info-label">Current Branch</span>
+                        <span class="info-value">{{ enrollment.branch_name }}</span>
+                    </div>
+                    <div class="info-group">
+                        <span class="info-label">Enrollment ID</span>
+                        <span class="info-value">#{{ enrollment.branch_enrollment_no }}</span>
+                    </div>
+                </div>
             </div>
-            <div>
-                <p><strong>Branch:</strong> {{ enrollment.branch_name }}</p>
-                <p><strong>Location:</strong> {{ enrollment.location }}</p>
-                <p><strong>Contact:</strong> {{ enrollment.contact_number }}</p>
-                <p><strong>Previous School:</strong> {{ enrollment.previous_school or 'N/A' }}</p>
+
+            <div class="sd-card">
+                <div class="sd-card-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 005.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                    Guardian Information
+                </div>
+                <div class="info-grid">
+                    <div class="info-group">
+                        <span class="info-label">Primary Guardian</span>
+                        <span class="info-value">{{ enrollment.guardian_name }}</span>
+                    </div>
+                    <div class="info-group">
+                        <span class="info-label">Contact Number</span>
+                        <span class="info-value">{{ enrollment.guardian_contact }}</span>
+                    </div>
+                    <div class="info-group" style="grid-column: span 2;">
+                        <span class="info-label">Residential Address</span>
+                        <span class="info-value">{{ enrollment.address }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Documents & Timeline -->
+        <div style="display: flex; flex-direction: column; gap: 32px;">
+            <div class="sd-card">
+                <div class="sd-card-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Credentials & Documents
+                </div>
+                {% if documents %}
+                    <div class="doc-list">
+                        {% for doc in documents %}
+                            <a href="{{ doc.file_path }}" target="_blank" class="doc-item">
+                                <div class="doc-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                    </svg>
+                                </div>
+                                <span class="doc-name">{{ doc.file_name }}</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div style="text-align: center; padding: 24px; color: var(--sd-muted);">
+                        <p style="font-weight: 600;">No documents uploaded yet.</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="sd-card" style="background: #f8fafc; border-style: dashed;">
+                <div class="sd-card-title" style="color: var(--sd-muted);">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Application Timeline
+                </div>
+                <div class="info-group">
+                    <span class="info-label">Date Submitted</span>
+                    <span class="info-value">{{ enrollment.created_at.strftime('%B %d, %Y') }}</span>
+                    <p style="font-size: 0.85rem; color: var(--sd-muted); margin-top: 8px;">Your application is currently being reviewed by the registrar. You will receive an update once the process is complete.</p>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Enrollment Status -->
-    <div style="margin-bottom: 2rem;">
-        <h3 style="margin-bottom: 0.5rem;">Enrollment Status</h3>
-        {% if enrollment.status == 'approved' %}
-        <span class="badge badge-approved">Approved</span>
-        {% elif enrollment.status == 'rejected' %}
-        <span class="badge badge-rejected">Rejected</span>
-        {% else %}
-        <span class="badge badge-pending">Pending Review</span>
-        {% endif %}
-        <p style="margin-top: 0.5rem; color: #6b7280;">
-            Submitted on: {{ enrollment.created_at.strftime('%B %d, %Y') }}
-        </p>
-    </div>
-
-    <!-- Guardian Information -->
-    <div style="margin-bottom: 2rem; padding: 1rem; background: #f9fafb; border-radius: 6px;">
-        <h3 style="margin-bottom: 1rem;">Guardian Information</h3>
-        <p><strong>Name:</strong> {{ enrollment.guardian_name }}</p>
-        <p><strong>Contact:</strong> {{ enrollment.guardian_contact }}</p>
-        <p><strong>Address:</strong> {{ enrollment.address }}</p>
-    </div>
-
-    <!-- Documents -->
-    <div style="margin-bottom: 2rem;">
-        <h3 style="margin-bottom: 1rem;">Uploaded Documents</h3>
-        {% if documents %}
-        <ul style="list-style: none; padding: 0;">
-            {% for doc in documents %}
-            <li style="margin-bottom: 0.5rem;">
-                <a href="{{ doc.file_path }}" target="_blank" style="color: #2563eb;">
-                    📄 {{ doc.file_name }}
-                </a>
-            </li>
-            {% endfor %}
-        </ul>
-        {% else %}
-        <p style="color: #6b7280;">No documents uploaded</p>
-        {% endif %}
-    </div>
-
-
-
-    <!-- Actions -->
-    <div style="display: flex; gap: 1rem;">
-        <a href="{{ url_for('student_portal.billing') }}" class="btn btn-primary">View Billing</a>
-        <a href="{{ url_for('student_portal.dashboard') }}" class="btn btn-secondary">⬅ Back</a>
+    <!-- Action Row -->
+    <div class="action-row">
+        <a href="{{ url_for('student_portal.dashboard') }}" class="btn-premium btn-outline">
+            Return to Dashboard
+        </a>
     </div>
 </div>
 {% endblock %}

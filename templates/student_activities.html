@@ -3,199 +3,452 @@
 
 {% block styles %}
 <style>
-    .act-wrap {
-        max-width: 1140px;
+    :root {
+        --sd-primary: #1a3a8f;
+        --sd-primary-dark: #142e75;
+        --sd-accent: #10b981; /* Green for Activities */
+        --sd-bg: #f8fafc;
+        --sd-card: #ffffff;
+        --sd-text: #0f172a;
+        --sd-muted: #64748b;
+        --sd-border: #e2e8f0;
+        --sd-glass: rgba(255, 255, 255, 0.1);
+        --sd-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --sd-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
+
+    .sd-container {
+        padding: 40px 32px;
+        max-width: 1500px;
         margin: 0 auto;
+        font-family: 'Inter', sans-serif;
     }
 
-    .act-header {
-        margin-bottom: 24px;
+    @media (max-width: 1024px) {
+        .sd-container { padding: 32px 20px; }
     }
 
-    .act-title {
-        font-size: 1.5rem;
+    @media (max-width: 768px) {
+        .sd-container { padding: 24px 16px; }
+    }
+
+    /* ── Hero Header ── */
+    .activities-hero {
+        background: linear-gradient(135deg, #064e3b 0%, #059669 50%, #10b981 100%);
+        border-radius: 24px;
+        padding: 48px;
+        color: #fff;
+        margin-bottom: 32px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--sd-shadow-lg);
+        animation: fadeInDown 0.6s ease-out;
+    }
+
+    .activities-hero::before {
+        content: '';
+        position: absolute;
+        top: -100px;
+        right: -100px;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+        border-radius: 50%;
+    }
+
+    .activities-hero-content h1 {
+        font-size: 3rem;
+        font-weight: 900;
+        margin: 0 0 12px;
+        letter-spacing: -0.04em;
+        line-height: 1.1;
+    }
+
+    .activities-hero-content p {
+        font-size: 1.1rem;
+        font-weight: 600;
+        opacity: 0.9;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .activities-hero-content .status-pill {
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(8px);
+        padding: 4px 14px;
+        border-radius: 99px;
+        font-size: 0.85rem;
         font-weight: 800;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    /* ── Filters ── */
+    .filter-section {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        margin-bottom: 32px;
+    }
+
+    .filter-tabs {
+        display: flex;
+        gap: 12px;
+        overflow-x: auto;
+        padding: 4px 4px 12px;
+    }
+
+    .filter-tab {
+        padding: 10px 20px;
+        background: #fff;
+        border: 1px solid var(--sd-border);
+        border-radius: 14px;
+        cursor: pointer;
+        font-size: 0.85rem;
+        font-weight: 700;
+        white-space: nowrap;
+        transition: all 0.2s;
+        color: var(--sd-muted);
+        box-shadow: var(--sd-shadow);
+    }
+
+    .filter-tab:hover {
+        border-color: var(--sd-accent);
+        color: var(--sd-accent);
+        transform: translateY(-1px);
+    }
+
+    .filter-tab.active {
+        background: var(--sd-accent);
+        color: #fff;
+        border-color: var(--sd-accent);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+    }
+
+    .sub-filter-tab {
+        background: #f1f5f9;
+        border: 1px solid transparent;
+        color: var(--sd-muted);
+        box-shadow: none;
+    }
+
+    .sub-filter-tab.active {
+        background: var(--sd-primary);
+        color: #fff;
+        border-color: var(--sd-primary);
+    }
+
+    /* ── Grid ── */
+    .activities-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+        gap: 24px;
+    }
+
+    @media (max-width: 640px) {
+        .activities-grid { grid-template-columns: 1fr; }
     }
 
     .act-card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 12px;
+        background: #fff;
+        border: 1px solid var(--sd-border);
+        border-radius: 20px;
+        padding: 24px;
         display: flex;
-        justify-content: space-between;
-        align-items: center;
-        transition: transform 0.15s, box-shadow 0.15s;
+        flex-direction: column;
+        gap: 20px;
+        transition: all 0.3s ease;
+        box-shadow: var(--sd-shadow);
+        position: relative;
+        overflow: hidden;
     }
 
     .act-card:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
+        transform: translateY(-4px);
+        box-shadow: var(--sd-shadow-lg);
+        border-color: var(--sd-accent);
     }
 
-    .act-info h4 {
-        margin: 0 0 6px;
-        font-size: 1.1rem;
-        color: var(--text);
+    .act-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 6px;
+        height: 100%;
+        background: var(--sd-accent);
+        opacity: 0.8;
+    }
+
+    .act-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .act-cat-badge {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 4px 10px;
+        border-radius: 6px;
+        display: inline-block;
+        margin-bottom: 10px;
+        background: #d1fae5;
+        color: #065f46;
+    }
+
+    .act-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--sd-text);
+        margin: 0;
+        line-height: 1.3;
+    }
+
+    .act-subject {
+        color: var(--sd-accent);
+        font-weight: 700;
+        font-size: 0.9375rem;
+        margin-top: 4px;
     }
 
     .act-meta {
-        font-size: 0.85rem;
-        color: var(--muted);
-        line-height: 1.4;
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: 60px 20px;
-        color: var(--muted);
-    }
-
-    .empty-state .big-icon {
-        font-size: 3.5rem;
-        margin-bottom: 12px;
-    }
-
-    .badge-sub {
-        font-size: 0.75rem;
-        padding: 4px 10px;
-        border-radius: 999px;
-        font-weight: 700;
-        display: inline-block;
-        margin-top: 6px;
-    }
-
-    .status-new {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-
-    .status-submitted {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    .status-graded {
-        background: #e0f2fe;
-        color: #0284c7;
-    }
-
-    .status-late {
-        background: #fef9c3;
-        color: #854d0e;
-    }
-
-    .status-missing {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-
-    .tabs {
         display: flex;
-        gap: 10px;
-        margin-bottom: 20px;
         flex-wrap: wrap;
+        gap: 16px;
+        font-size: 0.85rem;
+        color: var(--sd-muted);
+        font-weight: 500;
+        margin-top: 12px;
     }
 
-    .tab-btn {
-        padding: 8px 16px;
-        border: 1px solid var(--border);
-        background: var(--card);
-        color: var(--text);
-        border-radius: 999px;
-        cursor: pointer;
-        font-weight: 600;
-        font-size: 0.9rem;
+    .act-meta span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .act-meta svg {
+        width: 14px;
+        height: 14px;
+        opacity: 0.7;
+    }
+
+    /* ── Status Badges ── */
+    .status-badge {
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 4px 12px;
+        border-radius: 9999px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .st-submitted { background: #dcfce7; color: #166534; }
+    .st-graded    { background: #e0f2fe; color: #0369a1; }
+    .st-pending   { background: #fef9c3; color: #854d0e; }
+    .st-missing   { background: #fee2e2; color: #991b1b; }
+
+    /* ── Actions ── */
+    .act-footer {
+        margin-top: auto;
+        padding-top: 20px;
+        border-top: 1px solid var(--sd-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .score-badge {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .score-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--sd-muted);
+    }
+
+    .score-val {
+        font-size: 1.1rem;
+        font-weight: 900;
+        color: var(--sd-accent);
+    }
+
+    .btn-premium {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 24px;
+        background: var(--sd-accent);
+        color: #fff;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.875rem;
+        text-decoration: none;
         transition: all 0.2s;
+        border: none;
+        cursor: pointer;
     }
 
-    .tab-btn:hover {
-        background: var(--bg);
+    .btn-premium:hover {
+        background: #059669;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
     }
 
-    .tab-btn.active {
-        background: var(--primary);
-        color: white;
-        border-color: var(--primary);
+    /* ── Animations ── */
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .empty-box {
+        text-align: center;
+        padding: 80px 24px;
+        background: #fff;
+        border: 1px solid var(--sd-border);
+        border-radius: 24px;
+        color: var(--sd-muted);
+        grid-column: 1 / -1;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        margin-bottom: 24px;
+        opacity: 0.2;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="act-wrap">
-    <div class="act-header">
-        <h1 class="act-title"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><line x1="10" y1="9" x2="8" y2="9"></line></svg> My Activities</h1>
-        <p style="color:var(--muted); margin-top:4px;">View and submit assignments for your enrolled subjects.</p>
-    </div>
-
-    {% if activities %}
-    <div class="tabs">
-        <button class="tab-btn active" onclick="setSubject('all', this)">All Subjects</button>
-        {% for sub in subjects %}
-        <button class="tab-btn" onclick="setSubject('{{ sub | escape }}', this)">{{ sub }}</button>
-        {% endfor %}
-    </div>
-
-    <!-- Period Tabs -->
-    <div class="tabs" style="margin-top: -10px; margin-bottom: 24px;">
-        <button class="period-btn active" onclick="setPeriod('all', this)" style="padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); cursor: pointer; font-size: 0.8rem; font-weight: 600;">All Periods</button>
-        <button class="period-btn" onclick="setPeriod('1st', this)" style="padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); cursor: pointer; font-size: 0.8rem; font-weight: 600;">1st Grading</button>
-        <button class="period-btn" onclick="setPeriod('2nd', this)" style="padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); cursor: pointer; font-size: 0.8rem; font-weight: 600;">2nd Grading</button>
-        <button class="period-btn" onclick="setPeriod('3rd', this)" style="padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); cursor: pointer; font-size: 0.8rem; font-weight: 600;">3rd Grading</button>
-        <button class="period-btn" onclick="setPeriod('4th', this)" style="padding: 6px 12px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); cursor: pointer; font-size: 0.8rem; font-weight: 600;">4th Grading</button>
-    </div>
-
-    <div id="activities-container">
-        {% for act in activities %}
-        {# Determine Status #}
-        {% set due_past = act.due_date and act.due_date < now %} 
-        {% set is_submitted = act.submission_id is not none %} 
-        {% set is_graded = act.grade_id is not none %} 
-        {% set badge_class = 'status-new' %} 
-        {% set badge_text = 'Not Submitted' %} 
-        {% if is_graded %} 
-            {% set badge_class = 'status-graded' %} 
-            {% set badge_text = 'Graded' %} 
-        {% elif is_submitted %} 
-            {% set badge_class = 'status-submitted' %} 
-            {% set badge_text = 'Submitted' %} 
-        {% elif due_past %} 
-            {% set badge_class = 'status-missing' %} 
-            {% set badge_text = 'Missing (Late)' %} 
-        {% endif %} 
-        <div class="act-card" data-subject="{{ act.subject_name | escape }}" data-period="{{ act.grading_period or 'none' }}">
-            <div class="act-info">
-                <h4>{{ act.title }}</h4>
-                <div class="act-meta">
-                    <strong>{{ act.subject_name }}</strong> ({{ act.section_name }}) &bull; 
-                    <span style="color:#1d4ed8; font-weight:700;">{{ act.grading_period or 'Unassigned' }} Grading</span><br>
-                    Teacher: {{ act.teacher_name }}<br>
-                    Due: {{ act.due_date.strftime('%b %d, %Y %I:%M %p') if act.due_date else 'No timeline' }}
-                    <br>
-                    <span class="badge-sub {{ badge_class }}">{{ badge_text }}</span>
-                    {% if is_graded %}
-                    &bull; <strong style="color:var(--success)">Score: {{ act.raw_score | int if act.raw_score ==
-                        (act.raw_score | int) else act.raw_score }} / {{ act.max_score }}</strong>
-                    {% endif %}
-                </div>
-            </div>
-            <div>
-                <a href="{{ url_for('student_portal.activity_detail', activity_id=act.activity_id) }}"
-                    class="btn btn-primary">View Details</a>
-            </div>
+<div class="sd-container">
+    <!-- Hero Header -->
+    <header class="activities-hero">
+        <div class="activities-hero-content">
+            <h1>My <span>Activities</span></h1>
+            <p>
+                Academic Year 2023-2024
+                <span class="status-pill">Work & Assignments</span>
+            </p>
         </div>
-        {% endfor %}
+    </header>
+
+    <div class="filter-section">
+        <!-- Subject Filter -->
+        <div class="filter-tabs">
+            <button class="filter-tab active" onclick="setSubject('all', this)">All Subjects</button>
+            {% for sub in subjects %}
+            <button class="filter-tab" onclick="setSubject('{{ sub | escape }}', this)">{{ sub }}</button>
+            {% endfor %}
+        </div>
+
+        <!-- Period Filter -->
+        <div class="filter-tabs">
+            <button class="filter-tab sub-filter-tab active" onclick="setPeriod('all', this)">All Periods</button>
+            <button class="filter-tab sub-filter-tab" onclick="setPeriod('1st', this)">1st Grading</button>
+            <button class="filter-tab sub-filter-tab" onclick="setPeriod('2nd', this)">2nd Grading</button>
+            <button class="filter-tab sub-filter-tab" onclick="setPeriod('3rd', this)">3rd Grading</button>
+            <button class="filter-tab sub-filter-tab" onclick="setPeriod('4th', this)">4th Grading</button>
+        </div>
     </div>
-{% else %}
-<div class="empty-state">
-    <div class="big-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.3;"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+
+    <div class="activities-grid" id="activities-container">
+        {% if activities %}
+            {% for act in activities %}
+                {# Determine Status #}
+                {% set due_past = act.due_date and act.due_date < now %} 
+                {% set is_submitted = act.submission_id is not none %} 
+                {% set is_graded = act.grade_id is not none %} 
+                {% set status_class = 'st-pending' %} 
+                {% set status_text = 'Pending' %} 
+                {% if is_graded %} 
+                    {% set status_class = 'st-graded' %} 
+                    {% set status_text = 'Graded' %} 
+                {% elif is_submitted %} 
+                    {% set status_class = 'st-submitted' %} 
+                    {% set status_text = 'Submitted' %} 
+                {% elif due_past %} 
+                    {% set status_class = 'st-missing' %} 
+                    {% set status_text = 'Late' %} 
+                {% endif %} 
+                
+                <div class="act-card" data-subject="{{ act.subject_name | escape }}" data-period="{{ act.grading_period or 'none' }}">
+                    <div class="act-header">
+                        <div style="flex: 1;">
+                            <div class="act-cat-badge">Assignment</div>
+                            <h3 class="act-title">{{ act.title }}</h3>
+                            <div class="act-subject">{{ act.subject_name }}</div>
+                        </div>
+                        <div class="act-status">
+                            <span class="status-badge {{ status_class }}">{{ status_text }}</span>
+                        </div>
+                    </div>
+
+                    <div class="act-meta">
+                        <span>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Due: {{ act.due_date.strftime('%b %d, %Y %I:%M %p') if act.due_date else 'No timeline' }}
+                        </span>
+                        <span>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                            {{ act.teacher_name }}
+                        </span>
+                        {% if act.grading_period %}
+                        <span>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            {{ act.grading_period }} Grading
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    <div class="act-footer">
+                        {% if is_graded %}
+                            <div class="score-badge">
+                                <div class="score-label">Achievement</div>
+                                <div class="score-val">
+                                    {{ act.raw_score | int if act.raw_score == (act.raw_score | int) else act.raw_score }} / {{ act.max_score }}
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="score-badge">
+                                <div class="score-label">Total Points</div>
+                                <div class="score-val" style="color: var(--sd-muted);">{{ act.max_score }}</div>
+                            </div>
+                        {% endif %}
+                        
+                        <a href="{{ url_for('student_portal.activity_detail', activity_id=act.activity_id) }}" class="btn-premium">
+                            View Assignment
+                            <svg xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-box">
+                <div class="empty-icon">📂</div>
+                <h3 style="font-weight: 800; color: var(--sd-text); margin-bottom: 8px;">No Activities Found</h3>
+                <p style="font-weight: 500; margin: 0;">You don't have any activities posted for your subjects yet.</p>
+            </div>
+        {% endif %}
     </div>
-    <h3>No activities found</h3>
-    <p>Your teachers haven't posted any activities for your subjects yet.</p>
-</div>
-{% endif %}
 </div>
 
 <script>
@@ -203,39 +456,48 @@
     let currentPeriod = 'all';
 
     function setSubject(subject, btn) {
-        document.querySelectorAll('.tab-btn').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.filter-tab:not(.sub-filter-tab)').forEach(t => t.classList.remove('active'));
         btn.classList.add('active');
         currentSubject = subject;
         applyFilters();
     }
 
     function setPeriod(period, btn) {
-        document.querySelectorAll('.period-btn').forEach(t => {
-            t.classList.remove('active');
-            t.style.background = 'var(--card)';
-            t.style.color = 'var(--text)';
-            t.style.borderColor = 'var(--border)';
-        });
+        document.querySelectorAll('.sub-filter-tab').forEach(t => t.classList.remove('active'));
         btn.classList.add('active');
-        btn.style.background = 'var(--primary)';
-        btn.style.color = 'white';
-        btn.style.borderColor = 'var(--primary)';
         currentPeriod = period;
         applyFilters();
     }
 
     function applyFilters() {
         const cards = document.querySelectorAll('.act-card');
+        let hasVisible = false;
+
         cards.forEach(card => {
             const matchSub = currentSubject === 'all' || card.getAttribute('data-subject') === currentSubject;
             const matchPer = currentPeriod === 'all' || card.getAttribute('data-period') === currentPeriod;
             if (matchSub && matchPer) {
                 card.style.display = 'flex';
+                hasVisible = true;
             } else {
                 card.style.display = 'none';
             }
         });
+
+        // Handle empty state
+        const container = document.getElementById('activities-container');
+        const existingEmpty = container.querySelector('.empty-filter-msg');
+        
+        if (!hasVisible) {
+            if (!existingEmpty) {
+                const msg = document.createElement('div');
+                msg.className = 'empty-box empty-filter-msg';
+                msg.innerHTML = '<div class="empty-icon">🔍</div><h3 style="font-weight: 800; color: var(--sd-text); margin-bottom: 8px;">No Activities Found</h3><p style="font-weight: 500; margin: 0;">No activities found for the selected filters.</p>';
+                container.appendChild(msg);
+            }
+        } else if (existingEmpty) {
+            existingEmpty.remove();
+        }
     }
 </script>
-</div>
 {% endblock %}

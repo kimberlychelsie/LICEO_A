@@ -12,10 +12,8 @@
 
   {# 30-min steps 7:00 – 17:00, formatted as 7:00-7:30 #}
   {% set slots = [] %}
-  {% for h in range(7, 17) %}
-
+  {% for h in range(7, 18) %}
     {% for m in [0, 30] %}
-      {% if not (h == 22 and m == 30) %}
         {% set hour12 = h if h <= 12 else h - 12 %}
         {% set m_end = m + 30 %}
         {% set h_end = h if m_end < 60 else h + 1 %}
@@ -23,7 +21,6 @@
         {% set h_end12 = h_end if h_end <= 12 else h_end - 12 %}
         {% set label = "%d:%02d-%d:%02d" % (hour12, m, h_end12, m_end_fmt) %}
         {% set _ = slots.append({'h': h, 'm': m, 'label': label}) %}
-      {% endif %}
     {% endfor %}
   {% endfor %}
 
@@ -118,7 +115,7 @@
     {% else %}
       <div style="text-align: center; padding: 100px 24px; background: white; border-radius: 32px; border: 1px solid var(--sch-border); box-shadow: var(--sch-shadow); margin-top: 20px;">
         <div style="font-size: 4rem; margin-bottom: 24px; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1));">🗓️</div>
-        <h3 style="font-weight: 900; color: #1e3a8a; font-size: 1.4rem; margin-bottom: 12px; letter-spacing: -0.02em;">No schedule found</h3>
+        <h3 style="font-weight: 900; color: #1a3a8f; font-size: 1.4rem; margin-bottom: 12px; letter-spacing: -0.02em;">No schedule found</h3>
         <p style="color: #64748b; font-size: 0.95rem; max-width: 450px; margin: 0 auto; line-height: 1.6; font-weight: 500;">Your weekly timetable hasn't been configured for the current school year yet. Please check again later or contact your branch administrator.</p>
       </div>
     {% endif %}
@@ -127,50 +124,50 @@
   <style>
     /* ─── Tokens ─── */
     .sch-wrap {
-      --sch-blue:     #123a8c;
-      --sch-blue-2:   #0b2f74;
-      --sch-border:   rgba(226,232,240,.9);
+      --sch-blue:     #1a3a8f;
+      --sch-blue-dark: #142e75;
+      --sch-gold:     #f59e0b;
+      --sch-border:   rgba(226,232,240,0.8);
       --sch-text:     #0f172a;
       --sch-muted:    #64748b;
-      --sch-shadow:   0 10px 20px rgba(2,6,23,.06);
-      --sch-time-col: 85px;
-      --sch-day-col:  190px;
-      --sch-row:      44px;
+      --sch-shadow:   0 10px 30px rgba(2,6,23,0.08);
+      --sch-time-col: 90px;
+      --sch-day-col:  200px;
+      --sch-row:      48px;
       margin-top: 10px;
+      font-family: 'Inter', sans-serif;
     }
 
-    /* ─── Hero (Admin/Hub Style) ─── */
+    /* ─── Hero ─── */
     .sch-hero {
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 16px;
       background: transparent;
-      color: #1a3a8f;
-      padding: 48px 24px 16px;
-      margin-bottom: 12px;
+      padding: 24px 0 16px;
+      margin-bottom: 24px;
     }
-    .sch-hero-left  { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .sch-hero-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
     
     .sch-hero-title { 
       font-weight: 900; 
       font-size: 3rem; 
       letter-spacing: -0.04em; 
-      line-height: 1; 
-      color: #1a3a8f;
+      line-height: 1.1; 
+      color: var(--sch-blue);
     }
     .sch-hero-title span {
-        background: linear-gradient(135deg, #1a3a8f, #3b82f6);
+        background: linear-gradient(135deg, var(--sch-blue), #3b82f6);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
     }
 
     .sch-hero-sub { 
         font-size: 1.1rem; 
-        opacity: 0.9; 
         font-weight: 600; 
-        margin-top: 8px; 
-        color: #64748b;
+        margin-top: 10px; 
+        color: var(--sch-muted);
         display: flex;
         align-items: center;
         gap: 12px;
@@ -178,7 +175,7 @@
 
     .sch-status-pill {
         background: #f1f5f9;
-        color: #1a3a8f;
+        color: var(--sch-blue);
         padding: 4px 14px;
         border-radius: 99px;
         font-size: 0.85rem;
@@ -188,13 +185,19 @@
 
     /* ─── Grid shell ─── */
     .sch-grid-shell {
-      margin-top: 14px;
       background: #fff;
       border: 1px solid var(--sch-border);
-      border-radius: 22px;
+      border-radius: 32px;
       box-shadow: var(--sch-shadow);
       overflow: hidden;
+      animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
     }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
     .sch-grid-scroll {
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
@@ -207,121 +210,118 @@
       grid-template-columns: var(--sch-time-col) repeat(7, var(--sch-day-col));
       grid-auto-rows: var(--sch-row);
       min-width: calc(var(--sch-time-col) + 7 * var(--sch-day-col));
-      background: #fbfdff;
+      background: #fff;
       position: relative;
     }
 
     /* ─── Cells ─── */
     .sch-cell {
-      border-bottom: 1px solid rgba(226,232,240,.65);
-      border-right:  1px solid rgba(226,232,240,.55);
+      border-bottom: 1px solid rgba(226,232,240,0.5);
+      border-right:  1px solid rgba(226,232,240,0.4);
     }
 
     .sch-head {
       position: sticky;
       top: 0;
-      z-index: 6;
-      background: #f6f9ff;
-      border-bottom: 2px solid rgba(226,232,240,.9);
+      z-index: 10;
+      background: #f8fafc;
+      border-bottom: 2px solid var(--sch-border);
       font-weight: 900;
-      color: var(--sch-text);
-      letter-spacing: .08em;
+      color: var(--sch-blue);
+      letter-spacing: 0.05em;
       text-transform: uppercase;
       font-size: 11px;
       display: grid;
       place-items: center;
     }
 
-    /* Time label cells — simple, no flex, just padding + text-align */
     .sch-time {
       position: sticky;
       left: 0;
-      z-index: 7;
-      background: #ffffff;
-      border-right: 2px solid rgba(226,232,240,.9);
+      z-index: 11;
+      background: #fff;
+      border-right: 2px solid var(--sch-border);
       font-weight: 700;
       color: var(--sch-muted);
-      font-size: 11px;
+      font-size: 10.5px;
       white-space: nowrap;
-      padding: 0 6px;
-      line-height: var(--sch-row);   /* vertically center via line-height */
+      padding: 0 10px;
+      line-height: var(--sch-row);
       text-align: right;
       box-sizing: border-box;
     }
-    .sch-head.sch-time {
-      line-height: normal;           /* reset for header — centering via display:grid */
-      background: #f6f9ff;
-      z-index: 8;
-    }
 
-    .sch-slot { background: transparent; }
+    .sch-head.sch-time {
+      background: #f8fafc;
+      z-index: 12;
+      line-height: normal;
+    }
 
     /* ─── Schedule blocks ─── */
     .sch-block {
       z-index: 5;
-      margin: 3px 5px;
-      border-radius: 13px;
-      padding: 8px 10px;
-      background: #eaf1ff;
-      border: 1px solid rgba(18,58,140,.14);
-      box-shadow: 0 6px 14px rgba(2,6,23,.07);
+      margin: 4px 6px;
+      border-radius: 16px;
+      padding: 10px 12px;
+      background: #fff;
+      border: 1px solid rgba(26,58,143,0.1);
+      box-shadow: 0 4px 12px rgba(2,6,23,0.05);
       overflow: hidden;
       align-self: stretch;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      align-items: center;
-      text-align: center;
-    }
-    .sch-block-title { font-weight: 800; color: #0b1f4d; font-size: 13px; line-height: 1.2; }
-    .sch-block-meta  { margin-top: 4px; display: grid; gap: 1px; }
-    .sch-meta-line   { font-size: 11px; color: #243b72; font-weight: 700; }
-    .sch-meta-muted  { color: #3a4d7c; opacity: .9; }
-    .sch-meta-strong { font-weight: 900; }
-    .sch-meta-chip {
-      margin-top: 4px;
-      display: inline-block;
-      width: fit-content;
-      padding: 3px 7px;
-      border-radius: 999px;
-      font-size: 10px;
-      font-weight: 900;
-      background: rgba(18,58,140,.12);
-      color: #0b2f74;
-      border: 1px solid rgba(18,58,140,.18);
+      transition: all 0.2s ease;
+      cursor: default;
     }
 
-    /* ─── Day-column colours ─── */
-    .sch-c1 { border-left: 5px solid #1d4ed8; }
-    .sch-c2 { border-left: 5px solid #2563eb; }
-    .sch-c3 { border-left: 5px solid #3b82f6; }
-    .sch-c4 { border-left: 5px solid #1e40af; }
-    .sch-c5 { border-left: 5px solid #60a5fa; }
-    .sch-c6 { border-left: 5px solid #0ea5e9; }
-    .sch-c7 { border-left: 5px solid #38bdf8; }
+    .sch-block:hover {
+        transform: scale(1.02);
+        box-shadow: 0 8px 20px rgba(2,6,23,0.1);
+        z-index: 15;
+    }
+
+    .sch-block-title { 
+        font-weight: 800; 
+        color: var(--sch-blue); 
+        font-size: 13.5px; 
+        line-height: 1.2; 
+        margin-bottom: 2px;
+    }
+    
+    .sch-block-meta { display: grid; gap: 2px; }
+    .sch-meta-line { font-size: 11px; color: var(--sch-muted); font-weight: 600; }
+    .sch-meta-strong { font-weight: 800; color: var(--sch-text); }
+    .sch-meta-muted { color: var(--sch-muted); opacity: 0.8; }
+
+    /* ─── Day-column colors ─── */
+    .sch-c1 { border-left: 5px solid #3b82f6; background: linear-gradient(to right, #eff6ff, #fff); }
+    .sch-c2 { border-left: 5px solid #10b981; background: linear-gradient(to right, #ecfdf5, #fff); }
+    .sch-c3 { border-left: 5px solid #f59e0b; background: linear-gradient(to right, #fffbeb, #fff); }
+    .sch-c4 { border-left: 5px solid #8b5cf6; background: linear-gradient(to right, #f5f3ff, #fff); }
+    .sch-c5 { border-left: 5px solid #ef4444; background: linear-gradient(to right, #fef2f2, #fff); }
+    .sch-c6 { border-left: 5px solid #06b6d4; background: linear-gradient(to right, #ecfeff, #fff); }
+    .sch-c7 { border-left: 5px solid #ec4899; background: linear-gradient(to right, #fdf2f8, #fff); }
 
     @media (max-width: 900px) {
-      .sch-wrap { --sch-day-col: 155px; }
-      .sch-hero { flex-direction: column; align-items: stretch; text-align: center; padding: 32px 20px 16px; }
-      .sch-hero-left { flex-direction: column; }
-      .sch-hero-title { font-size: 2rem !important; }
-      .sch-hero-sub { justify-content: center !important; }
+      .sch-wrap { --sch-day-col: 160px; }
+      .sch-hero-title { font-size: 2.2rem !important; }
+      .sch-hero-sub { font-size: 1rem; }
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: 640px) {
       .sch-wrap { 
         --sch-day-col: 140px; 
-        --sch-row: 52px; 
-        --sch-time-col: 75px;
+        --sch-row: 56px; 
+        --sch-time-col: 80px;
       }
-      .sch-hero-title { font-size: 1.4rem; }
-      .sch-hero-sub { font-size: 0.85rem; }
-      .sch-grid-shell { border-radius: 20px; margin-top: 10px; }
-      .sch-block { padding: 6px; }
-      .sch-block-title { font-size: 11px; }
-      .sch-block-meta { display: none; } /* Hide meta on very small screens to save space */
+      .sch-hero { text-align: center; justify-content: center; padding: 24px 0 8px; }
+      .sch-hero-title { font-size: 1.8rem !important; }
+      .sch-hero-sub { justify-content: center; font-size: 0.9rem; flex-direction: column; gap: 8px; }
+      .sch-grid-shell { border-radius: 24px; }
+      .sch-block-meta { display: none; }
+      .sch-block { padding: 8px; border-radius: 12px; }
+      .sch-block-title { font-size: 11.5px; }
     }
   </style>
-
-
 {% endmacro %}

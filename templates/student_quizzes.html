@@ -1,191 +1,509 @@
 {% extends "base.html" %}
 {% block title %}My Quizzes{% endblock %}
+
 {% block styles %}
 <style>
-  .task-wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px; }
+    :root {
+        --sd-primary: #1a3a8f;
+        --sd-primary-dark: #142e75;
+        --sd-accent: #7c3aed; /* Purple for Quizzes */
+        --sd-bg: #f8fafc;
+        --sd-card: #ffffff;
+        --sd-text: #0f172a;
+        --sd-muted: #64748b;
+        --sd-border: #e2e8f0;
+        --sd-glass: rgba(255, 255, 255, 0.1);
+        --sd-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --sd-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
 
-  .task-page-title { font-size: 1.5rem; font-weight: 800; color: #1e293b; margin-bottom: 24px; }
+    .sd-container {
+        padding: 40px 32px;
+        max-width: 1500px;
+        margin: 0 auto;
+        font-family: 'Inter', sans-serif;
+    }
 
-  .task-card {
-    background: #fff;
-    border-radius: 14px;
-    border: 1px solid #e2e8f0;
-    border-left: 4px solid #7c3aed;
-    padding: 18px 20px;
-    margin-bottom: 14px;
-    box-shadow: 0 2px 8px rgba(0,0,0,.05);
-    transition: transform .15s, box-shadow .15s;
-  }
-  .task-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.09); }
+    @media (max-width: 1024px) {
+        .sd-container { padding: 32px 20px; }
+    }
 
-  .task-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
+    @media (max-width: 768px) {
+        .sd-container { padding: 24px 16px; }
+    }
 
-  .task-cat-badge {
-    font-size: 0.68rem; font-weight: 800; text-transform: uppercase;
-    letter-spacing: .07em; padding: 3px 10px; border-radius: 6px;
-    display: inline-block; margin-bottom: 8px;
-    background: #ede9fe; color: #5b21b6;
-  }
+    /* ── Hero Header ── */
+    .quizzes-hero {
+        background: linear-gradient(135deg, #4c1d95 0%, #7c3aed 50%, #8b5cf6 100%);
+        border-radius: 24px;
+        padding: 48px;
+        color: #fff;
+        margin-bottom: 32px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--sd-shadow-lg);
+        animation: fadeInDown 0.6s ease-out;
+    }
 
-  .task-title { font-size: 1.1rem; font-weight: 700; color: #1e293b; margin: 0 0 6px; }
+    .quizzes-hero::before {
+        content: '';
+        position: absolute;
+        top: -100px;
+        right: -100px;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+        border-radius: 50%;
+    }
 
-  .task-info-row {
-    font-size: 0.82rem; color: #64748b;
-    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
-  }
+    .quizzes-hero-content h1 {
+        font-size: 3rem;
+        font-weight: 900;
+        margin: 0 0 12px;
+        letter-spacing: -0.04em;
+        line-height: 1.1;
+    }
 
-  .status-badge {
-    font-size: 0.75rem; font-weight: 700; padding: 4px 12px;
-    border-radius: 999px; white-space: nowrap; flex-shrink: 0;
-  }
-  .st-available { background: #dcfce7; color: #15803d; }
-  .st-done      { background: #e0f2fe; color: #0369a1; }
-  .st-closed    { background: #fee2e2; color: #991b1b; }
-  .st-notyet    { background: #fef9c3; color: #854d0e; }
-  .st-expired   { background: #fde8d8; color: #9a3412; }
+    .quizzes-hero-content p {
+        font-size: 1.1rem;
+        font-weight: 600;
+        opacity: 0.9;
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
 
-  .task-card-bottom { margin-top: 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .quizzes-hero-content .status-pill {
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(8px);
+        padding: 4px 14px;
+        border-radius: 99px;
+        font-size: 0.85rem;
+        font-weight: 800;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
 
-  .score-info { font-size: 0.82rem; color: #0369a1; font-weight: 600; margin-top: 6px; }
+    /* ── Filter Tabs ── */
+    .filter-tabs {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 32px;
+        overflow-x: auto;
+        padding: 4px 4px 12px;
+    }
 
-  .btn-take {
-    background: #7c3aed; color: #fff; padding: 9px 20px;
-    border-radius: 9px; font-size: 0.85rem; font-weight: 700;
-    text-decoration: none; display: inline-flex; align-items: center;
-    gap: 6px; border: none; transition: all .2s;
-  }
-  .btn-take:hover { background: #6d28d9; transform: translateY(-1px); }
+    .filter-tab {
+        padding: 10px 24px;
+        background: #fff;
+        border: 1px solid var(--sd-border);
+        border-radius: 14px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 700;
+        white-space: nowrap;
+        transition: all 0.2s;
+        color: var(--sd-muted);
+        box-shadow: var(--sd-shadow);
+    }
 
-  .btn-result {
-    background: #f1f5f9; color: #475569; padding: 8px 18px;
-    border-radius: 9px; font-size: 0.85rem; font-weight: 700;
-    text-decoration: none; display: inline-flex; align-items: center;
-    gap: 6px; border: 1px solid #e2e8f0; transition: all .2s;
-  }
-  .btn-result:hover { background: #e2e8f0; }
+    .filter-tab:hover {
+        border-color: var(--sd-accent);
+        color: var(--sd-accent);
+        transform: translateY(-1px);
+    }
 
-  .empty-box {
-    text-align: center; padding: 60px 20px; color: #94a3b8;
-    background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
-  }
-  .empty-box .big-icon { font-size: 3rem; margin-bottom: 12px; }
+    .filter-tab.active {
+        background: var(--sd-accent);
+        color: #fff;
+        border-color: var(--sd-accent);
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+    }
+
+    /* ── Grid ── */
+    .quizzes-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+        gap: 24px;
+    }
+
+    @media (max-width: 640px) {
+        .quizzes-grid { grid-template-columns: 1fr; }
+    }
+
+    .quiz-card {
+        background: #fff;
+        border: 1px solid var(--sd-border);
+        border-radius: 20px;
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        transition: all 0.3s ease;
+        box-shadow: var(--sd-shadow);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .quiz-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--sd-shadow-lg);
+        border-color: var(--sd-accent);
+    }
+
+    .quiz-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 6px;
+        height: 100%;
+        background: var(--sd-accent);
+        opacity: 0.8;
+    }
+
+    .quiz-card.rescheduled::before {
+        background: #10b981;
+    }
+
+    .quiz-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .quiz-cat-badge {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        padding: 4px 10px;
+        border-radius: 6px;
+        display: inline-block;
+        margin-bottom: 10px;
+        background: #ede9fe;
+        color: #5b21b6;
+    }
+
+    .quiz-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--sd-text);
+        margin: 0;
+        line-height: 1.3;
+    }
+
+    .quiz-subject {
+        color: var(--sd-accent);
+        font-weight: 700;
+        font-size: 0.9375rem;
+        margin-top: 4px;
+    }
+
+    .quiz-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        font-size: 0.85rem;
+        color: var(--sd-muted);
+        font-weight: 500;
+        margin-top: 12px;
+    }
+
+    .quiz-meta span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .quiz-meta svg {
+        width: 14px;
+        height: 14px;
+        opacity: 0.7;
+    }
+
+    /* ── Status Badges ── */
+    .status-badge {
+        font-size: 0.75rem;
+        font-weight: 700;
+        padding: 4px 12px;
+        border-radius: 9999px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .st-available { background: #dcfce7; color: #166534; }
+    .st-done      { background: #e0f2fe; color: #0369a1; }
+    .st-closed    { background: #fee2e2; color: #991b1b; }
+    .st-notyet    { background: #fef9c3; color: #854d0e; }
+    .st-expired   { background: #fff7ed; color: #9a3412; }
+
+    /* ── Actions ── */
+    .quiz-footer {
+        margin-top: auto;
+        padding-top: 20px;
+        border-top: 1px solid var(--sd-border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .score-badge {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .score-label {
+        font-size: 0.7rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--sd-muted);
+    }
+
+    .score-val {
+        font-size: 1.1rem;
+        font-weight: 900;
+        color: var(--sd-accent);
+    }
+
+    .btn-premium {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 24px;
+        background: var(--sd-accent);
+        color: #fff;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.875rem;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-premium:hover {
+        background: #6d28d9;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(124, 58, 237, 0.2);
+    }
+
+    .btn-outline {
+        background: transparent;
+        border: 1px solid var(--sd-border);
+        color: var(--sd-text);
+    }
+
+    .btn-outline:hover {
+        background: #f1f5f9;
+        border-color: var(--sd-muted);
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .empty-box {
+        text-align: center;
+        padding: 80px 24px;
+        background: #fff;
+        border: 1px solid var(--sd-border);
+        border-radius: 24px;
+        color: var(--sd-muted);
+        grid-column: 1 / -1;
+    }
+
+    .empty-icon {
+        font-size: 4rem;
+        margin-bottom: 24px;
+        opacity: 0.2;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="task-wrap">
-  <div class="task-page-title">My Quizzes</div>
-
-  <!-- Filter Tabs -->
-  <style>
-    .filter-tabs { display: flex; gap: 8px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 8px; }
-    .filter-tab { padding: 8px 16px; background: #fff; border: 1px solid #e2e8f0; border-radius: 20px; cursor: pointer; font-size: 0.9rem; font-weight: 600; white-space: nowrap; transition: all 0.2s; color: #475569; }
-    .filter-tab:hover { border-color: #7c3aed; color: #7c3aed; }
-    .filter-tab.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
-    .filter-empty-note { color:#94a3b8; font-size:0.86rem; margin-bottom:16px; display:none; }
-  </style>
-  <div class="filter-tabs">
-    <div class="filter-tab active" onclick="filterQuizzes('all', this)">All</div>
-    <div class="filter-tab" onclick="filterQuizzes('1st', this)">1st Grading</div>
-    <div class="filter-tab" onclick="filterQuizzes('none', this)">No Period</div>
-    <div class="filter-tab" onclick="filterQuizzes('2nd', this)">2nd Grading</div>
-    <div class="filter-tab" onclick="filterQuizzes('3rd', this)">3rd Grading</div>
-    <div class="filter-tab" onclick="filterQuizzes('4th', this)">4th Grading</div>
-  </div>
-  <div id="filterEmptyNote" class="filter-empty-note">No quizzes found for this filter.</div>
-
-  {% with messages = get_flashed_messages(with_categories=true) %}
-  {% if messages %}{% for cat, msg in messages %}
-  <div style="padding:12px 16px; border-radius:10px; margin-bottom:14px;
-      background:{{ '#d1e7dd' if cat=='success' else '#f8d7da' }};
-      color:{{ '#0f5132' if cat=='success' else '#842029' }};
-      border:1px solid {{ '#badbcc' if cat=='success' else '#f5c2c7' }};">{{ msg }}</div>
-  {% endfor %}{% endif %}{% endwith %}
-
-  {% if quizzes %}
-    <div id="quizzesContainer">
-      {% for q in quizzes %}
-      {% set is_done    = q.result_status in ('submitted', 'auto_submitted') %}
-      {% set is_closed  = q.status == 'closed' %}
-      {% set is_notyet  = q.effective_start and now_utc < q.effective_start %}
-      {% set is_expired = q.effective_end and now_utc > q.effective_end %}
-
-      <div class="task-card" data-period="{{ q.grading_period or 'none' }}"
-           {% if q.individual_extension %}style="border-left-color: #10b981;"{% endif %}>
-        <div class="task-card-top">
-          <div>
-            <div class="task-cat-badge">Quiz</div>
-            <h3 class="task-title">{{ q.title }}</h3>
-            <div class="task-info-row">
-              <strong style="color:#7c3aed;">{{ q.subject_name }}</strong> &bull;
-              <span>Duration: {{ q.duration_mins }} min</span>
-              <span>Questions: {{ q.question_count }}</span>
-              {% if q.grading_period %}
-              <span class="status-badge" style="background:#f5f3ff; color:#7c3aed; border:1px solid #ddd6fe;">{{ q.grading_period }} Grading</span>
-              {% endif %}
-              {% if q.individual_extension %}
-              <span class="status-badge" style="background:#d1fae5; color:#065f46; border:1px solid #10b981;">
-                  Rescheduled to {{ q.individual_extension.strftime('%b %d, %I:%M %p') }}
-              </span>
-              {% elif q.scheduled_start %}
-              <span>Opens {{ q.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}</span>
-              {% endif %}
-            </div>
-            {% if is_done %}
-            <div class="score-info">
-              Score: <strong>{{ q.score|round|int }} / {{ q.total_points|round|int }}</strong>
-              {% if q.result_status == 'auto_submitted' %}<span style="color:#856404; font-size:11px;"> auto-submitted</span>{% endif %}
-            </div>
-            {% endif %}
-          </div>
-          <div>
-            {% if is_done %}
-              <span class="status-badge st-done">Done</span>
-            {% elif is_closed %}
-              <span class="status-badge st-closed">Closed</span>
-            {% elif is_notyet %}
-              <span class="status-badge st-notyet">Not Yet Open</span>
-            {% elif is_expired %}
-              <span class="status-badge st-expired">Expired</span>
-            {% else %}
-              <span class="status-badge st-available">Available</span>
-            {% endif %}
-          </div>
+<div class="sd-container">
+    <!-- Hero Header -->
+    <header class="quizzes-hero">
+        <div class="quizzes-hero-content">
+            <h1>My <span>Quizzes</span></h1>
+            <p>
+                Academic Year 2023-2024
+                <span class="status-pill">Learning Assessment</span>
+            </p>
         </div>
+    </header>
 
-        <div class="task-card-bottom">
-          {% if is_done %}
-            <a href="{{ url_for('student_portal.student_exam_result', result_id=q.result_id) }}" class="btn-result">View Result</a>
-          {% elif not is_closed and not is_notyet and not is_expired %}
-            <a href="{{ url_for('student_portal.student_exam_take', exam_id=q.exam_id) }}" class="btn-take">Take Quiz</a>
-          {% endif %}
-        </div>
-      </div>
-      {% endfor %}
+    <!-- Filter Tabs -->
+    <div class="filter-tabs">
+        <div class="filter-tab active" onclick="filterQuizzes('all', this)">All Periods</div>
+        <div class="filter-tab" onclick="filterQuizzes('1st', this)">1st Grading</div>
+        <div class="filter-tab" onclick="filterQuizzes('2nd', this)">2nd Grading</div>
+        <div class="filter-tab" onclick="filterQuizzes('3rd', this)">3rd Grading</div>
+        <div class="filter-tab" onclick="filterQuizzes('4th', this)">4th Grading</div>
+        <div class="filter-tab" onclick="filterQuizzes('none', this)">No Period</div>
     </div>
-  {% endif %}
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <div style="margin-bottom: 24px;">
+            {% for cat, msg in messages %}
+                <div style="padding:14px 20px; border-radius:12px; margin-bottom:12px; font-weight: 600; font-size: 0.9rem;
+                    background:{{ '#dcfce7' if cat=='success' else '#fee2e2' }};
+                    color:{{ '#166534' if cat=='success' else '#991b1b' }};
+                    border:1px solid {{ '#bbf7d0' if cat=='success' else '#fecaca' }};">
+                    {{ msg }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    {% endwith %}
+
+    <div class="quizzes-grid" id="quizzesContainer">
+        {% if quizzes %}
+            {% for q in quizzes %}
+                {% set is_done    = q.result_status in ('submitted', 'auto_submitted') %}
+                {% set is_closed  = q.status == 'closed' %}
+                {% set is_notyet  = q.effective_start and now_utc < q.effective_start %}
+                {% set is_expired = q.effective_end and now_utc > q.effective_end %}
+                
+                <div class="quiz-card {% if q.individual_extension %}rescheduled{% endif %}" data-period="{{ q.grading_period or 'none' }}">
+                    <div class="quiz-header">
+                        <div style="flex: 1;">
+                            <div class="quiz-cat-badge">Quiz Assessment</div>
+                            <h3 class="quiz-title">{{ q.title }}</h3>
+                            <div class="quiz-subject">{{ q.subject_name }}</div>
+                        </div>
+                        <div class="quiz-status">
+                            {% if is_done %}
+                                <span class="status-badge st-done">Done</span>
+                            {% elif is_closed %}
+                                <span class="status-badge st-closed">Closed</span>
+                            {% elif is_notyet %}
+                                <span class="status-badge st-notyet">Upcoming</span>
+                            {% elif is_expired %}
+                                <span class="status-badge st-expired">Expired</span>
+                            {% else %}
+                                <span class="status-badge st-available">Active</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="quiz-meta">
+                        <span>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            {{ q.duration_mins }} Minutes
+                        </span>
+                        <span>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            {{ q.question_count }} Questions
+                        </span>
+                        {% if q.grading_period %}
+                        <span>
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            {{ q.grading_period }} Grading
+                        </span>
+                        {% endif %}
+                    </div>
+
+                    {% if q.individual_extension %}
+                        <div style="font-size: 0.85rem; color: #059669; font-weight: 700; background: #ecfdf5; padding: 10px 14px; border-radius: 10px; display: flex; align-items: center; gap: 8px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                            </svg>
+                            Rescheduled: {{ q.individual_extension.strftime('%b %d, %I:%M %p') }}
+                        </div>
+                    {% elif q.scheduled_start %}
+                        <div style="font-size: 0.85rem; color: var(--sd-muted); font-weight: 600;">
+                            Opens: {{ q.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}
+                        </div>
+                    {% endif %}
+
+                    <div class="quiz-footer">
+                        {% if is_done %}
+                            <div class="score-badge">
+                                <div class="score-label">Result</div>
+                                <div class="score-val">
+                                    {{ q.score|round|int }} / {{ q.total_points|round|int }}
+                                </div>
+                            </div>
+                            <a href="{{ url_for('student_portal.student_exam_result', result_id=q.result_id) }}" class="btn-premium btn-outline">
+                                View Result
+                                <svg xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                                </svg>
+                            </a>
+                        {% elif not is_closed and not is_notyet and not is_expired %}
+                            <div></div> <!-- Spacer -->
+                            <a href="{{ url_for('student_portal.student_exam_take', exam_id=q.exam_id) }}" class="btn-premium">
+                                Take Quiz
+                                <svg xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                            </a>
+                        {% else %}
+                            <div></div> <!-- Spacer -->
+                            <button class="btn-premium btn-outline" disabled style="opacity: 0.5; cursor: not-allowed;">
+                                Not Available
+                            </button>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-box">
+                <div class="empty-icon">📝</div>
+                <h3 style="font-weight: 800; color: var(--sd-text); margin-bottom: 8px;">No Quizzes Available</h3>
+                <p style="font-weight: 500; margin: 0;">You don't have any quizzes posted for your subjects yet.</p>
+            </div>
+        {% endif %}
+    </div>
 </div>
 
 <script>
 function filterQuizzes(period, el) {
-  document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
-  el.classList.add('active');
+    document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+    el.classList.add('active');
 
-  const cards = document.querySelectorAll('.task-card');
-  let visibleCount = 0;
-  cards.forEach(card => {
-    if (period === 'all' || card.dataset.period === period) {
-      card.style.display = 'block';
-      visibleCount += 1;
-    } else {
-      card.style.display = 'none';
+    const cards = document.querySelectorAll('.quiz-card');
+    let hasVisible = false;
+    
+    cards.forEach(card => {
+        if (period === 'all' || card.dataset.period === period) {
+            card.style.display = 'flex';
+            hasVisible = true;
+        } else {
+            card.style.display = 'none';
+        }
+    });
+
+    // Handle empty state
+    const container = document.getElementById('quizzesContainer');
+    const existingEmpty = container.querySelector('.empty-filter-msg');
+    
+    if (!hasVisible) {
+        if (!existingEmpty) {
+            const msg = document.createElement('div');
+            msg.className = 'empty-box empty-filter-msg';
+            msg.innerHTML = '<div class="empty-icon">🔍</div><h3 style="font-weight: 800; color: var(--sd-text); margin-bottom: 8px;">No Quizzes Found</h3><p style="font-weight: 500; margin: 0;">No quizzes found for the selected grading period.</p>';
+            container.appendChild(msg);
+        }
+    } else if (existingEmpty) {
+        existingEmpty.remove();
     }
-  });
-
-  const emptyNote = document.getElementById('filterEmptyNote');
-  if (emptyNote) {
-    emptyNote.style.display = visibleCount === 0 ? 'block' : 'none';
-  }
 }
 
 document.addEventListener("DOMContentLoaded", function() {

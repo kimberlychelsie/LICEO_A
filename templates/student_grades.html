@@ -3,171 +3,268 @@
 
 {% block styles %}
 <style>
-.sg-container { max-width: 1200px; margin: 0 auto; padding-bottom: 50px; }
+    :root {
+        --sd-primary: #1a3a8f;
+        --sd-primary-dark: #142e75;
+        --sd-accent: #f59e0b;
+        --sd-bg: #f8fafc;
+        --sd-card: #ffffff;
+        --sd-text: #0f172a;
+        --sd-muted: #64748b;
+        --sd-border: #e2e8f0;
+        --sd-glass: rgba(255, 255, 255, 0.1);
+        --sd-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --sd-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
 
-/* 🔵 Hero Header Section 🔵 */
-.sg-hero {
-    background: linear-gradient(135deg, #1e3a8a, #1e40af);
-    color: white;
-    padding: 40px 30px;
-    border-radius: 0 0 24px 24px;
-    margin-bottom: 40px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 10px 25px -5px rgba(30, 58, 138, 0.2);
-}
+    .sd-container {
+        padding: 40px 32px;
+        max-width: 1500px;
+        margin: 0 auto;
+        font-family: 'Inter', sans-serif;
+    }
 
-.sg-title-area h1 { 
-    font-size: 2.4rem; 
-    font-weight: 900; 
-    margin-bottom: 5px; 
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    letter-spacing: -0.02em;
-}
-.sg-title-area p { opacity: 0.85; font-size: 1.05rem; font-weight: 500; }
+    @media (max-width: 1024px) {
+        .sd-container { padding: 32px 20px; }
+    }
 
-/* 📦 Term Selector Dropdown 📦 */
-.term-selector-wrap {
-    background: white;
-    border-radius: 14px;
-    padding: 0;
-    overflow: hidden;
-    min-width: 300px;
-    box-shadow: 0 10px 20px rgba(0,0,0,0.15);
-    border: 1px solid rgba(255,255,255,0.3);
-}
+    @media (max-width: 768px) {
+        .sd-container { padding: 24px 16px; }
+    }
 
-.term-select {
-    width: 100%;
-    padding: 16px 22px;
-    border: none;
-    font-weight: 800;
-    color: #1e3a8a;
-    cursor: pointer;
-    font-size: 1rem;
-    appearance: none;
-    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%231e40af' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 18px center;
-    background-size: 16px;
-}
+    /* ── Hero Header ── */
+    .grades-hero {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1a3a8f 50%, #1e40af 100%);
+        border-radius: 24px;
+        padding: 48px;
+        color: #fff;
+        margin-bottom: 32px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--sd-shadow-lg);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 32px;
+        animation: fadeInDown 0.6s ease-out;
+    }
 
-.term-select:focus { outline: none; }
+    .grades-hero::before {
+        content: '';
+        position: absolute;
+        top: -100px;
+        right: -100px;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+        border-radius: 50%;
+    }
 
-.grade-table-card {
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 20px;
-    overflow: hidden;
-    box-shadow: var(--shadow-md);
-}
+    .grades-hero-content h1 {
+        font-size: 3rem;
+        font-weight: 900;
+        margin: 0 0 12px;
+        letter-spacing: -0.04em;
+        line-height: 1.1;
+    }
 
-.table-responsive { overflow-x: auto; }
+    .grades-hero-content p {
+        font-size: 1.1rem;
+        font-weight: 600;
+        opacity: 0.9;
+        margin: 0;
+    }
 
-.grade-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.95rem;
-}
+    .term-selector-wrap {
+        background: var(--sd-glass);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 18px;
+        padding: 6px;
+        min-width: 320px;
+        z-index: 1;
+    }
 
-.grade-table th {
-    background: #f8fafc;
-    padding: 20px;
-    text-align: left;
-    font-weight: 800;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: 0.72rem;
-    border-bottom: 2px solid #e2e8f0;
-}
+    .term-select {
+        width: 100%;
+        padding: 12px 20px;
+        background: transparent;
+        border: none;
+        color: #fff;
+        font-weight: 700;
+        font-size: 0.95rem;
+        cursor: pointer;
+        appearance: none;
+        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat right 12px center;
+        background-size: 16px;
+    }
 
-.grade-table td {
-    padding: 20px;
-    border-bottom: 1px solid #f1f5f9;
-    color: var(--text);
-}
+    .term-select option {
+        background: var(--sd-primary);
+        color: #fff;
+    }
 
-.grade-table tr:last-child td { border-bottom: none; }
-.grade-table tr:hover { background: #f8fafc; }
+    .term-select:focus { outline: none; }
 
-.course-name { font-weight: 800; color: #1e293b; font-size: 1rem; }
-.units-cell { text-align: center; color: #64748b; font-weight: 600; }
-.grade-cell { text-align: center; font-weight: 900; font-size: 1.15rem; width: 130px; transition: transform 0.1s; }
+    /* ── Grades Table Card ── */
+    .grades-card {
+        background: #fff;
+        border: 1px solid var(--sd-border);
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: var(--sd-shadow);
+        animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
 
-.grade-pass { color: #16a34a; }
-.grade-fail { color: #dc2626; }
-.grade-empty { color: transparent; }
+    .table-responsive { overflow-x: auto; }
 
-.final-avg-cell {
-    background: #f1f5f9;
-    text-align: center;
-    font-weight: 900;
-    font-size: 1.2rem;
-}
+    .grade-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+    }
 
-.legend-card {
-    margin-top: 30px;
-    padding: 24px;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    display: flex;
-    gap: 30px;
-    font-size: 0.9rem;
-    color: #475569;
-}
-.legend-item { display: flex; align-items: center; gap: 10px; font-weight: 600; }
-.l-dot { width: 12px; height: 12px; border-radius: 4px; }
+    .grade-table th {
+        background: #f8fafc;
+        padding: 20px 24px;
+        text-align: left;
+        font-weight: 800;
+        color: var(--sd-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        font-size: 0.72rem;
+        border-bottom: 2px solid var(--sd-border);
+    }
 
-@media (max-width: 900px) {
-    .sg-hero { flex-direction: column; align-items: flex-start; gap: 25px; padding: 30px 20px; }
-    .term-selector-wrap { width: 100%; }
-}
+    .grade-table td {
+        padding: 20px 24px;
+        border-bottom: 1px solid #f1f5f9;
+        color: var(--sd-text);
+        vertical-align: middle;
+    }
+
+    .grade-table tr:last-child td { border-bottom: none; }
+    .grade-table tr:hover { background: #fbfcfe; }
+
+    .subject-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .subject-name {
+        font-weight: 800;
+        color: var(--sd-text);
+        font-size: 1rem;
+    }
+
+    .subject-units {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--sd-muted);
+        text-transform: uppercase;
+    }
+
+    .grade-cell {
+        text-align: center;
+        font-weight: 900;
+        font-size: 1.15rem;
+        width: 120px;
+    }
+
+    .final-cell {
+        background: #f8fafc;
+        border-left: 2px solid var(--sd-border);
+    }
+
+    .grade-pass { color: #16a34a; }
+    .grade-fail { color: #dc2626; }
+    .grade-empty { color: transparent; }
+
+    /* ── Legend ── */
+    .legend-card {
+        margin-top: 32px;
+        padding: 24px;
+        background: #fff;
+        border: 1px solid var(--sd-border);
+        border-radius: 20px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 32px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: var(--sd-muted);
+        box-shadow: var(--sd-shadow);
+    }
+
+    .legend-item { display: flex; align-items: center; gap: 10px; }
+    .l-dot { width: 12px; height: 12px; border-radius: 4px; }
+
+    /* ── Animations ── */
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 900px) {
+        .grades-hero { flex-direction: column; align-items: stretch; padding: 32px; gap: 24px; }
+        .term-selector-wrap { min-width: 0; }
+        .grades-hero-content h1 { font-size: 2.2rem; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="sg-container">
-    <div class="sg-hero">
-        <div class="sg-title-area">
-            <h1><svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"></path><circle cx="12" cy="8" r="6"></circle></svg> My Grades</h1>
-            <p>Official Academic Performance Records for <b>{{ student.student_name if student.student_name else student.branch_enrollment_no }}</b></p>
+<div class="sd-container">
+    <!-- Hero Header -->
+    <header class="grades-hero">
+        <div class="grades-hero-content">
+            <h1>My <span>Grades</span></h1>
+            <p>Academic Records for SY 2023-2024</p>
         </div>
         
         <div class="term-selector-wrap">
             <select class="term-select" onchange="window.location.href='?enrollment_id=' + this.value">
                 {% for e in all_enrollments %}
                 <option value="{{ e.enrollment_id }}" {% if e.enrollment_id == selected_enrollment_id %}selected{% endif %}>
-                    {{ e.school_year if e.school_year else 'Current' }} : {{ e.grade_level_name if e.grade_level_name else (e.grade_level if e.grade_level else 'Enrollment') }}
-                    {% if e.section_name %} - {{ e.section_name }}{% endif %}
-                    {% if e.status not in ['approved', 'enrolled'] %} ({{ e.status }}){% endif %}
+                    {{ e.school_year if e.school_year else 'Current' }} : {{ e.grade_level_name or e.grade_level }}
+                    {% if e.section_name %} • {{ e.section_name }}{% endif %}
                 </option>
                 {% endfor %}
             </select>
         </div>
-    </div>
+    </header>
 
-    <div class="grade-table-card">
+    {% if grade_data %}
+    <div class="grades-card">
         <div class="table-responsive">
             <table class="grade-table">
                 <thead>
                     <tr>
-                        <th>Course / Subject</th>
+                        <th>Subject Details</th>
                         <th style="text-align: center;">Units</th>
-                        <th style="text-align: center;">1st Grading</th>
-                        <th style="text-align: center;">2nd Grading</th>
-                        <th style="text-align: center;">3rd Grading</th>
-                        <th style="text-align: center;">4th Grading</th>
-                        <th style="text-align: center;">Final Avg</th>
+                        <th style="text-align: center;">1st</th>
+                        <th style="text-align: center;">2nd</th>
+                        <th style="text-align: center;">3rd</th>
+                        <th style="text-align: center;">4th</th>
+                        <th style="text-align: center;" class="final-cell">Final</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for subj in grade_data %}
                     <tr>
-                        <td class="course-name">{{ subj.subject_name }}</td>
-                        <td class="units-cell">{{ subj.units }}</td>
+                        <td>
+                            <div class="subject-info">
+                                <span class="subject-name">{{ subj.subject_name }}</span>
+                                <span class="subject-units">{{ subj.subject_code or 'Academic' }}</span>
+                            </div>
+                        </td>
+                        <td style="text-align: center; font-weight: 700; color: var(--sd-muted);">{{ subj.units }}</td>
                         
                         <td class="grade-cell {% if subj.grades.get('1st') %}{% if subj.grades['1st'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
                             {{ subj.grades.get('1st') if subj.grades.get('1st') else '' }}
@@ -182,16 +279,8 @@
                             {{ subj.grades.get('4th') if subj.grades.get('4th') else '' }}
                         </td>
                         
-                        <td class="grade-cell final-avg-cell {% if subj.final_grade %}{% if subj.final_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
+                        <td class="grade-cell final-cell {% if subj.final_grade %}{% if subj.final_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
                             {{ subj.final_grade if subj.final_grade else '' }}
-                        </td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="7" style="text-align: center; padding: 60px; color: #64748b;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5; margin-bottom: 15px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                            <div style="font-weight: 700; font-size: 1.1rem;">No grades available for this term.</div>
-                            <p style="margin-top: 5px; opacity: 0.8;">Once the teacher posts your grades, they will appear here.</p>
                         </td>
                     </tr>
                     {% endfor %}
@@ -199,21 +288,18 @@
             </table>
         </div>
     </div>
-
-    {% if not grade_data %}
-    <div style="text-align:center; padding:80px; background:var(--card); border:1px solid var(--border); border-radius:20px; margin-top:20px;">
-        <div style="opacity:0.5;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9.5C2 7 4 5 6.5 5H18c2.5 0 4 2 4 4.5V17z"></path><polyline points="15 5 15 9 18 9"></polyline><path d="M2 9.5h20"></path></svg>
-        </div>
-        <h3 style="margin-top:15px; font-weight:800;">No Grades Available</h3>
-        <p style="color:var(--muted);">Grades will appear here once your instructors have posted them.</p>
+    {% else %}
+    <div style="text-align: center; padding: 100px 24px; background: white; border-radius: 32px; border: 1px solid var(--sd-border); box-shadow: var(--sd-shadow);">
+        <div style="font-size: 4rem; margin-bottom: 24px; opacity: 0.2;">📊</div>
+        <h3 style="font-weight: 900; color: var(--sd-primary); font-size: 1.5rem; margin-bottom: 12px;">No Grades Posted</h3>
+        <p style="color: var(--sd-muted); font-size: 1rem; max-width: 450px; margin: 0 auto; line-height: 1.6; font-weight: 500;">Official grades for the selected term have not been published by your instructors yet. Please check back later.</p>
     </div>
     {% endif %}
 
     <div class="legend-card">
         <div class="legend-item"><div class="l-dot" style="background:#16a34a;"></div> Passed (75-100)</div>
         <div class="legend-item"><div class="l-dot" style="background:#dc2626;"></div> Failed (Below 75)</div>
-        <div class="legend-item"><div class="l-dot" style="background:var(--border);"></div> Blank = Not yet posted</div>
+        <div class="legend-item"><div class="l-dot" style="background:var(--sd-border);"></div> Not yet posted</div>
     </div>
 </div>
 {% endblock %}
