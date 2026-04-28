@@ -32,14 +32,68 @@
 
   .page-wrap { max-width: 1280px; margin: 0 auto; padding: 26px 20px; }
 
-  /* ── Top bar ── */
-  .top-bar {
-    display: flex; align-items: flex-start; justify-content: space-between;
-    gap: 16px; flex-wrap: wrap; margin-bottom: 24px;
+  /* ── Page header ── */
+  .page-header {
+    background: linear-gradient(135deg, var(--blue) 0%, #1d4ed8 60%, var(--blue-mid) 100%);
+    border-radius: var(--radius);
+    padding: 32px 36px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(30, 58, 138, 0.2);
   }
-  .top-bar h1 { font-size: 24px; font-weight: 900; color: var(--blue); display: flex; align-items: center; gap: 10px; }
-  .top-bar p  { font-size: 13px; color: var(--muted); margin-top: 4px; }
-  .top-bar-right { display: flex; gap: 10px; flex-shrink: 0; }
+
+  .page-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at 90% 50%, rgba(245, 158, 11, 0.15) 0%, transparent 65%);
+    pointer-events: none;
+  }
+
+  .ph-icon {
+    width: 64px;
+    height: 64px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(8px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 30px;
+    flex-shrink: 0;
+    color: #fff;
+  }
+
+  .ph-text h1 {
+    font-size: 22px;
+    font-weight: 900;
+    color: #fff;
+    letter-spacing: -0.02em;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .ph-text p {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.7);
+    font-weight: 500;
+    margin: 0;
+  }
+
+  .header-actions {
+    margin-left: auto;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 2;
+  }
 
   /* ── Buttons ── */
   .btn {
@@ -160,15 +214,24 @@
 {% block content %}
 <div class="page-wrap">
 
-  {# ── Top bar ── #}
-  <div class="top-bar">
-    <div>
-      <h1>📋 All Book Releases</h1>
-      <p>Showing {{ releases|length }} of {{ total_releases }} total release{{ 's' if total_releases != 1 }} · grouped by grade level · A–Z by student name</p>
+  {# ── Page header ── #}
+  <div class="page-header">
+    <div class="ph-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
     </div>
-    <div class="top-bar-right">
-      <a href="{{ url_for('librarian.releases') }}" class="btn btn-gold">📤 New Release</a>
-      <a href="{{ url_for('librarian.dashboard') }}" class="btn btn-back">← Dashboard</a>
+    <div class="ph-text">
+      <h1>All Book Releases</h1>
+      <p>Showing {{ releases|length }} of {{ total_releases }} total release{{ 's' if total_releases != 1 }} · grouped by grade level</p>
+    </div>
+    <div class="header-actions">
+      <a href="{{ url_for('librarian.releases') }}" class="btn" style="background: #facc15; color: #1e3a8a; box-shadow: 0 8px 20px rgba(250, 204, 21, 0.3);">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        New Release
+      </a>
+      <a href="{{ url_for('librarian.dashboard') }}" class="btn" style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2); color: white;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        Dashboard
+      </a>
     </div>
   </div>
 
