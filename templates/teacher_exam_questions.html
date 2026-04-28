@@ -209,10 +209,10 @@
                     }}</button>
             </form>
             {% endif %}
-            <a href="{{ url_for('teacher.teacher_exam_edit_settings', exam_id=exam.exam_id) }}"
-                class="btn btn-primary" style="background:#4b5563;">⚙️ Settings</a>
-            <a href="{{ url_for('teacher.teacher_exam_results', exam_id=exam.exam_id) }}"
-                class="btn btn-warning">📊 Results</a>
+            <a href="{{ url_for('teacher.teacher_exam_edit_settings', exam_id=exam.exam_id) }}" class="btn btn-primary"
+                style="background:#4b5563;">⚙️ Settings</a>
+            <a href="{{ url_for('teacher.teacher_exam_results', exam_id=exam.exam_id) }}" class="btn btn-warning">📊
+                Results</a>
             <a href="{{ url_for('teacher.teacher_class_view', subject_id=exam.subject_id, active_tab='quizzes' if exam.exam_type == 'quiz' else 'exams') }}"
                 class="btn btn-secondary">⬅ Back</a>
         </div>
@@ -322,7 +322,8 @@
         <hr style="border:none; border-top:1px solid #eee; margin:16px 0;">
 
         <!-- Step 2: fill questions (POST) -->
-        <form method="post" action="{{ url_for('teacher.teacher_exam_questions_bulk_add', exam_id=exam.exam_id) }}" onsubmit="return handleBtnLoad(this, 'Saving Questions...');">
+        <form method="post" action="{{ url_for('teacher.teacher_exam_questions_bulk_add', exam_id=exam.exam_id) }}"
+            onsubmit="return handleBtnLoad(this, 'Saving Questions...');">
             {% for i in range(mcq_n) %}
             <div class="q-card">
                 <div class="q-num">MCQ #{{ i+1 }}</div>
@@ -506,31 +507,126 @@
     <!-- Add this inside the draft block, alongside the Add Question form -->
     <div class="card">
         <h2>Import Questions from File</h2>
-        <form id="importForm" method="POST" action="{{ url_for('teacher.teacher_exam_import_questions', exam_id=exam.exam_id) }}"
+        <form id="importForm" method="POST"
+            action="{{ url_for('teacher.teacher_exam_import_questions', exam_id=exam.exam_id) }}"
             enctype="multipart/form-data">
             <div class="form-group">
-                <label>Select File <span style="font-weight:400; color:#888;">(Import starts automatically)</span></label>
-                <input type="file" name="question_file" id="question_file_input" accept=".docx,.pdf,.xlsx" required 
-                       onchange="if(this.value) handleAutoImport(this.form)"/>
+                <label>Select File <span style="font-weight:400; color:#888;">(Import starts
+                        automatically)</span></label>
+                <input type="file" name="question_file" id="question_file_input"
+                    accept=".docx,.pdf,.xlsx,.png,.jpg,.jpeg" required
+                    onchange="if(this.value) handleAutoImport(this.form)" />
             </div>
             <button type="submit" id="importBtn" class="btn btn-primary" style="display:none;">Import Questions</button>
         </form>
         <script>
             function handleAutoImport(form) {
+                const fileInput = document.getElementById('question_file_input');
+                if (fileInput.files && fileInput.files[0]) {
+                    const fileSize = fileInput.files[0].size / 1024 / 1024; // in MB
+                    if (fileSize > 10) {
+                        alert("File is too large! Maximum size allowed is 10 MB.");
+                        fileInput.value = ""; // clear
+                        return false;
+                    }
+                }
+
                 const btn = document.getElementById('importBtn');
                 if (btn) btn.style.display = 'inline-flex';
-                
+
                 if (handleBtnLoad(form, 'Reading file...')) {
                     form.submit();
                 }
             }
         </script>
-        <div style="margin-top:12px; font-size:12px; color:#888;">
-            <strong>Format:</strong><br>
-            DOCX/PDF: each question on lines starting with <code>Question:</code>, <code>A:</code>, <code>B:</code>,
-            <code>C:</code>, <code>D:</code>, <code>Answer:</code>, <code>Type:</code>, <code>Points:</code><br>
-            XLSX: columns →
-            <code>question_text, question_type, choice_a, choice_b, choice_c, choice_d, correct_answer, points</code>
+        <div style="margin-top:20px; padding:16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;">
+            <div style="font-weight:700; color:#475569; margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                Import Format Guide
+            </div>
+
+            <div style="font-size:11px; line-height:1.5;">
+                <div
+                    style="margin-bottom:15px; padding:12px; background:#fff; border-radius:8px; border:1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    <strong
+                        style="color:#0f172a; text-transform:uppercase; font-size:10px; display:block; margin-bottom:8px;">Allowed
+                        Formats:</strong>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                        <span
+                            style="background:#eff6ff; color:#1d4ed8; padding:4px 10px; border-radius:6px; font-weight:700; border: 1px solid #dbeafe;">📄
+                            Word (DOCX)</span>
+                        <span
+                            style="background:#fef2f2; color:#b91c1c; padding:4px 10px; border-radius:6px; font-weight:700; border: 1px solid #fee2e2;">📕
+                            PDF Document</span>
+                        <span
+                            style="background:#f0fdf4; color:#15803d; padding:4px 10px; border-radius:6px; font-weight:700; border: 1px solid #dcfce7;">📷
+                            Image (OCR)</span>
+                    </div>
+                </div>
+
+                <strong
+                    style="color:#0f172a; text-transform:uppercase; font-size:10px; display:block; margin-bottom:10px;">Quick
+                    Format Reference (Copy this style):</strong>
+
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:12px;">
+                    <!-- MCQ -->
+                    <div style="background:#fff; padding:12px; border-radius:8px; border:1px solid #f1f5f9;">
+                        <div
+                            style="color:#64748b; font-weight:700; font-size:9px; margin-bottom:5px; text-transform:uppercase;">
+                            Multiple Choice</div>
+                        <div style="font-family:monospace; font-size:10px;">
+                            <b style="color:#2563eb;">Question:</b> What is the capital of the Philippines?<br>
+                            <b style="color:#2563eb;">A.</b> Manila<br>
+                            <b style="color:#2563eb;">B.</b> Cebu<br>
+                            <b style="color:#2563eb;">C.</b> Davao<br>
+                            <b style="color:#2563eb;">D.</b> Iloilo<br>
+                            <b style="color:#2563eb;">Answer:</b> A
+                        </div>
+                    </div>
+
+                    <!-- True/False -->
+                    <div style="background:#fff; padding:12px; border-radius:8px; border:1px solid #f1f5f9;">
+                        <div
+                            style="color:#64748b; font-weight:700; font-size:9px; margin-bottom:5px; text-transform:uppercase;">
+                            True or False</div>
+                        <div style="font-family:monospace; font-size:10px;">
+                            <b style="color:#2563eb;">Question:</b> Sky is blue.<br>
+                            <b style="color:#2563eb;">Answer:</b> True<br>
+
+                        </div>
+                    </div>
+
+                    <!-- Matching -->
+                    <div style="background:#fff; padding:12px; border-radius:8px; border:1px solid #f1f5f9;">
+                        <div
+                            style="color:#64748b; font-weight:700; font-size:9px; margin-bottom:5px; text-transform:uppercase;">
+                            Matching Type</div>
+                        <div style="font-family:monospace; font-size:10px;">
+                            <b style="color:#2563eb;">Question:</b> Manila<br>
+                            <b style="color:#2563eb;">Answer:</b> Philippines<br>
+                            <b style="color:#2563eb;">Question:</b> Tokyo<br>
+                            <b style="color:#2563eb;">Answer:</b> Japan
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div
+                style="margin-top:15px; font-size:10px; color:#64748b; border-top:1px solid #e2e8f0; padding-top:10px; display:flex; align-items:center; gap:5px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
+                    </path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
+                <span>Siguraduhin na may <b>colon (:)</b> o <b>tuldok (.)</b> pagkatapos ng keywords gaya ng
+                    <code>Question:</code> o <code>A.</code></span>
+            </div>
         </div>
     </div>
 </div>
@@ -628,7 +724,7 @@
     function handleBtnLoad(form, loadingText) {
         const btn = form.querySelector('button[type="submit"]');
         if (!btn) return true;
-        
+
         // If it's the publish form, we still want the confirm dialog
         if (form.action.includes('/publish')) {
             const label = "{{ 'quiz' if exam.exam_type == 'quiz' else 'exam' }}";

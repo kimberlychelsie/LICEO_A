@@ -13,6 +13,25 @@ from docx import Document
 from datetime import datetime, timezone
 import pytz
 
+try:
+    import pytesseract
+    from PIL import Image
+    HAS_OCR = True
+except ImportError:
+    HAS_OCR = False
+
+# ── OCR Config (Windows) ──
+if HAS_OCR and os.name == 'nt':
+    tess_paths = [
+        r'C:\Program Files\Tesseract-OCR\tesseract.exe',
+        r'C:\Users\Admin\AppData\Local\Tesseract-OCR\tesseract.exe',
+        os.path.join(os.environ.get('LOCALAPPDATA', ''), r'Tesseract-OCR\tesseract.exe')
+    ]
+    for p in tess_paths:
+        if os.path.exists(p):
+            pytesseract.pytesseract.tesseract_cmd = p
+            break
+
 teacher_bp = Blueprint("teacher", __name__)
 
 GRADE_LEVELS = [
@@ -119,122 +138,111 @@ def _count_school_days(cur, branch_id, year_id, start_date, end_date):
     return total
 
 
-def parse_docx(file):
-    """Parse questions from a .docx file (robust to multi-field/concatenated lines)."""
+def parse_text_to_questions(raw_text):
+    """Common parser for DOCX, PDF, and OCR text."""
     questions = []
-    document = Document(file)
     current_question = {}
+    
+    # Standard patterns (Allow both : and . for choices A, B, C, D)
+    # Using \b for single letter choices to ensure they are at the start of a word/line
+    field_patterns = [
+        r'question:', r'type:', r'answer:', r'points:',
+        r'a:', r'b:', r'c:', r'd:',
+        r'\ba\.', r'\bb\.', r'\bc\.', r'\bd\.'
+    ]
+    regex = re.compile(r'(' + '|'.join(field_patterns) + r')', re.IGNORECASE)
 
-    # All field prefixes, case-insensitive
-    field_patterns = ['question:', 'type:', 'a:', 'b:', 'c:', 'd:', 'answer:', 'points:']
-    regex = re.compile(r'(' + '|'.join(re.escape(f) for f in field_patterns) + r')', re.IGNORECASE)
-
-    for para in document.paragraphs:
-        text = para.text.strip()
-        if not text:
-            continue
-
-        # Split multi-field lines:
-        # e.g. "Points: 2Question: Pogi" → ["Points: 2", "Question: Pogi"]
+    # Split by fields and clean up
+    # We use regex to find the start of each field
+    lines = raw_text.split('\n')
+    processed_lines = []
+    
+    for line in lines:
+        text = line.strip()
+        if not text: continue
+        
         parts = [p.strip() for p in regex.split(text) if p.strip()]
-        # Rebuild fields (pattern, value, pattern, value,...)
         it = iter(parts)
-        buf = []
         for part in it:
             if any(part.lower().startswith(f) for f in field_patterns):
-                buf.append(part + " " + next(it, ""))
+                processed_lines.append(part + " " + next(it, ""))
             else:
-                buf[-1] += " " + part  # Append left-over text
+                if processed_lines:
+                    processed_lines[-1] += " " + part
 
-        for line in buf:
-            line = line.strip()
-            if not line:
-                continue
-            lower = line.lower()
-            if lower.startswith('question:'):
-                if current_question:
-                    questions.append(current_question)
-                    current_question = {}
-                current_question['question_text'] = line.split(':', 1)[1].strip()
-            elif lower.startswith('type:'):
-                current_question['question_type'] = line.split(':', 1)[1].strip()
-            elif lower.startswith('a:'):
-                current_question['choice_a'] = line.split(':', 1)[1].strip()
-            elif lower.startswith('b:'):
-                current_question['choice_b'] = line.split(':', 1)[1].strip()
-            elif lower.startswith('c:'):
-                current_question['choice_c'] = line.split(':', 1)[1].strip()
-            elif lower.startswith('d:'):
-                current_question['choice_d'] = line.split(':', 1)[1].strip()
-            elif lower.startswith('answer:'):
-                current_question['correct_answer'] = line.split(':', 1)[1].strip()
-            elif lower.startswith('points:'):
-                current_question['points'] = line.split(':', 1)[1].strip()
+    for line in processed_lines:
+        line = line.strip()
+        if not line: continue
+        lower = line.lower()
+        
+        if lower.startswith('question:'):
+            if current_question:
+                questions.append(current_question)
+                current_question = {}
+            current_question['question_text'] = line.split(':', 1)[1].strip()
+        elif lower.startswith('type:'):
+            current_question['question_type'] = line.split(':', 1)[1].strip()
+        elif lower.startswith('a:') or re.match(r'^a\.', lower):
+            sep = ':' if ':' in line[:3] else '.'
+            parts = line.split(sep, 1)
+            if len(parts) > 1: current_question['choice_a'] = parts[1].strip()
+        elif lower.startswith('b:') or re.match(r'^b\.', lower):
+            sep = ':' if ':' in line[:3] else '.'
+            parts = line.split(sep, 1)
+            if len(parts) > 1: current_question['choice_b'] = parts[1].strip()
+        elif lower.startswith('c:') or re.match(r'^c\.', lower):
+            sep = ':' if ':' in line[:3] else '.'
+            parts = line.split(sep, 1)
+            if len(parts) > 1: current_question['choice_c'] = parts[1].strip()
+        elif lower.startswith('d:') or re.match(r'^d\.', lower):
+            sep = ':' if ':' in line[:3] else '.'
+            parts = line.split(sep, 1)
+            if len(parts) > 1: current_question['choice_d'] = parts[1].strip()
+        elif lower.startswith('answer:'):
+            current_question['correct_answer'] = line.split(':', 1)[1].strip()
+        elif lower.startswith('points:'):
+            current_question['points'] = line.split(':', 1)[1].strip()
 
     if current_question:
         questions.append(current_question)
-
+    
     return questions
+
+def parse_docx(file):
+    document = Document(file)
+    full_text = "\n".join([para.text for para in document.paragraphs])
+    return parse_text_to_questions(full_text)
 
 def parse_pdf(file):
-    """Parse questions from a .pdf file (robust, handles multi-tag lines!)"""
-    questions = []
-    current_question = {}
-
-    field_patterns = ['question:', 'type:', 'a:', 'b:', 'c:', 'd:', 'answer:', 'points:']
-    regex = re.compile(r'(' + '|'.join(re.escape(f) for f in field_patterns) + r')', re.IGNORECASE)
-
+    import pdfplumber
+    text = ""
     with pdfplumber.open(file) as pdf:
         for page in pdf.pages:
-            text = page.extract_text()
-            if not text:
-                continue
-            for orig_line in text.split('\n'):
-                orig_line = orig_line.strip()
-                if not orig_line:
-                    continue
-                # Split the line into tag-value pairs
-                parts = [p.strip() for p in regex.split(orig_line) if p.strip()]
-                it = iter(parts)
-                buf = []
-                for part in it:
-                    if any(part.lower().startswith(f) for f in field_patterns):
-                        buf.append(part + " " + next(it, ""))
-                    else:
-                        if buf:
-                            buf[-1] += " " + part  # Append left-over text
-                        else:
-                            buf.append(part)
-                # Now process as if individual lines
-                for line in buf:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    lower = line.lower()
-                    if lower.startswith('question:'):
-                        if current_question:
-                            questions.append(current_question)
-                            current_question = {}
-                        current_question['question_text'] = line.split(':', 1)[1].strip()
-                    elif lower.startswith('type:'):
-                        current_question['question_type'] = line.split(':', 1)[1].strip()
-                    elif lower.startswith('a:'):
-                        current_question['choice_a'] = line.split(':', 1)[1].strip()
-                    elif lower.startswith('b:'):
-                        current_question['choice_b'] = line.split(':', 1)[1].strip()
-                    elif lower.startswith('c:'):
-                        current_question['choice_c'] = line.split(':', 1)[1].strip()
-                    elif lower.startswith('d:'):
-                        current_question['choice_d'] = line.split(':', 1)[1].strip()
-                    elif lower.startswith('answer:'):
-                        current_question['correct_answer'] = line.split(':', 1)[1].strip()
-                    elif lower.startswith('points:'):
-                        current_question['points'] = line.split(':', 1)[1].strip()
+            page_text = page.extract_text()
+            if page_text:
+                text += page_text + "\n"
+    return parse_text_to_questions(text)
 
-    if current_question:
-        questions.append(current_question)
+def parse_image(file):
+    """Extract text using OCR and parse into questions."""
+    if not HAS_OCR:
+        raise ImportError("OCR libraries (pytesseract/Pillow) are not installed.")
+    
+    try:
+        img = Image.open(file)
+        text = pytesseract.image_to_string(img)
+        if not text.strip():
+            # Try some basic image enhancement if no text found
+            img = img.convert('L') # grayscale
+            text = pytesseract.image_to_string(img)
+            
+        return parse_text_to_questions(text)
+    except Exception as e:
+        if "tesseract is not installed" in str(e).lower() or "no such file" in str(e).lower():
+            raise RuntimeError("Tesseract OCR engine not found on the server. Please install it to use image import.")
+        raise e
 
-    return questions
+
 
 def _get_active_school_year(cur, branch_id):
     cur.execute("""
@@ -2477,7 +2485,7 @@ def teacher_exam_question_delete(exam_id, question_id):
     user_id = session.get("user_id")
     branch_id = session.get("branch_id")
     db  = get_db_connection()
-    cur = db.cursor()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         year_id = _get_active_school_year(cur, branch_id)
         if not year_id:
@@ -2588,6 +2596,14 @@ def teacher_exam_import_questions(exam_id):
         else:
             target_exams = [exam_id]
 
+        # 10MB limit
+        file.seek(0, os.SEEK_END)
+        size = file.tell()
+        file.seek(0)
+        if size > 10 * 1024 * 1024:
+            flash("File too large. Maximum 10MB allowed.", "error")
+            return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+
         ext = os.path.splitext(file.filename)[1].lower()
 
         # Parse file into list of question dicts
@@ -2600,8 +2616,17 @@ def teacher_exam_import_questions(exam_id):
             df = pd.read_excel(file).fillna('')
             df.columns = [c.lower().strip() for c in df.columns]
             questions = df.to_dict(orient='records')
+        elif ext in ('.png', '.jpg', '.jpeg'):
+            if not HAS_OCR:
+                flash("OCR support is not installed on this server. Please install pytesseract and Pillow.", "error")
+                return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
+            try:
+                questions = parse_image(file)
+            except Exception as e:
+                flash(f"OCR Error: {str(e)}", "error")
+                return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
         else:
-            flash("STRICT POLICY: Only Documents (Docs, PDF, Excel) are allowed. Images and videos are prohibited.", "error")
+            flash("Invalid file format. Only Documents (DOCX, PDF, Excel) and Images (PNG, JPG) are allowed.", "error")
             return redirect(url_for("teacher.teacher_exam_questions", exam_id=exam_id))
 
         inserted = 0
@@ -2649,28 +2674,19 @@ def teacher_exam_import_questions(exam_id):
             choice_d = str(q.get('choice_d', '') or q.get('option_d', '') or '').strip()
 
             if not question_type:
-                if all([choice_a, choice_b, choice_c, choice_d]):
-                    if correct_answer.upper() in ('A', 'B', 'C', 'D'):
-                        question_type = 'mcq'
-                        correct_answer = correct_answer.upper()
-                    elif correct_answer == choice_a:
-                        question_type = 'mcq'
-                        correct_answer = 'A'
-                    elif correct_answer == choice_b:
-                        question_type = 'mcq'
-                        correct_answer = 'B'
-                    elif correct_answer == choice_c:
-                        question_type = 'mcq'
-                        correct_answer = 'C'
-                    elif correct_answer == choice_d:
-                        question_type = 'mcq'
-                        correct_answer = 'D'
-                    else:
-                        question_type = 'matching'
+                # If we have any choices at all, it's likely an MCQ
+                if any([choice_a, choice_b, choice_c, choice_d]):
+                    question_type = 'mcq'
+                    # Map text answer to letter if needed
+                    ca_upper = correct_answer.upper()
+                    if ca_upper in ('A', 'B', 'C', 'D'):
+                        correct_answer = ca_upper
+                    elif correct_answer == choice_a: correct_answer = 'A'
+                    elif correct_answer == choice_b: correct_answer = 'B'
+                    elif correct_answer == choice_c: correct_answer = 'C'
+                    elif correct_answer == choice_d: correct_answer = 'D'
                 elif correct_answer.lower() in ('true', 'false'):
                     question_type = 'truefalse'
-                elif any([choice_a, choice_b, choice_c, choice_d]):
-                    question_type = 'matching'
                 else:
                     question_type = 'matching'
 

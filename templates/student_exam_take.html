@@ -2,63 +2,142 @@
 {% block title %}{{ exam.title }}{% endblock %}
 {% block content %}
 <style>
-  /* ── Layout ── */
-  .exam-wrap {
-    max-width: 780px;
-    margin: 0 auto;
-    padding: 20px 16px 60px;
-    font-family: 'Inter', sans-serif;
+  /* ── Reset system UI ── */
+  .sidebar, .topbar, .sb-overlay, .chatbot-container, #chatbot-widget {
+    display: none !important;
+  }
+  .main-wrap {
+    margin: 0 !important;
+    padding: 0 !important;
   }
 
-  /* ── Sticky top bar ── */
-  .exam-topbar {
-    position: sticky;
+  /* ── New Layout ── */
+  body {
+    background: #f8fafc;
+    overflow-x: hidden;
+  }
+
+  /* Fixed Blue Topbar */
+  .custom-topbar {
+    position: fixed;
     top: 0;
-    z-index: 200;
-    background: #1e3a8a;
-    color: #fff;
-    border-radius: 14px;
-    padding: 14px 20px;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: #1e3a8a; /* Deep Blue */
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    padding: 0 30px;
+    z-index: 1000;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .topbar-brand {
+    font-size: 1.4rem;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .exam-container {
+    display: flex;
+    margin-top: 60px;
+    min-height: calc(100vh - 60px);
+    gap: 24px;
+    padding: 24px;
+    max-width: 1300px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  /* Left Side: Exam Details & Instructions */
+  .exam-sidebar {
+    width: 320px;
+    flex-shrink: 0;
+  }
+
+  .details-card {
+    background: #fff;
+    border-radius: 16px;
+    padding: 24px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+    position: sticky;
+    top: 84px;
+  }
+
+  .details-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin-bottom: 12px;
+    border-bottom: 2px solid #eff6ff;
+    padding-bottom: 10px;
+  }
+
+  .details-item {
+    margin-bottom: 15px;
+    font-size: 0.88rem;
+  }
+
+  .details-label {
+    color: #64748b;
+    font-weight: 600;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .details-value {
+    color: #1e3a8a;
+    font-weight: 700;
+  }
+
+  .instruction-box {
+    margin-top: 20px;
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    padding: 15px;
+    border-radius: 12px;
+    color: #0369a1;
+    font-size: 0.85rem;
+    line-height: 1.5;
+  }
+
+  /* Right Side: Questions */
+  .exam-content {
+    flex: 1;
+    max-width: 850px;
+  }
+
+  /* ── Sticky timer bar (inside content) ── */
+  .exam-topbar {
+    background: #ffffff;
+    color: #1e293b;
+    border-radius: 16px;
+    padding: 16px 24px;
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
-    box-shadow: 0 4px 16px rgba(30,58,138,.25);
-    flex-wrap: wrap;
-    gap: 10px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
   }
 
-  .exam-topbar-title {
-    font-size: 1.05rem;
-    font-weight: 800;
-    letter-spacing: .01em;
-  }
-
-  .exam-topbar-meta {
-    font-size: 0.78rem;
-    opacity: .75;
-    margin-top: 2px;
-  }
-
-  /* Timer pill */
   .timer-pill {
-    background: rgba(255,255,255,.15);
-    border: 2px solid rgba(255,255,255,.3);
+    background: #fee2e2;
+    color: #dc2626;
     border-radius: 999px;
-    padding: 8px 20px;
-    font-size: 1.35rem;
-    font-weight: 800;
-    letter-spacing: 3px;
-    min-width: 110px;
-    text-align: center;
-    transition: background .3s;
+    padding: 8px 24px;
+    font-size: 1.5rem;
+    font-weight: 900;
+    font-family: monospace;
+    border: 2px solid #fecaca;
   }
-  .timer-pill.warn { background: #f59e0b; border-color: #f59e0b; }
-  .timer-pill.danger { background: #dc2626; border-color: #dc2626; animation: pulse .6s infinite alternate; }
 
-  @keyframes pulse { from { opacity:1 } to { opacity:.6 } }
-
-  /* ── Progress strip ── */
+  /* Progress bar styles */
   .progress-strip {
     background: #fff;
     border: 1px solid #e2e8f0;
@@ -69,225 +148,99 @@
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    box-shadow: 0 2px 6px rgba(0,0,0,.05);
   }
-
-  .progress-label {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: #475569;
-    white-space: nowrap;
-  }
-
-  .progress-bar-wrap {
-    flex: 1;
-    height: 8px;
-    background: #e2e8f0;
-    border-radius: 999px;
-    overflow: hidden;
-  }
-
-  .progress-bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #3b82f6, #6366f1);
-    border-radius: 999px;
-    transition: width .3s;
-  }
-
-  /* ── Tab switch warning ── */
-  .tab-warning {
-    background: #fef3c7;
-    border: 1px solid #fbbf24;
-    color: #92400e;
-    padding: 12px 16px;
-    border-radius: 10px;
-    margin-bottom: 14px;
-    font-size: 0.85rem;
-    font-weight: 700;
-    display: none;
-  }
-
-  /* ── Instruction banner ── */
-  .instr-banner {
-    background: #eff6ff;
-    border: 1px solid #bfdbfe;
-    color: #1d4ed8;
-    border-radius: 10px;
-    padding: 11px 16px;
-    font-size: 0.83rem;
-    font-weight: 600;
-    margin-bottom: 18px;
-  }
-
-  /* ── Section header ── */
-  .section-label {
-    font-size: 0.72rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: .08em;
-    color: #6366f1;
-    margin-bottom: 14px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .section-label::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: #e2e8f0;
-  }
+  .progress-bar-wrap { flex: 1; height: 8px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
+  .progress-bar-fill { height: 100%; background: #3b82f6; transition: width .3s; }
 
   /* ── Question card ── */
   .q-card {
     background: #fff;
     border: 1px solid #e2e8f0;
-    border-radius: 16px;
-    padding: 24px 24px 20px;
+    border-radius: 20px;
+    padding: 30px;
     margin-bottom: 14px;
-    box-shadow: 0 2px 10px rgba(0,0,0,.04);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
   }
 
-  .q-meta {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 14px;
-  }
-
-  .q-num-badge {
-    background: #eff6ff;
-    color: #1d4ed8;
-    font-size: 0.75rem;
-    font-weight: 800;
-    padding: 3px 10px;
-    border-radius: 999px;
-  }
-
-  .q-pts-badge {
-    background: #f0fdf4;
-    color: #15803d;
-    font-size: 0.75rem;
-    font-weight: 700;
-    padding: 3px 10px;
-    border-radius: 999px;
-  }
-
-  .q-text {
-    font-size: 1.02rem;
-    font-weight: 600;
-    color: #1e293b;
-    line-height: 1.55;
-    margin-bottom: 18px;
-  }
-
-  /* ── Choices ── */
-  .choices-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    margin-bottom: 18px;
-  }
-
+  .q-text { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin-bottom: 24px; line-height: 1.6; }
   .choice-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 12px 16px;
-    border: 2px solid #e2e8f0;
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all .15s;
-    background: #fff;
+    display: flex; align-items: center; gap: 15px; padding: 15px 20px; border: 2px solid #f1f5f9;
+    border-radius: 12px; cursor: pointer; transition: all .2s; background: #f8fafc; margin-bottom: 10px;
   }
-
-  .choice-item:hover {
-    border-color: #3b82f6;
-    background: #eff6ff;
-    transform: translateX(2px);
-  }
-
-  .choice-item input[type="radio"] {
-    width: 18px;
-    height: 18px;
-    accent-color: #3b82f6;
-    flex-shrink: 0;
-  }
-
-  .choice-item:has(input:checked) {
-    border-color: #3b82f6;
-    background: #eff6ff;
-  }
-
-  .choice-key {
-    font-weight: 800;
-    color: #3b82f6;
-    font-size: 0.88rem;
-    min-width: 20px;
-  }
-
-  /* ── Next button ── */
+  .choice-item:hover { border-color: #3b82f6; background: #eff6ff; }
+  .choice-item:has(input:checked) { border-color: #3b82f6; background: #eff6ff; box-shadow: 0 0 0 4px rgba(59,130,246,0.1); }
+  
   .next-btn {
-    background: linear-gradient(135deg, #3b82f6, #6366f1);
-    color: #fff;
-    border: none;
-    border-radius: 10px;
-    padding: 12px 28px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all .2s;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
+    background: #1e3a8a; color: #fff; border: none; border-radius: 12px; padding: 14px 40px;
+    font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
   }
-
-  .next-btn:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 6px 18px rgba(59,130,246,.35);
-  }
-
-  .submit-btn {
-    background: linear-gradient(135deg, #16a34a, #059669);
-  }
-
-  .submit-btn:hover {
-    box-shadow: 0 6px 18px rgba(22,163,74,.35);
-  }
+  .next-btn:hover { background: #1e40af; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(30,58,138,0.3); }
 
   .question-section { display: none; }
 </style>
 
-<div class="exam-wrap">
+<!-- Custom Blue Topbar -->
+<header class="custom-topbar">
+  <div class="topbar-brand">
+    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+    LICEO LMS
+  </div>
+</header>
 
-  <!-- Top bar -->
-  <div class="exam-topbar">
-    <div>
-      <div class="exam-topbar-title">{{ exam.title }}</div>
-      <div class="exam-topbar-meta">{{ exam.subject_name }} · {{ exam.section_name }} · {{ questions|length }} questions</div>
+<div class="exam-container">
+  <!-- Left Side: Exam Details -->
+  <aside class="exam-sidebar">
+    <div class="details-card">
+      <div class="details-title">Exam Details</div>
+      
+      <div class="details-item">
+        <span class="details-label">Title</span>
+        <span class="details-value">{{ exam.title }}</span>
+      </div>
+      
+      <div class="details-item">
+        <span class="details-label">Subject</span>
+        <span class="details-value">{{ exam.subject_name }}</span>
+      </div>
+      
+      <div class="details-item">
+        <span class="details-label">Type</span>
+        <span class="details-value" style="text-transform: capitalize;">{{ exam.exam_type }}</span>
+      </div>
+
+      <div class="details-item">
+        <span class="details-label">Total Questions</span>
+        <span class="details-value">{{ questions|length }} Items</span>
+      </div>
+
+      <div class="instruction-box">
+        <strong>Instructions:</strong><br>
+        Answer each question carefully. Note that you cannot go back to previous questions once you click "Next". Your progress is automatically saved.
+      </div>
     </div>
-    <div class="timer-pill" id="timerBox">--:--</div>
-  </div>
+  </aside>
 
-  <!-- Tab switch warning -->
-  <div class="tab-warning" id="tabWarning">
-    ⚠️ You switched tabs! This has been recorded. Switch count: <strong id="tabCount">0</strong>
-  </div>
-
-  <!-- Instruction banner -->
-  <div class="instr-banner">
-    ℹ️ Answer each question before clicking <strong>Next</strong>. You cannot go back to previous questions.
-  </div>
-
-  <!-- Progress strip -->
-  <div class="progress-strip">
-    <span class="progress-label">Answered: <strong><span id="answeredQuestions">0</span> / {{ questions|length }}</strong></span>
-    <div class="progress-bar-wrap">
-      <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+  <!-- Right Side: Exam Content -->
+  <main class="exam-content">
+    <!-- Timer & Progress -->
+    <div class="exam-topbar">
+      <div style="flex: 1; margin-right: 20px;">
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+        </div>
+        <div style="font-size: 0.75rem; color: #64748b; margin-top: 8px; font-weight: 700;">
+          Answered: <span id="answeredQuestions">0</span> / {{ questions|length }}
+        </div>
+      </div>
+      <div class="timer-pill" id="timerBox">--:--</div>
     </div>
-  </div>
 
-  <form method="POST" id="examForm">
+    <!-- Tab switch warning -->
+    <div class="tab-warning" id="tabWarning" style="display:none; background:#fee2e2; color:#b91c1c; padding:12px; border-radius:12px; margin-bottom:15px; font-weight:700; border:1px solid #fecaca;">
+      ⚠️ Tab switch detected! This has been recorded.
+    </div>
+
+    <form method="POST" id="examForm">
     <input type="hidden" name="result_id"    value="{{ result_id }}" />
     <input type="hidden" name="tab_switches" id="tabSwitchInput" value="0" />
     <input type="hidden" name="submit_type"  id="submitType" value="manual" />
