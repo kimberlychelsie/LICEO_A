@@ -321,9 +321,11 @@
 
         <div class="pub-nav-links">
             <a class="pub-link {% if request.path == '/' %}active{% endif %}" href="/">Home</a>
+            <a class="pub-link" href="/#about" onclick="smoothTo(event,'about')">About</a>
             <a class="pub-link" href="/#branches" onclick="smoothTo(event,'branches')">Enroll</a>
             <a class="pub-link" href="/#campus-map" onclick="smoothTo(event,'campus-map')">Location</a>
             <a class="pub-link" href="/track">Track Status</a>
+            <a class="pub-link" href="/#contact" onclick="smoothTo(event,'contact')">Contact</a>
             <a class="pub-link" href="/#faq" onclick="smoothTo(event,'faq')">FAQ</a>
         </div>
 
@@ -356,15 +358,15 @@
     </nav>
 
     <!-- ══ FLASH ══ -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
     <div class="flash-wrap">
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
         {% for category, msg in messages %}
         <div class="flash {{ category }}">{{ msg }}</div>
         {% endfor %}
-        {% endif %}
-        {% endwith %}
     </div>
+    {% endif %}
+    {% endwith %}
 
     <!-- ══ CONTENT ══ -->
     <div class="pub-content">

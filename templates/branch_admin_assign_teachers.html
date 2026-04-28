@@ -474,21 +474,19 @@
           {% if assignments %}
           {% for a in assignments %}
           <tr>
-            <td>
+            <td data-label="Level & Section">
               <div style="font-weight: 800; color: var(--ma-primary);">{{ a.grade_level_name }}</div>
               <div style="font-size: 0.75rem; color: var(--ma-muted); font-weight: 600;">{{ a.section_name }}</div>
             </td>
-            <td>
+            <td data-label="Subject">
               <div style="font-weight: 700;">{{ a.subject_name }}</div>
             </td>
-            <td>
             <td data-label="Faculty">
               {% if a.teacher_full_name %}
               <div style="display: flex; align-items: center; gap: 10px;">
                 <div class="avatar-sm">{{ a.teacher_full_name[0] | upper }}</div>
                 <div>
-                  <div style="font-weight: 800; color: var(--ma-primary); font-size: 0.9rem;">{{ a.teacher_full_name }}
-                  </div>
+                  <div style="font-weight: 800; color: var(--ma-primary); font-size: 0.9rem;">{{ a.teacher_full_name }}</div>
                   <div style="font-size: 0.7rem; color: var(--ma-muted);">@{{ a.teacher_username }}</div>
                 </div>
               </div>
@@ -496,7 +494,7 @@
               <span style="color: var(--ma-muted); font-style: italic; font-size: 0.85rem;">Vacant</span>
               {% endif %}
             </td>
-            <td>
+            <td data-label="Status">
               {% if a.teacher_full_name %}
               <span class="status-badge status-self">● Assigned</span>
               {% else %}
@@ -504,7 +502,7 @@
               {% endif %}
             </td>
             {% if is_branch_active_status %}
-            <td style="text-align: right;">
+            <td data-label="Action" style="text-align: right;">
               {% if a.teacher_full_name %}
               <button class="btn-prem btn-danger" style="padding: 6px 12px; font-size: 0.7rem;"
                 onclick="removeAssignment({{ a.section_teacher_id }}, '{{ a.teacher_full_name }}', '{{ a.section_name }}', '{{ a.subject_name }}')">

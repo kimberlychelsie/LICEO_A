@@ -339,22 +339,20 @@
                     <tbody>
                         {% for g in grades %}
                         <tr>
-                            <td><strong style="color: var(--ma-primary);">{{ g[2] }}</strong></td>
-                            <td><strong style="color: var(--ma-primary);">{{ g[1] }}</strong></td>
-                        {% for g in grade_levels %}
-                        <tr>
-                            <td data-label="Identity">
-                                <div style="font-weight: 800; color: var(--ma-primary);">{{ g.grade_name }}</div>
+                            <td data-label="Order">
+                                <strong style="color: var(--ma-primary);">{{ g[2] }}</strong>
                             </td>
-                            <td data-label="Status">
-                                <span class="badge-pill" style="background: #dcfce7; color: #166534; font-size: 0.7rem; font-weight: 800; padding: 2px 8px; border-radius: 8px;">ACTIVE</span>
+                            <td data-label="Identity">
+                                <div style="font-weight: 800; color: var(--ma-primary);">{{ g[1] }}</div>
                             </td>
                             <td data-label="Actions" style="text-align: right; white-space: nowrap;">
                                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                                    <button class="btn-prem btn-secondary" style="padding: 6px 12px; font-size: 0.75rem;" onclick="openEditModal({{ g|tojson }})"><i class="fas fa-edit"></i></button>
-                                    <form action="{{ url_for('branch_admin.branch_admin_grade_levels_delete', grade_id=g.grade_id) }}" method="POST" style="display:inline;">
-                                        <button type="submit" class="btn-prem btn-danger" style="padding: 6px 12px; font-size: 0.75rem;" onclick="return confirm('Delete this level?')"><i class="fas fa-trash"></i></button>
-                                    </form>
+                                    <button class="btn-prem btn-primary" style="padding: 6px 16px; font-size: 0.8rem;" onclick='openEditModal({{ g[0] }}, {{ g[2] }}, {{ g[1]|tojson }})'>
+                                        <i class="fas fa-edit"></i> Edit
+                                    </button>
+                                    <button class="btn-prem btn-danger" style="padding: 6px 16px; font-size: 0.8rem;" onclick="confirmGradeDelete({{ g[0] }}, '{{ g[1]|e }}')">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
                                 </div>
                             </td>
                         </tr>

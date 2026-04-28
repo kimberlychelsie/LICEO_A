@@ -347,15 +347,31 @@
                         </tr>
                     </thead>
                     <tbody>
-                                    onclick='openEditModal({{ sec.section_id }}, {{ sec.section_name | tojson }}, {{ sec.grade_level_id }}, {{ sec.capacity | default(50) }})'>
-                                    <i class="fas fa-edit"></i> Edit
-                                </button>
-                                <button class="btn-prem btn-danger"
-                                    style="padding: 8px 14px; font-size: 0.75rem; margin-left: 8px;"
-                                    onclick="confirmSectionDelete({{ sec.section_id }}, '{{ sec.section_name|e }}')">
-                                    <i class="fas fa-trash"></i> Delete
-                                </button>
-                                {% endif %}
+                        {% for s in sections %}
+                        <tr>
+                            <td data-label="Identity">
+                                <div style="font-weight: 800; color: var(--ma-primary);">{{ s.section_name }}</div>
+                            </td>
+                            <td data-label="Grade Level">
+                                <span class="badge-pill" style="background: #f1f5f9; color: var(--ma-primary); font-size: 0.7rem; font-weight: 800; padding: 2px 8px; border-radius: 8px;">
+                                    {{ s.grade_level_name }}
+                                </span>
+                            </td>
+                            <td data-label="Academic Cycle">
+                                <div style="font-size: 0.8rem; font-weight: 700; color: var(--ma-muted);">{{ s.school_year_label }}</div>
+                            </td>
+                            <td data-label="Capacity">
+                                <div style="font-weight: 800; color: var(--ma-primary);">{{ s.capacity }} Students</div>
+                            </td>
+                            <td data-label="Actions" style="text-align: right; white-space: nowrap;">
+                                <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                    <button class="btn-prem btn-secondary" style="padding: 6px 14px; font-size: 0.75rem;" onclick='openEditModal({{ s.section_id }}, {{ s.section_name | tojson }}, {{ s.grade_level_id }}, {{ s.capacity | default(50) }})'>
+                                        <i class="fas fa-edit"></i> Edit
+                                    </button>
+                                    <button class="btn-prem btn-danger" style="padding: 6px 14px; font-size: 0.75rem;" onclick="confirmSectionDelete({{ s.section_id }}, '{{ s.section_name|e }}')">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                         {% endfor %}
