@@ -351,9 +351,62 @@
     }
 
     .acct-ok {
-        color: #10b981;
+        color: #059669;
+        font-weight: 800;
+        font-size: 0.85rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 0;
+    }
+
+    .acct-ok svg {
+        stroke-width: 3.5;
+    }
+
+    /* ── Registrar Specific Buttons ── */
+    .btn-registrar {
+        background: #1e3a8a;
+        color: #fff;
+        padding: 10px 18px;
+        border-radius: 12px;
         font-weight: 700;
-        font-size: 12.5px;
+        font-size: 0.82rem;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        transition: all 0.2s ease;
+        box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.15);
+        min-width: 190px;
+    }
+
+    .btn-registrar:hover {
+        background: #172554;
+        transform: translateY(-1px);
+        box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.25);
+    }
+
+    .btn-registrar-sec {
+        background: #334155;
+        box-shadow: 0 4px 6px -1px rgba(51, 65, 85, 0.15);
+    }
+
+    .btn-registrar-sec:hover {
+        background: #1e293b;
+        box-shadow: 0 10px 15px -3px rgba(51, 65, 85, 0.25);
+    }
+
+    .btn-registrar-warn {
+        background: #f59e0b;
+        box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.15);
+    }
+
+    .btn-registrar-warn:hover {
+        background: #d97706;
+        box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.25);
     }
 
     .empty-row td {
@@ -1489,13 +1542,13 @@
                         <td>
                             {% if not e.has_student_account %}
                             {% if is_branch_active_status and can_modify %}
-                            <button class="btn btn-primary btn-sm" onclick="openCreateModal(
+                            <button class="btn-registrar" onclick="openCreateModal(
                                 {{ e.enrollment_id }},
                                 '{{ e.student_name | replace("'", "\\'") }}',
                                 '{{ e.grade_level | replace("'", "\\'") }}'
-                            )" style="display: inline-flex; align-items: center; gap: 8px;">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            )">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                                     stroke-linejoin="round">
                                     <path d="M19 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
                                     <circle cx="9" cy="7" r="4"></circle>
@@ -1506,59 +1559,60 @@
                             </button>
                             {% endif %}
                             {% else %}
-                            <span class="acct-ok">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                            <div class="acct-ok">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                                     fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
-                                    stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
+                                    stroke-linejoin="round">
                                     <polyline points="20 6 9 17 4 12"></polyline>
                                 </svg>
                                 Student Account Created
-                            </span>
-                            {% endif %}
-                            <br><br>
-                            {% if not e.has_parent_account %}
-                            {% if is_branch_active_status and can_modify %}
-                            {% if e.existing_parent_user_id %}
-                            {# A parent account with the same guardian email already exists — link instead of create #}
-                            <form method="post" action="/registrar/link-parent/{{ e.enrollment_id }}"
-                                style="display:inline;"
-                                onsubmit="return confirm('Link this student to existing parent account \'{{ e.existing_parent_username }}\'?\nNo new account will be created.');">
-                                <button type="submit" class="btn btn-warning btn-sm"
-                                    title="Guardian email matches existing parent: {{ e.existing_parent_username }}">
-                                    🔗 Link Child to Parent
-                                </button>
-                            </form>
-                            <div class="muted-note" style="font-size:11px; margin-top:3px;">
-                                Existing: <strong>{{ e.existing_parent_username }}</strong>
                             </div>
-                            {% else %}
-                            <form method="post" action="/registrar/create-parent-account/{{ e.enrollment_id }}"
-                                style="display:inline;">
-                                <button type="submit" class="btn btn-secondary btn-sm"
-                                    style="display: inline-flex; align-items: center; gap: 8px;">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                            {% endif %}
+
+                            <div style="margin-top: 10px;">
+                                {% if not e.has_parent_account %}
+                                {% if is_branch_active_status and can_modify %}
+                                {% if e.existing_parent_user_id %}
+                                {# A parent account with the same guardian email already exists — link instead of create #}
+                                <form method="post" action="/registrar/link-parent/{{ e.enrollment_id }}"
+                                    style="display:inline;"
+                                    onsubmit="return confirm('Link this student to existing parent account \'{{ e.existing_parent_username }}\'?\nNo new account will be created.');">
+                                    <button type="submit" class="btn-registrar btn-registrar-warn"
+                                        title="Guardian email matches existing parent: {{ e.existing_parent_username }}">
+                                        🔗 Link Child to Parent
+                                    </button>
+                                </form>
+                                <div class="muted-note" style="font-size:11px; margin-top:4px; font-weight: 600;">
+                                    Existing Parent: <strong>{{ e.existing_parent_username }}</strong>
+                                </div>
+                                {% else %}
+                                <form method="post" action="/registrar/create-parent-account/{{ e.enrollment_id }}"
+                                    style="display:inline;">
+                                    <button type="submit" class="btn-registrar btn-registrar-sec">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                            fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                            stroke-linejoin="round">
+                                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="9" cy="7" r="4"></circle>
+                                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                        </svg>
+                                        Create Parent Account
+                                    </button>
+                                </form>
+                                {% endif %}
+                                {% endif %}
+                                {% else %}
+                                <div class="acct-ok">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
                                         stroke-linejoin="round">
-                                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                                        <circle cx="9" cy="7" r="4"></circle>
-                                        <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                        <polyline points="20 6 9 17 4 12"></polyline>
                                     </svg>
-                                    Create Parent Account
-                                </button>
-                            </form>
-                            {% endif %}
-                            {% endif %}
-                            {% else %}
-                            <span class="acct-ok">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
-                                    stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
-                                    <polyline points="20 6 9 17 4 12"></polyline>
-                                </svg>
-                                Parent Account Linked
-                            </span>
-                            {% endif %}
+                                    Parent Account Linked
+                                </div>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% else %}
