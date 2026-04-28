@@ -241,6 +241,68 @@
     .badge-red { background: #fee2e2; color: #991b1b; }
 
     .hidden-row { display: none; }
+
+    /* ── Responsive Refinements ── */
+    @media (max-width: 1024px) {
+        .ba-container { padding: 32px 20px; }
+        .premium-welcome h1 { font-size: 1.8rem; }
+    }
+
+    @media (max-width: 768px) {
+        .ba-container { padding: 24px 16px; }
+        .premium-welcome { padding: 24px; border-radius: 20px; margin-bottom: 24px; }
+        .premium-welcome h1 { font-size: 1.5rem; }
+        .status-line { font-size: 0.8rem; flex-direction: column; align-items: flex-start; gap: 8px; }
+
+        .guide-card { padding: 16px; border-radius: 16px; flex-direction: column; align-items: flex-start; }
+        .guide-icon { width: 40px; height: 40px; font-size: 1.2rem; }
+
+        .modern-card { padding: 24px; border-radius: 20px; }
+        .modern-card h2 { font-size: 1.2rem; }
+
+        .filter-section { 
+            flex-direction: column; 
+            align-items: stretch; 
+            padding: 16px; 
+            gap: 12px;
+        }
+        
+        .search-wrapper { width: 100%; }
+        .toggle-unassigned { width: 100%; justify-content: center; }
+
+        .vault-table th, .vault-table td { padding: 12px 14px; font-size: 0.8rem; }
+        
+        .grade-tabs {
+            overflow-x: auto;
+            flex-wrap: nowrap;
+            padding-bottom: 8px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .grade-tab {
+            white-space: nowrap;
+            padding: 10px 18px;
+            font-size: 0.8rem;
+        }
+
+        .sidebar-column { order: -1; } /* Show capacity at top on mobile */
+    }
+
+    @media (max-width: 480px) {
+        .premium-welcome h1 { font-size: 1.3rem; }
+    }
+
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    @media (max-width: 768px) {
+        .vault-table {
+            min-width: 650px;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -292,56 +354,58 @@
             </div>
 
             <div class="modern-card">
-                <table class="vault-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Student Name</th>
-                            <th>Current</th>
-                            {% if is_branch_active_status %}
-                            <th style="min-width: 180px;">Assign Section</th>
-                            <th style="text-align: right;">Action</th>
-                            {% endif %}
-                        </tr>
-                    </thead>
-                    <tbody id="studentTbody">
-                        {% for s in students %}
-                        <tr data-name="{{ s.student_name | lower }}" data-assigned="{{ '1' if s.section_name else '0' }}" data-enrollment="{{ s.enrollment_id }}">
-                            <td style="color: var(--ma-muted); font-size: 0.75rem;">#{{ s.branch_enrollment_no }}</td>
-                            <td><div style="font-weight: 800; color: var(--ma-primary);">{{ s.student_name }}</div></td>
-                            <td id="sectionLabel_{{ s.enrollment_id }}">
-                                {% if s.section_name %}
-                                <span class="badge badge-green">{{ s.section_name }}</span>
-                                {% else %}
-                                <span class="badge badge-red">Pending</span>
+                <div class="table-responsive">
+                    <table class="vault-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Student Name</th>
+                                <th>Current</th>
+                                {% if is_branch_active_status %}
+                                <th style="min-width: 180px;">Assign Section</th>
+                                <th style="text-align: right;">Action</th>
                                 {% endif %}
-                            </td>
-                            {% if is_branch_active_status %}
-                            <td>
-                                <select class="section-select" id="sel_{{ s.enrollment_id }}" 
-                                        data-initial="{{ s.section_id or '' }}"
-                                        onchange="markChanged({{ s.enrollment_id }})">
-                                    <option value="">— No Section —</option>
-                                    {% for sec in sections %}
-                                    {% set is_full = sec.current_count >= sec.capacity %}
-                                    {% set is_current = (sec.section_id == s.section_id) %}
-                                    <option value="{{ sec.section_id }}" {{ 'selected' if is_current else '' }} {{ 'disabled' if is_full and not is_current else '' }}>
-                                        {{ sec.section_name }} ({{ sec.current_count }}/{{ sec.capacity }})
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </td>
-                            <td style="text-align: right; white-space: nowrap;">
-                                <button class="save-row-btn" id="btn_{{ s.enrollment_id }}" disabled onclick="saveStudent({{ s.enrollment_id }})">
-                                    Save
-                                </button>
-                                <div class="row-status" id="status_{{ s.enrollment_id }}" style="margin-top: 4px; font-size: 0.7rem; font-weight: 700;"></div>
-                            </td>
-                            {% endif %}
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+                            </tr>
+                        </thead>
+                        <tbody id="studentTbody">
+                            {% for s in students %}
+                            <tr data-name="{{ s.student_name | lower }}" data-assigned="{{ '1' if s.section_name else '0' }}" data-enrollment="{{ s.enrollment_id }}">
+                                <td style="color: var(--ma-muted); font-size: 0.75rem;">#{{ s.branch_enrollment_no }}</td>
+                                <td><div style="font-weight: 800; color: var(--ma-primary);">{{ s.student_name }}</div></td>
+                                <td id="sectionLabel_{{ s.enrollment_id }}">
+                                    {% if s.section_name %}
+                                    <span class="badge badge-green">{{ s.section_name }}</span>
+                                    {% else %}
+                                    <span class="badge badge-red">Pending</span>
+                                    {% endif %}
+                                </td>
+                                {% if is_branch_active_status %}
+                                <td>
+                                    <select class="section-select" id="sel_{{ s.enrollment_id }}" 
+                                            data-initial="{{ s.section_id or '' }}"
+                                            onchange="markChanged({{ s.enrollment_id }})">
+                                        <option value="">— No Section —</option>
+                                        {% for sec in sections %}
+                                        {% set is_full = sec.current_count >= sec.capacity %}
+                                        {% set is_current = (sec.section_id == s.section_id) %}
+                                        <option value="{{ sec.section_id }}" {{ 'selected' if is_current else '' }} {{ 'disabled' if is_full and not is_current else '' }}>
+                                            {{ sec.section_name }} ({{ sec.current_count }}/{{ sec.capacity }})
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                                <td style="text-align: right; white-space: nowrap;">
+                                    <button class="save-row-btn" id="btn_{{ s.enrollment_id }}" disabled onclick="saveStudent({{ s.enrollment_id }})">
+                                        Save
+                                    </button>
+                                    <div class="row-status" id="status_{{ s.enrollment_id }}" style="margin-top: 4px; font-size: 0.7rem; font-weight: 700;"></div>
+                                </td>
+                                {% endif %}
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
             </div>
             {% else %}
             <div class="modern-card" style="text-align: center; padding: 60px; color: var(--ma-muted);">
