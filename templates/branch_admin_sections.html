@@ -215,51 +215,53 @@
         </div>
     </div>
 
-    <div class="two-col" style="display: grid; grid-template-columns: 350px 1fr; gap: 32px; align-items: flex-start;">
+    <div class="single-col" style="display: flex; flex-direction: column; gap: 32px;">
         <!-- Add Form -->
         {% if is_branch_active_status %}
         <div class="col-form">
             <div class="modern-card">
-                <h2>➕ Add New Section</h2>
+                <h2>Add New Section</h2>
                 <form method="post" action="{{ url_for('branch_admin.branch_admin_sections') }}">
-                    <div class="form-node">
-                        <label>Section Name</label>
-                        <input class="form-control" type="text" name="section_name" placeholder="e.g. Section A"
-                            required>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-node">
+                            <label>Section Name</label>
+                            <input class="form-control" type="text" name="section_name" placeholder="e.g. Section A"
+                                required>
+                        </div>
+                        <div class="form-node">
+                            <label>Grade Level</label>
+                            <select name="grade_level_id" class="form-control" required>
+                                <option value="">Select Grade Level</option>
+                                {% for g in grades %}
+                                <option value="{{ g.id }}">{{ g.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-node">
+                            <label>School Year</label>
+                            <select name="year_id" class="form-control" required>
+                                <option value="">Select School Year</option>
+                                {% for y in years %}
+                                <option value="{{ y.year_id }}">{{ y.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-node">
+                            <label>Capacity (Max 50)</label>
+                            <input class="form-control" type="number" name="capacity" value="50" min="1" max="50" required
+                                oninput="if(this.value.length > 2) this.value = this.value.slice(0,2); if(parseInt(this.value) > 50) this.value = 50;">
+                        </div>
                     </div>
-                    <div class="form-node">
-                        <label>Grade Level</label>
-                        <select name="grade_level_id" class="form-control" required>
-                            <option value="">Select Grade Level</option>
-                            {% for g in grades %}
-                            <option value="{{ g.id }}">{{ g.name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-node">
-                        <label>School Year</label>
-                        <select name="year_id" class="form-control" required>
-                            <option value="">Select School Year</option>
-                            {% for y in years %}
-                            <option value="{{ y.year_id }}">{{ y.label }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-node">
-                        <label>Capacity (Max 50)</label>
-                        <input class="form-control" type="number" name="capacity" value="50" min="1" max="50" required
-                            oninput="if(this.value.length > 2) this.value = this.value.slice(0,2); if(parseInt(this.value) > 50) this.value = 50;">
-                    </div>
-                    <button type="submit" class="btn-prem btn-primary" style="width: 100%;">🚀 Deploy Section</button>
+                    <button type="submit" class="btn-prem btn-primary" style="width: 100%; margin-top: 10px;">Add New Section</button>
                 </form>
             </div>
         </div>
         {% endif %}
 
         <!-- Existing Sections -->
-        <div class="col-table" {% if not is_branch_active_status %}style="grid-column: span 2;" {% endif %}>
+        <div class="col-table">
             <div class="modern-card">
-                <h2>📋 Section Repository</h2>
+                <h2>List of Existing Sections</h2>
                 {% if sections %}
                 <table class="vault-table">
                     <thead>

@@ -215,16 +215,16 @@
         <h1>Grade Level Registry</h1>
         <div class="status-line">
             <span class="pulse-dot"></span>
-            Academic Structure Configuration • {{ grades|length }} Active Levels
+            Academic Grade Levels Configuration
         </div>
     </div>
 
-    <div class="two-col" style="display: grid; grid-template-columns: 350px 1fr; gap: 32px; align-items: flex-start;">
+    <div class="single-col" style="display: flex; flex-direction: column; gap: 32px;">
         <!-- Add Form -->
         {% if is_branch_active_status %}
-        <div class="col-form">
+        <div class="col-form" style="max-width: 600px; width: 100%; margin: 0 auto;">
             <div class="modern-card">
-                <h2>➕ Add Grade Level</h2>
+                <h2>Add Grade Level</h2>
                 <form method="post" action="{{ url_for('branch_admin.branch_admin_grade_levels') }}">
                     <div class="form-node">
                         <label>Level Name</label>
@@ -254,7 +254,7 @@
                         style="font-size: 0.75rem; color: #dc2626; margin-top: 12px; text-align: center; font-weight: 600;">
                         Maximum of 20 levels reached.</div>
                     {% else %}
-                    <button type="submit" class="btn-prem btn-primary" style="width: 100%;">🚀 Deploy Level</button>
+                    <button type="submit" class="btn-prem btn-primary" style="width: 100%;">Add Grade Level</button>
                     {% endif %}
                 </form>
             </div>
@@ -262,9 +262,9 @@
         {% endif %}
 
         <!-- Table -->
-        <div class="col-table" {% if not is_branch_active_status %}style="grid-column: span 2;" {% endif %}>
+        <div class="col-table">
             <div class="modern-card">
-                <h2>📋 Grade Level Repository</h2>
+                <h2>List of Existing Grade Level</h2>
                 {% if grades %}
                 <table class="vault-table">
                     <thead>
