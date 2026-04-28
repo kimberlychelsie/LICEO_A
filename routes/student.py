@@ -78,8 +78,8 @@ def allowed_file(filename):
 
 def normalize_grade_level(raw):
     """
-    enrollments.grade_level could be '7' (number) or 'Grade 7'
-    Convert to 'Grade 7' so it matches GRADE_MAPPINGS.
+    enrollments.grade_level could be '7' (number) or 'Grade 7' or '11-GAS'
+    Convert numbers to 'Grade X' but preserve strands and existing formats.
     """
     raw = str(raw or "").strip()
     if not raw:
@@ -89,6 +89,12 @@ def normalize_grade_level(raw):
         return f"Grade {int(raw)}"
 
     low = raw.lower()
+    
+    # If it contains a hyphen, it's likely a strand (e.g., '11-GAS' or 'Grade 11-STEM')
+    # We should preserve it as is, but maybe ensure 'Grade ' prefix if it's just a number-strand
+    if "-" in raw:
+        return raw
+
     if "grade" in low:
         nums = "".join([c for c in raw if c.isdigit()])
         return f"Grade {nums}" if nums else raw
@@ -302,7 +308,7 @@ def enroll(branch_id):
         # ── Fetch grade levels ──
         cursor.execute("""
             SELECT id, name FROM grade_levels
-            WHERE branch_id = %s
+            WHERE branch_id = %s AND name NOT IN ('Grade 11', 'Grade 12')
             ORDER BY display_order
         """, (branch_id,))
         grade_levels = cursor.fetchall() or []
@@ -669,7 +675,7 @@ def continuing_enrollment(branch_id):
         if needs_strand:
             cursor.execute("""
                 SELECT name FROM grade_levels 
-                WHERE branch_id = %s AND name ILIKE 'Grade 11-%%'
+                WHERE branch_id = %s AND (name ILIKE 'Grade 11-%%' OR name ILIKE '11-%%')
                 ORDER BY display_order
             """, (branch_id,))
             shs_strands = [row["name"] for row in cursor.fetchall()]
