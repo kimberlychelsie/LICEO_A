@@ -3,6 +3,68 @@
 
 {% block styles %}
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+    :root {
+        --ma-primary: #1a3a8f;
+        --ma-muted: #64748b;
+    }
+
+    body {
+        font-family: 'Plus Jakarta Sans', sans-serif;
+        background: #fdfdfd;
+    }
+
+    .reg-container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 0 20px 64px;
+    }
+
+    /* ── Premium Header ── */
+    .premium-header {
+        margin-bottom: 32px;
+        padding: 48px 24px 0;
+        background: transparent;
+    }
+
+    .premium-header h1 {
+        font-size: 3rem;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        margin-bottom: 12px;
+        color: #1a3a8f;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .premium-header h1 span {
+        background: linear-gradient(135deg, #1a3a8f, #3b82f6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .premium-header p {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #64748b;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0;
+    }
+
+    .status-pill {
+        background: #f1f5f9;
+        color: #1a3a8f;
+        padding: 4px 14px;
+        border-radius: 99px;
+        font-size: 0.85rem;
+        font-weight: 800;
+        border: 1px solid rgba(26, 58, 143, 0.1);
+    }
     /* ── Tabs ── */
     .tab-bar {
         display: flex;
@@ -481,25 +543,83 @@
         font-weight: 700;
         margin-bottom: 16px;
     }
+    /* ── Mobile Responsive Overrides ── */
+    @media (max-width: 1024px) {
+        .premium-header {
+            padding: 32px 20px 0 !important;
+            text-align: center !important;
+        }
+        .premium-header h1 {
+            font-size: 2rem !important;
+            justify-content: center !important;
+        }
+        .premium-header p {
+            justify-content: center !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+        }
+        .filter-bar, .card-header {
+            flex-direction: column !important;
+            align-items: stretch !important;
+        }
+        .search-input {
+            max-width: none !important;
+        }
+        .new-details-form > div {
+            grid-template-columns: 1fr !important;
+        }
+        .form-row {
+            grid-template-columns: 1fr !important;
+            gap: 4px !important;
+        }
+        .form-row div:first-child {
+            padding-top: 0 !important;
+        }
+        .decision-box {
+            flex-direction: column !important;
+            text-align: center !important;
+        }
+        .decision-box div {
+            justify-content: center !important;
+        }
+        .tab-bar {
+            overflow-x: auto;
+            white-space: nowrap;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 4px;
+        }
+        .tab-btn {
+            padding: 10px 16px !important;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 
-<div
-    style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
-    <h2 style="margin:0; display: flex; align-items: center; gap: 10px;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-        </svg>
-        Enrollments
-    </h2>
-    <a href="/registrar" class="btn btn-secondary btn-sm">Back to Dashboard</a>
-</div>
+<header class="premium-header">
+    <div style="max-width: 1200px; margin: 0 auto;">
+        <h1>
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            Student <span>Enrollments</span>
+        </h1>
+        <p>
+            Review and manage student admission requests
+            <span class="status-pill">Registrar Hub</span>
+        </p>
+    </div>
+</header>
+
+<div class="reg-container">
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 24px;">
+        <a href="/registrar" class="btn btn-secondary btn-sm" style="border-radius: 12px; padding: 10px 20px; font-weight: 800; background: #64748b;">Back to Dashboard</a>
+    </div>
 <!-- School Year Switcher -->
 <div class="card" style="margin-bottom: 14px;">
     <div class="card-header">
@@ -1400,6 +1520,7 @@
             </div>
         </form>
     </div>
+</div>
 </div>
 
 {% endblock %}
