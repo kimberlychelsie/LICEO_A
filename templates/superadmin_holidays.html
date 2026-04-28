@@ -33,6 +33,52 @@
         font-weight: 800; color: #64748b; text-transform: uppercase; border-bottom: 2px solid #e2e8f0;
     }
     .vault-table td { padding: 16px; border-bottom: 1px solid #f1f5f9; font-weight: 600; color: #1e293b; }
+    
+    /* Action Buttons Styling */
+    .btn-status {
+        padding: 8px 14px;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid #e2e8f0;
+        background: #ffffff;
+        color: #64748b;
+    }
+    .btn-status:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+    }
+    .btn-status.unarchive {
+        color: #10b981;
+        background: #ecfdf5;
+        border-color: #d1fae5;
+    }
+    .btn-status.unarchive:hover {
+        background: #d1fae5;
+    }
+    .btn-delete {
+        padding: 8px 14px;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid #fee2e2;
+        background: #fef2f2;
+        color: #ef4444;
+    }
+    .btn-delete:hover {
+        background: #fee2e2;
+        transform: scale(1.05);
+    }
 </style>
 
 <div class="ba-container" style="max-width: 1100px; margin: 0 auto; padding: 24px;">
@@ -110,12 +156,26 @@
                     </thead>
                     <tbody>
                         {% for h in holidays %}
-                        <tr>
+                        <tr style="{{ 'opacity: 0.6; background: #f8fafc;' if h.status == 'archived' else '' }}">
                             <td>{{ h.holiday_date.strftime('%b %d') }}</td>
-                            <td>{{ h.holiday_name }}</td>
-                            <td style="text-align: right;">
+                            <td>
+                                {{ h.holiday_name }}
+                                {% if h.status == 'archived' %}
+                                <span style="font-size: 0.65rem; background: #e2e8f0; color: #64748b; padding: 2px 6px; border-radius: 4px; margin-left: 8px; text-transform: uppercase;">Archived</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: right; display: flex; gap: 8px; justify-content: flex-end;">
+                                <form action="{{ url_for('super_admin.superadmin_holiday_toggle_status', holiday_id=h.id) }}" method="POST">
+                                    <button type="submit" class="btn-status {{ 'unarchive' if h.status == 'archived' else '' }}">
+                                        <i class="fas {{ 'fa-archive' if h.status == 'active' else 'fa-box-open' }}"></i>
+                                        {{ 'Archive' if h.status == 'active' else 'Unarchive' }}
+                                    </button>
+                                </form>
                                 <form action="{{ url_for('super_admin.superadmin_delete_holiday', holiday_id=h.id) }}" method="POST" onsubmit="return confirm('Delete this global holiday?');">
-                                    <button type="submit" style="background:none; border:none; color:#ef4444; font-weight:800; cursor:pointer;">Delete</button>
+                                    <button type="submit" class="btn-delete">
+                                        <i class="fas fa-trash-alt"></i>
+                                        Delete
+                                    </button>
                                 </form>
                             </td>
                         </tr>

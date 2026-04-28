@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+{% block title %}Broadcast Station — Branch Admin{% endblock %}
+
+{% block content %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+    :root {
+        --ma-primary: #1a3a8f;
+        --ma-gold: #facc15;
+        --ma-gold-glow: rgba(250, 204, 21, 0.4);
+        --ma-bg: #fdfdfd;
+        --ma-glass: rgba(255, 255, 255, 0.9);
+        --ma-glass-border: rgba(26, 58, 143, 0.1);
+        --ma-text: #0f172a;
+        --ma-muted: #64748b;
+        --ma-shadow-deep: 0 20px 50px -10px rgba(26, 58, 143, 0.12), 0 10px 20px -5px rgba(0, 0, 0, 0.04);
+        --ma-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.05);
+    }
+
+    body {
+        background-color: var(--ma-bg);
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .ma-container {
+        padding: 40px 32px;
+        max-width: 1500px;
+        margin: 0 auto;
+        animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Premium Header ── */
+    .premium-header {
+        margin-bottom: 48px;
+        position: relative;
+    }
+
+    .premium-header h1 {
+        font-size: 3rem;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        margin-bottom: 8px;
+        color: var(--ma-primary);
+    }
+
+    .premium-header h1 span {
+        background: linear-gradient(135deg, var(--ma-primary), #3b82f6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .premium-header p {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--ma-muted);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    /* ── The Dual Broadcast Station ── */
+    .broadcast-station-hub {
+        display: grid;
+        grid-template-columns: 1.7fr 1.3fr;
+        gap: 32px;
+        margin-bottom: 48px;
+        align-items: flex-start;
+    }
+
+    .broadcast-card-glass {
+        background: var(--ma-glass);
+        backdrop-filter: blur(12px);
+        border: 1px solid var(--ma-glass-border);
+        border-radius: 40px;
+        padding: 40px;
+        box-shadow: var(--ma-shadow-deep);
+        height: 100%;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .broadcast-card-glass::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; height: 3px;
+        background: linear-gradient(90deg, var(--ma-gold), transparent);
+        opacity: 0.5;
+    }
+
+    .broadcast-card-glass h3 { font-size: 1.4rem; font-weight: 900; margin-bottom: 24px; color: var(--ma-primary); display: flex; align-items: center; gap: 12px; }
+
+    /* ── Focused Announcement Card Preview ── */
+    .preview-card-wrapper { height: 100%; }
+
+    .preview-card-v3 {
+        background: #fff;
+        border-radius: 36px;
+        border: 2px solid var(--ma-gold);
+        box-shadow: 0 40px 80px -20px rgba(26, 58, 143, 0.25);
+        overflow: hidden;
+        transition: transform 0.3s ease;
+        position: relative;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .preview-label-badge {
+        position: absolute;
+        top: 24px;
+        left: 24px;
+        background: var(--ma-gold);
+        color: #0c2461;
+        padding: 6px 16px;
+        border-radius: 12px;
+        font-size: 0.75rem;
+        font-weight: 900;
+        z-index: 5;
+        box-shadow: 0 8px 15px rgba(250, 204, 21, 0.3);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        animation: floatBadge 3s ease-in-out infinite;
+    }
+
+    @keyframes floatBadge {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-5px); }
+    }
+
+    .preview-img-slot {
+       width: 100%;
+       height: 200px;
+       background: #f1f5f9;
+       overflow: hidden;
+       position: relative;
+       display: flex;
+       align-items: center;
+       justify-content: center;
+    }
+
+    .preview-img-slot img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: none;
+    }
+
+    .preview-img-slot .placeholder-icon {
+        font-size: 3rem;
+        opacity: 0.1;
+        color: var(--ma-primary);
+    }
+
+    .preview-content-slot {
+        padding: 30px;
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+
+    #preview_headline {
+        font-size: 1.6rem;
+        font-weight: 900;
+        color: var(--ma-primary);
+        line-height: 1.2;
+        margin-bottom: 12px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    #preview_headline span { color: var(--ma-gold); }
+
+    #preview_summary {
+        font-size: 0.95rem;
+        color: var(--ma-muted);
+        font-weight: 500;
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 3;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* ── Form Styling ── */
+    .form-group-prem { margin-bottom: 24px; }
+    .form-group-prem label { font-size: 0.75rem; font-weight: 900; text-transform: uppercase; color: var(--ma-muted); margin-bottom: 10px; display: block; margin-left: 5px; }
+    
+    .input-prem {
+        width: 100%; padding: 18px 24px; border-radius: 20px;
+        border: 2px solid #f1f5f9; font-family: inherit; font-weight: 700;
+        background: #fcfcfc; color: var(--ma-text); transition: all 0.3s ease;
+        box-sizing: border-box; font-size: 1rem;
+    }
+
+    .input-prem:focus {
+        border-color: var(--ma-gold);
+        background: #fff;
+        outline: none;
+        box-shadow: 0 0 0 6px var(--ma-gold-glow);
+        transform: translateY(-2px);
+    }
+
+    .btn-gold-prestige {
+        width: 100%;
+        background: var(--ma-gold);
+        color: #0c2461;
+        border: none;
+        padding: 20px;
+        border-radius: 24px;
+        font-weight: 900;
+        font-size: 1.1rem;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        box-shadow: 0 10px 25px var(--ma-gold-glow);
+    }
+
+    .btn-gold-prestige:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px var(--ma-gold-glow);
+        background: #fde047;
+    }
+
+    .command-hub-title { font-size: 1.1rem; font-weight: 800; color: var(--ma-primary); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 24px; display: flex; align-items: center; gap: 10px; }
+
+    .stream-history-item {
+        background: #fff; border-radius: 24px; padding: 18px; display: flex; align-items: center; gap: 20px; 
+        border: 1px solid var(--ma-glass-border); margin-bottom: 12px; transition: all 0.3s ease;
+    }
+    .stream-history-item:hover { border-color: var(--ma-gold); transform: scale(1.02); }
+</style>
+
+<div class="ma-container">
+    <header class="premium-header">
+        <h1>Broadcast <span>Station</span></h1>
+        <p>Manage branch announcements and portal updates</p>
+    </header>
+
+    <div class="broadcast-station-hub">
+        <!-- ACTION FORM -->
+        <div class="broadcast-card-glass">
+            <h3>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                Broadcast Station
+            </h3>
+            <p style="color: var(--ma-muted); font-size: 0.9rem; font-weight: 500; margin-bottom: 30px; margin-top: -10px;">
+                Draft announcements for the portal homepage. The monitor on the right will show your changes instantly.
+            </p>
+
+            {% if is_branch_active_status and not is_history_mode %}
+            <form method="post" action="{{ url_for('branch_admin.branch_admin_broadcast_station') }}" enctype="multipart/form-data">
+                <input type="hidden" name="add_announcement" value="1">
+                
+                <div class="form-group-prem">
+                    <label>Main Headline</label>
+                    <input class="input-prem" id="headline_input" name="announcement_title" placeholder="e.g. Enrollment is now OPEN!" required oninput="syncPreview()">
+                </div>
+
+                <div class="form-group-prem">
+                    <label>Short Description</label>
+                    <textarea class="input-prem" id="summary_input" name="announcement_message" placeholder="A brief summary for the homepage..." style="resize: none; height: 100px;" oninput="syncPreview()"></textarea>
+                </div>
+                <div class="form-group-prem">
+                    <label>Target Audience</label>
+                    <select class="input-prem" name="audience" id="audience_input" onchange="syncPreview()">
+                      <option value="all" selected>All (Homepage)</option>
+                      <option value="teacher">Teachers only (Teacher Dashboard)</option>
+                    </select>
+                  </div>
+
+                <div class="form-group-prem">
+                    <label>Cover Media (Poster)</label>
+                    <input type="file" id="photo_input" name="announcement_photo" class="input-prem" style="padding: 12px; font-size: 0.8rem;" accept="image/*" onchange="previewImage(this)">
+                </div>
+
+                <button type="submit" class="btn-gold-prestige">
+                    <i class="fas fa-paper-plane"></i> Go Live on Portal
+                </button>
+            </form>
+            {% endif %}
+        </div>
+
+        <!-- LIVE VIEW PREVIEW CARD -->
+        <div class="preview-card-wrapper">
+            <div class="preview-card-v3">
+                <div class="preview-label-badge">Live Feed Preview</div>
+                <div class="preview-img-slot" id="preview_img_container">
+                    <i class="fas fa-image placeholder-icon" id="preview_placeholder"></i>
+                    <img id="preview_img_tag" src="" alt="Live Preview">
+                </div>
+                <div class="preview-content-slot">
+                    <h2 id="preview_headline">Draft <span>Headline</span></h2>
+                    <p id="preview_summary">Your announcement summary will appear here as you type...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FEED HISTORY -->
+    {% if announcements_list %}
+    <div class="command-hub-title"><i class="fas fa-history"></i> Recent Broadcasts</div>
+    {% for a in announcements_list %}
+    <div class="stream-history-item" style="{% if not a.is_active %}opacity: 0.85; border-left: 5px solid #94a3b8; background: #f8fafc;{% endif %}">
+        <div style="width: 80px; height: 50px; background: #f1f5f9; border-radius: 12px; overflow: hidden; flex-shrink: 0;">
+            {% if a.image_url %}<img src="{{ a.image_url }}" style="width:100%; height:100%; object-fit:cover;">{% else %}<div style="display:flex; justify-content:center; align-items:center; height:100%; font-size: 1.2rem;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3;"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"></path><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path><circle cx="12" cy="12" r="2"></circle><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path><path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1"></path></svg></div>{% endif %}
+        </div>
+        <div style="flex: 1;">
+            <div style="font-weight: 800; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                {{ a.title }}
+                {% if a.is_active %}
+                <span style="font-size: 0.65rem; background: #dcfce7; color: #16a34a; padding: 2px 8px; border-radius: 6px; font-weight: 900;">LIVE</span>
+                {% else %}
+                <span style="font-size: 0.65rem; background: #f1f5f9; color: #64748b; padding: 2px 8px; border-radius: 6px; font-weight: 900;">ARCHIVED</span>
+                {% endif %}
+            </div>
+            <div style="font-size: 0.8rem; color: var(--ma-muted);">{{ a.message[:80] }}{% if a.message|length > 80 %}...{% endif %}</div>
+        </div>
+        {% if not is_history_mode %}
+        <div style="display: flex; gap: 8px;">
+            <form method="post" action="{{ url_for('branch_admin.announcement_toggle', announcement_id=a.id) }}">
+                <input type="hidden" name="from_station" value="1">
+                <button type="submit" style="{% if a.is_active %}background: #fef2f2; color: #ef4444; border: 1px solid #fee2e2;{% else %}background: #f0fdf4; color: #16a34a; border: 1px solid #dcfce7;{% endif %} padding: 10px 18px; border-radius: 14px; font-weight: 800; font-size: 0.75rem; cursor: pointer; transition: all 0.2s;">
+                    {{ 'Archive' if a.is_active else 'Restore' }}
+                </button>
+            </form>
+
+            <form method="post" action="{{ url_for('branch_admin.announcement_delete', announcement_id=a.id) }}" onsubmit="return confirm('Permanently delete this announcement?')">
+                <input type="hidden" name="from_station" value="1">
+                <button type="submit" style="background: #ffffff; color: #94a3b8; border: 1px solid #e2e8f0; padding: 10px 18px; border-radius: 14px; font-weight: 800; font-size: 0.75rem; cursor: pointer; transition: all 0.2s;">
+                    Delete
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+</div>
+
+<script>
+    function syncPreview() {
+        const headline = document.getElementById('headline_input').value;
+        const summary = document.getElementById('summary_input').value;
+        const previewHeadline = document.getElementById('preview_headline');
+        const previewSummary = document.getElementById('preview_summary');
+
+        if (headline) {
+            previewHeadline.innerHTML = headline.split(' ').map(word => 
+                (word.toLowerCase() === 'liceo' || word.toLowerCase() === 'liceo' ) ? `<span>${word}</span>` : word
+            ).join(' ');
+        } else {
+            previewHeadline.innerHTML = 'Draft <span>Headline</span>';
+        }
+        
+        if (summary) {
+            previewSummary.innerText = summary;
+        } else {
+            previewSummary.innerText = 'Your announcement summary will appear here as you type...';
+        }
+    }
+
+    function previewImage(input) {
+        const previewImg = document.getElementById('preview_img_tag');
+        const placeholder = document.getElementById('preview_placeholder');
+        
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                previewImg.src = e.target.result;
+                previewImg.style.display = 'block';
+                placeholder.style.display = 'none';
+            }
+            reader.readAsDataURL(input.files[0]);
+        } else {
+            previewImg.src = '';
+            previewImg.style.display = 'none';
+            placeholder.style.display = 'block';
+        }
+    }
+</script>
+{% endblock %}

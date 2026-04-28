@@ -443,67 +443,6 @@
         </a>
     </div>
 
-    <!-- MAIN HUB: BROADCAST + MONITOR -->
-    <div class="broadcast-station-hub">
-        <!-- ACTION FORM -->
-        <div class="broadcast-card-glass">
-            <h3>
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-                Broadcast Station
-            </h3>
-            <p style="color: var(--ma-muted); font-size: 0.9rem; font-weight: 500; margin-bottom: 30px; margin-top: -10px;">
-                Draft announcements for the portal homepage. The monitor on the right will show your changes instantly.
-            </p>
-
-            {% if is_branch_active_status and not is_history_mode %}
-            <form method="post" action="{{ url_for('branch_admin.dashboard') }}" enctype="multipart/form-data">
-                <input type="hidden" name="add_announcement" value="1">
-                
-                <div class="form-group-prem">
-                    <label>Main Headline</label>
-                    <input class="input-prem" id="headline_input" name="announcement_title" placeholder="e.g. Enrollment is now OPEN!" required oninput="syncPreview()">
-                </div>
-
-                <div class="form-group-prem">
-                    <label>Short Description</label>
-                    <textarea class="input-prem" id="summary_input" name="announcement_message" placeholder="A brief summary for the homepage..." style="resize: none; height: 100px;" oninput="syncPreview()"></textarea>
-                </div>
-                <div class="form-group-prem">
-                    <label>Target Audience</label>
-                    <select class="input-prem" name="audience" id="audience_input" onchange="syncPreview()">
-                      <option value="all" selected>All (Homepage)</option>
-                      <option value="teacher">Teachers only (Teacher Dashboard)</option>
-                    </select>
-                  </div>
-
-                <div class="form-group-prem">
-                    <label>Cover Media (Poster)</label>
-                    <input type="file" id="photo_input" name="announcement_photo" class="input-prem" style="padding: 12px; font-size: 0.8rem;" accept="image/*" onchange="previewImage(this)">
-                </div>
-
-                <button type="submit" class="btn-gold-prestige">
-                    <i class="fas fa-paper-plane"></i> Go Live on Portal
-                </button>
-            </form>
-            {% endif %}
-        </div>
-
-        <!-- LIVE VIEW PREVIEW CARD -->
-        <div class="preview-card-wrapper">
-            <div class="preview-card-v3">
-                <div class="preview-label-badge">Live Feed Preview</div>
-                <div class="preview-img-slot" id="preview_img_container">
-                    <i class="fas fa-image placeholder-icon" id="preview_placeholder"></i>
-                    <img id="preview_img_tag" src="" alt="Live Preview">
-                </div>
-                <div class="preview-content-slot">
-                    <h2 id="preview_headline">Draft <span>Headline</span></h2>
-                    <p id="preview_summary">Your announcement summary will appear here as you type...</p>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- SHORTCUTS HUB -->
     <div class="command-hub-title"><i class="fas fa-th-large"></i> Registry Operations</div>
     <div class="shortcuts-grid">
@@ -567,44 +506,6 @@
             </div>
         </div>
     </div>
-
-    <!-- FEED HISTORY (Optional) -->
-    {% if announcements_list %}
-    <div class="command-hub-title"><i class="fas fa-history"></i> Recent Broadcasts</div>
-    {% for a in announcements_list %}
-    <div class="stream-history-item" style="{% if not a.is_active %}opacity: 0.85; border-left: 5px solid #94a3b8; background: #f8fafc;{% endif %}">
-        <div style="width: 80px; height: 50px; background: #f1f5f9; border-radius: 12px; overflow: hidden; flex-shrink: 0;">
-            {% if a.image_url %}<img src="{{ a.image_url }}" style="width:100%; height:100%; object-fit:cover;">{% else %}<div style="display:flex; justify-content:center; align-items:center; height:100%; font-size: 1.2rem;"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity:0.3;"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"></path><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"></path><circle cx="12" cy="12" r="2"></circle><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"></path><path d="M19.1 4.9C23 8.8 23 15.2 19.1 19.1"></path></svg></div>{% endif %}
-        </div>
-        <div style="flex: 1;">
-            <div style="font-weight: 800; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
-                {{ a.title }}
-                {% if a.is_active %}
-                <span style="font-size: 0.65rem; background: #dcfce7; color: #16a34a; padding: 2px 8px; border-radius: 6px; font-weight: 900;">LIVE</span>
-                {% else %}
-                <span style="font-size: 0.65rem; background: #f1f5f9; color: #64748b; padding: 2px 8px; border-radius: 6px; font-weight: 900;">ARCHIVED</span>
-                {% endif %}
-            </div>
-            <div style="font-size: 0.8rem; color: var(--ma-muted);">{{ a.message[:80] }}{% if a.message|length > 80 %}...{% endif %}</div>
-        </div>
-        {% if not is_history_mode %}
-        <div style="display: flex; gap: 8px;">
-            <form method="post" action="{{ url_for('branch_admin.announcement_toggle', announcement_id=a.id) }}">
-                <button type="submit" style="{% if a.is_active %}background: #fef2f2; color: #ef4444; border: 1px solid #fee2e2;{% else %}background: #f0fdf4; color: #16a34a; border: 1px solid #dcfce7;{% endif %} padding: 10px 18px; border-radius: 14px; font-weight: 800; font-size: 0.75rem; cursor: pointer; transition: all 0.2s;">
-                    {{ 'Archive' if a.is_active else 'Restore' }}
-                </button>
-            </form>
-
-            <form method="post" action="{{ url_for('branch_admin.announcement_delete', announcement_id=a.id) }}" onsubmit="return confirm('Permanently delete this announcement?')">
-                <button type="submit" style="background: #ffffff; color: #94a3b8; border: 1px solid #e2e8f0; padding: 10px 18px; border-radius: 14px; font-weight: 800; font-size: 0.75rem; cursor: pointer; transition: all 0.2s;">
-                    Delete
-                </button>
-            </form>
-        </div>
-        {% endif %}
-    </div>
-    {% endfor %}
-    {% endif %}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -616,46 +517,6 @@
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         dateElement.innerText = new Date().toLocaleDateString(undefined, options);
     });
-
-    function syncPreview() {
-        const headline = document.getElementById('headline_input').value;
-        const summary = document.getElementById('summary_input').value;
-        const previewHeadline = document.getElementById('preview_headline');
-        const previewSummary = document.getElementById('preview_summary');
-
-        if (headline) {
-            previewHeadline.innerHTML = headline.split(' ').map(word => 
-                (word.toLowerCase() === 'liceo' || word.toLowerCase() === 'liceo' ) ? `<span>${word}</span>` : word
-            ).join(' ');
-        } else {
-            previewHeadline.innerHTML = 'Draft <span>Headline</span>';
-        }
-        
-        if (summary) {
-            previewSummary.innerText = summary;
-        } else {
-            previewSummary.innerText = 'Your announcement summary will appear here as you type...';
-        }
-    }
-
-    function previewImage(input) {
-        const previewImg = document.getElementById('preview_img_tag');
-        const placeholder = document.getElementById('preview_placeholder');
-        
-        if (input.files && input.files[0]) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                previewImg.src = e.target.result;
-                previewImg.style.display = 'block';
-                placeholder.style.display = 'none';
-            }
-            reader.readAsDataURL(input.files[0]);
-        } else {
-            previewImg.src = '';
-            previewImg.style.display = 'none';
-            placeholder.style.display = 'block';
-        }
-    }
 
     // Chart.js Configuration
     Chart.register(ChartDataLabels);
@@ -674,14 +535,16 @@
             data: {
                 labels: gradeStats.map(item => item.grade_level || 'N/A'),
                 datasets: [{
-                    label: 'Enrolled Students',
+                    label: 'Enrollees',
                     data: gradeStats.map(item => item.count),
                     backgroundColor: gradeStats.map((_, i) => i % 2 === 0 ? liceoBlue : liceoGold),
-                    borderRadius: 12,
+                    borderRadius: 8,
                     borderSkipped: false,
+                    barThickness: 18, // Pinaliit para magkasya lahat nang di malaki
                 }]
             },
             options: {
+                indexAxis: 'y', // GINAWANG HORIZONTAL PARA SA K-12
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { 
@@ -690,28 +553,31 @@
                         backgroundColor: '#0c2461',
                         titleFont: { family: 'Plus Jakarta Sans', size: 14, weight: '800' },
                         bodyFont: { family: 'Plus Jakarta Sans', size: 12, weight: '600' },
-                        padding: 16,
-                        cornerRadius: 15,
+                        padding: 12,
+                        cornerRadius: 12,
                         displayColors: false
                     },
                     datalabels: {
                         anchor: 'end',
-                        align: 'top',
-                        offset: 5,
-                        color: '#1a3a8f',
-                        font: { family: 'Plus Jakarta Sans', weight: '900', size: 13 },
+                        align: 'right',
+                        offset: 8,
+                        color: liceoBlue,
+                        font: { family: 'Plus Jakarta Sans', weight: '900', size: 12 },
                         formatter: (value) => value
                     }
                 },
                 scales: { 
-                    y: { 
+                    x: { 
                         beginAtZero: true, 
                         grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false },
-                        ticks: { font: { family: 'Plus Jakarta Sans', weight: '700' }, color: '#64748b' }
+                        ticks: { font: { family: 'Plus Jakarta Sans', weight: '700', size: 10 }, color: '#64748b' }
                     }, 
-                    x: { 
+                    y: { 
                         grid: { display: false },
-                        ticks: { font: { family: 'Plus Jakarta Sans', weight: '800' }, color: '#1a3a8f' }
+                        ticks: { 
+                            font: { family: 'Plus Jakarta Sans', weight: '800', size: 11 }, 
+                            color: liceoBlue 
+                        }
                     } 
                 }
             }

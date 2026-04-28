@@ -282,6 +282,7 @@ def get_db_connection():
                     CREATE TABLE IF NOT EXISTS individual_extensions (
                         extension_id SERIAL PRIMARY KEY,
                         enrollment_id INTEGER NOT NULL REFERENCES enrollments(enrollment_id) ON DELETE CASCADE,
+                        student_id INTEGER,
                         item_type VARCHAR(20) NOT NULL,
                         item_id INTEGER NOT NULL,
                         new_due_date TIMESTAMP WITHOUT TIME ZONE NOT NULL,
@@ -291,6 +292,8 @@ def get_db_connection():
                 """)
                 cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'individual_extensions'")
                 ext_cols = [r[0] for r in cur.fetchall()]
+                if 'student_id' not in ext_cols:
+                    cur.execute("ALTER TABLE individual_extensions ADD COLUMN student_id INTEGER")
                 if 'year_id' not in ext_cols:
                     cur.execute("ALTER TABLE individual_extensions ADD COLUMN year_id INTEGER")
                     cur.execute("""
@@ -394,6 +397,18 @@ def get_db_connection():
                     conn.commit()
             except Exception as e:
                 logger.warning(f"Could not migrate announcements table: {e}")
+                conn.rollback()
+
+            # holidays migration
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'holidays'")
+                h_cols = [r[0] for r in cur.fetchall()]
+                if h_cols:
+                    if 'status' not in h_cols:
+                        cur.execute("ALTER TABLE holidays ADD COLUMN status VARCHAR(20) DEFAULT 'active'")
+                    conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate holidays table: {e}")
                 conn.rollback()
 
             # ── Activity Submissions attachments migration ──

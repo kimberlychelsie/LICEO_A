@@ -668,15 +668,27 @@ def superadmin_holidays():
                     flash(f"Error saving holiday: {str(e)}", "error")
 
         # Fetch global holidays
-        cur.execute("""
-            SELECT id, holiday_date, holiday_name 
-            FROM holidays 
-            WHERE branch_id IS NULL 
-            ORDER BY holiday_date ASC
-        """)
-        holidays = cur.fetchall() or []
+        has_status = True
+        try:
+            cur.execute("""
+                SELECT id, holiday_date, holiday_name, status
+                FROM holidays 
+                WHERE branch_id IS NULL 
+                ORDER BY holiday_date ASC
+            """)
+            holidays = cur.fetchall() or []
+        except Exception:
+            db.rollback()
+            has_status = False
+            cur.execute("""
+                SELECT id, holiday_date, holiday_name, 'active' AS status
+                FROM holidays 
+                WHERE branch_id IS NULL 
+                ORDER BY holiday_date ASC
+            """)
+            holidays = cur.fetchall() or []
 
-        return render_template("superadmin_holidays.html", holidays=holidays)
+        return render_template("superadmin_holidays.html", holidays=holidays, has_status=has_status)
 
     finally:
         cur.close()
@@ -696,6 +708,37 @@ def superadmin_delete_holiday(holiday_id):
     except Exception as e:
         db.rollback()
         flash(f"Error: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+    return redirect(url_for("super_admin.superadmin_holidays"))
+
+@super_admin_bp.route("/superadmin/holidays/<int:holiday_id>/toggle-status", methods=["POST"])
+def superadmin_holiday_toggle_status(holiday_id):
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        cur.execute("SELECT status, holiday_name FROM holidays WHERE id = %s AND branch_id IS NULL", (holiday_id,))
+        row = cur.fetchone()
+        if not row:
+            flash("Holiday not found.", "error")
+            return redirect(url_for("super_admin.superadmin_holidays"))
+        
+        current_status = row[0]
+        new_status = 'archived' if current_status == 'active' else 'active'
+        
+        cur.execute("UPDATE holidays SET status = %s WHERE id = %s", (new_status, holiday_id))
+        db.commit()
+        flash(f"Holiday '{row[1]}' has been {'archived' if new_status == 'archived' else 'unarchived'}.", "success")
+    except Exception as e:
+        db.rollback()
+        if "column \"status\" does not exist" in str(e):
+            flash("Database Update Required: This feature needs a 'status' column in the holidays table. Please run the migration or ask your DB administrator.", "warning")
+        else:
+            flash(f"Error toggling holiday status: {str(e)}", "error")
     finally:
         cur.close()
         db.close()

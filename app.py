@@ -259,7 +259,7 @@ def inject_super_admin_notifications():
     if session.get('role') == 'super_admin':
         from db import get_db_connection
         import psycopg2.extras
-        from datetime import datetime
+        from datetime import datetime, timezone
         db = get_db_connection()
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
@@ -277,7 +277,7 @@ def inject_super_admin_notifications():
                     'message': f"{no_code['cnt']} branches missing branch codes",
                     'link': url_for('super_admin.super_admin_branches'),
                     'is_read': False,
-                    'created_at': datetime.utcnow()
+                    'created_at': datetime.now(timezone.utc)
                 })
 
             # 2. Missing Admin
@@ -294,7 +294,7 @@ def inject_super_admin_notifications():
                     'message': f"{no_admin['cnt']} branches without administrators",
                     'link': url_for('super_admin.super_admin_branches'),
                     'is_read': False,
-                    'created_at': datetime.utcnow()
+                    'created_at': datetime.now(timezone.utc)
                 })
 
             # 3. Inactive Branches
@@ -309,7 +309,7 @@ def inject_super_admin_notifications():
                     'message': f"{inactive['cnt']} branches are currently inactive",
                     'link': url_for('super_admin.super_admin_branches'),
                     'is_read': False,
-                    'created_at': datetime.utcnow()
+                    'created_at': datetime.now(timezone.utc)
                 })
 
             unread_count = len(alerts)

@@ -138,8 +138,6 @@ def dashboard():
         return redirect(url_for("auth.login"))
 
     created_user = None
-    announcements_list = []
-    
     # Defaults for metrics
     metrics = {
         'total_enrolled': 0,
@@ -175,13 +173,12 @@ def dashboard():
         cursor.execute("SELECT id, name FROM grade_levels ORDER BY display_order")
         grades = cursor.fetchall() or []
 
-        # ✅ Load announcements for THIS branch only
+        # ✅ Load announcements for THIS branch only (Simplified for dash)
         cursor.execute("""
-            SELECT announcement_id AS id, title, message, (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') AS created_at_local, is_active,
-           image_url, branch_id, audience
-    FROM announcements
-    WHERE branch_id = %s
-    ORDER BY created_at DESC
+            SELECT announcement_id AS id, title, message, is_active, image_url
+            FROM announcements
+            WHERE branch_id = %s
+            ORDER BY created_at DESC LIMIT 5
         """, (session.get("branch_id"),))
         announcements_list = cursor.fetchall() or []
         
@@ -240,55 +237,77 @@ def dashboard():
         cursor.close()
         db.close()
 
-    if request.method == "POST":
-        # -----------------------
-        # Add Homepage Announcement
-        # -----------------------
-        if request.form.get("add_announcement") == "1":
-            title   = (request.form.get("announcement_title") or "").strip()
-            message = (request.form.get("announcement_message") or "").strip()
-            if title:
-                image_url = None
-                photo = request.files.get("announcement_photo")
-                if photo and photo.filename:
-                    ALLOWED = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
-                    ext = photo.filename.rsplit('.', 1)[-1].lower() if '.' in photo.filename else ''
-                    if ext in ALLOWED:
-                        # Upload to Cloudinary (prod) or local (dev)
-                        image_url = upload_announcement_photo(photo)
-                    else:
-                        flash("Photo must be PNG, JPG, GIF, or WEBP.", "warning")
-
-                db = get_db_connection()
-                cur = db.cursor()
-                try:
-                    audience = (request.form.get("audience") or "all").strip().lower()
-                    if audience not in ("all", "teacher"):
-                        audience = "all"
-
-                    cur.execute("""
-                        INSERT INTO announcements (title, message, is_active, image_url, branch_id, audience)
-                        VALUES (%s, %s, TRUE, %s, %s, %s)
-                    """, (title, message, image_url, session.get("branch_id"), audience))
-                    db.commit()
-                    flash("Announcement added to homepage!", "success")
-                except Exception as e:
-                    db.rollback()
-                    flash(f"Could not add announcement: {str(e)}", "error")
-                finally:
-                    cur.close()
-                    db.close()
-            else:
-                flash("Announcement title is required.", "error")
-            return redirect(url_for("branch_admin.dashboard"))
-        # Create User logic removed from here
-
     return render_template(
         "branch_admin_dashboard.html",
         announcements_list=announcements_list,
         grades=grades,
         metrics=metrics
     )
+
+@branch_admin_bp.route("/branch-admin/broadcast-station", methods=["GET", "POST"])
+def branch_admin_broadcast_station():
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+    
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("No branch assigned.", "error")
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    announcements_list = []
+
+    try:
+        if request.method == "POST":
+            # -----------------------
+            # Add Homepage Announcement
+            # -----------------------
+            if request.form.get("add_announcement") == "1":
+                title   = (request.form.get("announcement_title") or "").strip()
+                message = (request.form.get("announcement_message") or "").strip()
+                if title:
+                    image_url = None
+                    photo = request.files.get("announcement_photo")
+                    if photo and photo.filename:
+                        ALLOWED = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+                        ext = photo.filename.rsplit('.', 1)[-1].lower() if '.' in photo.filename else ''
+                        if ext in ALLOWED:
+                            image_url = upload_announcement_photo(photo)
+                        else:
+                            flash("Photo must be PNG, JPG, GIF, or WEBP.", "warning")
+
+                    audience = (request.form.get("audience") or "all").strip().lower()
+                    if audience not in ("all", "teacher"):
+                        audience = "all"
+
+                    cursor.execute("""
+                        INSERT INTO announcements (title, message, is_active, image_url, branch_id, audience)
+                        VALUES (%s, %s, TRUE, %s, %s, %s)
+                    """, (title, message, image_url, branch_id, audience))
+                    db.commit()
+                    flash("Announcement added to homepage!", "success")
+                else:
+                    flash("Announcement title is required.", "error")
+                return redirect(url_for("branch_admin.branch_admin_broadcast_station"))
+
+        # Load announcements
+        cursor.execute("""
+            SELECT announcement_id AS id, title, message, (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') AS created_at_local, is_active,
+                   image_url, branch_id, audience
+            FROM announcements
+            WHERE branch_id = %s
+            ORDER BY created_at DESC
+        """, (branch_id,))
+        announcements_list = cursor.fetchall() or []
+
+    except Exception as e:
+        flash(f"Error in broadcast station: {e}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return render_template("branch_admin_announcements.html", announcements_list=announcements_list)
 
 @branch_admin_bp.route("/branch-admin/announcements/<int:announcement_id>/toggle", methods=["POST"])
 def announcement_toggle(announcement_id):
@@ -319,6 +338,9 @@ def announcement_toggle(announcement_id):
     finally:
         cur.close()
         db.close()
+    
+    if request.form.get("from_station"):
+        return redirect(url_for("branch_admin.branch_admin_broadcast_station"))
     return redirect(url_for("branch_admin.dashboard"))
 
 @branch_admin_bp.route("/branch-admin/announcements/<int:announcement_id>/delete", methods=["POST"])
@@ -345,6 +367,9 @@ def announcement_delete(announcement_id):
     finally:
         cur.close()
         db.close()
+
+    if request.form.get("from_station"):
+        return redirect(url_for("branch_admin.branch_admin_broadcast_station"))
     return redirect(url_for("branch_admin.dashboard"))
 
 @branch_admin_bp.after_request
@@ -582,6 +607,43 @@ def branch_admin_inventory():
         grade_filter=grade_filter,
         status_filter=status_filter
     )
+
+@branch_admin_bp.route("/branch-admin/inventory/stats-api")
+def inventory_stats_api():
+    if session.get("role") != "branch_admin":
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT
+              COUNT(*) AS total_items,
+              COALESCE(SUM(stock_total),0) AS total_stock,
+              COALESCE(SUM(reserved_qty),0) AS total_reserved,
+              COALESCE(SUM(CASE WHEN (stock_total - reserved_qty) < 10 THEN 1 ELSE 0 END),0) AS low_stock_items
+            FROM inventory_items
+            WHERE branch_id = %s AND is_active = TRUE AND category != 'BOOK'
+        """, (branch_id,))
+        stats = cursor.fetchone()
+        
+        total_stock = int(stats['total_stock'] or 0)
+        reserved = int(stats['total_reserved'] or 0)
+        available = total_stock - reserved
+        
+        return jsonify({
+            "total_items": stats['total_items'],
+            "total_stock": total_stock,
+            "reserved": reserved,
+            "available": available,
+            "low_stock": stats['low_stock_items']
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
 
 @branch_admin_bp.route("/branch-admin/inventory/add", methods=["GET", "POST"])
 def branch_admin_inventory_add():

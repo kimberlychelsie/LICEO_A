@@ -1,615 +1,516 @@
 {% extends "base.html" %}
 
-{% block title %}Add New Item | Liceo LMS{% endblock %}
+{% block title %}Add New Item | Command Center{% endblock %}
 
 {% block styles %}
 <style>
-  :root {
-    --primary-h: 224;
-    --primary-s: 70%;
-    --primary-l: 33%;
-    --primary: hsl(var(--primary-h), var(--primary-s), var(--primary-l));
-    --primary-light: hsl(var(--primary-h), var(--primary-s), 95%);
-    --primary-border: hsl(var(--primary-h), var(--primary-s), 85%);
-    
-    --success: hsl(142, 69%, 45%);
-    --success-light: hsl(142, 69%, 96%);
-    --error: hsl(0, 84%, 60%);
-    --error-light: hsl(0, 84%, 97%);
-    
-    --text-main: #1e293b;
-    --text-muted: #64748b;
-    --bg-main: #f8fafc;
-    --card-bg: #ffffff;
-    --border-color: #e2e8f0;
-    
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  }
+    :root {
+        --ma-primary: #1a3a8f;
+        --ma-gold: #facc15;
+        --ma-gold-glow: rgba(250, 204, 21, 0.4);
+        --ma-bg: #fdfdfd;
+        --ma-glass: rgba(255, 255, 255, 0.9);
+        --ma-glass-border: rgba(26, 58, 143, 0.1);
+        --ma-text: #0f172a;
+        --ma-muted: #64748b;
+        --ma-shadow-deep: 0 20px 50px -10px rgba(26, 58, 143, 0.12), 0 10px 20px -5px rgba(0, 0, 0, 0.04);
+        --ma-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.05);
+    }
 
-  body {
-    background: var(--bg-main);
-    color: var(--text-main);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  }
+    body {
+        background-color: var(--ma-bg);
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
 
-  .ba-container {
-    max-width: 900px;
-    margin: 40px auto;
-    padding: 0 20px;
-  }
+    .ma-container {
+        padding: 40px 32px;
+        max-width: 1000px;
+        margin: 0 auto;
+        animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
 
-  /* Header Section */
-  .page-header {
-    margin-bottom: 32px;
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-  }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 
-  .header-content h1 {
-    font-size: 2rem;
-    font-weight: 800;
-    color: var(--primary);
-    margin-bottom: 8px;
-    letter-spacing: -0.025em;
-  }
+    /* ── Premium Header ── */
+    .premium-header {
+        margin-bottom: 40px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 24px;
+    }
 
-  .header-content p {
-    color: var(--text-muted);
-    font-size: 1rem;
-  }
+    .header-text h1 {
+        font-size: 2.5rem;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        margin-bottom: 8px;
+        color: var(--ma-primary);
+    }
 
-  /* Modern Card */
-  .modern-card {
-    background: var(--card-bg);
-    border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-md);
-    border: 1px solid var(--border-color);
-    overflow: hidden;
-  }
+    .header-text h1 span {
+        background: linear-gradient(135deg, var(--ma-primary), #3b82f6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
 
-  .card-body {
-    padding: 40px;
-  }
+    .header-text p {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--ma-muted);
+    }
 
-  /* Section Titles */
-  .form-section-title {
-    font-size: 0.875rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--primary);
-    margin: 32px 0 20px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
+    /* ── Command Card ── */
+    .command-card {
+        background: var(--ma-glass);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid var(--ma-glass-border);
+        border-radius: 24px;
+        box-shadow: var(--ma-shadow-deep);
+        overflow: hidden;
+        margin-bottom: 32px;
+    }
 
-  .form-section-title:first-child {
-    margin-top: 0;
-  }
+    .card-header-accent {
+        height: 6px;
+        background: linear-gradient(90deg, var(--ma-primary), var(--ma-gold));
+    }
 
-  .form-section-title::after {
-    content: '';
-    flex: 1;
-    height: 1px;
-    background: var(--border-color);
-  }
+    .card-body {
+        padding: 40px;
+    }
 
-  /* Form Elements */
-  .form-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 24px;
-  }
+    /* ── Form Layout ── */
+    .form-section {
+        margin-bottom: 40px;
+    }
 
-  .form-group {
-    margin-bottom: 0;
-  }
+    .section-title {
+        font-size: 0.85rem;
+        font-weight: 800;
+        color: var(--ma-primary);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
 
-  .form-group.full-width {
-    grid-column: span 2;
-  }
+    .section-title::after {
+        content: '';
+        height: 1px;
+        flex: 1;
+        background: linear-gradient(90deg, #e2e8f0, transparent);
+    }
 
-  label {
-    display: block;
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: var(--text-main);
-    margin-bottom: 8px;
-  }
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+    }
 
-  .input-wrapper {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
+    .form-group.full {
+        grid-column: span 2;
+    }
 
-  .input-icon {
-    position: absolute;
-    left: 14px;
-    color: var(--text-muted);
-    pointer-events: none;
-    font-size: 1.1rem;
-  }
+    .form-group label {
+        display: block;
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--ma-text);
+        margin-bottom: 8px;
+    }
 
-  input, select, textarea {
-    width: 100%;
-    padding: 12px 16px;
-    background: white;
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    font-size: 0.95rem;
-    color: var(--text-main);
-    transition: var(--transition);
-  }
+    .input-pill {
+        width: 100%;
+        padding: 14px 20px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--ma-text);
+        transition: all 0.2s ease;
+    }
 
-  input:focus, select:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 4px var(--primary-light);
-  }
+    .input-pill:focus {
+        outline: none;
+        background: white;
+        border-color: var(--ma-primary);
+        box-shadow: 0 0 0 4px rgba(26, 58, 143, 0.1);
+    }
 
-  .has-icon input, .has-icon select {
-    padding-left: 45px;
-  }
+    /* ── Image Preview Box ── */
+    .preview-box {
+        width: 100%;
+        height: 240px;
+        background: #f8fafc;
+        border: 2px dashed #e2e8f0;
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 12px;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        position: relative;
+    }
 
-  /* Custom Select Arrow */
-  select {
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: right 14px center;
-    background-size: 16px;
-  }
+    .preview-box img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: none;
+    }
 
-  /* Checkbox Switch */
-  .switch-group {
-    background: var(--primary-light);
-    padding: 16px 20px;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--primary-border);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    cursor: pointer;
-    transition: var(--transition);
-  }
+    .preview-placeholder {
+        text-align: center;
+        color: var(--ma-muted);
+    }
 
-  .switch-group:hover {
-    border-color: var(--primary);
-  }
+    .preview-placeholder i {
+        font-size: 2.5rem;
+        margin-bottom: 12px;
+        display: block;
+        opacity: 0.3;
+    }
 
-  .switch-label {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
+    /* ── Size Selectors ── */
+    .size-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
 
-  .switch-title {
-    font-weight: 700;
-    color: var(--primary);
-    font-size: 0.95rem;
-  }
+    .chip-item {
+        position: relative;
+    }
 
-  .switch-desc {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-  }
+    .chip-item input {
+        position: absolute;
+        opacity: 0;
+        cursor: pointer;
+    }
 
-  .switch {
-    position: relative;
-    display: inline-block;
-    width: 44px;
-    height: 24px;
-  }
+    .chip-label {
+        display: block;
+        padding: 10px 18px;
+        background: #f1f5f9;
+        border: 2px solid #f1f5f9;
+        border-radius: 12px;
+        font-size: 0.85rem;
+        font-weight: 800;
+        color: var(--ma-muted);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
 
-  .switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-  }
+    .chip-item input:checked + .chip-label {
+        background: #dbeafe;
+        border-color: var(--ma-primary);
+        color: var(--ma-primary);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(26, 58, 143, 0.1);
+    }
 
-  .slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #cbd5e1;
-    transition: .4s;
-    border-radius: 34px;
-  }
+    /* ── Switch Hub ── */
+    .hub-switch {
+        background: #f8fafc;
+        padding: 20px;
+        border-radius: 20px;
+        border: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
 
-  .slider:before {
-    position: absolute;
-    content: "";
-    height: 18px;
-    width: 18px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: .4s;
-    border-radius: 50%;
-  }
+    .hub-switch:hover {
+        border-color: var(--ma-primary);
+        background: white;
+    }
 
-  input:checked + .slider {
-    background-color: var(--primary);
-  }
+    .switch-info strong {
+        display: block;
+        color: var(--ma-primary);
+        font-size: 1rem;
+    }
 
-  input:checked + .slider:before {
-    transform: translateX(20px);
-  }
+    .switch-info span {
+        font-size: 0.8rem;
+        color: var(--ma-muted);
+        font-weight: 600;
+    }
 
-  .image-preview-area {
-    margin-top: 12px;
-    width: 100%;
-    height: 200px;
-    border: 2px dashed var(--border-color);
-    border-radius: var(--radius-md);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: #f8fafc;
-    overflow: hidden;
-    transition: var(--transition);
-  }
+    /* Toggle Switch Style */
+    .ios-switch {
+        position: relative;
+        display: inline-block;
+        width: 46px;
+        height: 26px;
+    }
 
-  .size-checkboxes {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 8px;
-  }
-  .size-cb-label {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: #f1f5f9;
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: 1px solid #e2e8f0;
-    cursor: pointer;
-    font-size: 0.85rem;
-    font-weight: 600;
-    transition: all 0.2s;
-  }
-  .size-cb-label:has(input:checked) {
-    background: var(--primary-light);
-    border-color: var(--primary);
-    color: var(--primary);
-  }
-  .size-cb-label input {
-    width: auto;
-    margin: 0;
-  }
+    .ios-switch input { opacity: 0; width: 0; height: 0; }
 
-  .image-preview-area.has-image {
-    border-style: solid;
-    border-color: var(--primary-border);
-  }
+    .ios-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background-color: #cbd5e1;
+        transition: .4s;
+        border-radius: 34px;
+    }
 
-  .image-preview-area img {
-    max-width: 100%;
-    max-height: 100%;
-    object-fit: contain;
-  }
+    .ios-slider:before {
+        position: absolute;
+        content: "";
+        height: 20px;
+        width: 20px;
+        left: 3px;
+        bottom: 3px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
 
-  .preview-placeholder {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    color: var(--text-muted);
-  }
+    input:checked + .ios-slider { background-color: var(--ma-primary); }
+    input:checked + .ios-slider:before { transform: translateX(20px); }
 
-  .preview-placeholder i {
-    font-size: 2.5rem;
-    margin-bottom: 8px;
-  }
+    /* ── Action Buttons ── */
+    .action-bar {
+        display: flex;
+        justify-content: flex-end;
+        gap: 16px;
+        margin-top: 24px;
+    }
 
-  /* Buttons */
-  .button-group {
-    margin-top: 40px;
-    display: flex;
-    gap: 16px;
-    justify-content: flex-end;
-  }
+    .btn-command {
+        padding: 16px 32px;
+        border-radius: 14px;
+        font-weight: 800;
+        font-size: 0.95rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        text-decoration: none;
+    }
 
-  .btn {
-    padding: 12px 28px;
-    font-size: 0.95rem;
-    font-weight: 700;
-    border-radius: var(--radius-md);
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
-    cursor: pointer;
-    transition: var(--transition);
-    border: none;
-    text-decoration: none;
-  }
+    .btn-command-primary {
+        background: var(--ma-primary);
+        color: white;
+        box-shadow: 0 10px 25px -5px rgba(26, 58, 143, 0.3);
+    }
 
-  .btn-primary {
-    background: var(--primary);
-    color: white;
-    box-shadow: 0 4px 14px rgba(26, 58, 143, 0.25);
-  }
+    .btn-command-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 15px 30px -5px rgba(26, 58, 143, 0.4);
+    }
 
-  .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(26, 58, 143, 0.35);
-    background: hsl(var(--primary-h), var(--primary-s), 25%);
-  }
+    .btn-command-outline {
+        background: white;
+        color: var(--ma-muted);
+        border: 2px solid #e2e8f0;
+    }
 
-  .btn-secondary {
-    background: white;
-    color: var(--text-main);
-    border: 1px solid var(--border-color);
-  }
+    .btn-command-outline:hover {
+        background: #f8fafc;
+        border-color: var(--ma-muted);
+        color: var(--ma-text);
+    }
 
-  .btn-secondary:hover {
-    background: var(--bg-main);
-    border-color: var(--text-muted);
-  }
-
-  /* Alerts */
-  .modern-alert {
-    padding: 16px 20px;
-    border-radius: var(--radius-md);
-    margin-bottom: 24px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    animation: slideIn 0.3s ease-out;
-  }
-
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .alert-success { background: var(--success-light); color: var(--success); border: 1px solid hsl(142, 69%, 90%); }
-  .alert-error { background: var(--error-light); color: var(--error); border: 1px solid hsl(0, 84%, 93%); }
-
-  @media (max-width: 640px) {
-    .form-grid { grid-template-columns: 1fr; }
-    .form-group.full-width { grid-column: span 1; }
-    .page-header { flex-direction: column; align-items: flex-start; gap: 16px; }
-  }
+    @media (max-width: 768px) {
+        .form-grid { grid-template-columns: 1fr; }
+        .form-group.full { grid-column: span 1; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="ba-container">
-  <header class="page-header">
-    <div class="header-content">
-      <h1>Add New Item</h1>
-      <p>Configure a new product for your campus inventory.</p>
+<div class="ma-container">
+    <header class="premium-header">
+        <div class="header-text">
+            <h1>Add New <span>Item</span></h1>
+            <p>Deploy a new product to your campus inventory registry</p>
+        </div>
+        <a href="{{ url_for('branch_admin.branch_admin_inventory') }}" class="btn-command btn-command-outline">
+            <i class="fas fa-chevron-left"></i> Back to Inventory
+        </a>
+    </header>
+
+    {% if message %}
+    <div style="background: #dcfce7; color: #16a34a; padding: 16px 24px; border-radius: 16px; margin-bottom: 24px; font-weight: 800; display: flex; align-items: center; gap: 12px; border: 1px solid #bbf7d0;">
+        <i class="fas fa-check-circle"></i> {{ message }}
     </div>
-    <a href="{{ url_for('branch_admin.branch_admin_inventory') }}" class="btn btn-secondary">
-      <span>&larr;</span> Back to List
-    </a>
-  </header>
+    {% endif %}
 
-  {% if message %}
-  <div class="modern-alert alert-success">
-    <span>✅</span> {{ message }}
-  </div>
-  {% endif %}
-
-  {% if error %}
-  <div class="modern-alert alert-error">
-    <span>❌</span> {{ error }}
-  </div>
-  {% endif %}
-
-  <div class="modern-card">
-    <div class="card-body">
-      <form method="POST" id="inventoryForm">
-        
-        <h3 class="form-section-title"><span>📦</span> Item Identity</h3>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Item Category *</label>
-            <div class="input-wrapper has-icon">
-              <span class="input-icon">🏷️</span>
-              <select name="category" required id="categorySelect">
-                <option value="UNIFORM" selected>Uniform</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Item Name *</label>
-            <div class="input-wrapper has-icon">
-              <span class="input-icon">📝</span>
-              <input type="text" name="item_name" placeholder="e.g. PE Uniform Set" required>
-            </div>
-          </div>
-
-          <div class="form-group full-width">
-            <label>Image URL</label>
-            <div class="input-wrapper has-icon">
-              <span class="input-icon">🖼️</span>
-              <input type="url" name="image_url" id="imageUrlInput" placeholder="https://example.com/item-photo.jpg">
-            </div>
-            <div class="image-preview-area" id="imagePreviewArea">
-              <div class="preview-placeholder">
-                <i>📷</i>
-                <span>Image Preview</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <h3 class="form-section-title"><span>📊</span> Logistics & Pricing</h3>
-        <div class="form-grid">
-          <div class="form-group">
-            <label>Target Grade Level</label>
-            <div class="input-wrapper has-icon">
-              <span class="input-icon">🎓</span>
-              <select name="grade_level" id="gradeSelect">
-                <option value="">Select grade level...</option>
-                <option value="Nursery">Nursery</option>
-                <option value="Kinder">Kinder</option>
-                {% for i in range(1, 13) %}
-                <option value="Grade {{ i }}">Grade {{ i }}</option>
-                {% endfor %}
-              </select>
-            </div>
-          </div>
-
-          <div id="uniformSizesGroup" class="form-group full-width" style="display: none;">
-            <label>Select Uniform Sizes to Generate</label>
-            <div class="size-checkboxes">
-                <label class="size-cb-label"><input type="checkbox" name="sizes" value="XXS"> XXS</label>
-                <label class="size-cb-label"><input type="checkbox" name="sizes" value="XS"> XS</label>
-                <label class="size-cb-label"><input type="checkbox" name="sizes" value="S"> S</label>
-                <label class="size-cb-label"><input type="checkbox" name="sizes" value="M"> M</label>
-                <label class="size-cb-label"><input type="checkbox" name="sizes" value="L"> L</label>
-                <label class="size-cb-label"><input type="checkbox" name="sizes" value="XL"> XL</label>
-                <label class="size-cb-label"><input type="checkbox" name="sizes" value="XXL"> XXL</label>
-                <label class="size-cb-label"><input type="checkbox" name="sizes" value="3XL"> 3XL</label>
-                <label class="size-cb-label"><input type="checkbox" name="sizes" value="4XL"> 4XL</label>
-                <label class="size-cb-label"><input type="checkbox" name="sizes" value="Free Size"> Free Size</label>
-            </div>
-            <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 8px;">
-                <i>ℹ️ The <b>Opening Stock</b> entered below will be applied to EACH selected size.</i>
-            </p>
-          </div>
-
-          <div id="customSizeGroup" class="form-group">
-            <label>Size / Variant (Optional)</label>
-            <div class="input-wrapper has-icon">
-              <span class="input-icon">📏</span>
-              <input type="text" name="size_label" id="customSizeInput" placeholder="e.g. Hardbound, One Size">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Unit Price (₱) *</label>
-            <div class="input-wrapper has-icon">
-              <span class="input-icon">💰</span>
-              <input type="number" name="price" step="0.01" min="0" max="1000" placeholder="0.00" required
-                onkeydown="if(event.key==='-' || event.key==='+') return false;"
-                oninput="if(parseFloat(this.value) > 1000) this.value = '1000';">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Opening Stock (Per Size) *</label>
-            <div class="input-wrapper has-icon">
-              <span class="input-icon">📦</span>
-              <input type="number" name="stock_total" min="0" max="500" placeholder="0" required
-                onkeydown="if(event.key==='-' || event.key==='+' || event.key==='.') return false;"
-                oninput="if(parseInt(this.value) > 500) this.value = '500';">
-            </div>
-          </div>
-
-          <div class="form-group full-width">
-            <div class="switch-group" onclick="document.getElementById('is_common').click()">
-              <div class="switch-label">
-                <span class="switch-title">Universal Item</span>
-                <span class="switch-desc">Available for all grade levels regardless of selection.</span>
-              </div>
-              <label class="switch" onclick="event.stopPropagation()">
-                <input type="checkbox" name="is_common" id="is_common">
-                <span class="slider"></span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div class="button-group">
-          <button type="submit" class="btn btn-primary">
-            <span>✅</span> Confirm & Add Item
-          </button>
-        </div>
-      </form>
+    {% if error %}
+    <div style="background: #fee2e2; color: #dc2626; padding: 16px 24px; border-radius: 16px; margin-bottom: 24px; font-weight: 800; display: flex; align-items: center; gap: 12px; border: 1px solid #fecaca;">
+        <i class="fas fa-exclamation-triangle"></i> {{ error }}
     </div>
-  </div>
+    {% endif %}
+
+    <div class="command-card">
+        <div class="card-header-accent"></div>
+        <div class="card-body">
+            <form method="POST" id="inventoryForm">
+                
+                <!-- Section: Identity -->
+                <div class="form-section">
+                    <div class="section-title"><i class="fas fa-fingerprint"></i> Item Identity</div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select name="category" class="input-pill" required id="categorySelect">
+                                <option value="UNIFORM" selected>Uniform</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Item Name</label>
+                            <input type="text" name="item_name" class="input-pill" placeholder="e.g. Senior High Polo" required>
+                        </div>
+                        <div class="form-group full">
+                            <label>Cover Media (Image URL)</label>
+                            <input type="url" name="image_url" id="imageUrlInput" class="input-pill" placeholder="https://cloudinary.com/your-image.jpg">
+                            <div class="preview-box" id="imagePreviewBox">
+                                <div class="preview-placeholder">
+                                    <i class="fas fa-image"></i>
+                                    <span>Real-time Image Preview</span>
+                                </div>
+                                <img id="previewImageTag" src="" alt="Preview">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section: Parameters -->
+                <div class="form-section">
+                    <div class="section-title"><i class="fas fa-sliders-h"></i> Specifications & Logistics</div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Academic Grade Target</label>
+                            <select name="grade_level" class="input-pill" id="gradeSelect">
+                                <option value="">Universal / All Grades</option>
+                                <option value="Nursery">Nursery</option>
+                                <option value="Kinder">Kinder</option>
+                                {% for i in range(1, 13) %}
+                                <option value="Grade {{ i }}">Grade {{ i }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="form-group" id="price_stock_row">
+                            <label>Unit Pricing (₱)</label>
+                            <input type="number" name="price" class="input-pill" step="0.01" min="0" placeholder="0.00" required>
+                        </div>
+
+                        <div class="form-group full" id="uniformSizesGroup" style="display: none;">
+                            <label>Size Registry (Generates multiple records)</label>
+                            <div class="size-chips">
+                                {% for size in ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL', 'Free Size'] %}
+                                <div class="chip-item">
+                                    <input type="checkbox" name="sizes" value="{{ size }}" id="size_{{ size }}">
+                                    <label for="size_{{ size }}" class="chip-label">{{ size }}</label>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <p style="margin-top: 12px; font-size: 0.8rem; color: var(--ma-muted); font-weight: 600;">
+                                <i class="fas fa-info-circle"></i> Selected sizes will initialize with the Opening Stock value below.
+                            </p>
+                        </div>
+
+                        <div id="customSizeGroup" class="form-group">
+                            <label>Single Variant / Size</label>
+                            <input type="text" name="size_label" id="customSizeInput" class="input-pill" placeholder="e.g. Standard">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Opening Stock Capacity</label>
+                            <input type="number" name="stock_total" class="input-pill" min="0" placeholder="0" required>
+                        </div>
+
+                        <div class="form-group full">
+                            <div class="hub-switch" onclick="document.getElementById('is_common').click()">
+                                <div class="switch-info">
+                                    <strong>Common School Supply</strong>
+                                    <span>If enabled, this item appears in all grade levels.</span>
+                                </div>
+                                <label class="ios-switch" onclick="event.stopPropagation()">
+                                    <input type="checkbox" name="is_common" id="is_common">
+                                    <span class="ios-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="action-bar">
+                    <button type="submit" class="btn-command btn-command-primary">
+                        <i class="fas fa-plus-circle"></i> Initialize Item
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // Image Preview Logic
-  const imageInput = document.getElementById('imageUrlInput');
-  const previewArea = document.getElementById('imagePreviewArea');
+    // Real-time Image Preview
+    const imageInput = document.getElementById('imageUrlInput');
+    const previewBox = document.getElementById('imagePreviewBox');
+    const previewImg = document.getElementById('previewImageTag');
+    const placeholder = previewBox.querySelector('.preview-placeholder');
 
-  imageInput.addEventListener('input', function() {
-    const url = this.value.trim();
-    if (url) {
-      previewArea.innerHTML = `<img src="${url}" onerror="handleImageError(this)" onload="handleImageSuccess()">`;
-    } else {
-      resetPreview();
+    imageInput.addEventListener('input', function() {
+        const url = this.value.trim();
+        if (url) {
+            previewImg.src = url;
+            previewImg.style.display = 'block';
+            placeholder.style.display = 'none';
+            previewBox.style.borderStyle = 'solid';
+            previewBox.style.borderColor = 'var(--ma-primary)';
+        } else {
+            previewImg.style.display = 'none';
+            placeholder.style.display = 'block';
+            previewBox.style.borderStyle = 'dashed';
+            previewBox.style.borderColor = '#e2e8f0';
+        }
+    });
+
+    previewImg.onerror = function() {
+        this.style.display = 'none';
+        placeholder.style.display = 'block';
+        placeholder.innerHTML = '<i class="fas fa-exclamation-circle" style="color:#ef4444; opacity:1;"></i><span style="color:#ef4444;">Invalid Image URL</span>';
+    };
+
+    // Category Logic
+    const categorySelect = document.getElementById('categorySelect');
+    const uniformSizesGroup = document.getElementById('uniformSizesGroup');
+    const customSizeGroup = document.getElementById('customSizeGroup');
+
+    function toggleSizes() {
+        if (categorySelect.value === 'UNIFORM') {
+            uniformSizesGroup.style.display = 'block';
+            customSizeGroup.style.display = 'none';
+        } else {
+            uniformSizesGroup.style.display = 'none';
+            customSizeGroup.style.display = 'block';
+        }
     }
-  });
 
-  function handleImageSuccess() {
-    previewArea.classList.add('has-image');
-  }
-
-  function handleImageError(img) {
-    previewArea.classList.remove('has-image');
-    previewArea.innerHTML = `
-      <div class="preview-placeholder" style="color: var(--error)">
-        <i>⚠️</i>
-        <span>Invalid Image URL</span>
-      </div>
-    `;
-  }
-
-  function resetPreview() {
-    previewArea.classList.remove('has-image');
-    previewArea.innerHTML = `
-      <div class="preview-placeholder">
-        <i>📷</i>
-        <span>Image Preview</span>
-      </div>
-    `;
-  }
-
-  // Automatic "Universal" handling
-  const gradeSelect = document.getElementById('gradeSelect');
-  const isCommonCheck = document.getElementById('is_common');
-
-  gradeSelect.addEventListener('change', function() {
-    if (this.value !== "") {
-      // If a specific grade is selected, it's likely not a common item by default
-      // but we allow the user to override.
-    }
-  });
-
-  // Toggle Size Fields based on Category
-  const categorySelect = document.getElementById('categorySelect');
-  const uniformSizesGroup = document.getElementById('uniformSizesGroup');
-  const customSizeGroup = document.getElementById('customSizeGroup');
-  const customSizeInput = document.getElementById('customSizeInput');
-
-  function toggleSizeFields() {
-    if (categorySelect.value === 'UNIFORM') {
-        uniformSizesGroup.style.display = 'block';
-        customSizeGroup.style.display = 'none';
-        customSizeInput.value = '';
-    } else {
-        uniformSizesGroup.style.display = 'none';
-        customSizeGroup.style.display = 'block';
-        // Uncheck all size checkboxes
-        document.querySelectorAll('input[name="sizes"]').forEach(cb => cb.checked = false);
-    }
-  }
-
-  categorySelect.addEventListener('change', toggleSizeFields);
-  // Initial run
-  toggleSizeFields();
+    categorySelect.addEventListener('change', toggleSizes);
+    toggleSizes();
 </script>
 {% endblock %}
