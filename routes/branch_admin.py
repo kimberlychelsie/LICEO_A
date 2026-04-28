@@ -54,17 +54,36 @@ def item_matches_grade_filter(item_name, stored_grade, grade_filter):
         return grade_filter in GRADE_MAPPINGS[item_name]
     return stored_grade == grade_filter or stored_grade is None
 
-def get_grade_order(grade_level):
-    if not grade_level:
-        return 999
-    grade_str = str(grade_level).strip().lower()
-    if 'nursery' in grade_str:
-        return -1
-    if 'kinder' in grade_str or 'pre' in grade_str:
-        return 0
-    match = re.search(r'(\d+)', grade_str)
-    if match:
-        return int(match.group(1))
+def get_grade_order(item_name, grade_level):
+    """
+    Determines sorting order. 
+    Nursery/Kinder < Elementary < JHS < SHS < PE (Last)
+    """
+    name_lower = str(item_name or "").lower()
+    
+    # PE is always dead last
+    if 'pe uniform' in name_lower or 'p.e.' in name_lower or 'p.e' in name_lower:
+        return 1000
+    
+    # Try to get order from grade_level column first
+    if grade_level:
+        grade_str = str(grade_level).strip().lower()
+        if 'nursery' in grade_str: return 10
+        if 'kinder' in grade_str or 'pre' in grade_str: return 20
+        match = re.search(r'(\d+)', grade_str)
+        if match:
+            return 100 + int(match.group(1))
+    
+    # If no grade_level, check item_name for uniform sets
+    if 'pre-elementary' in name_lower or 'pre elem' in name_lower:
+        return 15
+    if 'elementary' in name_lower:
+        return 110 # approx Grade 1-6 area
+    if 'jhs' in name_lower or 'junior high' in name_lower:
+        return 115 # Grade 7-10 area
+    if 'shs' in name_lower or 'senior high' in name_lower:
+        return 125 # Grade 11-12 area
+        
     return 999
 
 # =======================
@@ -575,11 +594,12 @@ def branch_admin_inventory():
 
         def sort_key(item):
             category = item[1]
-            grade_level = item[3]
             item_name = item[2]
+            grade_level = item[3]
             cat = str(category or "").strip().upper()
             cat_order = 0 if cat == "BOOK" else (1 if cat == "UNIFORM" else 2)
-            return (cat_order, get_grade_order(grade_level), item_name.lower())
+            # Pass both name and grade to get correct sequence
+            return (cat_order, get_grade_order(item_name, grade_level), item_name.lower())
 
         enhanced_items = sorted(enhanced_items, key=sort_key)
 
@@ -668,6 +688,21 @@ def branch_admin_inventory_add():
         if not (category and item_name and price and stock_total):
             flash("Missing required fields", "error")
             return redirect("/branch-admin/inventory/add")
+
+        # Auto-set image_url for uniform sets if not provided
+        if category == "UNIFORM" and not image_url:
+            uniform_images = {
+                'Pre-Elementary Boys Set': '/static/img/PRE_ELEM_BOYS_SET.jpg',
+                'Pre-Elementary Girls Set': '/static/img/PRE_ELEM_GIRLS_SET.jpg',
+                'Elementary G4-6 Boys Set': '/static/img/ELEM_G4to6_BOYS_SET.jpg',
+                'JHS Boys Uniform Set': '/static/img/JHS_BOYS_SET.jpg',
+                'JHS Girls Uniform Set': '/static/img/JHS_GIRLS_SET.jpg',
+                'SHS Boys Uniform Set': '/static/img/SHS_BOYS_SET.jpg',
+                'SHS Girls Uniform Set': '/static/img/SHS_GIRLS_SET.jpg',
+                'PE Uniform': '/static/img/PE_SET.jpg'
+            }
+            if item_name in uniform_images:
+                image_url = uniform_images[item_name]
 
         db = get_db_connection()
         cursor = db.cursor()
@@ -1321,54 +1356,75 @@ def branch_admin_subjects():
         db.close()
         return redirect("/branch-admin/subjects")
 
-    # ✅ only show subjects used by this branch
-    cursor.execute("""
-        SELECT DISTINCT sub.subject_id, sub.name, sub.deped_category
-        FROM subjects sub
-        JOIN section_teachers st ON st.subject_id = sub.subject_id
-        JOIN sections s ON s.section_id = st.section_id
-        INNER JOIN school_years y ON s.year_id = y.year_id           
-        WHERE s.branch_id = %s AND y.is_active = TRUE
-        ORDER BY sub.name
-    """, (branch_id,))
-    subjects = cursor.fetchall() or []
-
-    # assignments for this branch only
-    cursor.execute("""
+    # Assignments for this branch only (Filterable by section)
+    section_id_filter = request.args.get("section_id")
+    
+    query = """
         SELECT
             st.subject_id,
+            sub.name,
+            sub.deped_category,
             s.section_id,
             s.section_name,
-            g.name AS grade_level_name
+            g.name AS grade_level_name,
+            st.is_archived
         FROM section_teachers st
+        INNER JOIN subjects sub ON st.subject_id = sub.subject_id
         INNER JOIN sections s ON st.section_id = s.section_id
         INNER JOIN grade_levels g ON s.grade_level_id = g.id
         INNER JOIN school_years y ON s.year_id = y.year_id           
         WHERE s.branch_id = %s AND y.is_active = TRUE
-        ORDER BY st.subject_id, g.display_order, s.section_name
-    """, (branch_id,))
+    """
+    params = [branch_id]
+    
+    if section_id_filter:
+        query += " AND s.section_id = %s "
+        params.append(section_id_filter)
+        
+    query += " ORDER BY g.display_order, s.section_name, sub.name"
+    
+    cursor.execute(query, tuple(params))
     assignments = cursor.fetchall() or []
-
-    subject_to_sections = {}
-    subject_first_section = {}
-    for a in assignments:
-        sid = a["subject_id"]
-        subject_to_sections.setdefault(sid, []).append(
-            f"{a['grade_level_name']} - {a['section_name']}"
-        )
-        if sid not in subject_first_section:
-            subject_first_section[sid] = a["section_id"]
 
     cursor.close()
     db.close()
 
     return render_template(
         "branch_admin_subjects.html",
-        subjects=subjects,
+        assignments=assignments,
         section_options=section_options,
-        subject_to_sections=subject_to_sections,
-        subject_first_section=subject_first_section
+        selected_section_id=section_id_filter
     )
+
+@branch_admin_bp.route("/branch-admin/subjects/<int:subject_id>/<int:section_id>/toggle-archive", methods=["POST"])
+def branch_admin_subject_toggle_archive(subject_id, section_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        # Verify section belongs to branch
+        cursor.execute("SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s", (section_id, branch_id))
+        if cursor.fetchone():
+            cursor.execute("""
+                UPDATE section_teachers 
+                SET is_archived = NOT is_archived 
+                WHERE subject_id = %s AND section_id = %s
+                RETURNING is_archived
+            """, (subject_id, section_id))
+            res = cursor.fetchone()
+            db.commit()
+            status = "archived" if res[0] else "restored"
+            flash(f"Subject has been {status}.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error toggling archive: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+    return redirect(url_for("branch_admin.branch_admin_subjects", section_id=section_id))
 
 @branch_admin_bp.route("/branch-admin/subjects/<int:subject_id>/delete", methods=["POST"])
 def branch_admin_subject_delete(subject_id):

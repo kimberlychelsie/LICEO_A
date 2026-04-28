@@ -1193,6 +1193,22 @@ def student_reservation():
 
             return str(item_grade_level).strip().lower() == str(student_grade_level).strip().lower()
 
+        def get_grade_order(item_name, grade_level):
+            name_lower = str(item_name or "").lower()
+            if 'pe uniform' in name_lower or 'p.e.' in name_lower or 'p.e' in name_lower:
+                return 1000
+            if grade_level:
+                grade_str = str(grade_level).strip().lower()
+                if 'nursery' in grade_str: return 10
+                if 'kinder' in grade_str or 'pre' in grade_str: return 20
+                match = re.search(r'(\d+)', grade_str)
+                if match: return 100 + int(match.group(1))
+            if 'pre-elementary' in name_lower or 'pre elem' in name_lower: return 15
+            if 'elementary' in name_lower: return 110
+            if 'jhs' in name_lower or 'junior high' in name_lower: return 115
+            if 'shs' in name_lower or 'senior high' in name_lower: return 125
+            return 999
+
         query = """
             SELECT item_id, category, item_name, grade_level, is_common, size_label,
                    price, stock_total, reserved_qty, image_url
@@ -1209,10 +1225,11 @@ def student_reservation():
             query += " AND category = %s"
             params.append(category_filter)
 
-        query += " ORDER BY category, item_name"
-
         cursor.execute(query, tuple(params))
         rows = cursor.fetchall() or []
+        
+        # Sort using Python for precise grade sequence control
+        rows = sorted(rows, key=lambda r: (0 if r['category'] == 'BOOK' else 1, get_grade_order(r['item_name'], r['grade_level']), r['item_name'].lower()))
 
         for r in rows:
             if bool(r['is_common']) or is_item_visible_for_student(r['item_name'], r['grade_level'], student_grade):

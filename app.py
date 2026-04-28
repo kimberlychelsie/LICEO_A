@@ -10,6 +10,7 @@ from routes.teacher import _get_active_school_year
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "liceo_secret_key_dev")
 limiter.init_app(app)
+app.jinja_env.add_extension('jinja2.ext.loopcontrols')
 
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.hostinger.com')
 app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 465))
@@ -185,6 +186,7 @@ def inject_teacher_subjects():
                 WHERE st.teacher_id = %s
                   AND s.branch_id = %s
                   AND s.year_id = %s
+                  AND st.is_archived = FALSE
                 ORDER BY gl.display_order, s.section_name, sub.name
             """, (user_id, branch_id, year_id))
 

@@ -177,6 +177,17 @@ def get_db_connection():
                 logger.warning(f"Could not migrate sections year_id: {e}")
                 conn.rollback()
 
+            # section_teachers is_archived migration
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'section_teachers'")
+                st_cols = [r[0] for r in cur.fetchall()]
+                if 'is_archived' not in st_cols:
+                    cur.execute("ALTER TABLE section_teachers ADD COLUMN is_archived BOOLEAN DEFAULT FALSE")
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate section_teachers is_archived: {e}")
+                conn.rollback()
+
             # ── Grading year_id consistency (posted_grades + sections backfill) ──
             # The teacher grading flow uses:
             # - sections.year_id when recomputing grades
@@ -423,6 +434,60 @@ def get_db_connection():
                 conn.commit()
             except Exception as e:
                 logger.warning(f"Could not migrate activity_submissions: {e}")
+                conn.rollback()
+
+            # ── Inventory Items image_url migration ──
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'inventory_items'")
+                inv_cols = [r[0] for r in cur.fetchall()]
+                if 'image_url' not in inv_cols:
+                    cur.execute("ALTER TABLE inventory_items ADD COLUMN image_url TEXT")
+                
+                # Auto-populate uniform images from static folder if missing
+                uniform_images = {
+                    'Pre-Elementary Boys Set': '/static/img/PRE_ELEM_BOYS_SET.jpg',
+                    'Pre-Elementary Girls Set': '/static/img/PRE_ELEM_GIRLS_SET.jpg',
+                    'Elementary G4-6 Boys Set': '/static/img/ELEM_G4to6_BOYS_SET.jpg',
+                    'JHS Boys Uniform Set': '/static/img/JHS_BOYS_SET.jpg',
+                    'JHS Girls Uniform Set': '/static/img/JHS_GIRLS_SET.jpg',
+                    'SHS Boys Uniform Set': '/static/img/SHS_BOYS_SET.jpg',
+                    'SHS Girls Uniform Set': '/static/img/SHS_GIRLS_SET.jpg',
+                    'PE Uniform': '/static/img/PE_SET.jpg'
+                }
+                
+                for item_name, img_path in uniform_images.items():
+                    cur.execute("""
+                        UPDATE inventory_items 
+                        SET image_url = %s 
+                        WHERE item_name = %s AND (image_url IS NULL OR image_url = '')
+                    """, (img_path, item_name))
+                
+                # ── SEEDING: If a branch has NO inventory, seed the default uniforms ──
+                cur.execute("SELECT branch_id FROM branches")
+                branches = [r[0] for r in cur.fetchall()]
+                
+                for b_id in branches:
+                    cur.execute("SELECT COUNT(*) FROM inventory_items WHERE branch_id = %s", (b_id,))
+                    if cur.fetchone()[0] == 0:
+                        logger.info(f"Seeding default inventory for branch {b_id}")
+                        for item_name, img_path in uniform_images.items():
+                            cur.execute("""
+                                INSERT INTO inventory_items (branch_id, category, item_name, price, stock_total, reserved_qty, image_url, is_active)
+                                VALUES (%s, 'UNIFORM', %s, 550.00, 600, 0, %s, TRUE)
+                                RETURNING item_id
+                            """, (b_id, item_name, img_path))
+                            new_item_id = cur.fetchone()[0]
+                            
+                            # Add default sizes for the seeded item (100 stock per size)
+                            for sz in ["XS", "S", "M", "L", "XL", "XXL"]:
+                                cur.execute("""
+                                    INSERT INTO inventory_item_sizes (item_id, size_label, stock_total, reserved_qty)
+                                    VALUES (%s, %s, 100, 0)
+                                """, (new_item_id, sz))
+                
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate inventory_items image_url: {e}")
                 conn.rollback()
 
             # ── Financial year_id migration ──
