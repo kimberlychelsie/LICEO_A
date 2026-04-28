@@ -54,17 +54,36 @@ def item_matches_grade_filter(item_name, stored_grade, grade_filter):
         return grade_filter in GRADE_MAPPINGS[item_name]
     return stored_grade == grade_filter or stored_grade is None
 
-def get_grade_order(grade_level):
-    if not grade_level:
-        return 999
-    grade_str = str(grade_level).strip().lower()
-    if 'nursery' in grade_str:
-        return -1
-    if 'kinder' in grade_str or 'pre' in grade_str:
-        return 0
-    match = re.search(r'(\d+)', grade_str)
-    if match:
-        return int(match.group(1))
+def get_grade_order(item_name, grade_level):
+    """
+    Determines sorting order. 
+    Nursery/Kinder < Elementary < JHS < SHS < PE (Last)
+    """
+    name_lower = str(item_name or "").lower()
+    
+    # PE is always dead last
+    if 'pe uniform' in name_lower or 'p.e.' in name_lower or 'p.e' in name_lower:
+        return 1000
+    
+    # Try to get order from grade_level column first
+    if grade_level:
+        grade_str = str(grade_level).strip().lower()
+        if 'nursery' in grade_str: return 10
+        if 'kinder' in grade_str or 'pre' in grade_str: return 20
+        match = re.search(r'(\d+)', grade_str)
+        if match:
+            return 100 + int(match.group(1))
+    
+    # If no grade_level, check item_name for uniform sets
+    if 'pre-elementary' in name_lower or 'pre elem' in name_lower:
+        return 15
+    if 'elementary' in name_lower:
+        return 110 # approx Grade 1-6 area
+    if 'jhs' in name_lower or 'junior high' in name_lower:
+        return 115 # Grade 7-10 area
+    if 'shs' in name_lower or 'senior high' in name_lower:
+        return 125 # Grade 11-12 area
+        
     return 999
 
 # =======================
@@ -575,11 +594,12 @@ def branch_admin_inventory():
 
         def sort_key(item):
             category = item[1]
-            grade_level = item[3]
             item_name = item[2]
+            grade_level = item[3]
             cat = str(category or "").strip().upper()
             cat_order = 0 if cat == "BOOK" else (1 if cat == "UNIFORM" else 2)
-            return (cat_order, get_grade_order(grade_level), item_name.lower())
+            # Pass both name and grade to get correct sequence
+            return (cat_order, get_grade_order(item_name, grade_level), item_name.lower())
 
         enhanced_items = sorted(enhanced_items, key=sort_key)
 
