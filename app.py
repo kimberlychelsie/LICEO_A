@@ -172,14 +172,20 @@ def inject_teacher_subjects():
             year_id = row["year_id"]
 
             cursor.execute("""
-                SELECT DISTINCT sub.subject_id, sub.name AS subject_name
+                SELECT 
+                    st.subject_id, 
+                    sub.name AS subject_name,
+                    s.section_id,
+                    s.section_name,
+                    gl.name AS grade_level_name
                 FROM section_teachers st
                 JOIN sections s ON st.section_id = s.section_id
                 JOIN subjects sub ON st.subject_id = sub.subject_id
+                JOIN grade_levels gl ON s.grade_level_id = gl.id
                 WHERE st.teacher_id = %s
                   AND s.branch_id = %s
                   AND s.year_id = %s
-                ORDER BY sub.name
+                ORDER BY gl.display_order, s.section_name, sub.name
             """, (user_id, branch_id, year_id))
 
             classes = cursor.fetchall()

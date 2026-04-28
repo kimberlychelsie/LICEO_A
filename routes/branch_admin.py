@@ -925,19 +925,23 @@ def branch_admin_grade_levels():
     db = get_db_connection()
     cursor = db.cursor()
 
-    VALID_GRADES = [
-        "Nursery", "Kinder",
-        "Grade 1", "Grade 2", "Grade 3",
-        "Grade 4", "Grade 5", "Grade 6",
-        "Grade 7", "Grade 8", "Grade 9",
-        "Grade 10", "Grade 11", "Grade 12"
-    ]
+    # Fetch all unique grade names from the system, sorted by their academic order
+    cursor.execute("SELECT name FROM grade_levels GROUP BY name ORDER BY MIN(display_order)")
+    available_grade_names = [row[0] for row in cursor.fetchall()]
+    
+    # Defaults if DB is empty
+    if not available_grade_names:
+        available_grade_names = [
+            "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3",
+            "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8",
+            "Grade 9", "Grade 10", "Grade 11", "Grade 12"
+        ]
 
     if request.method == "POST":
         name = (request.form.get("name") or "").strip()
 
         # ✅ validation
-        if name not in VALID_GRADES:
+        if name not in available_grade_names:
             flash("Invalid grade level selected.", "error")
             return redirect(url_for('branch_admin.branch_admin_grade_levels'))
 
@@ -980,7 +984,7 @@ def branch_admin_grade_levels():
     cursor.close()
     db.close()
 
-    return render_template("branch_admin_grade_levels.html", grades=grades, next_order=next_order)
+    return render_template("branch_admin_grade_levels.html", grades=grades, next_order=next_order, available_grade_names=available_grade_names)
 
 @branch_admin_bp.route("/branch-admin/grade-levels/<int:grade_id>/edit", methods=["POST"])
 def branch_admin_grade_level_edit(grade_id):
@@ -1250,61 +1254,68 @@ def branch_admin_subjects():
     section_options = cursor.fetchall() or []
 
     if request.method == "POST":
-        name = (request.form.get("name") or "").strip()
-        section_id_raw = request.form.get("section_id")
-        deped_category = request.form.get("deped_category", "language")
+        names = request.form.getlist("names")
+        categories = request.form.getlist("categories")
+        section_ids = request.form.getlist("section_ids")
 
-        try:
-            section_id = int(section_id_raw)
-        except (TypeError, ValueError):
-            section_id = None
-
-        if not name or not section_id:
-            flash("Subject name and section are required.", "error")
+        if not names or not section_ids:
+            flash("At least one subject and one section are required.", "error")
             cursor.close(); db.close()
             return redirect("/branch-admin/subjects")
 
         try:
-            # ✅ enforce section belongs to this branch
-            cursor.execute("SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s", (section_id, branch_id))
-            if not cursor.fetchone():
-                flash("Invalid section for this branch.", "error")
-                cursor.close(); db.close()
-                return redirect("/branch-admin/subjects")
+            added_count = 0
+            for i in range(len(names)):
+                name = names[i].strip()
+                if not name: continue
+                
+                deped_category = categories[i] if i < len(categories) else "language"
 
-            # create subject if not exists
-            cursor.execute("""
-                INSERT INTO subjects (name, deped_category)
-                VALUES (%s, %s)
-                ON CONFLICT (name) DO UPDATE SET deped_category = EXCLUDED.deped_category
-                RETURNING subject_id
-            """, (name, deped_category))
-            res = cursor.fetchone()
-            if res and res.get("subject_id"):
-                subject_id = res["subject_id"]
-            else:
-                cursor.execute("SELECT subject_id FROM subjects WHERE name=%s", (name,))
-                subject_id = cursor.fetchone()["subject_id"]
-
-            # ✅ link subject to section with teacher_id NULL (manual exists check)
-            cursor.execute("""
-                SELECT 1
-                FROM section_teachers
-                WHERE section_id=%s AND subject_id=%s AND teacher_id IS NULL
-                LIMIT 1
-            """, (section_id, subject_id))
-            if not cursor.fetchone():
+                # create subject if not exists
                 cursor.execute("""
-                    INSERT INTO section_teachers (section_id, teacher_id, subject_id, year_id)
-                    SELECT %s, NULL, %s, year_id FROM sections WHERE section_id = %s
-                """, (section_id, subject_id, section_id))
+                    INSERT INTO subjects (name, deped_category)
+                    VALUES (%s, %s)
+                    ON CONFLICT (name) DO UPDATE SET deped_category = EXCLUDED.deped_category
+                    RETURNING subject_id
+                """, (name, deped_category))
+                res = cursor.fetchone()
+                if res and res.get("subject_id"):
+                    subject_id = res["subject_id"]
+                else:
+                    cursor.execute("SELECT subject_id FROM subjects WHERE name=%s", (name,))
+                    subject_id = cursor.fetchone()["subject_id"]
+
+                for sid_raw in section_ids:
+                    try:
+                        sid = int(sid_raw)
+                    except:
+                        continue
+
+                    # ✅ enforce section belongs to this branch
+                    cursor.execute("SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s", (sid, branch_id))
+                    if not cursor.fetchone():
+                        continue
+
+                    # ✅ link subject to section
+                    cursor.execute("""
+                        SELECT 1
+                        FROM section_teachers
+                        WHERE section_id=%s AND subject_id=%s
+                        LIMIT 1
+                    """, (sid, subject_id))
+                    if not cursor.fetchone():
+                        cursor.execute("""
+                            INSERT INTO section_teachers (section_id, teacher_id, subject_id, year_id)
+                            SELECT %s, NULL, %s, year_id FROM sections WHERE section_id = %s
+                        """, (sid, subject_id, sid))
+                        added_count += 1
 
             db.commit()
-            flash("Subject added and assigned to section!", "success")
+            flash(f"Curriculum deployed! Processed {len(names)} subjects across selected sections.", "success")
 
         except Exception as e:
             db.rollback()
-            flash(f"Could not add subject: {str(e)}", "error")
+            flash(f"Could not deploy curriculum: {str(e)}", "error")
 
         cursor.close()
         db.close()

@@ -156,6 +156,89 @@
         opacity: 0.7;
     }
 
+    /* Bulk Section Chooser */
+    .section-chooser-container {
+        border: 1px solid var(--ma-border);
+        border-radius: 12px;
+        background: #fff;
+        max-height: 350px;
+        overflow-y: auto;
+        padding: 16px;
+    }
+
+    .grade-group {
+        margin-bottom: 16px;
+    }
+
+    .grade-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .grade-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #f1f5f9;
+        margin-bottom: 10px;
+    }
+
+    .grade-header span {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--ma-primary);
+        text-transform: uppercase;
+    }
+
+    .section-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 8px;
+    }
+
+    .section-checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: #f8fafc;
+        border: 1px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .section-checkbox-label:hover {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+
+    .section-checkbox-label input {
+        accent-color: var(--ma-primary);
+    }
+
+    .bulk-controls {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .btn-tiny {
+        padding: 4px 8px;
+        font-size: 0.7rem;
+        background: #f1f5f9;
+        color: var(--ma-muted);
+        border: 1px solid var(--ma-border);
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .btn-tiny:hover {
+        background: var(--ma-primary);
+        color: white;
+    }
+
     /* Table */
     .vault-table {
         width: 100%;
@@ -219,42 +302,83 @@
         {% if is_branch_active_status %}
         <div class="col-form">
             <div class="modern-card">
-                <h2>Add Subject</h2>
+                <h2>➕ Bulk Curriculum Builder</h2>
                 <form method="post" action="{{ url_for('branch_admin.branch_admin_subjects') }}">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                        <div>
-                            <div class="form-node">
-                                <label>Subject Name</label>
-                                <input type="text" name="name" class="form-control" placeholder="e.g. Mathematics" required>
+                    <div class="form-node" style="background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid var(--ma-border); margin-bottom: 24px;">
+                        <h3 style="font-size: 0.85rem; color: var(--ma-primary); font-weight: 800; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-info-circle"></i> CATEGORY & GRADING GUIDE
+                        </h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                            <div style="font-size: 0.75rem; line-height: 1.6;">
+                                <strong style="color: var(--ma-primary);">Language / Values</strong><br>
+                                <span style="color: var(--ma-muted);">WW 30% | PT 50% | QA 20%</span><br>
+                                <em style="font-size: 0.7rem;">(Fil, Eng, AP, EsP, Religion)</em>
                             </div>
-                            <div class="form-node">
-                                <label>Grade Level & Section</label>
-                                <select name="section_id" class="form-control" required>
-                                    <option value="">Select Grade & Section</option>
-                                    {% for sec in section_options %}
-                                    <option value="{{ sec.section_id }}">{{ sec.grade_level_name }} – {{ sec.section_name }}
-                                    </option>
-                                    {% endfor %}
-                                </select>
+                            <div style="font-size: 0.75rem; line-height: 1.6;">
+                                <strong style="color: var(--ma-primary);">Science / Math</strong><br>
+                                <span style="color: var(--ma-muted);">WW 40% | PT 40% | QA 20%</span><br>
+                                <em style="font-size: 0.7rem;">(Sci, Math)</em>
                             </div>
-                            <div class="form-node">
-                                <label>DepEd Category</label>
-                                <select name="deped_category" class="form-control" required>
-                                    <option value="language">Language / Values (WW 30%, PT 50%, QA 20%)</option>
-                                    <option value="science_math">Science / Math (WW 40%, PT 40%, QA 20%)</option>
-                                    <option value="skills">Skills (WW 20%, PT 60%, QA 20%)</option>
-                                </select>
+                            <div style="font-size: 0.75rem; line-height: 1.6;">
+                                <strong style="color: var(--ma-primary);">Skills / Technical</strong><br>
+                                <span style="color: var(--ma-muted);">WW 20% | PT 60% | QA 20%</span><br>
+                                <em style="font-size: 0.7rem;">(EPP, TLE, MAPEH, ICT)</em>
                             </div>
-                        </div>
-                        <div
-                            style="font-size: 14px; color: var(--ma-muted); line-height: 1.6; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid var(--ma-border); height: fit-content; align-self: center; margin-bottom: 20px;">
-                            <strong>Category Guide:</strong><br>
-                            • <strong>Language:</strong> Fil, Eng, AP, EsP, Values<br>
-                            • <strong>Science/Math:</strong> Sci, Math<br>
-                            • <strong>Skills:</strong> EPP, TLE, MAPEH, ICT
                         </div>
                     </div>
-                    <button type="submit" class="btn-prem btn-primary" style="width: 100%;">Add Subject</button>
+
+                    <div class="form-node">
+                        <label>Subjects to Add</label>
+                        <div id="subjectEntries" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
+                            <div class="subject-entry-row" style="display: grid; grid-template-columns: 1fr 140px auto; gap: 8px; align-items: center;">
+                                <input type="text" name="names" class="form-control" placeholder="Subject Name" required oninput="autoDetectCategory(this)">
+                                <select name="categories" class="form-control" required style="font-size: 0.75rem; padding: 12px 8px;">
+                                    <option value="language">Language</option>
+                                    <option value="science_math">Sci / Math</option>
+                                    <option value="skills">Skills</option>
+                                </select>
+                                <button type="button" class="btn-tiny" style="background: transparent; border: none; color: #ef4444;" onclick="removeRow(this)">
+                                    <i class="fas fa-times-circle" style="font-size: 1.2rem;"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-prem btn-secondary" style="width: 100%; padding: 8px; font-size: 0.8rem;" onclick="addRow()">
+                            <i class="fas fa-plus-circle"></i> Add Another Subject
+                        </button>
+                    </div>
+
+                    <div class="form-node">
+                        <label>Assign to Sections</label>
+                        <div class="bulk-controls">
+                            <button type="button" class="btn-tiny" onclick="selectAllSections(true)">Select All</button>
+                            <button type="button" class="btn-tiny" onclick="selectAllSections(false)">Deselect All</button>
+                        </div>
+                        <div class="section-chooser-container">
+                            {% set ns = namespace(current_grade=None) %}
+                            {% for sec in section_options %}
+                                {% if ns.current_grade != sec.grade_level_name %}
+                                    {% if ns.current_grade != None %}</div></div>{% endif %}
+                                    <div class="grade-group" data-grade="{{ sec.grade_level_name }}">
+                                        <div class="grade-header">
+                                            <span>{{ sec.grade_level_name }}</span>
+                                            <button type="button" class="btn-tiny" onclick="selectGrade('{{ sec.grade_level_name }}', true)">Grade All</button>
+                                        </div>
+                                        <div class="section-grid">
+                                    {% set ns.current_grade = sec.grade_level_name %}
+                                {% endif %}
+                                <label class="section-checkbox-label">
+                                    <input type="checkbox" name="section_ids" value="{{ sec.section_id }}">
+                                    {{ sec.section_name }}
+                                </label>
+                                {% if loop.last %}</div></div>{% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div style="font-size: 11.5px; color: var(--ma-muted); margin-bottom: 24px; line-height: 1.4; padding-top: 12px; font-style: italic;">
+                        <strong>Quick Hint:</strong> Type "Math" or "Science" to auto-select the category.
+                    </div>
+                    <button type="submit" class="btn-prem btn-primary" style="width: 100%;">🚀 Deploy Curriculum</button>
                 </form>
             </div>
         </div>
@@ -479,14 +603,80 @@
         });
     });
 
+    // Bulk Subject Builder Logic
+    function addRow() {
+        const container = document.getElementById('subjectEntries');
+        const newRow = document.createElement('div');
+        newRow.className = 'subject-entry-row';
+        newRow.style.cssText = 'display: grid; grid-template-columns: 1fr 140px auto; gap: 8px; align-items: center;';
+        newRow.innerHTML = `
+            <input type="text" name="names" class="form-control" placeholder="Subject Name" required oninput="autoDetectCategory(this)">
+            <select name="categories" class="form-control" required style="font-size: 0.75rem; padding: 12px 8px;">
+                <option value="language">Language</option>
+                <option value="science_math">Sci / Math</option>
+                <option value="skills">Skills</option>
+            </select>
+            <button type="button" class="btn-tiny" style="background: transparent; border: none; color: #ef4444;" onclick="removeRow(this)">
+                <i class="fas fa-times-circle" style="font-size: 1.2rem;"></i>
+            </button>
+        `;
+        container.appendChild(newRow);
+    }
+
+    function removeRow(btn) {
+        const rows = document.querySelectorAll('.subject-entry-row');
+        if (rows.length > 1) {
+            btn.closest('.subject-entry-row').remove();
+        } else {
+            btn.closest('.subject-entry-row').querySelector('input').value = '';
+        }
+    }
+
+    function autoDetectCategory(input) {
+        const name = input.value.trim().toLowerCase();
+        const row = input.closest('.subject-entry-row');
+        const select = row.querySelector('select');
+
+        const sciMath = ['math', 'science', 'maths', 'biology', 'chemistry', 'physics', 'algebra', 'geometry', 'calculus'];
+        const skills = ['epp', 'tle', 'mapeh', 'computer', 'ict', 'music', 'arts', 'pe', 'physical education', 'health', 'livelihood'];
+        const lang = ['filipino', 'english', 'araling', 'panlipunan', 'esp', 'religion', 'values', 'christian', 'cle', 'mother tongue'];
+
+        if (sciMath.some(k => name.includes(k))) {
+            select.value = 'science_math';
+        } else if (skills.some(k => name.includes(k))) {
+            select.value = 'skills';
+        } else if (lang.some(k => name.includes(k))) {
+            select.value = 'language';
+        }
+    }
+
+    // Bulk Section Helpers
+    function selectAllSections(checked) {
+        document.querySelectorAll('input[name="section_ids"]').forEach(cb => {
+            cb.checked = checked;
+        });
+    }
+
+    function selectGrade(gradeName, checked) {
+        const group = document.querySelector(`.grade-group[data-grade="${gradeName}"]`);
+        if (group) {
+            group.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.checked = checked;
+            });
+        }
+    }
+
     // Attach validation to both forms
     document.addEventListener('DOMContentLoaded', function () {
         const addForm = document.querySelector('.col-form form');
         if (addForm) {
             addForm.onsubmit = function () {
-                const name = addForm.querySelector('[name="name"]').value;
-                const cat = addForm.querySelector('[name="deped_category"]').value;
-                return validateSubject(name, cat);
+                const checkedCount = addForm.querySelectorAll('input[name="section_ids"]:checked').length;
+                if (checkedCount === 0) {
+                    alert('Please select at least one section.');
+                    return false;
+                }
+                return true;
             };
         }
 

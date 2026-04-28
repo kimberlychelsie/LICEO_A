@@ -370,11 +370,8 @@ def registrar_enrollments():
         """, (branch_id, selected_year_id))
         enrolled_students = cursor.fetchall()
 
-        grade_levels = [
-            "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3", "Grade 4",
-            "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10",
-            "Grade 11", "Grade 12"
-        ]
+        cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s ORDER BY display_order", (branch_id,))
+        grade_levels = [row["name"] for row in cursor.fetchall()]
 
         # Re-enrollment open should only consider ACTIVE year data (otherwise confusing)
         reenrollment_open = False
@@ -485,10 +482,14 @@ def enrollment_detail(enrollment_id):
         cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id = %s", (enrollment_id,))
         documents = cursor.fetchall()
 
+        cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s ORDER BY display_order", (branch_id,))
+        grade_levels = [row["name"] for row in cursor.fetchall()]
+
         return render_template(
             "registrar_enrollment_detail.html",
             enrollment=enrollment,
             documents=documents,
+            grade_levels=grade_levels,
         )
     except Exception as e:
         db.rollback()

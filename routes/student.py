@@ -524,24 +524,28 @@ def compute_next_grade(current_grade):
     if cg == "Nursery": return "Kinder"
     if cg == "Kinder": return "Grade 1"
     
-    if cg.startswith("Grade "):
-        parts = cg.split(" ")
-        try:
-            num = int(parts[1])
-            if num < 10:
-                return f"Grade {num + 1}"
-            elif num == 10:
-                return "Grade 11" 
-            elif num == 11:
-                if "–" in cg:
-                    return f"Grade 12 – {cg.split('–')[1].strip()}"
-                elif "-" in cg:
-                    return f"Grade 12 – {cg.split('-')[1].strip()}"
-                return "Grade 12"
-            elif num == 12:
-                return "Graduated"
-        except:
-            return None
+    import re
+    match = re.match(r"^Grade\s+(\d+)", cg, re.IGNORECASE)
+    if match:
+        num = int(match.group(1))
+        if num < 10:
+            return f"Grade {num + 1}"
+        elif num == 10:
+            return "Grade 11" 
+        elif num == 11:
+            # For Grade 11, we want to progress to the corresponding Grade 12 strand
+            strand = ""
+            if "-" in cg:
+                strand = cg.split("-", 1)[1].strip()
+            elif "–" in cg:
+                strand = cg.split("–", 1)[1].strip()
+            
+            if strand:
+                return f"Grade 12-{strand}"
+            return "Grade 12"
+        elif num == 12:
+            return "Graduated"
+    
     return None
 
 @student_bp.route("/branch/<int:branch_id>/continuing/login")
@@ -661,12 +665,22 @@ def continuing_enrollment(branch_id):
         raw_sections = cursor.fetchall() or []
         sections = [dict(s) for s in raw_sections]
 
+        shs_strands = []
+        if needs_strand:
+            cursor.execute("""
+                SELECT name FROM grade_levels 
+                WHERE branch_id = %s AND name ILIKE 'Grade 11-%%'
+                ORDER BY display_order
+            """, (branch_id,))
+            shs_strands = [row["name"] for row in cursor.fetchall()]
+
         return render_template(
             "student_continuing_enroll.html", 
             branch_id=branch_id, 
             current_grade=current_grade, 
             next_grade=next_grade,
             needs_strand=needs_strand,
+            shs_strands=shs_strands,
             sections=sections,
             student_name=enrollment.get("student_name")
         )
