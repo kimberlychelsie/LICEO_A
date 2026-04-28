@@ -669,6 +669,21 @@ def branch_admin_inventory_add():
             flash("Missing required fields", "error")
             return redirect("/branch-admin/inventory/add")
 
+        # Auto-set image_url for uniform sets if not provided
+        if category == "UNIFORM" and not image_url:
+            uniform_images = {
+                'Pre-Elementary Boys Set': '/static/img/PRE_ELEM_BOYS_SET.jpg',
+                'Pre-Elementary Girls Set': '/static/img/PRE_ELEM_GIRLS_SET.jpg',
+                'Elementary G4-6 Boys Set': '/static/img/ELEM_G4to6_BOYS_SET.jpg',
+                'JHS Boys Uniform Set': '/static/img/JHS_BOYS_SET.jpg',
+                'JHS Girls Uniform Set': '/static/img/JHS_GIRLS_SET.jpg',
+                'SHS Boys Uniform Set': '/static/img/SHS_BOYS_SET.jpg',
+                'SHS Girls Uniform Set': '/static/img/SHS_GIRLS_SET.jpg',
+                'PE Uniform': '/static/img/PE_SET.jpg'
+            }
+            if item_name in uniform_images:
+                image_url = uniform_images[item_name]
+
         db = get_db_connection()
         cursor = db.cursor()
         try:
