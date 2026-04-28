@@ -237,7 +237,7 @@
 
     <!-- Tab switch warning -->
     <div class="tab-warning" id="tabWarning" style="display:none; background:#fee2e2; color:#b91c1c; padding:12px; border-radius:12px; margin-bottom:15px; font-weight:700; border:1px solid #fecaca;">
-      ⚠️ Tab switch detected! This has been recorded.
+      ⚠️ Tab switch detected! This has been recorded. (Switches: <strong id="tabCount">0</strong>)
     </div>
 
     <form method="POST" id="examForm">
@@ -410,9 +410,50 @@
     }
 
     function autoSubmit() {
+        console.log("Auto-submitting exam...");
         trackingActive = false;
-        document.getElementById('submitType').value = 'auto';
-        document.getElementById('examForm').submit();
+
+        // 1. Force save the currently visible question's answer if it exists
+        const visibleCard = document.querySelector('.q-card[style*="display: block"], .q-card[style*="display:block"]');
+        if (visibleCard) {
+            const radio = visibleCard.querySelector('input[type="radio"]:checked');
+            const select = visibleCard.querySelector('select');
+            if (radio) {
+                saveAnswer(radio.name, radio.value);
+            } else if (select && select.value) {
+                saveAnswer(select.name, select.value);
+            }
+        }
+        
+        // 2. Sync ALL saved answers from localStorage to the form inputs
+        document.querySelectorAll('input[name^="answer_"], select[name^="answer_"]').forEach(field => {
+            const saved = lsGet('ans_' + field.name);
+            if (saved) {
+                if (field.type === 'radio') {
+                    const target = document.querySelector(`input[name="${field.name}"][value="${saved}"]`);
+                    if (target) target.checked = true;
+                } else if (field.tagName === 'SELECT') {
+                    field.value = saved;
+                }
+            }
+        });
+
+        const form = document.getElementById('examForm');
+        const submitTypeInput = document.getElementById('submitType');
+        const timerEl = document.getElementById('timerBox');
+
+        if (timerEl) {
+            timerEl.textContent = '⏱ Submitting...';
+            timerEl.className = 'timer-pill danger';
+        }
+
+        if (submitTypeInput) submitTypeInput.value = 'auto';
+        
+        // 3. Final submission
+        if (form) {
+            console.log("Submitting form now.");
+            form.submit();
+        }
     }
 
     updateTimer();
@@ -427,13 +468,34 @@
         fillEl.style.width = (total > 0 ? (answeredCount / total * 100) : 0) + '%';
     }
 
-    function saveAnswer(questionId, answer) {
-        lsSet('ans_' + questionId, answer);
-        if (!lsGet('answered_' + questionId)) {
+    function saveAnswer(name, answer) {
+        // Extract question ID from name (e.g. "answer_123" -> 123)
+        const questionId = name.replace('answer_', '');
+        
+        // Save to localStorage (legacy fallback)
+        lsSet('ans_' + name, answer);
+        if (!lsGet('answered_' + name)) {
             answeredCount++;
-            lsSet('answered_' + questionId, 'true');
+            lsSet('answered_' + name, 'true');
             updateProgress();
         }
+
+        // 🚀 NEW: Save to Server via AJAX
+        fetch('/student/exams/save-answer', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                result_id: {{ result_id | int }},
+                question_id: questionId,
+                answer: answer
+            })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.ok) console.log(`Answer saved for Q${questionId}`);
+            else console.error("Failed to save answer:", data.msg);
+        })
+        .catch(err => console.error("Network error saving answer:", err));
     }
     window.saveAnswer = saveAnswer;
 

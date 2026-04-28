@@ -143,14 +143,13 @@ def parse_text_to_questions(raw_text):
     questions = []
     current_question = {}
     
-    # Standard patterns (Allow both : and . for choices A, B, C, D)
-    # Using \b for single letter choices to ensure they are at the start of a word/line
+    # Standard patterns (Allow both : and . and ) for choices A, B, C, D)
     field_patterns = [
-        r'question:', r'type:', r'answer:', r'points:',
-        r'a:', r'b:', r'c:', r'd:',
-        r'\ba\.', r'\bb\.', r'\bc\.', r'\bd\.'
+        r'^question:', r'^type:', r'^answer:', r'^points:',
+        r'^a[:\.\)]', r'^b[:\.\)]', r'^c[:\.\)]', r'^d[:\.\)]'
     ]
-    regex = re.compile(r'(' + '|'.join(field_patterns) + r')', re.IGNORECASE)
+    # Compiled regex for splitting and matching
+    field_regex = re.compile(r'(question:|type:|answer:|points:|\b[a-d][:\.\)])', re.IGNORECASE)
 
     # Split by fields and clean up
     # We use regex to find the start of each field
@@ -161,14 +160,19 @@ def parse_text_to_questions(raw_text):
         text = line.strip()
         if not text: continue
         
-        parts = [p.strip() for p in regex.split(text) if p.strip()]
+        # Split line into parts based on fields found within it
+        parts = [p.strip() for p in field_regex.split(text) if p.strip()]
         it = iter(parts)
         for part in it:
-            if any(part.lower().startswith(f) for f in field_patterns):
+            # Check if this part is a field indicator
+            if field_regex.match(part):
                 processed_lines.append(part + " " + next(it, ""))
             else:
                 if processed_lines:
                     processed_lines[-1] += " " + part
+                else:
+                    # If no field yet, treat as start of a question
+                    processed_lines.append("question: " + part)
 
     for line in processed_lines:
         line = line.strip()
@@ -182,22 +186,14 @@ def parse_text_to_questions(raw_text):
             current_question['question_text'] = line.split(':', 1)[1].strip()
         elif lower.startswith('type:'):
             current_question['question_type'] = line.split(':', 1)[1].strip()
-        elif lower.startswith('a:') or re.match(r'^a\.', lower):
-            sep = ':' if ':' in line[:3] else '.'
-            parts = line.split(sep, 1)
-            if len(parts) > 1: current_question['choice_a'] = parts[1].strip()
-        elif lower.startswith('b:') or re.match(r'^b\.', lower):
-            sep = ':' if ':' in line[:3] else '.'
-            parts = line.split(sep, 1)
-            if len(parts) > 1: current_question['choice_b'] = parts[1].strip()
-        elif lower.startswith('c:') or re.match(r'^c\.', lower):
-            sep = ':' if ':' in line[:3] else '.'
-            parts = line.split(sep, 1)
-            if len(parts) > 1: current_question['choice_c'] = parts[1].strip()
-        elif lower.startswith('d:') or re.match(r'^d\.', lower):
-            sep = ':' if ':' in line[:3] else '.'
-            parts = line.split(sep, 1)
-            if len(parts) > 1: current_question['choice_d'] = parts[1].strip()
+        elif re.match(r'^a[:\.\)]', lower):
+            current_question['choice_a'] = re.sub(r'^[aA][:\.\)]\s*', '', line).strip()
+        elif re.match(r'^b[:\.\)]', lower):
+            current_question['choice_b'] = re.sub(r'^[bB][:\.\)]\s*', '', line).strip()
+        elif re.match(r'^c[:\.\)]', lower):
+            current_question['choice_c'] = re.sub(r'^[cC][:\.\)]\s*', '', line).strip()
+        elif re.match(r'^d[:\.\)]', lower):
+            current_question['choice_d'] = re.sub(r'^[dD][:\.\)]\s*', '', line).strip()
         elif lower.startswith('answer:'):
             current_question['correct_answer'] = line.split(':', 1)[1].strip()
         elif lower.startswith('points:'):

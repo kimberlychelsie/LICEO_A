@@ -1140,25 +1140,28 @@ def student_exam_take(exam_id):
                 flash("Session error. Please try again.", "error")
                 return redirect(back_url)
 
-            cur.execute("SELECT * FROM exam_questions WHERE exam_id=%s ORDER BY order_num",
-                        (exam_id,))
-            questions    = cur.fetchall()
-            score        = 0
-            total_points = 0
-
-            for q in questions:
-                ans        = (request.form.get(f"answer_{q['question_id']}") or "").strip()
-                correct    = str(q["correct_answer"]).strip()
-                is_correct = ans.upper() == correct.upper()
-                if is_correct:
-                    score += q["points"]
-                total_points += q["points"]
-
-                cur.execute("""
-                    INSERT INTO exam_answers (result_id, question_id, student_answer, is_correct)
-                    VALUES (%s, %s, %s, %s)
-                    ON CONFLICT DO NOTHING
-                """, (result_id, q["question_id"], ans, is_correct))
+            # ✅ Calculate score from exam_answers table (answers saved via AJAX)
+            cur.execute("""
+                SELECT 
+                    COUNT(*) AS total_questions,
+                    COALESCE(SUM(CASE WHEN ea.is_correct THEN q.points ELSE 0 END), 0) AS score,
+                    COALESCE(SUM(q.points), 0) AS total_points
+                FROM exam_questions q
+                LEFT JOIN exam_answers ea ON q.question_id = ea.question_id AND ea.result_id = %s
+                WHERE q.exam_id = %s
+            """, (result_id, exam_id))
+    
+            result = cur.fetchone()
+            score = int(result["score"]) if result["score"] else 0
+            total_points = int(result["total_points"]) if result["total_points"] else 0
+    
+            print(f"\n{'='*60}")
+            print(f"FINAL SUBMISSION")
+            print(f"Result ID: {result_id}")
+            print(f"Score: {score}/{total_points}")
+            print(f"Status: {status}")
+            print(f"Submit Type: {submit_type}")
+            print(f"{'='*60}\n")
 
             cur.execute("""
                 UPDATE exam_results
@@ -1167,6 +1170,7 @@ def student_exam_take(exam_id):
                 WHERE result_id=%s AND enrollment_id=%s
             """, (score, total_points, status, tab_switches, result_id, enrollment_id))
             db.commit()
+    
             return redirect(url_for("student_portal.student_exam_result",
                                     result_id=result_id))
 
@@ -1232,6 +1236,79 @@ def student_exam_take(exam_id):
                                result_id=result_id,
                                remaining_secs=remaining,
                                current_tab_switches=current_tab_switches)
+    finally:
+        cur.close()
+        db.close()
+
+@student_portal_bp.route("/student/exams/save-answer", methods=["POST"])
+def save_answer():
+    """AJAX endpoint — save individual answer to database in real-time"""
+    if session.get("role") != "student":
+        return jsonify({"ok": False, "msg": "Unauthorized"}), 403
+
+    data = request.get_json()
+    result_id = data.get("result_id")
+    question_id = data.get("question_id")
+    answer = data.get("answer", "").strip()
+    enrollment_id = session.get("enrollment_id")
+
+    if not all([result_id, question_id]):
+        return jsonify({"ok": False, "msg": "Missing parameters"}), 400
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)  # ✅ ADD THIS
+    try:
+        # Verify ownership — check if this result belongs to this student
+        cur.execute("""
+            SELECT 1 FROM exam_results 
+            WHERE result_id = %s AND enrollment_id = %s
+        """, (result_id, enrollment_id))
+        
+        if not cur.fetchone():
+            return jsonify({"ok": False, "msg": "Unauthorized"}), 403
+
+        # Get correct answer
+        cur.execute("""
+            SELECT correct_answer FROM exam_questions 
+            WHERE question_id = %s
+        """, (question_id,))
+        
+        question = cur.fetchone()
+        if not question:
+            return jsonify({"ok": False, "msg": "Question not found"}), 404
+
+        correct_answer = str(question["correct_answer"]).strip()  # ✅ NOW THIS WORKS
+        is_correct = answer.upper() == correct_answer.upper() if answer else False
+
+        # Check if answer already exists
+        cur.execute("""
+            SELECT is_correct FROM exam_answers 
+            WHERE result_id = %s AND question_id = %s
+        """, (result_id, question_id))
+        
+        existing = cur.fetchone()
+
+        if existing:
+            # Update existing answer
+            cur.execute("""
+                UPDATE exam_answers 
+                SET student_answer = %s, is_correct = %s
+                WHERE result_id = %s AND question_id = %s
+            """, (answer, is_correct, result_id, question_id))
+        else:
+            # Insert new answer
+            cur.execute("""
+                INSERT INTO exam_answers (result_id, question_id, student_answer, is_correct)
+                VALUES (%s, %s, %s, %s)
+            """, (result_id, question_id, answer, is_correct))
+
+        db.commit()
+        return jsonify({"ok": True, "msg": f"Answer saved"})
+    
+    except Exception as e:
+        db.rollback()
+        print(f"Error saving answer: {e}")
+        return jsonify({"ok": False, "msg": str(e)}), 500
     finally:
         cur.close()
         db.close()
