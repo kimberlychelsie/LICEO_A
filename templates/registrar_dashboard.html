@@ -573,60 +573,72 @@
         }
     }
 
-    /* ── Pagination Styles ── */
+    /* ── Pagination Redesign (Image Match) ── */
+    .pagination-wrapper {
+        display: flex;
+        justify-content: center;
+        margin-top: 24px;
+        margin-bottom: 24px;
+    }
+
     .pagination-container {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        padding: 16px 20px;
-        background: #f8fafc;
-        border-top: 1px solid var(--border);
+        gap: 12px;
+        background: #fff;
+        padding: 8px 32px;
+        border-radius: 50px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        border: 1px solid rgba(0,0,0,0.05);
     }
 
     .pagination-info {
-        font-size: 0.82rem;
-        color: var(--muted);
-        font-weight: 600;
+        display: none; /* Hide traditional info for the clean image look */
     }
 
     .pagination-controls {
         display: flex;
-        gap: 6px;
+        align-items: center;
+        gap: 4px;
     }
 
     .page-link {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        min-width: 32px;
-        height: 32px;
-        padding: 0 8px;
-        border-radius: 8px;
-        background: #fff;
-        border: 1.5px solid var(--border);
-        color: #1e293b;
-        font-size: 0.85rem;
-        font-weight: 700;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        color: #64748b;
+        font-size: 0.9rem;
+        font-weight: 600;
         text-decoration: none;
-        transition: all 0.2s;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        border: none;
+        background: transparent;
     }
 
-    .page-link:hover:not(.disabled) {
-        border-color: var(--btn);
-        color: var(--btn);
-        background: #eff6ff;
+    .page-link:hover:not(.disabled):not(.active) {
+        background: #f1f5f9;
+        color: #1e293b;
     }
 
     .page-link.active {
-        background: var(--btn);
+        background: #6366f1; /* Modern Indigo/Blue from image */
         color: #fff;
-        border-color: var(--btn);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
     }
 
     .page-link.disabled {
-        opacity: 0.5;
+        opacity: 0.3;
         cursor: not-allowed;
-        background: #f1f5f9;
+    }
+
+    .pagination-arrow {
+        color: #94a3b8;
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
     }
 </style>
 {% endblock %}
@@ -1178,33 +1190,32 @@
 
             <!-- Pagination: New Enrollments -->
             {% if total_pages_new > 1 %}
-            <div class="pagination-container">
-                <div class="pagination-info">
-                    Showing {{ (current_page_new - 1) * 10 + 1 }} to {{ [(current_page_new * 10), total_new] | min }} of {{ total_new }} entries
-                </div>
-                <div class="pagination-controls">
-                    <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=current_page_new-1, p_enrolled=current_page_enrolled) }}" 
-                       class="page-link {{ 'disabled' if current_page_new == 1 }}"
-                       {% if current_page_new == 1 %}onclick="return false;"{% endif %}>
-                        Prev
-                    </a>
-                    
-                    {% for p in range(1, total_pages_new + 1) %}
-                        {% if p == 1 or p == total_pages_new or (p >= current_page_new - 2 and p <= current_page_new + 2) %}
-                            <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=p, p_enrolled=current_page_enrolled) }}" 
-                               class="page-link {{ 'active' if p == current_page_new }}">
-                                {{ p }}
-                            </a>
-                        {% elif p == current_page_new - 3 or p == current_page_new + 3 %}
-                            <span class="page-link disabled">...</span>
-                        {% endif %}
-                    {% endfor %}
+            <div class="pagination-wrapper">
+                <div class="pagination-container">
+                    <div class="pagination-controls">
+                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=current_page_new-1, p_enrolled=current_page_enrolled) }}" 
+                           class="page-link pagination-arrow {{ 'disabled' if current_page_new == 1 }}"
+                           {% if current_page_new == 1 %}onclick="return false;"{% endif %}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </a>
+                        
+                        {% for p in range(1, total_pages_new + 1) %}
+                            {% if p == 1 or p == total_pages_new or (p >= current_page_new - 2 and p <= current_page_new + 2) %}
+                                <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=p, p_enrolled=current_page_enrolled) }}" 
+                                   class="page-link {{ 'active' if p == current_page_new }}">
+                                    {{ p }}
+                                </a>
+                            {% elif p == current_page_new - 3 or p == current_page_new + 3 %}
+                                <span class="page-link disabled">...</span>
+                            {% endif %}
+                        {% endfor %}
 
-                    <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=current_page_new+1, p_enrolled=current_page_enrolled) }}" 
-                       class="page-link {{ 'disabled' if current_page_new == total_pages_new }}"
-                       {% if current_page_new == total_pages_new %}onclick="return false;"{% endif %}>
-                        Next
-                    </a>
+                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=current_page_new+1, p_enrolled=current_page_enrolled) }}" 
+                           class="page-link pagination-arrow {{ 'disabled' if current_page_new == total_pages_new }}"
+                           {% if current_page_new == total_pages_new %}onclick="return false;"{% endif %}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </a>
+                    </div>
                 </div>
             </div>
             {% endif %}
@@ -1572,33 +1583,32 @@
 
             <!-- Pagination: Enrolled Students -->
             {% if total_pages_enrolled > 1 %}
-            <div class="pagination-container">
-                <div class="pagination-info">
-                    Showing {{ (current_page_enrolled - 1) * 10 + 1 }} to {{ [(current_page_enrolled * 10), total_enrolled] | min }} of {{ total_enrolled }} entries
-                </div>
-                <div class="pagination-controls">
-                    <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=current_page_enrolled-1, p_new=current_page_new) }}" 
-                       class="page-link {{ 'disabled' if current_page_enrolled == 1 }}"
-                       {% if current_page_enrolled == 1 %}onclick="return false;"{% endif %}>
-                        Prev
-                    </a>
-                    
-                    {% for p in range(1, total_pages_enrolled + 1) %}
-                        {% if p == 1 or p == total_pages_enrolled or (p >= current_page_enrolled - 2 and p <= current_page_enrolled + 2) %}
-                            <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=p, p_new=current_page_new) }}" 
-                               class="page-link {{ 'active' if p == current_page_enrolled }}">
-                                {{ p }}
-                            </a>
-                        {% elif p == current_page_enrolled - 3 or p == current_page_enrolled + 3 %}
-                            <span class="page-link disabled">...</span>
-                        {% endif %}
-                    {% endfor %}
+            <div class="pagination-wrapper">
+                <div class="pagination-container">
+                    <div class="pagination-controls">
+                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=current_page_enrolled-1, p_new=current_page_new) }}" 
+                           class="page-link pagination-arrow {{ 'disabled' if current_page_enrolled == 1 }}"
+                           {% if current_page_enrolled == 1 %}onclick="return false;"{% endif %}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        </a>
+                        
+                        {% for p in range(1, total_pages_enrolled + 1) %}
+                            {% if p == 1 or p == total_pages_enrolled or (p >= current_page_enrolled - 2 and p <= current_page_enrolled + 2) %}
+                                <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=p, p_new=current_page_new) }}" 
+                                   class="page-link {{ 'active' if p == current_page_enrolled }}">
+                                    {{ p }}
+                                </a>
+                            {% elif p == current_page_enrolled - 3 or p == current_page_enrolled + 3 %}
+                                <span class="page-link disabled">...</span>
+                            {% endif %}
+                        {% endfor %}
 
-                    <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=current_page_enrolled+1, p_new=current_page_new) }}" 
-                       class="page-link {{ 'disabled' if current_page_enrolled == total_pages_enrolled }}"
-                       {% if current_page_enrolled == total_pages_enrolled %}onclick="return false;"{% endif %}>
-                        Next
-                    </a>
+                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=current_page_enrolled+1, p_new=current_page_new) }}" 
+                           class="page-link pagination-arrow {{ 'disabled' if current_page_enrolled == total_pages_enrolled }}"
+                           {% if current_page_enrolled == total_pages_enrolled %}onclick="return false;"{% endif %}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                        </a>
+                    </div>
                 </div>
             </div>
             {% endif %}
