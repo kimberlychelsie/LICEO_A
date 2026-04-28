@@ -572,6 +572,62 @@
             padding-bottom: 4px;
         }
     }
+
+    /* ── Pagination Styles ── */
+    .pagination-container {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px 20px;
+        background: #f8fafc;
+        border-top: 1px solid var(--border);
+    }
+
+    .pagination-info {
+        font-size: 0.82rem;
+        color: var(--muted);
+        font-weight: 600;
+    }
+
+    .pagination-controls {
+        display: flex;
+        gap: 6px;
+    }
+
+    .page-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 32px;
+        height: 32px;
+        padding: 0 8px;
+        border-radius: 8px;
+        background: #fff;
+        border: 1.5px solid var(--border);
+        color: #1e293b;
+        font-size: 0.85rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s;
+    }
+
+    .page-link:hover:not(.disabled) {
+        border-color: var(--btn);
+        color: var(--btn);
+        background: #eff6ff;
+    }
+
+    .page-link.active {
+        background: var(--btn);
+        color: #fff;
+        border-color: var(--btn);
+    }
+
+    .page-link.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        background: #f1f5f9;
+    }
 </style>
 {% endblock %}
 
@@ -1119,7 +1175,41 @@
                     {% endfor %}
                 </table>
             </div>
+
+            <!-- Pagination: New Enrollments -->
+            {% if total_pages_new > 1 %}
+            <div class="pagination-container">
+                <div class="pagination-info">
+                    Showing {{ (current_page_new - 1) * 10 + 1 }} to {{ [(current_page_new * 10), total_new] | min }} of {{ total_new }} entries
+                </div>
+                <div class="pagination-controls">
+                    <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=current_page_new-1, p_enrolled=current_page_enrolled) }}" 
+                       class="page-link {{ 'disabled' if current_page_new == 1 }}"
+                       {% if current_page_new == 1 %}onclick="return false;"{% endif %}>
+                        Prev
+                    </a>
+                    
+                    {% for p in range(1, total_pages_new + 1) %}
+                        {% if p == 1 or p == total_pages_new or (p >= current_page_new - 2 and p <= current_page_new + 2) %}
+                            <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=p, p_enrolled=current_page_enrolled) }}" 
+                               class="page-link {{ 'active' if p == current_page_new }}">
+                                {{ p }}
+                            </a>
+                        {% elif p == current_page_new - 3 or p == current_page_new + 3 %}
+                            <span class="page-link disabled">...</span>
+                        {% endif %}
+                    {% endfor %}
+
+                    <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=current_page_new+1, p_enrolled=current_page_enrolled) }}" 
+                       class="page-link {{ 'disabled' if current_page_new == total_pages_new }}"
+                       {% if current_page_new == total_pages_new %}onclick="return false;"{% endif %}>
+                        Next
+                    </a>
+                </div>
+            </div>
+            {% endif %}
         </div>
+
     </div>
 
     <!-- Reject Reason Modal -->
@@ -1479,7 +1569,41 @@
                     {% endfor %}
                 </table>
             </div>
+
+            <!-- Pagination: Enrolled Students -->
+            {% if total_pages_enrolled > 1 %}
+            <div class="pagination-container">
+                <div class="pagination-info">
+                    Showing {{ (current_page_enrolled - 1) * 10 + 1 }} to {{ [(current_page_enrolled * 10), total_enrolled] | min }} of {{ total_enrolled }} entries
+                </div>
+                <div class="pagination-controls">
+                    <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=current_page_enrolled-1, p_new=current_page_new) }}" 
+                       class="page-link {{ 'disabled' if current_page_enrolled == 1 }}"
+                       {% if current_page_enrolled == 1 %}onclick="return false;"{% endif %}>
+                        Prev
+                    </a>
+                    
+                    {% for p in range(1, total_pages_enrolled + 1) %}
+                        {% if p == 1 or p == total_pages_enrolled or (p >= current_page_enrolled - 2 and p <= current_page_enrolled + 2) %}
+                            <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=p, p_new=current_page_new) }}" 
+                               class="page-link {{ 'active' if p == current_page_enrolled }}">
+                                {{ p }}
+                            </a>
+                        {% elif p == current_page_enrolled - 3 or p == current_page_enrolled + 3 %}
+                            <span class="page-link disabled">...</span>
+                        {% endif %}
+                    {% endfor %}
+
+                    <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=current_page_enrolled+1, p_new=current_page_new) }}" 
+                       class="page-link {{ 'disabled' if current_page_enrolled == total_pages_enrolled }}"
+                       {% if current_page_enrolled == total_pages_enrolled %}onclick="return false;"{% endif %}>
+                        Next
+                    </a>
+                </div>
+            </div>
+            {% endif %}
         </div>
+
 
     </div>
 

@@ -161,8 +161,17 @@ def registrar_enrollments():
             flash("No active school year found for this branch.", "error")
             return redirect("/registrar")
 
-        # --- YEAR SWITCHER (view context) ---
+        # --- YEAR SWITCHER & PAGINATION (view context) ---
         selected_year_id = request.args.get("year_id", type=int) or active_year_id
+        
+        limit = 10
+        p_new = request.args.get("p_new", type=int, default=1)
+        if p_new < 1: p_new = 1
+        offset_new = (p_new - 1) * limit
+        
+        p_enrolled = request.args.get("p_enrolled", type=int, default=1)
+        if p_enrolled < 1: p_enrolled = 1
+        offset_enrolled = (p_enrolled - 1) * limit
 
         # dropdown data: active + inactive
         cursor.execute("""
@@ -302,7 +311,17 @@ def registrar_enrollments():
                 "success" if action == "approved" else "warning"
             )
 
-        # --- NEW enrollments list (VIEW selected year) ---
+        # --- NEW enrollments list (VIEW selected year) with Pagination ---
+        cursor.execute("""
+            SELECT COUNT(DISTINCT e.enrollment_id)
+            FROM enrollments e
+            WHERE e.branch_id=%s
+              AND e.year_id=%s
+              AND e.status IN ('pending', 'rejected')
+        """, (branch_id, selected_year_id))
+        total_new = cursor.fetchone()["count"]
+        total_pages_new = (total_new + limit - 1) // limit
+
         cursor.execute("""
             SELECT e.*,
                    e.branch_enrollment_no AS display_no,
@@ -323,7 +342,8 @@ def registrar_enrollments():
               AND e.status IN ('pending', 'rejected')
             GROUP BY e.enrollment_id
             ORDER BY e.branch_enrollment_no ASC NULLS LAST, e.created_at DESC
-        """, (branch_id, selected_year_id))
+            LIMIT %s OFFSET %s
+        """, (branch_id, selected_year_id, limit, offset_new))
         new_enrollments_raw = cursor.fetchall()
 
         new_enrollments = []
@@ -333,7 +353,17 @@ def registrar_enrollments():
                 e["documents"] = json.loads(e["documents"])
             new_enrollments.append(e)
 
-        # --- ENROLLED students list (VIEW selected year) ---
+        # --- ENROLLED students list (VIEW selected year) with Pagination ---
+        cursor.execute("""
+            SELECT COUNT(*)
+            FROM enrollments e
+            WHERE e.branch_id=%s
+              AND e.year_id=%s
+              AND e.status IN ('enrolled', 'open_for_enrollment', 'approved')
+        """, (branch_id, selected_year_id))
+        total_enrolled = cursor.fetchone()["count"]
+        total_pages_enrolled = (total_enrolled + limit - 1) // limit
+
         cursor.execute("""
             SELECT e.*,
                    e.branch_enrollment_no AS display_no,
@@ -367,7 +397,8 @@ def registrar_enrollments():
               AND e.year_id=%s
               AND e.status IN ('enrolled', 'open_for_enrollment', 'approved')
             ORDER BY e.grade_level ASC, e.student_name ASC
-        """, (branch_id, selected_year_id))
+            LIMIT %s OFFSET %s
+        """, (branch_id, selected_year_id, limit, offset_enrolled))
         enrolled_students = cursor.fetchall()
 
         cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s AND name NOT IN ('Grade 11', 'Grade 12') ORDER BY display_order", (branch_id,))
@@ -408,6 +439,14 @@ def registrar_enrollments():
             selected_year_id=selected_year_id,
             active_year_id=active_year_id,
             can_modify=can_modify,
+
+            # PAGINATION
+            total_pages_new=total_pages_new,
+            current_page_new=p_new,
+            total_new=total_new,
+            total_pages_enrolled=total_pages_enrolled,
+            current_page_enrolled=p_enrolled,
+            total_enrolled=total_enrolled,
         )
     except Exception as e:
         db.rollback()
