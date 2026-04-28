@@ -3,6 +3,57 @@
 {% block content %}
 <style>
     .container { max-width:900px; margin:0 auto; padding:24px 20px; }
+    .badge { font-weight: 700; border-radius: 6px; padding: 5px 10px; font-size: 0.8rem; }
+    
+    /* ── Modern Switch Design ── */
+    .permission-switch {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        user-select: none;
+    }
+    .switch-input { display: none; }
+    .switch-rail {
+        position: relative;
+        width: 46px;
+        height: 24px;
+        background-color: #cbd5e1;
+        border-radius: 999px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .switch-knob {
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 18px;
+        height: 18px;
+        background-color: white;
+        border-radius: 50%;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .switch-input:checked + .switch-rail {
+        background-color: #10b981; /* emerald-500 */
+        box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+    }
+    .switch-input:checked + .switch-rail .switch-knob {
+        transform: translateX(22px);
+    }
+    .switch-label {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+        min-width: 55px;
+        text-align: left;
+    }
+    .label-allowed { color: #059669; }
+    .label-blocked { color: #64748b; }
+    
+    .switch-loading .switch-rail { opacity: 0.6; cursor: not-allowed; }
+
     .card { background:#fff; border-radius:12px; padding:24px; box-shadow:0 2px 8px rgba(0,0,0,.07); overflow-x: auto; }
     .card h2 { margin:0 0 16px 0; font-size:16px; border-bottom:2px solid #007bff; padding-bottom:8px; color:#2c3e50; }
     .res-table { width:100%; border-collapse:collapse; font-size:13px; }
@@ -33,7 +84,38 @@
                 {{ exam.subject_name }} · {{ exam.section_name }}
             </div>
         </div>
-        <a href="{{ url_for('teacher.teacher_class_view', subject_id=exam.subject_id) }}" class="btn btn-secondary">← Back to Class Details</a>
+        <div style="display: flex; gap: 8px;">
+            <a href="{{ url_for('teacher.teacher_class_view', subject_id=exam.subject_id) }}" class="btn btn-secondary">← Back to Class Details</a>
+            
+            <div style="display: inline-flex; align-items: center; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 4px; gap: 4px;">
+                <button type="button" class="btn" style="background:#28a745; color:#fff; padding:6px 12px; font-size:12px;" onclick="updateAllPermissions('allow_all')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    Allow All
+                </button>
+                <button type="button" class="btn" style="background:#dc3545; color:#fff; padding:6px 12px; font-size:12px;" onclick="updateAllPermissions('deselect_all')">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    Deselect All
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Class Mode Status Bar -->
+    <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 20px; border-radius: 10px;">
+        <span style="font-size: 13px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.03em;">Class Mode:</span>
+        {% if exam.class_mode == 'Face-to-Face' %}
+        <span class="badge" style="background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; font-size: 12px; padding: 4px 10px; display: flex; align-items: center; gap: 6px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            Face-to-Face Class
+        </span>
+        <small style="color: #94a3b8; font-style: italic;">(Students must be allowed individually or via "Allow All")</small>
+        {% else %}
+        <span class="badge" style="background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; font-size: 12px; padding: 4px 10px; display: flex; align-items: center; gap: 6px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+            Virtual Class
+        </span>
+        <small style="color: #94a3b8; font-style: italic;">(Students are allowed by default)</small>
+        {% endif %}
     </div>
 
     <div class="card">
@@ -51,6 +133,7 @@
                         Tab Switches
                     </th>
                     <th>Submitted</th>
+                    <th style="text-align: center;">Allowed to Take</th>
                     <th>Extension</th>
                     <th>Action</th>
                 </tr>
@@ -78,6 +161,21 @@
                     {% endif %}
                 </td>
                 <td>{{ r.submitted_at.strftime('%Y-%m-%d %H:%M') if r.submitted_at else '—' }}</td>
+                <td style="text-align: center;">
+                    <div class="permission-container" id="container-{{ r.enrollment_id }}">
+                        <label class="permission-switch">
+                            <input type="checkbox" class="switch-input"
+                                   onchange="togglePermission('{{ r.enrollment_id }}', this.checked)"
+                                   {% if r.is_allowed %}checked{% endif %}>
+                            <div class="switch-rail">
+                                <div class="switch-knob"></div>
+                            </div>
+                            <span class="switch-label {{ 'label-allowed' if r.is_allowed else 'label-blocked' }}">
+                                {{ 'Allowed' if r.is_allowed else 'Blocked' }}
+                            </span>
+                        </label>
+                    </div>
+                </td>
                 <td>
                     {% if r.individual_extension %}
                     <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:11px; padding:4px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px; font-weight:600;">
@@ -192,5 +290,74 @@ document.getElementById('rescheduleForm').onsubmit = function(e) {
         console.error(err);
     });
 };
+
+function togglePermission(enrollmentId, isAllowed) {
+    const container = document.getElementById(`container-${enrollmentId}`);
+    const label = container.querySelector('.switch-label');
+    
+    // UI Feedback: Update label immediately
+    if (isAllowed) {
+        label.textContent = 'Allowed';
+        label.classList.remove('label-blocked');
+        label.classList.add('label-allowed');
+    } else {
+        label.textContent = 'Blocked';
+        label.classList.remove('label-allowed');
+        label.classList.add('label-blocked');
+    }
+
+    const data = {
+        action: 'toggle',
+        enrollment_id: enrollmentId,
+        is_allowed: isAllowed
+    };
+
+    container.classList.add('switch-loading');
+
+    fetch('/teacher/exams/{{ exam.exam_id }}/permissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(res => {
+        container.classList.remove('switch-loading');
+        if (!res.ok) {
+            alert('Error updating permission: ' + res.error);
+            location.reload();
+        }
+    })
+    .catch(err => {
+        container.classList.remove('switch-loading');
+        alert('Failed to update permission.');
+        console.error(err);
+        location.reload();
+    });
+}
+
+function updateAllPermissions(action) {
+    const msg = action === 'allow_all' ? 'Allow all students to take this exam?' : 'Deselect access for all students?';
+    if (!confirm(msg)) return;
+
+    const data = { action: action };
+
+    fetch('/teacher/exams/{{ exam.exam_id }}/permissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(res => {
+        if (res.ok) {
+            location.reload();
+        } else {
+            alert('Error: ' + res.error);
+        }
+    })
+    .catch(err => {
+        alert('Failed to update permissions.');
+        console.error(err);
+    });
+}
 </script>
 {% endblock %}

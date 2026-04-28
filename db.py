@@ -43,6 +43,8 @@ def get_db_connection():
                 cur.execute("ALTER TABLE exams ADD COLUMN batch_id VARCHAR(20)")
             if 'is_archived' not in existing_cols:
                 cur.execute("ALTER TABLE exams ADD COLUMN is_archived BOOLEAN DEFAULT FALSE")
+            if 'class_mode' not in existing_cols:
+                cur.execute("ALTER TABLE exams ADD COLUMN class_mode VARCHAR(20) DEFAULT 'Virtual'")
             conn.commit()
 
             # Simple migration for activities table
@@ -311,6 +313,22 @@ def get_db_connection():
                 conn.commit()
             except Exception as e:
                 logger.warning(f"Could not migrate individual_extensions table: {e}")
+                conn.rollback()
+
+            # exam_student_permissions migration
+            try:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS exam_student_permissions (
+                        permission_id SERIAL PRIMARY KEY,
+                        exam_id INTEGER NOT NULL REFERENCES exams(exam_id) ON DELETE CASCADE,
+                        enrollment_id INTEGER NOT NULL REFERENCES enrollments(enrollment_id) ON DELETE CASCADE,
+                        is_allowed BOOLEAN DEFAULT TRUE,
+                        UNIQUE (exam_id, enrollment_id)
+                    )
+                """)
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate exam_student_permissions table: {e}")
                 conn.rollback()
 
             # password_reset_tokens migration

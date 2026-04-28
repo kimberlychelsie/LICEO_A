@@ -1527,6 +1527,8 @@ def teacher_exam_edit_settings(exam_id):
                 flash("The updated Scheduled Start date does not fall within any configured Grading Period.", "error")
                 return redirect(url_for("teacher.teacher_exam_edit_settings", exam_id=exam_id))
 
+            class_mode = request.form.get("class_mode", "Virtual")
+
             if not title:
                 flash("Title is required.", "error")
                 return redirect(url_for("teacher.teacher_exam_edit_settings", exam_id=exam_id))
@@ -1535,17 +1537,14 @@ def teacher_exam_edit_settings(exam_id):
                 UPDATE exams SET
                     title = %s, duration_mins = %s, scheduled_start = %s,
                     max_attempts = %s, passing_score = %s, randomize = %s,
-                    instructions = %s, grading_period = %s
+                    instructions = %s, grading_period = %s, class_mode = %s
                 WHERE exam_id = %s
             """, (title, duration_mins, scheduled_start, max_attempts, passing_score,
-                  randomize, instructions, grading_period, exam_id))
+                  randomize, instructions, grading_period, class_mode, exam_id))
             db.commit()
 
             flash("Settings updated successfully.", "success")
-            if exam["exam_type"] == "quiz":
-                return redirect(url_for("teacher.teacher_quizzes"))
-            else:
-                return redirect(url_for("teacher.teacher_exams"))
+            return redirect(url_for("teacher.teacher_class_view", subject_id=exam["subject_id"], active_tab="quizzes" if exam["exam_type"] == "quiz" else "exams"))
 
         ph_tz = pytz.timezone("Asia/Manila")
         ph_now = datetime.now(ph_tz)
@@ -1621,6 +1620,7 @@ def teacher_exam_create():
         max_attempts    = int(request.form.get("max_attempts", 1))
         passing_score   = int(request.form.get("passing_score", 60))
         randomize       = request.form.get("randomize") == "1"
+        class_mode      = request.form.get("class_mode", "Virtual")
         instructions    = (request.form.get("instructions") or "").strip() or None
         grading_period  = request.form.get("grading_period")
 
@@ -1668,17 +1668,17 @@ def teacher_exam_create():
                         scheduled_start,
                         max_attempts, passing_score,
                         randomize,
-                        instructions, status, grading_period, is_visible, batch_id, year_id
+                        instructions, status, grading_period, is_visible, batch_id, year_id, class_mode
                     )
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'draft',%s,FALSE,%s,%s)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'draft',%s,FALSE,%s,%s,%s)
                     RETURNING exam_id
                 """, (
                     branch_id, section_id, subject_id, user_id,
                     title, exam_type, duration_mins,
                     scheduled_start,
                     max_attempts, passing_score,
-                     randomize,
-                    instructions, grading_period, batch_id, year_id
+                    randomize,
+                    instructions, grading_period, batch_id, year_id, class_mode
                 ))
                 exam_id = cur.fetchone()["exam_id"]
                 if primary_exam_id is None:
@@ -2292,6 +2292,7 @@ def teacher_quiz_create():
             max_attempts = int(request.form.get("max_attempts", 1))
             passing_score = int(request.form.get("passing_score", 60))
             randomize = request.form.get("randomize") == "1"
+            class_mode = request.form.get("class_mode", "Virtual")
             instructions = (request.form.get("instructions") or "").strip() or None
             grading_period = request.form.get("grading_period")
 
@@ -2342,9 +2343,9 @@ def teacher_quiz_create():
                         scheduled_start,
                         max_attempts, passing_score,
                         randomize,
-                        instructions, status, grading_period, is_visible, batch_id, year_id
+                        instructions, status, grading_period, is_visible, batch_id, year_id, class_mode
                     )
-                    VALUES (%s,%s,%s,%s,%s,'quiz',%s,%s,%s,%s,%s,%s,'draft',%s,FALSE,%s,%s)
+                    VALUES (%s,%s,%s,%s,%s,'quiz',%s,%s,%s,%s,%s,%s,'draft',%s,FALSE,%s,%s,%s)
                     RETURNING exam_id
                 """, (
                     branch_id, section_id, subject_id, user_id,
@@ -2352,7 +2353,7 @@ def teacher_quiz_create():
                     scheduled_start,
                     max_attempts, passing_score,
                     randomize,
-                    instructions, grading_period, batch_id, year_id
+                    instructions, grading_period, batch_id, year_id, class_mode
                 ))
                 exam_id = cur.fetchone()["exam_id"]
                 if primary_exam_id is None:
@@ -2430,15 +2431,17 @@ def teacher_exam_results(exam_id):
                 r.result_id, r.score, r.total_points, COALESCE(r.status, 'Not Taken') AS status,
                 r.submitted_at, r.started_at, r.tab_switches,
                 (SELECT COUNT(*) FROM exam_tab_switches ts WHERE ts.result_id = r.result_id) AS switch_count,
-                ext.new_due_date AS individual_extension
+                ext.new_due_date AS individual_extension,
+                COALESCE(esp.is_allowed, %s) AS is_allowed
             FROM enrollments e
             LEFT JOIN exam_results r ON e.enrollment_id = r.enrollment_id AND r.exam_id = %s
+            LEFT JOIN exam_student_permissions esp ON esp.enrollment_id = e.enrollment_id AND esp.exam_id = %s
             LEFT JOIN individual_extensions ext ON ext.enrollment_id = e.enrollment_id 
                  AND ext.item_id = %s AND ext.item_type = %s
             WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
-              AND e.branch_id = %s
+            AND e.branch_id = %s
             ORDER BY e.student_name ASC
-        """, (exam_id, exam_id, exam.get('exam_type', 'exam'), exam['section_id'], branch_id))
+        """, (exam['class_mode'] != 'Face-to-Face', exam_id, exam_id, exam_id, exam.get('exam_type', 'exam'), exam['section_id'], branch_id))
         results = cur.fetchall() or []
 
         # ✅ ADD THIS — convert UTC → PH time for display
@@ -3875,6 +3878,67 @@ def teacher_reschedule():
     except Exception as e:
         db.rollback()
         return jsonify({"error": str(e)}), 500
+    finally:
+        cur.close()
+        db.close()
+
+@teacher_bp.route("/teacher/exams/<int:exam_id>/permissions", methods=["POST"])
+def teacher_update_exam_permissions(exam_id):
+    if not _require_teacher():
+        return jsonify({"ok": False, "error": "Unauthorized"}), 403
+
+    user_id = session.get("user_id")
+    data = request.get_json() or {}
+    action = data.get("action") # "toggle", "allow_all", "deselect_all"
+    enrollment_id = data.get("enrollment_id")
+    is_allowed = data.get("is_allowed")
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Verify exam ownership
+        cur.execute("SELECT section_id FROM exams WHERE exam_id = %s AND teacher_id = %s", (exam_id, user_id))
+        exam = cur.fetchone()
+        if not exam:
+            return jsonify({"ok": False, "error": "Exam not found or unauthorized"}), 404
+
+        if action == "toggle":
+            if enrollment_id is None or is_allowed is None:
+                return jsonify({"ok": False, "error": "Missing data"}), 400
+            cur.execute("""
+                INSERT INTO exam_student_permissions (exam_id, enrollment_id, is_allowed)
+                VALUES (%s, %s, %s)
+                ON CONFLICT (exam_id, enrollment_id)
+                DO UPDATE SET is_allowed = EXCLUDED.is_allowed
+            """, (exam_id, enrollment_id, is_allowed))
+        elif action == "allow_all":
+            # Get all students in that section
+            cur.execute("SELECT enrollment_id FROM enrollments WHERE section_id = %s AND status IN ('approved', 'enrolled')", (exam['section_id'],))
+            students = cur.fetchall()
+            for s in students:
+                cur.execute("""
+                    INSERT INTO exam_student_permissions (exam_id, enrollment_id, is_allowed)
+                    VALUES (%s, %s, TRUE)
+                    ON CONFLICT (exam_id, enrollment_id)
+                    DO UPDATE SET is_allowed = TRUE
+                """, (exam_id, s['enrollment_id']))
+        elif action == "deselect_all":
+            # We can either delete them or set them to FALSE. Setting to FALSE is clearer.
+            cur.execute("SELECT enrollment_id FROM enrollments WHERE section_id = %s AND status IN ('approved', 'enrolled')", (exam['section_id'],))
+            students = cur.fetchall()
+            for s in students:
+                cur.execute("""
+                    INSERT INTO exam_student_permissions (exam_id, enrollment_id, is_allowed)
+                    VALUES (%s, %s, FALSE)
+                    ON CONFLICT (exam_id, enrollment_id)
+                    DO UPDATE SET is_allowed = FALSE
+                """, (exam_id, s['enrollment_id']))
+        
+        db.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"ok": False, "error": str(e)}), 500
     finally:
         cur.close()
         db.close()

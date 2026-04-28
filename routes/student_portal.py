@@ -1096,6 +1096,17 @@ def student_exam_take(exam_id):
             flash("This quiz has already ended." if is_quiz else "This exam has already ended.", "warning")
             return redirect(back_url)
         
+        # ✅ Class Mode Permission Check
+        # Default is TRUE for Virtual, FALSE for Face-to-Face
+        default_allowed = exam['class_mode'] != 'Face-to-Face'
+        cur.execute("SELECT is_allowed FROM exam_student_permissions WHERE exam_id = %s AND enrollment_id = %s", (exam_id, enrollment_id))
+        perm_row = cur.fetchone()
+        is_allowed = perm_row['is_allowed'] if perm_row else default_allowed
+
+        if not is_allowed:
+            flash("Access Denied. Please wait for your teacher to allow you to start this assessment.", "error")
+            return redirect(back_url)
+        
         # ✅ Max attempts check
         cur.execute("""
             SELECT COUNT(*) AS cnt FROM exam_results
