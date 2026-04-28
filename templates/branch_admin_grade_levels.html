@@ -229,21 +229,10 @@
                     <div class="form-node">
                         <label>Level Name</label>
                         <select class="form-control" name="name" required>
-                            <option value="">Select Grade Level</option>
-                            <option value="Nursery">Nursery</option>
-                            <option value="Kinder">Kinder</option>
-                            <option value="Grade 1">Grade 1</option>
-                            <option value="Grade 2">Grade 2</option>
-                            <option value="Grade 3">Grade 3</option>
-                            <option value="Grade 4">Grade 4</option>
-                            <option value="Grade 5">Grade 5</option>
-                            <option value="Grade 6">Grade 6</option>
-                            <option value="Grade 7">Grade 7</option>
-                            <option value="Grade 8">Grade 8</option>
-                            <option value="Grade 9">Grade 9</option>
-                            <option value="Grade 10">Grade 10</option>
-                            <option value="Grade 11">Grade 11</option>
-                            <option value="Grade 12">Grade 12</option>
+                            <option value="" disabled selected>-- Select Grade Level --</option>
+                            {% for master_name in available_grade_names %}
+                                <option value="{{ master_name }}">{{ master_name }}</option>
+                            {% endfor %}
                         </select>
                     </div>
 
@@ -339,7 +328,12 @@
             </div>
             <div class="form-node">
                 <label>Level Name</label>
-                <input type="text" name="edit_name" id="edit_name" class="form-control" required>
+                <select name="edit_name" id="edit_name" class="form-control" required>
+                    <option value="" disabled>-- Select Grade Level --</option>
+                    {% for master_name in available_grade_names %}
+                        <option value="{{ master_name }}">{{ master_name }}</option>
+                    {% endfor %}
+                </select>
             </div>
 
             <div style="display:flex; justify-content:flex-end; gap:12px; margin-top: 32px;">
