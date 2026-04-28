@@ -8,8 +8,8 @@ load_dotenv()
 
 def _send_email_core(to_email, subject, body, html_body=None):
     """Internal function to handle the actual SMTP connection."""
-    smtp_host = os.getenv('MAIL_SERVER', 'mail.liceo-lms.com')
-    smtp_port = int(os.getenv('MAIL_PORT', 587))
+    smtp_host = os.getenv('MAIL_SERVER', 'smtp.hostinger.com')
+    smtp_port = int(os.getenv('MAIL_PORT', 465))
     smtp_user = os.getenv('MAIL_USERNAME')
     smtp_pass = os.getenv('MAIL_PASSWORD')
     from_email = os.getenv('MAIL_DEFAULT_SENDER')
