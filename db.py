@@ -666,19 +666,22 @@ Grade 10,Inteligente,TLE- SPICE Book 2,540.00"""
 
             # ONE-TIME STRAND MIGRATION: Update generic Grade 11/12 to strands
             try:
-                # Update Grade 11
+                # 1. Update generic "Grade 11" and "Grade 12" to strands with "Grade" prefix
                 cur.execute("SELECT enrollment_id FROM enrollments WHERE grade_level = 'Grade 11' ORDER BY enrollment_id")
                 g11_rows = cur.fetchall()
-                strands_11 = ['11-GAS', '11-STEM', '11-HUMSS']
+                strands_11 = ['Grade 11-GAS', 'Grade 11-STEM', 'Grade 11-HUMSS']
                 for i, row in enumerate(g11_rows):
                     cur.execute("UPDATE enrollments SET grade_level = %s WHERE enrollment_id = %s", (strands_11[i % 3], row[0]))
                 
-                # Update Grade 12
                 cur.execute("SELECT enrollment_id FROM enrollments WHERE grade_level = 'Grade 12' ORDER BY enrollment_id")
                 g12_rows = cur.fetchall()
-                strands_12 = ['12-GAS', '12-STEM', '12-HUMSS']
+                strands_12 = ['Grade 12-GAS', 'Grade 12-STEM', 'Grade 12-HUMSS']
                 for i, row in enumerate(g12_rows):
                     cur.execute("UPDATE enrollments SET grade_level = %s WHERE enrollment_id = %s", (strands_12[i % 3], row[0]))
+
+                # 2. FIX existing strand names missing "Grade" prefix
+                cur.execute("UPDATE enrollments SET grade_level = 'Grade ' || grade_level WHERE grade_level NOT LIKE 'Grade %' AND (grade_level LIKE '11-%' OR grade_level LIKE '12-%')")
+                cur.execute("UPDATE grade_levels SET name = 'Grade ' || name WHERE name NOT LIKE 'Grade %' AND (name LIKE '11-%' OR name LIKE '12-%')")
                 
                 conn.commit()
             except Exception as e:
