@@ -30,8 +30,15 @@
     }
 
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     /* ── Premium Header ── */
@@ -154,8 +161,16 @@
         color: var(--ma-muted);
     }
 
-    .stat-label-wrap i { width: 16px; text-align: center; }
-    .stat-value { font-weight: 900; color: var(--ma-primary); font-size: 1rem; }
+    .stat-label-wrap i {
+        width: 16px;
+        text-align: center;
+    }
+
+    .stat-value {
+        font-weight: 900;
+        color: var(--ma-primary);
+        font-size: 1rem;
+    }
 
     /* ── Data Column (Left) ── */
     .data-column {
@@ -226,11 +241,17 @@
         font-weight: 600;
     }
 
-    .health-table tr:last-child td { border-bottom: none; }
-    .health-table tr:hover td { background: #fcfcfc; }
+    .health-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .health-table tr:hover td {
+        background: #fcfcfc;
+    }
 
     .user-avatar {
-        width: 40px; height: 40px;
+        width: 40px;
+        height: 40px;
         background: #e2e8f0;
         color: var(--ma-primary);
         border-radius: 12px;
@@ -240,7 +261,7 @@
         font-weight: 800;
         font-size: 0.95rem;
         border: 2px solid white;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
     }
 
     .badge-modern {
@@ -251,12 +272,24 @@
         text-transform: uppercase;
     }
 
-    .bg-danger-soft { background: #fee2e2; color: #dc2626; }
-    .bg-warning-soft { background: #fef3c7; color: #d97706; }
+    .bg-danger-soft {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .bg-warning-soft {
+        background: #fef3c7;
+        color: #d97706;
+    }
 
     @media (max-width: 1100px) {
-        .attendance-grid { grid-template-columns: 1fr; }
-        .analytics-sidebar { order: -1; }
+        .attendance-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .analytics-sidebar {
+            order: -1;
+        }
     }
 </style>
 {% endblock %}
@@ -277,12 +310,12 @@
     <div class="attendance-grid">
         <!-- Data Column (Left) -->
         <div class="data-column">
-            
+
             <!-- Habitual Absentees -->
             <div class="table-card" style="border-top: 6px solid #ef4444;">
                 <div class="card-header">
-                    <h2><i class="fas fa-exclamation-circle" style="color: #ef4444;"></i> Critical Interventions</h2>
-                    <span class="status-count">{{ habitual_absentees|length }} High Risk Students</span>
+                    <h2><i class="fas fa-exclamation-circle" style="color: #ef4444;"></i> Student Absentees</h2>
+                    <span class="status-count">{{ habitual_absentees|length }} List of Students</span>
                 </div>
                 <div class="table-container">
                     {% if habitual_absentees %}
@@ -300,7 +333,8 @@
                             <tr>
                                 <td>
                                     <div style="display: flex; align-items: center; gap: 16px;">
-                                        <div class="user-avatar" style="background: #fee2e2; color: #ef4444;">{{ h.student_name[0] }}</div>
+                                        <div class="user-avatar" style="background: #fee2e2; color: #ef4444;">{{
+                                            h.student_name[0] }}</div>
                                         <strong style="color: var(--ma-primary);">{{ h.student_name }}</strong>
                                     </div>
                                 </td>
@@ -315,7 +349,8 @@
                     </table>
                     {% else %}
                     <div style="padding: 60px; text-align: center; color: var(--ma-muted);">
-                        <i class="fas fa-check-circle" style="font-size: 3rem; color: #10b981; margin-bottom: 16px; display: block; opacity: 0.5;"></i>
+                        <i class="fas fa-check-circle"
+                            style="font-size: 3rem; color: #10b981; margin-bottom: 16px; display: block; opacity: 0.5;"></i>
                         <h3 style="color: var(--ma-primary);">No High Risk Students</h3>
                         <p>All students are within the standard attendance thresholds.</p>
                     </div>
@@ -345,14 +380,16 @@
                             <tr>
                                 <td>
                                     <div style="display: flex; align-items: center; gap: 16px;">
-                                        <div class="user-avatar" style="background: #fef3c7; color: #d97706;">{{ m.teacher_name[0] }}</div>
+                                        <div class="user-avatar" style="background: #fef3c7; color: #d97706;">{{
+                                            m.teacher_name[0] }}</div>
                                         <strong style="color: var(--ma-primary);">{{ m.teacher_name }}</strong>
                                     </div>
                                 </td>
                                 <td style="font-weight: 800;">{{ m.subject_name }}</td>
                                 <td style="color: var(--ma-muted);">{{ m.grade_level }} — {{ m.section_name }}</td>
                                 <td style="font-size: 0.85rem;">
-                                    <span style="background: #f8fafc; padding: 4px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                                    <span
+                                        style="background: #f8fafc; padding: 4px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
                                         {{ m.start_time.strftime('%I:%M %p') }} - {{ m.end_time.strftime('%I:%M %p') }}
                                     </span>
                                 </td>
@@ -362,7 +399,8 @@
                     </table>
                     {% else %}
                     <div style="padding: 60px; text-align: center; color: var(--ma-muted);">
-                        <i class="fas fa-clipboard-check" style="font-size: 3rem; color: #10b981; margin-bottom: 16px; display: block; opacity: 0.5;"></i>
+                        <i class="fas fa-clipboard-check"
+                            style="font-size: 3rem; color: #10b981; margin-bottom: 16px; display: block; opacity: 0.5;"></i>
                         <h3 style="color: var(--ma-primary);">Faculty Fully Compliant</h3>
                         <p>All daily attendance records have been finalized.</p>
                     </div>
@@ -374,15 +412,21 @@
 
         <!-- Analytics Sidebar (Right) -->
         <div class="analytics-sidebar">
-            
+
             <!-- Global Efficiency -->
-            <div class="analytics-card" style="background: linear-gradient(135deg, var(--ma-primary), #1e40af); border: none;">
-                <h2 style="color: white; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; margin-bottom: 16px;">
+            <div class="analytics-card"
+                style="background: linear-gradient(135deg, var(--ma-primary), #1e40af); border: none;">
+                <h2
+                    style="color: white; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 12px; margin-bottom: 16px;">
                     <i class="fas fa-bolt" style="color: var(--ma-gold);"></i> System Health
                 </h2>
                 <div style="text-align: center; padding: 10px 0;">
-                    <div style="font-size: 3.5rem; font-weight: 900; color: white; line-height: 1; letter-spacing: -2px;">{{ attendance_rate }}%</div>
-                    <div style="color: rgba(255,255,255,0.7); font-size: 0.85rem; font-weight: 700; margin-top: 10px; text-transform: uppercase;">Average Attendance Rate</div>
+                    <div
+                        style="font-size: 3.5rem; font-weight: 900; color: white; line-height: 1; letter-spacing: -2px;">
+                        {{ attendance_rate }}%</div>
+                    <div
+                        style="color: rgba(255,255,255,0.7); font-size: 0.85rem; font-weight: 700; margin-top: 10px; text-transform: uppercase;">
+                        Average Attendance Rate</div>
                 </div>
             </div>
 
@@ -394,11 +438,13 @@
                 </div>
                 <div class="mini-stats-list">
                     <div class="mini-stat-item">
-                        <div class="stat-label-wrap"><i class="fas fa-user-check" style="color: #10b981;"></i> Present</div>
+                        <div class="stat-label-wrap"><i class="fas fa-user-check" style="color: #10b981;"></i> Present
+                        </div>
                         <div class="stat-value">{{ today_stats['P'] }}</div>
                     </div>
                     <div class="mini-stat-item">
-                        <div class="stat-label-wrap"><i class="fas fa-user-times" style="color: #ef4444;"></i> Absent</div>
+                        <div class="stat-label-wrap"><i class="fas fa-user-times" style="color: #ef4444;"></i> Absent
+                        </div>
                         <div class="stat-value">{{ today_stats['A'] }}</div>
                     </div>
                     <div class="mini-stat-item">
@@ -406,7 +452,8 @@
                         <div class="stat-value">{{ today_stats['L'] }}</div>
                     </div>
                     <div class="mini-stat-item">
-                        <div class="stat-label-wrap"><i class="fas fa-shield-alt" style="color: #3b82f6;"></i> Excused</div>
+                        <div class="stat-label-wrap"><i class="fas fa-shield-alt" style="color: #3b82f6;"></i> Excused
+                        </div>
                         <div class="stat-value">{{ today_stats['E'] }}</div>
                     </div>
                 </div>
@@ -420,50 +467,50 @@
 {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         const ctx = document.getElementById('distributionChart').getContext('2d');
-        
+
         new Chart(ctx, {
             type: 'doughnut',
             data: {
                 labels: ['Present', 'Absent', 'Late', 'Excused', 'Half-day'],
                 datasets: [{
                     data: [
-                        {{ today_stats['P'] }}, 
-                        {{ today_stats['A'] }}, 
-                        {{ today_stats['L'] }}, 
-                        {{ today_stats['E'] }}, 
-                        {{ today_stats['H'] }}
+                        {{ today_stats['P'] }},
+                {{ today_stats['A'] }}, 
+                        {{ today_stats['L'] }},
+        {{ today_stats['E'] }},
+        {{ today_stats['H'] }}
                     ],
-                    backgroundColor: [
-                        '#10b981', // Success
-                        '#ef4444', // Danger
-                        '#f59e0b', // Warning
-                        '#3b82f6', // Info
-                        '#8b5cf6'  // Purple
-                    ],
-                    borderWidth: 0,
-                    hoverOffset: 15
+        backgroundColor: [
+        '#10b981', // Success
+        '#ef4444', // Danger
+        '#f59e0b', // Warning
+        '#3b82f6', // Info
+        '#8b5cf6'  // Purple
+    ],
+        borderWidth: 0,
+        hoverOffset: 15
                 }]
             },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '75%',
-                plugins: {
-                    legend: {
-                        display: false
-                    },
-                    tooltip: {
-                        backgroundColor: '#1e293b',
-                        titleFont: { size: 14, weight: 'bold' },
-                        bodyFont: { size: 13 },
-                        padding: 12,
-                        cornerRadius: 12,
-                        displayColors: true
-                    }
-                }
+        options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '75%',
+        plugins: {
+            legend: {
+                display: false
+            },
+            tooltip: {
+                backgroundColor: '#1e293b',
+                titleFont: { size: 14, weight: 'bold' },
+                bodyFont: { size: 13 },
+                padding: 12,
+                cornerRadius: 12,
+                displayColors: true
             }
+        }
+    }
         });
     });
 </script>
