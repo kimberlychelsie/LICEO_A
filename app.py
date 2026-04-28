@@ -2,7 +2,7 @@ import os
 from dotenv import load_dotenv
 load_dotenv()  # loads .env file locally; no effect in Railway (env vars set directly)
 
-from flask import Flask, request, session, flash, redirect, url_for, render_template
+from flask import Flask, request, session, flash, redirect, url_for, render_template, send_from_directory
 from routes import init_routes
 from db import is_branch_active, get_db_connection
 from extensions import limiter
@@ -11,6 +11,11 @@ app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "liceo_secret_key_dev")
 limiter.init_app(app)
 app.jinja_env.add_extension('jinja2.ext.loopcontrols')
+app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), "uploads")
+
+@app.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.hostinger.com')
 app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 465))

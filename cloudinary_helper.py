@@ -84,12 +84,23 @@ def _upload_to_cloudinary(file_storage, folder: str) -> str:
     ext = file_storage.filename.lower().rsplit('.', 1)[-1] if (file_storage.filename and '.' in file_storage.filename) else ''
     is_raw_type = ext in ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx']
     
+    from werkzeug.utils import secure_filename
+    base_name = secure_filename(file_storage.filename.rsplit('.', 1)[0] if (file_storage.filename and '.' in file_storage.filename) else "document")
+    if not base_name or base_name == "file":
+        base_name = "document"
+        
+    # Cloudinary raw resources need the extension IN the public_id to be served with it
+    public_id = f"{base_name}_{uuid.uuid4().hex[:6]}"
+    if is_raw_type and ext:
+        public_id += f".{ext}"
+
     result = cloudinary.uploader.upload(
         file_storage,
         folder=folder,
+        public_id=public_id,
         resource_type="raw" if is_raw_type else "auto",   # use raw for docs to allow public access/viewers
         use_filename=True,
-        unique_filename=True,
+        unique_filename=False, # We handle uniqueness with public_id
     )
     url = result.get("secure_url")
     if not url:
