@@ -6,94 +6,294 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
 <style>
-    body { background: #f4f6f9; font-family: 'Plus Jakarta Sans', sans-serif; }
-    .registry-welcome {
-        background: linear-gradient(135deg, #1a3a8f, #0f256e);
-        padding: 40px; border-radius: 16px; color: #ffffff;
-        margin-bottom: 32px; box-shadow: 0 10px 25px -5px rgba(26, 58, 143, 0.4);
+    :root {
+        --ma-primary: #1a3a8f;
+        --ma-gold: #facc15;
+        --ma-gold-glow: rgba(250, 204, 21, 0.4);
+        --ma-bg: #fdfdfd;
+        --ma-glass: rgba(255, 255, 255, 0.9);
+        --ma-glass-border: rgba(26, 58, 143, 0.1);
+        --ma-text: #0f172a;
+        --ma-muted: #64748b;
+        --ma-shadow-deep: 0 20px 50px -10px rgba(26, 58, 143, 0.12), 0 10px 20px -5px rgba(0, 0, 0, 0.04);
+        --ma-shadow: 0 15px 35px -5px rgba(0, 0, 0, 0.05);
+        --ma-border: #e2e8f0;
     }
+
+    body {
+        background-color: var(--ma-bg);
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .ma-container {
+        padding: 40px 32px;
+        max-width: 1500px;
+        margin: 0 auto;
+        animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* ── Premium Header ── */
+    .premium-header {
+        margin-bottom: 48px;
+        position: relative;
+    }
+
+    .premium-header h1 {
+        font-size: 3rem;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        line-height: 1;
+        margin-bottom: 8px;
+        color: var(--ma-primary);
+    }
+
+    .premium-header h1 span {
+        background: linear-gradient(135deg, var(--ma-primary), #3b82f6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .premium-header p {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: var(--ma-muted);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .premium-header p .date-pill {
+        background: #f1f5f9;
+        color: var(--ma-primary);
+        padding: 4px 14px;
+        border-radius: 99px;
+        font-size: 0.85rem;
+        font-weight: 800;
+        border: 1px solid var(--ma-glass-border);
+    }
+
     .modern-card {
-        background: #ffffff; border-radius: 16px; padding: 32px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid #e2e8f0;
+        background: #ffffff;
+        border-radius: 32px;
+        padding: 32px;
+        box-shadow: var(--ma-shadow-deep);
+        border: 1px solid var(--ma-glass-border);
         margin-bottom: 32px;
     }
-    .form-node { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
-    .form-node label { font-size: 0.85rem; font-weight: 800; color: #64748b; text-transform: uppercase; }
+
+    .form-node {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
+    }
+
+    .form-node label {
+        font-size: 0.75rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        color: var(--ma-muted);
+        margin-bottom: 10px;
+        display: block;
+        margin-left: 5px;
+    }
+
     .form-node input,
     .form-node .flatpickr-input {
-        width: 100%; padding: 10px 14px; border: 1.5px solid #e2e8f0; border-radius: 10px;
-        font-weight: 600; outline: none; transition: 0.3s; background: #fff;
-        font-family: 'Plus Jakarta Sans', sans-serif; font-size: 0.9rem; color: #1e293b;
-        box-sizing: border-box; cursor: pointer;
+        width: 100%;
+        padding: 18px 24px;
+        border-radius: 20px;
+        border: 2px solid #f1f5f9;
+        font-family: inherit;
+        font-weight: 700;
+        background: #fcfcfc;
+        color: var(--ma-text);
+        transition: all 0.3s ease;
+        box-sizing: border-box;
+        font-size: 1rem;
+        cursor: pointer;
     }
+
     .form-node input:focus,
     .form-node .flatpickr-input:focus {
-        border-color: #facc15; box-shadow: 0 0 0 4px rgba(250, 204, 21, 0.15);
+        border-color: var(--ma-gold);
+        background: #fff;
+        outline: none;
+        box-shadow: 0 0 0 6px var(--ma-gold-glow);
+        transform: translateY(-2px);
     }
+
     .btn-prem {
-        padding: 12px 24px; border-radius: 10px; font-weight: 800; border: none; cursor: pointer; transition: 0.3s;
+        padding: 20px;
+        border-radius: 24px;
+        font-weight: 900;
+        border: none;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
     }
-    .btn-gold { background: #facc15; color: #1a3a8f; box-shadow: 0 4px 12px rgba(250, 204, 21, 0.3); }
-    .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(250, 204, 21, 0.4); }
-    .vault-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+
+    .btn-gold {
+        background: var(--ma-gold);
+        color: #0c2461;
+        box-shadow: 0 10px 25px var(--ma-gold-glow);
+    }
+
+    .btn-gold:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px var(--ma-gold-glow);
+        background: #fde047;
+    }
+
+    .vault-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
     .vault-table th {
-        background: #f8fafc; padding: 14px; text-align: left; font-size: 0.75rem;
-        font-weight: 800; color: #64748b; text-transform: uppercase; border-bottom: 2px solid #e2e8f0;
+        background: #f8fafc;
+        padding: 20px 24px;
+        text-align: left;
+        font-size: 0.8rem;
+        font-weight: 850;
+        color: var(--ma-muted);
+        text-transform: uppercase;
+        border-bottom: 2px solid var(--ma-border);
+        letter-spacing: 0.05em;
     }
-    .vault-table td { padding: 14px; border-bottom: 1px solid #f1f5f9; font-weight: 600; }
-    .badge-global { background: #eff6ff; color: #1e40af; padding: 4px 8px; border-radius: 6px; font-size: 0.65rem; }
+
+    .vault-table td {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--ma-border);
+        font-weight: 600;
+        color: var(--ma-text);
+    }
+
+    .badge-global {
+        background: #eff6ff;
+        color: var(--ma-primary);
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 0.7rem;
+        font-weight: 800;
+        border: 1px solid #dbeafe;
+    }
 
     /* Flatpickr Custom Theme */
     .flatpickr-calendar {
-        border-radius: 14px !important;
-        box-shadow: 0 20px 40px -8px rgba(26, 58, 143, 0.2) !important;
-        border: 1px solid #e2e8f0 !important;
+        border-radius: 24px !important;
+        box-shadow: 0 30px 60px -12px rgba(26, 58, 143, 0.3) !important;
+        border: 1px solid var(--ma-glass-border) !important;
         font-family: 'Plus Jakarta Sans', sans-serif !important;
+        padding: 10px !important;
     }
+
     .flatpickr-months .flatpickr-month {
-        background: #1a3a8f !important; border-radius: 14px 14px 0 0 !important;
+        background: var(--ma-primary) !important;
+        border-radius: 18px 18px 0 0 !important;
+        padding: 10px 0 !important;
     }
+
     .flatpickr-current-month .flatpickr-monthDropdown-months,
     .flatpickr-current-month input.cur-year {
-        font-weight: 800 !important; color: #fff !important;
+        font-weight: 900 !important;
+        color: #fff !important;
         font-family: 'Plus Jakarta Sans', sans-serif !important;
     }
+
     .flatpickr-current-month .flatpickr-monthDropdown-months option {
-        color: #1e293b !important;
+        color: var(--ma-text) !important;
         background: #ffffff !important;
     }
-    .flatpickr-weekday { color: #1a3a8f !important; font-weight: 800 !important; }
-    .flatpickr-day.selected, .flatpickr-day.selected:hover {
-        background: #1a3a8f !important; border-color: #1a3a8f !important;
-        font-weight: 800 !important;
+
+    .flatpickr-weekday {
+        color: var(--ma-primary) !important;
+        font-weight: 900 !important;
     }
-    .flatpickr-day:hover { background: #eff6ff !important; color: #1a3a8f !important; }
-    .flatpickr-day.today { border-color: #facc15 !important; color: #1a3a8f !important; font-weight: 800 !important; }
+
+    .flatpickr-day.selected,
+    .flatpickr-day.selected:hover {
+        background: var(--ma-primary) !important;
+        border-color: var(--ma-primary) !important;
+        font-weight: 800 !important;
+        border-radius: 12px !important;
+    }
+
+    .flatpickr-day:hover {
+        background: #eff6ff !important;
+        color: var(--ma-primary) !important;
+        border-radius: 12px !important;
+    }
+
+    .flatpickr-day.today {
+        border-color: var(--ma-gold) !important;
+        color: var(--ma-primary) !important;
+        font-weight: 900 !important;
+    }
+
     .flatpickr-months .flatpickr-prev-month svg,
-    .flatpickr-months .flatpickr-next-month svg { fill: #fff !important; }
+    .flatpickr-months .flatpickr-next-month svg {
+        fill: #fff !important;
+    }
+
     .flatpickr-months .flatpickr-prev-month:hover svg,
-    .flatpickr-months .flatpickr-next-month:hover svg { fill: #facc15 !important; }
-    .numInputWrapper span.arrowUp:after { border-bottom-color: #fff !important; }
-    .numInputWrapper span.arrowDown:after { border-top-color: #fff !important; }
-    .flatpickr-current-month .numInputWrapper { width: 6ch !important; }
+    .flatpickr-months .flatpickr-next-month:hover svg {
+        fill: var(--ma-gold) !important;
+    }
+
+    .numInputWrapper span.arrowUp:after {
+        border-bottom-color: #fff !important;
+    }
+
+    .numInputWrapper span.arrowDown:after {
+        border-top-color: #fff !important;
+    }
+
+    .flatpickr-current-month .numInputWrapper {
+        width: 6ch !important;
+    }
 </style>
 
-<div class="ba-container" style="max-width: 1200px; margin: 0 auto; padding: 24px;">
-    <div class="registry-welcome">
-        <h1>Academic Calendar Setup</h1>
-        <p>Define grading period ranges and manage local holidays for this branch.</p>
-    </div>
+<div class="ma-container">
+    <header class="premium-header">
+        <h1>Academic <span>Calendar Setup</span></h1>
+        <p>
+            Define grading period ranges and manage local holidays for this branch
+        </p>
+    </header>
 
     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px;">
         <!-- Grading Periods -->
         <div>
             <div class="modern-card">
-                <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 24px; color: #1e293b;">Grading Period Ranges</h2>
+                <h2
+                    style="font-size: 1.4rem; font-weight: 900; margin-bottom: 24px; color: var(--ma-primary); display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-calendar-alt"></i> Grading Period Ranges
+                </h2>
                 <form method="POST" id="grading-form">
                     <input type="hidden" name="action" value="save_ranges">
                     {% for p in ['1st', '2nd', '3rd', '4th'] %}
-                    <div style="margin-bottom: 24px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
-                        <h3 style="margin: 0 0 12px 0; font-size: 0.95rem; font-weight: 800; color: #1a3a8f;">{{ p }} Grading</h3>
+                    <div
+                        style="margin-bottom: 24px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+                        <h3 style="margin: 0 0 12px 0; font-size: 0.95rem; font-weight: 800; color: #1a3a8f;">{{ p }}
+                            Grading</h3>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                             <div class="form-node">
                                 <label>Start Date</label>
@@ -101,10 +301,8 @@
                                 <input type="hidden" name="{{ p }}_start" id="{{ p }}_start_val"
                                     value="{{ ranges[p].start_date if p in ranges else '' }}">
                                 <!-- Flatpickr display input -->
-                                <input type="text" class="grading-date-picker"
-                                    id="{{ p }}_start_display"
-                                    data-target="{{ p }}_start_val"
-                                    placeholder="e.g. June 1, 2026"
+                                <input type="text" class="grading-date-picker" id="{{ p }}_start_display"
+                                    data-target="{{ p }}_start_val" placeholder="e.g. June 1, 2026"
                                     value="{{ ranges[p].start_date.strftime('%B %d, %Y') if p in ranges and ranges[p].start_date else '' }}"
                                     readonly>
                             </div>
@@ -112,10 +310,8 @@
                                 <label>End Date</label>
                                 <input type="hidden" name="{{ p }}_end" id="{{ p }}_end_val"
                                     value="{{ ranges[p].end_date if p in ranges else '' }}">
-                                <input type="text" class="grading-date-picker"
-                                    id="{{ p }}_end_display"
-                                    data-target="{{ p }}_end_val"
-                                    placeholder="e.g. August 15, 2026"
+                                <input type="text" class="grading-date-picker" id="{{ p }}_end_display"
+                                    data-target="{{ p }}_end_val" placeholder="e.g. August 15, 2026"
                                     value="{{ ranges[p].end_date.strftime('%B %d, %Y') if p in ranges and ranges[p].end_date else '' }}"
                                     readonly>
                             </div>
@@ -130,14 +326,16 @@
         <!-- Holidays -->
         <div style="display: flex; flex-direction: column; gap: 32px;">
             <div class="modern-card">
-                <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 20px; color: #1e293b;">Add Local Holiday</h2>
+                <h2
+                    style="font-size: 1.4rem; font-weight: 900; margin-bottom: 24px; color: var(--ma-primary); display: flex; align-items: center; gap: 12px;">
+                    <i class="fas fa-map-marker-alt"></i> Add Local Holiday
+                </h2>
                 <form method="POST">
                     <input type="hidden" name="action" value="add_holiday">
                     <div class="form-node">
                         <label>Date</label>
                         <input type="hidden" name="holiday_date" id="holiday_date_val">
-                        <input type="text" id="holiday_date_picker" placeholder="Select holiday date" readonly
-                            style="width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:10px;
+                        <input type="text" id="holiday_date_picker" placeholder="Select holiday date" readonly style="width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:10px;
                                    font-weight:600; outline:none; background:#fff; cursor:pointer;
                                    font-family:'Plus Jakarta Sans',sans-serif; font-size:0.9rem;">
                     </div>
@@ -150,8 +348,11 @@
             </div>
 
             <div class="modern-card" style="padding: 0; overflow: hidden;">
-                <div style="padding: 20px 24px; border-bottom: 1px solid #e2e8f0;">
-                    <h2 style="margin:0; font-size: 1.1rem; font-weight: 800; color: #1e293b;">Holiday Registry</h2>
+                <div style="padding: 24px; border-bottom: 1px solid var(--ma-border);">
+                    <h2
+                        style="margin:0; font-size: 1.1rem; font-weight: 900; color: var(--ma-primary); text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-list-ul"></i> Holiday Registry
+                    </h2>
                 </div>
                 <table class="vault-table">
                     <thead>
@@ -173,8 +374,11 @@
                             </td>
                             <td style="text-align: right;">
                                 {% if h.branch_id is not none %}
-                                <form action="{{ url_for('branch_admin.branch_admin_delete_holiday', holiday_id=h.id) }}" method="POST" onsubmit="return confirm('Delete this local holiday?');">
-                                    <button type="submit" style="background:none; border:none; color:#ef4444; font-weight:800; cursor:pointer;">Delete</button>
+                                <form
+                                    action="{{ url_for('branch_admin.branch_admin_delete_holiday', holiday_id=h.id) }}"
+                                    method="POST" onsubmit="return confirm('Delete this local holiday?');">
+                                    <button type="submit"
+                                        style="background:none; border:none; color:#ef4444; font-weight:800; cursor:pointer;">Delete</button>
                                 </form>
                                 {% else %}
                                 <span style="font-size: 0.7rem; color: #94a3b8;">LOCKED</span>
@@ -183,7 +387,8 @@
                         </tr>
                         {% else %}
                         <tr>
-                            <td colspan="3" style="text-align:center; padding: 30px; color: #94a3b8;">No events scheduled.</td>
+                            <td colspan="3" style="text-align:center; padding: 30px; color: #94a3b8;">No events
+                                scheduled.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -196,85 +401,85 @@
 <!-- Flatpickr JS -->
 <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function () {
+    document.addEventListener('DOMContentLoaded', function () {
 
-    // ── Grading Period Date Pickers ─────────────────────────────────────────
-    document.querySelectorAll('.grading-date-picker').forEach(function (el) {
-        const targetId = el.getAttribute('data-target');
-        const hiddenInput = document.getElementById(targetId);
+        // ── Grading Period Date Pickers ─────────────────────────────────────────
+        document.querySelectorAll('.grading-date-picker').forEach(function (el) {
+            const targetId = el.getAttribute('data-target');
+            const hiddenInput = document.getElementById(targetId);
 
-        flatpickr(el, {
-            dateFormat: 'Y-m-d',          // value stored in hidden input (backend format)
-            altInput: false,               // we handle display ourselves
+            flatpickr(el, {
+                dateFormat: 'Y-m-d',          // value stored in hidden input (backend format)
+                altInput: false,               // we handle display ourselves
+                allowInput: false,
+                disableMobile: true,           // always use flatpickr on mobile too
+                defaultDate: hiddenInput.value || null,
+
+                // ── On date selected: push YYYY-MM-DD to hidden, show "June 1, 2026" on display ──
+                onChange: function (selectedDates, dateStr) {
+                    hiddenInput.value = dateStr;    // YYYY-MM-DD for backend
+                    if (selectedDates.length > 0) {
+                        const d = selectedDates[0];
+                        const opts = { year: 'numeric', month: 'long', day: 'numeric' };
+                        el.value = d.toLocaleDateString('en-US', opts);
+                    }
+                },
+
+                onReady: function (selectedDates, dateStr, instance) {
+                    // Show human-readable value if already set
+                    if (hiddenInput.value) {
+                        const d = new Date(hiddenInput.value);
+                        // Fix timezone offset so date doesn't shift
+                        const fixed = new Date(d.getTime() + d.getTimezoneOffset() * 60000);
+                        const opts = { year: 'numeric', month: 'long', day: 'numeric' };
+                        el.value = fixed.toLocaleDateString('en-US', opts);
+                    }
+                }
+            });
+        });
+
+        // ── Holiday Date Picker ─────────────────────────────────────────────────
+        flatpickr('#holiday_date_picker', {
+            dateFormat: 'Y-m-d',
             allowInput: false,
-            disableMobile: true,           // always use flatpickr on mobile too
-            defaultDate: hiddenInput.value || null,
-
-            // ── On date selected: push YYYY-MM-DD to hidden, show "June 1, 2026" on display ──
+            disableMobile: true,
             onChange: function (selectedDates, dateStr) {
-                hiddenInput.value = dateStr;    // YYYY-MM-DD for backend
+                document.getElementById('holiday_date_val').value = dateStr;
                 if (selectedDates.length > 0) {
                     const d = selectedDates[0];
                     const opts = { year: 'numeric', month: 'long', day: 'numeric' };
-                    el.value = d.toLocaleDateString('en-US', opts);
+                    document.getElementById('holiday_date_picker').value =
+                        d.toLocaleDateString('en-US', opts);
                 }
-            },
+            }
+        });
 
-            onReady: function (selectedDates, dateStr, instance) {
-                // Show human-readable value if already set
-                if (hiddenInput.value) {
-                    const d = new Date(hiddenInput.value);
-                    // Fix timezone offset so date doesn't shift
-                    const fixed = new Date(d.getTime() + d.getTimezoneOffset() * 60000);
-                    const opts = { year: 'numeric', month: 'long', day: 'numeric' };
-                    el.value = fixed.toLocaleDateString('en-US', opts);
+        // ── Validate hidden inputs before grading form submit ───────────────────
+        document.getElementById('grading-form').addEventListener('submit', function (e) {
+            const periods = ['1st', '2nd', '3rd', '4th'];
+            for (const p of periods) {
+                const start = document.getElementById(p + '_start_val').value;
+                const end = document.getElementById(p + '_end_val').value;
+                if (!start || !end) {
+                    e.preventDefault();
+                    alert('Please select both Start Date and End Date for all grading periods.');
+                    return;
+                }
+                const dStart = new Date(start);
+                const dEnd = new Date(end);
+
+                // Calculate minimum end date (1 month + 15 days)
+                let minEnd = new Date(dStart);
+                minEnd.setMonth(minEnd.getMonth() + 1);
+                minEnd.setDate(minEnd.getDate() + 15);
+
+                if (dEnd < minEnd) {
+                    e.preventDefault();
+                    alert('For ' + p + ' Grading: The period must be at least 1.5 months long.');
+                    return;
                 }
             }
         });
     });
-
-    // ── Holiday Date Picker ─────────────────────────────────────────────────
-    flatpickr('#holiday_date_picker', {
-        dateFormat: 'Y-m-d',
-        allowInput: false,
-        disableMobile: true,
-        onChange: function (selectedDates, dateStr) {
-            document.getElementById('holiday_date_val').value = dateStr;
-            if (selectedDates.length > 0) {
-                const d = selectedDates[0];
-                const opts = { year: 'numeric', month: 'long', day: 'numeric' };
-                document.getElementById('holiday_date_picker').value =
-                    d.toLocaleDateString('en-US', opts);
-            }
-        }
-    });
-
-    // ── Validate hidden inputs before grading form submit ───────────────────
-    document.getElementById('grading-form').addEventListener('submit', function (e) {
-        const periods = ['1st', '2nd', '3rd', '4th'];
-        for (const p of periods) {
-            const start = document.getElementById(p + '_start_val').value;
-            const end   = document.getElementById(p + '_end_val').value;
-            if (!start || !end) {
-                e.preventDefault();
-                alert('Please select both Start Date and End Date for all grading periods.');
-                return;
-            }
-            const dStart = new Date(start);
-            const dEnd = new Date(end);
-
-            // Calculate minimum end date (1 month + 15 days)
-            let minEnd = new Date(dStart);
-            minEnd.setMonth(minEnd.getMonth() + 1);
-            minEnd.setDate(minEnd.getDate() + 15);
-
-            if (dEnd < minEnd) {
-                e.preventDefault();
-                alert('For ' + p + ' Grading: The period must be at least 1.5 months long.');
-                return;
-            }
-        }
-    });
-});
 </script>
 {% endblock %}
