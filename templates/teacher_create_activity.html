@@ -24,9 +24,11 @@
     .form-hero::after {
         content: '';
         position: absolute;
-        top: -40px; right: -40px;
-        width: 180px; height: 180px;
-        background: rgba(255,255,255,0.06);
+        top: -40px;
+        right: -40px;
+        width: 180px;
+        height: 180px;
+        background: rgba(255, 255, 255, 0.06);
         border-radius: 50%;
     }
 
@@ -44,7 +46,7 @@
 
     .form-hero .sub {
         font-size: 0.95rem;
-        color: rgba(255,255,255,0.8);
+        color: rgba(255, 255, 255, 0.8);
         margin: 0;
         line-height: 1.5;
     }
@@ -56,7 +58,7 @@
         border-top: none;
         border-radius: 0 0 20px 20px;
         padding: 36px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.04);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
     }
 
     .form-group {
@@ -72,7 +74,9 @@
         margin-bottom: 8px;
     }
 
-    .form-input, .form-select, .form-textarea {
+    .form-input,
+    .form-select,
+    .form-textarea {
         width: 100%;
         padding: 11px 15px;
         border-radius: 10px;
@@ -85,16 +89,21 @@
         transition: border-color 0.18s, box-shadow 0.18s;
     }
 
-    .form-input:focus, .form-select:focus, .form-textarea:focus {
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
         outline: none;
         border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59,130,246,.1);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, .1);
         background: #fff;
     }
 
     .form-textarea {
-        resize: vertical;
-        min-height: 90px;
+        resize: none;
+        min-height: 80px;
+        height: 80px;
+        width: 100%;
+        display: block;
     }
 
     /* Checkbox sections */
@@ -115,12 +124,14 @@
         padding: 6px 0;
         border-bottom: 1px dashed var(--border);
     }
+
     .checkbox-item:last-child {
         border-bottom: none;
     }
 
     .checkbox-item input[type="checkbox"] {
-        width: 16px; height: 16px;
+        width: 16px;
+        height: 16px;
         accent-color: #1a3a8f;
         cursor: pointer;
     }
@@ -139,8 +150,14 @@
         display: grid;
         gap: 20px;
     }
-    .grid-2 { grid-template-columns: repeat(2, 1fr); }
-    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+
+    .grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .grid-3 {
+        grid-template-columns: repeat(3, 1fr);
+    }
 
     /* Action Bar */
     .action-bar {
@@ -171,12 +188,12 @@
         background: linear-gradient(135deg, #1a3a8f, #2563eb);
         color: #fff;
         border: none;
-        box-shadow: 0 4px 12px rgba(26,58,143,0.2);
+        box-shadow: 0 4px 12px rgba(26, 58, 143, 0.2);
     }
 
     .btn-create:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(26,58,143,0.3);
+        box-shadow: 0 6px 16px rgba(26, 58, 143, 0.3);
     }
 
     .btn-cancel {
@@ -191,49 +208,65 @@
     }
 
     @media (max-width: 640px) {
-        .grid-2, .grid-3 { grid-template-columns: 1fr; gap: 0; }
-        .form-card { padding: 24px 20px; }
-        .form-hero { padding: 24px 20px; }
+
+        .grid-2,
+        .grid-3 {
+            grid-template-columns: 1fr;
+            gap: 0;
+        }
+
+        .form-card {
+            padding: 24px 20px;
+        }
+
+        .form-hero {
+            padding: 24px 20px;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="form-wrap">
-    
+
     <div class="form-hero">
         <div class="form-hero-inner">
             <h2 class="title">📝 Create New Activity</h2>
             <p class="sub">Set up a new activity, assignment, or performance task for your sections.</p>
         </div>
     </div>
-    
+
     <div class="form-card">
-        <form action="{{ url_for('teacher.create_activity') }}" method="POST" enctype="multipart/form-data" id="activityForm">
+        <form action="{{ url_for('teacher.create_activity') }}" method="POST" enctype="multipart/form-data"
+            id="activityForm">
 
             <div class="form-group">
                 <label class="form-label">Activity Title <span style="color:#ef4444">*</span></label>
-                <input type="text" name="title" class="form-input" required maxlength="255" placeholder="e.g. Chapter 3 Activity">
+                <input type="text" name="title" class="form-input" required maxlength="255"
+                    placeholder="e.g. Chapter 3 Activity">
             </div>
 
             <div class="grid grid-2">
                 <div class="form-group">
                     <label class="form-label">Subject <span style="color:#ef4444">*</span></label>
-                    <select name="subject_id" id="subjectSelect" class="form-select" required onchange="updateSectionCheckboxes()">
+                    <select name="subject_id" id="subjectSelect" class="form-select" required
+                        onchange="updateSectionCheckboxes()">
                         <option value="">— Select Subject —</option>
                         {% set unique_subjects = [] %}
                         {% for a in teacher_assignments %}
-                            {% if a.subject_id not in unique_subjects %}
-                                <option value="{{ a.subject_id }}" {% if subject_id|string == a.subject_id|string %}selected{% endif %}>{{ a.subject_name }}</option>
-                                {% set _ = unique_subjects.append(a.subject_id) %}
-                            {% endif %}
+                        {% if a.subject_id not in unique_subjects %}
+                        <option value="{{ a.subject_id }}" {% if subject_id|string==a.subject_id|string %}selected{%
+                            endif %}>{{ a.subject_name }}</option>
+                        {% set _ = unique_subjects.append(a.subject_id) %}
+                        {% endif %}
                         {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Assign to Sections <span style="color:#ef4444">*</span></label>
                     <div id="sectionsContainer" class="checkbox-container">
-                        <p style="color:var(--muted); font-size:0.85rem; margin:0; padding:10px 0;">Select a subject first...</p>
+                        <p style="color:var(--muted); font-size:0.85rem; margin:0; padding:10px 0;">Select a subject
+                            first...</p>
                     </div>
                 </div>
             </div>
@@ -250,13 +283,15 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">📅 Grading Period</label>
-                    <div style="padding: 12px 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; color: #1e40af; font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 8px;">
+                    <div
+                        style="padding: 12px 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; color: #1e40af; font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 8px;">
                         <i class="fas fa-magic" style="color: #3b82f6;"></i>
                         {% set p = selected_period or '' %}
                         {% if p %}
-                            <span>Set to <b>{{ p }} Grading</b> <small style="font-weight:normal; margin-left:4px;">(Locked to selected grading period)</small></span>
+                        <span>Set to <b>{{ p }} Grading</b> <small style="font-weight:normal; margin-left:4px;">(Locked
+                                to selected grading period)</small></span>
                         {% else %}
-                            <span>Automatically assigned based on the <b>Due Date</b>.</span>
+                        <span>Automatically assigned based on the <b>Due Date</b>.</span>
                         {% endif %}
                     </div>
                     <input type="hidden" name="grading_period" value="{{ selected_period or '' }}">
@@ -286,7 +321,8 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Due Date <span style="color:#ef4444">*</span></label>
-                    <input type="datetime-local" name="due_date" id="due_date" class="form-input" min="{{ min_date }}" required>
+                    <input type="datetime-local" name="due_date" id="due_date" class="form-input" min="{{ min_date }}"
+                        required>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Status <span style="color:#ef4444">*</span></label>
@@ -299,31 +335,41 @@
 
             <div class="form-group">
                 <label class="form-label">Instructions / Description</label>
-                <textarea name="instructions" class="form-textarea" placeholder="e.g. Submit a 1-page reflection on..."></textarea>
+                <textarea name="instructions" class="form-textarea"
+                    placeholder="e.g. Submit a 1-page reflection on..."></textarea>
             </div>
 
             <div class="grid grid-2">
                 <div class="form-group">
-                    <label class="form-label">Allowed File Types <span style="font-weight:500; font-size:0.8rem; color:var(--muted);">(optional)</span></label>
-                    <input type="text" name="allowed_file_types" class="form-input" placeholder="pdf, jpg, docx — leave empty for any">
+                    <label class="form-label">Allowed File Types <span
+                            style="font-weight:500; font-size:0.8rem; color:var(--muted);">(optional)</span></label>
+                    <input type="text" name="allowed_file_types" class="form-input"
+                        placeholder="pdf, jpg, docx — leave empty for any">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Reference Attachment <span style="font-weight:500; font-size:0.8rem; color:var(--muted);">(optional, Max 10MB)</span></label>
-                    <input type="file" name="attachment" id="attachmentInput" class="form-input" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
-                    <small style="display:block; margin-top:4px; color:var(--muted); font-size:0.8rem;">Allowed: PDF, DOCX, PNG, JPG</small>
+                    <label class="form-label">Reference Attachment <span
+                            style="font-weight:500; font-size:0.8rem; color:var(--muted);">(optional, Max
+                            10MB)</span></label>
+                    <input type="file" name="attachment" id="attachmentInput" class="form-input"
+                        accept=".pdf,.doc,.docx,.png,.jpg,.jpeg">
+                    <small style="display:block; margin-top:4px; color:var(--muted); font-size:0.8rem;">Allowed: PDF,
+                        DOCX, PNG, JPG</small>
                 </div>
             </div>
 
             <div class="action-bar">
-                <a href="{{ url_for('teacher.teacher_class_view', subject_id=subject_id) if subject_id else url_for('teacher.activities') }}" class="btn btn-cancel">Cancel</a>
-                <button type="submit" class="btn btn-create" {% if selected_period and selected_period not in unlocked_periods %}disabled title="This grading period is not open yet"{% endif %}>➕ Create Activity</button>
+                <a href="{{ url_for('teacher.teacher_class_view', subject_id=subject_id) if subject_id else url_for('teacher.activities') }}"
+                    class="btn btn-cancel">Cancel</a>
+                <button type="submit" class="btn btn-create" {% if selected_period and selected_period not in
+                    unlocked_periods %}disabled title="This grading period is not open yet" {% endif %}>➕ Create
+                    Activity</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-    const assignments = {{ teacher_assignments|tojson }};
+    const assignments = {{ teacher_assignments| tojson }};
 
     function updateSectionCheckboxes() {
         const subjectId = document.getElementById('subjectSelect').value;
@@ -350,7 +396,7 @@
         });
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         if (document.getElementById('subjectSelect').value) {
             updateSectionCheckboxes();
         }
@@ -358,7 +404,7 @@
         // Enrollment-style real-time validation for Reference Attachment
         const attachmentInput = document.getElementById('attachmentInput');
         if (attachmentInput) {
-            attachmentInput.onchange = function() {
+            attachmentInput.onchange = function () {
                 if (this.files.length > 0) {
                     const file = this.files[0];
                     const fileName = file.name;
@@ -384,7 +430,7 @@
         }
     });
 
-    document.getElementById('activityForm').onsubmit = function(e) {
+    document.getElementById('activityForm').onsubmit = function (e) {
         // Section validation
         const checked = document.querySelectorAll('input[name="section_ids"]:checked');
         if (checked.length === 0) {

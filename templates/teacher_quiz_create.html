@@ -24,9 +24,11 @@
     .form-hero::after {
         content: '';
         position: absolute;
-        top: -40px; right: -40px;
-        width: 180px; height: 180px;
-        background: rgba(255,255,255,0.08);
+        top: -40px;
+        right: -40px;
+        width: 180px;
+        height: 180px;
+        background: rgba(255, 255, 255, 0.08);
         border-radius: 50%;
     }
 
@@ -44,7 +46,7 @@
 
     .form-hero .sub {
         font-size: 0.95rem;
-        color: rgba(255,255,255,0.85);
+        color: rgba(255, 255, 255, 0.85);
         margin: 0;
         line-height: 1.5;
     }
@@ -56,7 +58,7 @@
         border-top: none;
         border-radius: 0 0 20px 20px;
         padding: 36px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.04);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04);
     }
 
     .form-group {
@@ -72,7 +74,9 @@
         margin-bottom: 8px;
     }
 
-    .form-input, .form-select, .form-textarea {
+    .form-input,
+    .form-select,
+    .form-textarea {
         width: 100%;
         padding: 11px 15px;
         border-radius: 10px;
@@ -85,16 +89,21 @@
         transition: border-color 0.18s, box-shadow 0.18s;
     }
 
-    .form-input:focus, .form-select:focus, .form-textarea:focus {
+    .form-input:focus,
+    .form-select:focus,
+    .form-textarea:focus {
         outline: none;
         border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59,130,246,.1);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, .1);
         background: #fff;
     }
 
     .form-textarea {
-        resize: vertical;
-        min-height: 90px;
+        resize: none;
+        min-height: 80px;
+        height: 80px;
+        width: 100%;
+        display: block;
     }
 
     /* Checkbox sections */
@@ -115,12 +124,14 @@
         padding: 6px 0;
         border-bottom: 1px dashed var(--border);
     }
+
     .checkbox-item:last-child {
         border-bottom: none;
     }
 
     .checkbox-item input[type="checkbox"] {
-        width: 16px; height: 16px;
+        width: 16px;
+        height: 16px;
         accent-color: #1a3a8f;
         cursor: pointer;
     }
@@ -139,7 +150,10 @@
         display: grid;
         gap: 20px;
     }
-    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+
+    .grid-2 {
+        grid-template-columns: repeat(2, 1fr);
+    }
 
     /* Action Bar */
     .action-bar {
@@ -170,12 +184,12 @@
         background: linear-gradient(135deg, #1a3a8f, #2563eb);
         color: #fff;
         border: none;
-        box-shadow: 0 4px 12px rgba(26,58,143,0.2);
+        box-shadow: 0 4px 12px rgba(26, 58, 143, 0.2);
     }
 
     .btn-create:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(26,58,143,0.3);
+        box-shadow: 0 6px 16px rgba(26, 58, 143, 0.3);
     }
 
     .btn-cancel {
@@ -190,49 +204,62 @@
     }
 
     @media (max-width: 640px) {
-        .grid-2 { grid-template-columns: 1fr; gap: 0; }
-        .form-card { padding: 24px 20px; }
-        .form-hero { padding: 24px 20px; }
+        .grid-2 {
+            grid-template-columns: 1fr;
+            gap: 0;
+        }
+
+        .form-card {
+            padding: 24px 20px;
+        }
+
+        .form-hero {
+            padding: 24px 20px;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="form-wrap">
-    
+
     <div class="form-hero">
         <div class="form-hero-inner">
             <h2 class="title">Create New Quiz</h2>
             <p class="sub">Set up a new quiz assessment for your class.</p>
         </div>
     </div>
-    
+
     <div class="form-card">
         <form action="{{ url_for('teacher.teacher_quiz_create') }}" method="POST" id="quizForm">
 
             <div class="form-group">
                 <label class="form-label">Quiz Title <span style="color:#ef4444">*</span></label>
-                <input type="text" name="title" class="form-input" required maxlength="255" placeholder="e.g. Chapter 3 Quiz">
+                <input type="text" name="title" class="form-input" required maxlength="255"
+                    placeholder="e.g. Chapter 3 Quiz">
             </div>
 
             <div class="grid grid-2">
                 <div class="form-group">
                     <label class="form-label">Subject <span style="color:#ef4444">*</span></label>
-                    <select name="subject_id" id="subjectSelect" class="form-select" required onchange="updateSectionCheckboxes()">
+                    <select name="subject_id" id="subjectSelect" class="form-select" required
+                        onchange="updateSectionCheckboxes()">
                         <option value="">— Select Subject —</option>
                         {% set unique_subjects = [] %}
                         {% for a in teacher_assignments %}
-                            {% if a.subject_id not in unique_subjects %}
-                                <option value="{{ a.subject_id }}" {% if subject_id|string == a.subject_id|string %}selected{% endif %}>{{ a.subject_name }}</option>
-                                {% set _ = unique_subjects.append(a.subject_id) %}
-                            {% endif %}
+                        {% if a.subject_id not in unique_subjects %}
+                        <option value="{{ a.subject_id }}" {% if subject_id|string==a.subject_id|string %}selected{%
+                            endif %}>{{ a.subject_name }}</option>
+                        {% set _ = unique_subjects.append(a.subject_id) %}
+                        {% endif %}
                         {% endfor %}
                     </select>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Assign to Sections <span style="color:#ef4444">*</span></label>
                     <div id="sectionsContainer" class="checkbox-container">
-                        <p style="color:var(--muted); font-size:0.85rem; margin:0; padding:10px 0;">Select a subject first...</p>
+                        <p style="color:var(--muted); font-size:0.85rem; margin:0; padding:10px 0;">Select a subject
+                            first...</p>
                     </div>
                 </div>
             </div>
@@ -250,13 +277,15 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Grading Period</label>
-                    <div style="padding: 12px 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; color: #1e40af; font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 8px;">
+                    <div
+                        style="padding: 12px 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; color: #1e40af; font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 8px;">
                         <i class="fas fa-magic" style="color: #3b82f6;"></i>
                         {% set p = selected_period or '' %}
                         {% if p %}
-                            <span>Set to <b>{{ p }} Grading</b> <small style="font-weight:normal; margin-left:4px;">(Locked to selected grading period)</small></span>
+                        <span>Set to <b>{{ p }} Grading</b> <small style="font-weight:normal; margin-left:4px;">(Locked
+                                to selected grading period)</small></span>
                         {% else %}
-                            <span>Automatically assigned based on the <b>Scheduled Start</b> date.</span>
+                        <span>Automatically assigned based on the <b>Scheduled Start</b> date.</span>
                         {% endif %}
                     </div>
                     <input type="hidden" name="grading_period" value="{{ selected_period or '' }}">
@@ -270,7 +299,11 @@
 
             <div class="form-group">
                 <label class="form-label" style="display: flex; align-items: center; gap: 6px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
                     Class Mode <span style="color:red">*</span>
                 </label>
                 <select name="class_mode" class="form-select" required>
@@ -278,16 +311,25 @@
                     <option value="Face-to-Face">Face-to-Face Class (Students blocked until allowed)</option>
                 </select>
                 <small style="color:#64748b; margin-top:4px; display:flex; align-items: flex-start; gap: 6px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                    <span>In <strong>Face-to-Face</strong> mode, you must explicitly "Allow" students from the results page before they can start.</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                        style="flex-shrink: 0; margin-top: 2px;">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="16" x2="12" y2="12"></line>
+                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                    </svg>
+                    <span>In <strong>Face-to-Face</strong> mode, you must explicitly "Allow" students from the results
+                        page before they can start.</span>
                 </small>
             </div>
 
             <div class="grid grid-2">
                 <div class="form-group">
-                    <label class="form-label">Scheduled Start <span style="font-weight:500; font-size:0.8rem; color:var(--muted);">(optional)</span></label>
+                    <label class="form-label">Scheduled Start <span
+                            style="font-weight:500; font-size:0.8rem; color:var(--muted);">(optional)</span></label>
                     <input type="datetime-local" name="scheduled_start" class="form-input" min="{{ min_date }}">
-                    <small style="color:var(--muted); margin-top:4px; display:block;">Auto-closes after duration.</small>
+                    <small style="color:var(--muted); margin-top:4px; display:block;">Auto-closes after
+                        duration.</small>
                 </div>
                 <div class="form-group">
                     <label class="form-label">Passing Score (%)</label>
@@ -295,28 +337,36 @@
                 </div>
             </div>
 
-            <div class="form-group" style="margin-top:10px; background:#f8fafc; padding:12px 16px; border-radius:10px; border:1px solid var(--border);">
-                <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:600; font-size:0.9rem; color:var(--text);">
-                    <input type="checkbox" name="randomize" value="1" style="width:18px; height:18px; accent-color:#1a3a8f;">
+            <div class="form-group"
+                style="margin-top:10px; background:#f8fafc; padding:12px 16px; border-radius:10px; border:1px solid var(--border);">
+                <label
+                    style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:600; font-size:0.9rem; color:var(--text);">
+                    <input type="checkbox" name="randomize" value="1"
+                        style="width:18px; height:18px; accent-color:#1a3a8f;">
                     Randomize Question Order
                 </label>
             </div>
 
             <div class="form-group">
-                <label class="form-label">Quiz Instructions <span style="font-weight:500; font-size:0.8rem; color:var(--muted);">(optional)</span></label>
-                <textarea name="instructions" class="form-textarea" placeholder="e.g. Read each question carefully. No back navigation."></textarea>
+                <label class="form-label">Quiz Instructions <span
+                        style="font-weight:500; font-size:0.8rem; color:var(--muted);">(optional)</span></label>
+                <textarea name="instructions" class="form-textarea"
+                    placeholder="e.g. Read each question carefully. No back navigation."></textarea>
             </div>
 
             <div class="action-bar">
-                <a href="{{ url_for('teacher.teacher_class_view', subject_id=subject_id) if subject_id else url_for('teacher.teacher_quizzes') }}" class="btn btn-cancel">Cancel</a>
-                <button type="submit" class="btn btn-create" {% if selected_period and selected_period not in unlocked_periods %}disabled title="This grading period is not open yet"{% endif %}>Create &amp; Add Questions →</button>
+                <a href="{{ url_for('teacher.teacher_class_view', subject_id=subject_id) if subject_id else url_for('teacher.teacher_quizzes') }}"
+                    class="btn btn-cancel">Cancel</a>
+                <button type="submit" class="btn btn-create" {% if selected_period and selected_period not in
+                    unlocked_periods %}disabled title="This grading period is not open yet" {% endif %}>Create &amp; Add
+                    Questions →</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-    const assignments = {{ teacher_assignments|tojson }};
+    const assignments = {{ teacher_assignments| tojson }};
 
     function updateSectionCheckboxes() {
         const subjectId = document.getElementById('subjectSelect').value;
@@ -343,13 +393,13 @@
         });
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
         if (document.getElementById('subjectSelect').value) {
             updateSectionCheckboxes();
         }
     });
 
-    document.getElementById('quizForm').onsubmit = function(e) {
+    document.getElementById('quizForm').onsubmit = function (e) {
         const checked = document.querySelectorAll('input[name="section_ids"]:checked');
         if (checked.length === 0) {
             alert('Please select at least one section.');

@@ -1079,7 +1079,17 @@ def student_exam_take(exam_id):
         is_quiz  = exam.get("exam_type") == "quiz"
         back_url = url_for("student_portal.student_quizzes") if is_quiz else url_for("student_portal.student_exams")
 
-        # ✅ Effective Timing Logic (Individual Rescheduling)
+        # ✅ 1. Check if an attempt already exists (Resume or Show Result)
+        cur.execute("""
+            SELECT * FROM exam_results
+            WHERE exam_id=%s AND enrollment_id=%s
+        """, (exam_id, enrollment_id))
+        existing = cur.fetchone()
+
+        if existing and existing["status"] in ("submitted", "auto_submitted"):
+            return redirect(url_for("student_portal.student_exam_result", result_id=existing["result_id"]))
+
+        # ✅ 2. Effective Timing Logic (Individual Rescheduling)
         duration = int(exam["duration_mins"] or 0)
         if exam["individual_extension"]:
             effective_start = _to_manila_naive(exam["individual_extension"])
@@ -1088,47 +1098,37 @@ def student_exam_take(exam_id):
             effective_start = _to_manila_naive(exam["scheduled_start"])
             effective_end   = (effective_start + timedelta(minutes=duration)) if effective_start else None
 
-        if effective_start and now_naive < effective_start:
-            flash("This quiz has not started yet." if is_quiz else "This exam has not started yet.", "warning")
-            return redirect(back_url)
+        # ✅ 3. Pre-flight checks (ONLY for NEW attempts)
+        if not existing:
+            if effective_start and now_naive < effective_start:
+                flash("This quiz has not started yet." if is_quiz else "This exam has not started yet.", "warning")
+                return redirect(back_url)
 
-        if effective_end and now_naive > effective_end:
-            flash("This quiz has already ended." if is_quiz else "This exam has already ended.", "warning")
-            return redirect(back_url)
-        
-        # ✅ Class Mode Permission Check
-        # Default is TRUE for Virtual, FALSE for Face-to-Face
-        default_allowed = exam['class_mode'] != 'Face-to-Face'
-        cur.execute("SELECT is_allowed FROM exam_student_permissions WHERE exam_id = %s AND enrollment_id = %s", (exam_id, enrollment_id))
-        perm_row = cur.fetchone()
-        is_allowed = perm_row['is_allowed'] if perm_row else default_allowed
+            if effective_end and now_naive > effective_end:
+                flash("This quiz has already ended." if is_quiz else "This exam has already ended.", "warning")
+                return redirect(back_url)
+            
+            # Class Mode Permission Check
+            default_allowed = exam['class_mode'] != 'Face-to-Face'
+            cur.execute("SELECT is_allowed FROM exam_student_permissions WHERE exam_id = %s AND enrollment_id = %s", (exam_id, enrollment_id))
+            perm_row = cur.fetchone()
+            is_allowed = perm_row['is_allowed'] if perm_row else default_allowed
 
-        if not is_allowed:
-            flash("Access Denied. Please wait for your teacher to allow you to start this assessment.", "error")
-            return redirect(back_url)
-        
-        # ✅ Max attempts check
-        cur.execute("""
-            SELECT COUNT(*) AS cnt FROM exam_results
-            WHERE exam_id=%s AND enrollment_id=%s
-            AND status IN ('submitted', 'auto_submitted')
-        """, (exam_id, enrollment_id))
-        attempt_count = cur.fetchone()["cnt"]
-        max_attempts  = exam["max_attempts"] or 1
-        if attempt_count >= max_attempts:
-            flash(f"You have reached the maximum attempts ({max_attempts}).", "warning")
-            return redirect(back_url)
-
-        # ✅ Check if already submitted
-        cur.execute("""
-            SELECT * FROM exam_results
-            WHERE exam_id=%s AND enrollment_id=%s
-        """, (exam_id, enrollment_id))
-        existing = cur.fetchone()
-        if existing and existing["status"] in ("submitted", "auto_submitted"):
-            flash("You have already submitted this.", "warning")
-            return redirect(url_for("student_portal.student_exam_result",
-                                    result_id=existing["result_id"]))
+            if not is_allowed:
+                flash("Access Denied. Please wait for your teacher to allow you to start this assessment.", "error")
+                return redirect(back_url)
+            
+            # Max attempts check
+            cur.execute("""
+                SELECT COUNT(*) AS cnt FROM exam_results
+                WHERE exam_id=%s AND enrollment_id=%s
+                AND status IN ('submitted', 'auto_submitted')
+            """, (exam_id, enrollment_id))
+            attempt_count = cur.fetchone()["cnt"]
+            max_attempts  = exam["max_attempts"] or 1
+            if attempt_count >= max_attempts:
+                flash(f"You have reached the maximum attempts ({max_attempts}).", "warning")
+                return redirect(back_url)
 
         if request.method == "POST":
             result_id    = request.form.get("result_id")
@@ -1193,16 +1193,47 @@ def student_exam_take(exam_id):
             started_at = row["started_at"]
             db.commit()
 
-        # ✅ Timezone-safe remaining time
+        # ✅ 4. Timezone-safe remaining time calculation
         now_utc       = datetime.now(timezone.utc).replace(tzinfo=None)
         started_naive = started_at.replace(tzinfo=None)
         elapsed       = int((now_utc - started_naive).total_seconds())
         total_secs    = int(exam["duration_mins"]) * 60
-        remaining     = max(0, total_secs - elapsed)
+        
+        # Individual time remaining
+        indiv_remaining = max(0, total_secs - elapsed)
+        
+        # Global time remaining (until effective_end)
+        global_remaining = 999999
+        if effective_end:
+            global_remaining = max(0, int((effective_end - now_naive).total_seconds()))
+            
+        # The true remaining time is the sooner of the two
+        remaining = min(indiv_remaining, global_remaining)
 
         if remaining <= 0:
-            flash("Time has expired.", "warning")
-            return redirect(back_url)
+            # 🚀 AUTO-FINALIZE: Either individual time is up OR global time is up
+            cur.execute("""
+                SELECT 
+                    COALESCE(SUM(CASE WHEN ea.is_correct THEN q.points ELSE 0 END), 0) AS final_score,
+                    COALESCE(SUM(q.points), 0) AS total_points
+                FROM exam_questions q
+                LEFT JOIN exam_answers ea ON q.question_id = ea.question_id AND ea.result_id = %s
+                WHERE q.exam_id = %s
+            """, (result_id, exam_id))
+            calc = cur.fetchone()
+            score = int(calc["final_score"]) if calc else 0
+            total_pts = int(calc["total_points"]) if calc else 0
+
+            cur.execute("""
+                UPDATE exam_results
+                SET score=%s, total_points=%s, status='auto_submitted',
+                    submitted_at=NOW()
+                WHERE result_id=%s AND status='in_progress'
+            """, (score, total_pts, result_id))
+            db.commit()
+
+            flash("The quiz time has expired. Your work has been automatically submitted.", "warning")
+            return redirect(url_for("student_portal.student_exam_result", result_id=result_id))
 
         cur.execute("SELECT * FROM exam_questions WHERE exam_id=%s ORDER BY order_num",
                     (exam_id,))
