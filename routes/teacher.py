@@ -503,9 +503,48 @@ def teacher_dashboard():
             cur.close()
             db.close()
 
-    # Get current day of week for the "Today's Schedule" view
+    # --- Live Class & Pending Tasks logic ---
     ph_tz = pytz.timezone("Asia/Manila")
-    today_day = datetime.now(ph_tz).strftime('%A')
+    now_manila = datetime.now(ph_tz)
+    current_time_str = now_manila.strftime('%H:%M:%S')
+    today_day = now_manila.strftime('%A')
+
+    current_class = None
+    next_class = None
+    pending_attendance = []
+    
+    # Filter assignments for today
+    today_assignments = [a for a in teacher_assignments if a.get('day_of_week') == today_day]
+    
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        for a in today_assignments:
+            if a.get('start_time') and a.get('end_time'):
+                st = a['start_time'].strftime('%H:%M:%S')
+                et = a['end_time'].strftime('%H:%M:%S')
+                
+                # Identify current and next class
+                if st <= current_time_str <= et:
+                    current_class = a
+                elif st > current_time_str:
+                    if not next_class or st < next_class['start_time'].strftime('%H:%M:%S'):
+                        next_class = a
+                
+                # Check for pending attendance (if class has started)
+                if st <= current_time_str:
+                    cur.execute("""
+                        SELECT COUNT(*) as count 
+                        FROM daily_attendance 
+                        WHERE subject_id = %s 
+                          AND recorded_by = %s 
+                          AND attendance_date = CURRENT_DATE
+                    """, (a['subject_id'], user_id))
+                    if cur.fetchone()['count'] == 0:
+                        pending_attendance.append(a)
+    finally:
+        cur.close()
+        db.close()
 
     return render_template(
         "teacher_dashboard.html",
@@ -514,12 +553,110 @@ def teacher_dashboard():
         teacher_grade=teacher_grade,
         selected_grade=selected_grade,
         grade_levels=GRADE_LEVELS,
-        announcements=announcements,
         admin_announcements=admin_announcements,
         teacher_assignments=teacher_assignments,
         teacher_user_id=session.get("user_id"),
         selected_section_id=selected_section_id,
-        current_day=today_day
+        current_day=today_day,
+        current_class=current_class,
+        next_class=next_class,
+        pending_attendance=pending_attendance
+    )
+
+
+# ── Class Announcements Page ──────────────────────────────
+@teacher_bp.route("/teacher/class-announcements")
+def teacher_class_announcements():
+    if not _require_teacher():
+        return redirect("/")
+
+    user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
+    
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT COALESCE(g.name, u.grade_level) AS grade_level
+            FROM users u
+            LEFT JOIN grade_levels g ON u.grade_level_id = g.id
+            WHERE u.user_id = %s
+        """, (user_id,))
+        row = cur.fetchone()
+        teacher_grade = row["grade_level"] if row else None
+    finally:
+        cur.close()
+        db.close()
+
+    # Fetch specific sections assigned to this teacher
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        year_id = _get_active_school_year(cur, branch_id)
+        cur.execute("""
+            SELECT DISTINCT
+                s.section_id,
+                s.section_name,
+                g.name AS grade_level_name
+            FROM section_teachers st
+            JOIN sections s     ON st.section_id = s.section_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            WHERE st.teacher_id = %s AND s.branch_id = %s AND s.year_id = %s
+            ORDER BY g.name, s.section_name
+        """, (user_id, branch_id, year_id or 0))
+        teacher_sections = cur.fetchall() or []
+    finally:
+        cur.close()
+        db.close()
+
+
+
+    selected_grade = (request.args.get("grade") or teacher_grade or "").strip()
+    selected_section = request.args.get("section_id", type=int)
+    announcements = []
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        query = """
+            SELECT a.announcement_id, a.title, a.body,
+                   a.created_at, u.username AS posted_by,
+                   u.full_name, u.gender, a.grade_level
+            FROM teacher_announcements a
+            JOIN users u ON u.user_id = a.teacher_user_id
+            WHERE a.branch_id = %s
+        """
+        params = [branch_id]
+
+        if selected_section:
+            # Match specifically by section ID (hack using grade_level column format 'GradeName:SectionID')
+            query += " AND a.grade_level LIKE '%%:' || %s"
+            params.append(str(selected_section))
+        elif selected_grade:
+            grade_full, grade_short = _normalize_grade(selected_grade)
+            query += " AND (a.grade_level ILIKE %s OR a.grade_level ILIKE %s)"
+            params.append(grade_full)
+            params.append(grade_short)
+
+        query += " ORDER BY a.created_at DESC"
+        cur.execute(query, params)
+        raw_ann = cur.fetchall() or []
+        
+        for a in raw_ann:
+            prefix = "Ms. " if a.get("gender") == "female" else "Mr. " if a.get("gender") == "male" else ""
+            a["display_name"] = prefix + (a.get("full_name") or a.get("posted_by") or "Teacher")
+            announcements.append(a)
+    finally:
+        cur.close()
+        db.close()
+
+    return render_template(
+        "teacher_class_announcements.html",
+        selected_grade=selected_grade,
+        selected_section=selected_section,
+        announcements=announcements,
+        teacher_sections=teacher_sections,
+        teacher_grade=teacher_grade
     )
 
 
@@ -580,9 +717,35 @@ def teacher_announce():
     branch_id = session.get("branch_id")
     title     = (request.form.get("title") or "").strip()
     body      = (request.form.get("body")  or "").strip()
-    grade     = (request.form.get("grade_level") or "").strip()
+    # Now expecting section_id or combined string
+    target_section_id = request.form.get("section_id")
+    from_page = request.form.get("from_page")
 
-    back_url = url_for("teacher.teacher_dashboard") + (f"?grade={grade}" if grade else "")
+    # Resolve grade level name from section_id if provided
+    grade_to_save = ""
+    if target_section_id:
+        db = get_db_connection()
+        cur = db.cursor()
+        cur.execute("""
+            SELECT g.name 
+            FROM sections s 
+            JOIN grade_levels g ON s.grade_level_id = g.id 
+            WHERE s.section_id = %s
+        """, (target_section_id,))
+        row = cur.fetchone()
+        if row:
+            # Store as "GradeName:SectionID" to support section-specific targeting without schema change
+            grade_to_save = f"{row[0]}:{target_section_id}"
+        cur.close()
+        db.close()
+    
+    if not grade_to_save:
+        grade_to_save = (request.form.get("grade_level") or "").strip()
+
+    if from_page == "announcements":
+        back_url = url_for("teacher.teacher_class_announcements") + (f"?grade={grade}" if grade else "")
+    else:
+        back_url = url_for("teacher.teacher_dashboard") + (f"?grade={grade}" if grade else "")
 
     if not title:
         flash("Announcement title is required.", "error")
@@ -601,11 +764,11 @@ def teacher_announce():
             return redirect(back_url)
 
         cur.execute("""
-            INSERT INTO teacher_announcements
-                (teacher_user_id, branch_id, grade_level, title, body)
-            VALUES (%s, %s, %s, %s, %s)
+            INSERT INTO teacher_announcements 
+                (teacher_user_id, branch_id, year_id, grade_level, title, body)
+            VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING announcement_id
-        """, (user_id, branch_id, grade, title, body or None))
+        """, (user_id, branch_id, year_id, grade_to_save, title, body or None))
         ann_id = cur.fetchone()[0]
 
         # Send notifications only to students enrolled in this year
@@ -624,7 +787,11 @@ def teacher_announce():
             JOIN users u ON u.user_id = e.user_id
             WHERE e.branch_id = %s 
               AND e.year_id = %s
-              AND (e.grade_level ILIKE %s OR e.grade_level ILIKE %s)
+              AND (
+                  (%(target_section)s::text IS NOT NULL AND e.section_id = %(target_section)s::int)
+                  OR 
+                  (%(target_section)s::text IS NULL AND (e.grade_level ILIKE %(grade_full)s OR e.grade_level ILIKE %(grade_short)s))
+              )
               AND e.status IN ('approved', 'enrolled')
             UNION
             SELECT DISTINCT u.user_id
@@ -633,15 +800,19 @@ def teacher_announce():
             JOIN users u ON u.username = sa.username
             WHERE e.branch_id = %s 
               AND e.year_id = %s
-              AND (e.grade_level ILIKE %s OR e.grade_level ILIKE %s)
+              AND (
+                  (%(target_section)s::text IS NOT NULL AND e.section_id = %(target_section)s::int)
+                  OR 
+                  (%(target_section)s::text IS NULL AND (e.grade_level ILIKE %(grade_full)s OR e.grade_level ILIKE %(grade_short)s))
+              )
               AND e.status IN ('approved', 'enrolled')
-        """, (branch_id, year_id, grade_full, grade_short, branch_id, year_id, grade_full, grade_short))
+        """, (branch_id, year_id, target_section_id, target_section_id, grade_full, grade_short, 
+              branch_id, year_id, target_section_id, target_section_id, grade_full, grade_short))
         students = cur.fetchall()
         if students:
             notif_title = f"New Announcement: {title}"
             notif_msg = f"Your teacher posted a new announcement."
             for s in students:
-                # s[0] for tuple rows, s['user_id'] for dict
                 uid = s[0] if isinstance(s, tuple) else s['user_id']
                 cur.execute("""
                     INSERT INTO student_notifications (student_id, title, message, link)
@@ -669,7 +840,12 @@ def teacher_announce_delete(announcement_id):
     user_id = session.get("user_id")
     branch_id = session.get("branch_id")
     grade   = (request.form.get("grade_level") or "").strip()
-    back_url = url_for("teacher.teacher_dashboard") + (f"?grade={grade}" if grade else "")
+    from_page = request.form.get("from_page")
+
+    if from_page == "announcements":
+        back_url = url_for("teacher.teacher_class_announcements") + (f"?grade={grade}" if grade else "")
+    else:
+        back_url = url_for("teacher.teacher_dashboard") + (f"?grade={grade}" if grade else "")
 
     db  = get_db_connection()
     cur = db.cursor()
@@ -710,7 +886,12 @@ def teacher_announce_edit(announcement_id):
     grade   = (request.form.get("grade_level") or "").strip()
     title   = (request.form.get("title") or "").strip()
     body    = (request.form.get("body")  or "").strip()
-    back_url = url_for("teacher.teacher_dashboard") + (f"?grade={grade}" if grade else "")
+    from_page = request.form.get("from_page")
+
+    if from_page == "announcements":
+        back_url = url_for("teacher.teacher_class_announcements") + (f"?grade={grade}" if grade else "")
+    else:
+        back_url = url_for("teacher.teacher_dashboard") + (f"?grade={grade}" if grade else "")
 
     if not title:
         flash("Title cannot be empty.", "error")
