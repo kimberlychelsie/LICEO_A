@@ -3,180 +3,333 @@
 
 {% block styles %}
 <style>
-    .subj-wrap {
-        max-width: 1100px;
-        margin: 0 auto;
-        padding: 20px 16px;
+    :root {
+        --sd-primary: #1a3a8f;
+        --sd-primary-dark: #142e75;
+        --sd-accent: #f59e0b;
+        --sd-bg: #f8fafc;
+        --sd-card: #ffffff;
+        --sd-text: #0f172a;
+        --sd-muted: #64748b;
+        --sd-border: #e2e8f0;
+        --sd-glass: rgba(255, 255, 255, 0.1);
+        --sd-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --sd-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
     }
 
-    .subj-header {
-        background: #fff;
-        border: 1px solid var(--border);
-        border-radius: 16px;
-        padding: 24px 32px;
-        margin-bottom: 24px;
+    .subj-wrap {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 24px 16px 60px;
+        font-family: 'Inter', sans-serif;
+    }
+
+    /* ── Header Area ── */
+    .subj-hero {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1a3a8f 50%, #1e40af 100%);
+        border-radius: 24px;
+        padding: 32px;
+        color: #fff;
+        margin-bottom: 32px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--sd-shadow-lg);
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        animation: fadeInDown 0.6s ease-out;
+    }
+
+    .subj-hero::before {
+        content: '';
+        position: absolute;
+        top: -100px;
+        right: -100px;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+        border-radius: 50%;
+    }
+
+    .subj-hero-top {
         display: flex;
         justify-content: space-between;
-        align-items: center;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        align-items: flex-start;
+        z-index: 1;
+        gap: 20px;
     }
 
-    .subj-title {
-        font-size: 1.8rem;
+    .subj-title-group h1 {
+        font-size: 2rem;
         font-weight: 800;
-        color: #1e3a8a;
-        margin: 0 0 6px;
+        margin: 0 0 8px;
+        letter-spacing: -0.02em;
     }
 
-    .subj-meta {
-        color: var(--muted);
-        font-weight: 500;
-        font-size: 0.95rem;
-    }
-
-    .teacher-card {
+    .subj-meta-info {
         display: flex;
         align-items: center;
         gap: 12px;
-        background: #f8fafc;
-        padding: 10px 16px;
-        border-radius: 12px;
-        border: 1px solid #e2e8f0;
+        font-size: 0.9375rem;
+        opacity: 0.9;
+        font-weight: 500;
+    }
+
+    .subj-meta-info span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .teacher-card {
+        background: var(--sd-glass);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 12px 20px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        transition: transform 0.2s;
     }
 
     .teacher-avatar {
-        width: 40px;
-        height: 40px;
-        background: #3b82f6;
+        width: 44px;
+        height: 44px;
+        background: var(--sd-accent);
         color: #fff;
-        border-radius: 50%;
+        border-radius: 12px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-weight: 700;
+        font-weight: 800;
+        font-size: 1.1rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     }
 
-    .act-list {
+    .teacher-info .label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        opacity: 0.7;
+        font-weight: 700;
+        margin-bottom: 2px;
+    }
+
+    .teacher-info .name {
+        font-weight: 700;
+        font-size: 0.9375rem;
+    }
+
+    /* ── Content Grid ── */
+    .sd-card {
+        background: var(--sd-card);
+        border: 1px solid var(--sd-border);
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: var(--sd-shadow);
+        margin-bottom: 24px;
+    }
+
+    .sd-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 24px;
+    }
+
+    .sd-card-header h2 {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--sd-primary);
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 0;
+    }
+
+    .sd-card-header h2 svg {
+        width: 24px;
+        height: 24px;
+        color: var(--sd-accent);
+    }
+
+    /* ── Task Cards ── */
+    .task-list {
         display: flex;
         flex-direction: column;
         gap: 16px;
     }
 
-    .act-card {
-        background: #fff;
-        border: 1px solid var(--border);
+    .task-card {
+        background: #f8fafc;
         border-radius: 16px;
+        border: 1px solid var(--sd-border);
         padding: 20px;
-        transition: transform 0.2s, box-shadow 0.2s;
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
     }
 
-    .act-card:hover {
+    .task-card:hover {
+        background: #fff;
+        border-color: var(--sd-primary);
+        box-shadow: var(--sd-shadow-lg);
         transform: translateY(-2px);
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
     }
 
-    .act-header-row {
+    .task-card::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+        background: var(--sd-primary);
+        opacity: 0.6;
+    }
+
+    .task-card.quiz::before {
+        background: #7c3aed;
+    }
+
+    .task-top {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
+        gap: 16px;
         margin-bottom: 12px;
     }
 
-    .act-type {
-        font-size: 0.7rem;
+    .task-title-area {
+        flex: 1;
+    }
+
+    .task-cat-badge {
+        font-size: 0.65rem;
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        padding: 3px 10px;
+        padding: 4px 10px;
         border-radius: 6px;
-        margin-bottom: 8px;
         display: inline-block;
+        margin-bottom: 8px;
     }
 
-    .type-assignment {
-        background: #dbeafe;
-        color: #1e40af;
-    }
+    .cat-act { background: #dbeafe; color: #1e40af; }
+    .cat-quiz { background: #ede9fe; color: #5b21b6; }
 
-    .type-quiz {
-        background: #fef3c7;
-        color: #92400e;
-    }
-
-    .type-material {
-        background: #f1f5f9;
-        color: #475569;
-    }
-
-    .act-name {
-        font-size: 1.15rem;
+    .task-title {
+        font-size: 1.125rem;
         font-weight: 700;
-        color: var(--text);
-        margin: 0;
+        color: var(--sd-text);
+        margin: 0 0 8px;
     }
 
-    .act-due {
+    .task-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
         font-size: 0.85rem;
-        color: var(--muted);
-        margin-top: 4px;
+        color: var(--sd-muted);
+        font-weight: 500;
     }
 
-    .act-badge {
+    .task-meta span {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* ── Badges ── */
+    .status-badge {
         font-size: 0.75rem;
         font-weight: 700;
         padding: 4px 12px;
-        border-radius: 999px;
+        border-radius: 9999px;
+        text-transform: uppercase;
     }
 
-    .badge-pending {
-        background: #fef9c3;
-        color: #854d0e;
-    }
+    .st-pending { background: #fef9c3; color: #854d0e; }
+    .st-submitted { background: #dcfce7; color: #166534; }
+    .st-graded { background: #e0f2fe; color: #0369a1; }
+    .st-closed { background: #fee2e2; color: #991b1b; }
+    .st-available { background: #dcfce7; color: #166534; }
+    .st-expired { background: #fef2f2; color: #991b1b; }
 
-    .badge-submitted {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    .badge-graded {
-        background: #e0f2fe;
-        color: #0369a1;
-    }
-
+    /* ── Attachments ── */
     .materials-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
         gap: 12px;
-        margin-top: 16px;
+        margin: 16px 0;
         padding-top: 16px;
-        border-top: 1px solid #f1f5f9;
+        border-top: 1px solid var(--sd-border);
     }
 
     .material-item {
         display: flex;
         align-items: center;
         gap: 10px;
-        padding: 10px;
-        background: #f8fafc;
-        border: 1px solid #e2e8f0;
+        padding: 10px 14px;
+        background: #fff;
+        border: 1px solid var(--sd-border);
         border-radius: 10px;
         text-decoration: none;
-        color: #334155;
-        font-size: 0.85rem;
+        color: var(--sd-text);
+        font-size: 0.8125rem;
         font-weight: 600;
-        transition: background 0.2s;
+        transition: all 0.2s;
         cursor: pointer;
     }
 
     .material-item:hover {
         background: #f1f5f9;
+        border-color: var(--sd-primary);
     }
 
-    .mat-icon {
-        font-size: 1.2rem;
+    /* ── Buttons ── */
+    .task-actions {
+        margin-top: 16px;
+        display: flex;
+        gap: 12px;
     }
 
-    /* Viewer Modal */
+    .btn-premium {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 10px 20px;
+        background: var(--sd-primary);
+        color: #fff;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.875rem;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-premium:hover {
+        background: var(--sd-primary-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26, 58, 143, 0.2);
+    }
+
+    .btn-outline {
+        background: transparent;
+        border: 1px solid var(--sd-border);
+        color: var(--sd-text);
+    }
+
+    .btn-outline:hover {
+        background: #f1f5f9;
+        border-color: var(--sd-muted);
+    }
+
+    /* ── Media Viewer ── */
     .viewer-modal {
         display: none;
         position: fixed;
@@ -184,11 +337,12 @@
         left: 0;
         width: 100%;
         height: 100%;
-        background: rgba(0, 0, 0, 0.85);
-        z-index: 9999;
+        background: rgba(15, 23, 42, 0.95);
+        z-index: 10000;
         justify-content: center;
         align-items: center;
         padding: 40px;
+        backdrop-filter: blur(8px);
     }
 
     .viewer-modal.active {
@@ -196,255 +350,311 @@
     }
 
     .viewer-content {
-        max-width: 1000px;
+        max-width: 1100px;
         width: 100%;
         height: 100%;
         background: #000;
-        border-radius: 12px;
+        border-radius: 20px;
         overflow: hidden;
         position: relative;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
     }
 
     .viewer-close {
         position: absolute;
-        top: 20px;
-        right: 20px;
+        top: 24px;
+        right: 24px;
         background: #fff;
         color: #000;
-        width: 36px;
-        height: 36px;
+        width: 40px;
+        height: 40px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.2rem;
+        font-size: 1.5rem;
         font-weight: 700;
         cursor: pointer;
         z-index: 10;
         border: none;
+        transition: transform 0.2s;
+    }
+
+    .viewer-close:hover { transform: scale(1.1); }
+
+    /* ── Animations ── */
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 768px) {
+        .subj-hero-top { flex-direction: column; align-items: flex-start; }
+        .teacher-card { width: 100%; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="subj-wrap">
-    <div class="subj-header">
-        <div>
-            <h1 class="subj-title">{{ subject.subject_name }}</h1>
-            <div class="subj-meta">Section: {{ subject.section_name }}</div>
-        </div>
-        <div class="teacher-card">
-            <div class="teacher-avatar">
-                {{ (subject.teacher_name or 'T')[0] | upper }}
+    <!-- Subject Hero Header -->
+    <header class="subj-hero">
+        <div class="subj-hero-top">
+            <div class="subj-title-group">
+                <h1>{{ subject.subject_name }}</h1>
+                <div class="subj-meta-info">
+                    <span>
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width:18px; height:18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-7h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        {{ subject.section_name }}
+                    </span>
+                    <span>•</span>
+                    <span>
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width:18px; height:18px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        Academic Year 2023-2024
+                    </span>
+                </div>
             </div>
-            <div>
-                <div
-                    style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">
-                    Instructor</div>
-                <div style="font-weight: 700; color: #1e3a8a;">
-                    {% if subject.teacher_name %}
-                    {{ 'Ms.' if subject.teacher_gender == 'female' else ('Mr.' if subject.teacher_gender == 'male' else
-                    '') }} {{ subject.teacher_name }}
-                    {% else %}
-                    Unassigned
-                    {% endif %}
+            <div class="teacher-card">
+                <div class="teacher-avatar">
+                    {{ (subject.teacher_name or 'T')[0] | upper }}
+                </div>
+                <div class="teacher-info">
+                    <div class="label">Instructor</div>
+                    <div class="name">
+                        {% if subject.teacher_name %}
+                            {{ 'Ms.' if subject.teacher_gender == 'female' else ('Mr.' if subject.teacher_gender == 'male' else '') }} {{ subject.teacher_name }}
+                        {% else %}
+                            Unassigned
+                        {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
+    </header>
 
-    <!-- ── Activities ── -->
-    <style>
-      .task-card {
-        background: #fff;
-        border-radius: 14px;
-        border: 1px solid #e2e8f0;
-        border-left: 4px solid #1d4ed8;
-        padding: 18px 20px;
-        margin-bottom: 14px;
-        box-shadow: 0 2px 8px rgba(0,0,0,.05);
-        transition: transform .15s, box-shadow .15s;
-      }
-      .task-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,.08); }
-      .task-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 10px; }
-      .task-cat-badge { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: .07em; padding: 3px 10px; border-radius: 6px; display: inline-block; margin-bottom: 8px; }
-      .cat-act  { background: #dbeafe; color: #1d4ed8; }
-      .cat-quiz { background: #ede9fe; color: #5b21b6; }
-      .task-title { font-size: 1.1rem; font-weight: 700; color: #1e293b; margin: 0 0 6px; }
-      .task-info-row { font-size: 0.82rem; color: #64748b; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-      .status-badge { font-size: 0.75rem; font-weight: 700; padding: 4px 12px; border-radius: 999px; white-space: nowrap; flex-shrink: 0; }
-      .st-available { background: #dcfce7; color: #15803d; }
-      .st-done      { background: #e0f2fe; color: #0369a1; }
-      .st-submitted { background: #d1fae5; color: #065f46; }
-      .st-pending   { background: #fef9c3; color: #854d0e; }
-      .st-closed    { background: #fee2e2; color: #991b1b; }
-      .st-notyet    { background: #fef9c3; color: #854d0e; }
-      .st-expired   { background: #fde8d8; color: #9a3412; }
-      .st-graded    { background: #e0f2fe; color: #0369a1; }
-      .task-card-bottom { margin-top: 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-      .btn-task-primary { background: #1d4ed8; color: #fff; padding: 9px 20px; border-radius: 9px; font-size: 0.85rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; border: none; transition: all .2s; cursor: pointer; }
-      .btn-task-primary:hover { background: #1e40af; transform: translateY(-1px); }
-      .btn-task-quiz { background: #7c3aed; color: #fff; }
-      .btn-task-quiz:hover { background: #6d28d9; }
-      .btn-task-secondary { background: #f1f5f9; color: #475569; padding: 8px 18px; border-radius: 9px; font-size: 0.85rem; font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #e2e8f0; transition: all .2s; }
-      .btn-task-secondary:hover { background: #e2e8f0; }
-      .score-tag { font-size: 0.82rem; color: #0369a1; font-weight: 600; margin-top: 5px; }
-    </style>
+    <!-- Activities Card -->
+    <div class="sd-card">
+        <div class="sd-card-header">
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Course Activities
+            </h2>
+        </div>
+        <div class="task-list">
+            {% if activities %}
+                {% for act in activities %}
+                    {% set is_submitted = act.submission_status is not none %}
+                    {% set is_graded    = act.submission_status == 'Graded' %}
+                    <div class="task-card">
+                        <div class="task-top">
+                            <div class="task-title-area">
+                                <div class="task-cat-badge cat-act">{{ act.category or 'Activity' }}</div>
+                                <h3 class="task-title">{{ act.title }}</h3>
+                                <div class="task-meta">
+                                    {% if act.individual_extension %}
+                                        <span style="color:#059669; font-weight:700;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" style="width:14px; height:14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                            </svg>
+                                            Extended: {{ act.effective_due.strftime('%b %d, %I:%M %p') }}
+                                        </span>
+                                    {% elif act.due_date %}
+                                        <span>
+                                            <svg xmlns="http://www.w3.org/2000/svg" style="width:14px; height:14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                            Due: {{ act.due_date.strftime('%b %d, %Y %I:%M %p') }}
+                                        </span>
+                                        {% if act.due_date < now %}
+                                            <span style="color:#ef4444; font-weight:700;">Past Due</span>
+                                        {% endif %}
+                                    {% else %}
+                                        <span>No due date</span>
+                                    {% endif %}
+                                    <span>•</span>
+                                    <span>Points: {{ act.max_score }}</span>
+                                    {% if act.grading_period %}
+                                        <span>•</span>
+                                        <span class="status-badge" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; font-size: 0.7rem;">{{ act.grading_period }}</span>
+                                    {% endif %}
+                                </div>
+                                {% if act.instructions %}
+                                    <div style="font-size:0.875rem; color:#475569; margin-top:12px; line-height:1.6; border-left: 2px solid var(--sd-border); padding-left: 12px;">{{ act.instructions }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="task-status">
+                                {% if is_graded %}
+                                    <span class="status-badge st-graded">Graded</span>
+                                {% elif is_submitted %}
+                                    <span class="status-badge st-submitted">Submitted</span>
+                                {% else %}
+                                    <span class="status-badge st-pending">Pending</span>
+                                {% endif %}
+                            </div>
+                        </div>
 
-    <div class="act-list">
-      {% for act in activities %}
-      {% set is_submitted = act.submission_status is not none %}
-      {% set is_graded    = act.submission_status == 'Graded' %}
-      <div class="task-card">
-        <div class="task-card-top">
-          <div>
-            <div class="task-cat-badge cat-act">{{ act.category or 'Activity' }}</div>
-            <h3 class="task-title">{{ act.title }}</h3>
-            <div class="task-info-row">
-              {% if act.individual_extension %}
-              <span class="status-badge" style="background:#d1fae5; color:#065f46; border:1px solid #10b981;">
-                  ⭐ Rescheduled to {{ act.effective_due.strftime('%b %d, %I:%M %p') }}
-              </span>
-              {% elif act.due_date %}
-              <span>Due: {{ act.due_date.strftime('%b %d, %Y %I:%M %p') }}</span>
-              {% if act.due_date < now %}<span style="color:#ef4444; font-weight:700;">Past Due</span>{% endif %}
-              {% else %}
-              <span>No due date</span>
-              {% endif %}
-              <span>Max Score: {{ act.max_score }}</span>
-              {% if act.grading_period %}
-              <span class="status-badge" style="background:#f1f5f9; color:#475569; border:1px solid #e2e8f0;">{{ act.grading_period }} Grading</span>
-              {% endif %}
-            </div>
-            {% if act.instructions %}
-            <div style="font-size:0.85rem; color:#475569; margin-top:8px; line-height:1.5;">{{ act.instructions }}</div>
-            {% endif %}
-          </div>
-          <div>
-            {% if is_graded %}
-              <span class="status-badge st-graded">Graded</span>
-            {% elif is_submitted %}
-              <span class="status-badge st-submitted">Submitted</span>
+                        {% if act.attachment_path %}
+                        <div class="materials-grid">
+                            {% set ext = act.attachment_path.split('.')[-1].lower() %}
+                            {% if ext in ['jpg', 'jpeg', 'png', 'gif'] %}
+                                <div class="material-item" onclick="viewMedia('image', '{{ act.attachment_path }}')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px; color:#3b82f6;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    View Image
+                                </div>
+                            {% elif ext in ['mp4', 'webm', 'ogg'] %}
+                                <div class="material-item" onclick="viewMedia('video', '{{ act.attachment_path }}')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px; color:#8b5cf6;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Play Video
+                                </div>
+                            {% elif ext == 'pdf' %}
+                                <div class="material-item" onclick="viewMedia('pdf', '{{ act.attachment_path }}')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px; color:#ef4444;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                    </svg>
+                                    View PDF
+                                </div>
+                            {% else %}
+                                <a href="{{ act.attachment_path }}" target="_blank" class="material-item">
+                                    <svg xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px; color:#64748b;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                    </svg>
+                                    Download
+                                </a>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+
+                        <div class="task-actions">
+                            <a href="{{ url_for('student_portal.activity_detail', activity_id=act.activity_id) }}" class="btn-premium">
+                                {{ 'View My Submission' if is_submitted else 'Open Activity' }}
+                                <svg xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                </svg>
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
             {% else %}
-              <span class="status-badge st-pending">Pending</span>
+                <div style="text-align:center; padding:48px 20px; color:var(--sd-muted);">
+                    <svg xmlns="http://www.w3.org/2000/svg" style="width:48px; height:48px; opacity:0.2; margin-bottom:16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg>
+                    <p style="font-weight:600; margin:0;">No activities have been posted yet.</p>
+                </div>
             {% endif %}
-          </div>
         </div>
-
-        {% if act.attachment_path %}
-        <div class="materials-grid">
-          {% set ext = act.attachment_path.split('.')[-1].lower() %}
-          {% if ext in ['jpg', 'jpeg', 'png', 'gif'] %}
-          <div class="material-item" onclick="viewMedia('image', '{{ act.attachment_path }}')">
-            <span>View Image</span>
-          </div>
-          {% elif ext in ['mp4', 'webm', 'ogg'] %}
-          <div class="material-item" onclick="viewMedia('video', '{{ act.attachment_path }}')">
-            <span>Play Video</span>
-          </div>
-          {% elif ext == 'pdf' %}
-          <div class="material-item" onclick="viewMedia('pdf', '{{ act.attachment_path }}')">
-            <span>View PDF</span>
-          </div>
-          {% else %}
-          <a href="{{ act.attachment_path }}" target="_blank" class="material-item">
-            <span>Download Document</span>
-          </a>
-          {% endif %}
-        </div>
-        {% endif %}
-
-        <div class="task-card-bottom">
-          <a href="{{ url_for('student_portal.activity_detail', activity_id=act.activity_id) }}"
-             class="btn-task-primary">
-            {{ 'View My Submission' if is_submitted else 'Open Activity' }}
-          </a>
-        </div>
-      </div>
-      {% else %}
-      <div style="text-align:center; padding:60px 20px; color:#94a3b8; background:#fff; border:1px solid #e2e8f0; border-radius:14px;">
-        <h3 style="color:#475569;">No activities yet</h3>
-        <p>No activities have been posted for this subject yet.</p>
-      </div>
-      {% endfor %}
     </div>
 
-    <!-- ── Quizzes ── -->
+    <!-- Quizzes Section -->
     {% if quizzes %}
-    <div style="margin-top: 32px;">
-      <h2 style="font-size: 1.05rem; font-weight: 800; color: #5b21b6; margin-bottom: 16px; display:flex; align-items:center; gap:8px;">
-        Quizzes
-      </h2>
-      <div class="act-list">
-        {% for q in quizzes %}
-        {% set q_done    = q.result_status in ('submitted', 'auto_submitted') %}
-        {% set q_closed  = q.status == 'closed' %}
-        {% set q_notyet  = q.effective_start and now < q.effective_start %}
-        {% set q_expired = q.effective_end and now > q.effective_end %}
-        <div class="task-card" style="border-left-color: {{ '#10b981' if q.individual_extension else '#7c3aed' }};">
-          <div class="task-card-top">
-            <div>
-              <div class="task-cat-badge cat-quiz">Quiz</div>
-              <h3 class="task-title">{{ q.title }}</h3>
-              <div class="task-info-row">
-                <span>Duration: {{ q.duration_mins }} min</span>
-                <span>Questions: {{ q.question_count }}</span>
-                {% if q.grading_period %}
-                <span class="status-badge" style="background:#f5f3ff; color:#5b21b6; border:1px solid #ddd6fe;">{{ q.grading_period }} Grading</span>
-                {% endif %}
-                {% if q.individual_extension %}
-                <span class="status-badge" style="background:#d1fae5; color:#065f46; border:1px solid #10b981;">
-                    ⭐ Rescheduled to {{ q.effective_start.strftime('%b %d, %I:%M %p') }}
-                </span>
-                {% elif q.scheduled_start %}
-                <span>Opens {{ q.scheduled_start.strftime('%b %d, %Y %I:%M %p') }}</span>
-                {% endif %}
-              </div>
-              {% if q_done %}
-              <div class="score-info">
-              Score: <strong>{{ q.score|round|int }} / {{ q.total_points|round|int }}</strong>
-              {% if q.result_status == 'auto_submitted' %}<span style="color:#856404; font-size:11px;"> auto-submitted</span>{% endif %}
-            </div>
-              {% endif %}
-              {% if q.instructions %}
-              <div style="font-size:0.85rem; color:#475569; margin-top:8px; line-height:1.5;">{{ q.instructions }}</div>
-              {% endif %}
-            </div>
-            <div>
-              {% if q_done %}
-                <span class="status-badge st-done">Done</span>
-              {% elif q_closed %}
-                <span class="status-badge st-closed">Closed</span>
-              {% elif q_notyet %}
-                <span class="status-badge st-notyet">Not Yet Open</span>
-              {% elif q_expired %}
-                <span class="status-badge st-expired">Expired</span>
-              {% else %}
-                <span class="status-badge st-available">Available</span>
-              {% endif %}
-            </div>
-          </div>
-          <div class="task-card-bottom">
-            {% if q_done %}
-              <a href="{{ url_for('student_portal.student_exam_result', result_id=q.result_id) }}" class="btn-task-secondary">View Result</a>
-            {% elif not q_closed and not q_notyet and not q_expired %}
-              <a href="{{ url_for('student_portal.student_exam_take', exam_id=q.exam_id) }}" class="btn-task-primary btn-task-quiz">Take Quiz</a>
-            {% endif %}
-          </div>
+    <div class="sd-card">
+        <div class="sd-card-header">
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Course Quizzes
+            </h2>
         </div>
-        {% endfor %}
-      </div>
+        <div class="task-list">
+            {% for q in quizzes %}
+                {% set q_done    = q.result_status in ('submitted', 'auto_submitted') %}
+                {% set q_closed  = q.status == 'closed' %}
+                {% set q_notyet  = q.effective_start and now < q.effective_start %}
+                {% set q_expired = q.effective_end and now > q.effective_end %}
+                <div class="task-card quiz">
+                    <div class="task-top">
+                        <div class="task-title-area">
+                            <div class="task-cat-badge cat-quiz">Quiz</div>
+                            <h3 class="task-title">{{ q.title }}</h3>
+                            <div class="task-meta">
+                                <span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" style="width:14px; height:14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    {{ q.duration_mins }} Minutes
+                                </span>
+                                <span>•</span>
+                                <span>{{ q.question_count }} Questions</span>
+                                {% if q.grading_period %}
+                                    <span>•</span>
+                                    <span class="status-badge" style="background:#f5f3ff; color:#5b21b6; border:1px solid #ddd6fe; font-size: 0.7rem;">{{ q.grading_period }}</span>
+                                {% endif %}
+                                {% if q.individual_extension %}
+                                    <span style="color:#059669; font-weight:700;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" style="width:14px; height:14px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.783-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                        </svg>
+                                        Rescheduled: {{ q.effective_start.strftime('%b %d, %I:%M %p') }}
+                                    </span>
+                                {% elif q.scheduled_start %}
+                                    <span>•</span>
+                                    <span>Starts: {{ q.scheduled_start.strftime('%b %d, %I:%M %p') }}</span>
+                                {% endif %}
+                            </div>
+                            {% if q_done %}
+                                <div style="margin-top:12px; font-weight:700; color:var(--sd-primary); font-size:0.9375rem;">
+                                    Score: {{ q.score|round|int }} / {{ q.total_points|round|int }}
+                                    {% if q.result_status == 'auto_submitted' %}<span style="font-weight:400; color:var(--sd-muted); font-size:0.75rem;"> (auto-submitted)</span>{% endif %}
+                                </div>
+                            {% endif %}
+                            {% if q.instructions %}
+                                <div style="font-size:0.875rem; color:#475569; margin-top:12px; line-height:1.6; border-left: 2px solid #ddd6fe; padding-left: 12px;">{{ q.instructions }}</div>
+                            {% endif %}
+                        </div>
+                        <div class="task-status">
+                            {% if q_done %}
+                                <span class="status-badge st-submitted">Done</span>
+                            {% elif q_closed %}
+                                <span class="status-badge st-closed">Closed</span>
+                            {% elif q_notyet %}
+                                <span class="status-badge st-pending">Upcoming</span>
+                            {% elif q_expired %}
+                                <span class="status-badge st-expired">Expired</span>
+                            {% else %}
+                                <span class="status-badge st-available">Active</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="task-actions">
+                        {% if q_done %}
+                            <a href="{{ url_for('student_portal.student_exam_result', result_id=q.result_id) }}" class="btn-premium btn-outline">
+                                View Results
+                                <svg xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </a>
+                        {% elif not q_closed and not q_notyet and not q_expired %}
+                            <a href="{{ url_for('student_portal.student_exam_take', exam_id=q.exam_id) }}" class="btn-premium" style="background:#7c3aed;">
+                                Take Quiz
+                                <svg xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                                </svg>
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
     </div>
     {% endif %}
-
 </div>
 
 <!-- Media Viewer -->
 <div class="viewer-modal" id="mediaViewer">
     <button class="viewer-close" onclick="closeViewer()">×</button>
-    <div class="viewer-content" id="viewerContent">
-        <!-- Content will be injected here -->
-    </div>
+    <div class="viewer-content" id="viewerContent"></div>
 </div>
 
 <script>
@@ -462,7 +672,6 @@
                     Your browser does not support the video tag.
                 </video>`;
         } else if (type === 'pdf') {
-            // As requested by user, open PDFs in a new tab directly
             if (path.includes('/image/upload/') && path.toLowerCase().endsWith('.pdf')) {
                 path = path.replace('/image/upload/', '/raw/upload/');
             }
@@ -482,7 +691,6 @@
         document.body.style.overflow = 'auto';
     }
 
-    // Close on escape
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') closeViewer();
     });

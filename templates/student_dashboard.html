@@ -3,128 +3,192 @@
 
 {% block styles %}
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+    :root {
+        --sd-primary: #1a3a8f;
+        --sd-primary-dark: #142e75;
+        --sd-accent: #f59e0b;
+        /* Gold/Amber */
+        --sd-bg: #f8fafc;
+        --sd-card: #ffffff;
+        --sd-text: #0f172a;
+        --sd-muted: #64748b;
+        --sd-border: #e2e8f0;
+        --sd-glass: rgba(255, 255, 255, 0.1);
+        --sd-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --sd-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
 
-    .sd-wrap {
-        max-width: 1000px;
+    .sd-container {
+        max-width: 1200px;
         margin: 0 auto;
-        padding: 28px 16px 64px;
+        padding: 24px 16px 60px;
         font-family: 'Inter', sans-serif;
     }
 
-    /* ── Hero header ── */
-    .sd-hero {
-        background: linear-gradient(135deg, #1e3a8a 0%, #4f46e5 60%, #7c3aed 100%);
-        border-radius: 20px;
-        padding: 28px 32px;
-        color: #fff;
+    /* ── Header / Welcome ── */
+    .sd-welcome {
         margin-bottom: 24px;
+        animation: fadeInDown 0.6s ease-out;
+    }
+
+    .sd-welcome h1 {
+        font-size: 1.875rem;
+        font-weight: 800;
+        color: var(--sd-primary);
+        letter-spacing: -0.025em;
+        margin-bottom: 4px;
+    }
+
+    .sd-welcome p {
+        color: var(--sd-muted);
+        font-weight: 500;
+    }
+
+    /* ── Hero / Command Center ── */
+    .sd-hero {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1a3a8f 50%, #1e40af 100%);
+        border-radius: 24px;
+        padding: 32px;
+        color: #fff;
+        margin-bottom: 32px;
         position: relative;
         overflow: hidden;
+        box-shadow: var(--sd-shadow-lg);
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
     }
 
     .sd-hero::before {
         content: '';
         position: absolute;
-        top: -40px;
-        right: -40px;
-        width: 200px;
-        height: 200px;
-        background: rgba(255, 255, 255, .07);
+        top: -100px;
+        right: -100px;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
         border-radius: 50%;
     }
 
-    .sd-hero::after {
-        content: '';
-        position: absolute;
-        bottom: -60px;
-        left: -20px;
-        width: 160px;
-        height: 160px;
-        background: rgba(255, 255, 255, .05);
-        border-radius: 50%;
-    }
-
-    .sd-hero-top {
+    .sd-hero-profile {
         display: flex;
         align-items: center;
-        gap: 16px;
-        margin-bottom: 20px;
-        flex-wrap: wrap;
-    }
-
-    .sd-avatar {
-        width: 60px;
-        height: 60px;
-        background: rgba(255, 255, 255, .2);
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.8rem;
-        flex-shrink: 0;
-        border: 2px solid rgba(255, 255, 255, .3);
-    }
-
-    .sd-hero-name {
-        font-size: 1.4rem;
-        font-weight: 800;
-        letter-spacing: -.02em;
-        line-height: 1.2;
-    }
-
-    .sd-hero-sub {
-        font-size: 0.88rem;
-        opacity: .75;
-        margin-top: 3px;
-    }
-
-    .sd-info-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        gap: 12px;
-        position: relative;
+        gap: 20px;
         z-index: 1;
     }
 
-    .sd-info-pill {
-        background: rgba(255, 255, 255, .12);
-        border: 1px solid rgba(255, 255, 255, .18);
-        border-radius: 12px;
-        padding: 10px 14px;
-        backdrop-filter: blur(6px);
+    .sd-hero-avatar {
+        width: 80px;
+        height: 80px;
+        border-radius: 20px;
+        background: var(--sd-glass);
+        backdrop-filter: blur(8px);
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        flex-shrink: 0;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
     }
 
-    .sd-info-pill .lbl {
-        font-size: 0.72rem;
-        font-weight: 600;
+    .sd-hero-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .sd-hero-avatar svg {
+        width: 40px;
+        height: 40px;
+        opacity: 0.8;
+    }
+
+    .sd-hero-info h2 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin-bottom: 4px;
+        letter-spacing: -0.01em;
+    }
+
+    .sd-hero-meta {
+        font-size: 0.9375rem;
+        opacity: 0.9;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .sd-hero-meta span {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .sd-hero-meta span::after {
+        content: '•';
+        margin-left: 8px;
+        opacity: 0.5;
+    }
+
+    .sd-hero-meta span:last-child::after {
+        display: none;
+    }
+
+    /* ── Stats Grid ── */
+    .sd-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        z-index: 1;
+    }
+
+    .sd-stat-item {
+        background: var(--sd-glass);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        border-radius: 16px;
+        padding: 16px;
+        transition: transform 0.2s;
+    }
+
+    .sd-stat-item:hover {
+        transform: translateY(-2px);
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    .sd-stat-lbl {
+        font-size: 0.75rem;
         text-transform: uppercase;
-        letter-spacing: .06em;
-        opacity: .65;
-        margin-bottom: 3px;
+        letter-spacing: 0.05em;
+        opacity: 0.7;
+        margin-bottom: 4px;
+        font-weight: 700;
     }
 
-    .sd-info-pill .val {
-        font-size: 0.95rem;
+    .sd-stat-val {
+        font-size: 1.0625rem;
         font-weight: 700;
     }
 
     .badge-status {
-        display: inline-block;
-        padding: 3px 10px;
-        border-radius: 999px;
-        font-size: 0.78rem;
-        font-weight: 700;
+        padding: 4px 12px;
+        border-radius: 9999px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
     }
 
-    .badge-approved {
-        background: #d1fae5;
-        color: #065f46;
+    .badge-enrolled {
+        background: #dcfce7;
+        color: #166534;
     }
 
     .badge-pending {
         background: #fef9c3;
-        color: #713f12;
+        color: #854d0e;
     }
 
     .badge-rejected {
@@ -132,171 +196,269 @@
         color: #991b1b;
     }
 
-    /* ── Announcements ── */
-    .ann-section {
-        margin-bottom: 22px;
-    }
-
-    .ann-header {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        margin-bottom: 12px;
-    }
-
-    .ann-header h2 {
-        font-size: 1.1rem;
-        font-weight: 800;
-        margin: 0;
-        color: var(--text);
-    }
-
-    .ann-badge {
-        background: #6366f1;
-        color: #fff;
-        padding: 2px 9px;
-        border-radius: 999px;
-        font-size: 0.72rem;
-        font-weight: 700;
-    }
-
-    .ann-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .ann-card {
-        background: linear-gradient(135deg, #f0f9ff 0%, #eef2ff 100%);
-        border: 1px solid #c7d2fe;
-        border-left: 4px solid #6366f1;
-        border-radius: 14px;
-        padding: 14px 18px;
-        transition: transform 0.15s, box-shadow 0.15s;
-    }
-
-    .ann-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(99, 102, 241, .15);
-    }
-
-    .ann-card-title {
-        font-weight: 700;
-        font-size: 0.97rem;
-        color: #1e3a8a;
-        margin-bottom: 4px;
-    }
-
-    .ann-card-meta {
-        font-size: 0.77rem;
-        color: #6b7280;
-        margin-bottom: 6px;
-    }
-
-    .ann-card-body {
-        font-size: 0.9rem;
-        color: #374151;
-        white-space: pre-wrap;
-        line-height: 1.55;
-    }
-
-    /* ── Financial & Services layout ── */
+    /* ── Main Layout Grid ── */
     .sd-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: 24px;
-        margin-top: 24px;
+        grid-template-columns: 2fr 1fr;
+        gap: 32px;
+    }
+
+    @media (max-width: 1024px) {
+        .sd-grid {
+            grid-template-columns: 1fr;
+        }
     }
 
     .sd-card {
-        background: #fff;
-        border: 1px solid var(--border);
+        background: var(--sd-card);
+        border: 1px solid var(--sd-border);
         border-radius: 20px;
         padding: 24px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
+        box-shadow: var(--sd-shadow);
+        margin-bottom: 24px;
     }
 
-    .sd-card h3 {
-        font-size: 1.1rem;
-        font-weight: 800;
-        margin: 0 0 16px;
+    .sd-card-header {
         display: flex;
         align-items: center;
-        gap: 8px;
-    }
-
-    .sd-card-content {
-        flex: 1;
+        justify-content: space-between;
         margin-bottom: 20px;
     }
 
-    @media (max-width:600px) {
-        .sd-hero {
-            padding: 20px 18px;
+    .sd-card-header h3 {
+        font-size: 1.125rem;
+        font-weight: 800;
+        color: var(--sd-primary);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .sd-card-header svg {
+        width: 20px;
+        height: 20px;
+        color: var(--sd-accent);
+    }
+
+    /* ── Announcements ── */
+    .ann-list {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .ann-item {
+        padding-left: 16px;
+        border-left: 3px solid var(--sd-accent);
+        transition: transform 0.2s;
+    }
+
+    .ann-item:hover {
+        transform: translateX(4px);
+    }
+
+    .ann-title {
+        font-weight: 700;
+        font-size: 0.9375rem;
+        color: var(--sd-text);
+        margin-bottom: 4px;
+    }
+
+    .ann-meta {
+        font-size: 0.75rem;
+        color: var(--sd-muted);
+        margin-bottom: 8px;
+    }
+
+    .ann-body {
+        font-size: 0.875rem;
+        color: #475569;
+        line-height: 1.5;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    /* ── Billing ── */
+    .bill-summary {
+        background: #f1f5f9;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .bill-balance {
+        font-size: 1.75rem;
+        font-weight: 900;
+        color: var(--sd-primary);
+        margin: 8px 0;
+    }
+
+    /* ── Subject List ── */
+    .subject-list {
+        display: grid;
+        gap: 12px;
+    }
+
+    .subject-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: #f8fafc;
+        border-radius: 12px;
+        border: 1px solid transparent;
+        transition: all 0.2s;
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .subject-item:hover {
+        background: #fff;
+        border-color: var(--sd-primary);
+        box-shadow: var(--sd-shadow);
+        transform: scale(1.02);
+    }
+
+    .subject-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .subject-name {
+        font-weight: 700;
+        font-size: 0.875rem;
+    }
+
+    .subject-teacher {
+        font-size: 0.75rem;
+        color: var(--sd-muted);
+    }
+
+    /* ── Buttons ── */
+    .btn-premium {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 12px 24px;
+        background: var(--sd-primary);
+        color: #fff;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.875rem;
+        text-decoration: none;
+        transition: all 0.2s;
+        border: none;
+        cursor: pointer;
+    }
+
+    .btn-premium:hover {
+        background: var(--sd-primary-dark);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26, 58, 143, 0.2);
+    }
+
+    .btn-outline {
+        background: transparent;
+        border: 1px solid var(--sd-border);
+        color: var(--sd-text);
+    }
+
+    .btn-outline:hover {
+        background: #f1f5f9;
+        border-color: var(--sd-muted);
+    }
+
+    .btn-success {
+        background: #10b981;
+    }
+
+    .btn-success:hover {
+        background: #059669;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
         }
 
-        .sd-hero-name {
-            font-size: 1.2rem;
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (max-width: 640px) {
+        .sd-hero {
+            padding: 24px;
+        }
+
+        .sd-hero-profile {
+            flex-direction: column;
+            align-items: flex-start;
+            text-align: left;
+        }
+
+        .sd-stats {
+            grid-template-columns: 1fr 1fr;
         }
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="sd-wrap">
+<div class="sd-container">
 
-    <!-- ── Welcome Section ── -->
-    <div class="welcome-section" style="margin-bottom: 24px;">
-        <h1 style="font-size: 1.8rem; font-weight: 800; color: #1e3a8f; margin-bottom: 4px;">Welcome back, {{
-            student.student_name.split(' ')[0] }}!</h1>
-        <p style="color: #64748b; font-weight: 500;">Today is {{ now.strftime('%A, %B %d, %Y') }}</p>
-    </div>
 
-    <!-- ── Hero info ── -->
-    <div class="sd-hero">
-        <div class="sd-hero-top">
-            <div class="sd-avatar" style="overflow: hidden;">
+
+    <!-- Command Center Hero -->
+    <section class="sd-hero">
+        <div class="sd-hero-profile">
+            <div class="sd-hero-avatar">
                 {% if student.profile_image %}
-                <img src="{% if student.profile_image.startswith('http') %}{{ student.profile_image }}{% elif student.profile_image.startswith('/') %}{{ student.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ student.profile_image) }}{% endif %}" 
-                     style="width: 100%; height: 100%; object-fit: cover;">
+                <img src="{% if student.profile_image.startswith('http') %}{{ student.profile_image }}{% elif student.profile_image.startswith('/') %}{{ student.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ student.profile_image) }}{% endif %}"
+                    alt="Profile">
                 {% else %}
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
                 {% endif %}
             </div>
-            <div>
-                <div class="sd-hero-name">{{ student.student_name }}</div>
-                <div class="sd-hero-sub">Student Dashboard · {{ student.branch_name }}</div>
-                <div class="muted" style="font-size:13px; margin-bottom:12px;">
-                    School Year: 
-                    <strong>{{ school_year_label or 'Not assigned yet' }}</strong>
-                  </div>
+            <div class="sd-hero-info">
+                <h2>{{ student.student_name }}</h2>
+                <div class="sd-hero-meta">
+                    <span>{{ student.branch_name }}</span>
+                    <span>SY {{ school_year_label or '2023-2024' }}</span>
+                </div>
             </div>
         </div>
-        <div class="sd-info-grid">
-            <div class="sd-info-pill">
-                <div class="lbl">Grade Level</div>
-                <div class="val">{{ student.grade_level or '—' }}</div>
+
+        <div class="sd-stats">
+            <div class="sd-stat-item">
+                <div class="sd-stat-lbl">Grade Level</div>
+                <div class="sd-stat-val">{{ student.grade_level or '—' }}</div>
             </div>
-            <div class="sd-info-pill">
-                <div class="lbl">Student ID</div>
-                <div class="val">{{ session.get('username') }}</div>
+            <div class="sd-stat-item">
+                <div class="sd-stat-lbl">Section</div>
+                <div class="sd-stat-val">{{ (subjects_for_grade[0].section_name if subjects_for_grade else '—') }}</div>
             </div>
-            <div class="sd-info-pill">
-                <div class="lbl">Section</div>
-                <div class="val">{{ (subjects_for_grade[0].section_name if subjects_for_grade else '—') }}</div>
+            <div class="sd-stat-item">
+                <div class="sd-stat-lbl">Student ID</div>
+                <div class="sd-stat-val">{{ session.get('username') }}</div>
             </div>
-            <div class="sd-info-pill">
-                <div class="lbl">Status</div>
-                <div class="val">
+            <div class="sd-stat-item">
+                <div class="sd-stat-lbl">Status</div>
+                <div class="sd-stat-val">
                     {% if student.status == 'enrolled' or (student.status == 'approved' and student.section_id) %}
-                    <span class="badge-status badge-approved">Enrolled</span>
+                    <span class="badge-status badge-enrolled">Enrolled</span>
                     {% elif student.status == 'approved' %}
-                    <span class="badge-status badge-approved">Approved</span>
-                    {% elif student.status == 'open_for_enrollment' %}
-                    <span class="badge-status badge-pending">Re-enrollment Open</span>
+                    <span class="badge-status badge-enrolled">Approved</span>
                     {% elif student.status == 'rejected' %}
                     <span class="badge-status badge-rejected">Rejected</span>
                     {% else %}
@@ -305,81 +467,148 @@
                 </div>
             </div>
         </div>
-    </div>
+    </section>
 
-
-
-
-    <!-- ── Financial & Services ── -->
     <div class="sd-grid">
+        <!-- Main Column -->
+        <div class="sd-col-main">
 
-        <!-- Billing Card -->
-        <div class="sd-card">
-            <h3>
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-                Billing Summary
-            </h3>
-            <div class="sd-card-content">
-                {% if bill %}
-                <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
-                    <span style="color: var(--muted); font-weight: 500;">Current Balance</span>
-                    <span style="font-weight: 800; color: #dc2626; font-size: 1.25rem;">₱{{ "%.2f"|format(bill.balance)
-                        }}</span>
+            <!-- Announcements Card -->
+            <div class="sd-card">
+                <div class="sd-card-header">
+                    <h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                        Teacher Announcements
+                    </h3>
+                    <span style="font-size: 0.75rem; font-weight: 600; color: var(--sd-muted);">Recent</span>
                 </div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
-                    <span style="color: var(--muted);">Status</span>
-                    {% if bill.status == 'paid' %}
-                    <span class="badge-status badge-approved">Fully Paid</span>
-                    {% elif bill.status == 'partial' %}
-                    <span class="badge-status badge-pending">Partial</span>
+                <div class="ann-list">
+                    {% if teacher_announcements %}
+                    {% for ann in teacher_announcements %}
+                    <div class="ann-item">
+                        <div class="ann-title">{{ ann.title }}</div>
+                        <div class="ann-meta">Posted by {{ ann.display_name }} • {{ ann.created_at.strftime('%b %d,
+                            %I:%M %p') }}</div>
+                        <div class="ann-body">{{ ann.body }}</div>
+                    </div>
+                    {% endfor %}
                     {% else %}
-                    <span class="badge-status badge-rejected">Unpaid</span>
+                    <p style="text-align: center; color: var(--sd-muted); font-size: 0.875rem; padding: 20px;">No
+                        announcements from your teachers yet.</p>
                     {% endif %}
                 </div>
-                {% else %}
-                <p style="color: var(--muted); text-align: center; margin: 10px 0;">No billing record found.</p>
-                {% endif %}
             </div>
-            <a href="{{ url_for('student_portal.billing') }}" class="btn btn-primary"
-                style="width: 100%; justify-content: center; background: #3b82f6; border-radius: 12px; padding: 12px;">View
-                Statement</a>
+
+            <!-- Subjects Card -->
+            <div class="sd-card">
+                <div class="sd-card-header">
+                    <h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                        My Subjects
+                    </h3>
+                </div>
+                <div class="subject-list">
+                    {% if subjects_for_grade %}
+                    {% for sub in subjects_for_grade %}
+                    <a href="{{ url_for('student_portal.subject_view', subject_id=sub.subject_id) }}"
+                        class="subject-item">
+                        <div class="subject-info">
+                            <span class="subject-name">{{ sub.subject_name }}</span>
+                            <span class="subject-teacher">Teacher: {{ sub.teacher_full_name or 'Not assigned' }}</span>
+                        </div>
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px; opacity:0.3;"
+                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                    </a>
+                    {% endfor %}
+                    {% else %}
+                    <p style="text-align: center; color: var(--sd-muted); font-size: 0.875rem; padding: 20px;">No
+                        subjects assigned to your section.</p>
+                    {% endif %}
+                </div>
+            </div>
         </div>
 
-        <!-- Reservations Card -->
-        <div class="sd-card">
-            <h3>
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>
-                Item Reservations
-            </h3>
-            <div class="sd-card-content">
+        <!-- Sidebar Column -->
+        <div class="sd-col-side">
+
+            <!-- Billing Card -->
+            <div class="sd-card">
+                <div class="sd-card-header">
+                    <h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                        </svg>
+                        Financial Summary
+                    </h3>
+                </div>
+                <div class="bill-summary">
+                    <div
+                        style="font-size: 0.75rem; font-weight: 700; color: var(--sd-muted); text-transform: uppercase;">
+                        Current Balance</div>
+                    <div class="bill-balance">₱{{ "%.2f"|format(bill.balance if bill else 0.0) }}</div>
+                    {% if bill %}
+                    <span
+                        class="badge-status {% if bill.status == 'paid' %}badge-enrolled{% else %}badge-pending{% endif %}">
+                        {{ bill.status | capitalize }}
+                    </span>
+                    {% endif %}
+                </div>
+                <a href="{{ url_for('student_portal.billing') }}" class="btn-premium" style="width: 100%;">
+                    View Statement
+                </a>
+            </div>
+
+            <!-- Reservations Card -->
+            <div class="sd-card">
+                <div class="sd-card-header">
+                    <h3>
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                        </svg>
+                        Item Reservations
+                    </h3>
+                </div>
                 {% if reservations %}
                 {% set latest = reservations[0] %}
-                <div style="margin-bottom: 10px;">
+                <div
+                    style="margin-bottom: 20px; padding: 12px; background: #f8fafc; border-radius: 12px; border: 1px solid var(--sd-border);">
                     <div
-                        style="font-size: 0.72rem; color: var(--muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; margin-bottom: 4px;">
+                        style="font-size: 0.7rem; font-weight: 700; color: var(--sd-muted); text-transform: uppercase; margin-bottom: 4px;">
                         Latest Order</div>
-                        <div style="font-weight: 700; color: var(--text); font-size: 0.95rem;">{{ (latest['items'] or
-                            'Inventory Items') | truncate(45) }}</div>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: 0.85rem; color: var(--muted);">Status: <strong>{{ latest.status
-                            }}</strong></span>
-                    <span style="font-weight: 700; color: #10b981;">₱{{ "%.2f"|format(latest.total_amount|float)
-                        }}</span>
+                    <div style="font-weight: 700; font-size: 0.875rem; margin-bottom: 8px;">{{ latest['items'] |
+                        truncate(40) }}</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.75rem; font-weight: 600;">{{ latest.status }}</span>
+                        <span style="font-weight: 800; color: #10b981;">₱{{ "%.2f"|format(latest.total_amount|float)
+                            }}</span>
+                    </div>
                 </div>
                 {% else %}
-                <p style="color: var(--muted); text-align: center; margin: 10px 0;">No active reservations.</p>
+                <p style="color: var(--sd-muted); font-size: 0.875rem; margin-bottom: 20px;">No active item reservations
+                    found.</p>
                 {% endif %}
-            </div>
-            <div style="display: flex; gap: 8px;">
-                <a href="{{ url_for('student.student_reservations_list') }}" class="btn btn-secondary"
-                    style="flex: 1; justify-content: center; border-radius: 12px;">History</a>
-                <a href="{{ url_for('student.student_reservation') }}" class="btn btn-primary"
-                    style="flex: 1.5; justify-content: center; background: #10b981; border-color: #10b981; border-radius: 12px;">Order
-                    Items</a>
-            </div>
-        </div>
 
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <a href="{{ url_for('student.student_reservation') }}" class="btn-premium btn-success">
+                        Order Items
+                    </a>
+                    <a href="{{ url_for('student.student_reservations_list') }}" class="btn-premium btn-outline">
+                        History
+                    </a>
+                </div>
+            </div>
+
+        </div>
     </div>
 
 </div>

@@ -160,6 +160,7 @@ def dashboard():
                 SELECT
                     g.name      AS grade_level_name,
                     s.section_name,
+                    sub.subject_id,
                     sub.name    AS subject_name,
                     u.full_name AS teacher_full_name,
                     u.username  AS teacher_username,
@@ -182,6 +183,7 @@ def dashboard():
                 SELECT
                     g.name      AS grade_level_name,
                     s.section_name,
+                    sub.subject_id,
                     sub.name    AS subject_name,
                     u.full_name AS teacher_full_name,
                     u.username  AS teacher_username,
@@ -192,10 +194,10 @@ def dashboard():
                 JOIN subjects sub        ON st.subject_id    = sub.subject_id
                 LEFT JOIN users u        ON st.teacher_id    = u.user_id
                 WHERE s.branch_id = %(branch_id)s
-                  AND (
-                      g.name ILIKE %(grade_full)s
-                      OR g.name ILIKE %(grade_short)s
-                  )
+                AND (
+                    g.name ILIKE %(grade_full)s
+                    OR g.name ILIKE %(grade_short)s
+                )
                 ORDER BY s.section_name, sub.name
             """, {
                 "branch_id":   student.get("branch_id"),
