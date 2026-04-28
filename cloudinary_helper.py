@@ -81,20 +81,17 @@ def upload_file_to_subfolder(file_storage, subfolder: str) -> str:
 # ── Internal: Cloudinary ────────────────────────────────────────────────────
 def _upload_to_cloudinary(file_storage, folder: str) -> str:
     ext = file_storage.filename.lower().rsplit('.', 1)[-1] if (file_storage.filename and '.' in file_storage.filename) else ''
-    # Explicitly determine the best resource_type for Cloudinary
-    if ext == 'pdf':
-        res_type = "image"
-    elif ext in ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar']:
-        res_type = "raw"
-    else:
-        res_type = "auto"
+    # PDFs and Office docs should be 'raw' to preserve their exact byte content
+    is_raw_type = ext in ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar']
     
     from werkzeug.utils import secure_filename
-    base_name = secure_filename(file_storage.filename.rsplit('.', 1)[0] if (file_storage.filename and '.' in file_storage.filename) else "document")
+    # Strip extension from original for base_name
+    original_base = file_storage.filename.rsplit('.', 1)[0] if (file_storage.filename and '.' in file_storage.filename) else "document"
+    base_name = secure_filename(original_base)
     if not base_name or base_name == "file":
         base_name = "document"
         
-    # Unique public_id with extension
+    # Build a clean public_id: name_unique.ext
     public_id = f"{base_name}_{uuid.uuid4().hex[:6]}"
     if ext:
         public_id += f".{ext}"
@@ -103,8 +100,8 @@ def _upload_to_cloudinary(file_storage, folder: str) -> str:
         file_storage,
         folder=folder,
         public_id=public_id,
-        resource_type=res_type,   
-        use_filename=False, 
+        resource_type="raw" if is_raw_type else "auto",   
+        use_filename=False, # We use our own clean public_id
         unique_filename=False, 
     )
     url = result.get("secure_url")
