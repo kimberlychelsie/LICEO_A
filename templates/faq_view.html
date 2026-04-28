@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 
+
 {% block title %}FAQ | Knowledge Base{% endblock %}
 
 {% block styles %}
@@ -32,8 +33,13 @@
     }
 
     @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
     }
 
     /* ── Slim Blue Header ── */
@@ -97,7 +103,7 @@
         border: 1px solid var(--par-border);
         border-radius: var(--par-radius);
         padding: 24px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
     }
 
     .nav-title {
@@ -123,7 +129,8 @@
         margin-bottom: 8px;
     }
 
-    .nav-btn:hover, .nav-btn.active {
+    .nav-btn:hover,
+    .nav-btn.active {
         background: var(--par-primary-soft);
         color: var(--par-primary);
     }
@@ -155,7 +162,7 @@
         border: 1px solid var(--par-border);
         border-radius: var(--par-radius);
         overflow: hidden;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
     }
 
     .faq-item {
@@ -222,6 +229,7 @@
         .faq-grid {
             grid-template-columns: 1fr;
         }
+
         .faq-nav {
             position: relative;
             top: 0;
@@ -239,9 +247,6 @@
             <h1><i class="fas fa-question-circle"></i> Knowledge Base</h1>
             <div class="header-sub">Common questions and branch-specific guides</div>
         </div>
-        <a href="{{ url_for('parent.dashboard') }}" class="btn-nav">
-            <i class="fas fa-home"></i> Back to Hub
-        </a>
     </header>
 
     <div class="faq-grid">
@@ -258,7 +263,8 @@
                 <i class="fas fa-map-marker-alt"></i> Branch Specific
             </a>
             {% endif %}
-            <div style="margin-top: 32px; padding: 20px; background: var(--par-primary-soft); border-radius: 12px; border: 1px dashed rgba(26, 58, 143, 0.2);">
+            <div
+                style="margin-top: 32px; padding: 20px; background: var(--par-primary-soft); border-radius: 12px; border: 1px dashed rgba(26, 58, 143, 0.2);">
                 <p style="font-size: 0.75rem; color: var(--par-primary); font-weight: 700; margin: 0;">
                     Can't find your answer? Contact your school branch registrar for direct assistance.
                 </p>
@@ -310,8 +316,10 @@
             {% endif %}
 
             {% if not general_faqs and not branch_faqs %}
-            <div style="text-align: center; padding: 100px; background: white; border-radius: 20px; border: 1px dashed var(--par-border);">
-                <i class="fas fa-folder-open" style="font-size: 3rem; color: var(--par-primary-soft); margin-bottom: 20px;"></i>
+            <div
+                style="text-align: center; padding: 100px; background: white; border-radius: 20px; border: 1px dashed var(--par-border);">
+                <i class="fas fa-folder-open"
+                    style="font-size: 3rem; color: var(--par-primary-soft); margin-bottom: 20px;"></i>
                 <h2>No FAQs Found</h2>
                 <p>Check back later for updates to our knowledge base.</p>
             </div>
@@ -321,62 +329,62 @@
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    const questions = document.querySelectorAll(".faq-question");
-    const navBtns = document.querySelectorAll(".nav-btn");
-    const sections = document.querySelectorAll(".faq-section");
-    
-    // ── Tab Switching Logic ──
-    function showCategory(categoryId) {
-        sections.forEach(sec => {
-            if (sec.id === categoryId) {
-                sec.style.display = "block";
-            } else {
-                sec.style.display = "none";
-            }
-        });
+    document.addEventListener("DOMContentLoaded", function () {
+        const questions = document.querySelectorAll(".faq-question");
+        const navBtns = document.querySelectorAll(".nav-btn");
+        const sections = document.querySelectorAll(".faq-section");
+
+        // ── Tab Switching Logic ──
+        function showCategory(categoryId) {
+            sections.forEach(sec => {
+                if (sec.id === categoryId) {
+                    sec.style.display = "block";
+                } else {
+                    sec.style.display = "none";
+                }
+            });
+
+            navBtns.forEach(btn => {
+                if (btn.getAttribute("href").substring(1) === categoryId) {
+                    btn.classList.add("active");
+                } else {
+                    btn.classList.remove("active");
+                }
+            });
+        }
 
         navBtns.forEach(btn => {
-            if (btn.getAttribute("href").substring(1) === categoryId) {
-                btn.classList.add("active");
-            } else {
-                btn.classList.remove("active");
-            }
-        });
-    }
-
-    navBtns.forEach(btn => {
-        btn.addEventListener("click", function(e) {
-            e.preventDefault();
-            const targetId = this.getAttribute("href").substring(1);
-            showCategory(targetId);
-        });
-    });
-
-    // Initialize with first available category
-    if (navBtns.length > 0) {
-        showCategory(navBtns[0].getAttribute("href").substring(1));
-    }
-
-    // ── Accordion Logic ──
-    questions.forEach(question => {
-        question.addEventListener("click", function() {
-            const item = this.parentElement;
-            const answer = this.nextElementSibling;
-            const isActive = item.classList.contains("active");
-            
-            // Close all items in the current section
-            item.closest('.faq-wrapper').querySelectorAll(".faq-item").forEach(i => {
-                i.classList.remove("active");
-                i.querySelector(".faq-answer").style.maxHeight = null;
+            btn.addEventListener("click", function (e) {
+                e.preventDefault();
+                const targetId = this.getAttribute("href").substring(1);
+                showCategory(targetId);
             });
-            
-            if (!isActive) {
-                item.classList.add("active");
-                answer.style.maxHeight = answer.scrollHeight + "px";
-            }
+        });
+
+        // Initialize with first available category
+        if (navBtns.length > 0) {
+            showCategory(navBtns[0].getAttribute("href").substring(1));
+        }
+
+        // ── Accordion Logic ──
+        questions.forEach(question => {
+            question.addEventListener("click", function () {
+                const item = this.parentElement;
+                const answer = this.nextElementSibling;
+                const isActive = item.classList.contains("active");
+
+                // Close all items in the current section
+                item.closest('.faq-wrapper').querySelectorAll(".faq-item").forEach(i => {
+                    i.classList.remove("active");
+                    i.querySelector(".faq-answer").style.maxHeight = null;
+                });
+
+                if (!isActive) {
+                    item.classList.add("active");
+                    answer.style.maxHeight = answer.scrollHeight + "px";
+                }
+            });
         });
     });
-});
 </script>
 {% endblock %}
