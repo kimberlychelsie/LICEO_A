@@ -613,22 +613,34 @@
 
     if (gradeStats && gradeStats.length > 0) {
         const ctxGrade = document.getElementById('gradeChart').getContext('2d');
+        
+        // Create Gradient
+        const gradient = ctxGrade.createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(26, 58, 143, 0.2)');
+        gradient.addColorStop(1, 'rgba(26, 58, 143, 0)');
+
         new Chart(ctxGrade, {
-            type: 'bar',
+            type: 'line',
             plugins: [ChartDataLabels],
             data: {
                 labels: gradeStats.map(item => item.grade_level || 'N/A'),
                 datasets: [{
                     label: 'Enrollees',
                     data: gradeStats.map(item => item.count),
-                    backgroundColor: gradeStats.map((_, i) => i % 2 === 0 ? liceoBlue : liceoGold),
-                    borderRadius: 8,
-                    borderSkipped: false,
-                    barThickness: 18, // Pinaliit para magkasya lahat nang di malaki
+                    borderColor: liceoBlue,
+                    backgroundColor: liceoBlue, // Match dots to line
+                    borderWidth: 5,
+                    pointRadius: 9,
+                    pointBackgroundColor: liceoBlue,
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 3,
+                    pointHoverRadius: 12,
+                    fill: true,
+                    backgroundColor: gradient,
+                    tension: 0 // Straight lines as per image
                 }]
             },
             options: {
-                indexAxis: 'y', // GINAWANG HORIZONTAL PARA SA K-12
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: { 
@@ -643,7 +655,7 @@
                     },
                     datalabels: {
                         anchor: 'end',
-                        align: 'right',
+                        align: 'top',
                         offset: 8,
                         color: liceoBlue,
                         font: { family: 'Plus Jakarta Sans', weight: '900', size: 12 },
@@ -652,16 +664,13 @@
                 },
                 scales: { 
                     x: { 
+                        grid: { display: false },
+                        ticks: { font: { family: 'Plus Jakarta Sans', weight: '800', size: 11 }, color: liceoBlue }
+                    }, 
+                    y: { 
                         beginAtZero: true, 
                         grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false },
                         ticks: { font: { family: 'Plus Jakarta Sans', weight: '700', size: 10 }, color: '#64748b' }
-                    }, 
-                    y: { 
-                        grid: { display: false },
-                        ticks: { 
-                            font: { family: 'Plus Jakarta Sans', weight: '800', size: 11 }, 
-                            color: liceoBlue 
-                        }
                     } 
                 }
             }
@@ -671,38 +680,49 @@
     if (statusStats && statusStats.length > 0) {
         const ctxStatus = document.getElementById('statusChart').getContext('2d');
         new Chart(ctxStatus, {
-            type: 'doughnut',
+            type: 'bar',
             data: {
                 labels: statusStats.map(item => String(item.status).toUpperCase()),
                 datasets: [{
+                    label: 'Students',
                     data: statusStats.map(item => item.count),
-                    backgroundColor: [liceoBlue, liceoGold, '#3b82f6', '#10b981', '#ef4444'],
-                    hoverOffset: 20,
-                    borderWidth: 6,
-                    borderColor: '#ffffff'
+                    backgroundColor: statusStats.map((_, i) => i % 2 === 0 ? liceoBlue : liceoGold),
+                    borderRadius: 12,
+                    borderSkipped: false,
+                    barThickness: 24,
                 }]
             },
             options: {
+                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                cutout: '75%',
                 plugins: { 
-                    legend: { 
-                        position: 'bottom', 
-                        labels: { 
-                            boxWidth: 10, 
-                            padding: 25,
-                            font: { family: 'Plus Jakarta Sans', size: 12, weight: '800' },
-                            color: '#1a3a8f',
-                            usePointStyle: true
-                        } 
-                    },
+                    legend: { display: false },
                     tooltip: {
                         backgroundColor: '#0c2461',
                         padding: 16,
                         cornerRadius: 15,
                         titleFont: { family: 'Plus Jakarta Sans', weight: '800' },
                         bodyFont: { family: 'Plus Jakarta Sans', weight: '600' }
+                    },
+                    datalabels: {
+                        anchor: 'end',
+                        align: 'right',
+                        offset: 8,
+                        color: liceoBlue,
+                        font: { family: 'Plus Jakarta Sans', weight: '900', size: 12 },
+                        formatter: (value) => value
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        grid: { color: 'rgba(0,0,0,0.05)', drawBorder: false },
+                        ticks: { font: { family: 'Plus Jakarta Sans', weight: '700', size: 10 }, color: '#64748b' }
+                    },
+                    y: {
+                        grid: { display: false },
+                        ticks: { font: { family: 'Plus Jakarta Sans', weight: '800', size: 11 }, color: liceoBlue }
                     }
                 }
             }
