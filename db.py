@@ -611,7 +611,136 @@ Grade 10,Inteligente,TLE- SPICE Book 2,540.00"""
                             
                             cur.execute("""
                                 INSERT INTO inventory_items (branch_id, category, item_name, grade_level, price, stock_total, reserved_qty, is_active, is_common)
-                                VALUES (%s, 'BOOK', %s, %s, %s, 1000, 0, TRUE, FALSE)
+                                VALUES (%s, 'BOOK', %s, %s, %s, 100, 0, TRUE, FALSE)
+                            """, (b_id, full_name, level, price))
+
+                    # ── SEEDING: Books (If branch has no books) ──
+                    cur.execute("SELECT COUNT(*) FROM inventory_items WHERE branch_id = %s AND category = 'BOOK'", (b_id,))
+                    if cur.fetchone()[0] == 0:
+                        logger.info(f"Seeding textbook inventory for branch {b_id}")
+                        BOOKS_DATA = """Nursery,FNB,Religion,323.00
+Nursery,JO-ES,Filipino- Binhi:Pinagyamang Edisyon,535.00
+Nursery,NEO-ASIA,English-Phonics,460.00
+Nursery,JO-ES,Math- Math Builders,650.00
+Nursery,NEO-ASIA,AP- Getting Ready Series "Sibika at Kultura" K1,460.00
+Nursery,JO-ES,Science- Exploring Science Kinder,619.00
+Nursery,SIBS,ESP- Mabuting Bata Magandang Pag-uugali,335.00
+Kindergarten,N/A,Religion,580.00
+Kindergarten,ABIVA,MAKABANSA(AP)-Serye ng Hakbang sa Pag-unlad,435.00
+Kindergarten,The Library,LANGUAGE/READING/WRITING-Smart Language K1,430.00
+Kindergarten,N/A,Learn Ahead in Reading K1,435.00
+Kindergarten,N/A,Basic Writing for Early Learners(K),450.00
+Kindergarten,ABIVA,SCIENCE-Ladders to Learning Series K,435.00
+Kindergarten,The Library,MATHEMATICS-Global Mathematics K,445.00
+Kindergarten,ABIVA,GMRC-Hakbang sa Kabutihang Asal K1,380.00
+Grade 1,PHOENIX,Religion-MAPSA BSTSC: I Believe in Jesus 1,620.00
+Grade 1,PHOENIX,Language- Integrated English for Effective Com.-3rd Ed,440.00
+Grade 1,PHOENIX,Reading and Literacy-Integrated Eng.for Effective Com.3rdEd,460.00
+Grade 1,PHOENIX,Mathematics-Realistic Math,890.00
+Grade 1,REX,MAKABANSA- Lahing Pilipino(Unang Edisyon),779.00
+Grade 1,JO-ES,GMRC- Tanglaw sa kagandahang Asal at Wastong Pag-uugali,560.00
+Grade 1,Book Choice,ICT-CYBERWORLD I.T. ESSENTIALS Getting to Know My Computer,540.00
+Grade 1,ABIVA,SRA,390.00
+Grade 2,PHOENIX,Religion-MAPSA BSTSC: I Grow in Jesus 2,620.00
+Grade 2,DIWA,Filipino-Wikang Filipino sa Mabisang Kom.,785.00
+Grade 2,PHOENIX,English- Integrated English for Effective Com.,670.00
+Grade 2,PHOENIX,Math- Realistic MathBasic Beyond Breakthrough,905.00
+Grade 2,REX,Makabansa- Lahing Pilipino Kaagapay sa Ika-21 Siglo,779.00
+Grade 2,JO-ES,GMRC- Tanglaw sa Kagandahang Asal at Wastong Pag-uugali,560.00
+Grade 2,Book Choice,ICT- Global Tech Computer Series-Intro.to Comp.,540.00
+Grade 3,PHOENIX,Religion-MAPSA BSTSC: I Celebrate Jesus 3,620.00
+Grade 3,DIWA,Filipino-Wikang Filipino sa Mabisang Kom.,785.00
+Grade 3,PHOENIX,English- Integrated English for Effective Com.,670.00
+Grade 3,PHOENIX,Math-Realistic MathBasic Beyond Breakthrough,910.00
+Grade 3,REX,Makabansa-Lahing Pilipino Kaagapay sa Ika-21 Siglo,779.00
+Grade 3,JO-ES,GMRC- Tanglaw sa Kagandahang Asal at Wastong Pag-uugali,610.00
+Grade 3,REX,Science- Science Links,779.00
+Grade 3,Book Choice,ICT- Global Tech Computer Series 3/ Computer 101,540.00
+Grade 4,PHOENIX,Religion-MAPSA BSTSC: Jesus Sends Me...4,640.00
+Grade 4,DIWA,Filipino-Wikang Filipino sa Mabisang Kom.,785.00
+Grade 4,PHOENIX,English-Integrated English for Effective Communication,670.00
+Grade 4,PHOENIX,Realistic Math,875.00
+Grade 4,REX,AP-Lahing Pilipino Kaagapay sa Ika-21 Siglo,779.00
+Grade 4,REX,MAPEH- Expeditions in MAPEH,679.00
+Grade 4,JO-ES,GMRC-Tanglaw sa kagandahang Asal at Wastong Pag-uugali,560.00
+Grade 4,Book Choice,ICT-Global Tech Computer Series MS Office Application,540.00
+Grade 4,REX,Science Links (Balatbat),779.00
+Grade 4,FnB,EPP-Tagumpay,573.00
+Grade 5,PHOENIX,Religion-MAPSA BSTSC:Jesus Sends Me...5,640.00
+Grade 5,DIWA,Filipino-Wikang Filipino sa Mabisang Kom.,785.00
+Grade 5,PHOENIX,English-Integrated English for Effective Communication,670.00
+Grade 5,PHOENIX,Realistic Math,875.00
+Grade 5,REX,AP-Lahing Pilipino Kaagapay sa Ika-21 Siglo,779.00
+Grade 5,REX,MAPEH- Expeditions in MAPEH,679.00
+Grade 5,JO-ES,GMRC-Tanglaw sa kagandahang Asal at Wastong Pag-uugali,560.00
+Grade 5,Book Choice,ICT-Global Tech Computer Series 5 Computer Application,540.00
+Grade 5,REX,Science Links (Balatbat),779.00
+Grade 5,FnB,EPP-Tagumpay,573.00
+Grade 6,FNB,Religion-Christian Life Education Series 4th Ed.,600.00
+Grade 6,SIBS,Filipino- Pintig ng Lahing Pilipino Ikalawang Edisyon,755.00
+Grade 6,REX,English-Essential English for Active Learners 2020,629.00
+Grade 6,PHOENIX-SIBS,Math Buddies,570.00
+Grade 6,ABIVA,AP- Kamalayang Panlipunan,635.00
+Grade 6,EPHESIANS,MAPEH- The Joy of MAPEH,670.00
+Grade 6,JO-ES,ESP- Dakilang Pag-asa,380.00
+Grade 6,Book Choice,ICT-CYBERWORLD I.T. ESSENTIALS Computer Knowledge,540.00
+Grade 6,TECHFACTOR,Science-Science Tek Inquiry-based Approach,750.00
+Grade 6,FNB,EPP- Tagumpay,605.00
+Grade 7,PHOENIX,Religion-MAPSA CLE-BTSC: Jesus Announces God...7,620.00
+Grade 7,DIWA,Filipino- Filipino sa Modernong Panahon,885.00
+Grade 7,PHOENIX,English-English Communication Arts & Skills,505.00
+Grade 7,PHOENIX,Mathematics- Realistic Math,580.00
+Grade 7,REX,AP-Kayamanan - Pilipinas sa Timog Silangang Asya,749.00
+Grade 7,REX,MAPEH- Expeditions in MAPEH,699.00
+Grade 7,EPHESIANS,Values Education-Marangal,600.00
+Grade 7,SPDCSS,ICT- Module,0.00
+Grade 7,REX,Science Links,799.00
+Grade 7,PISARA,TLE,680.00
+Grade 8,PHOENIX,Religion-MAPSA CLE-BTSC: Jesus Conveys God...8,640.00
+Grade 8,DIWA,Filipino- Filipino sa Modernong Panahon,885.00
+Grade 8,PHOENIX,English-English Communication Arts & Skills (ECAS),530.00
+Grade 8,PHOENIX,Mathematics- Realistic Math,725.00
+Grade 8,REX,AP-Kayamanan - Ang Asya at Daigdig,749.00
+Grade 8,REX,MAPEH- Expeditions in MAPEH,699.00
+Grade 8,EPHESIANS,Values Education-Marangal-Edukasyon sa Pagpapakatao,600.00
+Grade 8,REX,ICT- D-Whiz in ICT Skills Dev't.,599.00
+Grade 8,REX,Science-Science Links,799.00
+Grade 8,PISARA,TLE-TLE 8 Building Foundations,870.00
+Grade 9,Vicarish,Religion-Christian Living: Sent Forth,630.00
+Grade 9,REX,Filipino- Punla: Mga Akdang Panitikan,709.00
+Grade 9,ABIVA,English-English in Perspective,705.00
+Grade 9,DIWA,Math-Mathematics for Innovative Minds,885.00
+Grade 9,Brilliant,AP- Ugnayan at Kaunlaran 9:Ekonomiks,610.00
+Grade 9,Vibal,MAPEH- Living with Music Art Physical and Health,750.00
+Grade 9,EPHESIANS,ESP- Marangal,555.00
+Grade 9,REX,ICT- D-Whiz /PROSKILLS,657.00
+Grade 9,REX,Science- Science Links,729.00
+Grade 9,Inteligente,TLE- SPICE Book 1,510.00
+Grade 10,Vicarish,Religion-Christian Living: Evangelizers,595.00
+Grade 10,REX,Filipino- Punla: Mga Akdang Panitikan,709.00
+Grade 10,ABIVA,English-English in Perspective,705.00
+Grade 10,DIWA,Math-Mathematics for Innovative Minds,885.00
+Grade 10,Brilliant,AP- Ugnayan at Kaunlaran 10:Isyu ng Lipunan,610.00
+Grade 10,Vibal,MAPEH- Living with Music Art Physical and Health,750.00
+Grade 10,EPHESIANS,ESP- Marangal,555.00
+Grade 10,REX,ICT- D-Whiz/ PROSKILLS,599.00
+Grade 10,REX,Science- Science Links,729.00
+Grade 10,Inteligente,TLE- SPICE Book 2,540.00"""
+                        
+                        for line in BOOKS_DATA.split('\n'):
+                            if not line.strip(): continue
+                            parts = line.split(',')
+                            if len(parts) < 4: continue
+                            level = parts[0].strip()
+                            if level == "Kindergarten": level = "Kinder"
+                            pub = parts[1].strip()
+                            title = parts[2].strip()
+                            price = float(parts[3].strip())
+                            full_name = f"[{pub}] {title}"
+                            
+                            cur.execute("""
+                                INSERT INTO inventory_items (branch_id, category, item_name, grade_level, price, stock_total, reserved_qty, is_active, is_common)
+                                VALUES (%s, 'BOOK', %s, %s, %s, 100, 0, TRUE, FALSE)
                             """, (b_id, full_name, level, price))
                 
                 conn.commit()
