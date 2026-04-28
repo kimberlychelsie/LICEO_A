@@ -688,6 +688,21 @@ Grade 10,Inteligente,TLE- SPICE Book 2,540.00"""
                 conn.rollback()
                 logger.warning(f"Strand migration skipped: {e}")
 
+            # SEED GRADE LEVELS: Ensure strands exist in grade_levels table
+            try:
+                strands_to_add = [
+                    ('Grade 11-GAS', 13.1), ('Grade 11-STEM', 13.2), ('Grade 11-HUMSS', 13.3),
+                    ('Grade 12-GAS', 14.1), ('Grade 12-STEM', 14.2), ('Grade 12-HUMSS', 14.3)
+                ]
+                for g_name, g_order in strands_to_add:
+                    cur.execute("SELECT id FROM grade_levels WHERE name = %s", (g_name,))
+                    if not cur.fetchone():
+                        cur.execute("INSERT INTO grade_levels (name, display_order) VALUES (%s, %s)", (g_name, g_order))
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                logger.warning(f"Grade levels seeding failed: {e}")
+
             # ONE-TIME CLEANUP: Delete test Teacher9 accounts directly on boot
             try:
                 cur.execute("DELETE FROM users WHERE role='teacher' AND username ILIKE '%Teacher9%'")

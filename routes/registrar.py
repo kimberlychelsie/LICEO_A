@@ -1119,11 +1119,8 @@ def registrar_profile_pictures():
 
         if tab == "students":
             # Get grades for filter
-            all_grades = [
-                "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3", "Grade 4", 
-                "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", 
-                "Grade 11", "Grade 12"
-            ]
+            cursor.execute("SELECT name FROM grade_levels WHERE name NOT IN ('Grade 11', 'Grade 12') ORDER BY id ASC")
+            all_grades = [row["name"] for row in cursor.fetchall()]
 
             # Get all sections
             cursor.execute("""
@@ -1234,11 +1231,8 @@ def registrar_students_by_grade():
         if not year_filter:
             year_filter = active_year_id
 
-        all_grades = [
-            "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3", "Grade 4", 
-            "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", 
-            "Grade 11", "Grade 12"
-        ]
+        cursor.execute("SELECT name FROM grade_levels WHERE name NOT IN ('Grade 11', 'Grade 12') ORDER BY id ASC")
+        all_grades = [row["name"] for row in cursor.fetchall()]
         cursor.execute("""
     SELECT branch_id, branch_name
     FROM branches
@@ -1403,11 +1397,8 @@ def list_and_add_schedules():
     active_year = school_years[0] if school_years else None
 
     # Fetch unique Grades and Sections for filtering
-    all_grades_list = [
-        "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3", "Grade 4", 
-        "Grade 5", "Grade 6", "Grade 7", "Grade 8", "Grade 9", "Grade 10", 
-        "Grade 11", "Grade 12"
-    ]
+    cursor.execute("SELECT name FROM grade_levels WHERE name NOT IN ('Grade 11', 'Grade 12') ORDER BY id ASC")
+    all_grades_list = [row["name"] for row in cursor.fetchall()]
     cursor.execute("""
         SELECT s.section_id, s.section_name, g.name AS grade_name
         FROM sections s
