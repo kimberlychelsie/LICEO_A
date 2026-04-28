@@ -721,6 +721,9 @@ def teacher_announce():
     target_section_id = request.form.get("section_id")
     from_page = request.form.get("from_page")
 
+    # Base grade for redirection
+    grade = (request.form.get("grade_level") or "").strip()
+    
     # Resolve grade level name from section_id if provided
     grade_to_save = ""
     if target_section_id:
@@ -736,11 +739,13 @@ def teacher_announce():
         if row:
             # Store as "GradeName:SectionID" to support section-specific targeting without schema change
             grade_to_save = f"{row[0]}:{target_section_id}"
+            if not grade:
+                grade = row[0]
         cur.close()
         db.close()
     
     if not grade_to_save:
-        grade_to_save = (request.form.get("grade_level") or "").strip()
+        grade_to_save = grade
 
     if from_page == "announcements":
         back_url = url_for("teacher.teacher_class_announcements") + (f"?grade={grade}" if grade else "")
