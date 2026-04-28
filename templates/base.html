@@ -88,7 +88,7 @@
       display: flex;
       flex-direction: column;
       z-index: 1050;
-      transition: width 0.3s cubic-bezier(.4, 0, .2, 1), transform 0.3s cubic-bezier(.4, 0, .2, 1);
+      transition: width 0.35s cubic-bezier(.4, 0, .2, 1), transform 0.35s cubic-bezier(.4, 0, .2, 1);
       overflow: hidden;
       transform: translateX(-100%);
     }
@@ -260,6 +260,7 @@
       border-radius: 0;
       transition: all 0.2s ease;
       position: relative;
+      overflow: hidden;
     }
 
     .sb-link:hover {
@@ -419,11 +420,12 @@
       display: flex;
       align-items: center;
       gap: 12px;
-      width: var(--sidebar-w);
-      padding: 0 24px;
+      width: auto;
+      padding: 0;
       text-decoration: none;
       flex-shrink: 0;
-      transition: width 0.3s cubic-bezier(.4, 0, .2, 1);
+      transition: width 0.35s cubic-bezier(.4, 0, .2, 1), opacity 0.35s cubic-bezier(.4, 0, .2, 1), padding 0.35s ease, margin 0.35s ease;
+      overflow: hidden;
     }
 
     .top-brand-icon {
@@ -526,7 +528,7 @@
       margin-top: var(--topbar-h);
       min-height: calc(100vh - var(--topbar-h));
       /* Trans transitions for side push */
-      transition: margin-left 0.3s cubic-bezier(.4, 0, .2, 1);
+      transition: margin-left 0.35s cubic-bezier(.4, 0, .2, 1);
     }
 
 
@@ -554,7 +556,7 @@
     /* ══════════════════════════════════════════
        RESPONSIVE DESKTOP SIDEBAR (Push layout)
     ══════════════════════════════════════════ */
-    @media (min-width: 1024px) {
+    @media (min-width: 768px) {
       .sidebar {
         transform: translateX(0) !important;
       }
@@ -562,7 +564,7 @@
       .topbar {
         left: 0;
         width: 100%;
-        transition: left 0.3s cubic-bezier(.4, 0, .2, 1), width 0.3s cubic-bezier(.4, 0, .2, 1);
+        transition: left 0.35s cubic-bezier(.4, 0, .2, 1), width 0.35s cubic-bezier(.4, 0, .2, 1);
       }
 
       .main-wrap {
@@ -571,11 +573,15 @@
 
       /* Collapsed State */
       body.sidebar-collapsed .sidebar {
-        width: 80px;
+        width: 70px;
       }
 
       body.sidebar-collapsed .top-brand {
-        width: 80px;
+        width: 0;
+        padding: 0;
+        margin: 0;
+        opacity: 0;
+        pointer-events: none;
       }
 
       body.sidebar-collapsed .topbar {
@@ -584,7 +590,7 @@
       }
 
       body.sidebar-collapsed .main-wrap {
-        margin-left: 80px;
+        margin-left: 70px;
       }
 
       /* Collapsed UI Adjustments */
@@ -605,6 +611,7 @@
         font-size: 0 !important;
         white-space: nowrap;
         color: transparent !important;
+        transition: all 0.35s cubic-bezier(.4, 0, .2, 1);
       }
 
       body.sidebar-collapsed .sb-icon {
@@ -630,14 +637,13 @@
       }
 
       body.sidebar-collapsed .sb-brand {
+        width: 0;
+        height: 0;
         padding: 0;
-        justify-content: center;
-      }
-
-      body.sidebar-collapsed .sb-brand-icon {
-        width: 32px;
-        height: 32px;
-        margin-right: 0;
+        margin: 0;
+        opacity: 0;
+        pointer-events: none;
+        overflow: hidden;
       }
 
       body.sidebar-collapsed .sb-link {
@@ -1451,6 +1457,14 @@
             <path d="M3 12h18"></path>
           </svg></span> Attendance Hub
       </a>
+      <a class="sb-link {% if request.path == '/teacher/class-announcements' %}active{% endif %}" href="/teacher/class-announcements">
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg></span> Class Announcements
+      </a>
 
       <button class="sb-dropdown-btn {% if '/teacher/class/' in request.path %}open{% endif %}"
         onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
@@ -1473,7 +1487,12 @@
             <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
           </svg>
-          {{ cls.subject_name }} <span style="font-size: 0.75rem; opacity: 0.7;">({{ cls.grade_level_name }} - {{ cls.section_name }})</span>
+          <div style="display: flex; flex-direction: column; gap: 2px; overflow: hidden;">
+            <span style="font-weight: 700; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ cls.subject_name }}</span>
+            <span style="font-size: 0.7rem; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              {{ cls.grade_level_name }} - {{ cls.section_name }}
+            </span>
+          </div>
         </a>
         {% endfor %}
       </div>
@@ -1919,7 +1938,13 @@
     {% elif session.get('role') == 'teacher' %}{% set dashboard_url = '/teacher' %}
     {% endif %}
 
-    <a class="top-brand" href="{{ dashboard_url }}">
+    <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Toggle sidebar" style="margin-right: 12px;">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <a class="top-brand" href="{{ dashboard_url }}" style="padding: 0;">
       <div class="top-brand-icon">
         <img src="{{ url_for('static', filename=dynamic_branch_logo) }}" alt="Logo">
       </div>
@@ -1927,12 +1952,6 @@
         <span class="top-brand-name">Liceo LMS</span>
       </div>
     </a>
-
-    <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Toggle sidebar">
-      <span></span>
-      <span></span>
-      <span></span>
-    </button>
 
     <span class="topbar-title" onclick="toggleSidebar()" style="cursor: pointer; margin-left: 10px;">
       {% block page_title %}{% endblock %}
@@ -2198,7 +2217,7 @@
     }
 
     function toggleSidebar() {
-      if (window.innerWidth >= 1024) {
+      if (window.innerWidth >= 768) {
         document.body.classList.toggle('sidebar-collapsed');
       } else {
         isOpen = !isOpen;
@@ -2207,7 +2226,7 @@
     }
 
     function closeSidebar() {
-      if (window.innerWidth < 1024) {
+      if (window.innerWidth < 768) {
         isOpen = false;
         applyState();
       }

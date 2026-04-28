@@ -128,13 +128,17 @@ def dashboard():
             JOIN users u ON u.user_id = a.teacher_user_id
             WHERE a.branch_id = %(branch_id)s
               AND (
-                  a.grade_level ILIKE %(grade_full)s
-                  OR a.grade_level ILIKE %(grade_short)s
+                  a.grade_level LIKE '%%:' || %(section_id)s
+                  OR (
+                      NOT a.grade_level LIKE '%%:%%'
+                      AND (a.grade_level ILIKE %(grade_full)s OR a.grade_level ILIKE %(grade_short)s)
+                  )
               )
             ORDER BY a.created_at DESC
             LIMIT 20
         """, {
             "branch_id":   student.get("branch_id"),
+            "section_id":  str(student.get("section_id") or 0),
             "grade_full":  grade_full,
             "grade_short": grade_short,
         })
