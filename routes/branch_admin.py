@@ -1321,54 +1321,75 @@ def branch_admin_subjects():
         db.close()
         return redirect("/branch-admin/subjects")
 
-    # ✅ only show subjects used by this branch
-    cursor.execute("""
-        SELECT DISTINCT sub.subject_id, sub.name, sub.deped_category
-        FROM subjects sub
-        JOIN section_teachers st ON st.subject_id = sub.subject_id
-        JOIN sections s ON s.section_id = st.section_id
-        INNER JOIN school_years y ON s.year_id = y.year_id           
-        WHERE s.branch_id = %s AND y.is_active = TRUE
-        ORDER BY sub.name
-    """, (branch_id,))
-    subjects = cursor.fetchall() or []
-
-    # assignments for this branch only
-    cursor.execute("""
+    # Assignments for this branch only (Filterable by section)
+    section_id_filter = request.args.get("section_id")
+    
+    query = """
         SELECT
             st.subject_id,
+            sub.name,
+            sub.deped_category,
             s.section_id,
             s.section_name,
-            g.name AS grade_level_name
+            g.name AS grade_level_name,
+            st.is_archived
         FROM section_teachers st
+        INNER JOIN subjects sub ON st.subject_id = sub.subject_id
         INNER JOIN sections s ON st.section_id = s.section_id
         INNER JOIN grade_levels g ON s.grade_level_id = g.id
         INNER JOIN school_years y ON s.year_id = y.year_id           
         WHERE s.branch_id = %s AND y.is_active = TRUE
-        ORDER BY st.subject_id, g.display_order, s.section_name
-    """, (branch_id,))
+    """
+    params = [branch_id]
+    
+    if section_id_filter:
+        query += " AND s.section_id = %s "
+        params.append(section_id_filter)
+        
+    query += " ORDER BY g.display_order, s.section_name, sub.name"
+    
+    cursor.execute(query, tuple(params))
     assignments = cursor.fetchall() or []
-
-    subject_to_sections = {}
-    subject_first_section = {}
-    for a in assignments:
-        sid = a["subject_id"]
-        subject_to_sections.setdefault(sid, []).append(
-            f"{a['grade_level_name']} - {a['section_name']}"
-        )
-        if sid not in subject_first_section:
-            subject_first_section[sid] = a["section_id"]
 
     cursor.close()
     db.close()
 
     return render_template(
         "branch_admin_subjects.html",
-        subjects=subjects,
+        assignments=assignments,
         section_options=section_options,
-        subject_to_sections=subject_to_sections,
-        subject_first_section=subject_first_section
+        selected_section_id=section_id_filter
     )
+
+@branch_admin_bp.route("/branch-admin/subjects/<int:subject_id>/<int:section_id>/toggle-archive", methods=["POST"])
+def branch_admin_subject_toggle_archive(subject_id, section_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        # Verify section belongs to branch
+        cursor.execute("SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s", (section_id, branch_id))
+        if cursor.fetchone():
+            cursor.execute("""
+                UPDATE section_teachers 
+                SET is_archived = NOT is_archived 
+                WHERE subject_id = %s AND section_id = %s
+                RETURNING is_archived
+            """, (subject_id, section_id))
+            res = cursor.fetchone()
+            db.commit()
+            status = "archived" if res[0] else "restored"
+            flash(f"Subject has been {status}.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error toggling archive: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+    return redirect(url_for("branch_admin.branch_admin_subjects", section_id=section_id))
 
 @branch_admin_bp.route("/branch-admin/subjects/<int:subject_id>/delete", methods=["POST"])
 def branch_admin_subject_delete(subject_id):

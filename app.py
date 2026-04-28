@@ -185,6 +185,7 @@ def inject_teacher_subjects():
                 WHERE st.teacher_id = %s
                   AND s.branch_id = %s
                   AND s.year_id = %s
+                  AND st.is_archived = FALSE
                 ORDER BY gl.display_order, s.section_name, sub.name
             """, (user_id, branch_id, year_id))
 

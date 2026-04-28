@@ -361,7 +361,6 @@
                                     <div class="grade-group" data-grade="{{ sec.grade_level_name }}">
                                         <div class="grade-header">
                                             <span>{{ sec.grade_level_name }}</span>
-                                            <button type="button" class="btn-tiny" onclick="selectGrade('{{ sec.grade_level_name }}', true)">Grade All</button>
                                         </div>
                                         <div class="section-grid">
                                     {% set ns.current_grade = sec.grade_level_name %}
@@ -387,26 +386,41 @@
         <!-- Existing Subjects -->
         <div class="col-table">
             <div class="modern-card">
-                <h2>List of Existing Subjects</h2>
-                {% if subjects %}
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <h2 style="margin: 0;">List of Existing Subjects</h2>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--ma-muted); text-transform: uppercase;">Filter by Section:</label>
+                        <select class="form-control" style="width: 250px; font-size: 0.85rem;" onchange="window.location.href='/branch-admin/subjects?section_id=' + this.value">
+                            <option value="">All Sections</option>
+                            {% for sec in section_options %}
+                            <option value="{{ sec.section_id }}" {% if selected_section_id == sec.section_id|string %}selected{% endif %}>
+                                {{ sec.grade_level_name }} - {{ sec.section_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                {% if assignments %}
                 <table class="vault-table">
                     <thead>
                         <tr>
                             <th>Identity</th>
                             <th>Assigned To</th>
+                            <th>Status</th>
                             <th style="text-align: right;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for subj in subjects %}
-                        <tr>
+                        {% for a in assignments %}
+                        <tr style="{% if a.is_archived %}opacity: 0.6; background: #f8fafc;{% endif %}">
                             <td>
-                                <div style="font-weight: 700; color: var(--ma-primary);">{{ subj.name }}</div>
-                                {% if subj.deped_category == 'science_math' %}
+                                <div style="font-weight: 700; color: var(--ma-primary);">{{ a.name }}</div>
+                                {% if a.deped_category == 'science_math' %}
                                 <span class="badge-pill"
                                     style="background: #dcfce7; color: #166534; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">SCI
                                     / MATH</span>
-                                {% elif subj.deped_category == 'skills' %}
+                                {% elif a.deped_category == 'skills' %}
                                 <span class="badge-pill"
                                     style="background: #fef3c7; color: #92400e; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">SKILLS</span>
                                 {% else %}
@@ -414,28 +428,44 @@
                                     style="background: #dbeafe; color: #1e40af; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">LANGUAGE</span>
                                 {% endif %}
                             </td>
-                            <td style="color: var(--ma-muted); font-size: 0.85rem;">
-                                {% if subject_to_sections.get(subj.subject_id) %}
-                                {% for item in subject_to_sections[subj.subject_id] %}
-                                <div style="margin-bottom: 2px;"><i class="fas fa-link"
-                                        style="font-size: 0.7rem; opacity: 0.5;"></i> {{ item }}</div>
-                                {% endfor %}
+                            <td>
+                                <div style="color: var(--ma-muted); font-size: 0.85rem;">
+                                    <i class="fas fa-layer-group" style="font-size: 0.7rem; opacity: 0.5;"></i> {{ a.grade_level_name }} - {{ a.section_name }}
+                                </div>
+                            </td>
+                            <td>
+                                {% if a.is_archived %}
+                                <span style="background: #f1f5f9; color: #64748b; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px; text-transform: uppercase;">Archived</span>
                                 {% else %}
-                                <span style="opacity: 0.5;">Not assigned</span>
+                                <span style="background: #dcfce7; color: #15803d; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px; text-transform: uppercase;">Active</span>
                                 {% endif %}
                             </td>
                             <td style="text-align: right; white-space: nowrap;">
                                 {% if is_branch_active_status %}
-                                {% set current_section_id = subject_first_section.get(subj.subject_id, '') %}
-                                <button class="btn-prem btn-secondary" style="padding: 8px 14px; font-size: 0.75rem;"
-                                    onclick='openEditModal({{ subj.subject_id }}, {{ subj.name | tojson }}, "{{ current_section_id }}", "{{ subj.deped_category }}")'>
-                                    <i class="fas fa-edit"></i> Edit
-                                </button>
-                                <button class="btn-prem btn-danger"
-                                    style="padding: 8px 14px; font-size: 0.75rem; margin-left: 8px;"
-                                    onclick="confirmSubjectDelete({{ subj.subject_id }}, '{{ subj.name|e }}')">
-                                    <i class="fas fa-trash"></i> Delete
-                                </button>
+                                <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                                    <button class="btn-prem btn-secondary" style="padding: 6px 12px; font-size: 0.7rem;"
+                                        onclick='openEditModal({{ a.subject_id }}, {{ a.name | tojson }}, "{{ a.section_id }}", "{{ a.deped_category }}")'>
+                                        <i class="fas fa-edit"></i> Edit
+                                    </button>
+                                    
+                                    <form action="/branch-admin/subjects/{{ a.subject_id }}/{{ a.section_id }}/toggle-archive" method="POST" style="display:inline;">
+                                        {% if a.is_archived %}
+                                        <button type="submit" class="btn-prem" style="background: #dcfce7; color: #15803d; padding: 6px 12px; font-size: 0.7rem;">
+                                            <i class="fas fa-undo"></i> Unarchive
+                                        </button>
+                                        {% else %}
+                                        <button type="submit" class="btn-prem" style="background: #f1f5f9; color: #64748b; padding: 6px 12px; font-size: 0.7rem;">
+                                            <i class="fas fa-archive"></i> Archive
+                                        </button>
+                                        {% endif %}
+                                    </form>
+
+                                    <button class="btn-prem btn-danger"
+                                        style="padding: 6px 12px; font-size: 0.7rem;"
+                                        onclick="confirmSubjectDelete({{ a.subject_id }}, '{{ a.name|e }}')">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </div>
                                 {% endif %}
                             </td>
                         </tr>
@@ -446,7 +476,7 @@
                 <div style="text-align:center; padding: 40px; color: var(--ma-muted); font-size: 0.9rem;">
                     <i class="fas fa-book-open"
                         style="font-size: 2rem; display: block; margin-bottom: 12px; opacity: 0.5;"></i>
-                    No subjects detected in curriculum.
+                    No subjects found for the selected section.
                 </div>
                 {% endif %}
             </div>
@@ -657,14 +687,6 @@
         });
     }
 
-    function selectGrade(gradeName, checked) {
-        const group = document.querySelector(`.grade-group[data-grade="${gradeName}"]`);
-        if (group) {
-            group.querySelectorAll('input[type="checkbox"]').forEach(cb => {
-                cb.checked = checked;
-            });
-        }
-    }
 
     // Attach validation to both forms
     document.addEventListener('DOMContentLoaded', function () {

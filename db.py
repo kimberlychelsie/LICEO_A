@@ -177,6 +177,17 @@ def get_db_connection():
                 logger.warning(f"Could not migrate sections year_id: {e}")
                 conn.rollback()
 
+            # section_teachers is_archived migration
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'section_teachers'")
+                st_cols = [r[0] for r in cur.fetchall()]
+                if 'is_archived' not in st_cols:
+                    cur.execute("ALTER TABLE section_teachers ADD COLUMN is_archived BOOLEAN DEFAULT FALSE")
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate section_teachers is_archived: {e}")
+                conn.rollback()
+
             # ── Grading year_id consistency (posted_grades + sections backfill) ──
             # The teacher grading flow uses:
             # - sections.year_id when recomputing grades
