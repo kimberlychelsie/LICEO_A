@@ -257,7 +257,7 @@
         .guide-card { padding: 12px; border-radius: 12px; flex-direction: column; align-items: flex-start; gap: 8px; }
         .guide-icon { width: 36px; height: 36px; font-size: 1rem; }
 
-        .modern-card { padding: 16px; border-radius: 16px; }
+        .modern-card { padding: 16px; border-radius: 16px; background: transparent; border: none; box-shadow: none; }
         .modern-card h2 { font-size: 1rem; }
 
         .filter-section { 
@@ -270,8 +270,40 @@
         .search-wrapper { width: 100%; }
         .toggle-unassigned { width: 100%; justify-content: center; padding: 10px; font-size: 0.75rem; }
 
-        .vault-table th { padding: 8px; font-size: 0.6rem; }
-        .vault-table td { padding: 8px; font-size: 0.7rem; }
+        /* ── Table-to-Card Transformation ── */
+        .vault-table thead { display: none; }
+        .vault-table tbody { display: flex; flex-direction: column; gap: 12px; }
+        .vault-table tr { 
+            display: block; 
+            background: #fff; 
+            border-radius: 20px; 
+            padding: 16px; 
+            border: 1px solid var(--ma-border);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        }
+        .vault-table td { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 8px 0; 
+            border: none;
+            font-size: 0.85rem;
+        }
+        .vault-table td::before { 
+            content: attr(data-label); 
+            font-weight: 800; 
+            color: var(--ma-muted); 
+            font-size: 0.65rem;
+            text-transform: uppercase;
+        }
+        .vault-table td:first-child { 
+            background: #f8fafc; 
+            margin: -16px -16px 12px -16px; 
+            padding: 12px 16px; 
+            border-radius: 20px 20px 0 0; 
+            justify-content: flex-start;
+        }
+        .vault-table td:first-child::before { display: none; }
         
         .grade-tabs {
             overflow-x: auto;
@@ -288,9 +320,7 @@
 
         .sidebar-column { order: -1; }
 
-        .vault-table {
-            min-width: 400px;
-        }
+        .table-responsive { overflow: visible; }
     }
 
     @media (max-width: 480px) {
@@ -301,12 +331,6 @@
         width: 100%;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
-    }
-
-    @media (max-width: 768px) {
-        .vault-table {
-            min-width: 650px;
-        }
     }
 </style>
 {% endblock %}
@@ -375,9 +399,9 @@
                         <tbody id="studentTbody">
                             {% for s in students %}
                             <tr data-name="{{ s.student_name | lower }}" data-assigned="{{ '1' if s.section_name else '0' }}" data-enrollment="{{ s.enrollment_id }}">
-                                <td style="color: var(--ma-muted); font-size: 0.75rem;">#{{ s.branch_enrollment_no }}</td>
-                                <td><div style="font-weight: 800; color: var(--ma-primary);">{{ s.student_name }}</div></td>
-                                <td id="sectionLabel_{{ s.enrollment_id }}">
+                                <td data-label="ID" style="color: var(--ma-muted); font-size: 0.75rem;">#{{ s.branch_enrollment_no }}</td>
+                                <td data-label="Student Name"><div style="font-weight: 800; color: var(--ma-primary);">{{ s.student_name }}</div></td>
+                                <td data-label="Current" id="sectionLabel_{{ s.enrollment_id }}">
                                     {% if s.section_name %}
                                     <span class="badge badge-green">{{ s.section_name }}</span>
                                     {% else %}
@@ -385,7 +409,7 @@
                                     {% endif %}
                                 </td>
                                 {% if is_branch_active_status %}
-                                <td>
+                                <td data-label="Assign Section">
                                     <select class="section-select" id="sel_{{ s.enrollment_id }}" 
                                             data-initial="{{ s.section_id or '' }}"
                                             onchange="markChanged({{ s.enrollment_id }})">
@@ -399,7 +423,7 @@
                                         {% endfor %}
                                     </select>
                                 </td>
-                                <td style="text-align: right; white-space: nowrap;">
+                                <td data-label="Action" style="text-align: right; white-space: nowrap;">
                                     <button class="save-row-btn" id="btn_{{ s.enrollment_id }}" disabled onclick="saveStudent({{ s.enrollment_id }})">
                                         Save
                                     </button>

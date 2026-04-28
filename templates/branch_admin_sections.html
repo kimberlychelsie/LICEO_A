@@ -215,25 +215,48 @@
         .premium-welcome h1 { font-size: 1.3rem; }
         .status-line { font-size: 0.7rem; }
 
-        .modern-card { padding: 16px; border-radius: 16px; }
-        .modern-card h2 { font-size: 0.9rem; margin-bottom: 16px; }
+        .modern-card { padding: 16px; border-radius: 16px; background: transparent; border: none; box-shadow: none; }
+        .modern-card h2 { font-size: 0.9rem; margin-bottom: 16px; padding: 0 4px; }
 
         .form-control { padding: 10px 14px; font-size: 0.8rem; border-radius: 12px; }
         .btn-prem { padding: 10px 16px; font-size: 0.8rem; border-radius: 12px; }
 
-        .vault-table th { padding: 8px; font-size: 0.6rem; }
-        .vault-table td { padding: 8px; font-size: 0.7rem; }
-        
-        .glass-modal { padding: 16px; border-radius: 16px; }
-        
-        .col-form div[style*="grid-template-columns: 1fr 1fr"] {
-            grid-template-columns: 1fr !important;
-            gap: 10px !important;
+        /* ── Table-to-Card Transformation ── */
+        .vault-table thead { display: none; }
+        .vault-table tbody { display: flex; flex-direction: column; gap: 12px; }
+        .vault-table tr { 
+            display: block; 
+            background: #fff; 
+            border-radius: 20px; 
+            padding: 16px; 
+            border: 1px solid var(--ma-border);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
         }
-
-        .vault-table {
-            min-width: 400px;
+        .vault-table td { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 8px 0; 
+            border: none;
+            font-size: 0.75rem;
         }
+        .vault-table td::before { 
+            content: attr(data-label); 
+            font-weight: 800; 
+            color: var(--ma-muted); 
+            font-size: 0.65rem;
+            text-transform: uppercase;
+        }
+        .vault-table td:first-child { 
+            background: #f8fafc; 
+            margin: -16px -16px 12px -16px; 
+            padding: 12px 16px; 
+            border-radius: 20px 20px 0 0; 
+            justify-content: flex-start;
+        }
+        .vault-table td:first-child::before { display: none; }
+        
+        .table-responsive { overflow: visible; }
     }
 
     @media (max-width: 480px) {
@@ -324,15 +347,6 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% for sec in sections %}
-                        <tr>
-                            <td><strong style="color: var(--ma-primary);">{{ sec.section_name }}</strong></td>
-                            <td><strong style="color: var(--ma-primary);">{{ sec.grade_level_name }}</strong></td>
-                            <td style="color: var(--ma-muted); font-size: 0.85rem;">{{ sec.school_year_label }}</td>
-                            <td style="color: var(--ma-muted); font-size: 0.85rem;">{{ sec.capacity }}</td>
-                            <td style="text-align: right; white-space: nowrap;">
-                                {% if is_branch_active_status %}
-                                <button class="btn-prem btn-secondary" style="padding: 8px 14px; font-size: 0.75rem;"
                                     onclick='openEditModal({{ sec.section_id }}, {{ sec.section_name | tojson }}, {{ sec.grade_level_id }}, {{ sec.capacity | default(50) }})'>
                                     <i class="fas fa-edit"></i> Edit
                                 </button>

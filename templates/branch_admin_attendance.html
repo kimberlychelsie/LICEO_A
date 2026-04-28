@@ -295,38 +295,134 @@
 
     /* ── Responsive Refinements ── */
     @media (max-width: 1100px) {
-        .ma-container { padding: 32px 20px; }
-        .attendance-grid { grid-template-columns: 1fr; gap: 24px; }
-        .analytics-sidebar { order: -1; } /* Show analytics at top on mobile */
+        .ma-container {
+            padding: 32px 20px;
+        }
+
+        .attendance-grid {
+            grid-template-columns: 1fr;
+            gap: 24px;
+        }
+
+        .analytics-sidebar {
+            order: -1;
+        }
+
+        /* Show analytics at top on mobile */
     }
 
     @media (max-width: 768px) {
-        .ma-container { padding: 12px 8px; }
-        .premium-header { margin-bottom: 20px; }
-        .header-text h1 { font-size: 1.4rem; }
-        .header-text p { font-size: 0.75rem; }
-        .date-badge { padding: 8px 12px; font-size: 0.75rem; }
-        
-        .table-card { border-radius: 16px; }
-        .card-header { padding: 12px; gap: 4px; }
-        .card-header h2 { font-size: 0.8rem; }
-        .status-count { font-size: 0.6rem; padding: 2px 6px; }
+        .ma-container {
+            padding: 12px 8px;
+        }
 
-        .health-table th { padding: 6px 8px; font-size: 0.6rem; }
-        .health-table td { padding: 8px; font-size: 0.7rem; }
-        .user-avatar { width: 24px; height: 24px; font-size: 0.6rem; border-radius: 6px; }
-        .badge-modern { padding: 2px 6px; font-size: 0.6rem; }
-        
-        .analytics-card { padding: 12px; border-radius: 16px; }
-        .analytics-card h2 { font-size: 0.7rem; }
-        .analytics-card div[style*="font-size: 3.5rem"] { font-size: 2.2rem !important; }
-        
-        .health-table { min-width: 400px; }
+        .premium-header {
+            margin-bottom: 20px;
+        }
+
+        .header-text h1 {
+            font-size: 1.4rem;
+        }
+
+        .header-text p {
+            font-size: 0.75rem;
+        }
+
+        .date-badge {
+            padding: 8px 12px;
+            font-size: 0.75rem;
+        }
+
+        .table-card {
+            border-radius: 16px;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+        }
+
+        .card-header {
+            padding: 12px 4px;
+            gap: 4px;
+        }
+
+        .card-header h2 {
+            font-size: 0.8rem;
+        }
+
+        /* ── Table-to-Card Transformation ── */
+        .health-table thead {
+            display: none;
+        }
+
+        .health-table tbody {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .health-table tr {
+            display: block;
+            background: #fff;
+            border-radius: 20px;
+            padding: 16px;
+            border: 1px solid var(--ma-glass-border);
+            box-shadow: var(--ma-shadow);
+        }
+
+        .health-table td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border: none;
+            font-size: 0.75rem;
+        }
+
+        .health-table td::before {
+            content: attr(data-label);
+            font-weight: 800;
+            color: var(--ma-muted);
+            font-size: 0.65rem;
+            text-transform: uppercase;
+        }
+
+        .health-table td:last-child {
+            border-bottom: none;
+        }
+
+        .user-avatar {
+            width: 24px;
+            height: 24px;
+            font-size: 0.6rem;
+            border-radius: 6px;
+        }
+
+        .analytics-card {
+            padding: 12px;
+            border-radius: 16px;
+        }
+
+        .analytics-card h2 {
+            font-size: 0.7rem;
+        }
+
+        .analytics-card div[style*="font-size: 3.5rem"] {
+            font-size: 2.2rem !important;
+        }
+
+        .table-responsive {
+            overflow: visible;
+        }
     }
 
     @media (max-width: 480px) {
-        .header-text h1 { font-size: 1.2rem; }
-        .health-table { min-width: 350px; }
+        .header-text h1 {
+            font-size: 1.2rem;
+        }
+
+        .health-table {
+            min-width: 350px;
+        }
     }
 
     .table-responsive {
@@ -347,7 +443,7 @@
 <div class="ma-container">
     <header class="premium-header">
         <div class="header-text">
-            <h1>Attendance <span>Oversight</span></h1>
+            <h1>Attendance <span>OversightS</span></h1>
             <p>Institutional attendance intelligence and faculty monitoring</p>
         </div>
         <div class="date-badge">
@@ -388,9 +484,11 @@
                                             <strong style="color: var(--ma-primary);">{{ h.student_name }}</strong>
                                         </div>
                                     </td>
-                                    <td style="color: var(--ma-muted);">{{ h.grade_level }} — {{ h.section_name }}</td>
-                                    <td><span class="badge-modern bg-danger-soft">{{ h.absent_count }} Absences</span></td>
-                                    <td style="font-weight: 700; color: var(--ma-muted);">
+                                    <td data-label="Grade & Section" style="color: var(--ma-muted);">{{ h.grade_level }}
+                                        — {{ h.section_name }}</td>
+                                    <td data-label="Status"><span class="badge-modern bg-danger-soft">{{ h.absent_count
+                                            }} Absences</span></td>
+                                    <td data-label="Last Recorded" style="font-weight: 700; color: var(--ma-muted);">
                                         {{ h.last_absence.strftime('%b %d, %Y') if h.last_absence else '—' }}
                                     </td>
                                 </tr>
@@ -442,7 +540,8 @@
                                     <td style="font-size: 0.85rem;">
                                         <span
                                             style="background: #f8fafc; padding: 4px 8px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                                            {{ m.start_time.strftime('%I:%M %p') }} - {{ m.end_time.strftime('%I:%M %p') }}
+                                            {{ m.start_time.strftime('%I:%M %p') }} - {{ m.end_time.strftime('%I:%M %p')
+                                            }}
                                         </span>
                                     </td>
                                 </tr>

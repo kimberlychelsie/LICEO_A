@@ -300,6 +300,43 @@
         .btn-prem { padding: 16px; font-size: 1rem; border-radius: 20px; }
         
         .vault-table th, .vault-table td { padding: 14px 16px; font-size: 0.8rem; }
+        
+        /* ── Table-to-Card Transformation ── */
+        .vault-table thead { display: none; }
+        .vault-table tbody { display: flex; flex-direction: column; gap: 12px; }
+        .vault-table tr { 
+            display: block; 
+            background: #fff; 
+            border-radius: 20px; 
+            padding: 16px; 
+            border: 1px solid var(--ma-border);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        }
+        .vault-table td { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 8px 0; 
+            border: none;
+            font-size: 0.75rem;
+        }
+        .vault-table td::before { 
+            content: attr(data-label); 
+            font-weight: 800; 
+            color: var(--ma-muted); 
+            font-size: 0.65rem;
+            text-transform: uppercase;
+        }
+        .vault-table td:first-child { 
+            background: #f8fafc; 
+            margin: -16px -16px 12px -16px; 
+            padding: 12px 16px; 
+            border-radius: 20px 20px 0 0; 
+            justify-content: flex-start;
+        }
+        .vault-table td:first-child::before { display: none; }
+        
+        .table-responsive { overflow: visible; }
     }
 
     @media (max-width: 480px) {
@@ -311,12 +348,6 @@
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
         border-radius: 0 0 28px 28px;
-    }
-
-    @media (max-width: 768px) {
-        .vault-table {
-            min-width: 500px;
-        }
     }
 </style>
 
@@ -415,14 +446,14 @@
                     <tbody>
                         {% for h in holidays %}
                         <tr>
-                            <td>{{ h.holiday_date.strftime('%b %d') }}</td>
-                            <td>
+                            <td data-label="Date">{{ h.holiday_date.strftime('%b %d') }}</td>
+                            <td data-label="Event">
                                 {{ h.holiday_name }}
                                 {% if h.branch_id is none %}
                                 <span class="badge-global">GLOBAL</span>
                                 {% endif %}
                             </td>
-                            <td style="text-align: right;">
+                            <td data-label="Action" style="text-align: right;">
                                 {% if h.branch_id is not none %}
                                 <form
                                     action="{{ url_for('branch_admin.branch_admin_delete_holiday', holiday_id=h.id) }}"
