@@ -370,7 +370,7 @@ def registrar_enrollments():
         """, (branch_id, selected_year_id))
         enrolled_students = cursor.fetchall()
 
-        cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s ORDER BY display_order", (branch_id,))
+        cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s AND name NOT IN ('Grade 11', 'Grade 12') ORDER BY display_order", (branch_id,))
         grade_levels = [row["name"] for row in cursor.fetchall()]
 
         # Re-enrollment open should only consider ACTIVE year data (otherwise confusing)
@@ -482,7 +482,7 @@ def enrollment_detail(enrollment_id):
         cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id = %s", (enrollment_id,))
         documents = cursor.fetchall()
 
-        cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s ORDER BY display_order", (branch_id,))
+        cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s AND name NOT IN ('Grade 11', 'Grade 12') ORDER BY display_order", (branch_id,))
         grade_levels = [row["name"] for row in cursor.fetchall()]
 
         return render_template(
