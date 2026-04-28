@@ -81,17 +81,20 @@ def upload_file_to_subfolder(file_storage, subfolder: str) -> str:
 # ── Internal: Cloudinary ────────────────────────────────────────────────────
 def _upload_to_cloudinary(file_storage, folder: str) -> str:
     ext = file_storage.filename.lower().rsplit('.', 1)[-1] if (file_storage.filename and '.' in file_storage.filename) else ''
-    # Check if file is an Office document or other raw type
-    # NOTE: We exclude 'pdf' from raw to let Cloudinary treat it as an 'image' resource,
-    # which allows for better browser previewing/opening.
-    is_raw_type = ext in ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar']
+    # Explicitly determine the best resource_type for Cloudinary
+    if ext == 'pdf':
+        res_type = "image"
+    elif ext in ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar']:
+        res_type = "raw"
+    else:
+        res_type = "auto"
     
     from werkzeug.utils import secure_filename
     base_name = secure_filename(file_storage.filename.rsplit('.', 1)[0] if (file_storage.filename and '.' in file_storage.filename) else "document")
     if not base_name or base_name == "file":
         base_name = "document"
         
-    # Cloudinary raw resources need the extension IN the public_id to be served with it
+    # Unique public_id with extension
     public_id = f"{base_name}_{uuid.uuid4().hex[:6]}"
     if ext:
         public_id += f".{ext}"
@@ -100,8 +103,8 @@ def _upload_to_cloudinary(file_storage, folder: str) -> str:
         file_storage,
         folder=folder,
         public_id=public_id,
-        resource_type="raw" if is_raw_type else "auto",   
-        use_filename=True,
+        resource_type=res_type,   
+        use_filename=False, 
         unique_filename=False, 
     )
     url = result.get("secure_url")
