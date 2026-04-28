@@ -46,6 +46,11 @@ def save_doc_file(cursor, enrollment_id, fileobj, doc_type):
             return False, f"File '{doc_type}' is too large. Maximum limit is 10MB."
 
         original = secure_filename(fileobj.filename)
+        if not original or original == 'file':
+            # Fallback for filenames that are stripped by secure_filename (e.g. non-ASCII)
+            ext = fileobj.filename.rsplit('.', 1)[-1].lower() if '.' in fileobj.filename else 'pdf'
+            original = f"document_{uuid.uuid4().hex[:8]}.{ext}"
+
         try:
             url_path = upload_enrollment_document(fileobj)
             cursor.execute("""

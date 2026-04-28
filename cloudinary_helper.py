@@ -88,7 +88,7 @@ def _upload_to_cloudinary(file_storage, folder: str) -> str:
         file_storage,
         folder=folder,
         resource_type="raw" if is_raw_type else "auto",   # use raw for docs to allow public access/viewers
-        use_filename=False,
+        use_filename=True,
         unique_filename=True,
     )
     url = result.get("secure_url")
@@ -107,9 +107,15 @@ def _upload_to_cloudinary(file_storage, folder: str) -> str:
 def _upload_local(file_storage) -> str:
     from werkzeug.utils import secure_filename
 
-    original = secure_filename(file_storage.filename or "file")
-    ext = original.rsplit(".", 1)[-1].lower() if "." in original else "bin"
-    unique_name = f"{uuid.uuid4().hex}.{ext}"
+    original_name = file_storage.filename or "document"
+    secured = secure_filename(original_name)
+    if not secured or secured == "file":
+        secured = "document"
+        
+    ext = original_name.rsplit(".", 1)[-1].lower() if "." in original_name else "bin"
+    unique_name = f"{uuid.uuid4().hex}_{secured}"
+    if not unique_name.endswith(f".{ext}"):
+        unique_name += f".{ext}"
     file_path = os.path.join(LOCAL_UPLOAD_FOLDER, unique_name)
     file_storage.save(file_path)
     logger.info("Saved locally: %s", file_path)
