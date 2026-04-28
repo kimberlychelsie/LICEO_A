@@ -456,14 +456,32 @@ def teacher_dashboard():
                     s.section_name,
                     g.name  AS grade_level_name,
                     sub.subject_id,
-                    sub.name AS subject_name
+                    sub.name AS subject_name,
+                    sch.day_of_week,
+                    sch.start_time,
+                    sch.end_time,
+                    sch.room
                 FROM section_teachers st
                 JOIN sections s     ON st.section_id = s.section_id
                 JOIN grade_levels g ON s.grade_level_id = g.id
                 JOIN subjects sub   ON st.subject_id  = sub.subject_id
+                LEFT JOIN schedules sch ON sch.section_id = s.section_id 
+                                       AND sch.subject_id = sub.subject_id 
+                                       AND sch.teacher_id = st.teacher_id
+                                       AND sch.year_id = s.year_id
                 WHERE st.teacher_id = %s
                   AND s.branch_id = %s AND s.year_id = %s
-                ORDER BY g.display_order, s.section_name, sub.name
+                ORDER BY g.display_order, s.section_name, sub.name,
+                         CASE 
+                            WHEN sch.day_of_week = 'Monday' THEN 1
+                            WHEN sch.day_of_week = 'Tuesday' THEN 2
+                            WHEN sch.day_of_week = 'Wednesday' THEN 3
+                            WHEN sch.day_of_week = 'Thursday' THEN 4
+                            WHEN sch.day_of_week = 'Friday' THEN 5
+                            WHEN sch.day_of_week = 'Saturday' THEN 6
+                            WHEN sch.day_of_week = 'Sunday' THEN 7
+                            ELSE 8
+                         END, sch.start_time
                 """,
                 (user_id, branch_id, year_id),
             )
@@ -485,6 +503,10 @@ def teacher_dashboard():
             cur.close()
             db.close()
 
+    # Get current day of week for the "Today's Schedule" view
+    ph_tz = pytz.timezone("Asia/Manila")
+    today_day = datetime.now(ph_tz).strftime('%A')
+
     return render_template(
         "teacher_dashboard.html",
         students=students,
@@ -497,6 +519,7 @@ def teacher_dashboard():
         teacher_assignments=teacher_assignments,
         teacher_user_id=session.get("user_id"),
         selected_section_id=selected_section_id,
+        current_day=today_day
     )
 
 
