@@ -664,6 +664,27 @@ Grade 10,Inteligente,TLE- SPICE Book 2,540.00"""
                 logger.warning(f"Could not migrate financial tables: {e}")
                 conn.rollback()
 
+            # ONE-TIME STRAND MIGRATION: Update generic Grade 11/12 to strands
+            try:
+                # Update Grade 11
+                cur.execute("SELECT enrollment_id FROM enrollments WHERE grade_level = 'Grade 11' ORDER BY enrollment_id")
+                g11_rows = cur.fetchall()
+                strands_11 = ['11-GAS', '11-STEM', '11-HUMSS']
+                for i, row in enumerate(g11_rows):
+                    cur.execute("UPDATE enrollments SET grade_level = %s WHERE enrollment_id = %s", (strands_11[i % 3], row[0]))
+                
+                # Update Grade 12
+                cur.execute("SELECT enrollment_id FROM enrollments WHERE grade_level = 'Grade 12' ORDER BY enrollment_id")
+                g12_rows = cur.fetchall()
+                strands_12 = ['12-GAS', '12-STEM', '12-HUMSS']
+                for i, row in enumerate(g12_rows):
+                    cur.execute("UPDATE enrollments SET grade_level = %s WHERE enrollment_id = %s", (strands_12[i % 3], row[0]))
+                
+                conn.commit()
+            except Exception as e:
+                conn.rollback()
+                logger.warning(f"Strand migration skipped: {e}")
+
             # ONE-TIME CLEANUP: Delete test Teacher9 accounts directly on boot
             try:
                 cur.execute("DELETE FROM users WHERE role='teacher' AND username ILIKE '%Teacher9%'")

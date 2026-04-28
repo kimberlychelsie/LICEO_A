@@ -32,9 +32,9 @@ GRADE_MAPPINGS = {
     'Elementary G4-6 Boys Set': ['Grade 4', 'Grade 5', 'Grade 6'],
     'JHS Boys Uniform Set': ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'],
     'JHS Girls Uniform Set': ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'],
-    'SHS Boys Uniform Set': ['Grade 11', 'Grade 12'],
-    'SHS Girls Uniform Set': ['Grade 11', 'Grade 12'],
-    'PE Uniform': ['Nursery', 'Kinder'] + [f'Grade {i}' for i in range(1, 13)],
+    'SHS Boys Uniform Set': ['Grade 11', 'Grade 12', '11-GAS', '11-STEM', '11-HUMSS', '12-GAS', '12-STEM', '12-HUMSS'],
+    'SHS Girls Uniform Set': ['Grade 11', 'Grade 12', '11-GAS', '11-STEM', '11-HUMSS', '12-GAS', '12-STEM', '12-HUMSS'],
+    'PE Uniform': ['Nursery', 'Kinder'] + [f'Grade {i}' for i in range(1, 13)] + ['11-GAS', '11-STEM', '11-HUMSS', '12-GAS', '12-STEM', '12-HUMSS'],
 }
 
 SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL"]  # xs to double XL
