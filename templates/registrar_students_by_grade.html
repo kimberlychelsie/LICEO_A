@@ -26,10 +26,10 @@
         font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     }
 
-    .dashboard-wrap {
+    .reg-container {
         max-width: 1400px;
         margin: 0 auto;
-        padding: 24px 20px 80px;
+        padding: 0 20px 80px;
         animation: fadeIn 0.4s ease-out;
     }
 
@@ -45,27 +45,35 @@
         }
     }
 
-    /* ── Header ── */
-    .dashboard-header {
+    /* ── Premium Card Header ── */
+    .welcome-header {
+        background: linear-gradient(135deg, #1a3a8f 0%, #0c2461 100%);
+        border-radius: 24px;
+        padding: 32px 40px;
+        color: white;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 30px rgba(26, 58, 143, 0.2);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .welcome-header h1 {
+        font-size: 2.2rem;
+        font-weight: 900;
+        margin-bottom: 8px;
+        letter-spacing: -0.02em;
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        margin-bottom: 24px;
-        flex-wrap: wrap;
-        gap: 20px;
+        gap: 12px;
     }
 
-    .header-text h1 {
-        font-size: 1.85rem;
-        font-weight: 800;
-        color: var(--reg-primary);
-        margin-bottom: 4px;
-        letter-spacing: -0.02em;
-    }
-
-    .header-text p {
-        color: var(--reg-muted);
-        font-size: 0.95rem;
+    .welcome-header p {
+        font-size: 1rem;
+        opacity: 0.9;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
 
     /* ── Filter Engine ── */
@@ -305,20 +313,70 @@
         background: #fffbeb;
         color: #92400e;
     }
+
+    @media (max-width: 1024px) {
+        .reg-container {
+            padding: 16px 12px 48px !important;
+        }
+
+        .welcome-header {
+            padding: 24px 20px !important;
+        }
+
+        .welcome-header h1 {
+            font-size: 1.6rem !important;
+        }
+
+        .catalog-filters,
+        .export-strip {
+            flex-direction: row !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            overflow-x: auto;
+            white-space: nowrap;
+            gap: 12px !important;
+        }
+
+        .filter-group {
+            min-width: 140px !important;
+        }
+
+        .details-inner {
+            grid-template-columns: 1fr !important;
+            padding: 20px !important;
+            gap: 24px !important;
+        }
+
+        .grid-data {
+            grid-template-columns: 1fr !important;
+            gap: 8px !important;
+        }
+
+        .grid-data strong {
+            margin-bottom: -4px;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-wrap">
+<div class="reg-container">
 
     <!-- Header -->
-    <div class="dashboard-header">
-        <div class="header-text">
-            <h1>Student Registry Detail</h1>
-            <p>Advanced cataloging and profile management by Grade & Section.</p>
-        </div>
-        <a href="/registrar" class="btn btn-export btn-excel"
-            style="background:#fff; color:var(--reg-primary); border:1.5px solid var(--reg-border);">Back Home</a>
+    <div class="welcome-header">
+        <h1>
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                <circle cx="9" cy="7" r="4"></circle>
+                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            </svg>
+            Student Registry Detail
+        </h1>
+        <p>Advanced cataloging and profile management by Grade & Section.</p>
+    </div>
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 24px;">
     </div>
 
     <!-- Filters -->
@@ -328,7 +386,7 @@
                 <label>School Year</label>
                 <select name="year_id" class="filter-control" onchange="this.form.submit()">
                     {% for sy in school_years %}
-                    <option value="{{ sy.year_id }}" {% if sy.year_id|string == year_filter|string %}selected{% endif %}>
+                    <option value="{{ sy.year_id }}" {% if sy.year_id|string==year_filter|string %}selected{% endif %}>
                         {{ sy.label }} {% if sy.is_active %}(Active){% endif %}
                     </option>
                     {% endfor %}
@@ -373,11 +431,25 @@
     <div class="export-strip">
         <span style="font-size: 0.85rem; font-weight: 800; color: var(--reg-muted);">EXTERNAL OPERATIONS:</span>
         <button onclick="exportToExcel()" class="btn-export btn-excel">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                style="margin-right:4px;">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                <line x1="3" y1="9" x2="21" y2="9"></line>
+                <line x1="9" y1="21" x2="9" y2="9"></line>
+            </svg>
             Export XLSX (Sections)
         </button>
         <button onclick="exportToPDF()" class="btn-export btn-pdf">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                style="margin-right:4px;">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
             Generate PDF Summary
         </button>
     </div>
@@ -387,16 +459,25 @@
     <div class="registry-card">
         {% if not grade_filter %}
         <div style="padding: 64px; text-align: center; color: var(--reg-muted);">
-            <div style="font-size: 3rem; margin-bottom: 20px; display: flex; justify-content: center; color: var(--reg-border);">
-                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+            <div
+                style="font-size: 3rem; margin-bottom: 20px; display: flex; justify-content: center; color: var(--reg-border);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                </svg>
             </div>
             <h3 style="color: var(--reg-primary); font-weight: 800;">Registry Deployed</h3>
             <p>Select a <strong>Grade Level</strong> above to pull student metadata from the database.</p>
         </div>
         {% elif students|length == 0 %}
         <div style="padding: 64px; text-align: center; color: var(--reg-muted);">
-            <div style="font-size: 3rem; margin-bottom: 20px; display: flex; justify-content: center; color: var(--reg-border);">
-                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            <div
+                style="font-size: 3rem; margin-bottom: 20px; display: flex; justify-content: center; color: var(--reg-border);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
             </div>
             <h3 style="color: var(--reg-primary); font-weight: 800;">Empty Sector</h3>
             <p>No active enrollments detected for the selected parameters.</p>
@@ -438,7 +519,12 @@
                     </td>
                     <td style="text-align: right;">
                         <button type="button" class="btn btn-outline"
-                            style="padding: 6px 14px; font-size: 0.75rem; display: flex; align-items: center; gap: 4px;">Manage <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg></button>
+                            style="padding: 6px 14px; font-size: 0.75rem; display: flex; align-items: center; gap: 4px;">Manage
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                            </svg></button>
                     </td>
                 </tr>
 
@@ -448,7 +534,12 @@
                             <div class="details-inner">
                                 <div class="detail-group">
                                     <h4>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="12" cy="7" r="4"></circle>
+                                        </svg>
                                         Personal & Contact Information
                                     </h4>
                                     <div class="grid-data">
@@ -463,10 +554,11 @@
 
                                         <strong>Birthday:</strong> <input type="date" name="dob"
                                             class="input-edit track-{{ s.enrollment_id }}" value="{{ s.dob or '' }}">
-                                        
+
                                         <strong>Birthplace:</strong> <input type="text" name="birthplace"
                                             placeholder="City, Province" required minlength="3" maxlength="100"
-                                            class="input-edit track-{{ s.enrollment_id }}" value="{{ s.birthplace or '' }}"
+                                            class="input-edit track-{{ s.enrollment_id }}"
+                                            value="{{ s.birthplace or '' }}"
                                             oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s,]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',')">
 
                                         <strong>LRN:</strong> <input type="text" name="lrn" maxlength="12"
@@ -479,11 +571,13 @@
                                             class="input-edit track-{{ s.enrollment_id }}" value="{{ s.email or '' }}"
                                             oninput="this.value = this.value.replace(/[^a-zA-Z0-9@._-]/g, '').replace(/\.\.+/g, '.').replace(/--+/g, '-').replace(/__+/g, '_').replace(/(@.*)@/g, '$1')">
 
-                                        <strong>Contact:</strong> <input type="text" name="contact_number" maxlength="11"
-                                            class="input-edit track-{{ s.enrollment_id }}" value="{{ s.contact_number or '' }}"
+                                        <strong>Contact:</strong> <input type="text" name="contact_number"
+                                            maxlength="11" class="input-edit track-{{ s.enrollment_id }}"
+                                            value="{{ s.contact_number or '' }}"
                                             oninput="this.value = this.value.replace(/[^0-9]/g, '')">
                                         <textarea name="address" class="input-edit track-{{ s.enrollment_id }}" rows="2"
-                                            placeholder="House No., Street, Barangay, City, Province" required minlength="10" maxlength="255"
+                                            placeholder="House No., Street, Barangay, City, Province" required
+                                            minlength="10" maxlength="255"
                                             oninput="this.value = this.value.replace(/[^A-Za-z0-9ñÑ\s,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',').replace(/--+/g, '-')"
                                             style="resize: none;">{{ s.address or '' }}</textarea>
 
@@ -503,7 +597,16 @@
                                                 <button type="button" class="btn btn-outline"
                                                     onclick="resetPassword('{{ s.enrollment_id }}', '{{ s.student_name }}')"
                                                     style="padding: 6px 12px; font-size: 0.7rem; background: #fff; border-color: var(--reg-danger); color: var(--reg-danger);">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12"
+                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                        stroke-width="2.5" stroke-linecap="round"
+                                                        stroke-linejoin="round" style="margin-right:4px;">
+                                                        <polyline points="23 4 23 10 17 10"></polyline>
+                                                        <polyline points="1 20 1 14 7 14"></polyline>
+                                                        <path
+                                                            d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15">
+                                                        </path>
+                                                    </svg>
                                                     Reset Password & Notify
                                                 </button>
                                                 {% endif %}
@@ -514,7 +617,14 @@
 
                                 <div class="detail-group">
                                     <h4>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                            <circle cx="9" cy="7" r="4"></circle>
+                                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                                        </svg>
                                         Guardian Information
                                     </h4>
                                     <div class="grid-data">
@@ -522,9 +632,9 @@
                                             class="input-edit track-{{ s.enrollment_id }}"
                                             value="{{ s.guardian_name or '' }}" maxlength="100"
                                             oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
-                                        
-                                        <strong>Contact:</strong> <input type="text" name="guardian_contact" maxlength="11"
-                                            class="input-edit track-{{ s.enrollment_id }}"
+
+                                        <strong>Contact:</strong> <input type="text" name="guardian_contact"
+                                            maxlength="11" class="input-edit track-{{ s.enrollment_id }}"
                                             value="{{ s.guardian_contact or '' }}"
                                             oninput="this.value = this.value.replace(/[^0-9]/g, '')">
 
@@ -540,8 +650,8 @@
                                             value="{{ s.father_name or '' }}" maxlength="100"
                                             oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
 
-                                        <strong>Father Contact:</strong> <input type="text" name="father_contact" maxlength="11"
-                                            class="input-edit track-{{ s.enrollment_id }}"
+                                        <strong>Father Contact:</strong> <input type="text" name="father_contact"
+                                            maxlength="11" class="input-edit track-{{ s.enrollment_id }}"
                                             value="{{ s.father_contact or '' }}"
                                             oninput="this.value = this.value.replace(/[^0-9]/g, '')">
 
@@ -555,8 +665,8 @@
                                             value="{{ s.mother_name or '' }}" maxlength="100"
                                             oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
 
-                                        <strong>Mother Contact:</strong> <input type="text" name="mother_contact" maxlength="11"
-                                            class="input-edit track-{{ s.enrollment_id }}"
+                                        <strong>Mother Contact:</strong> <input type="text" name="mother_contact"
+                                            maxlength="11" class="input-edit track-{{ s.enrollment_id }}"
                                             value="{{ s.mother_contact or '' }}"
                                             oninput="this.value = this.value.replace(/[^0-9]/g, '')">
 
@@ -586,7 +696,13 @@
 
                                 <div class="detail-group">
                                     <h4>
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path
+                                                d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z">
+                                            </path>
+                                        </svg>
                                         Verification Documents
                                     </h4>
                                     <div style="display: flex; flex-direction: column; gap: 8px;">
@@ -596,9 +712,24 @@
                                         <a href="{{ doc.file_path }}" target="_blank" class="btn btn-outline"
                                             style="justify-content: flex-start; padding: 10px; font-size: 0.8rem; gap: 8px;">
                                             {% if ext == 'pdf' %}
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z">
+                                                </path>
+                                                <polyline points="14 2 14 8 20 8"></polyline>
+                                                <line x1="16" y1="13" x2="8" y2="13"></line>
+                                                <line x1="16" y1="17" x2="8" y2="17"></line>
+                                                <polyline points="10 9 9 9 8 9"></polyline>
+                                            </svg>
                                             {% else %}
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                stroke-linecap="round" stroke-linejoin="round">
+                                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                                <polyline points="21 15 16 10 5 21"></polyline>
+                                            </svg>
                                             {% endif %}
                                             {{ doc.document_type|replace('_', ' ')|title }}
                                         </a>
@@ -701,94 +832,94 @@
     }
 
     function exportToExcel() {
-    console.log("Export Excel triggered");
+        console.log("Export Excel triggered");
 
-    if (!studentsData || studentsData.length === 0) {
-        alert("No student data available to export.");
-        return;
+        if (!studentsData || studentsData.length === 0) {
+            alert("No student data available to export.");
+            return;
+        }
+
+        const wb = XLSX.utils.book_new();
+
+        // 👉 force line break every ~35 chars to prevent cut
+        function wrapText(str, max = 35) {
+            if (!str) return "";
+            return str.replace(new RegExp(`(.{1,${max}})(\\s|$)`, "g"), "$1\n");
+        }
+
+        const schoolNameRaw = "{{ branch.branch_name | replace('\n', ' ') }}";
+        const schoolName = wrapText(schoolNameRaw, 40);
+
+        const schoolId = "{% if branch.school_id %}{{ branch.school_id }}{% else %}402556{% endif %}";
+
+        const section = (studentsData.length > 0 && studentsData[0].section_name)
+            ? wrapText(studentsData[0].section_name, 25)
+            : "N/A";
+
+        const grade = wrapText(currentGrade || "", 20);
+        const year = wrapText(currentYear || "", 20);
+
+        const gradeSafe = (currentGrade || "GRADE").replace(/\s/g, "_");
+        const yearSafe = (currentYear || "YEAR").replace(/\s/g, "_");
+        const sectionSafe = (studentsData[0]?.section_name || "N/A").replace(/\s/g, "_");
+
+        const data = [
+            ["", "SCHOOL FORM 1 - SCHOOL REGISTER", ""],
+            ["", "", ""],
+            ["SCHOOL ID:", schoolId, "", "SCHOOL YEAR:", year],
+            ["SCHOOL NAME:", schoolName, "", "GRADE LEVEL:", grade],
+            ["SECTION:", section, "", "", ""],
+            ["", "", ""],
+            ["No.", "LRN", "NAME", "SEX", "BIRTHDATE", "AGE", "BIRTHPLACE", "ADDRESS", "FATHER", "MOTHER", "GUARDIAN", "GUARDIAN CONTACT"]
+        ];
+
+        studentsData.forEach((s, index) => {
+            data.push([
+                index + 1,
+                s.lrn || "",
+                upper(s.student_name),
+                upper(s.gender || ""),
+                formatDate(s.dob),
+                computeAge(s.dob),
+                upper(s.birthplace || ""),
+                upper(s.address || ""),
+                upper(s.father_name || ""),
+                upper(s.mother_name || ""),
+                upper(s.guardian_name || ""),
+                upper(s.guardian_contact || "")
+            ]);
+        });
+
+        const ws = XLSX.utils.aoa_to_sheet(data);
+
+        // 👉 widen key columns so text fits better
+        ws["!cols"] = [
+            { wch: 5 },
+            { wch: 20 },
+            { wch: 45 }, // NAME / SCHOOL NAME wider
+            { wch: 10 },
+            { wch: 15 },
+            { wch: 8 },
+            { wch: 25 },
+            { wch: 40 },
+            { wch: 25 },
+            { wch: 25 },
+            { wch: 25 },
+            { wch: 20 }
+        ];
+
+        ws["!merges"] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } }
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, "SF1");
+
+        XLSX.writeFile(wb, `SF1_${gradeSafe}_${sectionSafe}_${yearSafe}.xlsx`);
     }
-
-    const wb = XLSX.utils.book_new();
-
-    // 👉 force line break every ~35 chars to prevent cut
-    function wrapText(str, max = 35) {
-        if (!str) return "";
-        return str.replace(new RegExp(`(.{1,${max}})(\\s|$)`, "g"), "$1\n");
-    }
-
-    const schoolNameRaw = "{{ branch.branch_name | replace('\n', ' ') }}";
-    const schoolName = wrapText(schoolNameRaw, 40);
-
-    const schoolId = "{% if branch.school_id %}{{ branch.school_id }}{% else %}402556{% endif %}";
-
-    const section = (studentsData.length > 0 && studentsData[0].section_name) 
-        ? wrapText(studentsData[0].section_name, 25)
-        : "N/A";
-
-    const grade = wrapText(currentGrade || "", 20);
-    const year = wrapText(currentYear || "", 20);
-
-    const gradeSafe = (currentGrade || "GRADE").replace(/\s/g, "_");
-    const yearSafe = (currentYear || "YEAR").replace(/\s/g, "_");
-    const sectionSafe = (studentsData[0]?.section_name || "N/A").replace(/\s/g, "_");
-
-    const data = [
-        ["", "SCHOOL FORM 1 - SCHOOL REGISTER", ""],
-        ["", "", ""],
-        ["SCHOOL ID:", schoolId, "", "SCHOOL YEAR:", year],
-        ["SCHOOL NAME:", schoolName, "", "GRADE LEVEL:", grade],
-        ["SECTION:", section, "", "", ""],
-        ["", "", ""],
-        ["No.", "LRN", "NAME", "SEX", "BIRTHDATE", "AGE", "BIRTHPLACE", "ADDRESS", "FATHER", "MOTHER", "GUARDIAN", "GUARDIAN CONTACT"]
-    ];
-
-    studentsData.forEach((s, index) => {
-        data.push([
-            index + 1,
-            s.lrn || "",
-            upper(s.student_name),
-            upper(s.gender || ""),
-            formatDate(s.dob),
-            computeAge(s.dob),
-            upper(s.birthplace || ""),
-            upper(s.address || ""),
-            upper(s.father_name || ""),
-            upper(s.mother_name || ""),
-            upper(s.guardian_name || ""),
-            upper(s.guardian_contact || "")
-        ]);
-    });
-
-    const ws = XLSX.utils.aoa_to_sheet(data);
-
-    // 👉 widen key columns so text fits better
-    ws["!cols"] = [
-        { wch: 5 },
-        { wch: 20 },
-        { wch: 45 }, // NAME / SCHOOL NAME wider
-        { wch: 10 },
-        { wch: 15 },
-        { wch: 8 },
-        { wch: 25 },
-        { wch: 40 },
-        { wch: 25 },
-        { wch: 25 },
-        { wch: 25 },
-        { wch: 20 }
-    ];
-
-    ws["!merges"] = [
-        { s: { r: 0, c: 0 }, e: { r: 0, c: 10 } }
-    ];
-
-    XLSX.utils.book_append_sheet(wb, ws, "SF1");
-
-    XLSX.writeFile(wb, `SF1_${gradeSafe}_${sectionSafe}_${yearSafe}.xlsx`);
-}
 
     function exportToPDF() {
         console.log("Export PDF triggered");
-        
+
         if (!studentsData || studentsData.length === 0) {
             alert("No student data available to export.");
             return;
@@ -805,8 +936,8 @@
             const doc = new jsPDF('l');
             const schoolName = "{{ branch.branch_name | replace('\n', ' ') }}";
             const schoolId = "{% if branch.school_id %}{{ branch.school_id }}{% else %}402556{% endif %}";
-            const section = (studentsData.length > 0 && studentsData[0].section_name) 
-                ? studentsData[0].section_name 
+            const section = (studentsData.length > 0 && studentsData[0].section_name)
+                ? studentsData[0].section_name
                 : "N/A";
 
             const pageWidth = doc.internal.pageSize.getWidth();
@@ -817,16 +948,16 @@
             doc.setFontSize(11);
             doc.text("REPUBLIC OF THE PHILIPPINES", pageWidth / 2, yPosition, { align: 'center' });
             yPosition += 5;
-            
+
             doc.setFontSize(10);
             doc.text("DEPARTMENT OF EDUCATION", pageWidth / 2, yPosition, { align: 'center' });
             yPosition += 5;
-            
+
             doc.setFontSize(12);
             doc.setFont(undefined, 'bold');
             doc.text(schoolName.toUpperCase(), pageWidth / 2, yPosition, { align: 'center' });
             yPosition += 5;
-            
+
             doc.setFontSize(9);
             doc.setFont(undefined, 'normal');
             doc.text(`School ID: ${schoolId}`, pageWidth / 2, yPosition, { align: 'center' });
@@ -836,7 +967,7 @@
             doc.setFont(undefined, 'bold');
             doc.text("SCHOOL FORM 1 (SF1)", pageWidth / 2, yPosition, { align: 'center' });
             yPosition += 4;
-            
+
             doc.setFontSize(9);
             doc.text("SCHOOL REGISTER", pageWidth / 2, yPosition, { align: 'center' });
             yPosition += 8;
@@ -845,14 +976,14 @@
             const infoBoxX = 14;
             const infoBoxWidth = pageWidth - 28;
             doc.rect(infoBoxX, yPosition, infoBoxWidth, 20);
-            
+
             doc.setFont(undefined, 'normal');
             doc.text(`Grade Level: ${currentGrade || 'N/A'}`, infoBoxX + 5, yPosition + 5);
             doc.text(`Section: ${section}`, infoBoxX + 60, yPosition + 5);
             doc.text(`School Year: ${currentYear || 'N/A'}`, infoBoxX + 120, yPosition + 5);
             doc.text(`Total Students: ${studentsData.length}`, infoBoxX + 5, yPosition + 12);
             doc.text(`Date Printed: ${new Date().toLocaleDateString('en-PH')}`, infoBoxX + 120, yPosition + 12);
-            
+
             yPosition += 25;
 
             // Table
