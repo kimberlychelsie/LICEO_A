@@ -90,9 +90,11 @@ def _upload_to_cloudinary(file_storage, folder: str) -> str:
     if not base_name or base_name == "file":
         base_name = "document"
         
-    # Unique public_id with extension
+    # Unique public_id
     public_id = f"{base_name}_{uuid.uuid4().hex[:6]}"
-    if ext:
+    # For raw types, we include the extension in the public_id so it's preserved in the URL.
+    # For auto/image/video, Cloudinary adds the extension automatically; including it here causes double extensions (e.g., .pdf.pdf).
+    if is_raw_type and ext:
         public_id += f".{ext}"
 
     result = cloudinary.uploader.upload(
