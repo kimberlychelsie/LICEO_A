@@ -567,80 +567,6 @@
             max-height: 250px;
             overflow-y: auto;
         }
-        /* ─── FAQ SECTION ─── */
-        .faq-section {
-            background: #fff;
-            border-radius: 18px;
-            padding: 24px;
-            box-shadow: 0 2px 12px rgba(12, 36, 97, 0.06);
-            margin-bottom: 24px;
-        }
-
-        .faq-list {
-            margin-top: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
-        .faq-item {
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            overflow: hidden;
-            transition: all 0.2s;
-        }
-
-        .faq-item:hover {
-            border-color: #cbd5e1;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-        }
-
-        .faq-question {
-            width: 100%;
-            padding: 16px 20px;
-            background: #fff;
-            border: none;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            cursor: pointer;
-            text-align: left;
-            font-weight: 700;
-            font-size: 0.9rem;
-            color: #0c2461;
-            transition: background 0.2s;
-        }
-
-        .faq-question:hover {
-            background: #f8fafc;
-        }
-
-        .faq-question::after {
-            content: '+';
-            font-size: 1.2rem;
-            color: #94a3b8;
-            transition: transform 0.2s;
-        }
-
-        .faq-item.active .faq-question::after {
-            content: '−';
-            transform: rotate(180deg);
-        }
-
-        .faq-answer {
-            max-height: 0;
-            overflow: hidden;
-            transition: all 0.3s cubic-bezier(0, 1, 0, 1);
-            background: #f8fafc;
-            font-size: 0.88rem;
-            color: #475569;
-            line-height: 1.6;
-        }
-
-        .faq-item.active .faq-answer {
-            max-height: 1000px;
-            padding: 0 20px 20px;
-            transition: all 0.3s cubic-bezier(1, 0, 1, 0);
         }
     </style>
 </head>
@@ -816,24 +742,7 @@
             </div>
         </div>
 
-        <!-- FAQ Section -->
-        {% if faqs %}
-        <div class="faq-section">
-            <p class="req-title">&#128172; Frequently Asked Questions</p>
-            <div class="faq-list">
-                {% for f in faqs %}
-                <div class="faq-item">
-                    <button class="faq-question" onclick="toggleFaq(this)">{{ f.question }}</button>
-                    <div class="faq-answer">
-                        <div style="padding-top: 10px;">
-                            {{ f.answer | replace('\n', '<br>') | safe }}
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        </div>
-        {% endif %}
+
 
         <!-- Campus Map -->
         {% if branch.latitude and branch.longitude %}
@@ -925,20 +834,9 @@
             };
         });
         {% endif %}
-    <script>
-        // FAQ Accordion
-        function toggleFaq(btn) {
-            const item = btn.parentElement;
-            const isActive = item.classList.contains('active');
-            
-            // Close all other FAQs
-            document.querySelectorAll('.faq-item').forEach(i => i.classList.remove('active'));
-            
-            if (!isActive) {
-                item.classList.add('active');
-            }
-        }
+    </script>
 
+    <script>
         // Chatbot Branch ID
         window.CHATBOT_BRANCH_ID = {{ branch.branch_id }};
     </script>
