@@ -2732,9 +2732,35 @@
         body.innerHTML = `<img src="${url}" class="preview-img" alt="${filename}">`;
       } 
       else if (ext === 'pdf') {
-        // Use Google Docs Viewer with absolute URL (works best for Cloudinary raw assets and local files)
-        const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(absoluteUrl)}&embedded=true`;
-        body.innerHTML = `<iframe src="${googleViewerUrl}" class="preview-iframe"></iframe>`;
+        let pdfUrl = absoluteUrl;
+        
+        // Solution 1 & 2: Fix Cloudinary URL format for better viewing
+        if (pdfUrl.includes('cloudinary.com')) {
+            pdfUrl = pdfUrl.replace('/raw/upload/', '/upload/');
+            // Ensure no download is forced
+            if (!pdfUrl.includes('fl_attachment')) {
+                pdfUrl = pdfUrl.replace('/upload/', '/upload/fl_attachment:false/');
+            }
+        }
+
+        // Try native viewer first
+        body.innerHTML = `<iframe src="${pdfUrl}#toolbar=0" class="preview-iframe"></iframe>`;
+
+        // Solution 3: Google Docs Viewer as fallback after 2 seconds if still loading/problematic
+        // We only do this for remote URLs (Google can't see local files)
+        if (absoluteUrl.includes('http')) {
+            const fallbackTimeout = setTimeout(() => {
+                const iframe = body.querySelector('iframe');
+                // Check if the iframe is still on the original URL and might be blank
+                if (iframe && !iframe.src.includes('docs.google.com')) {
+                    const googleViewer = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
+                    body.innerHTML = `<iframe src="${googleViewer}" class="preview-iframe"></iframe>`;
+                }
+            }, 2500);
+            
+            // Store timeout ID to clear it if modal is closed early
+            modal.dataset.timeoutId = fallbackTimeout;
+        }
       }
       else if (ext === 'docx') {
         fetch(absoluteUrl)
@@ -2770,6 +2796,13 @@
     function closePreview() {
       const modal = document.getElementById('universalPreviewModal');
       const body = document.getElementById('previewBody');
+      
+      // Clear any pending fallback timeouts
+      if (modal.dataset.timeoutId) {
+          clearTimeout(parseInt(modal.dataset.timeoutId));
+          delete modal.dataset.timeoutId;
+      }
+      
       modal.style.display = 'none';
       body.innerHTML = ''; // Clear content
       document.body.style.overflow = '';
