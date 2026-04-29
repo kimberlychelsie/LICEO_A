@@ -1457,7 +1457,8 @@
             <path d="M3 12h18"></path>
           </svg></span> Attendance Hub
       </a>
-      <a class="sb-link {% if request.path == '/teacher/class-announcements' %}active{% endif %}" href="/teacher/class-announcements">
+      <a class="sb-link {% if request.path == '/teacher/class-announcements' %}active{% endif %}"
+        href="/teacher/class-announcements">
         <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M11 5L6 9H2v6h4l5 4V5z"></path>
@@ -1488,8 +1489,11 @@
             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
           </svg>
           <div style="display: flex; flex-direction: column; gap: 2px; overflow: hidden;">
-            <span style="font-weight: 700; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{ cls.subject_name }}</span>
-            <span style="font-size: 0.7rem; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+            <span
+              style="font-weight: 700; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{
+              cls.subject_name }}</span>
+            <span
+              style="font-size: 0.7rem; opacity: 0.6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
               {{ cls.grade_level_name }} - {{ cls.section_name }}
             </span>
           </div>
@@ -1938,7 +1942,8 @@
     {% elif session.get('role') == 'teacher' %}{% set dashboard_url = '/teacher' %}
     {% endif %}
 
-    <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Toggle sidebar" style="margin-right: 12px;">
+    <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Toggle sidebar"
+      style="margin-right: 12px;">
       <span></span>
       <span></span>
       <span></span>
@@ -2655,12 +2660,21 @@
     }
 
     @keyframes univ-spin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     @keyframes zoomIn {
-      from { opacity: 0; transform: scale(0.95); }
-      to { opacity: 1; transform: scale(1); }
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
     }
 
     .preview-iframe {
@@ -2674,7 +2688,7 @@
       max-width: 100%;
       max-height: 100%;
       object-fit: contain;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     }
 
     .preview-docx-container {
@@ -2683,7 +2697,7 @@
       background: #fff;
       padding: 60px;
       margin: 20px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
       border-radius: 8px;
       min-height: calc(100% - 40px);
       color: #334155;
@@ -2703,7 +2717,7 @@
       title.textContent = filename;
       dlBtn.href = url;
       dlBtn.download = filename;
-      
+
       body.innerHTML = `
         <div class="univ-preview-loader">
           <div class="univ-spinner"></div>
@@ -2716,96 +2730,104 @@
       // Detect extension
       let ext = filename.split('.').pop().toLowerCase();
       if (ext === filename.toLowerCase() || ext.length > 5) {
-          const urlParts = url.split(/[#?]/)[0].split('.');
-          ext = urlParts.length > 1 ? urlParts.pop().toLowerCase() : '';
+        const urlParts = url.split(/[#?]/)[0].split('.');
+        ext = urlParts.length > 1 ? urlParts.pop().toLowerCase() : '';
       }
 
       // --- 1. LOCAL LOGIC (Don't touch) ---
       if (url.includes('/uploads/') || !url.includes('http')) {
-          if (ext === 'pdf') {
-              body.innerHTML = `<iframe src="${url}#toolbar=0" class="preview-iframe"></iframe>`;
-          } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-              body.innerHTML = `<img src="${url}" class="preview-img" alt="${filename}">`;
-          } else if (ext === 'docx') {
-              fetch(url)
-                .then(res => res.arrayBuffer())
-                .then(ab => mammoth.convertToHtml({arrayBuffer: ab}))
-                .then(res => { body.innerHTML = `<div class="preview-docx-container">${res.value}</div>`; })
-                .catch(err => { body.innerHTML = `<div style="padding:40px; text-align:center;"><a href="${url}" class="univ-preview-btn">Download Instead</a></div>`; });
-          } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
-              body.innerHTML = `<video src="${url}" controls class="preview-img" style="max-height:80vh;"></video>`;
-          } else {
-              body.innerHTML = `<div style="padding:40px; text-align:center;"><a href="${url}" class="univ-preview-btn">Download File</a></div>`;
-          }
-          return;
+        if (ext === 'pdf') {
+          body.innerHTML = `<iframe src="${url}#toolbar=0" class="preview-iframe"></iframe>`;
+        } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+          body.innerHTML = `<img src="${url}" class="preview-img" alt="${filename}">`;
+        } else if (ext === 'docx') {
+          fetch(url)
+            .then(res => res.arrayBuffer())
+            .then(ab => mammoth.convertToHtml({ arrayBuffer: ab }))
+            .then(res => { body.innerHTML = `<div class="preview-docx-container">${res.value}</div>`; })
+            .catch(err => { body.innerHTML = `<div style="padding:40px; text-align:center;"><a href="${url}" class="univ-preview-btn">Download Instead</a></div>`; });
+        } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+          body.innerHTML = `<video src="${url}" controls class="preview-img" style="max-height:80vh;"></video>`;
+        } else {
+          body.innerHTML = `<div style="padding:40px; text-align:center;"><a href="${url}" class="univ-preview-btn">Download File</a></div>`;
+        }
+        return;
       }
 
       // --- 2. DEPLOYED LOGIC (Cloudinary/Google Fallback) ---
       if (ext === 'pdf') {
-          let pdfUrl = url;
-          if (pdfUrl.includes('cloudinary.com')) {
-              pdfUrl = pdfUrl.replace('/raw/upload/', '/upload/');
-              if (!pdfUrl.includes('fl_attachment')) {
-                  pdfUrl = pdfUrl.replace('/upload/', '/upload/fl_attachment:false/');
-              }
+        let pdfUrl = url;
+        if (pdfUrl.includes('cloudinary.com')) {
+          pdfUrl = pdfUrl.replace('/raw/upload/', '/upload/');
+
+          // More robust: only add fl_attachment:false if not already present
+          if (!pdfUrl.includes('fl_attachment:false')) {
+            pdfUrl = pdfUrl.replace('/upload/', '/upload/fl_attachment:false/');
           }
+        }
 
-          const pdfjsLib = window.pdfjsLib;
-          if (pdfjsLib) {
-              pdfjsLib.GlobalWorkerOptions.workerSrc =
-                  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        const pdfjsLib = window.pdfjsLib;
+        if (pdfjsLib) {
+          pdfjsLib.GlobalWorkerOptions.workerSrc =
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-              pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false }).promise
-                  .then(pdf => {
-                      body.innerHTML = '<div id="pdf-pages" style="overflow-y:auto;height:100%;padding:16px;display:flex;flex-direction:column;gap:8px;align-items:center;background:#525659;"></div>';
-                      const pagesDiv = document.getElementById('pdf-pages');
-                      let chain = Promise.resolve();
-                      for (let i = 1; i <= pdf.numPages; i++) {
-                          chain = chain.then(() => pdf.getPage(i).then(page => {
-                              const vp = page.getViewport({ scale: 1.5 });
-                              const canvas = document.createElement('canvas');
-                              canvas.width = vp.width;
-                              canvas.height = vp.height;
-                              canvas.style.cssText = 'max-width:100%;height:auto;box-shadow:0 2px 8px rgba(0,0,0,0.5);';
-                              pagesDiv.appendChild(canvas);
-                              return page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
-                          }));
-                      }
-                      return chain;
-                  })
-                  .catch(() => {
-                      const googleViewer = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
-                      body.innerHTML = `<iframe src="${googleViewer}" class="preview-iframe"></iframe>`;
-                  });
-          } else {
+          pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false }).promise
+            .then(pdf => {
+              body.innerHTML = '<div id="pdf-pages" style="overflow-y:auto;height:100%;padding:16px;display:flex;flex-direction:column;gap:8px;align-items:center;background:#525659;"></div>';
+              const pagesDiv = document.getElementById('pdf-pages');
+              let chain = Promise.resolve();
+              for (let i = 1; i <= pdf.numPages; i++) {
+                chain = chain.then(() => pdf.getPage(i).then(page => {
+                  const vp = page.getViewport({ scale: 1.5 });
+                  const canvas = document.createElement('canvas');
+                  canvas.width = vp.width;
+                  canvas.height = vp.height;
+                  canvas.style.cssText = 'max-width:100%;height:auto;box-shadow:0 2px 8px rgba(0,0,0,0.5);';
+                  pagesDiv.appendChild(canvas);
+                  return page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+                }));
+              }
+              return chain;
+            })
+            .catch((error) => {
+              console.error('PDF.js failed, falling back to Google Docs Viewer:', error);
               const googleViewer = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
               body.innerHTML = `<iframe src="${googleViewer}" class="preview-iframe"></iframe>`;
-          }
+            });
+        } else {
+          console.warn('PDF.js library not loaded');
+          const googleViewer = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
+          body.innerHTML = `<iframe src="${googleViewer}" class="preview-iframe"></iframe>`;
+        }
       } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-          body.innerHTML = `<img src="${url}" class="preview-img" alt="${filename}">`;
+        body.innerHTML = `<img src="${url}" class="preview-img" alt="${filename}">`;
       } else if (ext === 'docx') {
-          fetch(url)
-            .then(res => res.arrayBuffer())
-            .then(ab => mammoth.convertToHtml({arrayBuffer: ab}))
-            .then(res => { body.innerHTML = `<div class="preview-docx-container">${res.value}</div>`; })
-            .catch(err => { body.innerHTML = `<div style="padding:40px; text-align:center;"><a href="${url}" class="univ-preview-btn">Download Instead</a></div>`; });
+        fetch(url)
+          .then(res => res.arrayBuffer())
+          .then(ab => mammoth.convertToHtml({ arrayBuffer: ab }))
+          .then(res => { body.innerHTML = `<div class="preview-docx-container">${res.value}</div>`; })
+          .catch(err => { body.innerHTML = `<div style="padding:40px; text-align:center;"><a href="${url}" class="univ-preview-btn">Download Instead</a></div>`; });
       } else {
-          const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
-          body.innerHTML = `<iframe src="${googleViewerUrl}" class="preview-iframe"></iframe>`;
+        const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+        body.innerHTML = `<iframe src="${googleViewerUrl}" class="preview-iframe"></iframe>`;
+      }
+
+      function closePreview() {
+        const modal = document.getElementById('universalPreviewModal');
+        const body = document.getElementById('previewBody');
+
+        // Cancel any pending PDF.js rendering
+        if (window.pdfjsLib && window.pdfjsLib._pdfDocument) {
+          window.pdfjsLib._pdfDocument.cleanup();
+        }
+
+        modal.style.display = 'none';
+        body.innerHTML = ''; // Clear content
+        document.body.style.overflow = '';
       }
     }
-
-    function closePreview() {
-      const modal = document.getElementById('universalPreviewModal');
-      const body = document.getElementById('previewBody');
-      
-      modal.style.display = 'none';
-      body.innerHTML = ''; // Clear content
-      document.body.style.overflow = '';
-    }
-
     // Escape key to close
-    document.addEventListener('keydown', function(e) {
+    document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') closePreview();
     });
   </script>
