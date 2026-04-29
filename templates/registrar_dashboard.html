@@ -641,12 +641,13 @@
         background: #fff;
         padding: 8px 32px;
         border-radius: 50px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-        border: 1px solid rgba(0,0,0,0.05);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(0, 0, 0, 0.05);
     }
 
     .pagination-info {
-        display: none; /* Hide traditional info for the clean image look */
+        display: none;
+        /* Hide traditional info for the clean image look */
     }
 
     .pagination-controls {
@@ -677,7 +678,8 @@
     }
 
     .page-link.active {
-        background: #6366f1; /* Modern Indigo/Blue from image */
+        background: #6366f1;
+        /* Modern Indigo/Blue from image */
         color: #fff;
         box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
     }
@@ -726,6 +728,8 @@
         </div>
         <div style="padding: 12px 16px;">
             <form method="get" action="/registrar/enrollments" class="filter-bar" style="margin:0;">
+                <input type="hidden" name="q_new" value="{{ q_new }}">
+                <input type="hidden" name="q_enrolled" value="{{ q_enrolled }}">
                 <label>School Year</label>
                 <select name="year_id" onchange="this.form.submit()">
                     {% for sy in all_school_years %}
@@ -785,8 +789,15 @@
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
                     <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Search Student</label>
-                    <input type="text" id="newSearch" placeholder="Search name or ID..." oninput="filterNew()"
-                        style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 100%; max-width: 400px;">
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="newSearch" placeholder="Search name or ID..." value="{{ q_new }}" 
+                            onkeydown="if(event.key==='Enter') doSearch('new')"
+                            style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 100%; max-width: 400px;">
+                        <button type="button" onclick="doSearch('new')" class="btn-registrar" style="min-width: auto; padding: 0 16px;">
+                            Search
+                        </button>
+                    </div>
+                    <div class="muted-note" style="font-size: 10px; margin-top: 2px;">Searches across all {{ total_new }} records</div>
                 </div>
             </div>
         </div>
@@ -1246,28 +1257,37 @@
             <div class="pagination-wrapper">
                 <div class="pagination-container">
                     <div class="pagination-controls">
-                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=current_page_new-1, p_enrolled=current_page_enrolled) }}" 
-                           class="page-link pagination-arrow {{ 'disabled' if current_page_new == 1 }}"
-                           {% if current_page_new == 1 %}onclick="return false;"{% endif %}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=current_page_new-1, p_enrolled=current_page_enrolled, q_new=q_new, q_enrolled=q_enrolled) }}"
+                            class="page-link pagination-arrow {{ 'disabled' if current_page_new == 1 }}" {% if
+                            current_page_new==1 %}onclick="return false;" {% endif %}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
                         </a>
-                        
-                        {% for p in range(1, total_pages_new + 1) %}
-                            {% if p == 1 or p == total_pages_new or (p >= current_page_new - 2 and p <= current_page_new + 2) %}
-                                <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=p, p_enrolled=current_page_enrolled) }}" 
-                                   class="page-link {{ 'active' if p == current_page_new }}">
-                                    {{ p }}
-                                </a>
-                            {% elif p == current_page_new - 3 or p == current_page_new + 3 %}
-                                <span class="page-link disabled">...</span>
-                            {% endif %}
-                        {% endfor %}
 
-                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=current_page_new+1, p_enrolled=current_page_enrolled) }}" 
-                           class="page-link pagination-arrow {{ 'disabled' if current_page_new == total_pages_new }}"
-                           {% if current_page_new == total_pages_new %}onclick="return false;"{% endif %}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                        </a>
+                        {% for p in range(1, total_pages_new + 1) %}
+                        {% if p == 1 or p == total_pages_new or (p >= current_page_new - 2 and p <= current_page_new +
+                            2) %} <a
+                            href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=p, p_enrolled=current_page_enrolled, q_new=q_new, q_enrolled=q_enrolled) }}"
+                            class="page-link {{ 'active' if p == current_page_new }}">
+                            {{ p }}
+                            </a>
+                            {% elif p == current_page_new - 3 or p == current_page_new + 3 %}
+                            <span class="page-link disabled">...</span>
+                            {% endif %}
+                            {% endfor %}
+
+                            <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=current_page_new+1, p_enrolled=current_page_enrolled, q_new=q_new, q_enrolled=q_enrolled) }}"
+                                class="page-link pagination-arrow {{ 'disabled' if current_page_new == total_pages_new }}"
+                                {% if current_page_new==total_pages_new %}onclick="return false;" {% endif %}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                            </a>
                     </div>
                 </div>
             </div>
@@ -1484,8 +1504,15 @@
                 </div>
                 <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
                     <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Search Student</label>
-                    <input type="text" id="enrolledSearch" placeholder="Search name or ID..." oninput="filterEnrolled()"
-                        style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 100%; max-width: 400px;">
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="enrolledSearch" placeholder="Search name or ID..." value="{{ q_enrolled }}"
+                            onkeydown="if(event.key==='Enter') doSearch('enrolled')"
+                            style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 100%; max-width: 400px;">
+                        <button type="button" onclick="doSearch('enrolled')" class="btn-registrar" style="min-width: auto; padding: 0 16px;">
+                            Search
+                        </button>
+                    </div>
+                    <div class="muted-note" style="font-size: 10px; margin-top: 2px;">Searches across all {{ total_enrolled }} records</div>
                 </div>
             </div>
         </div>
@@ -1573,7 +1600,8 @@
                                 {% if not e.has_parent_account %}
                                 {% if is_branch_active_status and can_modify %}
                                 {% if e.existing_parent_user_id %}
-                                {# A parent account with the same guardian email already exists — link instead of create #}
+                                {# A parent account with the same guardian email already exists — link instead of create
+                                #}
                                 <form method="post" action="/registrar/link-parent/{{ e.enrollment_id }}"
                                     style="display:inline;"
                                     onsubmit="return confirm('Link this student to existing parent account \'{{ e.existing_parent_username }}\'?\nNo new account will be created.');">
@@ -1589,9 +1617,9 @@
                                 <form method="post" action="/registrar/create-parent-account/{{ e.enrollment_id }}"
                                     style="display:inline;">
                                     <button type="submit" class="btn-registrar btn-registrar-sec">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
-                                            fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                                            stroke-linejoin="round">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                            stroke-linecap="round" stroke-linejoin="round">
                                             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
                                             <circle cx="9" cy="7" r="4"></circle>
                                             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
@@ -1640,28 +1668,37 @@
             <div class="pagination-wrapper">
                 <div class="pagination-container">
                     <div class="pagination-controls">
-                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=current_page_enrolled-1, p_new=current_page_new) }}" 
-                           class="page-link pagination-arrow {{ 'disabled' if current_page_enrolled == 1 }}"
-                           {% if current_page_enrolled == 1 %}onclick="return false;"{% endif %}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=current_page_enrolled-1, p_new=current_page_new) }}"
+                            class="page-link pagination-arrow {{ 'disabled' if current_page_enrolled == 1 }}" {% if
+                            current_page_enrolled==1 %}onclick="return false;" {% endif %}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <polyline points="15 18 9 12 15 6"></polyline>
+                            </svg>
                         </a>
-                        
-                        {% for p in range(1, total_pages_enrolled + 1) %}
-                            {% if p == 1 or p == total_pages_enrolled or (p >= current_page_enrolled - 2 and p <= current_page_enrolled + 2) %}
-                                <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=p, p_new=current_page_new) }}" 
-                                   class="page-link {{ 'active' if p == current_page_enrolled }}">
-                                    {{ p }}
-                                </a>
-                            {% elif p == current_page_enrolled - 3 or p == current_page_enrolled + 3 %}
-                                <span class="page-link disabled">...</span>
-                            {% endif %}
-                        {% endfor %}
 
-                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=current_page_enrolled+1, p_new=current_page_new) }}" 
-                           class="page-link pagination-arrow {{ 'disabled' if current_page_enrolled == total_pages_enrolled }}"
-                           {% if current_page_enrolled == total_pages_enrolled %}onclick="return false;"{% endif %}>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                        </a>
+                        {% for p in range(1, total_pages_enrolled + 1) %}
+                        {% if p == 1 or p == total_pages_enrolled or (p >= current_page_enrolled - 2 and p <=
+                            current_page_enrolled + 2) %} <a
+                            href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=p, p_new=current_page_new) }}"
+                            class="page-link {{ 'active' if p == current_page_enrolled }}">
+                            {{ p }}
+                            </a>
+                            {% elif p == current_page_enrolled - 3 or p == current_page_enrolled + 3 %}
+                            <span class="page-link disabled">...</span>
+                            {% endif %}
+                            {% endfor %}
+
+                            <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=current_page_enrolled+1, p_new=current_page_new) }}"
+                                class="page-link pagination-arrow {{ 'disabled' if current_page_enrolled == total_pages_enrolled }}"
+                                {% if current_page_enrolled==total_pages_enrolled %}onclick="return false;" {% endif %}>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                            </a>
                     </div>
                 </div>
             </div>
@@ -1709,6 +1746,26 @@
 
 {% block scripts %}
 <script>
+    // ── Search Logic ──
+    function doSearch(type) {
+        const yearId = '{{ selected_year_id }}';
+        const qNew = document.getElementById('newSearch').value.trim();
+        const qEnrolled = document.getElementById('enrolledSearch').value.trim();
+        
+        let url = `/registrar/enrollments?year_id=${yearId}`;
+        if (qNew) url += `&q_new=${encodeURIComponent(qNew)}`;
+        if (qEnrolled) url += `&q_enrolled=${encodeURIComponent(qEnrolled)}`;
+        
+        // When searching, reset the relevant page to 1
+        if (type === 'new') url += '&p_new=1&p_enrolled={{ current_page_enrolled }}';
+        else url += '&p_enrolled=1&p_new={{ current_page_new }}';
+        
+        // Preserve tab
+        if (type === 'enrolled' || window.location.hash === '#enrolled') url += '#enrolled';
+        
+        window.location.href = url;
+    }
+
     // ── Tab switching ──
     function switchTab(tab, btn) {
         document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));

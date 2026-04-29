@@ -173,6 +173,10 @@ def registrar_enrollments():
         if p_enrolled < 1: p_enrolled = 1
         offset_enrolled = (p_enrolled - 1) * limit
 
+        # SEARCH QUERIES
+        q_new = (request.args.get("q_new") or "").strip()
+        q_enrolled = (request.args.get("q_enrolled") or "").strip()
+
         # dropdown data: active + inactive
         cursor.execute("""
             SELECT year_id, label, is_active
@@ -312,17 +316,18 @@ def registrar_enrollments():
             )
 
         # --- NEW enrollments list (VIEW selected year) with Pagination ---
-        cursor.execute("""
-            SELECT COUNT(DISTINCT e.enrollment_id)
-            FROM enrollments e
-            WHERE e.branch_id=%s
-              AND e.year_id=%s
-              AND e.status IN ('pending', 'rejected')
-        """, (branch_id, selected_year_id))
+        new_where = "e.branch_id=%s AND e.year_id=%s AND e.status IN ('pending', 'rejected')"
+        new_params = [branch_id, selected_year_id]
+        if q_new:
+            new_where += " AND (e.student_name ILIKE %s OR CAST(e.branch_enrollment_no AS TEXT) ILIKE %s)"
+            new_params.extend([f"%{q_new}%", f"%{q_new}%"])
+
+        cursor.execute(f"SELECT COUNT(DISTINCT e.enrollment_id) FROM enrollments e WHERE {new_where}", tuple(new_params))
         total_new = cursor.fetchone()["count"]
         total_pages_new = (total_new + limit - 1) // limit
 
-        cursor.execute("""
+        new_query_params = new_params + [limit, offset_new]
+        cursor.execute(f"""
             SELECT e.*,
                    e.branch_enrollment_no AS display_no,
                    COALESCE(
@@ -337,13 +342,11 @@ def registrar_enrollments():
                    ) AS documents
             FROM enrollments e
             LEFT JOIN enrollment_documents d ON d.enrollment_id = e.enrollment_id
-            WHERE e.branch_id=%s
-              AND e.year_id=%s
-              AND e.status IN ('pending', 'rejected')
+            WHERE {new_where}
             GROUP BY e.enrollment_id
             ORDER BY e.branch_enrollment_no ASC NULLS LAST, e.created_at DESC
             LIMIT %s OFFSET %s
-        """, (branch_id, selected_year_id, limit, offset_new))
+        """, tuple(new_query_params))
         new_enrollments_raw = cursor.fetchall()
 
         new_enrollments = []
@@ -354,17 +357,18 @@ def registrar_enrollments():
             new_enrollments.append(e)
 
         # --- ENROLLED students list (VIEW selected year) with Pagination ---
-        cursor.execute("""
-            SELECT COUNT(*)
-            FROM enrollments e
-            WHERE e.branch_id=%s
-              AND e.year_id=%s
-              AND e.status IN ('enrolled', 'open_for_enrollment', 'approved')
-        """, (branch_id, selected_year_id))
+        enrolled_where = "e.branch_id=%s AND e.year_id=%s AND e.status IN ('enrolled', 'open_for_enrollment', 'approved')"
+        enrolled_params = [branch_id, selected_year_id]
+        if q_enrolled:
+            enrolled_where += " AND (e.student_name ILIKE %s OR CAST(e.branch_enrollment_no AS TEXT) ILIKE %s)"
+            enrolled_params.extend([f"%{q_enrolled}%", f"%{q_enrolled}%"])
+
+        cursor.execute(f"SELECT COUNT(*) FROM enrollments e WHERE {enrolled_where}", tuple(enrolled_params))
         total_enrolled = cursor.fetchone()["count"]
         total_pages_enrolled = (total_enrolled + limit - 1) // limit
 
-        cursor.execute("""
+        enrolled_query_params = enrolled_params + [limit, offset_enrolled]
+        cursor.execute(f"""
             SELECT e.*,
                    e.branch_enrollment_no AS display_no,
                    s.section_name,
@@ -393,12 +397,10 @@ def registrar_enrollments():
             LEFT JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
             LEFT JOIN parent_student ps   ON ps.student_id   = e.enrollment_id
             LEFT JOIN users u             ON u.user_id        = ps.parent_id
-            WHERE e.branch_id=%s
-              AND e.year_id=%s
-              AND e.status IN ('enrolled', 'open_for_enrollment', 'approved')
+            WHERE {enrolled_where}
             ORDER BY e.grade_level ASC, e.student_name ASC
             LIMIT %s OFFSET %s
-        """, (branch_id, selected_year_id, limit, offset_enrolled))
+        """, tuple(enrolled_query_params))
         enrolled_students = cursor.fetchall()
 
         cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s AND name NOT IN ('Grade 11', 'Grade 12') ORDER BY display_order", (branch_id,))
@@ -447,6 +449,10 @@ def registrar_enrollments():
             total_pages_enrolled=total_pages_enrolled,
             current_page_enrolled=p_enrolled,
             total_enrolled=total_enrolled,
+
+            # SEARCH QUERIES
+            q_new=q_new,
+            q_enrolled=q_enrolled,
         )
     except Exception as e:
         db.rollback()
