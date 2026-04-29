@@ -81,17 +81,16 @@ def upload_file_to_subfolder(file_storage, subfolder: str) -> str:
 # ── Internal: Cloudinary ────────────────────────────────────────────────────
 def _upload_to_cloudinary(file_storage, folder: str) -> str:
     ext = file_storage.filename.lower().rsplit('.', 1)[-1] if (file_storage.filename and '.' in file_storage.filename) else ''
-    # PDFs and Office docs should be 'raw' to preserve their exact byte content
+    # Office docs and archives should be 'raw' to preserve exact bytes, but PDFs work best as 'auto' (image/document) for native browser viewing.
     is_raw_type = ext in ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar']
     
     from werkzeug.utils import secure_filename
-    # Strip extension from original for base_name
     original_base = file_storage.filename.rsplit('.', 1)[0] if (file_storage.filename and '.' in file_storage.filename) else "document"
     base_name = secure_filename(original_base)
     if not base_name or base_name == "file":
         base_name = "document"
         
-    # Build a clean public_id: name_unique.ext
+    # Unique public_id with extension
     public_id = f"{base_name}_{uuid.uuid4().hex[:6]}"
     if ext:
         public_id += f".{ext}"
@@ -101,7 +100,7 @@ def _upload_to_cloudinary(file_storage, folder: str) -> str:
         folder=folder,
         public_id=public_id,
         resource_type="raw" if is_raw_type else "auto",   
-        use_filename=False, # We use our own clean public_id
+        use_filename=False, 
         unique_filename=False, 
     )
     url = result.get("secure_url")
