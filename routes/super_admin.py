@@ -540,10 +540,12 @@ def superadmin_school_years():
 
     # Display unique school years and their global active status
     cursor.execute("""
-        SELECT label, bool_or(is_active) as is_active 
-        FROM school_years 
-        GROUP BY label 
-        ORDER BY label DESC
+        SELECT sy.label, bool_or(sy.is_active) as is_active 
+        FROM school_years sy
+        JOIN branches b ON sy.branch_id = b.branch_id
+        WHERE b.is_active = TRUE
+        GROUP BY sy.label 
+        ORDER BY sy.label DESC
     """)
     unique_years = cursor.fetchall()
     
@@ -567,30 +569,48 @@ def superadmin_set_active_year():
 
     try:
         cursor.execute("BEGIN;")
-        # Find the new active year label
+        
+        # 1. Deactivate ALL school years globally (for all branches, active or not)
+        # This ensures we start with a clean slate and avoid "dual active" years
+        cursor.execute("UPDATE school_years SET is_active = FALSE")
+
+        # 2. Identify all active branches that should receive the new active year
         cursor.execute("SELECT branch_id FROM branches WHERE is_active = TRUE")
         branches = cursor.fetchall()
 
         for b in branches:
             branch_id = b[0]
             
-            # Get old active year for this branch
-            cursor.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
-            old = cursor.fetchone()
-            old_year_id = old[0] if old else None
+            # Check if this branch already has this label
+            cursor.execute("SELECT year_id FROM school_years WHERE label = %s AND branch_id = %s", (label, branch_id))
+            year_record = cursor.fetchone()
+            
+            if year_record:
+                # If it exists, just activate it
+                new_year_id = year_record[0]
+                cursor.execute("UPDATE school_years SET is_active = TRUE WHERE year_id = %s", (new_year_id,))
+            else:
+                # If it doesn't exist for this branch, create and activate it
+                cursor.execute(
+                    "INSERT INTO school_years (label, is_active, branch_id) VALUES (%s, TRUE, %s) RETURNING year_id",
+                    (label, branch_id)
+                )
+                new_year_id = cursor.fetchone()[0]
 
-            # Deactivate all for this branch
-            cursor.execute("UPDATE school_years SET is_active = FALSE WHERE branch_id = %s", (branch_id,))
-
-            # Activate the new one and get its year_id
-            cursor.execute("UPDATE school_years SET is_active = TRUE WHERE label = %s AND branch_id = %s RETURNING year_id", (label, branch_id))
-            new = cursor.fetchone()
-            new_year_id = new[0] if new else None
-
-            if new_year_id and old_year_id and new_year_id != old_year_id:
-                # Check if sections already exist for the new year
-                cursor.execute("SELECT COUNT(*) FROM sections WHERE year_id = %s AND branch_id = %s", (new_year_id, branch_id))
-                if cursor.fetchone()[0] == 0:
+            # 3. Handle Section Copying (Only if this is a fresh activation with no sections)
+            cursor.execute("SELECT COUNT(*) FROM sections WHERE year_id = %s AND branch_id = %s", (new_year_id, branch_id))
+            if cursor.fetchone()[0] == 0:
+                # Find the most recent active year for this branch to copy from
+                # (Even if we just deactivated it, we can find it by looking for the one that was updated last or just another record)
+                cursor.execute("""
+                    SELECT year_id FROM school_years 
+                    WHERE branch_id = %s AND year_id != %s 
+                    ORDER BY year_id DESC LIMIT 1
+                """, (branch_id, new_year_id))
+                old_year_row = cursor.fetchone()
+                
+                if old_year_row:
+                    old_year_id = old_year_row[0]
                     # Copy sections
                     cursor.execute("""
                         INSERT INTO sections (branch_id, year_id, section_name, grade_level_id, capacity)
@@ -599,7 +619,7 @@ def superadmin_set_active_year():
                         WHERE year_id = %s AND branch_id = %s
                     """, (new_year_id, old_year_id, branch_id))
 
-                    # Copy section teachers (without the teacher assignment)
+                    # Copy section teachers
                     cursor.execute("""
                         INSERT INTO section_teachers (section_id, subject_id, teacher_id, year_id)
                         SELECT new_s.section_id, st.subject_id, NULL, %s
@@ -615,7 +635,7 @@ def superadmin_set_active_year():
                     """, (new_year_id, new_year_id, old_year_id, branch_id))
 
         db.commit()
-        flash(f"'{label}' is now active globally and sections were copied where needed.", "success")
+        flash(f"GLOBAL RESET COMPLETE: '{label}' is now the only active year for all active nodes.", "success")
     except Exception as e:
         db.rollback()
         flash(f"Error setting active school year: {e}", "error")
