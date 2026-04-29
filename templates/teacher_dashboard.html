@@ -1077,7 +1077,7 @@
             {% for a in admin_announcements %}
             <div class="ann-media-card">
                 <!-- Image Box with Eye -->
-                <div class="img-preview-box" onclick="openLightbox('{{ a.image_url if a.image_url else '' }}')">
+                <div class="img-preview-box" onclick="openPreview('{{ a.image_url if a.image_url else '' }}', 'Announcement Image')">
                     {% if a.image_url %}
                     <img src="{{ a.image_url }}" alt="Announcement">
                     {% else %}
@@ -1208,29 +1208,10 @@
 
 </div>
 
-<!-- ── Lightbox Overlay ── -->
-<div id="lightboxOverlay" class="lightbox-overlay" onclick="closeLightbox()">
-    <div class="lightbox-content" onclick="event.stopPropagation()">
-        <button class="lightbox-close" onclick="closeLightbox()">&times;</button>
-        <img src="" id="lightboxImg" class="lightbox-img" alt="Enlarged image">
-    </div>
-</div>
+
 
 <script>
-    function openLightbox(url) {
-        if (!url) return;
-        const overlay = document.getElementById('lightboxOverlay');
-        const img = document.getElementById('lightboxImg');
-        img.src = url;
-        overlay.style.display = 'flex';
-        document.body.style.overflow = 'hidden';
-    }
 
-    function closeLightbox() {
-        const overlay = document.getElementById('lightboxOverlay');
-        overlay.style.display = 'none';
-        document.body.style.overflow = '';
-    }
 
     function openEditAnn(btn) {
         var id = btn.dataset.id;

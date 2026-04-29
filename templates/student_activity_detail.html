@@ -274,7 +274,7 @@
         to { transform: rotate(360deg); }
     }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+
 <script>
     function switchTab(tabId) {
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -339,7 +339,7 @@
                         {% if activity.attachment_path %}
                         {% set attachment_ext = activity.attachment_path.split('.')[-1].lower() %}
                         <a href="javascript:void(0)" 
-                           onclick="viewFilePreview('{{ activity.attachment_path }}', '{{ attachment_ext }}')"
+                           onclick="openPreview('{{ activity.attachment_path }}', '{{ activity.attachment_path.split('/')[-1] }}')"
                            class="btn btn-secondary btn-sm" 
                            style="margin-top:8px; display:inline-block;">
                             {% if ext in ['jpg', 'jpeg', 'png', 'gif'] %}
@@ -375,64 +375,7 @@
     </div>
 
 
-    <script>
-    function viewFilePreview(path, forcedExt = '') {
-        const ext = (forcedExt || path.split('.').pop().toLowerCase()).trim();
-        let finalPath = path;
-        const isDoc = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
-        if (isDoc && finalPath.includes('/image/upload/')) {
-            finalPath = finalPath.replace('/image/upload/', '/raw/upload/');
-        }
 
-        if (ext === 'docx') {
-            const previewWin = window.open('', '_blank');
-            if (!previewWin) {
-                alert("Please allow popups to view this document.");
-                return;
-            }
-            previewWin.document.write(`<html><head><title>Loading...</title><style>body { display: flex; align-items: center; justify-content: center; height: 100vh; font-family: -apple-system, sans-serif; background: #f1f5f9; color: #64748b; } .loader { border: 3px solid #e2e8f0; border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-bottom: 12px; } @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } } .content { background: #fff; padding: 60px; max-width: 800px; margin: 40px auto; min-height: 100vh; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-radius: 8px; color: #334155; line-height: 1.6; display: none; }</style></head><body><div id="loading" style="text-align:center;"><div class="loader" style="margin: auto;"></div><div>Rendering document...</div></div><div id="output" class="content"></div></body></html>`);
-
-            fetch(finalPath)
-                .then(res => res.arrayBuffer())
-                .then(ab => mammoth.convertToHtml({arrayBuffer: ab}))
-                .then(res => {
-                    previewWin.document.getElementById('loading').style.display = 'none';
-                    const output = previewWin.document.getElementById('output');
-                    output.innerHTML = res.value;
-                    output.style.display = 'block';
-                    previewWin.document.title = path.split('/').pop();
-                })
-                .catch(err => {
-                    previewWin.location.href = finalPath;
-                });
-        } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'mp4', 'webm', 'ogg'].includes(ext)) {
-            window.open(finalPath, '_blank');
-        } else {
-            // Fallback for Office docs or download
-            if (['doc', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
-                const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(finalPath)}&embedded=false`;
-                window.open(googleViewerUrl, '_blank');
-            } else {
-                const link = document.createElement('a');
-                link.href = finalPath;
-                link.download = '';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-        }
-    }
-
-    function renderHtmlInNewTab(html, title) {
-        const newWin = window.open('', '_blank');
-        if (!newWin) {
-            alert("Please allow popups to view the document.");
-            return;
-        }
-        newWin.document.write(`<html><head><title>${title}</title><style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 50px; background: #f1f5f9; color: #334155; line-height: 1.6; } .content { background: #fff; padding: 60px; max-width: 800px; margin: auto; min-height: 100vh; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-radius: 8px; } h1, h2, h3 { color: #1e293b; }</style></head><body><div class="content">${html}</div></body></html>`);
-        newWin.document.close();
-    }
-    </script>
 
     <!-- My Work Tab -->
     <div id="content-mywork" class="tab-content">
@@ -485,7 +428,7 @@
                 {% if submission.attachments %}
                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; width: 100%;">
                     {% for att in submission.attachments %}
-                    <div class="submission-file-card" onclick="viewFilePreview('{{ att.path }}', '{{ att.type }}')">
+                    <div class="submission-file-card" onclick="openPreview('{{ att.path }}', '{{ att.name }}')">
                         <div style="font-size: 1.5rem; background: var(--soft); width: 42px; height: 42px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: var(--primary);">
                             {% if att.type == 'pdf' %}📕
                             {% elif att.type in ['jpg', 'jpeg', 'png', 'gif', 'webp'] %}🖼️
@@ -717,7 +660,6 @@
                                             <div style="margin-top: 4px; display: flex; gap: 8px;">
                                                 ${isPreviewable ? `
                                                     <button type="button" class="preview-btn-small" onclick="openPreUploadPreview(${index})">👁️ Preview</button>
-                                                    <button type="button" class="preview-btn-small" onclick="openInNewTab(${index})" style="background:#f1f5f9; border-color:#cbd5e1; color:#475569;">↗️ Tab</button>
                                                 ` : ''}
                                             </div>
                                         </div>
@@ -788,14 +730,12 @@
                                 };
                                 reader.readAsArrayBuffer(file);
                             } else {
-                                const url = URL.createObjectURL(file);
-                                window.open(url, '_blank');
+                                    const url = URL.createObjectURL(file);
+                                    openPreview(url, file.name);
                             }
                         }
 
-                        function openInNewTab(index) {
-                            openPreUploadPreview(index);
-                        }
+
 
                         document.getElementById('submissionForm').addEventListener('submit', function(e) {
                             if (!selectedFiles.length) {

@@ -1,9 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Activity Submissions{% endblock %}
 
-{% block scripts %}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-{% endblock %}
+
 
 {% block styles %}
 <style>
@@ -483,7 +481,7 @@
                         <td>
                             {% if sub.attachments and sub.attachments|length > 0 %}
                             <a href="javascript:void(0)"
-                                onclick="viewFilePreview('{{ sub.attachments[0].path }}', '{{ sub.attachments[0].type }}', '{{ sub.submission_id }}')"
+                                onclick="openPreview('{{ sub.attachments[0].path }}', '{{ sub.attachments[0].name }}')"
                                 class="student-name">
                                 {{ sub.student_name }}
                             </a>
@@ -517,7 +515,7 @@
                             <div style="display: flex; flex-wrap: wrap; gap: 6px; max-width: 200px;">
                                 {% for att in sub.attachments %}
                                 <button type="button"
-                                    onclick="viewFilePreview('{{ att.path }}', '{{ att.type }}', '{{ sub.submission_id }}')"
+                                    onclick="openPreview('{{ att.path }}', '{{ att.name }}')"
                                     class="action-btn btn-resched" title="{{ att.name }}"
                                     style="padding: 4px 8px; font-size: 0.7rem; background: #f1f5f9; border: 1px solid #e2e8f0;">
                                     {{ '📕' if att.type == 'pdf' else '🖼️' if att.type in ['jpg', 'jpeg', 'png', 'gif',
@@ -665,56 +663,7 @@
 </div>
 
 <script>
-    function viewFilePreview(path, forcedExt = '', submissionId = null) {
-        if (submissionId) {
-            fetch(`/teacher/activities/submissions/${submissionId}/mark-viewed`, { method: 'POST' })
-                .catch(err => console.error("Viewed tracking error:", err));
-        }
 
-        const ext = (forcedExt || path.split('.').pop().toLowerCase()).trim();
-        let finalPath = path;
-        const isDoc = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
-        if (isDoc && finalPath.includes('/image/upload/')) {
-            finalPath = finalPath.replace('/image/upload/', '/raw/upload/');
-        }
-
-        if (ext === 'docx') {
-            const previewWin = window.open('', '_blank');
-            if (!previewWin) {
-                alert("Please allow popups to view this document.");
-                return;
-            }
-            previewWin.document.write(`<html><head><title>Loading...</title><style>body { display: flex; align-items: center; justify-content: center; height: 100vh; font-family: -apple-system, sans-serif; background: #f1f5f9; color: #64748b; } .loader { border: 3px solid #e2e8f0; border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-bottom: 12px; } @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } } .content { background: #fff; padding: 60px; max-width: 800px; margin: 40px auto; min-height: 100vh; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-radius: 8px; color: #334155; line-height: 1.6; display: none; }</style></head><body><div id="loading" style="text-align:center;"><div class="loader" style="margin: auto;"></div><div>Rendering document...</div></div><div id="output" class="content"></div></body></html>`);
-
-            fetch(finalPath)
-                .then(res => res.arrayBuffer())
-                .then(ab => mammoth.convertToHtml({ arrayBuffer: ab }))
-                .then(res => {
-                    previewWin.document.getElementById('loading').style.display = 'none';
-                    const output = previewWin.document.getElementById('output');
-                    output.innerHTML = res.value;
-                    output.style.display = 'block';
-                    previewWin.document.title = path.split('/').pop();
-                })
-                .catch(err => {
-                    previewWin.location.href = finalPath;
-                });
-        } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'mp4', 'webm', 'ogg'].includes(ext)) {
-            window.open(finalPath, '_blank');
-        } else {
-            if (['doc', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
-                const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(finalPath)}&embedded=false`;
-                window.open(googleViewerUrl, '_blank');
-            } else {
-                const link = document.createElement('a');
-                link.href = finalPath;
-                link.download = '';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-        }
-    }
 
     function openGradeModalFromBtn(btn) {
         const id = btn.getAttribute("data-sub-id");

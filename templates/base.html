@@ -2512,6 +2512,260 @@
       observer.observe(document.body, { childList: true, subtree: true });
     });
   </script>
+  <!-- ── UNIVERSAL PREVIEW LIGHTBOX ── -->
+  <div id="universalPreviewModal" class="univ-preview-modal" onclick="closePreview()">
+    <div class="univ-preview-content" onclick="event.stopPropagation()">
+      <div class="univ-preview-header">
+        <div class="univ-preview-title" id="previewTitle">File Preview</div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <a href="#" id="previewDownloadBtn" class="univ-preview-btn" download>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Download
+          </a>
+          <button class="univ-preview-close" onclick="closePreview()">&times;</button>
+        </div>
+      </div>
+      <div class="univ-preview-body" id="previewBody">
+        <!-- Dynamic content here -->
+        <div class="univ-preview-loader">
+          <div class="univ-spinner"></div>
+          <p>Preparing preview...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .univ-preview-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.9);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      backdrop-filter: blur(8px);
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .univ-preview-content {
+      background: #fff;
+      width: 100%;
+      max-width: 1000px;
+      height: 90vh;
+      border-radius: 24px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      animation: zoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .univ-preview-header {
+      padding: 16px 24px;
+      background: #fff;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .univ-preview-title {
+      font-weight: 800;
+      color: #1e293b;
+      font-size: 1rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 60%;
+    }
+
+    .univ-preview-close {
+      background: #f1f5f9;
+      border: none;
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.5rem;
+      color: #64748b;
+      transition: all 0.2s;
+    }
+
+    .univ-preview-close:hover {
+      background: #fee2e2;
+      color: #ef4444;
+    }
+
+    .univ-preview-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+    }
+
+    .univ-preview-btn:hover {
+      background: #dbeafe;
+      transform: translateY(-1px);
+    }
+
+    .univ-preview-body {
+      flex: 1;
+      overflow: auto;
+      background: #f8fafc;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    .univ-preview-loader {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      color: #64748b;
+      font-weight: 600;
+    }
+
+    .univ-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #e2e8f0;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: univ-spin 1s linear infinite;
+    }
+
+    @keyframes univ-spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes zoomIn {
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .preview-iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: #fff;
+    }
+
+    .preview-img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    }
+
+    .preview-docx-container {
+      width: 100%;
+      max-width: 800px;
+      background: #fff;
+      padding: 60px;
+      margin: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      border-radius: 8px;
+      min-height: calc(100% - 40px);
+      color: #334155;
+      line-height: 1.6;
+    }
+  </style>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script>
+    function openPreview(url, filename = 'File Preview') {
+      const modal = document.getElementById('universalPreviewModal');
+      const body = document.getElementById('previewBody');
+      const title = document.getElementById('previewTitle');
+      const dlBtn = document.getElementById('previewDownloadBtn');
+
+      title.textContent = filename;
+      dlBtn.href = url;
+      dlBtn.download = filename;
+      
+      // Show loader
+      body.innerHTML = `
+        <div class="univ-preview-loader">
+          <div class="univ-spinner"></div>
+          <p>Loading preview...</p>
+        </div>
+      `;
+      modal.style.display = 'flex';
+      document.body.style.overflow = 'hidden';
+
+      const ext = filename.split('.').pop().toLowerCase();
+      
+      // Map extensions to handlers
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+        body.innerHTML = `<img src="${url}" class="preview-img" alt="${filename}">`;
+      } 
+      else if (ext === 'pdf') {
+        body.innerHTML = `<iframe src="${url}" class="preview-iframe"></iframe>`;
+      }
+      else if (ext === 'docx') {
+        fetch(url)
+          .then(res => res.arrayBuffer())
+          .then(ab => mammoth.convertToHtml({arrayBuffer: ab}))
+          .then(res => {
+            body.innerHTML = `<div class="preview-docx-container">${res.value}</div>`;
+          })
+          .catch(err => {
+            body.innerHTML = `<div style="padding:40px; text-align:center;">
+              <p style="color:#ef4444; font-weight:700;">Unable to render DOCX preview.</p>
+              <a href="${url}" class="univ-preview-btn" style="margin-top:20px; display:inline-flex;">Download Instead</a>
+            </div>`;
+          });
+      }
+      else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+        body.innerHTML = `<video src="${url}" controls class="preview-img" style="max-height:80vh;"></video>`;
+      }
+      else {
+        // Fallback for Office docs (using Google Viewer) or others
+        if (['doc', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
+            const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+            body.innerHTML = `<iframe src="${googleViewerUrl}" class="preview-iframe"></iframe>`;
+        } else {
+            body.innerHTML = `<div style="padding:40px; text-align:center;">
+              <p style="color:#64748b; font-weight:700; margin-bottom:20px;">Preview not available for this file type (.${ext})</p>
+              <a href="${url}" class="univ-preview-btn" style="display:inline-flex;">Download File</a>
+            </div>`;
+        }
+      }
+    }
+
+    function closePreview() {
+      const modal = document.getElementById('universalPreviewModal');
+      const body = document.getElementById('previewBody');
+      modal.style.display = 'none';
+      body.innerHTML = ''; // Clear content
+      document.body.style.overflow = '';
+    }
+
+    // Escape key to close
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closePreview();
+    });
+  </script>
 </body>
 
 </html>
