@@ -82,7 +82,7 @@ def upload_file_to_subfolder(file_storage, subfolder: str) -> str:
 def _upload_to_cloudinary(file_storage, folder: str) -> str:
     ext = file_storage.filename.lower().rsplit('.', 1)[-1] if (file_storage.filename and '.' in file_storage.filename) else ''
     # PDFs and Office docs should be 'raw' to preserve their exact byte content
-    is_raw_type = ext in ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar']
+    is_raw_type = ext in ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar']
     
     from werkzeug.utils import secure_filename
     # Strip extension from original for base_name
