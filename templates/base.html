@@ -2699,17 +2699,10 @@
       const title = document.getElementById('previewTitle');
       const dlBtn = document.getElementById('previewDownloadBtn');
 
-      // Ensure the URL is absolute for Google Viewer
-      let absoluteUrl = url;
-      if (url.startsWith('/')) {
-          absoluteUrl = window.location.origin + url;
-      }
-
       title.textContent = filename;
-      dlBtn.href = absoluteUrl;
+      dlBtn.href = url;
       dlBtn.download = filename;
       
-      // Show loader
       body.innerHTML = `
         <div class="univ-preview-loader">
           <div class="univ-spinner"></div>
@@ -2719,77 +2712,63 @@
       modal.style.display = 'flex';
       document.body.style.overflow = 'hidden';
 
-      // Detect extension from filename or URL
+      // Detect extension
       let ext = filename.split('.').pop().toLowerCase();
-      // If filename doesn't have extension, try the URL
       if (ext === filename.toLowerCase() || ext.length > 5) {
           const urlParts = url.split(/[#?]/)[0].split('.');
           ext = urlParts.length > 1 ? urlParts.pop().toLowerCase() : '';
       }
-      
-      // Map extensions to handlers
-      if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
-        body.innerHTML = `<img src="${url}" class="preview-img" alt="${filename}">`;
-      } 
-      else if (ext === 'pdf') {
-        let pdfUrl = absoluteUrl;
-        
-        // Solution 1 & 2: Fix Cloudinary URL format for better viewing
-        if (pdfUrl.includes('cloudinary.com')) {
-            pdfUrl = pdfUrl.replace('/raw/upload/', '/upload/');
-            // Ensure no download is forced
-            if (!pdfUrl.includes('fl_attachment')) {
-                pdfUrl = pdfUrl.replace('/upload/', '/upload/fl_attachment:false/');
-            }
-        }
 
-        // Try native viewer first
-        body.innerHTML = `<iframe src="${pdfUrl}#toolbar=0" class="preview-iframe"></iframe>`;
+      // --- 1. LOCAL LOGIC (Don't touch) ---
+      if (url.includes('/uploads/') || !url.includes('http')) {
+          if (ext === 'pdf') {
+              body.innerHTML = `<iframe src="${url}#toolbar=0" class="preview-iframe"></iframe>`;
+          } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+              body.innerHTML = `<img src="${url}" class="preview-img" alt="${filename}">`;
+          } else if (ext === 'docx') {
+              fetch(url)
+                .then(res => res.arrayBuffer())
+                .then(ab => mammoth.convertToHtml({arrayBuffer: ab}))
+                .then(res => { body.innerHTML = `<div class="preview-docx-container">${res.value}</div>`; })
+                .catch(err => { body.innerHTML = `<div style="padding:40px; text-align:center;"><a href="${url}" class="univ-preview-btn">Download Instead</a></div>`; });
+          } else if (['mp4', 'webm', 'ogg'].includes(ext)) {
+              body.innerHTML = `<video src="${url}" controls class="preview-img" style="max-height:80vh;"></video>`;
+          } else {
+              body.innerHTML = `<div style="padding:40px; text-align:center;"><a href="${url}" class="univ-preview-btn">Download File</a></div>`;
+          }
+          return;
+      }
 
-        // Solution 3: Google Docs Viewer as fallback after 2 seconds if still loading/problematic
-        // We only do this for remote URLs (Google can't see local files)
-        if (absoluteUrl.includes('http')) {
-            const fallbackTimeout = setTimeout(() => {
-                const iframe = body.querySelector('iframe');
-                // Check if the iframe is still on the original URL and might be blank
-                if (iframe && !iframe.src.includes('docs.google.com')) {
-                    const googleViewer = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
-                    body.innerHTML = `<iframe src="${googleViewer}" class="preview-iframe"></iframe>`;
-                }
-            }, 2500);
-            
-            // Store timeout ID to clear it if modal is closed early
-            modal.dataset.timeoutId = fallbackTimeout;
-        }
-      }
-      else if (ext === 'docx') {
-        fetch(absoluteUrl)
-          .then(res => res.arrayBuffer())
-          .then(ab => mammoth.convertToHtml({arrayBuffer: ab}))
-          .then(res => {
-            body.innerHTML = `<div class="preview-docx-container">${res.value}</div>`;
-          })
-          .catch(err => {
-            body.innerHTML = `<div style="padding:40px; text-align:center;">
-              <p style="color:#ef4444; font-weight:700;">Unable to render DOCX preview.</p>
-              <a href="${absoluteUrl}" class="univ-preview-btn" style="margin-top:20px; display:inline-flex;">Download Instead</a>
-            </div>`;
-          });
-      }
-      else if (['mp4', 'webm', 'ogg'].includes(ext)) {
-        body.innerHTML = `<video src="${absoluteUrl}" controls class="preview-img" style="max-height:80vh;"></video>`;
-      }
-      else {
-        // Fallback for Office docs (using Google Viewer) or others
-        if (['doc', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
-            const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(absoluteUrl)}&embedded=true`;
-            body.innerHTML = `<iframe src="${googleViewerUrl}" class="preview-iframe"></iframe>`;
-        } else {
-            body.innerHTML = `<div style="padding:40px; text-align:center;">
-              <p style="color:#64748b; font-weight:700; margin-bottom:20px;">Preview not available for this file type (.${ext})</p>
-              <a href="${absoluteUrl}" class="univ-preview-btn" style="display:inline-flex;">Download File</a>
-            </div>`;
-        }
+      // --- 2. DEPLOYED LOGIC (Cloudinary/Google Fallback) ---
+      if (ext === 'pdf') {
+          let pdfUrl = url;
+          if (pdfUrl.includes('cloudinary.com')) {
+              pdfUrl = pdfUrl.replace('/raw/upload/', '/upload/');
+              if (!pdfUrl.includes('fl_attachment')) {
+                  pdfUrl = pdfUrl.replace('/upload/', '/upload/fl_attachment:false/');
+              }
+          }
+          body.innerHTML = `<iframe src="${pdfUrl}#toolbar=0" class="preview-iframe"></iframe>`;
+          
+          const fallbackTimeout = setTimeout(() => {
+              const iframe = body.querySelector('iframe');
+              if (iframe && !iframe.src.includes('docs.google.com')) {
+                  const googleViewer = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
+                  body.innerHTML = `<iframe src="${googleViewer}" class="preview-iframe"></iframe>`;
+              }
+          }, 2500);
+          modal.dataset.timeoutId = fallbackTimeout;
+      } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+          body.innerHTML = `<img src="${url}" class="preview-img" alt="${filename}">`;
+      } else if (ext === 'docx') {
+          fetch(url)
+            .then(res => res.arrayBuffer())
+            .then(ab => mammoth.convertToHtml({arrayBuffer: ab}))
+            .then(res => { body.innerHTML = `<div class="preview-docx-container">${res.value}</div>`; })
+            .catch(err => { body.innerHTML = `<div style="padding:40px; text-align:center;"><a href="${url}" class="univ-preview-btn">Download Instead</a></div>`; });
+      } else {
+          const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+          body.innerHTML = `<iframe src="${googleViewerUrl}" class="preview-iframe"></iframe>`;
       }
     }
 
