@@ -2732,13 +2732,9 @@
         body.innerHTML = `<img src="${url}" class="preview-img" alt="${filename}">`;
       } 
       else if (ext === 'pdf') {
-        let pdfUrl = absoluteUrl;
-        // If it's a Cloudinary link, ensure it doesn't force download
-        if (pdfUrl.includes('/upload/')) {
-            pdfUrl = pdfUrl.replace('/upload/', '/upload/fl_attachment:false/');
-        }
-        // Direct iframe is now allowed due to SAMEORIGIN fix in app.py
-        body.innerHTML = `<iframe src="${pdfUrl}" class="preview-iframe"></iframe>`;
+        // Use Google Docs Viewer with absolute URL (works best for Cloudinary raw assets and local files)
+        const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(absoluteUrl)}&embedded=true`;
+        body.innerHTML = `<iframe src="${googleViewerUrl}" class="preview-iframe"></iframe>`;
       }
       else if (ext === 'docx') {
         fetch(absoluteUrl)
