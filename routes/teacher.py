@@ -24,13 +24,34 @@ except ImportError:
 if HAS_OCR and os.name == 'nt':
     tess_paths = [
         r'C:\Program Files\Tesseract-OCR\tesseract.exe',
+        r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
         r'C:\Users\Admin\AppData\Local\Tesseract-OCR\tesseract.exe',
-        os.path.join(os.environ.get('LOCALAPPDATA', ''), r'Tesseract-OCR\tesseract.exe')
+        os.path.join(os.environ.get('LOCALAPPDATA', ''), r'Tesseract-OCR\tesseract.exe'),
+        os.path.join(os.environ.get('USERPROFILE', ''), r'AppData\Local\Tesseract-OCR\tesseract.exe'),
     ]
+    # Also check common paths for other users if Admin/Current fails
+    current_user = os.environ.get('USERNAME')
+    if current_user:
+        tess_paths.append(rf'C:\Users\{current_user}\AppData\Local\Tesseract-OCR\tesseract.exe')
+
+    found = False
     for p in tess_paths:
         if os.path.exists(p):
             pytesseract.pytesseract.tesseract_cmd = p
+            found = True
             break
+    
+    if not found:
+        # Final fallback: try to find it via 'where' command if it's in PATH but not configured
+        try:
+            import subprocess
+            result = subprocess.run(['where', 'tesseract'], capture_output=True, text=True)
+            if result.returncode == 0:
+                p = result.stdout.splitlines()[0].strip()
+                if os.path.exists(p):
+                    pytesseract.pytesseract.tesseract_cmd = p
+        except Exception:
+            pass
 
 teacher_bp = Blueprint("teacher", __name__)
 
@@ -234,8 +255,10 @@ def parse_image(file):
             
         return parse_text_to_questions(text)
     except Exception as e:
-        if "tesseract is not installed" in str(e).lower() or "no such file" in str(e).lower():
-            raise RuntimeError("Tesseract OCR engine not found on the server. Please install it to use image import.")
+        err_msg = str(e).lower()
+        if "tesseract is not installed" in err_msg or "no such file" in err_msg:
+            current_cmd = getattr(pytesseract.pytesseract, 'tesseract_cmd', 'Not Set')
+            raise RuntimeError(f"Tesseract OCR engine not found. (Attempted path: {current_cmd}). Please install Tesseract-OCR and ensure it is in the expected path.")
         raise e
 
 
