@@ -282,7 +282,7 @@ def trigger_enrollment_email(student_email, student_name, display_no, branch_nam
             <p style="font-size: 16px;">Your application has been successfully received by <strong>{branch_name}</strong> and is now pending review.</p>
             
             <div style="background-color: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 25px; margin: 30px 0; text-align: center;">
-                <p style="margin: 0 0 10px 0; font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Your Branch Enrollment ID</p>
+                <p style="margin: 0 0 10px 0; font-size: 14px; color: #64748b; text-transform: uppercase; letter-spacing: 1px;">Your Enrollment ID</p>
                 <p style="margin: 0; font-size: 42px; font-weight: 800; color: #1a2a4e;">{display_no}</p>
             </div>
 
@@ -483,9 +483,8 @@ def enroll(branch_id):
 
             # ── Trigger Email Notification ──
             if email:
-                # Format the display ID: BRANCH-NO (e.g., MAIN-0005)
-                display_id = f"{branch['branch_name'][:4].upper()}-{next_no:04d}"
-                trigger_enrollment_email(email, student_name, display_id, branch["branch_name"])
+                # Send the simple numeric branch enrollment number (e.g. 1) as requested
+                trigger_enrollment_email(email, student_name, next_no, branch["branch_name"])
 
             flash("Enrollment submitted successfully! Please wait for registrar approval.", "success")
             return redirect(url_for("student.enrollment_success", branch_id=branch_id, enrollment_id=enrollment_id))
@@ -945,12 +944,15 @@ def track_enrollment():
         branches = cursor.fetchall()
 
         if request.method == "POST":
-            enrollment_id = request.form.get("enrollment_id", "").strip()
+            raw_enrollment_id = request.form.get("enrollment_id", "").strip()
             branch_id = request.form.get("branch_id")
 
-            if enrollment_id.isdigit() and branch_id:
-                enrollment_no_int = int(enrollment_id)
-                branch_id_int = int(branch_id)
+            if raw_enrollment_id and branch_id:
+                # Clean input in case they entered 'ENR-1045'
+                clean_id = raw_enrollment_id.upper().replace("ENR-", "").replace("LDMAJ_", "").strip()
+                if clean_id.isdigit():
+                    enrollment_no_int = int(clean_id)
+                    branch_id_int = int(branch_id)
 
                 cursor.execute("""
                     SELECT e.*, b.branch_name
