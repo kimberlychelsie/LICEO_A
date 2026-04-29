@@ -400,11 +400,19 @@
                             <td><span style="font-weight:600;">{{ enrollment.grade_level }}</span></td>
                             <td>
                                 {% if enrollment.documents and enrollment.documents | length > 0 %}
-                                    <button class="btn btn-outline" style="padding:6px 12px; font-size:0.7rem;"
-                                            onclick="openDocsModal('{{ enrollment.student_name|replace("'", "\\'") }}', {{ enrollment.documents | tojson | safe }})">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="m6 14 3-3 3 3"></path><path d="M9 17V11"></path><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2z"></path></svg>
-                                        View Attachments ({{ enrollment.documents | length }})
-                                    </button>
+                                    {% if enrollment.documents | length == 1 %}
+                                        <button class="btn btn-outline" style="padding:6px 12px; font-size:0.7rem; border-color: var(--reg-accent); color: var(--reg-accent);"
+                                                onclick="openPreview('{{ enrollment.documents[0].file_path }}', '{{ enrollment.documents[0].file_name|replace("'", "\\'") }}')">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                            Quick Preview
+                                        </button>
+                                    {% else %}
+                                        <button class="btn btn-outline" style="padding:6px 12px; font-size:0.7rem;"
+                                                onclick="openDocsModal('{{ enrollment.student_name|replace("'", "\\'") }}', {{ enrollment.documents | tojson | safe }})">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="m6 14 3-3 3 3"></path><path d="M9 17V11"></path><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2z"></path></svg>
+                                            View Files ({{ enrollment.documents | length }})
+                                        </button>
+                                    {% endif %}
                                 {% else %}
                                     <span style="font-size:0.75rem; color:var(--reg-muted);">No documents</span>
                                 {% endif %}
@@ -611,15 +619,14 @@
             if(ext === 'pdf') icon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M9 15h3a2 2 0 0 1 0 4h-3V15z"></path></svg>';
             else if(['jpg','jpeg','png'].includes(ext)) icon = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>';
 
-            let viewPath = d.file_path;
-            if(ext === 'pdf' && viewPath.includes('/upload/')) viewPath = viewPath.replace('/upload/', '/upload/fl_attachment:false/');
+
 
             grid.innerHTML += `
                 <div class="doc-card">
                     <span class="doc-icon">${icon}</span>
                     <span class="doc-name">${d.doc_type || d.file_name}</span>
                     <span class="doc-ext">${ext} archive</span>
-                    <a href="javascript:void(0)" onclick="openPreview('${viewPath}', '${d.file_name}')" class="doc-action">
+                    <a href="javascript:void(0)" onclick="openPreview('${d.file_path}', '${d.file_name.replace(/'/g, "\\'")}')" class="doc-action">
                         <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                         Review Archive
                     </a>

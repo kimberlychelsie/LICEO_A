@@ -2726,7 +2726,12 @@
         body.innerHTML = `<img src="${url}" class="preview-img" alt="${filename}">`;
       } 
       else if (ext === 'pdf') {
-        body.innerHTML = `<iframe src="${url}" class="preview-iframe"></iframe>`;
+        // Force Cloudinary PDFs to show in-browser instead of downloading
+        let pdfUrl = url;
+        if (pdfUrl.includes('/upload/')) {
+            pdfUrl = pdfUrl.replace('/upload/', '/upload/fl_attachment:false/');
+        }
+        body.innerHTML = `<iframe src="${pdfUrl}" class="preview-iframe"></iframe>`;
       }
       else if (ext === 'docx') {
         fetch(url)
