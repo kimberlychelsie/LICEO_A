@@ -270,7 +270,7 @@
                 <div class="status-badge-hero" style="background: rgba(245, 158, 11, 0.2); color: #fbbf24; border-color: rgba(251, 191, 36, 0.4);">⏳ Pending Review</div>
             {% endif %}
 
-            <a href="{{ url_for('student_portal.billing') }}" class="btn-premium btn-primary" style="background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); font-size: 0.85rem; padding: 10px 20px;">
+            <a href="javascript:void(0)" onclick="openPreview('{{ billing_path }}', 'Financial Statement')" class="btn-premium btn-primary" style="background: rgba(255, 255, 255, 0.2); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.3); font-size: 0.85rem; padding: 10px 20px;">
                 Financial Statement
                 <svg xmlns="http://www.w3.org/2000/svg" style="width: 16px; height: 16px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
@@ -296,7 +296,7 @@
                     </div>
                     <div class="info-group">
                         <span class="info-label">Grade Level</span>
-                        <span class="info-value">{{ enrollment.grade_level }}</span>
+                        <span class="info-grade">{{ enrollment.grade_level }}</span>
                     </div>
                     <div class="info-group">
                         <span class="info-label">Gender</span>
@@ -353,14 +353,14 @@
                 {% if documents %}
                     <div class="doc-list">
                         {% for doc in documents %}
-                            <a href="{{ doc.file_path }}" target="_blank" class="doc-item">
+                            <div class="doc-item">
                                 <div class="doc-icon">
                                     <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
                                     </svg>
                                 </div>
-                                <span class="doc-name">{{ doc.file_name }}</span>
-                            </a>
+                                <a href="javascript:void(0)" onclick="openPreview('{{ doc.file_path }}', '{{ doc.file_name|replace("'", "\\'") }}')">{{ doc.file_name }}</a>
+                            </div>
                         {% endfor %}
                     </div>
                 {% else %}
