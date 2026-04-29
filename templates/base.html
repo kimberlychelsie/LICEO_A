@@ -2699,8 +2699,14 @@
       const title = document.getElementById('previewTitle');
       const dlBtn = document.getElementById('previewDownloadBtn');
 
+      // Ensure the URL is absolute for Google Viewer
+      let absoluteUrl = url;
+      if (url.startsWith('/')) {
+          absoluteUrl = window.location.origin + url;
+      }
+
       title.textContent = filename;
-      dlBtn.href = url;
+      dlBtn.href = absoluteUrl;
       dlBtn.download = filename;
       
       // Show loader
@@ -2727,11 +2733,11 @@
       } 
       else if (ext === 'pdf') {
         // Use Google Docs Viewer for maximum compatibility (handles Cloudinary and local files better)
-        const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+        const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(absoluteUrl)}&embedded=true`;
         body.innerHTML = `<iframe src="${googleViewerUrl}" class="preview-iframe"></iframe>`;
       }
       else if (ext === 'docx') {
-        fetch(url)
+        fetch(absoluteUrl)
           .then(res => res.arrayBuffer())
           .then(ab => mammoth.convertToHtml({arrayBuffer: ab}))
           .then(res => {
@@ -2740,22 +2746,22 @@
           .catch(err => {
             body.innerHTML = `<div style="padding:40px; text-align:center;">
               <p style="color:#ef4444; font-weight:700;">Unable to render DOCX preview.</p>
-              <a href="${url}" class="univ-preview-btn" style="margin-top:20px; display:inline-flex;">Download Instead</a>
+              <a href="${absoluteUrl}" class="univ-preview-btn" style="margin-top:20px; display:inline-flex;">Download Instead</a>
             </div>`;
           });
       }
       else if (['mp4', 'webm', 'ogg'].includes(ext)) {
-        body.innerHTML = `<video src="${url}" controls class="preview-img" style="max-height:80vh;"></video>`;
+        body.innerHTML = `<video src="${absoluteUrl}" controls class="preview-img" style="max-height:80vh;"></video>`;
       }
       else {
         // Fallback for Office docs (using Google Viewer) or others
         if (['doc', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
-            const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
+            const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(absoluteUrl)}&embedded=true`;
             body.innerHTML = `<iframe src="${googleViewerUrl}" class="preview-iframe"></iframe>`;
         } else {
             body.innerHTML = `<div style="padding:40px; text-align:center;">
               <p style="color:#64748b; font-weight:700; margin-bottom:20px;">Preview not available for this file type (.${ext})</p>
-              <a href="${url}" class="univ-preview-btn" style="display:inline-flex;">Download File</a>
+              <a href="${absoluteUrl}" class="univ-preview-btn" style="display:inline-flex;">Download File</a>
             </div>`;
         }
       }
