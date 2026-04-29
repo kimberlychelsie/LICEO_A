@@ -81,8 +81,8 @@ def upload_file_to_subfolder(file_storage, subfolder: str) -> str:
 # ── Internal: Cloudinary ────────────────────────────────────────────────────
 def _upload_to_cloudinary(file_storage, folder: str) -> str:
     ext = file_storage.filename.lower().rsplit('.', 1)[-1] if (file_storage.filename and '.' in file_storage.filename) else ''
-    # Office docs and archives should be 'raw', but PDFs work best as 'auto' (image) for browser viewing
-    is_raw_type = ext in ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar']
+    # Office docs and archives should be 'raw' to preserve exact bytes, but PDFs work best as 'auto' (image/document) for native browser viewing.
+    is_raw_type = ext in ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'zip', 'rar']
     
     from werkzeug.utils import secure_filename
     original_base = file_storage.filename.rsplit('.', 1)[0] if (file_storage.filename and '.' in file_storage.filename) else "document"
@@ -90,9 +90,11 @@ def _upload_to_cloudinary(file_storage, folder: str) -> str:
     if not base_name or base_name == "file":
         base_name = "document"
         
-    # Unique public_id with extension
+    # Unique public_id
     public_id = f"{base_name}_{uuid.uuid4().hex[:6]}"
-    if ext:
+    # For raw types, we include the extension in the public_id so it's preserved in the URL.
+    # For auto/image/video, Cloudinary adds the extension automatically; including it here causes double extensions (e.g., .pdf.pdf).
+    if is_raw_type and ext:
         public_id += f".{ext}"
 
     result = cloudinary.uploader.upload(
