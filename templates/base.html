@@ -2759,9 +2759,7 @@
         let pdfUrl = url;
         if (pdfUrl.includes('cloudinary.com')) {
           pdfUrl = pdfUrl.replace('/raw/upload/', '/upload/');
-
-          // More robust: only add fl_attachment:false if not already present
-          if (!pdfUrl.includes('fl_attachment:false')) {
+          if (!pdfUrl.includes('fl_attachment')) {
             pdfUrl = pdfUrl.replace('/upload/', '/upload/fl_attachment:false/');
           }
         }
@@ -2789,13 +2787,11 @@
               }
               return chain;
             })
-            .catch((error) => {
-              console.error('PDF.js failed, falling back to Google Docs Viewer:', error);
+            .catch(() => {
               const googleViewer = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
               body.innerHTML = `<iframe src="${googleViewer}" class="preview-iframe"></iframe>`;
             });
         } else {
-          console.warn('PDF.js library not loaded');
           const googleViewer = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
           body.innerHTML = `<iframe src="${googleViewer}" class="preview-iframe"></iframe>`;
         }
@@ -2811,21 +2807,17 @@
         const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(url)}&embedded=true`;
         body.innerHTML = `<iframe src="${googleViewerUrl}" class="preview-iframe"></iframe>`;
       }
-
-      function closePreview() {
-        const modal = document.getElementById('universalPreviewModal');
-        const body = document.getElementById('previewBody');
-
-        // Cancel any pending PDF.js rendering
-        if (window.pdfjsLib && window.pdfjsLib._pdfDocument) {
-          window.pdfjsLib._pdfDocument.cleanup();
-        }
-
-        modal.style.display = 'none';
-        body.innerHTML = ''; // Clear content
-        document.body.style.overflow = '';
-      }
     }
+
+    function closePreview() {
+      const modal = document.getElementById('universalPreviewModal');
+      const body = document.getElementById('previewBody');
+
+      modal.style.display = 'none';
+      body.innerHTML = ''; // Clear content
+      document.body.style.overflow = '';
+    }
+
     // Escape key to close
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') closePreview();
