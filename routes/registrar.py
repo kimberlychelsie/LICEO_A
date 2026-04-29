@@ -1635,6 +1635,7 @@ def edit_schedule(schedule_id):
         ORDER BY label DESC
     """, (branch_id,))
     school_years = cursor.fetchall()
+    active_year = school_years[0] if school_years else None
 
     if request.method == "POST":
         combo = request.form["combo"]
