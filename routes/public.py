@@ -92,13 +92,13 @@ def branch_page(branch_id):
         LIMIT 1
     """, (branch_id,)))
 
-    # Fetch branch-specific FAQs for the page
+    # Fetch FAQs for the page (Branch-specific + General)
     faqs = query_all("""
         SELECT question, answer
         FROM chatbot_faqs
-        WHERE branch_id = %s
-        ORDER BY id ASC
-    """, (branch_id,))
+        WHERE branch_id = %s OR branch_id IS NULL
+        ORDER BY (CASE WHEN branch_id = %s THEN 0 ELSE 1 END), id ASC
+    """, (branch_id, branch_id))
 
     return render_template("branch_page.html", branch=branch, reenrollment_open=reenrollment_open, faqs=faqs)
 
@@ -153,30 +153,22 @@ def api_faqs():
     db = get_db_connection()
     cur = db.cursor()
     try:
-        # Logged in users: branch FAQs ONLY
-        if role and branch_id:
+        if branch_id:
+            # Fetch both branch-specific and general FAQs, branch-specific first
             cur.execute("""
                 SELECT question, answer
                 FROM chatbot_faqs
-                WHERE branch_id = %s
-                ORDER BY id ASC
-            """, (branch_id,))
+                WHERE branch_id = %s OR branch_id IS NULL
+                ORDER BY (CASE WHEN branch_id = %s THEN 0 ELSE 1 END), id ASC
+            """, (branch_id, branch_id))
         else:
-            # Public (not logged in): branch-specific if provided, otherwise general
-            if branch_id:
-                cur.execute("""
-                    SELECT question, answer
-                    FROM chatbot_faqs
-                    WHERE branch_id = %s
-                    ORDER BY id ASC
-                """, (branch_id,))
-            else:
-                cur.execute("""
-                    SELECT question, answer
-                    FROM chatbot_faqs
-                    WHERE branch_id IS NULL
-                    ORDER BY id ASC
-                """)
+            # Public (no branch context): general FAQs ONLY
+            cur.execute("""
+                SELECT question, answer
+                FROM chatbot_faqs
+                WHERE branch_id IS NULL
+                ORDER BY id ASC
+            """)
 
         rows = cur.fetchall() or []
         return jsonify([{"question": r[0], "answer": r[1]} for r in rows])
