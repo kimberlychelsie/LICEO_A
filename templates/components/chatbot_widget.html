@@ -274,7 +274,8 @@
 
   async function loadFAQs() {
     try {
-      const res = await fetch("/api/faqs");
+      const url = "/api/faqs" + (window.CHATBOT_BRANCH_ID ? "?branch_id=" + window.CHATBOT_BRANCH_ID : "");
+      const res = await fetch(url);
       faqs = await res.json();
 
       addBotMessage("👋 Hi! Click <b>Show Questions</b> to pick an FAQ.");

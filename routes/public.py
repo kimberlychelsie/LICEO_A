@@ -92,7 +92,15 @@ def branch_page(branch_id):
         LIMIT 1
     """, (branch_id,)))
 
-    return render_template("branch_page.html", branch=branch, reenrollment_open=reenrollment_open)
+    # Fetch branch-specific FAQs for the page
+    faqs = query_all("""
+        SELECT question, answer
+        FROM chatbot_faqs
+        WHERE branch_id = %s
+        ORDER BY id ASC
+    """, (branch_id,))
+
+    return render_template("branch_page.html", branch=branch, reenrollment_open=reenrollment_open, faqs=faqs)
 
 
 # =========================
@@ -138,7 +146,9 @@ def faq_view():
 @public_bp.route("/api/faqs")
 def api_faqs():
     role = session.get("role")
-    branch_id = session.get("branch_id")
+    # Priority: 1. query param, 2. session (for logged in users)
+    from flask import request
+    branch_id = request.args.get("branch_id", type=int) or session.get("branch_id")
 
     db = get_db_connection()
     cur = db.cursor()
@@ -152,13 +162,21 @@ def api_faqs():
                 ORDER BY id ASC
             """, (branch_id,))
         else:
-            # Public (not logged in): general FAQs ONLY
-            cur.execute("""
-                SELECT question, answer
-                FROM chatbot_faqs
-                WHERE branch_id IS NULL
-                ORDER BY id ASC
-            """)
+            # Public (not logged in): branch-specific if provided, otherwise general
+            if branch_id:
+                cur.execute("""
+                    SELECT question, answer
+                    FROM chatbot_faqs
+                    WHERE branch_id = %s
+                    ORDER BY id ASC
+                """, (branch_id,))
+            else:
+                cur.execute("""
+                    SELECT question, answer
+                    FROM chatbot_faqs
+                    WHERE branch_id IS NULL
+                    ORDER BY id ASC
+                """)
 
         rows = cur.fetchall() or []
         return jsonify([{"question": r[0], "answer": r[1]} for r in rows])
