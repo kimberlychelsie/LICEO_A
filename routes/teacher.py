@@ -813,8 +813,8 @@ def teacher_announce():
             SELECT DISTINCT u.user_id 
             FROM enrollments e
             JOIN users u ON u.user_id = e.user_id
-            WHERE e.branch_id = %s 
-              AND e.year_id = %s
+            WHERE e.branch_id = %(branch_id)s 
+              AND e.year_id = %(year_id)s
               AND (
                   (%(target_section)s::text IS NOT NULL AND e.section_id = %(target_section)s::int)
                   OR 
@@ -826,16 +826,21 @@ def teacher_announce():
             FROM enrollments e
             JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
             JOIN users u ON u.username = sa.username
-            WHERE e.branch_id = %s 
-              AND e.year_id = %s
+            WHERE e.branch_id = %(branch_id)s 
+              AND e.year_id = %(year_id)s
               AND (
                   (%(target_section)s::text IS NOT NULL AND e.section_id = %(target_section)s::int)
                   OR 
                   (%(target_section)s::text IS NULL AND (e.grade_level ILIKE %(grade_full)s OR e.grade_level ILIKE %(grade_short)s))
               )
               AND e.status IN ('approved', 'enrolled')
-        """, (branch_id, year_id, target_section_id, target_section_id, grade_full, grade_short, 
-              branch_id, year_id, target_section_id, target_section_id, grade_full, grade_short))
+        """, {
+            "branch_id": branch_id,
+            "year_id": year_id,
+            "target_section": target_section_id or None,
+            "grade_full": grade_full,
+            "grade_short": grade_short
+        })
         students = cur.fetchall()
         if students:
             notif_title = f"New Announcement: {title}"
