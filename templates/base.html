@@ -2713,7 +2713,13 @@
       modal.style.display = 'flex';
       document.body.style.overflow = 'hidden';
 
-      const ext = filename.split('.').pop().toLowerCase();
+      // Detect extension from filename or URL
+      let ext = filename.split('.').pop().toLowerCase();
+      // If filename doesn't have extension, try the URL
+      if (ext === filename.toLowerCase() || ext.length > 5) {
+          const urlParts = url.split(/[#?]/)[0].split('.');
+          ext = urlParts.length > 1 ? urlParts.pop().toLowerCase() : '';
+      }
       
       // Map extensions to handlers
       if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
