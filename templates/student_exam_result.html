@@ -1,51 +1,347 @@
 {% extends "base.html" %}
-{% block title %}Exam Result{% endblock %}
-{% block content %}
+
+{% block title %}Exam Results{% endblock %}
+
+{% block styles %}
 <style>
-    .container { max-width:720px; margin:0 auto; padding:24px 20px; }
-    .score-card { background:#fff; border-radius:16px; padding:32px; box-shadow:0 2px 8px rgba(0,0,0,.1); text-align:center; margin-bottom:24px; }
-    .score-big { font-size:52px; font-weight:900; color:#007bff; line-height:1; }
-    .score-label { font-size:14px; color:#888; margin-top:6px; }
-    .pct { font-size:22px; font-weight:700; margin-top:8px; }
-    .pct.pass { color:#28a745; } .pct.fail { color:#dc3545; }
-    .pass-badge { background:#d4edda; color:#155724; border-radius:10px; padding:14px 20px; font-size:18px; font-weight:800; text-align:center; margin:12px 0; }
-    .fail-badge { background:#f8d7da; color:#721c24; border-radius:10px; padding:14px 20px; font-size:18px; font-weight:800; text-align:center; margin:12px 0; }
-    .auto-badge { background:#fff3cd; color:#856404; padding:6px 14px; border-radius:8px; font-size:13px; font-weight:700; display:inline-block; margin-top:10px; }
-    .tab-badge { background:#f8d7da; color:#721c24; padding:6px 14px; border-radius:8px; font-size:13px; font-weight:700; display:inline-block; margin-top:6px; }
-    .btn { padding:10px 20px; border:none; border-radius:7px; cursor:pointer; font-size:13px; font-weight:700; text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
-    .btn-primary { background:#007bff; color:#fff; }
-</style>
+    :root {
+        --res-navy: #1a3a8f;
+        --res-gold: #d4af37;
+        --res-pass: #10b981;
+        --res-fail: #ef4444;
+        --res-glass: rgba(255, 255, 255, 0.9);
+    }
 
-<div class="container">
-    <div class="score-card">
-        <div style="font-size:14px; color:#888; margin-bottom:8px;">{{ result.title }} · {{ result.subject_name }}</div>
-        <div class="score-big">{{ result.score|round|int }}</div>
-        <div class="score-label">out of {{ result.total_points|round|int }} points</div>
+    .result-container {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 40px 20px;
+        animation: fadeIn 0.6s ease-out;
+    }
 
-        <div class="pct {% if passed %}pass{% else %}fail{% endif %}">
-            {{ percentage|round|int }}%
-        </div>
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 
+    /* ── Header ── */
+    .result-header {
+        text-align: center;
+        margin-bottom: 40px;
+    }
+
+    .result-header h1 {
+        font-size: 2.2rem;
+        font-weight: 900;
+        color: var(--res-navy);
+        letter-spacing: -0.02em;
+        margin-bottom: 8px;
+    }
+
+    .result-header p {
+        color: var(--muted);
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    /* ── Summary Card ── */
+    .summary-card {
+        background: var(--res-glass);
+        backdrop-filter: blur(10px);
+        border-radius: 32px;
+        padding: 48px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.6);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        margin-bottom: 40px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .summary-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0; height: 8px;
+        background: {% if passed %}var(--res-pass){% else %}var(--res-fail){% endif %};
+    }
+
+    /* Circular Progress */
+    .score-circle {
+        position: relative;
+        width: 180px;
+        height: 180px;
+        border-radius: 50%;
+        background: conic-gradient(
+            {% if passed %}var(--res-pass){% else %}var(--res-fail){% endif %} {{ percentage }}%, 
+            #e2e8f0 {{ percentage }}%
+        );
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
+    }
+
+    .score-circle::after {
+        content: '';
+        position: absolute;
+        width: 150px;
+        height: 150px;
+        background: #fff;
+        border-radius: 50%;
+    }
+
+    .score-content {
+        position: relative;
+        z-index: 2;
+        text-align: center;
+    }
+
+    .score-value {
+        font-size: 3.5rem;
+        font-weight: 900;
+        color: var(--res-navy);
+        line-height: 1;
+    }
+
+    .score-total {
+        font-size: 1rem;
+        color: var(--muted);
+        font-weight: 800;
+    }
+
+    .status-badge {
+        padding: 12px 32px;
+        border-radius: 999px;
+        font-size: 1.1rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        margin-bottom: 24px;
         {% if passed %}
-        <div class="pass-badge">🎉 PASSED</div>
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--res-pass);
         {% else %}
-        <div class="fail-badge">❌ FAILED</div>
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--res-fail);
         {% endif %}
+    }
 
-        {% if result.status == 'auto_submitted' %}
-        <div class="auto-badge">⏱ Auto-submitted (timer ran out)</div>
-        {% endif %}
-        {% if result.tab_switches and result.tab_switches > 0 %}
-        <div class="tab-badge">⚠️ {{ result.tab_switches }} tab switch{{ 'es' if result.tab_switches > 1 else '' }} recorded</div>
-        {% endif %}
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 24px;
+        width: 100%;
+        margin-top: 24px;
+        padding-top: 24px;
+        border-top: 1px solid var(--border);
+    }
+
+    .stat-item .label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--muted);
+        text-transform: uppercase;
+        margin-bottom: 4px;
+        display: block;
+    }
+
+    .stat-item .value {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--res-navy);
+    }
+
+    /* ── Questions List ── */
+    .breakdown-title {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--res-navy);
+        margin-bottom: 24px;
+        padding-left: 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .question-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 24px;
+        margin-bottom: 16px;
+        border: 1px solid var(--border);
+        transition: transform 0.2s;
+    }
+
+    .question-card:hover {
+        transform: translateX(4px);
+        border-color: var(--res-navy);
+    }
+
+    .q-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+    }
+
+    .q-num {
+        font-weight: 900;
+        color: var(--muted);
+        font-size: 0.9rem;
+    }
+
+    .q-points {
+        font-size: 0.75rem;
+        font-weight: 800;
+        background: #f1f5f9;
+        padding: 4px 10px;
+        border-radius: 6px;
+        color: var(--muted);
+    }
+
+    .q-text {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--res-navy);
+        margin-bottom: 20px;
+        line-height: 1.4;
+    }
+
+    .ans-box {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    @media (max-width: 600px) {
+        .ans-box { grid-template-columns: 1fr; }
+    }
+
+    .ans-item {
+        padding: 12px 16px;
+        border-radius: 12px;
+        border: 1px solid var(--border);
+    }
+
+    .ans-item.student.is-correct {
+        background: rgba(16, 185, 129, 0.05);
+        border-color: var(--res-pass);
+    }
+
+    .ans-item.student.is-wrong {
+        background: rgba(239, 68, 68, 0.05);
+        border-color: var(--res-fail);
+    }
+
+    .ans-item.correct {
+        background: rgba(16, 185, 129, 0.1);
+        border-color: var(--res-pass);
+        border-style: dashed;
+    }
+
+    .ans-label {
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+        display: block;
+    }
+
+    .ans-value {
+        font-weight: 700;
+        font-size: 0.95rem;
+    }
+
+    .btn-actions {
+        display: flex;
+        justify-content: center;
+        gap: 16px;
+        margin-top: 40px;
+    }
+
+    .btn-res {
+        padding: 14px 32px;
+        border-radius: 14px;
+        font-weight: 800;
+        text-decoration: none;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .btn-res-primary {
+        background: var(--res-navy);
+        color: #fff;
+    }
+
+    .btn-res-primary:hover {
+        background: #152e72;
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px rgba(26, 58, 143, 0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="result-container">
+    <div class="result-header">
+        <h1>Exam Summary</h1>
+        <p>{{ result.title }} · {{ result.subject_name }}</p>
     </div>
 
-    <div style="text-align:center;">
+    <div class="summary-card">
+        <div class="score-circle">
+            <div class="score-content">
+                <div class="score-value">{{ result.score|round|int }}</div>
+                <div class="score-total">/ {{ result.total_points|round|int }}</div>
+            </div>
+        </div>
+
+        <div class="status-badge">
+            {% if passed %}🎉 PASSED{% else %}❌ FAILED{% endif %}
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-item">
+                <span class="label">Percentage</span>
+                <div class="value">{{ percentage|round|int }}%</div>
+            </div>
+            <div class="stat-item">
+                <span class="label">Passing Score</span>
+                <div class="value">{{ passing_score|round|int }}%</div>
+            </div>
+            {% if result.status == 'auto_submitted' %}
+            <div class="stat-item">
+                <span class="label">Status</span>
+                <div class="value" style="color: var(--warning); font-size: 0.9rem;">Auto-submitted</div>
+            </div>
+            {% endif %}
+            {% if result.tab_switches %}
+            <div class="stat-item">
+                <span class="label">Violations</span>
+                <div class="value" style="color: var(--res-fail); font-size: 0.9rem;">{{ result.tab_switches }} Tab Switches</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="btn-actions">
         {% if result.exam_type == 'quiz' %}
-        <a href="{{ url_for('student_portal.subject_view', subject_id=result.subject_id) }}" class="btn btn-primary">← Back to Quizzes</a>
+        <a href="{{ url_for('student_portal.subject_view', subject_id=result.subject_id) }}" class="btn-res btn-res-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            Back to Quizzes
+        </a>
         {% else %}
-        <a href="{{ url_for('student_portal.student_exams') }}" class="btn btn-primary">← Back to Exams</a>
+        <a href="{{ url_for('student_portal.student_exams') }}" class="btn-res btn-res-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+            Back to Exams
+        </a>
         {% endif %}
     </div>
 </div>
-{% endblock %}
+{% endblock %}

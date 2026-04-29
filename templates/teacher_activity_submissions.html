@@ -7,348 +7,628 @@
 
 {% block styles %}
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+    :root {
+        --sub-navy: #1a3a8f;
+        --sub-gold: #d4af37;
+        --sub-bg: #f8fafc;
+        --sub-card: #ffffff;
+        --sub-text: #1e293b;
+        --sub-muted: #64748b;
+        --sub-border: #e2e8f0;
+    }
+
     .sub-wrap {
         max-width: 1200px;
         margin: 0 auto;
+        padding: 24px 20px 64px;
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        animation: fadeIn 0.5s ease-out;
     }
 
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* ── Header ── */
     .sub-header {
-        margin-bottom: 24px;
+        margin-bottom: 32px;
+    }
+
+    .back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--sub-muted);
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.9rem;
+        transition: color 0.2s;
+        margin-bottom: 16px;
+    }
+
+    .back-btn:hover {
+        color: var(--sub-navy);
     }
 
     .title-row {
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-end;
         flex-wrap: wrap;
-        gap: 10px;
-    }
-
-    .sub-title {
-        font-size: 1.4rem;
-        font-weight: 800;
-        margin: 0;
-    }
-
-    .stats-card {
-        background: var(--card);
-        border: 1px solid var(--border);
-        border-radius: 12px;
-        padding: 16px;
-        margin-bottom: 20px;
-        display: flex;
         gap: 20px;
     }
 
-    .stat-item {
-        text-align: center;
-        flex: 1;
-        border-right: 1px solid var(--border);
+    .sub-title {
+        font-size: 2rem;
+        font-weight: 900;
+        color: var(--sub-navy);
+        letter-spacing: -0.04em;
+        margin: 0;
     }
 
-    .stat-item:last-child {
-        border-right: none;
-    }
-
-    .stat-num {
-        font-size: 1.6rem;
-        font-weight: 800;
-        color: var(--btn);
-    }
-
-    .stat-label {
-        font-size: 0.75rem;
-        color: var(--muted);
-        text-transform: uppercase;
-    }
-
-    .modal {
-        display: none;
-        position: fixed;
-        z-index: 2000;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        overflow: auto;
-        background-color: rgba(0, 0, 0, 0.5);
-    }
-
-    .modal-content {
-        background-color: #fff;
-        margin: 10% auto;
-        padding: 24px;
-        border-radius: 12px;
-        max-width: 500px;
-    }
-
-    .modal-header {
-        font-size: 1.25rem;
-        font-weight: 700;
-        margin-bottom: 16px;
+    .sub-info {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: var(--sub-muted);
         display: flex;
-        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
     }
 
-    .close-btn {
-        cursor: pointer;
-        color: var(--muted);
+    .info-pill {
+        background: #fff;
+        border: 1px solid var(--sub-border);
+        padding: 4px 12px;
+        border-radius: 8px;
+        font-size: 0.85rem;
+        font-weight: 800;
+        color: var(--sub-navy);
+    }
+
+    /* ── Stats ── */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+        margin-bottom: 32px;
+    }
+
+    .stat-card {
+        background: var(--sub-card);
+        border: 1px solid var(--sub-border);
+        border-radius: 20px;
+        padding: 24px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         font-size: 1.5rem;
     }
 
-    .close-btn:hover {
-        color: var(--text);
-    }
-    .spinner {
-        width: 40px;
-        height: 40px;
-        border: 4px solid rgba(255,255,255,0.1);
-        border-top-color: var(--primary);
-        border-radius: 50%;
-        animation: spin 1s linear infinite;
+    .stat-content {
+        flex: 1;
     }
 
-    @keyframes spin {
-        to { transform: rotate(360deg); }
+    .stat-num {
+        font-size: 1.75rem;
+        font-weight: 900;
+        color: var(--sub-navy);
+        line-height: 1;
+        margin-bottom: 4px;
+    }
+
+    .stat-label {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--sub-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    /* ── Table ── */
+    .table-container {
+        background: var(--sub-card);
+        border: 1px solid var(--sub-border);
+        border-radius: 24px;
+        overflow: hidden;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    .submissions-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+    }
+
+    .submissions-table th {
+        background: #f8fafc;
+        padding: 18px 24px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--sub-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        border-bottom: 1px solid var(--sub-border);
+    }
+
+    .submissions-table td {
+        padding: 16px 24px;
+        font-size: 0.9rem;
+        color: var(--sub-text);
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+
+    .submissions-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .submissions-table tr:hover td {
+        background: #fbfcfe;
+    }
+
+    .student-name {
+        font-weight: 800;
+        color: var(--sub-navy);
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .student-name:hover {
+        text-decoration: underline;
+    }
+
+    /* ── Badges ── */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 99px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+
+    .badge-submitted {
+        background: #e0f2fe;
+        color: #0369a1;
+    }
+
+    .badge-graded {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    .badge-missing {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
+
+    .badge-late {
+        background: #fef3c7;
+        color: #b45309;
+    }
+
+    /* ── Action Buttons ── */
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 16px;
+        border-radius: 10px;
+        font-weight: 800;
+        font-size: 0.8rem;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        font-family: inherit;
+        text-decoration: none;
+    }
+
+    .btn-grade {
+        background: var(--sub-navy);
+        color: #fff;
+    }
+
+    .btn-grade:hover {
+        background: #152e72;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(26, 58, 143, 0.25);
+    }
+
+    .btn-resched {
+        background: #f1f5f9;
+        color: #475569;
+    }
+
+    .btn-resched:hover {
+        background: #e2e8f0;
+    }
+
+    /* ── Modals ── */
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(8px);
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .modal-content {
+        background: #fff;
+        width: 100%;
+        max-width: 500px;
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        animation: modalIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes modalIn {
+        from {
+            opacity: 0;
+            transform: scale(0.95) translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+        }
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+
+    .modal-title {
+        font-size: 1.5rem;
+        font-weight: 900;
+        color: var(--sub-navy);
+        letter-spacing: -0.02em;
+    }
+
+    .close-modal {
+        background: #f1f5f9;
+        border: none;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: var(--sub-muted);
+        transition: all 0.2s;
+    }
+
+    .close-modal:hover {
+        background: #e2e8f0;
+        color: var(--sub-text);
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 800;
+        color: var(--sub-text);
+        margin-bottom: 8px;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 12px 16px;
+        border-radius: 12px;
+        border: 1.5px solid var(--sub-border);
+        font-family: inherit;
+        font-size: 0.95rem;
+        font-weight: 600;
+        transition: all 0.2s;
+        box-sizing: border-box;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--sub-navy);
+        box-shadow: 0 0 0 4px rgba(26, 58, 143, 0.1);
+    }
+
+    .modal-footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 32px;
     }
 </style>
-
-<!-- Mammoth.js for DOCX rendering -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 {% endblock %}
 
 {% block content %}
 <div class="sub-wrap">
     <div class="sub-header">
-        <a href="{{ url_for('teacher.teacher_class_view', subject_id=activity.subject_id) }}"
-            style="text-decoration:none; color:var(--muted); font-size:0.9rem;">&larr; Back to Class</a>
-        <div class="title-row" style="margin-top:10px;">
-            <h1 class="sub-title">Submissions: {{ activity.title }}</h1>
-            <div style="font-size:0.9rem; color:var(--muted)">Max Score: <strong>{{ activity.max_score }}</strong>
-                &bull; Due: {{ activity.due_date.strftime('%b %d, %Y %I:%M %p') }}</div>
+        <a href="{{ url_for('teacher.teacher_class_view', subject_id=activity.subject_id) }}" class="back-btn">
+
+        </a>
+        <div class="title-row">
+            <div>
+                <h1 class="sub-title">Submissions: {{ activity.title }}</h1>
+                <div class="sub-info">
+                    <span>{{ activity.section_name }}</span>
+                    <span>&bull;</span>
+                    <span class="info-pill">Max: {{ activity.max_score }} pts</span>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 0.85rem; font-weight: 800; color: var(--sub-muted); text-transform: uppercase;">
+                    Deadline</div>
+                <div style="font-size: 1rem; font-weight: 800; color: var(--sub-navy);">{{
+                    activity.due_date.strftime('%b %d, %Y · %I:%M %p') }}</div>
+            </div>
         </div>
     </div>
 
-    <!-- Quick Stats -->
-    <div class="stats-card">
-        <div class="stat-item">
-            <div class="stat-num">{{ stats.total }}</div>
-            <div class="stat-label">Total Students</div>
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(26, 58, 143, 0.1); color: var(--sub-navy);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="9" cy="7" r="4"></circle>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-num">{{ stats.total }}</div>
+                <div class="stat-label">Total Students</div>
+            </div>
         </div>
-        <div class="stat-item">
-            <div class="stat-num">{{ stats.submitted }}</div>
-            <div class="stat-label">Submitted</div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(3, 105, 161, 0.1); color: #0369a1;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-num">{{ stats.submitted }}</div>
+                <div class="stat-label">Submitted</div>
+            </div>
         </div>
-        <div class="stat-item">
-            <div class="stat-num">{{ stats.graded }}</div>
-            <div class="stat-label">Graded</div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(21, 128, 61, 0.1); color: #15803d;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-num">{{ stats.graded }}</div>
+                <div class="stat-label">Graded</div>
+            </div>
         </div>
-        <div class="stat-item">
-            <div class="stat-num" style="color:var(--error)">{{ stats.not_submitted }}</div>
-            <div class="stat-label">Missing</div>
+        <div class="stat-card">
+            <div class="stat-icon" style="background: rgba(185, 28, 28, 0.1); color: #b91c1c;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
+            </div>
+            <div class="stat-content">
+                <div class="stat-num">{{ stats.not_submitted }}</div>
+                <div class="stat-label">Missing</div>
+            </div>
         </div>
     </div>
 
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th>Student Name</th>
-                    <th>Status</th>
-                    <th>Submitted At</th>
-                    <th>File</th>
-                    <th>Score / {{ activity.max_score }}</th>
-                    <th>Extension</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for sub in submissions %}
-                <tr>
-                    <td>
-                        {% if sub.file_path %}
-                        {% set sub_ext = sub.original_filename.split('.')[-1].lower() if sub.original_filename and '.' in sub.original_filename else sub.file_path.split('.')[-1].lower() %}
-                        <a href="javascript:void(0)" onclick="viewFilePreview('{{ sub.file_path }}', '{{ sub_ext }}', '{{ sub.submission_id }}')" style="text-decoration:none; color:inherit; cursor:pointer;" title="Click to preview">
-                            <strong>{{ sub.student_name }}</strong>
-                        </a>
-                        {% else %}
-                        <strong>{{ sub.student_name }}</strong>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if not sub.submission_id %}
-                        <span class="badge badge-gray">Not Submitted</span>
-                        {% elif sub.grade_id %}
-                        <span class="badge badge-green">Graded</span>
-                        {% if sub.is_late %}<span class="badge badge-yellow">Late</span>{% endif %}
-                        {% else %}
-                        <span class="badge badge-blue">Submitted</span>
-                        {% if sub.is_late %}<span class="badge badge-yellow">Late</span>{% endif %}
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if sub.submitted_at %}
-                        {{ sub.submitted_at.strftime('%b %d, %I:%M %p') }}
-                        {% else %}
-                        —
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if sub.attachments %}
-                        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 6px; max-width: 300px;">
-                            {% for att in sub.attachments %}
-                            <a href="javascript:void(0)" 
-                               onclick="viewFilePreview('{{ att.path }}', '{{ att.type }}', '{{ sub.submission_id }}')"
-                               class="btn btn-secondary btn-sm" 
-                               title="{{ att.name }}"
-                               style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; justify-content: flex-start; padding: 6px 8px; font-size: 0.75rem;">
-                                {{ '📕' if att.type == 'pdf' else '🖼️' if att.type in ['jpg', 'jpeg', 'png', 'gif', 'webp'] else '📄' if att.type in ['doc', 'docx'] else '🎥' if att.type in ['mp4', 'webm', 'ogg'] else '📊' if att.type in ['xls', 'xlsx'] else '📈' if att.type in ['ppt', 'pptx'] else '📎' }}
-                                {{ att.name }}
+    <div class="table-container">
+        <div class="table-wrap">
+            <table class="submissions-table">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Status</th>
+                        <th>Submitted At</th>
+                        <th>Attachments</th>
+                        <th>Grade</th>
+                        <th>Extension</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sub in submissions %}
+                    <tr>
+                        <td>
+                            {% if sub.attachments and sub.attachments|length > 0 %}
+                            <a href="javascript:void(0)"
+                                onclick="viewFilePreview('{{ sub.attachments[0].path }}', '{{ sub.attachments[0].type }}', '{{ sub.submission_id }}')"
+                                class="student-name">
+                                {{ sub.student_name }}
                             </a>
-                            {% endfor %}
-                        </div>
-                        {% else %}
-                        —
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if sub.grade_id %}
-                        <strong>{{ sub.raw_score | int if sub.raw_score == (sub.raw_score | int) else sub.raw_score }}</strong> / {{ activity.max_score }}<br>
-                        <span style="font-size:0.8rem; color:var(--muted)">{{ sub.percentage | int if sub.percentage == (sub.percentage | int) else sub.percentage }}%</span>
-                        {% else %}
-                        —
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if sub.individual_extension %}
-                        <span class="badge badge-blue" style="background:#17a2b8; color:#fff;">
-                            📅 {{ sub.individual_extension.strftime('%b %d, %I:%M %p') }}
-                        </span>
-                        {% else %}
-                        —
-                        {% endif %}
-                    </td>
-                    <td>
-                        <div style="display:flex; gap: 8px; flex-wrap: wrap;">
+                            {% else %}
+                            <div class="student-name" style="cursor: default; text-decoration: none;">{{
+                                sub.student_name }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
                             {% if not sub.submission_id %}
-                            <button type="button" class="btn btn-secondary btn-sm" 
-                                    style="background:#17a2b8; border:none; color:#fff;"
-                                    onclick="openRescheduleModal('{{ sub.enrollment_id }}', '{{ sub.student_name }}')">
-                                📅 Resched
-                            </button>
+                            <span class="status-badge badge-missing">Missing</span>
+                            {% elif sub.grade_id %}
+                            <span class="status-badge badge-graded">Graded</span>
+                            {% if sub.is_late %}<span class="status-badge badge-late">Late</span>{% endif %}
+                            {% else %}
+                            <span class="status-badge badge-submitted">Submitted</span>
+                            {% if sub.is_late %}<span class="status-badge badge-late">Late</span>{% endif %}
                             {% endif %}
-                            {% if sub.submission_id %}
-                            <button type="button" class="btn btn-primary btn-sm" data-sub-id="{{ sub.submission_id }}"
-                                data-name="{{ sub.student_name }}"
-                                data-score="{{ sub.raw_score if sub.raw_score is not none else '' }}"
-                                data-feedback="{{ sub.feedback or '' }}" onclick="openGradeModalFromBtn(this)">
-                                {{ 'Edit Grade' if sub.grade_id else 'Grade' }}
-                            </button>
-                            <form action="{{ url_for('teacher.allow_resubmission', submission_id=sub.submission_id) }}"
-                                method="POST" style="margin:0;">
-                                <button type="submit" class="btn btn-secondary btn-sm" {% if sub.allow_resubmit %}disabled title="Already allowed"{% endif %}>
-                                    Allow Resubmit
+                        </td>
+                        <td>
+                            {% if sub.submitted_at %}
+                            <div style="font-weight: 700;">{{ sub.submitted_at.strftime('%b %d') }}</div>
+                            <div style="font-size: 0.75rem; color: var(--sub-muted);">{{
+                                sub.submitted_at.strftime('%I:%M %p') }}</div>
+                            {% else %}
+                            <span style="color: var(--sub-muted);">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if sub.attachments %}
+                            <div style="display: flex; flex-wrap: wrap; gap: 6px; max-width: 200px;">
+                                {% for att in sub.attachments %}
+                                <button type="button"
+                                    onclick="viewFilePreview('{{ att.path }}', '{{ att.type }}', '{{ sub.submission_id }}')"
+                                    class="action-btn btn-resched" title="{{ att.name }}"
+                                    style="padding: 4px 8px; font-size: 0.7rem; background: #f1f5f9; border: 1px solid #e2e8f0;">
+                                    {{ '📕' if att.type == 'pdf' else '🖼️' if att.type in ['jpg', 'jpeg', 'png', 'gif',
+                                    'webp'] else '📄' if att.type in ['doc', 'docx'] else '🎥' if att.type in ['mp4',
+                                    'webm', 'ogg'] else '📊' if att.type in ['xls', 'xlsx'] else '📈' if att.type in
+                                    ['ppt', 'pptx'] else '📎' }}
                                 </button>
-                            </form>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <span style="color: var(--sub-muted);">—</span>
                             {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+                        </td>
+                        <td>
+                            {% if sub.grade_id %}
+                            <div style="font-weight: 800; color: var(--sub-navy);">{{ sub.raw_score|round(1) }} / {{
+                                activity.max_score }}</div>
+                            <div style="font-size: 0.75rem; color: #15803d; font-weight: 700;">{{
+                                sub.percentage|round|int }}%</div>
+                            {% else %}
+                            <span style="color: var(--sub-muted);">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if sub.individual_extension %}
+                            <div
+                                style="font-size: 0.75rem; font-weight: 800; color: #0369a1; background: #e0f2fe; padding: 4px 8px; border-radius: 6px; display: inline-block;">
+                                📅 {{ sub.individual_extension.strftime('%b %d') }}
+                            </div>
+                            {% else %}
+                            <span style="color: var(--sub-muted);">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div style="display:flex; gap: 8px;">
+                                {% if not sub.submission_id %}
+                                <button type="button" class="action-btn btn-resched"
+                                    onclick="openRescheduleModal('{{ sub.enrollment_id }}', '{{ sub.student_name }}')">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    </svg>
+                                    Resched
+                                </button>
+                                {% endif %}
+                                {% if sub.submission_id %}
+                                <button type="button" class="action-btn btn-grade" data-sub-id="{{ sub.submission_id }}"
+                                    data-name="{{ sub.student_name }}"
+                                    data-score="{{ sub.raw_score if sub.raw_score is not none else '' }}"
+                                    data-feedback="{{ sub.feedback or '' }}" onclick="openGradeModalFromBtn(this)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"
+                                        stroke-linejoin="round">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                                    </svg>
+                                    {{ 'Grade' if not sub.grade_id else 'Edit' }}
+                                </button>
+                                <form
+                                    action="{{ url_for('teacher.allow_resubmission', submission_id=sub.submission_id) }}"
+                                    method="POST" style="margin:0;">
+                                    <button type="submit" class="action-btn btn-resched" {% if sub.allow_resubmit
+                                        %}disabled title="Already allowed" {% endif %} style="padding: 8px;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <path d="M23 4v6h-6"></path>
+                                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                        </svg>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
-
-
-<script>
-    function viewFilePreview(path, forcedExt = '', submissionId = null) {
-        if (submissionId) {
-            fetch(`/teacher/submissions/${submissionId}/mark-viewed`, { method: 'POST' })
-                .catch(err => console.error("Viewed tracking error:", err));
-        }
-
-        const ext = (forcedExt || path.split('.').pop().toLowerCase()).trim();
-        let finalPath = path;
-        const isDoc = ['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext);
-        if (isDoc && finalPath.includes('/image/upload/')) {
-            finalPath = finalPath.replace('/image/upload/', '/raw/upload/');
-        }
-
-        if (ext === 'docx') {
-            const previewWin = window.open('', '_blank');
-            if (!previewWin) {
-                alert("Please allow popups to view this document.");
-                return;
-            }
-            previewWin.document.write(`<html><head><title>Loading...</title><style>body { display: flex; align-items: center; justify-content: center; height: 100vh; font-family: -apple-system, sans-serif; background: #f1f5f9; color: #64748b; } .loader { border: 3px solid #e2e8f0; border-top: 3px solid #3b82f6; border-radius: 50%; width: 24px; height: 24px; animation: spin 1s linear infinite; margin-bottom: 12px; } @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } } .content { background: #fff; padding: 60px; max-width: 800px; margin: 40px auto; min-height: 100vh; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-radius: 8px; color: #334155; line-height: 1.6; display: none; }</style></head><body><div id="loading" style="text-align:center;"><div class="loader" style="margin: auto;"></div><div>Rendering document...</div></div><div id="output" class="content"></div></body></html>`);
-
-            fetch(finalPath)
-                .then(res => res.arrayBuffer())
-                .then(ab => mammoth.convertToHtml({arrayBuffer: ab}))
-                .then(res => {
-                    previewWin.document.getElementById('loading').style.display = 'none';
-                    const output = previewWin.document.getElementById('output');
-                    output.innerHTML = res.value;
-                    output.style.display = 'block';
-                    previewWin.document.title = path.split('/').pop();
-                })
-                .catch(err => {
-                    previewWin.location.href = finalPath;
-                });
-        } else if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'mp4', 'webm', 'ogg'].includes(ext)) {
-            window.open(finalPath, '_blank');
-        } else {
-            // Fallback for Office docs or download
-            if (['doc', 'xls', 'xlsx', 'ppt', 'pptx'].includes(ext)) {
-                const googleViewerUrl = `https://docs.google.com/gview?url=${encodeURIComponent(finalPath)}&embedded=false`;
-                window.open(googleViewerUrl, '_blank');
-            } else {
-                const link = document.createElement('a');
-                link.href = finalPath;
-                link.download = '';
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-            }
-        }
-    }
-
-    function renderHtmlInNewTab(html, title) {
-        const newWin = window.open('', '_blank');
-        if (!newWin) {
-            alert("Please allow popups to view the document.");
-            return;
-        }
-        newWin.document.write(`<html><head><title>${title}</title><style>body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 50px; background: #f1f5f9; color: #334155; line-height: 1.6; } .content { background: #fff; padding: 60px; max-width: 800px; margin: auto; min-height: 100vh; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-radius: 8px; } h1, h2, h3 { color: #1e293b; }</style></head><body><div class="content">${html}</div></body></html>`);
-        newWin.document.close();
-    }
-</script>
 
 <!-- Grading Modal -->
 <div id="gradeModal" class="modal">
     <div class="modal-content">
         <div class="modal-header">
-            <span id="modalTitle">Grade Submission</span>
-            <span class="close-btn" onclick="closeGradeModal()">&times;</span>
+            <h2 class="modal-title" id="modalTitle">Grade Submission</h2>
+            <button class="close-modal" onclick="closeGradeModal()">&times;</button>
         </div>
         <form id="gradeForm" action="" method="POST">
             <input type="hidden" name="activity_id" value="{{ activity.activity_id }}">
             <div class="form-group">
                 <label class="form-label">Score (Max: {{ activity.max_score }})</label>
-                <input type="number" name="raw_score" id="raw_score" class="form-select" 
-                       min="0" max="{{ activity.max_score }}" step="0.5" required
-                       style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px;"
-                       onkeydown="if(event.key==='-' || event.key==='+') return false;"
-                       oninput="if(parseFloat(this.value) > {{ activity.max_score }}) this.value = '{{ activity.max_score }}';">
+                <input type="number" name="raw_score" id="raw_score" class="form-input" min="0"
+                    max="{{ activity.max_score }}" step="0.5" required
+                    onkeydown="if(event.key==='-' || event.key==='+') return false;"
+                    oninput="if(parseFloat(this.value) > {{ activity.max_score }}) this.value = '{{ activity.max_score }}';">
             </div>
             <div class="form-group">
-                <label class="form-label">Feedback / Remarks (Optional)</label>
-                <textarea name="remarks" id="remarks" class="form-textarea" rows="4" style="resize: none;"></textarea>
+                <label class="form-label">Feedback / Remarks</label>
+                <textarea name="remarks" id="remarks" class="form-input" rows="4" style="resize: none; height: auto;"
+                    placeholder="Good work! Keep it up..."></textarea>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:10px;">
-                <button type="button" class="btn btn-secondary" onclick="closeGradeModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save Grade</button>
+            <div class="modal-footer">
+                <button type="button" class="action-btn btn-resched" onclick="closeGradeModal()"
+                    style="padding: 12px 24px;">Cancel</button>
+                <button type="submit" class="action-btn btn-grade" style="padding: 12px 24px;">Save Grade</button>
             </div>
         </form>
     </div>
@@ -356,27 +636,29 @@
 
 <!-- Reschedule Modal -->
 <div id="rescheduleModal" class="modal">
-    <div class="modal-content" style="max-width:400px;">
+    <div class="modal-content" style="max-width: 400px;">
         <div class="modal-header">
-            <span id="reschedModalTitle">Reschedule Activity</span>
-            <span class="close-btn" onclick="closeRescheduleModal()">&times;</span>
+            <h2 class="modal-title" id="reschedModalTitle">Reschedule</h2>
+            <button class="close-modal" onclick="closeRescheduleModal()">&times;</button>
         </div>
         <form id="rescheduleForm">
             <input type="hidden" id="resched_enrollment_id">
             <input type="hidden" id="resched_item_id" value="{{ activity.activity_id }}">
             <input type="hidden" id="resched_item_type" value="activity">
-            
-            <div style="margin-bottom:20px;">
-                <label style="display:block; font-size:13px; margin-bottom:8px; color:var(--muted);">New Deadline (Date & Time)</label>
-                <input type="datetime-local" id="new_due_date" required min="{{ min_date }}"                       style="width:100%; padding:10px; border:1px solid var(--border); border-radius:8px; font-family:inherit; background:var(--card); color:var(--text); box-sizing:border-box;">
-                <small style="color:var(--muted); font-size:11px; display:block; margin-top:4px;">
-                    The student can submit their work anytime from now until this new deadline.
+
+            <div class="form-group">
+                <label class="form-label">New Deadline</label>
+                <input type="datetime-local" id="new_due_date" class="form-input" required min="{{ min_date }}">
+                <small
+                    style="color: var(--sub-muted); font-size: 0.75rem; display: block; margin-top: 8px; font-weight: 600;">
+                    Individual extension for this student only.
                 </small>
             </div>
-            
-            <div style="display:flex; justify-content:flex-end; gap:10px;">
-                <button type="button" class="btn btn-secondary" onclick="closeRescheduleModal()">Cancel</button>
-                <button type="submit" class="btn btn-primary">Save Changes</button>
+
+            <div class="modal-footer">
+                <button type="button" class="action-btn btn-resched" onclick="closeRescheduleModal()"
+                    style="padding: 12px 24px;">Cancel</button>
+                <button type="submit" class="action-btn btn-grade" style="padding: 12px 24px;">Save Changes</button>
             </div>
         </form>
     </div>
@@ -406,7 +688,7 @@
 
             fetch(finalPath)
                 .then(res => res.arrayBuffer())
-                .then(ab => mammoth.convertToHtml({arrayBuffer: ab}))
+                .then(ab => mammoth.convertToHtml({ arrayBuffer: ab }))
                 .then(res => {
                     previewWin.document.getElementById('loading').style.display = 'none';
                     const output = previewWin.document.getElementById('output');
@@ -446,8 +728,6 @@
         document.getElementById('modalTitle').textContent = 'Grade: ' + studentName;
         document.getElementById('gradeForm').action = '/teacher/activities/submissions/' + submissionId + '/grade';
 
-        document.getElementById('gradeForm').action = '/teacher/activities/submissions/' + submissionId + '/grade';
-
         let scoreInput = document.getElementById('raw_score');
         if (score !== '' && score !== 'None' && score !== null) {
             scoreInput.value = score;
@@ -456,34 +736,24 @@
         }
 
         document.getElementById('remarks').value = feedback || '';
-        document.getElementById('gradeModal').style.display = 'block';
+        document.getElementById('gradeModal').style.display = 'flex';
     }
 
     function closeGradeModal() {
         document.getElementById('gradeModal').style.display = 'none';
-        document.getElementById('gradeForm').action = '';
-        document.getElementById('raw_score').value = '';
-        document.getElementById('remarks').value = '';
     }
 
     function openRescheduleModal(enrollmentId, studentName) {
         document.getElementById('reschedModalTitle').innerText = 'Reschedule: ' + studentName;
         document.getElementById('resched_enrollment_id').value = enrollmentId;
-        
-        // Set min date to current time
-        const now = new Date();
-        const offset = now.getTimezoneOffset() * 60000;
-        const localISOTime = new Date(now - offset).toISOString().slice(0, 16);
-        document.getElementById('new_due_date').setAttribute('min', localISOTime);
-        
-        document.getElementById('rescheduleModal').style.display = 'block';
+        document.getElementById('rescheduleModal').style.display = 'flex';
     }
 
     function closeRescheduleModal() {
         document.getElementById('rescheduleModal').style.display = 'none';
     }
 
-    document.getElementById('rescheduleForm').onsubmit = function(e) {
+    document.getElementById('rescheduleForm').onsubmit = function (e) {
         e.preventDefault();
         const data = {
             enrollment_id: document.getElementById('resched_enrollment_id').value,
@@ -497,26 +767,26 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         })
-        .then(response => response.json())
-        .then(res => {
-            if (res.ok) {
-                alert('Rescheduled successfully!');
-                location.reload();
-            } else {
-                alert('Error: ' + res.error);
-            }
-        })
-        .catch(err => {
-            alert('Failed to save changes.');
-            console.error(err);
-        });
+            .then(response => response.json())
+            .then(res => {
+                if (res.ok) {
+                    alert('Rescheduled successfully!');
+                    location.reload();
+                } else {
+                    alert('Error: ' + res.error);
+                }
+            })
+            .catch(err => {
+                alert('Failed to save changes.');
+                console.error(err);
+            });
     };
 
     window.onclick = function (event) {
-        var gModal = document.getElementById('gradeModal');
-        var rModal = document.getElementById('rescheduleModal');
-        if (event.target == gModal) closeGradeModal();
-        if (event.target == rModal) closeRescheduleModal();
+        if (event.target.className === 'modal') {
+            closeGradeModal();
+            closeRescheduleModal();
+        }
     }
 </script>
 {% endblock %}
