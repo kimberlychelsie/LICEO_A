@@ -2732,18 +2732,13 @@
         body.innerHTML = `<img src="${url}" class="preview-img" alt="${filename}">`;
       } 
       else if (ext === 'pdf') {
-        // Direct Iframe is better for modern desktop browsers
         let pdfUrl = absoluteUrl;
+        // If it's a Cloudinary link, ensure it doesn't force download
         if (pdfUrl.includes('/upload/')) {
             pdfUrl = pdfUrl.replace('/upload/', '/upload/fl_attachment:false/');
         }
-        body.innerHTML = `
-            <div style="width:100%; height:100%; display:flex; flex-direction:column;">
-                <iframe src="${pdfUrl}" class="preview-iframe" style="flex:1;"></iframe>
-                <div style="padding:10px; background:#f1f5f9; text-align:center; border-top:1px solid #e2e8f0;">
-                    <p style="font-size:0.75rem; color:#64748b; margin-bottom:5px;">PDF not loading? <a href="${pdfUrl}" target="_blank" style="color:#3b82f6; font-weight:700;">Open in New Tab</a></p>
-                </div>
-            </div>`;
+        // Direct iframe is now allowed due to SAMEORIGIN fix in app.py
+        body.innerHTML = `<iframe src="${pdfUrl}" class="preview-iframe"></iframe>`;
       }
       else if (ext === 'docx') {
         fetch(absoluteUrl)
