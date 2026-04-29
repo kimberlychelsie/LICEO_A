@@ -2692,6 +2692,7 @@
   </style>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
     function openPreview(url, filename = 'File Preview') {
       const modal = document.getElementById('universalPreviewModal');
@@ -2748,16 +2749,38 @@
                   pdfUrl = pdfUrl.replace('/upload/', '/upload/fl_attachment:false/');
               }
           }
-          body.innerHTML = `<iframe src="${pdfUrl}#toolbar=0" class="preview-iframe"></iframe>`;
-          
-          const fallbackTimeout = setTimeout(() => {
-              const iframe = body.querySelector('iframe');
-              if (iframe && !iframe.src.includes('docs.google.com')) {
-                  const googleViewer = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
-                  body.innerHTML = `<iframe src="${googleViewer}" class="preview-iframe"></iframe>`;
-              }
-          }, 2500);
-          modal.dataset.timeoutId = fallbackTimeout;
+
+          const pdfjsLib = window.pdfjsLib;
+          if (pdfjsLib) {
+              pdfjsLib.GlobalWorkerOptions.workerSrc =
+                  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+              pdfjsLib.getDocument({ url: pdfUrl, withCredentials: false }).promise
+                  .then(pdf => {
+                      body.innerHTML = '<div id="pdf-pages" style="overflow-y:auto;height:100%;padding:16px;display:flex;flex-direction:column;gap:8px;align-items:center;background:#525659;"></div>';
+                      const pagesDiv = document.getElementById('pdf-pages');
+                      let chain = Promise.resolve();
+                      for (let i = 1; i <= pdf.numPages; i++) {
+                          chain = chain.then(() => pdf.getPage(i).then(page => {
+                              const vp = page.getViewport({ scale: 1.5 });
+                              const canvas = document.createElement('canvas');
+                              canvas.width = vp.width;
+                              canvas.height = vp.height;
+                              canvas.style.cssText = 'max-width:100%;height:auto;box-shadow:0 2px 8px rgba(0,0,0,0.5);';
+                              pagesDiv.appendChild(canvas);
+                              return page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+                          }));
+                      }
+                      return chain;
+                  })
+                  .catch(() => {
+                      const googleViewer = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
+                      body.innerHTML = `<iframe src="${googleViewer}" class="preview-iframe"></iframe>`;
+                  });
+          } else {
+              const googleViewer = `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
+              body.innerHTML = `<iframe src="${googleViewer}" class="preview-iframe"></iframe>`;
+          }
       } else if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
           body.innerHTML = `<img src="${url}" class="preview-img" alt="${filename}">`;
       } else if (ext === 'docx') {
@@ -2775,12 +2798,6 @@
     function closePreview() {
       const modal = document.getElementById('universalPreviewModal');
       const body = document.getElementById('previewBody');
-      
-      // Clear any pending fallback timeouts
-      if (modal.dataset.timeoutId) {
-          clearTimeout(parseInt(modal.dataset.timeoutId));
-          delete modal.dataset.timeoutId;
-      }
       
       modal.style.display = 'none';
       body.innerHTML = ''; // Clear content
