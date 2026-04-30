@@ -234,15 +234,6 @@
     }
 
     /* ── Confirmation Prompt ── */
-    .btn-prem:disabled {
-        background: #f1f5f9 !important;
-        color: #94a3b8 !important;
-        cursor: not-allowed !important;
-        transform: none !important;
-        box-shadow: none !important;
-        opacity: 0.7;
-    }
-
     .confirm-overlay {
         display: none;
         position: fixed;
@@ -340,42 +331,117 @@
         font-size: 1.2rem;
         margin-top: 2px;
     }
+
+    /* Actions Menu (3-dots) */
+    .action-menu {
+        position: relative;
+        display: inline-block;
+    }
+
+    .action-btn {
+        background: #ffffff;
+        color: #1a3a8f;
+        border: 1.5px solid #e2e8f0;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    }
+
+    .action-btn:hover {
+        background: #1a3a8f;
+        color: #ffffff;
+        border-color: #1a3a8f;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(26, 58, 143, 0.2);
+    }
+
+    .action-dropdown {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        min-width: 180px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        display: none;
+        z-index: 1000;
+        margin-top: 8px;
+        overflow: hidden;
+    }
+
+    .action-dropdown.show {
+        display: block;
+        animation: fadeIn 0.2s ease-out;
+    }
+
+    .action-item {
+        width: 100%;
+        padding: 10px 16px;
+        text-align: left;
+        background: none;
+        border: none;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.85rem;
+        color: #475569;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .action-item:hover {
+        background: #f8fafc;
+        color: #1e40af;
+    }
+
+    .action-item.danger {
+        color: #dc2626;
+    }
+
+    .action-item.danger:hover {
+        background: #fef2f2;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 </style>
 
 <div class="br-container">
     <!-- Header -->
     <div class="registry-welcome">
         <h1>Manage Liceo Branches</h1>
-
     </div>
-
 
     <!-- Create New Branch -->
     <div class="modern-card">
         <h2><i class="fas fa-plus-circle" style="color: var(--ma-gold);"></i> Deploy New Branch Node</h2>
-        <form method="POST" action="{{ url_for('super_admin.super_admin_branches') }}"
-            onsubmit="return validateAddBranch(this);">
+        <form method="POST" action="{{ url_for('super_admin.super_admin_branches') }}" onsubmit="return validateAddBranch(this);">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="entry-grid">
                 <div class="form-node">
                     <label>Branch Name</label>
-                    <input type="text" id="branch_name" name="branch_name" placeholder="e.g. Liceo de Majayjay"
-                        required>
+                    <input type="text" name="branch_name" placeholder="e.g. Liceo de Majayjay" required>
                 </div>
                 <div class="form-node">
                     <label>Branch Code</label>
-                    <input type="text" id="branch_code" name="branch_code" placeholder="e.g. LDMAJ"
-                        style="text-transform: uppercase;" required>
+                    <input type="text" name="branch_code" placeholder="e.g. LDMAJ" style="text-transform: uppercase;" required>
                 </div>
                 <div class="form-node">
                     <label>Location</label>
-                    <input type="text" name="location" id="branch_location" class="no-numbers"
-                        placeholder="e.g. Majayjay, Laguna" required>
+                    <input type="text" name="location" class="no-numbers" placeholder="e.g. Majayjay, Laguna" required>
                 </div>
                 <div class="form-node">
                     <label>Admin Name</label>
-                    <input type="text" id="admin_name" name="admin_name" class="no-numbers"
-                        placeholder="e.g. Jocelyn Ramirez" required>
+                    <input type="text" name="admin_name" class="no-numbers" placeholder="e.g. Jocelyn Ramirez" required>
                 </div>
                 <div class="form-node">
                     <label>Gender</label>
@@ -387,24 +453,14 @@
                 </div>
                 <div class="form-node">
                     <label>Admin Email</label>
-                    <input type="email" id="admin_email" name="admin_email" placeholder="admin@liceo.edu.ph" required>
+                    <input type="email" name="admin_email" placeholder="admin@liceo.edu.ph" required>
                 </div>
             </div>
 
             <!-- MAP SECTION -->
             <div class="map-section" style="margin-bottom: 24px;">
-                <label
-                    style="display:block; font-size:0.8rem; font-weight:800; color:var(--ma-muted); text-transform:uppercase; margin-bottom:8px;">Geographic
-                    Location (Required)</label>
-                <div class="map-instruction">
-                    <i class="fas fa-map-marked-alt"></i>
-                    <div>
-                        <strong>How to pin location:</strong> Use the search icon 🔍 on the map to find the city/street,
-                        then <strong>drag the red pin</strong> exactly where the school is located.
-                    </div>
-                </div>
+                <label style="display:block; font-size:0.8rem; font-weight:800; color:var(--ma-muted); text-transform:uppercase; margin-bottom:8px;">Geographic Location (Required)</label>
                 <div id="addBranchMap" class="map-container"></div>
-                <!-- Hidden fields for coordinates -->
                 <input type="hidden" name="latitude" id="addLatitude">
                 <input type="hidden" name="longitude" id="addLongitude">
             </div>
@@ -417,8 +473,7 @@
 
     <!-- Branch Inventory -->
     <div class="modern-card" style="padding:0; overflow:hidden;">
-        <div
-            style="padding: 32px; display: flex; align-items:center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
+        <div style="padding: 32px; display: flex; align-items:center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
             <h2 style="margin:0;">🏢 Network Registry ({{ branches|length }} Nodes)</h2>
             <div class="search-node">
                 <i class="fas fa-search"></i>
@@ -432,6 +487,7 @@
                 <thead>
                     <tr>
                         <th style="width: 60px; text-align: center;">ID</th>
+                        <th style="width: 120px; text-align: center;">Username</th>
                         <th>System Entity</th>
                         <th>Location</th>
                         <th>Protocol</th>
@@ -443,36 +499,25 @@
                 <tbody>
                     {% for b in branches %}
                     <tr>
-                        <td style="text-align: center; color: var(--ma-muted); font-weight: 800;">#{{ loop.revindex }}
+                        <td style="text-align: center; font-weight: 900; color: var(--ma-muted); font-size: 0.8rem;">
+                            #{{ b.branch_id }}
+                        </td>
+                        <td style="text-align: center; color: var(--ma-primary); font-weight: 800; font-size: 0.8rem;">
+                            {{ b.admin_username or 'PENDING' }}
                         </td>
                         <td>
                             <div style="font-weight: 850; color: var(--ma-primary);">{{ b.branch_name }}</div>
-                            <div style="font-size: 0.75rem; color: var(--ma-muted); font-weight: 600;">Deployment: {{
-                                b.created_at.strftime('%Y-%m-%d') if b.created_at else 'PEND' }}</div>
+                            <div style="font-size: 0.75rem; color: var(--ma-muted); font-weight: 600;">Deployment: {{ b.created_at.strftime('%Y-%m-%d') if b.created_at else 'PEND' }}</div>
                         </td>
-                        <td><i class="fas fa-map-marker-alt" style="color: var(--ma-gold);"></i> {{ b.location or 'N/A'
-                            }}</td>
+                        <td><i class="fas fa-map-marker-alt" style="color: var(--ma-gold);"></i> {{ b.location or 'N/A' }}</td>
                         <td>
-                            {% if b.branch_code %}
-                            <code
-                                style="background: rgba(26, 58, 143, 0.05); color: var(--ma-primary); padding: 4px 8px; border-radius: 8px; font-weight: 800; font-size: 0.8rem;">{{ b.branch_code }}</code>
-                            {% else %}
-                            <span class="badge-prem status-incomplete">MISSING_CODE</span>
-                            {% endif %}
+                            <code style="background: rgba(26, 58, 143, 0.05); color: var(--ma-primary); padding: 4px 8px; border-radius: 8px; font-weight: 800; font-size: 0.8rem;">{{ b.branch_code }}</code>
                         </td>
                         <td>
                             <div style="font-weight: 850; font-size: 0.9rem; color: var(--ma-primary);">
-                                {% if b.admin_gender == 'Male' %}<i class="fas fa-mars" style="color:#3b82f6;"></i> Mr.
-                                {% elif b.admin_gender == 'Female' %}<i class="fas fa-venus" style="color:#f43f5e;"></i>
-                                Ms.
-                                {% endif %}
                                 {{ b.admin_full_name or 'UNNAMED' }}
                             </div>
-                            <div style="font-size: 0.75rem; color: var(--ma-muted); font-weight: 700;">
-                                {{ b.admin_username or 'no_user' }}
-                            </div>
-                            <div style="font-size: 0.75rem; color: var(--ma-muted); opacity: 0.7;">{{ b.admin_email or
-                                'No Email Protocol' }}</div>
+                            <div style="font-size: 0.75rem; color: var(--ma-muted);">{{ b.admin_email }}</div>
                         </td>
                         <td>
                             {% if b.is_active %}
@@ -481,61 +526,46 @@
                             <span class="badge-prem status-standby"><i class="fas fa-power-off"></i> DEACTIVATED</span>
                             {% endif %}
                         </td>
-                        <td style="text-align: right; padding-right: 32px; white-space: nowrap;">
-                            <form method="POST" action="/super-admin/branch/{{ b.branch_id }}/toggle-status"
-                                style="display:inline;">
-                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                <button type="submit" class="btn-prem"
-                                    style="padding: 8px 14px; background: #f1f5f9; color: var(--ma-muted); font-size: 0.75rem;">
-                                    {% if b.is_active %}<i class="fas fa-pause"></i> Deactivated{% else %}<i
-                                        class="fas fa-play"></i> Activated{% endif %}
+                        <td style="text-align: right; padding-right: 32px;">
+                            <div class="action-menu">
+                                <button type="button" class="action-btn" onclick="toggleActionMenu(this, event)">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="1"></circle>
+                                        <circle cx="12" cy="5" r="1"></circle>
+                                        <circle cx="12" cy="19" r="1"></circle>
+                                    </svg>
                                 </button>
-                            </form>
-                            <button type="button" class="btn-prem edit-branch-btn" data-id="{{ b.branch_id }}"
-                                data-name="{{ b.branch_name | e }}" data-code="{{ b.branch_code or '' }}"
-                                data-location="{{ b.location | e }}" data-email="{{ b.admin_email or '' }}"
-                                data-fullname="{{ b.admin_full_name or '' }}" data-gender="{{ b.admin_gender or '' }}"
-                                data-lat="{{ b.latitude or '' }}" data-lng="{{ b.longitude or '' }}"
-                                style="padding: 8px 14px; background: rgba(250, 204, 21, 0.1); color: #92400e; font-size: 0.75rem; margin-left: 8px;">
-                                <i class="fas fa-edit"></i> Edit
-                            </button>
+                                <div class="action-dropdown">
+                                    <button type="button" class="action-item" 
+                                        onclick="openEditBranch('{{ b.branch_id }}','{{ b.branch_name|e }}','{{ b.branch_code }}','{{ b.location|e }}','{{ b.admin_email }}','{{ b.admin_full_name|e }}','{{ b.admin_gender }}','{{ b.latitude }}','{{ b.longitude }}','{{ b.retired_admin_name|e }}','{{ b.retired_admin_id }}')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg> Edit Details
+                                    </button>
+                                    <button type="button" class="action-item" onclick="openTransferModal('{{ b.branch_id }}', '{{ b.branch_name|e }}')">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> Replace Principal
+                                    </button>
+                                    <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 4px 0;">
+                                    <form method="POST" action="/super-admin/branch/{{ b.branch_id }}/toggle-status" style="display:contents;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="action-item {% if b.is_active %}danger{% endif %}" onclick="return confirmStatusToggle(event, '{{ b.branch_name|e }}', {{ 'true' if b.is_active else 'false' }})">
+                                            {% if b.is_active %}Deactivate Branch{% else %}Activate Branch{% endif %}
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        {% else %}
-        <div style="padding: 80px; text-align: center;">
-            <i class="fas fa-folder-open"
-                style="font-size: 3rem; color: #e2e8f0; margin-bottom: 20px; display: block;"></i>
-            <span style="font-weight: 700; color: #94a3b8;">No nodes in the registry. Complete initial deployment to see
-                entries.</span>
-        </div>
         {% endif %}
-    </div>
-</div>
-
-<!-- Status Toggle Modal -->
-<div id="statusConfirmOverlay" class="confirm-overlay">
-    <div class="confirm-modal">
-        <div id="confirmIcon" style="font-size: 3rem; margin-bottom: 20px;"></div>
-        <h2 id="confirmTitle"
-            style="font-size: 1.25rem; font-weight: 900; margin-bottom: 12px; color: var(--ma-primary);"></h2>
-        <p id="confirmMessage"
-            style="font-size: 0.9rem; color: var(--ma-muted); margin-bottom: 24px; line-height: 1.5;"></p>
-        <div style="display: flex; gap: 12px; justify-content: center;">
-            <button type="button" onclick="cancelStatusToggle()" class="btn-prem"
-                style="background: #f1f5f9; color: var(--ma-muted);">Wait, Cancel</button>
-            <button id="confirmExecuteBtn" class="btn-prem" style="background: var(--ma-primary); color: white;">Confirm</button>
-        </div>
     </div>
 </div>
 
 <!-- Edit Modal -->
 <div id="editBranchModal" class="glass-overlay">
     <div class="glass-modal">
-        <h2 style="font-size: 1.25rem; font-weight: 900; color: var(--ma-primary); margin-bottom: 16px;">Edit Branch</h2>
+        <h2 style="font-size: 1.25rem; font-weight: 900; color: var(--ma-primary); margin-bottom: 16px;">Edit Branch Details</h2>
         <form id="editBranchForm" method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="entry-grid" style="grid-template-columns: 1fr; gap: 12px;">
@@ -543,61 +573,30 @@
                     <label>Branch Name</label>
                     <input type="text" name="branch_name" id="editBranchName" required />
                 </div>
-                <div class="entry-grid" style="grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 0;">
+                <div class="entry-grid" style="grid-template-columns: repeat(2, 1fr); gap: 12px;">
                     <div class="form-node">
                         <label>Branch Code</label>
-                        <input type="text" name="branch_code" id="editBranchCode" required maxlength="20"
-                            style="text-transform: uppercase;" />
+                        <input type="text" name="branch_code" id="editBranchCode" required style="text-transform: uppercase;" />
                     </div>
                     <div class="form-node">
                         <label>Location</label>
                         <input type="text" name="location" id="editBranchLocation" class="no-numbers" required />
                     </div>
                 </div>
-                <div class="entry-grid" style="grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 0;">
-                    <div class="form-node">
-                        <label>Admin Name</label>
-                        <input type="text" name="admin_name" id="editAdminName" class="no-numbers" required />
-                    </div>
-                    <div class="form-node">
-                        <label>Gender</label>
-                        <select name="gender" id="editGender" required>
-                            <option value="Male">Male</option>
-                            <option value="Female">Female</option>
-                        </select>
-                    </div>
-                </div>
                 <div class="form-node">
                     <label>Admin Email</label>
                     <input type="email" name="admin_email" id="editAdminEmail" required />
                 </div>
-
-                <div class="map-section" style="margin-top: 16px;">
-                    <label
-                        style="display:block; font-size:0.8rem; font-weight:800; color:var(--ma-muted); text-transform:uppercase; margin-bottom:8px;">Update
-                        Map Pin</label>
-                    <div class="map-instruction" style="padding: 8px 12px; font-size: 0.8rem;">
-                        <i class="fas fa-hand-pointer"></i>
-                        <div>Drag the marker to correct the branch location.</div>
-                    </div>
+                <div class="map-section">
+                    <label style="display:block; font-size:0.8rem; font-weight:800; color:var(--ma-muted); text-transform:uppercase; margin-bottom:8px;">Update Map Location</label>
                     <div id="editBranchMap" class="map-container" style="height: 250px;"></div>
                     <input type="hidden" name="latitude" id="editLatitude">
                     <input type="hidden" name="longitude" id="editLongitude">
                 </div>
-                <!-- Replace Admin Section -->
-                <div style="margin-top: 24px; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px; color: #1e40af;">
-                        <i class="fas fa-user-shield"></i>
-                        <strong style="font-size: 0.85rem;">Change Leader?</strong>
-                    </div>
-                    <p style="font-size: 0.72rem; color: #64748b; margin-bottom: 10px;">Click below if a new person is taking over this branch.</p>
-                    <button type="button" onclick="switchToTransfer()" class="btn-prem" style="width: 100%; background: #fff; border: 1.5px solid #1e40af; color: #1e40af; font-size: 0.8rem; padding: 8px;">Replace Administrator</button>
-                </div>
             </div>
             <div style="display: flex; justify-content: space-between; margin-top: 24px;">
-                <button type="button" onclick="closeEditBranch()" class="btn-prem"
-                    style="background: #f1f5f9; color: var(--ma-muted);">Cancel</button>
-                <button type="submit" class="btn-prem btn-gold" id="commitEditBtn" disabled>Update</button>
+                <button type="button" onclick="closeEditBranch()" class="btn-prem" style="background: #f1f5f9; color: var(--ma-muted);">Cancel</button>
+                <button type="submit" class="btn-prem btn-gold" id="commitEditBtn" disabled>Update Changes</button>
             </div>
         </form>
     </div>
@@ -610,399 +609,252 @@
             <div style="width: 64px; height: 64px; background: rgba(59, 130, 246, 0.1); color: #1e40af; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 1.5rem;">
                 <i class="fas fa-user-shield"></i>
             </div>
-            <h2 style="font-size: 1.25rem; font-weight: 900; color: var(--ma-primary); margin: 0;">Replace Admin</h2>
+            <h2 style="font-size: 1.25rem; font-weight: 900; color: var(--ma-primary); margin: 0;">Replace Principal</h2>
             <p id="transferBranchName" style="font-size: 0.9rem; color: var(--ma-muted); margin-top: 4px;"></p>
         </div>
 
         <form id="transferAdminForm" method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 16px; border-radius: 12px; margin-bottom: 24px; font-size: 0.85rem; color: #92400e;">
-                <i class="fas fa-exclamation-triangle"></i> <strong>Note:</strong> This will deactivate the old admin and create a new account for the new leader.
+                <i class="fas fa-exclamation-triangle"></i> <strong>Important:</strong> This will transition the current leader and assign a new one.
             </div>
 
-            <div class="entry-grid" style="grid-template-columns: 1fr; gap: 16px;">
-                <div class="form-node">
-                    <label>New Admin Name</label>
-                    <input type="text" name="admin_name" class="no-numbers" placeholder="Full Name" required />
+            <!-- Mode Toggle -->
+            <div style="display: flex; gap: 8px; margin-bottom: 24px; background: #f1f5f9; padding: 4px; border-radius: 12px;">
+                <button type="button" id="modeNewBtn" onclick="setReplacementMode('new')" class="btn-prem" style="flex: 1; font-size: 0.75rem; background: var(--ma-primary); color: white; border: none; padding: 10px;">New Administrator</button>
+                <button type="button" id="modeTransferBtn" onclick="setReplacementMode('transfer')" class="btn-prem" style="flex: 1; font-size: 0.75rem; background: transparent; color: var(--ma-muted); border: none; padding: 10px;">Transfer Existing</button>
+            </div>
+            <input type="hidden" name="replacement_mode" id="replacementMode" value="new">
+
+            <!-- Mode 1: New Admin Fields -->
+            <div id="newAdminFields">
+                <div class="entry-grid" style="grid-template-columns: 1fr; gap: 16px;">
+                    <div class="form-node">
+                        <label>Full Name</label>
+                        <input type="text" name="admin_name" id="newAdminNameInput" class="no-numbers" placeholder="Full Name" required />
+                    </div>
+                    <div class="form-node">
+                        <label>Gender</label>
+                        <select name="gender" id="newGenderInput" required>
+                            <option value="">— Select —</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                    <div class="form-node">
+                        <label>Email Address</label>
+                        <input type="email" name="admin_email" id="newEmailInput" placeholder="email@liceo.edu.ph" required />
+                    </div>
                 </div>
+            </div>
+
+            <!-- Mode 2: Transfer Admin Fields -->
+            <div id="transferAdminFields" style="display: none;">
                 <div class="form-node">
-                    <label>Gender</label>
-                    <select name="gender" required>
-                        <option value="">— Select —</option>
-                        <option value="Male">Male</option>
-                        <option value="Female">Female</option>
+                    <label>Select Admin to Transfer</label>
+                    <select name="transfer_user_id" id="transferSelectInput" style="width: 100%; padding: 12px; border-radius: 10px; border: 1.5px solid var(--ma-border);">
+                        <option value="">— Select a retired admin —</option>
+                        {% for ra in retired_admins_pool %}
+                        <option value="{{ ra.user_id }}">{{ ra.full_name }} (@{{ ra.username }})</option>
+                        {% endfor %}
                     </select>
                 </div>
-                <div class="form-node">
-                    <label>New Admin Email</label>
-                    <input type="email" name="admin_email" placeholder="email@liceo.edu.ph" required />
-                </div>
             </div>
 
-            <div style="display: flex; gap: 12px; margin-top: 32px;">
+            <div style="margin-top: 20px; padding: 12px; background: #f8fafc; border-radius: 12px; display: flex; align-items: flex-start; gap: 12px;">
+                <input type="checkbox" name="move_to_faculty" id="moveToFaculty" style="margin-top: 4px; width: 18px; height: 18px;">
+                <label for="moveToFaculty" style="font-size: 0.85rem; color: var(--ma-muted);">
+                    <strong>Move current Principal to Faculty?</strong>
+                </label>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
                 <button type="button" onclick="closeTransferModal()" class="btn-prem" style="flex: 1; background: #f1f5f9; color: var(--ma-muted);">Cancel</button>
-                <button type="submit" class="btn-prem" style="flex: 2; background: #1e40af; color: white;">Transfer Now</button>
+                <button type="submit" id="transferSubmitBtn" class="btn-prem" style="flex: 2; background: var(--ma-primary); color: white;">Replace Principal</button>
             </div>
         </form>
     </div>
 </div>
 
-<script>
-    // Auto-sync script removed as per user request (inputs are now manual)
+<!-- Status Confirm Overlay -->
+<div id="statusConfirmOverlay" class="confirm-overlay">
+    <div class="confirm-modal">
+        <div id="confirmIcon" style="font-size: 3rem; margin-bottom: 20px;"></div>
+        <h2 id="confirmTitle" style="font-size: 1.25rem; font-weight: 900; color: var(--ma-primary);"></h2>
+        <p id="confirmMessage" style="font-size: 0.9rem; color: var(--ma-muted); margin-bottom: 24px;"></p>
+        <div style="display: flex; gap: 12px; justify-content: center;">
+            <button type="button" onclick="cancelStatusToggle()" class="btn-prem" style="background: #f1f5f9;">Cancel</button>
+            <button id="confirmExecuteBtn" class="btn-prem" style="background: var(--ma-primary); color: white;">Confirm</button>
+        </div>
+    </div>
+</div>
 
+<script>
     let originalEditData = {};
 
-    function openEditBranch(id, name, code, location, email, fullname, gender, lat, lng) {
+    function openEditBranch(id, name, code, location, email, fullname, gender, lat, lng, retiredName, retiredId) {
         document.getElementById('editBranchName').value = name;
         document.getElementById('editBranchCode').value = code;
         document.getElementById('editBranchLocation').value = location;
         document.getElementById('editAdminEmail').value = email;
-        document.getElementById('editAdminName').value = fullname;
-        document.getElementById('editGender').value = gender || 'Male';
         document.getElementById('editLatitude').value = lat;
         document.getElementById('editLongitude').value = lng;
 
         document.getElementById('editBranchForm').action = '/super-admin/branches/' + id + '/edit';
 
-        // Store for change detection
         originalEditData = {
-            name: (name || "").trim(),
-            code: (code || "").trim(),
-            location: (location || "").trim(),
-            email: (email || "").trim(),
-            fullname: (fullname || "").trim(),
-            gender: gender || 'Male',
-            lat: lat || "",
-            lng: lng || ""
+            name: name, code: code, location: location, email: email, lat: lat, lng: lng
         };
         checkEditChanges();
-
         document.getElementById('editBranchModal').style.display = 'flex';
         initEditMap(lat, lng);
     }
 
     function checkEditChanges() {
-        const currentData = {
-            name: document.getElementById('editBranchName').value.trim(),
-            code: document.getElementById('editBranchCode').value.trim(),
-            location: document.getElementById('editBranchLocation').value.trim(),
-            email: document.getElementById('editAdminEmail').value.trim(),
-            fullname: document.getElementById('editAdminName').value.trim(),
-            gender: document.getElementById('editGender').value,
-            lat: document.getElementById('editLatitude').value,
-            lng: document.getElementById('editLongitude').value
-        };
-
-        let hasChanged = false;
-        for (let key in originalEditData) {
-            if (String(originalEditData[key]).trim() !== String(currentData[key]).trim()) {
-                hasChanged = true;
-                break;
-            }
-        }
+        const hasChanged = 
+            document.getElementById('editBranchName').value !== originalEditData.name ||
+            document.getElementById('editBranchCode').value !== originalEditData.code ||
+            document.getElementById('editBranchLocation').value !== originalEditData.location ||
+            document.getElementById('editAdminEmail').value !== originalEditData.email ||
+            document.getElementById('editLatitude').value != originalEditData.lat ||
+            document.getElementById('editLongitude').value != originalEditData.lng;
+        
         document.getElementById('commitEditBtn').disabled = !hasChanged;
     }
 
-    // Block numbers for specific fields
-    document.addEventListener('input', function (e) {
-        if (e.target.classList.contains('no-numbers')) {
-            e.target.value = e.target.value.replace(/[0-9]/g, '');
-        }
-    });
-
-    // Attach listeners to all edit inputs
-    ['editBranchName', 'editBranchCode', 'editBranchLocation', 'editAdminEmail', 'editAdminName', 'editGender'].forEach(id => {
-        document.getElementById(id).addEventListener('input', checkEditChanges);
-        document.getElementById(id).addEventListener('change', checkEditChanges);
-    });
-
     function closeEditBranch() {
         document.getElementById('editBranchModal').style.display = 'none';
-    }
-
-    // FORM VALIDATION: Ensure location is pinned on the map
-    function validateAddBranch(form) {
-        const lat = document.getElementById('addLatitude').value;
-        const lng = document.getElementById('addLongitude').value;
-        if (!lat || !lng) {
-            alert("ATTENTION: Please pin the branch location on the map before deploying.");
-            document.getElementById('addBranchMap').scrollIntoView({ behavior: 'smooth' });
-            return false;
-        }
-        return true;
-    }
-
-    document.addEventListener('click', function (e) {
-        const transferBtn = e.target.closest('.transfer-admin-btn');
-        if (transferBtn) {
-            openTransferModal(transferBtn.dataset.id, transferBtn.dataset.name);
-            return;
-        }
-
-        const editBtn = e.target.closest('.edit-branch-btn');
-        if (editBtn) {
-            openEditBranch(
-                editBtn.dataset.id,
-                editBtn.dataset.name,
-                editBtn.dataset.code,
-                editBtn.dataset.location,
-                editBtn.dataset.email,
-                editBtn.dataset.fullname,
-                editBtn.dataset.gender,
-                editBtn.dataset.lat,
-                editBtn.dataset.lng
-            );
-        }
-    });
- 
-     function openTransferModal(id, name) {
-         document.getElementById('transferBranchName').innerText = 'Branch: ' + name;
-         document.getElementById('transferAdminForm').action = '/super-admin/branches/' + id + '/replace-admin';
-         document.getElementById('transferAdminModal').style.display = 'flex';
-     }
- 
-     function closeTransferModal() {
-         document.getElementById('transferAdminModal').style.display = 'none';
-     }
-
-    const searchInput = document.getElementById('branchSearch');
-    if (searchInput) {
-        searchInput.addEventListener('keyup', function () {
-            const query = this.value.toLowerCase().trim();
-            const rows = document.querySelectorAll('.vault-table tbody tr');
-            rows.forEach(row => {
-                const text = row.innerText.toLowerCase();
-                row.style.display = text.includes(query) ? '' : 'none';
-            });
-        });
-    }
-
-    // --- STATUS TOGGLE CONFIRMATION ---
-    let pendingStatusForm = null;
-
-    function confirmStatusToggle(event, branchName, isActive) {
-        event.preventDefault();
-        pendingStatusForm = event.target;
-
-        const overlay = document.getElementById('statusConfirmOverlay');
-        const icon = document.getElementById('confirmIcon');
-        const title = document.getElementById('confirmTitle');
-        const msg = document.getElementById('confirmMessage');
-        const btn = document.getElementById('confirmExecuteBtn');
-
-        if (isActive) {
-            icon.innerHTML = '⚠️';
-            title.innerText = 'Confirm Deactivation';
-            msg.innerText = `Are you sure you want to deactivate ${branchName}? 
-            
-            By proceeding, all administrators, staff, and students of this branch will be instantly locked out of the system.`;
-            btn.style.background = '#dc2626';
-            btn.innerText = 'Yes, Deactivate Node';
-        } else {
-            icon.innerHTML = '🚀';
-            title.innerText = 'Reactivate Branch?';
-            msg.innerText = `Bring ${branchName} back online? All branch users will regain access to their dashboards immediately.`;
-            btn.style.background = 'var(--ma-primary)';
-            btn.innerText = 'Yes, Reactivate';
-        }
-
-        btn.onclick = function () {
-            pendingStatusForm.submit();
-        };
-
-        overlay.style.display = 'flex';
-        return false;
-    }
-
-    function cancelStatusToggle() {
-        document.getElementById('statusConfirmOverlay').style.display = 'none';
-        pendingStatusForm = null;
-    }
-
-    // --- LEAFLET MAPS IMPLEMENTATION ---
-    let addMap, addMarker;
-    let editMap, editMarker;
-
-    // Laguna Bounding Box
-    const lagunaBounds = [
-        [13.9, 121.0], // Southwest coords
-        [14.6, 121.6]  // Northeast coords
-    ];
-    // Default center (Majayjay)
-    const majayjayCenter = [14.1130, 121.5110];
-
-    // Red Icon for the Selector Pin
-    const redIcon = new L.Icon({
-        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-        shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41]
-    });
-
-    // Existing Branches Data
-    const branchesData = [
-        {% for b in branches %}
-    {% if b.latitude and b.longitude %}
-    {
-        name: "{{ b.branch_name | e }}",
-        lat: {{ b.latitude }},
-        lng: {{ b.longitude }}
-    },
-    {% endif %}
-    {% endfor %}
-    ];
-
-    function populateExistingBranches(mapObj) {
-        branchesData.forEach(function (b) {
-            L.marker([b.lat, b.lng]).addTo(mapObj).bindPopup(`<b>${b.name}</b>`);
-        });
-    }
-
-    function initAddMap() {
-        if (addMap) return;
-
-        addMap = L.map('addBranchMap', {
-            maxBounds: lagunaBounds,
-            maxBoundsViscosity: 1.0,
-            minZoom: 10
-        }).setView(majayjayCenter, 12);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(addMap);
-
-        // Show existing branches
-        populateExistingBranches(addMap);
-
-        // Add Geocoder (Search)
-        L.Control.geocoder({
-            defaultMarkGeocode: false,
-            placeholder: "Search address in Laguna..."
-        })
-            .on('markgeocode', function (e) {
-                const latlng = e.geocode.center;
-                addMap.setView(latlng, 16);
-                addMarker.setLatLng(latlng);
-                document.getElementById('addLatitude').value = latlng.lat;
-                document.getElementById('addLongitude').value = latlng.lng;
-            })
-            .addTo(addMap);
-
-        // Add Marker with RED ICON
-        addMarker = L.marker(majayjayCenter, {
-            draggable: true,
-            icon: redIcon
-        }).addTo(addMap);
-
-        addMarker.on('dragend', function (e) {
-            const position = addMarker.getLatLng();
-            document.getElementById('addLatitude').value = position.lat;
-            document.getElementById('addLongitude').value = position.lng;
-        });
-
-        // Add click to map
-        addMap.on('click', function (e) {
-            addMarker.setLatLng(e.latlng);
-            document.getElementById('addLatitude').value = e.latlng.lat;
-            document.getElementById('addLongitude').value = e.latlng.lng;
-        });
-    }
-
-    // Call init after a small delay to ensure container is rendered
-    setTimeout(initAddMap, 500);
-
-    // Edit Map
-    function initEditMap(lat, lng) {
-        let center = (lat && lng) ? [parseFloat(lat), parseFloat(lng)] : majayjayCenter;
-
-        if (!editMap) {
-            editMap = L.map('editBranchMap', {
-                maxBounds: lagunaBounds,
-                maxBoundsViscosity: 1.0,
-                minZoom: 10
-            }).setView(center, 15);
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '© OpenStreetMap'
-            }).addTo(editMap);
-
-            // Show existing branches
-            populateExistingBranches(editMap);
-
-            L.Control.geocoder({
-                defaultMarkGeocode: false,
-                placeholder: "Search new location..."
-            })
-                .on('markgeocode', function (e) {
-                    const latlng = e.geocode.center;
-                    editMap.setView(latlng, 16);
-                    editMarker.setLatLng(latlng);
-                    document.getElementById('editLatitude').value = latlng.lat;
-                    document.getElementById('editLongitude').value = latlng.lng;
-                    checkEditChanges();
-                })
-                .addTo(editMap);
-
-            // Edit Marker with RED ICON
-            editMarker = L.marker(center, {
-                draggable: true,
-                icon: redIcon
-            }).addTo(editMap);
-
-            editMarker.on('dragend', function (e) {
-                const position = editMarker.getLatLng();
-                document.getElementById('editLatitude').value = position.lat;
-                document.getElementById('editLongitude').value = position.lng;
-                checkEditChanges();
-            });
-
-            editMap.on('click', function (e) {
-                editMarker.setLatLng(e.latlng);
-                document.getElementById('editLatitude').value = e.latlng.lat;
-                document.getElementById('editLongitude').value = e.latlng.lng;
-                checkEditChanges();
-            });
-        } else {
-            editMap.setView(center, 15);
-            editMarker.setLatLng(center);
-        }
-
-        // Fix Leaflet tile loading issue in hidden modal
-        setTimeout(() => {
-            editMap.invalidateSize();
-        }, 300);
-    }
-
-    function toggleAddForm() {
-        const section = document.getElementById('addBranchSection');
-        const icon = document.getElementById('toggleIcon');
-        if (section.style.display === 'none') {
-            section.style.display = 'block';
-            icon.innerHTML = '<i class="fas fa-chevron-up"></i>';
-            setTimeout(initAddMap, 300);
-        } else {
-            section.style.display = 'none';
-            icon.innerHTML = '<i class="fas fa-chevron-down"></i>';
-        }
     }
 
     function openTransferModal(id, name) {
         document.getElementById('transferBranchName').innerText = 'Branch: ' + name;
         document.getElementById('transferAdminForm').action = '/super-admin/branches/' + id + '/replace-admin';
         document.getElementById('transferAdminModal').style.display = 'flex';
+        setReplacementMode('new');
     }
 
     function closeTransferModal() {
         document.getElementById('transferAdminModal').style.display = 'none';
     }
 
-    function switchToTransfer() {
-        const id = document.getElementById('editBranchForm').action.split('/').slice(-2, -1)[0];
-        const name = document.getElementById('editBranchName').value;
-        closeEditBranch();
-        openTransferModal(id, name);
+    function setReplacementMode(mode) {
+        const modeInput = document.getElementById('replacementMode');
+        const newFields = document.getElementById('newAdminFields');
+        const transferFields = document.getElementById('transferAdminFields');
+        const newBtn = document.getElementById('modeNewBtn');
+        const transferBtn = document.getElementById('modeTransferBtn');
+        const submitBtn = document.getElementById('transferSubmitBtn');
+
+        const newInputs = [
+            document.getElementById('newAdminNameInput'),
+            document.getElementById('newGenderInput'),
+            document.getElementById('newEmailInput')
+        ];
+        const transferInput = document.getElementById('transferSelectInput');
+
+        modeInput.value = mode;
+
+        if (mode === 'new') {
+            newFields.style.display = 'block';
+            transferFields.style.display = 'none';
+            newBtn.style.background = 'var(--ma-primary)';
+            newBtn.style.color = 'white';
+            transferBtn.style.background = 'transparent';
+            transferBtn.style.color = 'var(--ma-muted)';
+            
+            // Enable NEW, Disable TRANSFER
+            newInputs.forEach(i => { if(i) { i.required = true; i.disabled = false; } });
+            if(transferInput) { transferInput.required = false; transferInput.disabled = true; }
+            
+            if(submitBtn) submitBtn.innerText = 'Replace with New Admin';
+        } else {
+            newFields.style.display = 'none';
+            transferFields.style.display = 'block';
+            transferBtn.style.background = 'var(--ma-primary)';
+            transferBtn.style.color = 'white';
+            newBtn.style.background = 'transparent';
+            newBtn.style.color = 'var(--ma-muted)';
+            
+            // Disable NEW, Enable TRANSFER
+            newInputs.forEach(i => { if(i) { i.required = false; i.disabled = true; } });
+            if(transferInput) { transferInput.required = true; transferInput.disabled = false; }
+            
+            if(submitBtn) submitBtn.innerText = 'Transfer & Replace';
+        }
+    }
+
+    function toggleActionMenu(btn, event) {
+        event.stopPropagation();
+        document.querySelectorAll('.action-dropdown').forEach(d => {
+            if (d !== btn.nextElementSibling) d.classList.remove('show');
+        });
+        btn.nextElementSibling.classList.toggle('show');
+    }
+
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.action-dropdown').forEach(d => d.classList.remove('show'));
+    });
+
+    // Confirmation Logic
+    let pendingStatusForm = null;
+    function confirmStatusToggle(event, branchName, isActive) {
+        event.preventDefault();
+        pendingStatusForm = event.target.closest('form');
+        const overlay = document.getElementById('statusConfirmOverlay');
+        document.getElementById('confirmTitle').innerText = isActive ? 'Deactivate Branch?' : 'Activate Branch?';
+        document.getElementById('confirmMessage').innerText = `Are you sure you want to change the status of ${branchName}?`;
+        document.getElementById('confirmExecuteBtn').onclick = () => pendingStatusForm.submit();
+        overlay.style.display = 'flex';
+        return false;
+    }
+
+    function cancelStatusToggle() {
+        document.getElementById('statusConfirmOverlay').style.display = 'none';
+    }
+
+    // MAPS
+    let addMap, addMarker, editMap, editMarker;
+    const majayjayCenter = [14.1130, 121.5110];
+
+    function initAddMap() {
+        if (addMap) return;
+        addMap = L.map('addBranchMap').setView(majayjayCenter, 12);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(addMap);
+        addMarker = L.marker(majayjayCenter, {draggable: true}).addTo(addMap);
+        addMarker.on('dragend', () => {
+            const p = addMarker.getLatLng();
+            document.getElementById('addLatitude').value = p.lat;
+            document.getElementById('addLongitude').value = p.lng;
+        });
+    }
+
+    function initEditMap(lat, lng) {
+        const center = (lat && lng) ? [parseFloat(lat), parseFloat(lng)] : majayjayCenter;
+        if (!editMap) {
+            editMap = L.map('editBranchMap').setView(center, 15);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(editMap);
+            editMarker = L.marker(center, {draggable: true}).addTo(editMap);
+            editMarker.on('dragend', () => {
+                const p = editMarker.getLatLng();
+                document.getElementById('editLatitude').value = p.lat;
+                document.getElementById('editLongitude').value = p.lng;
+                checkEditChanges();
+            });
+        } else {
+            editMap.setView(center, 15);
+            editMarker.setLatLng(center);
+        }
+        setTimeout(() => editMap.invalidateSize(), 300);
+    }
+
+    setTimeout(initAddMap, 500);
+
+    function validateAddBranch() {
+        if (!document.getElementById('addLatitude').value) {
+            alert("Please pin the location on the map.");
+            return false;
+        }
+        return true;
     }
 </script>
 {% endblock %}

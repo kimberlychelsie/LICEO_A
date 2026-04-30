@@ -16,6 +16,7 @@ from db import is_branch_active, get_db_connection
 from extensions import limiter
 from routes.teacher import _get_active_school_year
 from flask import send_from_directory, make_response
+import psycopg2.extras
 from flask_wtf.csrf import CSRFProtect
 
 
@@ -53,6 +54,36 @@ if os.getenv("FLASK_ENV") == "production" or os.getenv("RAILWAY_ENVIRONMENT"):
 
 # Max upload size: 100MB total
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024
+
+@app.before_request
+def validate_user_session():
+    # Always allow public and static routes
+    if not request.endpoint or request.endpoint.startswith('auth.') or request.endpoint == 'static':
+        return
+
+    user_id = session.get('user_id')
+    if user_id:
+        db = get_db_connection()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            cursor.execute("SELECT status, branch_id, role FROM users WHERE user_id = %s", (user_id,))
+            user = cursor.fetchone()
+            
+            if not user or user['status'] != 'active':
+                session.clear()
+                flash("Your account is no longer active or has been retired. Please contact the administrator.", "error")
+                return redirect(url_for('auth.login'))
+            
+            # If they are a branch-level user, ensure they are in the correct branch
+            if user['role'] not in ['super_admin'] and user['branch_id'] != session.get('branch_id'):
+                session.clear()
+                flash("Your account has been moved to another branch. Please login again.", "info")
+                return redirect(url_for('auth.login'))
+                
+        except Exception as e:
+            print(f"Session validation error: {str(e)}")
+        finally:
+            db.close()
 
 @app.before_request
 def check_branch_active_status():

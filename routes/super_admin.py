@@ -296,13 +296,20 @@ def super_admin_branches():
                 u.email AS admin_email,
                 u.user_id  AS admin_id,
                 u.full_name AS admin_full_name,
-                u.gender AS admin_gender
+                u.gender AS admin_gender,
+                (SELECT full_name FROM users WHERE branch_id = b.branch_id AND role = 'retired_admin' ORDER BY user_id DESC LIMIT 1) as retired_admin_name,
+                (SELECT user_id FROM users WHERE branch_id = b.branch_id AND role = 'retired_admin' ORDER BY user_id DESC LIMIT 1) as retired_admin_id
             FROM branches b
             LEFT JOIN users u ON u.branch_id = b.branch_id AND u.role = 'branch_admin'
             ORDER BY b.created_at DESC
         """)
         branches = cursor.fetchall()
-        return render_template("superadmin_branches.html", branches=branches)
+
+        # Fetch retired admins for transfer pool
+        cursor.execute("SELECT user_id, full_name, username, branch_id FROM users WHERE role = 'retired_admin'")
+        retired_admins_pool = cursor.fetchall()
+
+        return render_template("superadmin_branches.html", branches=branches, retired_admins_pool=retired_admins_pool)
 
     except Exception as e:
         logger.error(f"Error fetching branches: {str(e)}")
@@ -378,12 +385,19 @@ def super_admin_replace_admin(branch_id):
     if session.get("role") != "super_admin":
         return redirect(url_for("auth.login"))
 
+    replacement_mode = request.form.get("replacement_mode", "new")
+    transfer_user_id = request.form.get("transfer_user_id")
+
     admin_name  = (request.form.get("admin_name") or "").strip()
     admin_email = (request.form.get("admin_email") or "").strip()
     gender      = (request.form.get("gender") or "").strip()
 
-    if not admin_name or not admin_email or not gender:
-        flash("Admin Name, Email, and Gender are required for replacement.", "error")
+    if replacement_mode == 'new' and (not admin_name or not admin_email or not gender):
+        flash("Admin Name, Email, and Gender are required for new replacement.", "error")
+        return redirect(url_for("super_admin.super_admin_branches"))
+    
+    if replacement_mode == 'transfer' and not transfer_user_id:
+        flash("Please select an administrator to transfer.", "error")
         return redirect(url_for("super_admin.super_admin_branches"))
 
     db = get_db_connection()
@@ -391,7 +405,7 @@ def super_admin_replace_admin(branch_id):
     try:
         cursor.execute("BEGIN;")
 
-        # 1. Get branch code to generate new username
+        # 1. Get branch info
         cursor.execute("SELECT branch_name, branch_code FROM branches WHERE branch_id = %s", (branch_id,))
         branch = cursor.fetchone()
         if not branch:
@@ -402,33 +416,62 @@ def super_admin_replace_admin(branch_id):
         branch_name = branch["branch_name"]
         branch_code = branch["branch_code"]
 
-        # 2. Deactivate current admin(s) for this branch
-        cursor.execute("""
-            UPDATE users 
-            SET status = 'inactive', role = 'retired_admin'
-            WHERE branch_id = %s AND role = 'branch_admin'
-        """, (branch_id,))
+        # 2. Handle current admin(s) transition (Retire or Faculty)
+        move_to_faculty = request.form.get("move_to_faculty") == "on"
+        if move_to_faculty:
+            cursor.execute("""
+                UPDATE users SET role = 'teacher', status = 'active'
+                WHERE branch_id = %s AND role = 'branch_admin'
+            """, (branch_id,))
+        else:
+            cursor.execute("""
+                UPDATE users SET status = 'inactive', role = 'retired_admin'
+                WHERE branch_id = %s AND role = 'branch_admin'
+            """, (branch_id,))
 
-        # 3. Create NEW admin account
-        # Generate a unique username LDMAJ_Admin, LDMAJ_Admin_2, etc.
-        base_username = f"{branch_code}_Admin"
-        username = base_username
-        suffix_counter = 2
-        
-        while True:
-            cursor.execute("SELECT 1 FROM users WHERE username = %s", (username,))
-            if not cursor.fetchone():
-                break
-            username = f"{base_username}_{suffix_counter}"
-            suffix_counter += 1
+        if replacement_mode == "new":
+            # 3a. Create NEW admin account
+            base_username = f"{branch_code}_Admin"
+            username = base_username
+            suffix_counter = 2
+            while True:
+                cursor.execute("SELECT 1 FROM users WHERE username = %s", (username,))
+                if not cursor.fetchone(): break
+                username = f"{base_username}_{suffix_counter}"
+                suffix_counter += 1
 
-        temp_password = generate_password()
-        hashed = generate_password_hash(temp_password)
+            temp_password = generate_password()
+            hashed = generate_password_hash(temp_password)
+            cursor.execute("""
+                INSERT INTO users (branch_id, username, password, role, email, full_name, gender, require_password_change, status)
+                VALUES (%s, %s, %s, 'branch_admin', %s, %s, %s, TRUE, 'active')
+            """, (branch_id, username, hashed, admin_email, admin_name, gender))
+            
+            # Email Notification for New Admin
+            try:
+                # Assuming email sending logic exists...
+                pass
+            except: pass
 
-        cursor.execute("""
-            INSERT INTO users (branch_id, username, password, role, email, full_name, gender, require_password_change, status)
-            VALUES (%s, %s, %s, 'branch_admin', %s, %s, %s, TRUE, 'active')
-        """, (branch_id, username, hashed, admin_email, admin_name, gender))
+        else:
+            # 3b. Transfer EXISTING admin account
+            cursor.execute("SELECT full_name, username, email, gender FROM users WHERE user_id = %s", (transfer_user_id,))
+            transfer_user = cursor.fetchone()
+            
+            cursor.execute("""
+                UPDATE users 
+                SET branch_id = %s, role = 'branch_admin', status = 'active' 
+                WHERE user_id = %s
+            """, (branch_id, transfer_user_id))
+            
+            admin_name = transfer_user['full_name']
+            username = transfer_user['username']
+            admin_email = transfer_user['email']
+            gender = transfer_user['gender'] or 'Male'
+            temp_password = "(Your existing password)" # Not sent via email since it's existing
+
+        db.commit()
+        flash(f"Successfully designated {admin_name} as the new Principal for {branch_name}.", "success")
 
         db.commit()
 
@@ -467,6 +510,44 @@ def super_admin_replace_admin(branch_id):
         db.rollback()
         logger.error(f"Failed to replace admin: {str(e)}")
         flash("Failed to process leadership transition.", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(url_for("super_admin.super_admin_branches"))
+
+
+# =======================
+# TRANSITION RETIRED ADMIN TO TEACHER
+# =======================
+@super_admin_bp.route("/super-admin/transition-to-teacher/<int:user_id>", methods=["POST"])
+def super_admin_transition_to_teacher(user_id):
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        # Check if user is a retired admin
+        cursor.execute("SELECT full_name, branch_id FROM users WHERE user_id = %s AND role = 'retired_admin'", (user_id,))
+        user = cursor.fetchone()
+
+        if not user:
+            flash("User not found or not a retired admin.", "error")
+            return redirect(url_for("super_admin.super_admin_branches"))
+
+        # Transition to teacher
+        cursor.execute("""
+            UPDATE users 
+            SET role = 'teacher', status = 'active'
+            WHERE user_id = %s
+        """, (user_id,))
+        db.commit()
+        flash(f"{user[0]} has been assigned to Faculty.", "success")
+
+    except Exception as e:
+        db.rollback()
+        flash(f"Transition failed: {str(e)}", "error")
     finally:
         cursor.close()
         db.close()
