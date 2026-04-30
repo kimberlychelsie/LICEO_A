@@ -169,18 +169,12 @@ def super_admin_branches():
         branch_name = request.form.get("branch_name", "").strip()
         branch_code = (request.form.get("branch_code") or "").strip().upper()
         location    = request.form.get("location", "").strip()
-        latitude    = request.form.get("latitude") or None
-        longitude   = request.form.get("longitude") or None
         admin_email = request.form.get("admin_email", "").strip()
         admin_name  = request.form.get("admin_name", "").strip()
         gender      = request.form.get("gender", "").strip()
 
         if not branch_name or not branch_code or not location or not admin_email or not admin_name or not gender:
             flash("All fields (Branch Name, Code, Location, Admin Name, Gender, Email) are required.", "error")
-            return redirect(url_for("super_admin.super_admin_branches"))
-
-        if not latitude or not longitude:
-            flash("Please pin the branch location on the map before submitting.", "error")
             return redirect(url_for("super_admin.super_admin_branches"))
 
         # USERNAME CONVENTION: [BRANCH_CODE]_Admin
@@ -206,8 +200,8 @@ def super_admin_branches():
                 return redirect(url_for("super_admin.super_admin_branches"))
 
             cursor.execute(
-                "INSERT INTO branches (branch_name, location, branch_code, is_active, latitude, longitude) VALUES (%s, %s, %s, TRUE, %s, %s) RETURNING branch_id",
-                (branch_name, location, branch_code, latitude, longitude)
+                "INSERT INTO branches (branch_name, location, branch_code, is_active) VALUES (%s, %s, %s, TRUE) RETURNING branch_id",
+                (branch_name, location, branch_code)
             )
             branch_id = cursor.fetchone()["branch_id"]
 
@@ -331,14 +325,10 @@ def super_admin_edit_branch(branch_id):
     branch_name = (request.form.get("branch_name") or "").strip()
     branch_code = (request.form.get("branch_code") or "").strip().upper()
     location    = (request.form.get("location") or "").strip()
-    latitude    = request.form.get("latitude") or None
-    longitude   = request.form.get("longitude") or None
     admin_email = (request.form.get("admin_email") or "").strip()
-    admin_name  = (request.form.get("admin_name") or "").strip()
-    gender      = (request.form.get("gender") or "").strip()
 
-    if not branch_name or not branch_code or not admin_email or not admin_name or not gender:
-        flash("All fields are required.", "error")
+    if not branch_name or not branch_code or not location or not admin_email:
+        flash("Branch Name, Code, Location, and Admin Email are required.", "error")
         return redirect(url_for("super_admin.super_admin_branches"))
 
     db = get_db_connection()
@@ -354,15 +344,15 @@ def super_admin_edit_branch(branch_id):
 
         cursor.execute("""
             UPDATE branches
-            SET branch_name = %s, branch_code = %s, location = %s, latitude = %s, longitude = %s
+            SET branch_name = %s, branch_code = %s, location = %s
             WHERE branch_id = %s
-        """, (branch_name, branch_code, location, latitude, longitude, branch_id))
+        """, (branch_name, branch_code, location, branch_id))
         
         cursor.execute("""
             UPDATE users
-            SET email = %s, full_name = %s, gender = %s
+            SET email = %s
             WHERE branch_id = %s AND role = 'branch_admin'
-        """, (admin_email, admin_name, gender, branch_id))
+        """, (admin_email, branch_id))
         db.commit()
         flash(f"Branch updated! Code set to: {branch_code}", "success")
 
