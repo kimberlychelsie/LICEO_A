@@ -409,12 +409,17 @@ def super_admin_replace_admin(branch_id):
             WHERE branch_id = %s AND role = 'branch_admin'
         """, (branch_id,))
 
-        # 3. Create NEW admin account
-        # Generate a unique username if LDMAJ_Admin exists, maybe LDMAJ_Admin_2?
-        # For simplicity, we can use a timestamp or just check existence.
-        import time
-        suffix = int(time.time()) % 10000
-        username = f"{branch_code}_Admin_{suffix}"
+        # 3. Create NEW admin account with UNIQUE username
+        def get_unique_username(base_code):
+            import random
+            while True:
+                suffix = random.randint(1000, 9999)
+                candidate = f"{base_code}_Admin_{suffix}"
+                cursor.execute("SELECT 1 FROM users WHERE username = %s", (candidate,))
+                if not cursor.fetchone():
+                    return candidate
+
+        username = get_unique_username(branch_code)
         temp_password = generate_password()
         hashed = generate_password_hash(temp_password)
 

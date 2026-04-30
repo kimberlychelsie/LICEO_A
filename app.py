@@ -10,8 +10,11 @@ from routes.teacher import _get_active_school_year
 from flask import send_from_directory, make_response
 
 
-app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "liceo_secret_key_dev")
+from flask_wtf.csrf import CSRFProtect
+ 
+ app = Flask(__name__)
+ app.secret_key = os.getenv("SECRET_KEY", "liceo_secret_key_dev")
+ csrf = CSRFProtect(app)
 limiter.init_app(app)
 app.jinja_env.add_extension('jinja2.ext.loopcontrols')
 app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), "uploads")
