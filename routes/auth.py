@@ -383,27 +383,11 @@ def change_password():
                     """, (hashed_password, session.get("user_id")))
 
                 db.commit()
-                flash("Password changed successfully!", "success")
+                flash("Password changed successfully! Please log in with your new password.", "success")
 
-                role = session.get("role")
-                if role == "super_admin":
-                    return redirect("/super-admin")
-                elif role == "branch_admin":
-                    return redirect("/branch-admin")
-                elif role == "registrar":
-                    return redirect("/registrar")
-                elif role == "cashier":
-                    return redirect("/cashier")
-                elif role == "librarian":
-                    return redirect("/librarian")
-                elif role == "teacher":
-                    return redirect("/teacher")
-                elif role == "parent":
-                    return redirect("/parent/dashboard")
-                elif role == "student":
-                    return redirect("/student/dashboard")
-                else:
-                    return redirect("/super-admin")
+                # Logout the user so they can try the new password
+                session.clear()
+                return redirect(url_for("auth.login"))
 
             except Exception as e:
                 db.rollback()

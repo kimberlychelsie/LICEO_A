@@ -1283,6 +1283,7 @@
   <div class="sb-overlay" id="sbOverlay" onclick="closeSidebar()"></div>
 
   <!-- ══ SIDEBAR ══ -->
+  {% if not required %}
   <aside class="sidebar" id="sidebar">
 
     <div style="margin-top: 10px;">
@@ -1928,6 +1929,7 @@
 
 
   </aside>
+  {% endif %}
 
   <!-- ══ TOPBAR ══ -->
   <header class="topbar" id="topbar">
@@ -1942,14 +1944,16 @@
     {% elif session.get('role') == 'teacher' %}{% set dashboard_url = '/teacher' %}
     {% endif %}
 
+    {% if not required %}
     <button class="hamburger" id="hamburgerBtn" onclick="toggleSidebar()" aria-label="Toggle sidebar"
       style="margin-right: 12px;">
       <span></span>
       <span></span>
       <span></span>
     </button>
+    {% endif %}
 
-    <a class="top-brand" href="{{ dashboard_url }}" style="padding: 0;">
+    <a class="top-brand" href="{% if required %}#{% else %}{{ dashboard_url }}{% endif %}" style="padding: 0; {% if required %}pointer-events: none;{% endif %}">
       <div class="top-brand-icon">
         <img src="{{ url_for('static', filename=dynamic_branch_logo) }}" alt="Logo">
       </div>
@@ -1963,7 +1967,7 @@
     </span>
 
     <div class="topbar-right">
-      {% if session.get('role') in ['student', 'branch_admin', 'super_admin', 'librarian', 'teacher', 'registrar',
+      {% if not required and session.get('role') in ['student', 'branch_admin', 'super_admin', 'librarian', 'teacher', 'registrar',
       'cashier', 'parent'] %}
       <div class="notif-wrapper" style="margin-right: 8px;">
         <button class="notif-btn" id="notifBtn" onclick="toggleNotifs()">
@@ -2069,7 +2073,7 @@
 
 
 
-      {% if session.get('role') %}
+      {% if session.get('role') and not required %}
       <div class="profile-dropdown-wrapper">
         <button class="profile-toggle-btn" id="profileBtn" onclick="toggleProfileMenu()"
           style="background:none; border:none; cursor:pointer; padding:2px;">
@@ -2158,7 +2162,7 @@
   </header>
 
   <!-- ══ MAIN CONTENT ══ -->
-  <div class="main-wrap" id="mainWrap">
+  <div class="main-wrap" id="mainWrap" {% if required %}style="margin-left: 0 !important;"{% endif %}>
     {% if not is_branch_active_status %}
     <div
       style="background-color: #fef2f2; color: #991b1b; padding: 12px 24px; border-bottom: 2px solid #fecaca; font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 10px;">
