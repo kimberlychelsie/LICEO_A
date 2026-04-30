@@ -504,10 +504,14 @@
             {% if is_branch_active_status %}
             <td data-label="Action" style="text-align: right;">
               {% if a.teacher_full_name %}
-              <button class="btn-prem btn-danger" style="padding: 6px 12px; font-size: 0.7rem;"
-                onclick="removeAssignment({{ a.section_teacher_id }}, '{{ a.teacher_full_name }}', '{{ a.section_name }}', '{{ a.subject_name }}')">
-                Release
-              </button>
+              <form action="{{ url_for('registrar.registrar_assign_teachers') }}" method="POST" style="display:inline;">
+                <input type="hidden" name="section_id" value="{{ a.section_id }}">
+                <input type="hidden" name="subject_id" value="{{ a.subject_id }}">
+                <input type="hidden" name="teacher_id" value="">
+                <button type="submit" class="btn-prem btn-danger" style="padding: 6px 12px; font-size: 0.7rem;">
+                  Release
+                </button>
+              </form>
               {% endif %}
             </td>
             {% endif %}
@@ -551,7 +555,7 @@
 
     container.innerHTML = '<div style="text-align: center; padding: 40px;"><i class="fas fa-spinner fa-spin" style="font-size: 2rem; color: var(--ma-primary);"></i><p style="margin-top: 15px;">Loading available subjects...</p></div>';
 
-    fetch(`/branch-admin/api/get-all-subjects/${teacherId}`)
+    fetch(`/registrar/api/get-all-subjects/${teacherId}`)
       .then(r => r.json())
       .then(data => {
         allSubjects = data.subjects;
@@ -675,7 +679,7 @@
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
 
-    fetch('/branch-admin/assign-teachers-bulk', {
+    fetch('/registrar/assign-teachers-bulk', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ teacher_id: parseInt(selectedTeacherId), assignment_ids: assignmentIds })
@@ -707,7 +711,7 @@
 
   function removeAssignment(sectionTeacherId, teacherName, sectionName, subjectName) {
     if (!confirm(`Release ${teacherName} from ${subjectName} (${sectionName})?`)) return;
-    fetch('/branch-admin/remove-teacher-assignment', {
+    fetch('/registrar/api/remove-teacher-assignment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ section_teacher_id: sectionTeacherId })

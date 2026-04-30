@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Grade Levels{% endblock %}
+{% block title %}Sections Management{% endblock %}
 {% block content %}
 <style>
     :root {
@@ -23,11 +23,6 @@
         max-width: 1400px;
         margin: 0 auto;
         padding: 32px 24px;
-    }
-
-    .header-row h1 {
-        display: none;
-        /* Replaced by premium welcome */
     }
 
     .premium-welcome {
@@ -276,81 +271,105 @@
 
     @media (max-width: 768px) {
         .vault-table {
-            min-width: 450px;
+            min-width: 600px;
         }
     }
 </style>
 
 <div class="ba-container">
 
+
     <div class="premium-welcome">
-        <h1>Grade Level Registry</h1>
+        <h1>Sections Management</h1>
         <div class="status-line">
             <span class="pulse-dot"></span>
-            Academic Grade Levels Configuration
+            Operational Units • {{ sections|length }} Total Sections
         </div>
     </div>
 
     <div class="single-col" style="display: flex; flex-direction: column; gap: 32px;">
         <!-- Add Form -->
         {% if is_branch_active_status %}
-        <div class="col-form" style="max-width: 600px; width: 100%; margin: 0 auto;">
+        <div class="col-form">
             <div class="modern-card">
-                <h2>Add Grade Level</h2>
-                <form method="post" action="{{ url_for('branch_admin.branch_admin_grade_levels') }}">
-                    <div class="form-node">
-                        <label>Level Name</label>
-                        <select class="form-control" name="name" required>
-                            <option value="" disabled selected>-- Select Grade Level --</option>
-                            {% for master_name in available_grade_names %}
-                                <option value="{{ master_name }}">{{ master_name }}</option>
-                            {% endfor %}
-                        </select>
+                <h2>Add New Section</h2>
+                <form method="post" action="{{ url_for('registrar.registrar_sections') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-node">
+                            <label>Section Name</label>
+                            <input class="form-control" type="text" name="section_name" placeholder="e.g. Section A"
+                                required>
+                        </div>
+                        <div class="form-node">
+                            <label>Grade Level</label>
+                            <select name="grade_level_id" class="form-control" required>
+                                <option value="">Select Grade Level</option>
+                                {% for g in grades %}
+                                <option value="{{ g.id }}">{{ g.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-node">
+                            <label>School Year</label>
+                            <select name="year_id" class="form-control" required>
+                                <option value="">Select School Year</option>
+                                {% for y in years %}
+                                <option value="{{ y.year_id }}">{{ y.label }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-node">
+                            <label>Capacity (Max 50)</label>
+                            <input class="form-control" type="number" name="capacity" value="50" min="1" max="50" required
+                                oninput="if(this.value.length > 2) this.value = this.value.slice(0,2); if(parseInt(this.value) > 50) this.value = 50;">
+                        </div>
                     </div>
-
-                    {% if grades|length >= 20 %}
-                    <button type="button" class="btn-prem btn-primary" disabled style="width: 100%;">Limit
-                        Reached</button>
-                    <div
-                        style="font-size: 0.75rem; color: #dc2626; margin-top: 12px; text-align: center; font-weight: 600;">
-                        Maximum of 20 levels reached.</div>
-                    {% else %}
-                    <button type="submit" class="btn-prem btn-primary" style="width: 100%;">Add Grade Level</button>
-                    {% endif %}
+                    <button type="submit" class="btn-prem btn-primary" style="width: 100%; margin-top: 10px;">Add New Section</button>
                 </form>
             </div>
         </div>
         {% endif %}
 
-        <!-- Table -->
+        <!-- Existing Sections -->
         <div class="col-table">
             <div class="modern-card">
-                <h2>List of Existing Grade Level</h2>
-                {% if grades %}
+                <h2>List of Existing Sections</h2>
+                {% if sections %}
                 <div class="table-responsive">
                     <table class="vault-table">
                     <thead>
                         <tr>
-                            <th style="width: 80px;">Order</th>
                             <th>Identity</th>
+                            <th>Grade Level</th>
+                            <th>Academic Cycle</th>
+                            <th>Cap.</th>
                             <th style="text-align: right;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for g in grades %}
+                        {% for s in sections %}
                         <tr>
-                            <td data-label="Order">
-                                <strong style="color: var(--ma-primary);">{{ g[2] }}</strong>
-                            </td>
                             <td data-label="Identity">
-                                <div style="font-weight: 800; color: var(--ma-primary);">{{ g[1] }}</div>
+                                <div style="font-weight: 800; color: var(--ma-primary);">{{ s.section_name }}</div>
+                            </td>
+                            <td data-label="Grade Level">
+                                <span class="badge-pill" style="background: #f1f5f9; color: var(--ma-primary); font-size: 0.7rem; font-weight: 800; padding: 2px 8px; border-radius: 8px;">
+                                    {{ s.grade_level_name }}
+                                </span>
+                            </td>
+                            <td data-label="Academic Cycle">
+                                <div style="font-size: 0.8rem; font-weight: 700; color: var(--ma-muted);">{{ s.school_year_label }}</div>
+                            </td>
+                            <td data-label="Capacity">
+                                <div style="font-weight: 800; color: var(--ma-primary);">{{ s.capacity }} Students</div>
                             </td>
                             <td data-label="Actions" style="text-align: right; white-space: nowrap;">
                                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                                    <button class="btn-prem btn-primary" style="padding: 6px 16px; font-size: 0.8rem;" onclick='openEditModal({{ g[0] }}, {{ g[2] }}, {{ g[1]|tojson }})'>
+                                    <button class="btn-prem btn-secondary" style="padding: 6px 14px; font-size: 0.75rem;" onclick='openEditModal({{ s.section_id }}, {{ s.section_name | tojson }}, {{ s.grade_level_id }}, {{ s.capacity | default(50) }})'>
                                         <i class="fas fa-edit"></i> Edit
                                     </button>
-                                    <button class="btn-prem btn-danger" style="padding: 6px 16px; font-size: 0.8rem;" onclick="confirmGradeDelete({{ g[0] }}, '{{ g[1]|e }}')">
+                                    <button class="btn-prem btn-danger" style="padding: 6px 14px; font-size: 0.75rem;" onclick="confirmSectionDelete({{ s.section_id }}, '{{ s.section_name|e }}')">
                                         <i class="fas fa-trash"></i> Delete
                                     </button>
                                 </div>
@@ -364,7 +383,7 @@
                 <div style="text-align:center; padding: 40px; color: var(--ma-muted); font-size: 0.9rem;">
                     <i class="fas fa-folder-open"
                         style="font-size: 2rem; display: block; margin-bottom: 12px; opacity: 0.5;"></i>
-                    No grade levels detected in repository.
+                    No sections detected in repository.
                 </div>
                 {% endif %}
             </div>
@@ -376,10 +395,11 @@
 <div id="deleteConfirmOverlay" class="glass-overlay">
     <div class="glass-modal confirm-modal">
         <div style="font-size: 3.5rem; margin-bottom: 20px;">🗑️</div>
-        <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 12px; color: #dc2626;">Remove Grade Level?</h2>
+        <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 12px; color: #dc2626;">Remove Section?</h2>
         <p id="deleteConfirmMsg"
             style="font-size: 0.9rem; color: var(--ma-muted); margin-bottom: 24px; line-height: 1.5;"></p>
-        <form id="deleteGradeForm" method="POST">
+        <form id="deleteSectionForm" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div style="display: flex; gap: 12px; justify-content: center;">
                 <button type="button" onclick="closeDeleteModal()" class="btn-prem btn-secondary">Keep it</button>
                 <button type="submit" class="btn-prem" style="background: #dc2626; color: white;">Yes, Delete</button>
@@ -391,27 +411,32 @@
 <!-- Edit Modal -->
 <div id="editModal" class="glass-overlay">
     <div class="glass-modal">
-        <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 24px; color: var(--ma-primary);">✎ Edit Grade
-            Level</h2>
+        <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 24px; color: var(--ma-primary);">✎ Edit Section
+        </h2>
         <form id="editForm" method="post" action="">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-node">
-                <label>Display Order</label>
-                <input type="number" name="edit_display_order" id="edit_display_order" class="form-control" min="1"
-                    max="20" required
-                    onkeydown="if(event.key==='-' || event.key==='e' || event.key==='.') event.preventDefault();"
-                    oninput="if(this.value < 1 && this.value !== '') this.value = 1; else if(this.value > 20) this.value = 20;">
+                <label>Section Identity</label>
+                <input class="form-control" type="text" name="section_name" id="edit_section_name" required>
             </div>
+
             <div class="form-node">
-                <label>Level Name</label>
-                <select name="edit_name" id="edit_name" class="form-control" required>
-                    <option value="" disabled>-- Select Grade Level --</option>
-                    {% for master_name in available_grade_names %}
-                        <option value="{{ master_name }}">{{ master_name }}</option>
+                <label>Grade Level</label>
+                <select name="grade_level_id" id="edit_grade_level_id" class="form-control" required>
+                    <option value="">Select Grade Level</option>
+                    {% for g in grades %}
+                    <option value="{{ g.id }}">{{ g.name }}</option>
                     {% endfor %}
                 </select>
             </div>
 
-            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top: 32px;">
+            <div class="form-node">
+                <label>Capacity (Max 50)</label>
+                <input class="form-control" type="number" name="capacity" id="edit_capacity" min="1" max="50" required
+                    oninput="if(this.value.length > 2) this.value = this.value.slice(0,2); if(parseInt(this.value) > 50) this.value = 50;">
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:32px;">
                 <button type="button" class="btn-prem btn-secondary" onclick="closeEditModal()">Dismiss</button>
                 <button type="submit" class="btn-prem btn-gold" id="editSubmitBtn" disabled>Commit Changes</button>
             </div>
@@ -420,20 +445,19 @@
 </div>
 
 <script>
-    let initialGradeData = {};
+    let initialSectionData = {};
 
-    function openEditModal(gradeId, order, name) {
-        var baseUrl = "{{ url_for('branch_admin.branch_admin_grade_level_edit', grade_id=999999) }}";
-        var finalUrl = baseUrl.replace('999999', gradeId);
-
-        document.getElementById('editForm').action = finalUrl;
-        document.getElementById('edit_display_order').value = order;
-        document.getElementById('edit_name').value = name;
+    function openEditModal(sectionId, sectionName, gradeLevelId, capacity) {
+        document.getElementById('editForm').action = '/registrar/sections/' + sectionId + '/edit';
+        document.getElementById('edit_section_name').value = sectionName;
+        document.getElementById('edit_grade_level_id').value = gradeLevelId;
+        document.getElementById('edit_capacity').value = capacity;
 
         // Capture initial state
-        initialGradeData = {
-            order: String(order),
-            name: String(name).trim()
+        initialSectionData = {
+            name: String(sectionName).trim(),
+            grade: String(gradeLevelId),
+            capacity: String(capacity)
         };
 
         const submitBtn = document.getElementById('editSubmitBtn');
@@ -446,13 +470,13 @@
         document.getElementById('editModal').style.display = 'none';
     }
 
-    function confirmGradeDelete(id, name) {
+    function confirmSectionDelete(id, name) {
         const overlay = document.getElementById('deleteConfirmOverlay');
         const msg = document.getElementById('deleteConfirmMsg');
-        const form = document.getElementById('deleteGradeForm');
+        const form = document.getElementById('deleteSectionForm');
 
-        msg.innerText = `Are you sure you want to permanently delete "${name}" from the curriculum? This action cannot be undone.`;
-        form.action = `/branch-admin/grade-levels/${id}/delete`;
+        msg.innerText = `Are you sure you want to permanently remove "${name}" from the system? This action cannot be undone.`;
+        form.action = `/registrar/sections/${id}/delete`;
         overlay.style.display = 'flex';
     }
 
@@ -461,19 +485,20 @@
     }
 
     // Monitor changes
-    ['edit_display_order', 'edit_name'].forEach(id => {
+    ['edit_section_name', 'edit_grade_level_id', 'edit_capacity'].forEach(id => {
         document.getElementById(id).addEventListener('input', function () {
-            const currentOrder = document.getElementById('edit_display_order').value;
-            const currentName = document.getElementById('edit_name').value.trim();
+            const currentName = document.getElementById('edit_section_name').value.trim();
+            const currentGrade = document.getElementById('edit_grade_level_id').value;
+            const currentCap = document.getElementById('edit_capacity').value;
 
             const hasChanged = (
-                currentOrder !== initialGradeData.order ||
-                currentName !== initialGradeData.name
+                currentName !== initialSectionData.name ||
+                currentGrade !== initialSectionData.grade ||
+                currentCap !== initialSectionData.capacity
             );
 
             document.getElementById('editSubmitBtn').disabled = !hasChanged;
         });
     });
 </script>
-</div>
 {% endblock %}

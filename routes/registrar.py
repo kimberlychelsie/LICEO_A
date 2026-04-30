@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, session, redirect, request, flash, url_for
+from flask import Blueprint, render_template, session, redirect, request, flash, url_for, jsonify
 from db import get_db_connection, is_branch_active
 from werkzeug.security import generate_password_hash
 import secrets
@@ -9,6 +9,8 @@ import json
 from utils.send_email import send_email
 from flask import abort
 import re
+from datetime import datetime
+import pytz
 
 # Setup logging
 logging.basicConfig(level=logging.ERROR)
@@ -274,7 +276,7 @@ def registrar_enrollments():
                                 f"Hello {student_name},\n"
                                 f"Your enrollment application for {branch_name} requires correction.\n\n"
                                 f"Reason: {rejection_reason}\n\n"
-                                f"Please visit the tracking page at https://liceolms.up.railway.app/track to fix your application."
+                                f"Please visit the tracking page at https://www.liceo-lms.com/track to fix your application."
                             )
                             
                             html_body = f"""
@@ -295,7 +297,7 @@ def registrar_enrollments():
                                     <p style="font-size: 16px;">Please log in to the tracking portal to update your information or re-upload the necessary documents.</p>
                                     
                                     <div style="text-align: center; margin-top: 30px;">
-                                        <a href="https://liceolms.up.railway.app/track" 
+                                        <a href="https://www.liceo-lms.com/track" 
                                            style="display: inline-block; padding: 14px 28px; background-color: #1a2a4e; color: white; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px;">
                                             Fix Application &rarr;
                                         </a>
@@ -688,7 +690,7 @@ def create_student_account(enrollment_id):
                     f"Your student account has been created.\n\n"
                     f"Username: {username}\n"
                     f"Temporary Password: {temp_password}\n\n"
-                    f"Login at: https://liceolms.up.railway.app/"
+                    f"Login at: https://www.liceo-lms.com/"
                 )
 
                 html_body = f"""
@@ -715,7 +717,7 @@ def create_student_account(enrollment_id):
                         </div>
 
                         <div style="text-align: center; margin-top: 30px;">
-                            <a href="https://liceolms.up.railway.app/login" 
+                            <a href="https://www.liceo-lms.com/login" 
                                style="display: inline-block; padding: 16px 32px; background-color: #1a2a4e; color: white; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                                 Log In to Portal &rarr;
                             </a>
@@ -732,14 +734,8 @@ def create_student_account(enrollment_id):
                 """
                 send_email(student_email, subject, body, html_body=html_body)
 
-            return render_template(
-                "account_created.html",
-                account_type="student",
-                student_name=enrollment.get("student_name"),
-                enrollment_id=enrollment.get("branch_enrollment_no") or enrollment_id,
-                username=username,
-                password=temp_password
-            )
+            flash(f"Student account for {enrollment.get('student_name')} created! Credentials sent to {student_email}.", "success")
+            return redirect("/registrar/enrollments")
         except Exception as e:
             db.rollback()
             logger.error(f"Failed to create student account: {str(e)}")
@@ -918,7 +914,7 @@ def create_parent_account(enrollment_id):
                         </div>
 
                         <div style="text-align: center; margin-top: 10px;">
-                            <a href="https://liceolms.up.railway.app/login" 
+                            <a href="https://www.liceo-lms.com/login" 
                                style="display: inline-block; padding: 16px 32px; background-color: #1a2a4e; color: white; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 16px;">
                                 Access the Portal &rarr;
                             </a>
@@ -931,14 +927,8 @@ def create_parent_account(enrollment_id):
                 """
                 send_email(parent_email, subject, body, html_body=html_body)
 
-            return render_template(
-                "account_created.html",
-                account_type="parent",
-                student_name=enrollment.get("student_name"),
-                enrollment_id=enrollment.get("branch_enrollment_no") or enrollment_id,
-                username=username,
-                password=temp_password
-            )
+            flash(f"Parent account for {enrollment.get('student_name')} created! Credentials sent to {parent_email}.", "success")
+            return redirect("/registrar/enrollments")
         except Exception as e:
             db.rollback()
             logger.error(f"Failed to create parent account: {str(e)}")
@@ -1855,7 +1845,7 @@ def registrar_reset_student_password(enrollment_id):
                 </div>
                 
                 <div style="text-align: center; margin-bottom: 32px;">
-                    <a href="https://liceolms.up.railway.app/login" style="display: inline-block; padding: 14px 28px; background-color: #1e3a8a; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.2);">Log In to Portal</a>
+                    <a href="https://www.liceo-lms.com/login" style="display: inline-block; padding: 14px 28px; background-color: #1e3a8a; color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: 700; font-size: 15px; box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.2);">Log In to Portal</a>
                 </div>
                 
                 <p style="font-size: 13px; color: #94a3b8; font-style: italic; text-align: center;">Note: You will be required to choose a new password upon your next login.</p>
@@ -1887,3 +1877,1389 @@ def add_no_cache_headers(response):
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     return response
+# ------------------------------------------
+# ACADEMIC MANAGEMENT (Grade Levels, Sections, Subjects)
+# ------------------------------------------
+
+@registrar_bp.route("/registrar/grade-levels", methods=["GET", "POST"])
+def registrar_grade_levels():
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor()
+
+    # Fetch all unique grade names from the system, sorted by their academic order
+    cursor.execute("SELECT name FROM grade_levels GROUP BY name ORDER BY MIN(display_order)")
+    available_grade_names = [row[0] for row in cursor.fetchall()]
+    
+    # Defaults if DB is empty
+    if not available_grade_names:
+        available_grade_names = [
+            "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3",
+            "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8",
+            "Grade 9", "Grade 10", "Grade 11", "Grade 12"
+        ]
+
+    if request.method == "POST":
+        name = (request.form.get("name") or "").strip()
+
+        # ? validation
+        if name not in available_grade_names:
+            flash("Invalid grade level selected.", "error")
+            return redirect(url_for('registrar.registrar_grade_levels'))
+
+        cursor.execute("SELECT COUNT(*) FROM grade_levels WHERE branch_id = %s", (branch_id,))
+        current_count = cursor.fetchone()[0]
+
+        if current_count >= 20:
+            flash("Maximum limit of 20 grade levels reached. You cannot add more.", "error")
+            return redirect(url_for('registrar.registrar_grade_levels'))
+
+        cursor.execute("SELECT COALESCE(MAX(display_order), 0) + 1 FROM grade_levels WHERE branch_id = %s", (branch_id,))
+        order_int = cursor.fetchone()[0]
+
+        if not name:
+            flash("Name is required.", "error")
+        else:
+            try:
+                cursor.execute(
+                    "INSERT INTO grade_levels (name, display_order, branch_id) VALUES (%s, %s, %s)",
+                    (name, order_int, branch_id)
+                )
+                db.commit()
+                flash("Grade level added!", "success")
+                return redirect(url_for('registrar.registrar_grade_levels'))
+            except Exception as e:
+                db.rollback()
+                if "duplicate key" in str(e).lower():
+                    flash(f"Grade level '{name}' already exists for this branch.", "error")
+                else:
+                    flash(f"Could not add grade level: {str(e)}", "error")
+
+    cursor.execute(
+        "SELECT id, name, display_order, description FROM grade_levels WHERE branch_id = %s ORDER BY display_order",
+        (branch_id,)
+    )
+    grades = cursor.fetchall()
+    
+    next_order = max([g[2] for g in grades]) + 1 if grades else 1
+
+    cursor.close()
+    db.close()
+
+    return render_template("registrar_grade_levels.html", grades=grades, next_order=next_order, available_grade_names=available_grade_names)
+
+@registrar_bp.route("/registrar/grade-levels/<int:grade_id>/edit", methods=["POST"])
+def registrar_grade_level_edit(grade_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    name = (request.form.get("edit_name") or "").strip()
+    order = request.form.get("edit_display_order") or None
+    if not name or order is None:
+        flash("All fields required.", "error")
+        return redirect(url_for("registrar.registrar_grade_levels"))
+    db = get_db_connection()
+    cursor = db.cursor()
+    cursor.execute(
+        "UPDATE grade_levels SET name=%s, display_order=%s WHERE id=%s AND branch_id=%s",
+        (name, int(order), grade_id, branch_id)
+    )
+    db.commit()
+    cursor.close(); db.close()
+    flash("Grade level updated.", "success")
+    return redirect(url_for("registrar.registrar_grade_levels"))
+
+@registrar_bp.route("/registrar/grade-levels/<int:grade_id>/delete", methods=["POST"])
+def registrar_grade_level_delete(grade_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor()
+    cursor.execute("DELETE FROM grade_levels WHERE id=%s AND branch_id=%s", (grade_id, branch_id))
+    db.commit()
+    cursor.close(); db.close()
+    flash("Grade level deleted.", "success")
+    return redirect(url_for("registrar.registrar_grade_levels"))
+
+@registrar_bp.route("/registrar/sections", methods=["GET", "POST"])
+def registrar_sections():
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("No branch assigned.", "error")
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    cursor.execute(
+        "SELECT id, name FROM grade_levels WHERE branch_id = %s ORDER BY display_order",
+        (branch_id,)
+    )
+    grades = cursor.fetchall() or []
+
+    cursor.execute("""
+    SELECT year_id, label 
+    FROM school_years 
+    WHERE is_active = TRUE AND branch_id = %s 
+    ORDER BY label DESC
+""", (branch_id,))
+    years = cursor.fetchall() or []
+
+    if request.method == "POST":
+        section_name = (request.form.get("section_name") or "").strip()
+        grade_level_id_raw = request.form.get("grade_level_id")
+        year_id_raw = request.form.get("year_id")
+
+        try:
+            capacity = int(request.form.get("capacity") or 50)
+            if capacity < 1: capacity = 50
+        except (TypeError, ValueError):
+            capacity = 50
+
+        try:
+            grade_level_id = int(grade_level_id_raw)
+        except (TypeError, ValueError):
+            grade_level_id = None
+
+        try:
+            year_id = int(year_id_raw)
+        except (TypeError, ValueError):
+            year_id = None
+
+        if section_name and grade_level_id and year_id:
+            cursor.execute(
+                "SELECT 1 FROM grade_levels WHERE id = %s AND branch_id = %s",
+                (grade_level_id, branch_id)
+            )
+            if not cursor.fetchone():
+                flash("Invalid grade level.", "error")
+                return redirect(url_for("registrar.registrar_sections"))
+
+            cursor.execute("""
+                SELECT 1 FROM school_years 
+                WHERE year_id = %s AND branch_id = %s
+            """, (year_id, branch_id))
+            if not cursor.fetchone():
+                flash("Invalid school year selected.", "error")
+                return redirect(url_for("registrar.registrar_sections"))
+
+            try:
+                cursor.execute("""
+                    INSERT INTO sections (branch_id, year_id, section_name, grade_level_id, capacity)
+                    VALUES (%s, %s, %s, %s, %s)
+                """, (branch_id, year_id, section_name, grade_level_id, capacity))
+                db.commit()
+                flash("Section added.", "success")
+            except Exception as e:
+                db.rollback()
+                flash(f"Could not add section: {str(e)}", "error")
+        else:
+            flash("Section name, grade level, and year are required.", "error")
+
+        return redirect(url_for("registrar.registrar_sections"))
+
+    cursor.execute("""
+        SELECT s.*, g.name AS grade_level_name, y.label AS school_year_label
+    FROM sections s
+    LEFT JOIN grade_levels g ON s.grade_level_id = g.id
+    LEFT JOIN school_years y 
+        ON s.year_id = y.year_id AND y.branch_id = s.branch_id
+    WHERE s.branch_id = %s AND y.is_active = TRUE
+    ORDER BY y.label DESC, g.display_order, s.section_name
+    """, (branch_id,))
+    sections = cursor.fetchall() or []
+
+    cursor.close()
+    db.close()
+
+    return render_template(
+        "registrar_sections.html",
+        sections=sections,
+        grades=grades,
+        years=years
+    )
+
+@registrar_bp.route("/registrar/sections/<int:section_id>/delete", methods=["POST"])
+def registrar_section_delete(section_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute(
+            "DELETE FROM sections WHERE section_id = %s AND branch_id = %s",
+            (section_id, branch_id)
+        )
+        db.commit()
+        flash("Section deleted.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not delete section: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(url_for("registrar.registrar_sections"))
+
+@registrar_bp.route("/registrar/sections/<int:section_id>/edit", methods=["POST"])
+def registrar_section_edit(section_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    section_name = (request.form.get("section_name") or "").strip()
+    grade_level_id_raw = request.form.get("grade_level_id")
+    
+    try:
+        capacity = int(request.form.get("capacity") or 50)
+        if capacity < 1: capacity = 50
+    except (TypeError, ValueError):
+        capacity = 50
+    
+    try:
+        grade_level_id = int(grade_level_id_raw)
+    except (TypeError, ValueError):
+        grade_level_id = None
+
+    if not section_name or not grade_level_id:
+        flash("Section name and grade level are required.", "error")
+        return redirect(url_for("registrar.registrar_sections"))
+
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("SELECT 1 FROM grade_levels WHERE id = %s AND branch_id = %s", (grade_level_id, branch_id))
+        if not cursor.fetchone():
+            flash("Invalid grade level.", "error")
+            return redirect(url_for("registrar.registrar_sections"))
+
+        cursor.execute("""
+            UPDATE sections 
+            SET section_name = %s, grade_level_id = %s, capacity = %s
+            WHERE section_id = %s AND branch_id = %s
+        """, (section_name, grade_level_id, capacity, section_id, branch_id))
+        db.commit()
+        flash("Section updated successfully.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Failed to update section: {e}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(url_for("registrar.registrar_sections"))
+
+@registrar_bp.route("/registrar/subjects", methods=["GET", "POST"])
+def registrar_subjects():
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    cursor.execute("""
+        SELECT s.section_id, s.section_name, g.id AS grade_level_id, g.name AS grade_level_name
+        FROM sections s
+        INNER JOIN grade_levels g ON s.grade_level_id = g.id
+        INNER JOIN school_years y ON s.year_id = y.year_id           
+        WHERE s.branch_id = %s AND y.is_active = TRUE
+        ORDER BY g.display_order, s.section_name
+    """, (branch_id,))
+    section_options = cursor.fetchall() or []
+
+    if request.method == "POST":
+        names = request.form.getlist("names")
+        categories = request.form.getlist("categories")
+        section_ids = request.form.getlist("section_ids")
+
+        if not names or not section_ids:
+            flash("At least one subject and one section are required.", "error")
+            return redirect(url_for("registrar.registrar_subjects"))
+
+        try:
+            for i in range(len(names)):
+                name = names[i].strip()
+                if not name: continue
+                deped_category = categories[i] if i < len(categories) else "language"
+
+                cursor.execute("""
+                    INSERT INTO subjects (name, deped_category)
+                    VALUES (%s, %s)
+                    ON CONFLICT (name) DO UPDATE SET deped_category = EXCLUDED.deped_category
+                    RETURNING subject_id
+                """, (name, deped_category))
+                res = cursor.fetchone()
+                subject_id = res["subject_id"] if res else None
+                if not subject_id:
+                    cursor.execute("SELECT subject_id FROM subjects WHERE name=%s", (name,))
+                    subject_id = cursor.fetchone()["subject_id"]
+
+                for sid_raw in section_ids:
+                    sid = int(sid_raw)
+                    cursor.execute("SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s", (sid, branch_id))
+                    if not cursor.fetchone(): continue
+
+                    cursor.execute("""
+                        INSERT INTO section_teachers (section_id, teacher_id, subject_id, year_id)
+                        SELECT %s, NULL, %s, year_id FROM sections WHERE section_id = %s
+                        ON CONFLICT DO NOTHING
+                    """, (sid, subject_id, sid))
+
+            db.commit()
+            flash("Curriculum deployed!", "success")
+        except Exception as e:
+            db.rollback()
+            flash(f"Error: {str(e)}", "error")
+
+        return redirect(url_for("registrar.registrar_subjects"))
+
+    section_id_filter = request.args.get("section_id")
+    # Default to first section if no filter is selected
+    if not section_id_filter and section_options:
+        section_id_filter = str(section_options[0]['section_id'])
+
+    query = """
+        SELECT st.subject_id, sub.name, sub.deped_category, s.section_id, s.section_name, g.name AS grade_level_name, st.is_archived
+        FROM section_teachers st
+        INNER JOIN subjects sub ON st.subject_id = sub.subject_id
+        INNER JOIN sections s ON st.section_id = s.section_id
+        INNER JOIN grade_levels g ON s.grade_level_id = g.id
+        INNER JOIN school_years y ON s.year_id = y.year_id           
+        WHERE s.branch_id = %s AND y.is_active = TRUE
+    """
+    params = [branch_id]
+    if section_id_filter:
+        query += " AND s.section_id = %s "
+        params.append(section_id_filter)
+    query += " ORDER BY g.display_order, s.section_name, sub.name"
+    
+    cursor.execute(query, tuple(params))
+    assignments = cursor.fetchall() or []
+
+    cursor.close(); db.close()
+
+    return render_template(
+        "registrar_subjects.html",
+        assignments=assignments,
+        section_options=section_options,
+        selected_section_id=section_id_filter
+    )
+
+@registrar_bp.route("/registrar/subjects/<int:subject_id>/<int:section_id>/toggle-archive", methods=["POST"])
+def registrar_subject_toggle_archive(subject_id, section_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s", (section_id, branch_id))
+        if cursor.fetchone():
+            cursor.execute("""
+                UPDATE section_teachers SET is_archived = NOT is_archived 
+                WHERE subject_id = %s AND section_id = %s
+                RETURNING is_archived
+            """, (subject_id, section_id))
+            db.commit()
+            flash("Subject status updated.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error: {str(e)}", "error")
+    finally:
+        cursor.close(); db.close()
+    return redirect(url_for("registrar.registrar_subjects", section_id=section_id))
+
+@registrar_bp.route("/registrar/subjects/<int:subject_id>/delete", methods=["POST"])
+def registrar_subject_delete(subject_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("""
+            DELETE FROM section_teachers st
+            USING sections s
+            WHERE st.section_id = s.section_id AND s.branch_id = %s AND st.subject_id = %s
+        """, (branch_id, subject_id))
+        db.commit()
+        flash("Subject removed.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error: {str(e)}", "error")
+    finally:
+        cursor.close(); db.close()
+    return redirect(url_for("registrar.registrar_subjects"))
+
+@registrar_bp.route("/registrar/subjects/<int:subject_id>/edit", methods=["POST"])
+def registrar_subject_edit(subject_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    new_name = (request.form.get("name") or "").strip()
+    section_id = request.form.get("section_id")
+    deped_category = request.form.get("deped_category", "language")
+
+    if not new_name or not section_id:
+        flash("Required fields missing.", "error")
+        return redirect(url_for("registrar.registrar_subjects"))
+
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s", (section_id, branch_id))
+        if not cursor.fetchone():
+            flash("Invalid section.", "error")
+            return redirect(url_for("registrar.registrar_subjects"))
+
+        cursor.execute("UPDATE subjects SET name = %s, deped_category = %s WHERE subject_id = %s", (new_name, deped_category, subject_id))
+        db.commit()
+        flash("Subject updated.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error: {str(e)}", "error")
+    finally:
+        cursor.close(); db.close()
+    return redirect(url_for("registrar.registrar_subjects"))
+
+@registrar_bp.route("/registrar/assign-teachers", methods=["GET", "POST"])
+def registrar_assign_teachers():
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    grade_filter = (request.args.get("grade") or "").strip()
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        cursor.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
+        active_year = cursor.fetchone()
+        active_year_id = active_year["year_id"] if active_year else None
+        if not active_year_id:
+            flash("No active school year found.", "error")
+            return redirect(url_for("registrar.registrar_home"))
+
+        cursor.execute("""
+            SELECT DISTINCT g.id, g.name, g.display_order
+            FROM sections s
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            JOIN school_years y ON s.year_id = y.year_id
+            WHERE s.branch_id = %s AND y.is_active = TRUE
+            ORDER BY g.display_order
+        """, (branch_id,))
+        grade_options = cursor.fetchall() or []
+        
+        if not grade_filter and grade_options:
+            grade_filter = str(grade_options[0]['id'])
+
+        if request.method == "POST":
+            section_id = int(request.form.get("section_id"))
+            subject_id = int(request.form.get("subject_id"))
+            teacher_id = int(request.form.get("teacher_id")) if request.form.get("teacher_id") else None
+
+            cursor.execute("SELECT 1 FROM sections s JOIN school_years y ON y.year_id = s.year_id WHERE s.section_id=%s AND s.branch_id=%s AND y.is_active = TRUE", (section_id, branch_id))
+            if not cursor.fetchone():
+                flash("Invalid section.", "error")
+                return redirect(url_for("registrar.registrar_assign_teachers"))
+
+            cursor.execute("UPDATE section_teachers SET teacher_id = %s WHERE section_id = %s AND subject_id = %s AND year_id = %s", (teacher_id, section_id, subject_id, active_year_id))
+            db.commit()
+            flash("Teacher assigned successfully!", "success")
+            return redirect(url_for("registrar.registrar_assign_teachers", grade=grade_filter))
+
+        cursor.execute("SELECT user_id, username, full_name FROM users WHERE branch_id = %s AND role = 'teacher' ORDER BY full_name", (branch_id,))
+        teachers = cursor.fetchall() or []
+
+        base_query = """
+            SELECT st.id AS section_teacher_id, st.section_id, st.subject_id, st.teacher_id, s.section_name, g.name AS grade_level_name, sub.name AS subject_name, u.full_name AS teacher_full_name
+            FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            JOIN subjects sub ON st.subject_id = sub.subject_id
+            LEFT JOIN users u ON st.teacher_id = u.user_id
+            JOIN school_years y ON s.year_id = y.year_id
+            WHERE s.branch_id = %s AND y.is_active = TRUE
+        """
+        params = [branch_id]
+        if grade_filter:
+            base_query += " AND g.id = %s"
+            params.append(grade_filter)
+        base_query += " ORDER BY g.display_order, s.section_name, sub.name"
+
+        cursor.execute(base_query, tuple(params))
+        assignments = cursor.fetchall() or []
+
+        cursor.execute("SELECT s.section_id, CONCAT(g.name, ' - ', s.section_name) AS section_display, g.id AS grade_level_id FROM sections s JOIN grade_levels g ON s.grade_level_id = g.id JOIN school_years y ON s.year_id = y.year_id WHERE s.branch_id = %s AND y.is_active = TRUE ORDER BY g.display_order, s.section_name", (branch_id,))
+        section_options = cursor.fetchall() or []
+
+    except Exception as e:
+        db.rollback()
+        flash(f"Error: {str(e)}", "error")
+        teachers, assignments, grade_options, section_options = [], [], [], []
+    finally:
+        cursor.close(); db.close()
+
+    return render_template(
+        "registrar_assign_teachers.html",
+        teachers=teachers,
+        assignments=assignments,
+        grade_options=grade_options,
+        grade_filter=grade_filter,
+        section_options=section_options,
+    )
+
+@registrar_bp.route("/registrar/api/get-all-subjects/<int:teacher_id>", methods=["GET"])
+def registrar_api_get_all_subjects(teacher_id):
+    if session.get("role") != "registrar":
+        return {"error": "Unauthorized"}, 403
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("SELECT teacher_type, specialization_subject, department FROM users WHERE user_id=%s AND branch_id=%s AND role='teacher'", (teacher_id, branch_id))
+        teacher = cursor.fetchone()
+        if not teacher: return {"error": "Teacher not found"}, 404
+
+        teacher_type = teacher.get('teacher_type')
+        spec_sub = teacher.get('specialization_subject')
+        department = teacher.get('department')
+
+        query = """
+            SELECT st.id AS assignment_id, st.subject_id, st.section_id, st.teacher_id, sub.name AS subject_name, s.section_name, g.name AS grade_level_name, (st.teacher_id = %s) AS is_assigned_to_this_teacher,
+            (st.teacher_id IS NOT NULL AND st.teacher_id != %s) as is_currently_assigned,
+            u.full_name as current_teacher_name
+            FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            JOIN subjects sub ON st.subject_id = sub.subject_id
+            JOIN school_years y ON s.year_id = y.year_id
+            LEFT JOIN users u ON st.teacher_id = u.user_id
+            WHERE s.branch_id = %s AND y.is_active = TRUE
+        """
+        params = [teacher_id, teacher_id, branch_id]
+
+        # Filter by specialization subject (Applies to both Advisory and Subject specialists)
+        if spec_sub:
+            query += " AND sub.name ILIKE %s"
+            params.append(f"%{spec_sub}%")
+        
+        # Filter by grades they are allowed to handle based on their department
+        if department == 'elementary':
+            query += " AND g.name IN ('Nursery', 'Kinder', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6')"
+        elif department == 'jhs':
+            query += " AND g.name IN ('Grade 7', 'Grade 8', 'Grade 9', 'Grade 10')"
+        elif department == 'shs':
+            query += " AND g.name IN ('Grade 11', 'Grade 12')"
+
+        query += " ORDER BY g.display_order, s.section_name, sub.name"
+        
+        cursor.execute(query, tuple(params))
+        subjects = cursor.fetchall() or []
+        return {"success": True, "subjects": [dict(row) for row in subjects]}
+    except Exception as e:
+        return {"error": str(e)}, 500
+    finally:
+        cursor.close(); db.close()
+
+@registrar_bp.route("/registrar/assign-teachers-bulk", methods=["POST"])
+def registrar_assign_teachers_bulk():
+    if session.get("role") != "registrar":
+        return {"error": "Unauthorized"}, 403
+    branch_id = session.get("branch_id")
+    data = request.get_json()
+    teacher_id = data.get("teacher_id")
+    assignment_ids = data.get("assignment_ids", [])
+
+    if not teacher_id or not assignment_ids:
+        return {"success": False, "message": "Missing data"}, 400
+
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("UPDATE section_teachers SET teacher_id = %s WHERE id = ANY(%s) AND section_id IN (SELECT section_id FROM sections WHERE branch_id = %s)", (teacher_id, assignment_ids, branch_id))
+        db.commit()
+        return {"success": True, "count": cursor.rowcount}
+    except Exception as e:
+        db.rollback()
+        return {"success": False, "message": str(e)}, 500
+    finally:
+        cursor.close(); db.close()
+
+@registrar_bp.route("/registrar/api/remove-teacher-assignment", methods=["POST"])
+def registrar_remove_teacher_assignment():
+    if session.get("role") != "registrar":
+        return {"success": False, "message": "Unauthorized"}, 403
+    branch_id = session.get("branch_id")
+    data = request.get_json()
+    section_teacher_id = data.get("section_teacher_id")
+
+    if not section_teacher_id:
+        return {"success": False, "message": "Missing ID"}, 400
+
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        # Verify it belongs to the branch
+        cursor.execute("""
+            UPDATE section_teachers 
+            SET teacher_id = NULL 
+            WHERE id = %s 
+              AND section_id IN (SELECT section_id FROM sections WHERE branch_id = %s)
+        """, (section_teacher_id, branch_id))
+        db.commit()
+        return {"success": True}
+    except Exception as e:
+        db.rollback()
+        return {"success": False, "message": str(e)}, 500
+    finally:
+        cursor.close(); db.close()
+
+# ══════════════════════════════════════════
+# INVENTORY MANAGEMENT (Uniform & Supplies)
+# ══════════════════════════════════════════
+
+import re as _re
+
+GRADE_MAPPINGS = {
+    'Pre-Elementary Boys Set': ['Nursery', 'Kinder', 'Grade 1', 'Grade 2', 'Grade 3'],
+    'Pre-Elementary Girls Set': ['Nursery', 'Kinder', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6'],
+    'Elementary G4-6 Boys Set': ['Grade 4', 'Grade 5', 'Grade 6'],
+    'JHS Boys Uniform Set': ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'],
+    'JHS Girls Uniform Set': ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'],
+    'SHS Boys Uniform Set': ['Grade 11', 'Grade 12', '11-GAS', '11-STEM', '11-HUMSS', '12-GAS', '12-STEM', '12-HUMSS'],
+    'SHS Girls Uniform Set': ['Grade 11', 'Grade 12', '11-GAS', '11-STEM', '11-HUMSS', '12-GAS', '12-STEM', '12-HUMSS'],
+    'PE Uniform': ['Nursery', 'Kinder'] + [f'Grade {i}' for i in range(1, 13)] + ['11-GAS', '11-STEM', '11-HUMSS', '12-GAS', '12-STEM', '12-HUMSS'],
+}
+SIZE_ORDER = ["XS", "S", "M", "L", "XL", "XXL"]
+
+def _get_grade_display(item_name, stored_grade):
+    if item_name in GRADE_MAPPINGS:
+        grades = GRADE_MAPPINGS[item_name]
+        return f"{grades[0]} - {grades[-1]}" if len(grades) > 3 else ", ".join(grades)
+    return stored_grade or "All"
+
+def _item_matches_grade_filter(item_name, stored_grade, grade_filter):
+    if not grade_filter: return True
+    if item_name in GRADE_MAPPINGS: return grade_filter in GRADE_MAPPINGS[item_name]
+    return stored_grade == grade_filter or stored_grade is None
+
+def _get_grade_order(item_name, grade_level):
+    name_lower = str(item_name or "").lower()
+    if 'pe uniform' in name_lower or 'p.e.' in name_lower: return 1000
+    if grade_level:
+        grade_str = str(grade_level).strip().lower()
+        if 'nursery' in grade_str: return 10
+        if 'kinder' in grade_str or 'pre' in grade_str: return 20
+        m = _re.search(r'(\d+)', grade_str)
+        if m: return 100 + int(m.group(1))
+    if 'pre-elementary' in name_lower: return 15
+    if 'elementary' in name_lower: return 110
+    if 'jhs' in name_lower or 'junior high' in name_lower: return 115
+    if 'shs' in name_lower or 'senior high' in name_lower: return 125
+    return 999
+
+def _size_sort_key(size_label: str) -> int:
+    if not size_label: return 999
+    s = str(size_label).strip().upper()
+    return SIZE_ORDER.index(s) if s in SIZE_ORDER else 998
+
+def _ensure_default_sizes_exist(cursor, item_id: int):
+    cursor.execute("SELECT COUNT(*) FROM inventory_item_sizes WHERE item_id = %s", (item_id,))
+    if cursor.fetchone()[0] > 0: return False
+    for sz in SIZE_ORDER:
+        cursor.execute("INSERT INTO inventory_item_sizes (item_id, size_label, stock_total, reserved_qty) VALUES (%s, %s, 0, 0)", (item_id, sz))
+    return True
+
+def _recompute_item_totals_from_sizes(cursor, item_id: int, branch_id: int):
+    cursor.execute("""
+        UPDATE inventory_items
+        SET stock_total = COALESCE((SELECT SUM(stock_total) FROM inventory_item_sizes WHERE item_id = %s), 0),
+            reserved_qty = COALESCE((SELECT SUM(reserved_qty) FROM inventory_item_sizes WHERE item_id = %s), 0)
+        WHERE item_id = %s AND branch_id = %s
+    """, (item_id, item_id, item_id, branch_id))
+
+
+@registrar_bp.route("/registrar/inventory", methods=["GET"])
+def registrar_inventory():
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    search = (request.args.get("search") or "").strip()
+    category_filter = (request.args.get("category") or "").strip()
+    grade_filter = (request.args.get("grade") or "").strip()
+    status_filter = (request.args.get("status") or "active").strip()
+
+    if not category_filter or category_filter.upper() == 'BOOK':
+        return redirect("/registrar/inventory?category=UNIFORM&status=" + status_filter)
+
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        where = ["branch_id = %s", "category = %s"]
+        params = [branch_id, category_filter]
+        if status_filter in ("active", "inactive"):
+            where.append("is_active = %s")
+            params.append(status_filter == "active")
+        if search:
+            where.append("(item_name ILIKE %s OR category ILIKE %s OR COALESCE(grade_level,'') ILIKE %s OR COALESCE(size_label,'') ILIKE %s)")
+            like = f"%{search}%"
+            params.extend([like, like, like, like])
+
+        where_sql = " AND ".join(where)
+        cursor.execute(f"""
+            SELECT item_id, category, item_name, grade_level, is_common,
+                   size_label, price, stock_total, reserved_qty, image_url, is_active
+            FROM inventory_items WHERE {where_sql}
+        """, params)
+        all_items = cursor.fetchall() or []
+        items = [i for i in all_items if _item_matches_grade_filter(i[2], i[3], grade_filter)] if grade_filter else all_items
+        enhanced_items = sorted(
+            [tuple(list(i) + [_get_grade_display(i[2], i[3])]) for i in items],
+            key=lambda item: (0 if str(item[1] or "").upper() == "BOOK" else (1 if str(item[1] or "").upper() == "UNIFORM" else 2),
+                              _get_grade_order(item[2], item[3]), item[2].lower())
+        )
+        cursor.execute("""
+            SELECT COUNT(*) AS total_items, COALESCE(SUM(stock_total),0) AS total_stock,
+                   COALESCE(SUM(reserved_qty),0) AS total_reserved,
+                   COALESCE(SUM(CASE WHEN (stock_total - reserved_qty) < 10 THEN 1 ELSE 0 END),0) AS low_stock_items
+            FROM inventory_items WHERE branch_id = %s AND is_active = TRUE AND category != 'BOOK'
+        """, (branch_id,))
+        stats = cursor.fetchone()
+    finally:
+        cursor.close(); db.close()
+
+    return render_template("registrar_inventory.html",
+        items=enhanced_items, stats=stats, search=search,
+        category_filter=category_filter, grade_filter=grade_filter, status_filter=status_filter)
+
+
+@registrar_bp.route("/registrar/inventory/stats-api")
+def registrar_inventory_stats_api():
+    if session.get("role") != "registrar":
+        return jsonify({"error": "Unauthorized"}), 403
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT COUNT(*) AS total_items, COALESCE(SUM(stock_total),0) AS total_stock,
+                   COALESCE(SUM(reserved_qty),0) AS total_reserved,
+                   COALESCE(SUM(CASE WHEN (stock_total - reserved_qty) < 10 THEN 1 ELSE 0 END),0) AS low_stock_items
+            FROM inventory_items WHERE branch_id = %s AND is_active = TRUE AND category != 'BOOK'
+        """, (branch_id,))
+        stats = cursor.fetchone()
+        total_stock = int(stats['total_stock'] or 0)
+        reserved = int(stats['total_reserved'] or 0)
+        return jsonify({"total_items": stats['total_items'], "total_stock": total_stock,
+                        "reserved": reserved, "available": total_stock - reserved, "low_stock": stats['low_stock_items']})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close(); db.close()
+
+
+@registrar_bp.route("/registrar/inventory/add", methods=["GET", "POST"])
+def registrar_inventory_add():
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    message = None
+    error = None
+
+    if request.method == "POST":
+        category = (request.form.get("category") or "").strip()
+        item_name = (request.form.get("item_name") or "").strip()
+        grade_level = (request.form.get("grade_level") or "").strip()
+        is_common = request.form.get("is_common") == "on"
+        size_label = (request.form.get("size_label") or "").strip() or None
+        sizes = request.form.getlist("sizes")
+        price = (request.form.get("price") or "").strip()
+        stock_total = (request.form.get("stock_total") or "").strip()
+        image_url = (request.form.get("image_url") or "").strip() or None
+
+        if not (category and item_name and price and stock_total):
+            flash("Missing required fields", "error")
+            return redirect("/registrar/inventory/add")
+
+        if category == "UNIFORM" and not image_url:
+            uniform_images = {
+                'Pre-Elementary Boys Set': '/static/img/PRE_ELEM_BOYS_SET.jpg',
+                'Pre-Elementary Girls Set': '/static/img/PRE_ELEM_GIRLS_SET.jpg',
+                'Elementary G4-6 Boys Set': '/static/img/ELEM_G4to6_BOYS_SET.jpg',
+                'JHS Boys Uniform Set': '/static/img/JHS_BOYS_SET.jpg',
+                'JHS Girls Uniform Set': '/static/img/JHS_GIRLS_SET.jpg',
+                'SHS Boys Uniform Set': '/static/img/SHS_BOYS_SET.jpg',
+                'SHS Girls Uniform Set': '/static/img/SHS_GIRLS_SET.jpg',
+                'PE Uniform': '/static/img/PE_SET.jpg'
+            }
+            if item_name in uniform_images:
+                image_url = uniform_images[item_name]
+
+        db = get_db_connection()
+        cursor = db.cursor()
+        try:
+            total_initial_stock = (len(sizes) * int(stock_total)) if sizes else int(stock_total)
+            cursor.execute("""
+                INSERT INTO inventory_items
+                (branch_id, category, item_name, grade_level, is_common, size_label,
+                 price, stock_total, reserved_qty, image_url, is_active)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,0,%s,TRUE) RETURNING item_id
+            """, (branch_id, category, item_name, grade_level, is_common, size_label, price, total_initial_stock, image_url))
+            item_id = cursor.fetchone()[0]
+            for sz in sizes:
+                cursor.execute("INSERT INTO inventory_item_sizes (item_id, size_label, stock_total, reserved_qty) VALUES (%s, %s, %s, 0)", (item_id, sz, int(stock_total)))
+            db.commit()
+            flash("Item added successfully!", "success")
+            return redirect("/registrar/inventory?category=" + category)
+        except Exception as e:
+            db.rollback()
+            flash(f"Failed to add item: {e}", "error")
+        finally:
+            cursor.close(); db.close()
+
+    return render_template("registrar_inventory_add.html", message=message, error=error)
+
+
+@registrar_bp.route("/registrar/inventory/<int:item_id>/restock", methods=["GET", "POST"])
+def registrar_inventory_restock(item_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    error = None
+    message = None
+    item = None
+    size_rows = []
+
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("SELECT item_id, item_name, category, stock_total, reserved_qty, price FROM inventory_items WHERE item_id = %s AND branch_id = %s LIMIT 1", (item_id, branch_id))
+        item = cursor.fetchone()
+        if not item:
+            return "Item not found", 404
+
+        cursor.execute("SELECT size_id, size_label, stock_total, reserved_qty FROM inventory_item_sizes WHERE item_id = %s", (item_id,))
+        size_rows = sorted(cursor.fetchall() or [], key=lambda r: _size_sort_key(r[1]))
+
+        if request.method == "POST":
+            action = (request.form.get("action") or "").strip()
+            if action == "create_sizes":
+                created = _ensure_default_sizes_exist(cursor, item_id)
+                _recompute_item_totals_from_sizes(cursor, item_id, branch_id)
+                db.commit()
+                flash("✅ Size rows created (XS-XXL)." if created else "Sizes already exist.", "success" if created else "info")
+                return redirect(url_for("registrar.registrar_inventory_restock", item_id=item_id))
+
+            size_label = (request.form.get("size_label") or "").strip().upper()
+            add_stock = (request.form.get("add_stock") or "").strip()
+            if not size_label: raise Exception("Please select a size (XS-XXL).")
+            if not add_stock: raise Exception("Please enter stock quantity to add.")
+            add_stock = int(add_stock)
+            if add_stock <= 0: raise Exception("Stock quantity must be greater than 0.")
+
+            cursor.execute("SELECT 1 FROM inventory_item_sizes WHERE item_id = %s AND UPPER(size_label) = %s LIMIT 1", (item_id, size_label))
+            if not cursor.fetchone(): raise Exception("Selected size row does not exist. Click 'Create default sizes' first.")
+
+            cursor.execute("UPDATE inventory_item_sizes SET stock_total = stock_total + %s WHERE item_id = %s AND UPPER(size_label) = %s", (add_stock, item_id, size_label))
+            _recompute_item_totals_from_sizes(cursor, item_id, branch_id)
+            db.commit()
+            flash(f"✅ Restocked {add_stock} for size {size_label}.", "success")
+            return redirect(url_for("registrar.registrar_inventory_restock", item_id=item_id))
+
+        cursor.execute("SELECT size_id, size_label, stock_total, reserved_qty FROM inventory_item_sizes WHERE item_id = %s", (item_id,))
+        size_rows = sorted(cursor.fetchall() or [], key=lambda r: _size_sort_key(r[1]))
+
+    except Exception as e:
+        db.rollback()
+        error = str(e)
+        flash(error, "error")
+    finally:
+        cursor.close(); db.close()
+
+    return render_template("registrar_inventory_restock.html",
+        item=item, size_rows=size_rows, size_order=SIZE_ORDER, message=message, error=error)
+
+
+@registrar_bp.route("/registrar/inventory/<int:item_id>/price", methods=["GET", "POST"])
+def registrar_inventory_price(item_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    message = None
+    error = None
+    item = None
+
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("SELECT item_id, item_name, category, price, stock_total FROM inventory_items WHERE item_id = %s AND branch_id = %s", (item_id, branch_id))
+        item = cursor.fetchone()
+        if not item:
+            return "Item not found", 404
+        if request.method == "POST":
+            new_price = (request.form.get("new_price") or "").strip()
+            if not new_price: raise Exception("Please enter new price")
+            new_price = float(new_price)
+            if new_price <= 0: raise Exception("Price must be greater than 0")
+            cursor.execute("UPDATE inventory_items SET price = %s WHERE item_id = %s AND branch_id = %s", (new_price, item_id, branch_id))
+            db.commit()
+            flash("Price updated successfully!", "success")
+            cursor.execute("SELECT item_id, item_name, category, price, stock_total FROM inventory_items WHERE item_id = %s AND branch_id = %s", (item_id, branch_id))
+            item = cursor.fetchone()
+    except Exception as e:
+        db.rollback()
+        error = str(e)
+        flash(error, "error")
+    finally:
+        cursor.close(); db.close()
+
+    return render_template("registrar_inventory_price.html", item=item, message=message, error=error)
+
+
+@registrar_bp.route("/registrar/inventory/<int:item_id>/toggle", methods=["POST"])
+def registrar_inventory_toggle(item_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("UPDATE inventory_items SET is_active = NOT is_active WHERE item_id = %s AND branch_id = %s", (item_id, branch_id))
+        db.commit()
+        flash("Item status updated.", "success")
+    except Exception:
+        db.rollback()
+        flash("Failed to toggle item.", "error")
+    finally:
+        cursor.close(); db.close()
+    return redirect(request.referrer or "/registrar/inventory?category=UNIFORM")
+
+
+@registrar_bp.route("/registrar/inventory/<int:item_id>/delete", methods=["POST"])
+def registrar_inventory_delete(item_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("DELETE FROM inventory_item_sizes WHERE item_id = %s", (item_id,))
+        cursor.execute("DELETE FROM inventory_items WHERE item_id = %s AND branch_id = %s", (item_id, branch_id))
+        db.commit()
+        flash("Item permanently deleted.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Failed to delete item: {str(e)}", "error")
+    finally:
+        cursor.close(); db.close()
+    return redirect(request.referrer or "/registrar/inventory?category=UNIFORM")
+
+@registrar_bp.route("/registrar/assign-students", methods=["GET", "POST"])
+def registrar_assign_students():
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    grade_filter = (request.args.get("grade") or "").strip()
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        cursor.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
+        active_year = cursor.fetchone()
+        active_year_id = active_year["year_id"] if active_year else None
+        if not active_year_id:
+            flash("No active school year found.", "error")
+            return redirect(url_for("registrar.registrar_home"))
+
+        cursor.execute("SELECT id, name, display_order FROM grade_levels WHERE branch_id = %s ORDER BY display_order", (branch_id,))
+        grade_options = cursor.fetchall() or []
+        
+        if not grade_filter and grade_options:
+            grade_filter = str(grade_options[0]['id'])
+
+        if request.method == "POST":
+            enrollment_id = int(request.form.get("enrollment_id"))
+            section_id = int(request.form.get("section_id")) if request.form.get("section_id") else None
+
+            cursor.execute("SELECT 1 FROM enrollments WHERE enrollment_id=%s AND branch_id=%s AND year_id=%s", (enrollment_id, branch_id, active_year_id))
+            if not cursor.fetchone():
+                flash("Enrollment not found.", "error")
+                return redirect(url_for("registrar.registrar_assign_students", grade=grade_filter))
+
+            if section_id:
+                cursor.execute("""
+                    SELECT capacity, (SELECT COUNT(*) FROM enrollments WHERE section_id = s.section_id AND status IN ('approved', 'enrolled')) AS current_count
+                    FROM sections s JOIN school_years y ON s.year_id = y.year_id
+                    WHERE s.section_id=%s AND s.branch_id=%s AND y.is_active = TRUE
+                """, (section_id, branch_id))
+                sec_info = cursor.fetchone()
+                if not sec_info:
+                    flash("Section not found.", "error")
+                    return redirect(url_for("registrar.registrar_assign_students", grade=grade_filter))
+                if sec_info['current_count'] >= sec_info['capacity']:
+                    flash("Section is full.", "error")
+                    return redirect(url_for("registrar.registrar_assign_students", grade=grade_filter))
+
+            cursor.execute("UPDATE enrollments SET section_id=%s, status = CASE WHEN %s IS NOT NULL AND status = 'approved' THEN 'enrolled' ELSE status END WHERE enrollment_id=%s AND year_id=%s", (section_id, section_id, enrollment_id, active_year_id))
+            db.commit()
+            flash("Student section updated!", "success")
+            return redirect(url_for("registrar.registrar_assign_students", grade=grade_filter))
+
+        cursor.execute("SELECT s.section_id, s.section_name, g.name AS grade_level_name, g.id AS grade_level_id, s.capacity, (SELECT COUNT(*) FROM enrollments e2 WHERE e2.section_id = s.section_id AND e2.status IN ('approved', 'enrolled')) AS current_count FROM sections s JOIN grade_levels g ON s.grade_level_id = g.id JOIN school_years y ON s.year_id = y.year_id WHERE s.branch_id = %s AND y.is_active = TRUE ORDER BY g.display_order, s.section_name", (branch_id,))
+        all_sections = cursor.fetchall() or []
+        filtered_sections = [s for s in all_sections if str(s['grade_level_id']) == grade_filter]
+
+        grade_name = ""
+        if grade_filter:
+            cursor.execute("SELECT name FROM grade_levels WHERE id = %s AND branch_id = %s", (grade_filter, branch_id))
+            grade_row = cursor.fetchone()
+            grade_name = grade_row['name'] if grade_row else ""
+
+        cursor.execute("""
+            SELECT e.enrollment_id, e.student_name, e.grade_level, e.branch_enrollment_no, e.section_id, s.section_name
+            FROM enrollments e LEFT JOIN sections s ON e.section_id = s.section_id
+            WHERE e.branch_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled') AND (e.grade_level ILIKE %s OR e.grade_level ILIKE %s)
+            ORDER BY e.student_name
+        """, (branch_id, active_year_id, grade_name, grade_name.replace("Grade ", "")))
+        students = cursor.fetchall() or []
+
+    except Exception as e:
+        db.rollback()
+        flash(f"Error: {str(e)}", "error")
+        grade_options, filtered_sections, students = [], [], []
+    finally:
+        cursor.close(); db.close()
+
+    return render_template(
+        "registrar_assign_students.html",
+        grade_options=grade_options,
+        sections=filtered_sections,
+        students=students,
+        grade_filter=grade_filter
+    )
+
+@registrar_bp.route("/registrar/api/assign-student-section", methods=["POST"])
+def registrar_api_assign_student_section():
+    if session.get("role") != "registrar":
+        return {"error": "Unauthorized"}, 403
+    branch_id = session.get("branch_id")
+    data = request.get_json()
+    enrollment_id = data.get("enrollment_id")
+    section_id = data.get("section_id")
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
+        row = cursor.fetchone()
+        active_year_id = row["year_id"] if row else None
+        if not active_year_id: return {"success": False, "message": "No active school year"}, 400
+
+        cursor.execute("UPDATE enrollments SET section_id=%s, status = CASE WHEN %s IS NOT NULL AND status = 'approved' THEN 'enrolled' ELSE status END WHERE enrollment_id=%s AND branch_id=%s AND year_id=%s", (section_id, section_id, enrollment_id, branch_id, active_year_id))
+        db.commit()
+        return {"success": True}
+    except Exception as e:
+        db.rollback()
+        return {"success": False, "message": str(e)}, 500
+    finally:
+        cursor.close(); db.close()
+
+
+
+# ══════════════════════════════════════════════════════
+# MANAGE TEACHERS — Registrar Module
+# ══════════════════════════════════════════════════════
+
+def _ensure_teacher_tables(cursor):
+    cursor.execute("""
+        ALTER TABLE users
+        ADD COLUMN IF NOT EXISTS teacher_type VARCHAR(20) DEFAULT 'advisory',
+        ADD COLUMN IF NOT EXISTS specialization_subject VARCHAR(100),
+        ADD COLUMN IF NOT EXISTS department VARCHAR(50)
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS teacher_grade_levels (
+            id             SERIAL PRIMARY KEY,
+            teacher_id     INTEGER NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+            grade_level_id INTEGER NOT NULL REFERENCES grade_levels(id) ON DELETE CASCADE,
+            UNIQUE(teacher_id, grade_level_id)
+        )
+    """)
+
+
+@registrar_bp.route("/registrar/manage-teachers", methods=["GET", "POST"])
+def registrar_manage_teachers():
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id     = session.get("branch_id")
+    created_user  = None
+    filter_search = request.args.get("search", "").strip()
+    filter_type   = request.args.get("type",   "advisory").strip()
+    if filter_type not in ['advisory', 'subject']:
+        filter_type = 'advisory'
+
+    db     = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        _ensure_teacher_tables(cursor)
+        db.commit()
+
+        cursor.execute(
+            "SELECT id, name FROM grade_levels WHERE branch_id = %s ORDER BY display_order",
+            (branch_id,)
+        )
+        grades = cursor.fetchall() or []
+
+        if request.method == "POST":
+            full_name      = (request.form.get("full_name")    or "").strip()
+            gender         = (request.form.get("gender")       or "").strip().lower()
+            user_email     = (request.form.get("email")        or "").strip()
+            custom_uname   = (request.form.get("username")     or "").strip()
+            teacher_type   = (request.form.get("teacher_type") or "advisory").strip()
+            grade_level_id = (request.form.get("grade_level")  or "").strip() or None
+            
+            # New fields for all teachers
+            spec_subject = (request.form.get("specialization_subject") or "").strip()
+            department   = (request.form.get("department") or "").strip()
+
+            if not full_name:
+                flash("Full name is required.", "error")
+                return redirect("/registrar/manage-teachers")
+            if gender not in ("male", "female"):
+                flash("Please select a gender.", "error")
+                return redirect("/registrar/manage-teachers")
+            if not user_email:
+                flash("Email is required.", "error")
+                return redirect("/registrar/manage-teachers")
+            if custom_uname and not re.match(r'^[A-Za-z0-9_]+$', custom_uname):
+                flash("Username can only contain letters, numbers, and underscores.", "error")
+                return redirect("/registrar/manage-teachers")
+            
+            if teacher_type == "subject":
+                if not spec_subject:
+                    flash("Specialization subject is required for Subject Teachers.", "error")
+                    return redirect("/registrar/manage-teachers")
+                if not department:
+                    flash("Department is required for Subject Teachers.", "error")
+                    return redirect("/registrar/manage-teachers")
+
+            cursor.execute("SELECT branch_code FROM branches WHERE branch_id=%s", (branch_id,))
+            b_row = cursor.fetchone()
+            branch_code = ((b_row['branch_code'] or "") if b_row else "").strip().upper()
+            if not branch_code:
+                flash("Branch code not configured.", "error")
+                return redirect("/registrar/manage-teachers")
+
+            if custom_uname:
+                base_username = custom_uname
+            else:
+                grade_suffix = ""
+                # For base username, we just pick the primary grade if advisory, or no suffix for subject
+                ref_grade_id = grade_level_id if teacher_type == "advisory" else None
+                if ref_grade_id:
+                    cursor.execute("SELECT name FROM grade_levels WHERE id=%s", (ref_grade_id,))
+                    g_row = cursor.fetchone()
+                    if g_row:
+                        g_name = g_row['name']
+                        m = re.search(r"(\d+)", g_name)
+                        if m:
+                            grade_suffix = m.group(1)
+                        elif "kinder" in g_name.lower():
+                            grade_suffix = "K"
+                        elif "nursery" in g_name.lower():
+                            grade_suffix = "N"
+                base_username = f"{branch_code}_Teacher{grade_suffix}" if grade_suffix else f"{branch_code}_Teacher"
+
+            username = base_username
+            suffix_counter = 2
+            while True:
+                cursor.execute("SELECT 1 FROM users WHERE username=%s", (username,))
+                if not cursor.fetchone():
+                    break
+                if custom_uname:
+                    flash(f"Username '{username}' already exists.", "error")
+                    return redirect("/registrar/manage-teachers")
+                username = f"{base_username}_{suffix_counter}"
+                suffix_counter += 1
+
+            temp_password   = generate_password()
+            hashed_password = generate_password_hash(temp_password)
+            primary_grade   = grade_level_id if teacher_type == "advisory" else None
+
+            cursor.execute("""
+                INSERT INTO users
+                    (branch_id, username, password, role, require_password_change,
+                     grade_level_id, full_name, gender, email, teacher_type,
+                     specialization_subject, department)
+                VALUES (%s, %s, %s, 'teacher', TRUE, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING user_id
+            """, (branch_id, username, hashed_password,
+                  primary_grade, full_name, gender, user_email, teacher_type,
+                  spec_subject, department))
+            new_user_id = cursor.fetchone()['user_id']
+
+            # Map department to grades for both types if department is provided
+            if department:
+                for g in grades:
+                    name = g['name'].lower()
+                    num_match = re.search(r'\d+', name)
+                    num = int(num_match.group(0)) if num_match else None
+                    
+                    match = False
+                    if department == 'elementary':
+                        if num is None and ('nursery' in name or 'kinder' in name): match = True
+                        elif num is not None and 1 <= num <= 6: match = True
+                    elif department == 'jhs':
+                        if num is not None and 7 <= num <= 10: match = True
+                    elif department == 'shs':
+                        if num is not None and 11 <= num <= 12: match = True
+                    
+                    if match:
+                        try:
+                            cursor.execute("""
+                                INSERT INTO teacher_grade_levels (teacher_id, grade_level_id)
+                                VALUES (%s, %s) ON CONFLICT DO NOTHING
+                            """, (new_user_id, g['id']))
+                        except Exception:
+                            pass
+
+            db.commit()
+            created_user = {"username": username, "password": temp_password}
+
+            if user_email:
+                subject_line = "Your Teacher Account — Liceo LMS"
+                body = f"""Hello {full_name},
+
+Your teacher account has been created by the Registrar.
+
+Username: {username}
+Temporary Password: {temp_password}
+Login URL: https://www.liceo-lms.com/
+
+Please log in and change your password immediately.
+
+-- The Liceo LMS Team"""
+                send_email(user_email, subject_line, body)
+                flash(f"Teacher account created. Credentials sent to {user_email}.", "success")
+            else:
+                flash("Teacher account created successfully!", "success")
+
+        query = """
+            SELECT
+                u.user_id, u.username, u.full_name, u.gender, u.email,
+                COALESCE(u.status, 'active') AS status,
+                COALESCE(u.teacher_type, 'advisory') AS teacher_type,
+                COALESCE(g.name, '') AS primary_grade,
+                u.specialization_subject,
+                u.department,
+                (
+                    SELECT STRING_AGG(DISTINCT s.section_name, ', ')
+                    FROM section_teachers st
+                    JOIN sections s ON st.section_id = s.section_id
+                    WHERE st.teacher_id = u.user_id
+                ) AS assigned_sections
+            FROM users u
+            LEFT JOIN grade_levels g ON u.grade_level_id = g.id
+            WHERE u.branch_id = %s AND u.role = 'teacher'
+        """
+        params = [branch_id]
+        if filter_search:
+            query += " AND (u.full_name ILIKE %s OR u.username ILIKE %s)"
+            params.extend([f"%{filter_search}%", f"%{filter_search}%"])
+        
+        # Always filter by type now that 'All' is removed
+        actual_type = filter_type if filter_type in ['advisory', 'subject'] else 'advisory'
+        query += " AND COALESCE(u.teacher_type,'advisory') = %s"
+        params.append(actual_type)
+        
+        query += " ORDER BY u.full_name"
+        cursor.execute(query, params)
+        teachers = cursor.fetchall() or []
+
+        cursor.execute("""
+            SELECT
+                COUNT(*) AS total,
+                COUNT(*) FILTER (WHERE COALESCE(teacher_type,'advisory') = 'advisory') AS advisory_count,
+                COUNT(*) FILTER (WHERE teacher_type = 'subject') AS subject_count,
+                COUNT(*) FILTER (WHERE COALESCE(status,'active') = 'active') AS active_count
+            FROM users WHERE branch_id = %s AND role = 'teacher'
+        """, (branch_id,))
+        stats = cursor.fetchone()
+
+    except Exception as e:
+        db.rollback()
+        flash(f"An error occurred: {str(e)}", "error")
+        teachers, grades, stats = [], [], None
+    finally:
+        cursor.close()
+        db.close()
+
+    return render_template(
+        "registrar_manage_teachers.html",
+        teachers=teachers,
+        grades=grades,
+        stats=stats,
+        filter_search=filter_search,
+        filter_type=filter_type
+    )
+
+
+@registrar_bp.route("/registrar/manage-teachers/<int:user_id>/toggle", methods=["POST"])
+def registrar_toggle_teacher(user_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("""
+            UPDATE users
+            SET status = CASE WHEN COALESCE(status,'active') = 'active' THEN 'inactive' ELSE 'active' END
+            WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+        """, (user_id, session.get("branch_id")))
+        db.commit()
+        flash("Teacher status updated.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Failed: {str(e)}", "error")
+    finally:
+        cursor.close(); db.close()
+    return redirect(request.referrer or "/registrar/manage-teachers")
+
+
+@registrar_bp.route("/registrar/manage-teachers/<int:user_id>/delete", methods=["POST"])
+def registrar_delete_teacher(user_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("DELETE FROM teacher_grade_levels WHERE teacher_id = %s", (user_id,))
+        cursor.execute(
+            "DELETE FROM users WHERE user_id = %s AND branch_id = %s AND role = 'teacher'",
+            (user_id, session.get("branch_id"))
+        )
+        db.commit()
+        flash("Teacher account permanently deleted.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Failed to delete: {str(e)}", "error")
+    finally:
+        cursor.close(); db.close()
+    return redirect("/registrar/manage-teachers")
+

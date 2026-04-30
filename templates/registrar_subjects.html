@@ -400,7 +400,8 @@
         <div class="col-form">
             <div class="modern-card">
                 <h2>➕ Bulk Curriculum Builder</h2>
-                <form method="post" action="{{ url_for('branch_admin.branch_admin_subjects') }}">
+                <form method="post" action="{{ url_for('registrar.registrar_subjects') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="form-node" style="background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid var(--ma-border); margin-bottom: 24px;">
                         <h3 style="font-size: 0.85rem; color: var(--ma-primary); font-weight: 800; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
                             <i class="fas fa-info-circle"></i> CATEGORY & GRADING GUIDE
@@ -487,8 +488,8 @@
                     <h2 style="margin: 0;">List of Existing Subjects</h2>
                     <div style="display: flex; align-items: center; gap: 12px;">
                         <label style="font-size: 0.75rem; font-weight: 800; color: var(--ma-muted); text-transform: uppercase;">Filter by Section:</label>
-                        <select class="form-control" style="width: 250px; font-size: 0.85rem;" onchange="window.location.href='/branch-admin/subjects?section_id=' + this.value">
-                            <option value="">All Sections</option>
+                        <select class="form-control" style="width: 250px; font-size: 0.85rem;" onchange="window.location.href='/registrar/subjects?section_id=' + this.value">
+
                             {% for sec in section_options %}
                             <option value="{{ sec.section_id }}" {% if selected_section_id == sec.section_id|string %}selected{% endif %}>
                                 {{ sec.grade_level_name }} - {{ sec.section_name }}
@@ -546,7 +547,8 @@
                                         <i class="fas fa-edit"></i> Edit
                                     </button>
                                     
-                                    <form action="/branch-admin/subjects/{{ a.subject_id }}/{{ a.section_id }}/toggle-archive" method="POST" style="display:inline;">
+                                    <form action="/registrar/subjects/{{ a.subject_id }}/{{ a.section_id }}/toggle-archive" method="POST" style="display:inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         {% if a.is_archived %}
                                         <button type="submit" class="btn-prem" style="background: #dcfce7; color: #15803d; padding: 6px 14px; font-size: 0.7rem;">
                                             <i class="fas fa-undo"></i> Unarchive
@@ -591,6 +593,7 @@
         <p id="deleteConfirmMsg"
             style="font-size: 0.9rem; color: var(--ma-muted); margin-bottom: 24px; line-height: 1.5;"></p>
         <form id="deleteSubjectForm" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div style="display: flex; gap: 12px; justify-content: center;">
                 <button type="button" onclick="closeDeleteModal()" class="btn-prem btn-secondary">Keep it</button>
                 <button type="submit" class="btn-prem" style="background: #dc2626; color: white;">Yes, Delete</button>
@@ -605,6 +608,7 @@
         <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 24px; color: var(--ma-primary);">✎ Edit Subject
         </h2>
         <form id="editForm" method="post" action="">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-node">
                 <label>Subject Identity</label>
                 <input type="text" name="name" id="edit_name" class="form-control" required>
@@ -679,7 +683,7 @@
     let initialSubjectData = {};
 
     function openEditModal(subjectId, name, sectionId, category) {
-        document.getElementById('editForm').action = '/branch-admin/subjects/' + subjectId + '/edit';
+        document.getElementById('editForm').action = '/registrar/subjects/' + subjectId + '/edit';
         document.getElementById('edit_name').value = name;
         document.getElementById('edit_section_id').value = sectionId;
         document.getElementById('edit_deped_category').value = category || 'language';
@@ -707,7 +711,7 @@
         const form = document.getElementById('deleteSubjectForm');
 
         msg.innerText = `Are you sure you want to permanently remove "${name}" from the curriculum? This action cannot be undone.`;
-        form.action = `/branch-admin/subjects/${id}/delete`;
+        form.action = `/registrar/subjects/${id}/delete`;
         overlay.style.display = 'flex';
     }
 

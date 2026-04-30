@@ -799,8 +799,10 @@
         <div class="td-sub" style="font-size: 1.1rem; font-weight: 600; color: #64748b; display: flex; align-items: center; gap: 12px;">
             {% if selected_grade %}
             Viewing class: <span class="date-pill" style="padding: 4px 14px; font-size: 0.85rem; background: #f1f5f9; color: #1a3a8f; border-radius: 99px; border: 1px solid rgba(26, 58, 143, 0.1);">{{ selected_grade }}</span>
+            {% elif teacher_assignments %}
+            Viewing assigned subjects and schedule.
             {% else %}
-            Select your grade level to view your class roster.
+            Awaiting registrar class assignments.
             {% endif %}
         </div>
     </header>
@@ -933,7 +935,7 @@
         </div>
     </header>
 
-    {% if not selected_grade %}
+    {% if not selected_grade and not teacher_assignments %}
     <!-- No grade selected -->
     {% if not teacher_grade %}
     <!-- No grade assigned by admin — let teacher pick -->
@@ -941,27 +943,11 @@
         <div style="margin-bottom:10px; display: flex; justify-content: center; color: #0c4a6e;">
             <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
-                <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
             </svg>
         </div>
-        <h3>Select Your Grade Level</h3>
-        <p>Choose the grade level you're handling from the dropdown above to view your class roster.</p>
-        <form method="post" action="/teacher/set-grade"
-            style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
-            <select name="grade_level" class="grade-select">
-                <option value="">— Choose Grade —</option>
-                {% for g in grade_levels %}
-                <option value="{{ g }}">{{ g }}</option>
-                {% endfor %}
-            </select>
-            {% if is_branch_active_status %}
-            <button type="submit" class="btn-apply">Set &amp; View Class</button>
-            {% else %}
-            <button type="button" class="btn-apply" disabled style="opacity:0.6; cursor:not-allowed;">Set &amp; View
-                Class (View Only)</button>
-            {% endif %}
-        </form>
+        <h3>No Assigned Classes Yet</h3>
+        <p>You have not been assigned to any grade level or subjects. Please wait for the Registrar to configure your assignments.</p>
     </div>
     {% endif %}
 
@@ -982,33 +968,31 @@
                     <line x1="8" y1="2" x2="8" y2="6"></line>
                     <line x1="3" y1="10" x2="21" y2="10"></line>
                 </svg>
-                Assigned Subjects Today
+                Assigned Classes
             </p>
-            <div
-                style="background: #eff6ff; color: #2563eb; padding: 6px 16px; border-radius: 99px; font-weight: 800; font-size: 0.85rem; border: 1px solid #bfdbfe;">
-                {{ current_day }}
-            </div>
         </div>
 
         <div class="td-table-wrap">
             <table class="td-table">
                 <thead>
                     <tr>
-                        <th>Time</th>
+                        <th>Schedule</th>
                         <th>Subject</th>
                         <th>Section</th>
                         <th>Room</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% set today_count = namespace(value=0) %}
                     {% for a in teacher_assignments %}
-                    {% if a.day_of_week == current_day %}
-                    {% set today_count.value = today_count.value + 1 %}
                     <tr>
                         <td style="font-weight: 700; color: #1e3a8a; white-space: nowrap;">
-                            {{ a.start_time.strftime('%I:%M %p') if a.start_time else '--:--' }} -
-                            {{ a.end_time.strftime('%I:%M %p') if a.end_time else '--:--' }}
+                            {% if a.day_of_week %}
+                                {{ a.day_of_week[:3] }} • 
+                                {{ a.start_time.strftime('%I:%M %p') if a.start_time else '--:--' }} -
+                                {{ a.end_time.strftime('%I:%M %p') if a.end_time else '--:--' }}
+                            {% else %}
+                                <span style="color:#94a3b8; font-weight:500;">TBA</span>
+                            {% endif %}
                         </td>
                         <td>
                             <div style="display: flex; align-items: center; gap: 8px;">
@@ -1038,20 +1022,7 @@
                             {% endif %}
                         </td>
                     </tr>
-                    {% endif %}
                     {% endfor %}
-
-                    {% if today_count.value == 0 %}
-                    <tr>
-                        <td colspan="4" style="text-align: center; padding: 48px; color: #94a3b8;">
-                            <div style="font-size: 2rem; margin-bottom: 12px;"></div>
-                            <p style="margin: 0; font-size: 0.95rem; font-weight: 600;">No assigned subjects for today.
-                            </p>
-                            <p style="margin: 4px 0 0; font-size: 0.8rem; opacity: 0.7;">Enjoy your break or use this
-                                time for prep!</p>
-                        </td>
-                    </tr>
-                    {% endif %}
                 </tbody>
             </table>
         </div>

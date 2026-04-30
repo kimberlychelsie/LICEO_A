@@ -244,7 +244,7 @@ def super_admin_branches():
                     </div>
 
                     <div style="text-align: center; margin: 32px 0;">
-                        <a href="https://liceolms.up.railway.app/" style="background: #facc15; color: #1a3a8f; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 800; font-size: 15px; box-shadow: 0 4px 12px rgba(250, 204, 21, 0.4);">Access Dashboard</a>
+                        <a href="https://www.liceo-lms.com/" style="background: #facc15; color: #1a3a8f; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 800; font-size: 15px; box-shadow: 0 4px 12px rgba(250, 204, 21, 0.4);">Access Dashboard</a>
                     </div>
 
                     <p style="font-size: 13px; color: #64748b; line-height: 1.6; font-style: italic;">Note: For security reasons, you will be required to update your "Secure Key" upon your first successful protocol authentication.</p>
@@ -254,19 +254,14 @@ def super_admin_branches():
                 </div>
             </div>
             """
-            body = f"Hello {honorific} {admin_name}, your credentials for {branch_name} are: Username: {username}, Password: {temp_password}. Login at https://liceolms.up.railway.app/"
+            body = f"Hello {honorific} {admin_name}, your credentials for {branch_name} are: Username: {username}, Password: {temp_password}. Login at https://www.liceo-lms.com/"
 
             email_sent = send_email(admin_email, subject, body, html_body=html_body)
             if not email_sent:
                 flash("Branch admin account created, but failed to send email.", "warning")
 
-            return render_template(
-                "branch_admin_created.html",
-                branch_name=branch_name,
-                location=location,
-                username=username,
-                password=temp_password
-            )
+            flash(f"Account for {admin_name} created successfully! Credentials have been sent to {admin_email}.", "success")
+            return redirect(url_for("super_admin.super_admin_branches"))
 
         except Exception as e:
             db.rollback()
@@ -484,7 +479,7 @@ def super_admin_replace_admin(branch_id):
                 </div>
 
                 <div style="text-align: center; margin: 32px 0;">
-                    <a href="https://liceolms.up.railway.app/" style="background: #facc15; color: #1a3a8f; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 800;">Access Dashboard</a>
+                    <a href="https://www.liceo-lms.com/" style="background: #facc15; color: #1a3a8f; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 800;">Access Dashboard</a>
                 </div>
 
                 <p style="font-size: 13px; color: #64748b;">Note: You will be required to change your password upon your first login.</p>

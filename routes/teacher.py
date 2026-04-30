@@ -359,17 +359,68 @@ def teacher_dashboard():
     stats = {"total": 0, "cleared": 0, "pending_bill": 0,
              "reserved": 0, "claimed": 0, "no_reservation": 0}
 
-    if selected_grade:
-        grade_full, grade_short = _normalize_grade(selected_grade)
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year set. Please inform your branch admin.", "error")
+            year_id = 0
 
-        db  = get_db_connection()
-        cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        try:
-            year_id = _get_active_school_year(cur, branch_id)
-            if not year_id:
-                flash("No active school year set. Please inform your branch admin.", "error")
-                # Continue rendering without crashing or looping
-                year_id = 0
+        # ── Sections + subjects assigned to this teacher (for this branch) ──
+        cur.execute(
+            """
+            SELECT
+                s.section_id,
+                s.section_name,
+                g.name  AS grade_level_name,
+                sub.subject_id,
+                sub.name AS subject_name,
+                sch.day_of_week,
+                sch.start_time,
+                sch.end_time,
+                sch.room
+            FROM section_teachers st
+            JOIN sections s     ON st.section_id = s.section_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            JOIN subjects sub   ON st.subject_id  = sub.subject_id
+            LEFT JOIN schedules sch ON sch.section_id = s.section_id 
+                                   AND sch.subject_id = sub.subject_id 
+                                   AND sch.teacher_id = st.teacher_id
+                                   AND sch.year_id = s.year_id
+            WHERE st.teacher_id = %s
+              AND s.branch_id = %s AND s.year_id = %s
+            ORDER BY g.display_order, s.section_name, sub.name,
+                     CASE 
+                        WHEN sch.day_of_week = 'Monday' THEN 1
+                        WHEN sch.day_of_week = 'Tuesday' THEN 2
+                        WHEN sch.day_of_week = 'Wednesday' THEN 3
+                        WHEN sch.day_of_week = 'Thursday' THEN 4
+                        WHEN sch.day_of_week = 'Friday' THEN 5
+                        WHEN sch.day_of_week = 'Saturday' THEN 6
+                        WHEN sch.day_of_week = 'Sunday' THEN 7
+                        ELSE 8
+                     END, sch.start_time
+            """,
+            (user_id, branch_id, year_id),
+        )
+        teacher_assignments = cur.fetchall() or []
+
+        # ── Branch Admin Announcements (for teachers) ──
+        cur.execute("""
+            SELECT announcement_id AS id, title, message, (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') AS created_at_local, image_url
+            FROM announcements
+            WHERE is_active = TRUE
+              AND branch_id = %s
+              AND audience IN ('all','teacher')
+            ORDER BY created_at DESC
+            LIMIT 20
+        """, (branch_id,))
+        admin_announcements = cur.fetchall() or []
+
+        if selected_grade:
+            grade_full, grade_short = _normalize_grade(selected_grade)
+            
             # ── Students ──
             query_str = """
                 SELECT
@@ -471,60 +522,9 @@ def teacher_dashboard():
                 a["display_name"] = prefix + (a.get("full_name") or a.get("posted_by") or "Teacher")
                 announcements.append(a)
 
-            # ── Sections + subjects assigned to this teacher (for this branch) ──
-            cur.execute(
-                """
-                SELECT
-                    s.section_id,
-                    s.section_name,
-                    g.name  AS grade_level_name,
-                    sub.subject_id,
-                    sub.name AS subject_name,
-                    sch.day_of_week,
-                    sch.start_time,
-                    sch.end_time,
-                    sch.room
-                FROM section_teachers st
-                JOIN sections s     ON st.section_id = s.section_id
-                JOIN grade_levels g ON s.grade_level_id = g.id
-                JOIN subjects sub   ON st.subject_id  = sub.subject_id
-                LEFT JOIN schedules sch ON sch.section_id = s.section_id 
-                                       AND sch.subject_id = sub.subject_id 
-                                       AND sch.teacher_id = st.teacher_id
-                                       AND sch.year_id = s.year_id
-                WHERE st.teacher_id = %s
-                  AND s.branch_id = %s AND s.year_id = %s
-                ORDER BY g.display_order, s.section_name, sub.name,
-                         CASE 
-                            WHEN sch.day_of_week = 'Monday' THEN 1
-                            WHEN sch.day_of_week = 'Tuesday' THEN 2
-                            WHEN sch.day_of_week = 'Wednesday' THEN 3
-                            WHEN sch.day_of_week = 'Thursday' THEN 4
-                            WHEN sch.day_of_week = 'Friday' THEN 5
-                            WHEN sch.day_of_week = 'Saturday' THEN 6
-                            WHEN sch.day_of_week = 'Sunday' THEN 7
-                            ELSE 8
-                         END, sch.start_time
-                """,
-                (user_id, branch_id, year_id),
-            )
-            teacher_assignments = cur.fetchall() or []
-
-            # ── Branch Admin Announcements (for teachers) ──
-            cur.execute("""
-    SELECT announcement_id AS id, title, message, (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila') AS created_at_local, image_url
-    FROM announcements
-    WHERE is_active = TRUE
-      AND branch_id = %s
-      AND audience IN ('all','teacher')
-    ORDER BY created_at DESC
-    LIMIT 20
-            """, (branch_id,))
-            admin_announcements = cur.fetchall() or []
-
-        finally:
-            cur.close()
-            db.close()
+    finally:
+        cur.close()
+        db.close()
 
     # --- Live Class & Pending Tasks logic ---
     ph_tz = pytz.timezone("Asia/Manila")

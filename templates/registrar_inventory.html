@@ -766,7 +766,7 @@
         </div>
         <div class="header-actions">
             {% if is_branch_active_status %}
-            <a href="{{ url_for('branch_admin.branch_admin_inventory_add') }}" class="btn btn-gold-prestige">
+            <a href="{{ url_for('registrar.registrar_inventory_add') }}" class="btn btn-gold-prestige">
                 <i class="fas fa-plus-circle" style="font-size: 1.2rem;"></i>
                 <span>Add New Item</span>
             </a>
@@ -982,11 +982,11 @@
                 </svg> Inventory List</h2>
 
             <div class="status-tabs">
-                <a href="{{ url_for('branch_admin.branch_admin_inventory', category=category_filter, grade=grade_filter, search=search, status='active') }}"
+                <a href="{{ url_for('registrar.registrar_inventory', category=category_filter, grade=grade_filter, search=search, status='active') }}"
                     class="status-tab {{ 'active' if status_filter != 'inactive' }}">
                     Active Items
                 </a>
-                <a href="{{ url_for('branch_admin.branch_admin_inventory', category=category_filter, grade=grade_filter, search=search, status='inactive') }}"
+                <a href="{{ url_for('registrar.registrar_inventory', category=category_filter, grade=grade_filter, search=search, status='inactive') }}"
                     class="status-tab {{ 'active' if status_filter == 'inactive' }}">
                     Deactivated Items
                 </a>
@@ -1065,21 +1065,22 @@
                         <td data-label="Actions">
                             {% if is_branch_active_status %}
                             <div style="display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;">
-                                <a href="{{ url_for('branch_admin.branch_admin_inventory_restock', item_id=item[0]) }}"
+                                <a href="{{ url_for('registrar.registrar_inventory_restock', item_id=item[0]) }}"
                                     class="btn-prem btn-primary" title="Restock">
                                     <i class="fas fa-plus"></i> Restock
                                 </a>
-                                <a href="{{ url_for('branch_admin.branch_admin_inventory_price', item_id=item[0]) }}"
+                                <a href="{{ url_for('registrar.registrar_inventory_price', item_id=item[0]) }}"
                                     class="btn-prem btn-success" title="Update Price">
                                     <i class="fas fa-tag"></i> Price
                                 </a>
-                                <a href="{{ url_for('branch_admin.branch_admin_inventory_add', edit_id=item[0]) }}"
+                                <a href="{{ url_for('registrar.registrar_inventory_add') }}"
                                     class="btn-prem btn-warning" title="Edit Details">
                                     <i class="fas fa-edit"></i> Edit
                                 </a>
                                 <form method="POST"
-                                    action="{{ url_for('branch_admin.branch_admin_inventory_toggle', item_id=item[0]) }}"
+                                    action="{{ url_for('registrar.registrar_inventory_toggle', item_id=item[0]) }}"
                                     style="display:inline; margin:0;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn-prem btn-orange"
                                         title="{{ 'Deactivate' if item[10] else 'Activate' }}">
                                         {% if item[10] %}
@@ -1090,9 +1091,10 @@
                                     </button>
                                 </form>
                                 <form method="POST"
-                                    action="{{ url_for('branch_admin.branch_admin_inventory_delete', item_id=item[0]) }}"
+                                    action="{{ url_for('registrar.registrar_inventory_delete', item_id=item[0]) }}"
                                     style="display:inline; margin:0;"
                                     onsubmit="return confirm('Permanently delete this item?')">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn-prem btn-danger" title="Delete">
                                         <i class="fas fa-trash"></i> Delete
                                     </button>
@@ -1108,7 +1110,7 @@
                             <div style="opacity: 0.3; margin-bottom: 12px;">
                                 <i class="fas fa-box-open" style="font-size: 3rem;"></i>
                             </div>
-                            No items found. <a href="{{ url_for('branch_admin.branch_admin_inventory_add') }}"
+                            No items found. <a href="{{ url_for('registrar.registrar_inventory_add') }}"
                                 style="color:var(--ma-primary);font-weight:700;">Add your first item</a>
                         </td>
                     </tr>
@@ -1157,7 +1159,7 @@
     // Clear all filters
     function clearFilters() {
         showLoading();
-        window.location.href = '{{ url_for("branch_admin.branch_admin_inventory") }}';
+        window.location.href = '{{ url_for("registrar.registrar_inventory") }}';
     }
 
     // Optional: Submit on Enter key in search
@@ -1193,7 +1195,7 @@
     // REAL-TIME POLLING
     async function fetchLatestStats() {
         try {
-            const response = await fetch('/branch-admin/inventory/stats-api');
+            const response = await fetch('/registrar/inventory/stats-api');
             const data = await response.json();
             if (data.error) return;
 
