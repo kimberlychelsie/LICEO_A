@@ -357,12 +357,12 @@
             onsubmit="return validateAddBranch(this);">
             <div class="entry-grid">
                 <div class="form-node">
-                    <label>Branch Identity</label>
+                    <label>Branch Name</label>
                     <input type="text" id="branch_name" name="branch_name" placeholder="e.g. Liceo de Majayjay"
                         required>
                 </div>
                 <div class="form-node">
-                    <label>Assigned Code</label>
+                    <label>Branch Code</label>
                     <input type="text" id="branch_code" name="branch_code" placeholder="e.g. LDMAJ"
                         style="text-transform: uppercase;" required>
                 </div>
@@ -372,7 +372,7 @@
                         placeholder="e.g. Majayjay, Laguna" required>
                 </div>
                 <div class="form-node">
-                    <label>Admin Leader Name</label>
+                    <label>Admin Name</label>
                     <input type="text" id="admin_name" name="admin_name" class="no-numbers"
                         placeholder="e.g. Jocelyn Ramirez" required>
                 </div>
@@ -385,7 +385,7 @@
                     </select>
                 </div>
                 <div class="form-node">
-                    <label>Admin Protocol Email</label>
+                    <label>Admin Email</label>
                     <input type="email" id="admin_email" name="admin_email" placeholder="admin@liceo.edu.ph" required>
                 </div>
             </div>
@@ -394,7 +394,7 @@
             <div class="map-section" style="margin-bottom: 24px;">
                 <label
                     style="display:block; font-size:0.8rem; font-weight:800; color:var(--ma-muted); text-transform:uppercase; margin-bottom:8px;">Geographic
-                    Pinpoint (REQUIRED)</label>
+                    Location (Required)</label>
                 <div class="map-instruction">
                     <i class="fas fa-map-marked-alt"></i>
                     <div>
@@ -409,7 +409,7 @@
             </div>
 
             <div style="display:flex; justify-content:flex-end;">
-                <button type="submit" class="btn-prem btn-gold">🚀 Initialize Branch & Admin account</button>
+                <button type="submit" class="btn-prem btn-gold">Create Branch & Admin</button>
             </div>
         </form>
     </div>
@@ -525,8 +525,7 @@
         <div style="display: flex; gap: 12px; justify-content: center;">
             <button type="button" onclick="cancelStatusToggle()" class="btn-prem"
                 style="background: #f1f5f9; color: var(--ma-muted);">Wait, Cancel</button>
-            <button id="confirmExecuteBtn" class="btn-prem" style="background: var(--ma-primary); color: white;">Yes,
-                Proceed</button>
+            <button id="confirmExecuteBtn" class="btn-prem" style="background: var(--ma-primary); color: white;">Confirm</button>
         </div>
     </div>
 </div>
@@ -534,17 +533,16 @@
 <!-- Edit Modal -->
 <div id="editBranchModal" class="glass-overlay">
     <div class="glass-modal">
-        <h2 style="font-size: 1.25rem; font-weight: 900; color: var(--ma-primary); margin-bottom: 16px;">Adjust Node
-            Protocol</h2>
+        <h2 style="font-size: 1.25rem; font-weight: 900; color: var(--ma-primary); margin-bottom: 16px;">Edit Branch</h2>
         <form id="editBranchForm" method="post">
             <div class="entry-grid" style="grid-template-columns: 1fr; gap: 12px;">
                 <div class="form-node">
-                    <label>Branch Identity</label>
+                    <label>Branch Name</label>
                     <input type="text" name="branch_name" id="editBranchName" required />
                 </div>
                 <div class="entry-grid" style="grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 0;">
                     <div class="form-node">
-                        <label>Assigned Code</label>
+                        <label>Branch Code</label>
                         <input type="text" name="branch_code" id="editBranchCode" required maxlength="20"
                             style="text-transform: uppercase;" />
                     </div>
@@ -583,11 +581,63 @@
                     <input type="hidden" name="latitude" id="editLatitude">
                     <input type="hidden" name="longitude" id="editLongitude">
                 </div>
+                <!-- Replace Admin Section -->
+                <div style="margin-top: 24px; padding: 16px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px; color: #1e40af;">
+                        <i class="fas fa-user-shield"></i>
+                        <strong style="font-size: 0.85rem;">Change Leader?</strong>
+                    </div>
+                    <p style="font-size: 0.72rem; color: #64748b; margin-bottom: 10px;">Click below if a new person is taking over this branch.</p>
+                    <button type="button" onclick="switchToTransfer()" class="btn-prem" style="width: 100%; background: #fff; border: 1.5px solid #1e40af; color: #1e40af; font-size: 0.8rem; padding: 8px;">Replace Administrator</button>
+                </div>
             </div>
             <div style="display: flex; justify-content: space-between; margin-top: 24px;">
                 <button type="button" onclick="closeEditBranch()" class="btn-prem"
-                    style="background: #f1f5f9; color: var(--ma-muted);">Dismiss</button>
-                <button type="submit" class="btn-prem btn-gold" id="commitEditBtn" disabled>Commit Changes</button>
+                    style="background: #f1f5f9; color: var(--ma-muted);">Cancel</button>
+                <button type="submit" class="btn-prem btn-gold" id="commitEditBtn" disabled>Update</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Replace Admin Modal -->
+<div id="transferAdminModal" class="glass-overlay">
+    <div class="glass-modal" style="max-width: 450px;">
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div style="width: 64px; height: 64px; background: rgba(59, 130, 246, 0.1); color: #1e40af; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 1.5rem;">
+                <i class="fas fa-user-shield"></i>
+            </div>
+            <h2 style="font-size: 1.25rem; font-weight: 900; color: var(--ma-primary); margin: 0;">Replace Admin</h2>
+            <p id="transferBranchName" style="font-size: 0.9rem; color: var(--ma-muted); margin-top: 4px;"></p>
+        </div>
+
+        <form id="transferAdminForm" method="post">
+            <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 16px; border-radius: 12px; margin-bottom: 24px; font-size: 0.85rem; color: #92400e;">
+                <i class="fas fa-exclamation-triangle"></i> <strong>Note:</strong> This will deactivate the old admin and create a new account for the new leader.
+            </div>
+
+            <div class="entry-grid" style="grid-template-columns: 1fr; gap: 16px;">
+                <div class="form-node">
+                    <label>New Admin Name</label>
+                    <input type="text" name="admin_name" class="no-numbers" placeholder="Full Name" required />
+                </div>
+                <div class="form-node">
+                    <label>Gender</label>
+                    <select name="gender" required>
+                        <option value="">— Select —</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                    </select>
+                </div>
+                <div class="form-node">
+                    <label>New Admin Email</label>
+                    <input type="email" name="admin_email" placeholder="email@liceo.edu.ph" required />
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 32px;">
+                <button type="button" onclick="closeTransferModal()" class="btn-prem" style="flex: 1; background: #f1f5f9; color: var(--ma-muted);">Cancel</button>
+                <button type="submit" class="btn-prem" style="flex: 2; background: #1e40af; color: white;">Transfer Now</button>
             </div>
         </form>
     </div>
@@ -679,20 +729,37 @@
     }
 
     document.addEventListener('click', function (e) {
-        const btn = e.target.closest('.edit-branch-btn');
-        if (!btn) return;
-        openEditBranch(
-            btn.dataset.id,
-            btn.dataset.name,
-            btn.dataset.code,
-            btn.dataset.location,
-            btn.dataset.email,
-            btn.dataset.fullname,
-            btn.dataset.gender,
-            btn.dataset.lat,
-            btn.dataset.lng
-        );
+        const transferBtn = e.target.closest('.transfer-admin-btn');
+        if (transferBtn) {
+            openTransferModal(transferBtn.dataset.id, transferBtn.dataset.name);
+            return;
+        }
+
+        const editBtn = e.target.closest('.edit-branch-btn');
+        if (editBtn) {
+            openEditBranch(
+                editBtn.dataset.id,
+                editBtn.dataset.name,
+                editBtn.dataset.code,
+                editBtn.dataset.location,
+                editBtn.dataset.email,
+                editBtn.dataset.fullname,
+                editBtn.dataset.gender,
+                editBtn.dataset.lat,
+                editBtn.dataset.lng
+            );
+        }
     });
+ 
+     function openTransferModal(id, name) {
+         document.getElementById('transferBranchName').innerText = 'Branch: ' + name;
+         document.getElementById('transferAdminForm').action = '/super-admin/branches/' + id + '/replace-admin';
+         document.getElementById('transferAdminModal').style.display = 'flex';
+     }
+ 
+     function closeTransferModal() {
+         document.getElementById('transferAdminModal').style.display = 'none';
+     }
 
     const searchInput = document.getElementById('branchSearch');
     if (searchInput) {
@@ -915,6 +982,23 @@
             section.style.display = 'none';
             icon.innerHTML = '<i class="fas fa-chevron-down"></i>';
         }
+    }
+
+    function openTransferModal(id, name) {
+        document.getElementById('transferBranchName').innerText = 'Branch: ' + name;
+        document.getElementById('transferAdminForm').action = '/super-admin/branches/' + id + '/replace-admin';
+        document.getElementById('transferAdminModal').style.display = 'flex';
+    }
+
+    function closeTransferModal() {
+        document.getElementById('transferAdminModal').style.display = 'none';
+    }
+
+    function switchToTransfer() {
+        const id = document.getElementById('editBranchForm').action.split('/').slice(-2, -1)[0];
+        const name = document.getElementById('editBranchName').value;
+        closeEditBranch();
+        openTransferModal(id, name);
     }
 </script>
 {% endblock %}

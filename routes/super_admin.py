@@ -368,6 +368,103 @@ def super_admin_edit_branch(branch_id):
         db.close()
 
     return redirect(url_for("super_admin.super_admin_branches"))
+ 
+ 
+# =======================
+# REPLACE BRANCH ADMIN (New Leader)
+# =======================
+@super_admin_bp.route("/super-admin/branches/<int:branch_id>/replace-admin", methods=["POST"])
+def super_admin_replace_admin(branch_id):
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    admin_name  = (request.form.get("admin_name") or "").strip()
+    admin_email = (request.form.get("admin_email") or "").strip()
+    gender      = (request.form.get("gender") or "").strip()
+
+    if not admin_name or not admin_email or not gender:
+        flash("Admin Name, Email, and Gender are required for replacement.", "error")
+        return redirect(url_for("super_admin.super_admin_branches"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("BEGIN;")
+
+        # 1. Get branch code to generate new username
+        cursor.execute("SELECT branch_name, branch_code FROM branches WHERE branch_id = %s", (branch_id,))
+        branch = cursor.fetchone()
+        if not branch:
+            db.rollback()
+            flash("Branch not found.", "error")
+            return redirect(url_for("super_admin.super_admin_branches"))
+
+        branch_name = branch["branch_name"]
+        branch_code = branch["branch_code"]
+
+        # 2. Deactivate current admin(s) for this branch
+        cursor.execute("""
+            UPDATE users 
+            SET status = 'inactive', role = 'retired_admin'
+            WHERE branch_id = %s AND role = 'branch_admin'
+        """, (branch_id,))
+
+        # 3. Create NEW admin account
+        # Generate a unique username if LDMAJ_Admin exists, maybe LDMAJ_Admin_2?
+        # For simplicity, we can use a timestamp or just check existence.
+        import time
+        suffix = int(time.time()) % 10000
+        username = f"{branch_code}_Admin_{suffix}"
+        temp_password = generate_password()
+        hashed = generate_password_hash(temp_password)
+
+        cursor.execute("""
+            INSERT INTO users (branch_id, username, password, role, email, full_name, gender, require_password_change, status)
+            VALUES (%s, %s, %s, 'branch_admin', %s, %s, %s, TRUE, 'active')
+        """, (branch_id, username, hashed, admin_email, admin_name, gender))
+
+        db.commit()
+
+        # 4. Send Email
+        subject = f"Liceo Management System: New Admin Credentials for {branch_name}"
+        honorific = "Mr." if gender == "Male" else "Ms."
+        html_body = f"""
+        <div style="font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; padding: 40px; border-radius: 24px; color: #0f172a; max-width: 600px; margin: 0 auto; border: 1px solid rgba(26, 58, 143, 0.1);">
+            <div style="background: linear-gradient(135deg, #1a3a8f 0%, #0c2461 100%); padding: 32px; border-radius: 20px 20px 0 0; text-align: center; color: #ffffff;">
+                <h2 style="margin: 0; font-size: 24px; font-weight: 800;">Liceo Management System</h2>
+                <p style="margin: 8px 0 0 0; opacity: 0.8;">Leadership Transition Protocol</p>
+            </div>
+            <div style="background: #ffffff; padding: 32px; border-radius: 0 0 20px 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
+                <p>Hello <strong>{honorific} {admin_name}</strong>,</p>
+                <p>You have been appointed as the new <strong>Branch Administrator</strong> for <strong>{branch_name}</strong>. Your account has been initialized with the following secure credentials:</p>
+                
+                <div style="background: #f1f5f9; padding: 24px; border-radius: 16px; margin: 24px 0; border: 1px dashed #cbd5e1;">
+                    <div style="font-size: 15px; margin-bottom: 8px;"><strong>Username:</strong> <code style="color: #1a3a8f;">{username}</code></div>
+                    <div style="font-size: 15px;"><strong>Temporary Password:</strong> <code style="color: #1a3a8f;">{temp_password}</code></div>
+                </div>
+
+                <div style="text-align: center; margin: 32px 0;">
+                    <a href="https://liceolms.up.railway.app/" style="background: #facc15; color: #1a3a8f; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 800;">Access Dashboard</a>
+                </div>
+
+                <p style="font-size: 13px; color: #64748b;">Note: You will be required to change your password upon your first login.</p>
+            </div>
+        </div>
+        """
+        body = f"Hello {honorific} {admin_name}, you are the new admin for {branch_name}. Username: {username}, Password: {temp_password}"
+        send_email(admin_email, subject, body, html_body=html_body)
+
+        flash(f"Leadership transition complete. {admin_name} is now the administrator for {branch_name}.", "success")
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to replace admin: {str(e)}")
+        flash("Failed to process leadership transition.", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(url_for("super_admin.super_admin_branches"))
 
 
 # =======================

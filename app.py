@@ -46,35 +46,28 @@ app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024
 
 @app.before_request
 def check_branch_active_status():
-    if request.method in ['POST', 'PUT', 'DELETE']:
-        if request.endpoint and (request.endpoint.startswith('auth.') or request.endpoint.startswith('super_admin.')):
-            return
-            
-        branch_id = session.get('branch_id')
-        if branch_id:
-            if not is_branch_active(branch_id):
-                flash("This branch is currently deactivated. You cannot perform this action.", "error")
-                # Need to return a response to block the request. Redirect back or to a safe page.
-                # Assuming most forms are submitted from a GET page, request.referrer usually works.
-                # Otherwise, fallback to a safe default like the user's dashboard based on role.
-                role = session.get('role')
-                fallback = '/'
-                if role == 'branch_admin':
-                    fallback = url_for('branch_admin.dashboard')
-                elif role == 'cashier':
-                    fallback = url_for('cashier.dashboard')
-                elif role == 'registrar':
-                    fallback = url_for('registrar.registrar_home')
-                elif role == 'teacher':
-                    fallback = url_for('teacher.teacher_dashboard')
-                elif role == 'student':
-                    fallback = url_for('student_portal.dashboard')
-                elif role == 'librarian':
-                    fallback = url_for('librarian.dashboard')
-                elif role == 'parent':
-                    fallback = url_for('parent.dashboard')
+    # Allow Super Admin to always access everything (even archived branches)
+    if session.get('role') == 'super_admin':
+        return
 
-                return redirect(request.referrer or fallback)
+    # Skip check for public routes and Super Admin specific endpoints
+    if request.endpoint and (request.endpoint.startswith('auth.') or request.endpoint.startswith('super_admin.') or request.endpoint == 'static'):
+        return
+        
+    branch_id = session.get('branch_id')
+    if branch_id:
+        if not is_branch_active(branch_id):
+            # If it's a POST request, block it with a flash message
+            if request.method in ['POST', 'PUT', 'DELETE']:
+                flash("This branch is currently deactivated. You cannot perform this action.", "error")
+                return redirect(request.referrer or '/')
+            
+            # For GET requests, if they are not the Super Admin, they shouldn't be able to "open" the branch
+            # We clear the session and redirect to login so they can see the message.
+            if request.endpoint and not request.endpoint.startswith('auth.'):
+                session.clear()
+                flash("This branch is currently deactivated. Access is restricted.", "error")
+                return redirect(url_for('auth.login'))
 
 @app.errorhandler(413)
 def request_entity_too_large(error):

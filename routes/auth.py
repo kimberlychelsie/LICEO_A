@@ -91,10 +91,16 @@ def login():
                     # Fetch branch name and code for sidebar display
                     if user.get("branch_id"):
                         cursor.execute(
-                            "SELECT branch_name, branch_code FROM branches WHERE branch_id = %s",
+                            "SELECT branch_name, branch_code, is_active FROM branches WHERE branch_id = %s",
                             (user["branch_id"],)
                         )
                         brow = cursor.fetchone()
+                        
+                        # BLOCK LOGIN IF BRANCH IS INACTIVE (Except for Super Admin)
+                        if brow and not brow.get("is_active") and user["role"] != "super_admin":
+                            flash("This branch is currently deactivated. Access is restricted.", "error")
+                            return redirect(url_for("auth.login"))
+
                         session["branch_name"] = brow["branch_name"] if brow else None
                         session["branch_code"] = brow["branch_code"] if brow else None
                     else:
@@ -242,10 +248,16 @@ def login():
                     # Sidebar branch label for student logins (student_accounts path)
                     if branch_id:
                         cursor.execute(
-                            "SELECT branch_name, branch_code FROM branches WHERE branch_id = %s",
+                            "SELECT branch_name, branch_code, is_active FROM branches WHERE branch_id = %s",
                             (branch_id,),
                         )
                         brow = cursor.fetchone()
+
+                        # BLOCK LOGIN IF BRANCH IS INACTIVE
+                        if brow and not brow.get("is_active"):
+                            flash("This branch is currently deactivated. Access is restricted.", "error")
+                            return redirect(url_for("auth.login"))
+
                         session["branch_name"] = brow["branch_name"] if brow else None
                         session["branch_code"] = brow["branch_code"] if brow else None
                     else:
