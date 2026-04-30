@@ -549,6 +549,7 @@
                     <form method="post"
                         action="{{ url_for('branch_admin.branch_admin_toggle_account', user_id=a.user_id, role=role_filter) }}"
                         style="margin:0;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn-action-icon"
                             onclick="return confirm('Change access state for this user?')"
                             title="{{ 'Suspend' if is_active else 'Restore' }}">
@@ -573,6 +574,7 @@
                     <form method="post"
                         action="{{ url_for('branch_admin.branch_admin_delete_account', user_id=a.user_id, role=role_filter) if a.role != 'student' else url_for('branch_admin.branch_admin_delete_student_account', account_id=a.account_id, role=role_filter) }}"
                         style="margin:0;" onsubmit="return confirm('Permanent deletion cannot be undone. Proceed?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn-action-icon btn-delete" title="Purge Record">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -611,6 +613,7 @@
     <div class="data-card">
         <h2>Provision New {{ (role_filter or 'Registrar')|title }} Access</h2>
         <form method="post" action="{{ url_for('branch_admin.branch_admin_manage_accounts') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-row">
                 <div class="form-group">
                     <label>Assigned Directive</label>

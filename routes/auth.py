@@ -639,4 +639,4 @@ def reset_password(token):
 @auth_bp.route("/logout")
 def logout():
     session.clear()
-    return redirect("/")
+    return redirect(url_for("auth.login"))

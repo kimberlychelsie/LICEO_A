@@ -3,19 +3,26 @@ from dotenv import load_dotenv
 load_dotenv()  # loads .env file locally; no effect in Railway (env vars set directly)
 
 from flask import Flask, request, session, flash, redirect, url_for, render_template, send_from_directory
+import flask
+import markupsafe
+flask.Markup = markupsafe.Markup
+flask.escape = markupsafe.escape
+
+import werkzeug.urls
+from urllib.parse import urlencode
+werkzeug.urls.url_encode = urlencode
 from routes import init_routes
 from db import is_branch_active, get_db_connection
 from extensions import limiter
 from routes.teacher import _get_active_school_year
 from flask import send_from_directory, make_response
-
-
 from flask_wtf.csrf import CSRFProtect
- 
- app = Flask(__name__)
- app.secret_key = os.getenv("SECRET_KEY", "liceo_secret_key_dev")
- csrf = CSRFProtect(app)
+
+
+app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY", "liceo_secret_key_dev")
 limiter.init_app(app)
+csrf = CSRFProtect(app)
 app.jinja_env.add_extension('jinja2.ext.loopcontrols')
 app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), "uploads")
 

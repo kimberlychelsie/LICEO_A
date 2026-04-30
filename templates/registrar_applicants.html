@@ -432,10 +432,12 @@
                                         {% if is_branch_active_status %}
                                         <div style="display:flex; gap:6px;">
                                             <form method="post" action="/registrar/applicants">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
                                                 <button name="action" value="approved" class="btn btn-primary" style="padding:6px 12px; font-size:0.7rem; background:var(--reg-success);">Approve</button>
                                             </form>
                                             <form method="post" action="/registrar/applicants">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <input type="hidden" name="enrollment_id" value="{{ enrollment.enrollment_id }}">
                                                 <button name="action" value="rejected" class="btn btn-danger" style="padding:6px 12px; font-size:0.7rem;" onclick="return confirm('Reject?')">Reject</button>
                                             </form>
@@ -457,6 +459,7 @@
 
                                         {% if not enrollment.has_parent_account %}
                                             <form method="post" action="/registrar/create-parent-account/{{ enrollment.enrollment_id }}">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                                 <button type="submit" class="btn btn-outline" style="padding:6px 12px; font-size:0.7rem;">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                                                     Provision Parent
@@ -564,6 +567,7 @@
         <h3 id="modalStudentTitle">Provision New Access</h3>
         <p id="modalGradeInfo" style="font-size:0.9rem; color:var(--reg-muted); margin-bottom:20px;"></p>
         <form method="post" id="createStudentForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div style="margin-bottom:20px;">
                 <label style="display:block; font-size:0.7rem; font-weight:800; color:var(--reg-muted); text-transform:uppercase; margin-bottom:6px;">Section Assignment</label>
                 <select name="section_id" id="modalSectionSelect" class="filter-select" style="width:100%;">
