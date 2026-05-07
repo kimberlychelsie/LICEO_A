@@ -373,9 +373,9 @@ def super_admin_replace_admin(branch_id):
     replacement_mode = request.form.get("replacement_mode", "new")
     transfer_user_id = request.form.get("transfer_user_id")
 
-    admin_name  = (request.form.get("admin_name") or "").strip()
-    admin_email = (request.form.get("admin_email") or "").strip()
-    gender      = (request.form.get("gender") or "").strip()
+    admin_name  = (request.form.get("new_admin_name") or "").strip()
+    admin_email = (request.form.get("new_admin_email") or "").strip()
+    gender      = (request.form.get("new_gender") or "").strip()
 
     if replacement_mode == 'new' and (not admin_name or not admin_email or not gender):
         flash("Admin Name, Email, and Gender are required for new replacement.", "error")

@@ -231,12 +231,12 @@
 
 <div class="br-container">
     <div class="registry-welcome">
-        <h1>Manage Liceo Branches</h1>
+        <h1>Branch Management</h1>
     </div>
 
     <!-- Create New Branch -->
     <div class="modern-card">
-        <h2><i class="fas fa-plus-circle" style="color: var(--ma-gold);"></i> Deploy New Branch Node</h2>
+        <h2><i class="fas fa-plus-circle" style="color: var(--ma-gold);"></i> Create Branch</h2>
         <form method="POST" action="{{ url_for('super_admin.super_admin_branches') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="entry-grid">
@@ -270,7 +270,7 @@
                 </div>
             </div>
             <div style="display:flex; justify-content:flex-end;">
-                <button type="submit" class="btn-prem btn-gold">Create Branch & Admin</button>
+                <button type="submit" class="btn-prem btn-gold">Add Branch & Admin</button>
             </div>
         </form>
     </div>
@@ -278,7 +278,7 @@
     <!-- Registry Table -->
     <div class="modern-card" style="padding:0; overflow:hidden;">
         <div style="padding: 32px; display: flex; align-items:center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
-            <h2 style="margin:0;">🏢 Network Registry</h2>
+            <h2 style="margin:0;">Branch List</h2>
             <input type="text" id="branchSearch" placeholder="Search branch..." style="padding: 10px 16px; border: 1px solid var(--ma-border); border-radius: 12px; width: 300px;">
         </div>
 
@@ -287,13 +287,13 @@
                 <thead>
                     <tr>
                         <th style="width: 60px; text-align: center;">ID</th>
-                        <th style="width: 120px; text-align: center;">Username</th>
-                        <th>System Entity</th>
+                        <th style="width: 120px; text-align: center;">Admin Username</th>
+                        <th>Branch Name</th>
                         <th>Location</th>
-                        <th>Protocol</th>
-                        <th>Leadership Info</th>
+                        <th>Branch Code</th>
+                        <th>Admin Details</th>
                         <th>Status</th>
-                        <th style="width: 200px; text-align: right; padding-right: 32px;">Command</th>
+                        <th style="width: 200px; text-align: right; padding-right: 32px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -326,7 +326,7 @@
                                         <i class="fas fa-edit"></i> Edit Details
                                     </button>
                                     <button type="button" class="action-item" onclick="openTransferModal('{{ b.branch_id }}', '{{ b.branch_name|e }}')">
-                                        <i class="fas fa-user-shield"></i> Replace Principal
+                                        <i class="fas fa-user-shield"></i> Assign New Principal
                                     </button>
                                     <form method="POST" action="/super-admin/branch/{{ b.branch_id }}/toggle-status" style="display:contents;">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -346,9 +346,9 @@
 
     <!-- Global Network Map -->
     <div class="modern-card">
-        <h2><i class="fas fa-map-marked-alt" style="color: var(--ma-gold);"></i> Global Network Distribution</h2>
+        <h2><i class="fas fa-map-marked-alt" style="color: var(--ma-gold);"></i> Branch Locations</h2>
         <p style="font-size: 0.85rem; color: var(--ma-muted); margin-top: -16px; margin-bottom: 24px;">
-            Real-time visualization of all Liceo branches across Laguna.
+            Interactive map showing all registered Liceo branches across Laguna.
         </p>
         <div id="globalNetworkMap" style="height: 500px; border-radius: 20px; border: 2px solid var(--ma-border); z-index: 1;"></div>
     </div>
@@ -389,7 +389,7 @@
 <!-- Replace Admin Modal -->
 <div id="transferAdminModal" class="glass-overlay">
     <div class="glass-modal" style="max-width: 450px;">
-        <h2 id="transferBranchName" style="font-weight: 900; color: var(--ma-primary); text-align: center;">Replace Principal</h2>
+        <h2 id="transferBranchName" style="font-weight: 900; color: var(--ma-primary); text-align: center;">Assign Branch Principal</h2>
         <form id="transferAdminForm" method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div style="display: flex; gap: 8px; margin: 24px 0; background: #f1f5f9; padding: 4px; border-radius: 12px;">
@@ -400,9 +400,9 @@
 
             <div id="newAdminFields">
                 <div class="entry-grid" style="grid-template-columns: 1fr; gap: 12px;">
-                    <div class="form-node"><label>Full Name</label><input type="text" name="admin_name" id="newAdminNameInput" /></div>
-                    <div class="form-node"><label>Gender</label><select name="gender" id="newGenderInput"><option value="Male">Male</option><option value="Female">Female</option></select></div>
-                    <div class="form-node"><label>Email</label><input type="email" name="admin_email" id="newEmailInput" /></div>
+                    <div class="form-node"><label>Full Name</label><input type="text" name="new_admin_name" id="newAdminNameInput" /></div>
+                    <div class="form-node"><label>Gender</label><select name="new_gender" id="newGenderInput"><option value="Male">Male</option><option value="Female">Female</option></select></div>
+                    <div class="form-node"><label>Email</label><input type="email" name="new_admin_email" id="newEmailInput" /></div>
                 </div>
             </div>
 
@@ -516,34 +516,92 @@
     function closeEditBranch() { document.getElementById('editBranchModal').style.display = 'none'; }
 
     function openTransferModal(id, name) {
-        document.getElementById('transferBranchName').innerText = name;
-        document.getElementById('transferAdminForm').action = '/super-admin/branches/' + id + '/replace-admin';
-        document.getElementById('transferAdminModal').style.display = 'flex';
-        setReplacementMode('new');
-    }
+    document.getElementById('transferBranchName').innerText = name;
+    document.getElementById('transferAdminForm').action =
+        '/super-admin/branches/' + id + '/replace-admin';
+
+    document.getElementById('transferAdminModal').style.display = 'flex';
+
+    setReplacementMode('new');
+}
     function closeTransferModal() { document.getElementById('transferAdminModal').style.display = 'none'; }
 
     function setReplacementMode(mode) {
-        const modeInput = document.getElementById('replacementMode');
-        const newFields = document.getElementById('newAdminFields');
-        const transferFields = document.getElementById('transferAdminFields');
-        const newBtn = document.getElementById('modeNewBtn');
-        const transferBtn = document.getElementById('modeTransferBtn');
-        const submitBtn = document.getElementById('transferSubmitBtn');
 
-        modeInput.value = mode;
-        if (mode === 'new') {
-            newFields.style.display = 'block'; transferFields.style.display = 'none';
-            newBtn.style.background = '#1a3a8f'; newBtn.style.color = 'white';
-            transferBtn.style.background = 'transparent'; transferBtn.style.color = '#64748b';
-            submitBtn.innerText = 'Replace with New';
-        } else {
-            newFields.style.display = 'none'; transferFields.style.display = 'block';
-            transferBtn.style.background = '#1a3a8f'; transferBtn.style.color = 'white';
-            newBtn.style.background = 'transparent'; newBtn.style.color = '#64748b';
-            submitBtn.innerText = 'Transfer & Replace';
-        }
-    }
+const modeInput = document.getElementById('replacementMode');
+
+const newFields = document.getElementById('newAdminFields');
+const transferFields = document.getElementById('transferAdminFields');
+
+const newBtn = document.getElementById('modeNewBtn');
+const transferBtn = document.getElementById('modeTransferBtn');
+
+const submitBtn = document.getElementById('transferSubmitBtn');
+
+// Inputs
+const newName = document.getElementById('newAdminNameInput');
+const newGender = document.getElementById('newGenderInput');
+const newEmail = document.getElementById('newEmailInput');
+
+const transferSelect = document.getElementById('transferSelectInput');
+
+modeInput.value = mode;
+
+if (mode === 'new') {
+
+    newFields.style.display = 'block';
+    transferFields.style.display = 'none';
+
+    // ENABLE NEW ADMIN INPUTS
+    newName.disabled = false;
+    newGender.disabled = false;
+    newEmail.disabled = false;
+
+    // REQUIRED
+    newName.required = true;
+    newGender.required = true;
+    newEmail.required = true;
+
+    // DISABLE TRANSFER SELECT
+    transferSelect.disabled = true;
+    transferSelect.required = false;
+
+    newBtn.style.background = '#1a3a8f';
+    newBtn.style.color = 'white';
+
+    transferBtn.style.background = 'transparent';
+    transferBtn.style.color = '#64748b';
+
+    submitBtn.innerText = 'Replace with New';
+
+} else {
+
+    newFields.style.display = 'none';
+    transferFields.style.display = 'block';
+
+    // DISABLE NEW ADMIN INPUTS
+    newName.disabled = true;
+    newGender.disabled = true;
+    newEmail.disabled = true;
+
+    // REMOVE REQUIRED
+    newName.required = false;
+    newGender.required = false;
+    newEmail.required = false;
+
+    // ENABLE TRANSFER SELECT
+    transferSelect.disabled = false;
+    transferSelect.required = true;
+
+    transferBtn.style.background = '#1a3a8f';
+    transferBtn.style.color = 'white';
+
+    newBtn.style.background = 'transparent';
+    newBtn.style.color = '#64748b';
+
+    submitBtn.innerText = 'Transfer & Replace';
+}
+}
 
     function toggleActionMenu(btn, event) {
         event.stopPropagation();
