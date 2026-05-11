@@ -426,6 +426,82 @@
     }
   }
 
+  /* ── Book Cover Preview ── */
+  .cover-section {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 28px;
+    align-items: flex-start;
+    padding: 24px;
+    background: var(--bg);
+    border-radius: 14px;
+    border: 2px dashed var(--border);
+    transition: border-color 0.2s;
+  }
+
+  .cover-section:focus-within {
+    border-color: var(--blue-mid);
+    background: #f8fbff;
+  }
+
+  .book-preview-card {
+    width: 110px;
+    height: 145px;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 4px 4px 16px rgba(0,0,0,0.2);
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  .book-preview-card img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .book-preview-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+    color: #fff;
+    font-weight: 900;
+    font-size: 28px;
+    letter-spacing: -0.03em;
+    text-transform: uppercase;
+  }
+
+  .book-preview-placeholder .spine-bar {
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 10px;
+    background: rgba(0,0,0,0.25);
+  }
+
+  .book-preview-placeholder .shine {
+    position: absolute;
+    top: 0; right: 0;
+    width: 30%;
+    height: 50%;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+    border-radius: 0 8px 0 0;
+  }
+
+  .book-preview-label {
+    font-size: 9px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    opacity: 0.7;
+    margin-top: 4px;
+    text-align: center;
+  }
+
   @media (max-width: 640px) {
     .field-row {
       grid-template-columns: 1fr;
@@ -451,6 +527,10 @@
 
     .ph-text h1 {
       font-size: 18px;
+    }
+
+    .cover-section {
+      grid-template-columns: 1fr;
     }
   }
 </style>
@@ -552,6 +632,33 @@
             </div>
           </div>
 
+          {# ── Book Cover Image ── #}
+          <div class="form-divider"></div>
+          <div class="section-label">Book Cover Image <span style="font-weight:500; color: var(--muted); font-size:10px; text-transform:none; letter-spacing:0;">(optional)</span></div>
+          <div class="cover-section" id="coverSection">
+            <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+              <div class="book-preview-card" id="bookPreviewCard">
+                <img id="coverPreviewImg" src="{{ book.image_url if book and book.image_url else '' }}"
+                     alt="Cover preview" style="display: {{ 'block' if book and book.image_url else 'none' }};">
+                <div class="book-preview-placeholder" id="coverPlaceholder"
+                     style="background: #1e3a8a; display: {{ 'none' if book and book.image_url else 'flex' }};">
+                  <span class="spine-bar"></span>
+                  <span class="shine"></span>
+                  <span id="coverInitial">?</span>
+                </div>
+              </div>
+              <span class="book-preview-label" style="color: var(--muted);">Preview</span>
+            </div>
+            <div class="field-group" style="flex:1;">
+              <label class="field-label" for="image_url">Cover Image URL</label>
+              <input class="field-input" id="image_url" type="url" name="image_url"
+                value="{{ book.image_url if book and book.image_url else '' }}"
+                placeholder="https://example.com/book-cover.jpg"
+                autocomplete="off">
+              <span class="field-hint">Paste a direct link to the book cover image (JPG, PNG, WebP). Leave blank to use auto-generated cover.</span>
+            </div>
+          </div>
+
           {# Info tip ── #}
           <div class="tips-panel">
             <div class="tips-icon">
@@ -609,6 +716,44 @@
   const form = document.getElementById('bookForm');
   const overlay = document.getElementById('loadingOverlay');
   const submitBtn = document.getElementById('submitBtn');
+
+  // ── Live Book Cover Preview ──
+  const coverInput   = document.getElementById('image_url');
+  const previewImg   = document.getElementById('coverPreviewImg');
+  const placeholder  = document.getElementById('coverPlaceholder');
+  const initialSpan  = document.getElementById('coverInitial');
+  const titleInput   = document.getElementById('title');
+  const coverColors  = ['#1e3a8a','#7c3aed','#0e7490','#065f46','#92400e','#9f1239','#1d4ed8','#6d28d9'];
+
+  function updateCoverPreview() {
+    const url = (coverInput ? coverInput.value.trim() : '');
+    const title = (titleInput ? titleInput.value.trim() : '');
+    const initial = title ? title[0].toUpperCase() : '?';
+    const color = coverColors[title.length % 8];
+    if (initialSpan) initialSpan.textContent = initial;
+    if (placeholder) placeholder.style.background = color;
+
+    if (url) {
+      if (previewImg) {
+        previewImg.src = url;
+        previewImg.onload = () => {
+          previewImg.style.display = 'block';
+          if (placeholder) placeholder.style.display = 'none';
+        };
+        previewImg.onerror = () => {
+          previewImg.style.display = 'none';
+          if (placeholder) placeholder.style.display = 'flex';
+        };
+      }
+    } else {
+      if (previewImg) previewImg.style.display = 'none';
+      if (placeholder) placeholder.style.display = 'flex';
+    }
+  }
+
+  if (coverInput) coverInput.addEventListener('input', updateCoverPreview);
+  if (titleInput) titleInput.addEventListener('input', updateCoverPreview);
+  updateCoverPreview(); // run on load
 
   // Mark fields as filled for styling
   const fieldIds = ['grade_level', 'publisher', 'title', 'price'];

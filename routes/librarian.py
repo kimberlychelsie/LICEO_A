@@ -179,7 +179,8 @@ def books_inventory():
                 COALESCE(size_label,'') AS publisher,
                 price,
                 stock_total,
-                reserved_qty
+                reserved_qty,
+                image_url
             FROM inventory_items
             WHERE {where_sql} {status_having}
             ORDER BY
@@ -236,9 +237,10 @@ def book_add():
 
     if request.method == "POST":
         grade_level = (request.form.get("grade_level") or "").strip()
-        publisher = (request.form.get("publisher") or "").strip()
-        title = (request.form.get("title") or "").strip()
-        price = (request.form.get("price") or "0").strip()
+        publisher   = (request.form.get("publisher")   or "").strip()
+        title       = (request.form.get("title")       or "").strip()
+        price       = (request.form.get("price")       or "0").strip()
+        image_url   = (request.form.get("image_url")   or "").strip() or None
 
         if not (grade_level and publisher and title):
             flash("Missing required fields.", "error")
@@ -253,13 +255,14 @@ def book_add():
                      size_label, price, stock_total, reserved_qty, image_url, is_active)
                 VALUES
                     (%s, 'BOOK', %s, %s, FALSE,
-                     %s, %s, 0, 0, NULL, TRUE)
+                     %s, %s, 0, 0, %s, TRUE)
             """, (
                 branch_id,
                 title,
                 grade_level,
                 publisher,
                 price,
+                image_url,
             ))
             db.commit()
             flash("Book added successfully!", "success")
@@ -301,7 +304,8 @@ def book_edit(item_id):
                 COALESCE(size_label,'') AS publisher,
                 price,
                 stock_total,
-                reserved_qty
+                reserved_qty,
+                image_url
             FROM inventory_items
             WHERE item_id=%s AND branch_id=%s AND UPPER(category)='BOOK'
             LIMIT 1
@@ -314,9 +318,10 @@ def book_edit(item_id):
 
         if request.method == "POST":
             grade_level = (request.form.get("grade_level") or "").strip()
-            publisher = (request.form.get("publisher") or "").strip()
-            title = (request.form.get("title") or "").strip()
-            price = (request.form.get("price") or "0").strip()
+            publisher   = (request.form.get("publisher")   or "").strip()
+            title       = (request.form.get("title")       or "").strip()
+            price       = (request.form.get("price")       or "0").strip()
+            image_url   = (request.form.get("image_url")   or "").strip() or None
 
             if not (grade_level and publisher and title):
                 flash("Missing required fields.", "error")
@@ -326,9 +331,9 @@ def book_edit(item_id):
             try:
                 cur2.execute("""
                     UPDATE inventory_items
-                    SET item_name=%s, grade_level=%s, size_label=%s, price=%s
+                    SET item_name=%s, grade_level=%s, size_label=%s, price=%s, image_url=%s
                     WHERE item_id=%s AND branch_id=%s AND UPPER(category)='BOOK'
-                """, (title, grade_level, publisher, price, item_id, branch_id))
+                """, (title, grade_level, publisher, price, image_url, item_id, branch_id))
                 db.commit()
                 flash("Book updated successfully!", "success")
                 return redirect(url_for("librarian.books_inventory"))
@@ -389,10 +394,15 @@ def book_restock(item_id):
             try:
                 add_val = int(add_stock)
                 if add_val <= 0:
-                    raise ValueError()
+                    raise ValueError("Quantity must be at least 1.")
+                if add_val > 5000:
+                    raise ValueError("Quantity cannot exceed 5,000.")
+            except ValueError as ve:
+                flash(str(ve), "error")
+                return redirect(url_for("librarian.books_inventory"))
             except Exception:
                 flash("Invalid stock quantity.", "error")
-                return redirect(url_for("librarian.book_restock", item_id=item_id))
+                return redirect(url_for("librarian.books_inventory"))
 
             cur2 = db.cursor()
             try:

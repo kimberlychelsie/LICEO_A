@@ -398,6 +398,60 @@
         display: flex;
     }
 
+    /* ── Book Cover Card ── */
+    .book-cover-wrap {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+
+    .book-cover {
+        width: 52px;
+        height: 68px;
+        border-radius: 6px;
+        object-fit: cover;
+        box-shadow: 3px 3px 10px rgba(0,0,0,0.18);
+        flex-shrink: 0;
+        border: 1px solid var(--lib-border);
+    }
+
+    .book-cover-placeholder {
+        width: 52px;
+        height: 68px;
+        border-radius: 6px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        font-weight: 900;
+        color: #fff;
+        letter-spacing: -0.03em;
+        box-shadow: 3px 3px 10px rgba(0,0,0,0.15);
+        position: relative;
+        overflow: hidden;
+        text-transform: uppercase;
+    }
+
+    .book-cover-placeholder::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 30%;
+        background: rgba(0,0,0,0.15);
+    }
+
+    .book-cover-placeholder .spine {
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 6px;
+        background: rgba(0,0,0,0.2);
+    }
+
     @media (max-width: 1024px) {
         .inventory-container {
             padding: 20px 16px 80px;
@@ -461,10 +515,333 @@
             white-space: nowrap;
         }
     }
+
+    /* ── Book Preview Modal ── */
+    .book-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(10, 20, 50, 0.55);
+        backdrop-filter: blur(6px);
+        z-index: 9000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+    }
+
+    .book-modal-overlay.open {
+        opacity: 1;
+        pointer-events: all;
+    }
+
+    .book-modal {
+        background: #fff;
+        border-radius: 24px;
+        width: 100%;
+        max-width: 520px;
+        box-shadow: 0 30px 80px rgba(0,0,0,0.25);
+        overflow: hidden;
+        transform: scale(0.93) translateY(12px);
+        transition: transform 0.25s ease;
+    }
+
+    .book-modal-overlay.open .book-modal {
+        transform: scale(1) translateY(0);
+    }
+
+    .book-modal-header {
+        background: linear-gradient(135deg, #1e3a8a, #1d4ed8);
+        padding: 28px 28px 20px;
+        display: flex;
+        gap: 24px;
+        align-items: flex-start;
+        position: relative;
+    }
+
+    .book-modal-close {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.15);
+        border: none;
+        color: #fff;
+        font-size: 18px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.2s;
+    }
+
+    .book-modal-close:hover { background: rgba(255,255,255,0.3); }
+
+    .book-modal-cover {
+        width: 90px;
+        height: 120px;
+        border-radius: 8px;
+        overflow: hidden;
+        flex-shrink: 0;
+        box-shadow: 4px 4px 20px rgba(0,0,0,0.3);
+        position: relative;
+    }
+
+    .book-modal-cover img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
+    }
+
+    .book-modal-cover-placeholder {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 36px;
+        font-weight: 900;
+        color: #fff;
+        text-transform: uppercase;
+        position: relative;
+    }
+
+    .book-modal-cover-placeholder .mspine {
+        position: absolute;
+        left: 0; top: 0; bottom: 0;
+        width: 10px;
+        background: rgba(0,0,0,0.2);
+    }
+
+    .book-modal-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .book-modal-title {
+        font-size: 18px;
+        font-weight: 900;
+        color: #fff;
+        line-height: 1.3;
+        margin-bottom: 6px;
+    }
+
+    .book-modal-pub {
+        font-size: 13px;
+        color: rgba(255,255,255,0.7);
+        font-weight: 600;
+        margin-bottom: 10px;
+    }
+
+    .book-modal-grade-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 99px;
+        padding: 4px 12px;
+        font-size: 11px;
+        font-weight: 700;
+        color: #fff;
+    }
+
+    .book-modal-body {
+        padding: 24px 28px;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 16px;
+    }
+
+    .book-stat-card {
+        background: var(--lib-bg);
+        border-radius: 12px;
+        padding: 14px;
+        text-align: center;
+    }
+
+    .book-stat-value {
+        font-size: 22px;
+        font-weight: 900;
+        color: var(--lib-primary);
+    }
+
+    .book-stat-label {
+        font-size: 10px;
+        font-weight: 700;
+        color: var(--lib-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-top: 2px;
+    }
+
+    .book-modal-actions {
+        padding: 0 28px 24px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .bm-btn {
+        flex: 1;
+        min-width: 120px;
+        padding: 11px 16px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.18s;
+    }
+
+    .bm-btn-primary { background: var(--lib-primary); color: #fff; }
+    .bm-btn-primary:hover { background: #1d4ed8; }
+    .bm-btn-outline { background: #fff; color: var(--lib-text); border: 1.5px solid var(--lib-border); }
+    .bm-btn-outline:hover { border-color: var(--lib-primary); color: var(--lib-primary); }
+
+    .inv-table tr.clickable-row { cursor: pointer; }
+    .inv-table tr.clickable-row:hover td { background: #eff6ff; }
 </style>
 {% endblock %}
 
 {% block content %}
+<!-- ── Book Preview Modal ── -->
+<div class="book-modal-overlay" id="bookModal">
+    <div class="book-modal">
+        <div class="book-modal-header">
+            <button class="book-modal-close" id="modalClose" aria-label="Close">&times;</button>
+            <div class="book-modal-cover">
+                <img id="modalCoverImg" src="" alt="" style="display:none;">
+                <div class="book-modal-cover-placeholder" id="modalCoverPlaceholder" style="background:#1e3a8a;">
+                    <span class="mspine"></span>
+                    <span id="modalInitial">?</span>
+                </div>
+            </div>
+            <div class="book-modal-info">
+                <div class="book-modal-title" id="modalTitle">—</div>
+                <div class="book-modal-pub" id="modalPub">—</div>
+                <span class="book-modal-grade-pill" id="modalGrade">—</span>
+            </div>
+        </div>
+        <div class="book-modal-body">
+            <div class="book-stat-card">
+                <div class="book-stat-value" id="modalPrice">—</div>
+                <div class="book-stat-label">Unit Price</div>
+            </div>
+            <div class="book-stat-card">
+                <div class="book-stat-value" id="modalStock">—</div>
+                <div class="book-stat-label">Total Stock</div>
+            </div>
+            <div class="book-stat-card">
+                <div class="book-stat-value" id="modalAvail">—</div>
+                <div class="book-stat-label">Available</div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- ── Edit Book Modal ── -->
+<div class="book-modal-overlay" id="editModal">
+    <div class="book-modal" style="max-width:480px;">
+        <div class="book-modal-header" style="padding:20px 24px;">
+            <button class="book-modal-close" id="editModalClose">&times;</button>
+            <div class="book-modal-info" style="padding-right:32px;">
+                <div class="book-modal-title" style="font-size:16px;">Edit Book</div>
+                <div class="book-modal-pub" id="editModalSubtitle">—</div>
+            </div>
+        </div>
+        <form method="POST" id="editModalForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="padding:20px 24px; display:flex; flex-direction:column; gap:14px;">
+                <div style="display:flex;flex-direction:column;gap:5px;">
+                    <label style="font-size:11px;font-weight:800;color:var(--lib-muted);text-transform:uppercase;letter-spacing:.05em;">Book Title *</label>
+                    <input type="text" name="title" id="editTitle" required
+                        style="padding:10px 14px;border:2px solid var(--lib-border);border-radius:10px;font-size:14px;font-weight:600;font-family:inherit;outline:none;transition:border-color .18s;">
+                </div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                    <div style="display:flex;flex-direction:column;gap:5px;">
+                        <label style="font-size:11px;font-weight:800;color:var(--lib-muted);text-transform:uppercase;letter-spacing:.05em;">Publisher *</label>
+                        <input type="text" name="publisher" id="editPublisher" required
+                            style="padding:10px 14px;border:2px solid var(--lib-border);border-radius:10px;font-size:14px;font-weight:600;font-family:inherit;outline:none;transition:border-color .18s;">
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:5px;">
+                        <label style="font-size:11px;font-weight:800;color:var(--lib-muted);text-transform:uppercase;letter-spacing:.05em;">Price (₱) *</label>
+                        <input type="text" name="price" id="editPrice" required
+                            style="padding:10px 14px;border:2px solid var(--lib-border);border-radius:10px;font-size:14px;font-weight:600;font-family:inherit;outline:none;transition:border-color .18s;"
+                            oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4)">
+                    </div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px;">
+                    <label style="font-size:11px;font-weight:800;color:var(--lib-muted);text-transform:uppercase;letter-spacing:.05em;">Grade Level *</label>
+                    <select name="grade_level" id="editGrade" required
+                        style="padding:10px 14px;border:2px solid var(--lib-border);border-radius:10px;font-size:14px;font-weight:600;font-family:inherit;outline:none;appearance:none;background:#f0f4ff;">
+                        {% for g in grades %}
+                        <option value="{{ g }}">{{ g }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px;">
+                    <label style="font-size:11px;font-weight:800;color:var(--lib-muted);text-transform:uppercase;letter-spacing:.05em;">Cover Image URL <span style="font-weight:500;text-transform:none;">(optional)</span></label>
+                    <input type="url" name="image_url" id="editImageUrl"
+                        placeholder="https://example.com/cover.jpg"
+                        style="padding:10px 14px;border:2px solid var(--lib-border);border-radius:10px;font-size:14px;font-weight:600;font-family:inherit;outline:none;transition:border-color .18s;">
+                </div>
+            </div>
+            <div style="padding:0 24px 20px;display:flex;gap:10px;justify-content:flex-end;">
+                <button type="button" onclick="document.getElementById('editModal').classList.remove('open');document.body.style.overflow='';"
+                    style="padding:10px 20px;border-radius:10px;border:1.5px solid var(--lib-border);background:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Cancel</button>
+                <button type="submit"
+                    style="padding:10px 22px;border-radius:10px;border:none;background:var(--lib-primary);color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(30,58,138,.25);">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ── Restock Modal ── -->
+<div class="book-modal-overlay" id="restockModal">
+    <div class="book-modal" style="max-width:400px;">
+        <div class="book-modal-header" style="padding:20px 24px;">
+            <button class="book-modal-close" id="restockModalClose">&times;</button>
+            <div class="book-modal-info" style="padding-right:32px;">
+                <div class="book-modal-title" style="font-size:16px;">Add Stock</div>
+                <div class="book-modal-pub" id="restockModalSubtitle">—</div>
+            </div>
+        </div>
+        <form method="POST" id="restockModalForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="padding:20px 24px;display:flex;flex-direction:column;gap:14px;">
+                <div style="background:var(--lib-bg);border-radius:12px;padding:14px;display:flex;justify-content:space-between;align-items:center;">
+                    <span style="font-size:12px;font-weight:700;color:var(--lib-muted);">Current Stock</span>
+                    <span id="restockCurrentStock" style="font-size:20px;font-weight:900;color:var(--lib-primary);">—</span>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:5px;">
+                    <label style="font-size:11px;font-weight:800;color:var(--lib-muted);text-transform:uppercase;letter-spacing:.05em;">Quantity to Add *</label>
+                    <input type="number" name="add_stock" id="restockQty" min="1" max="5000" required
+                        placeholder="e.g. 10"
+                        style="padding:12px 16px;border:2px solid var(--lib-border);border-radius:10px;font-size:18px;font-weight:800;font-family:inherit;outline:none;text-align:center;transition:border-color .18s;">
+                    <span style="font-size:10px; color:var(--lib-muted); text-align:center;">Minimum: 1 | Maximum: 5,000</span>
+                </div>
+            </div>
+            <div style="padding:0 24px 20px;display:flex;gap:10px;justify-content:flex-end;">
+                <button type="button" onclick="document.getElementById('restockModal').classList.remove('open');document.body.style.overflow='';"
+                    style="padding:10px 20px;border-radius:10px;border:1.5px solid var(--lib-border);background:#fff;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Cancel</button>
+                <button type="submit"
+                    style="padding:10px 22px;border-radius:10px;border:none;background:#059669;color:#fff;font-size:13px;font-weight:800;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(5,150,105,.25);">Add Stock</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <div class="loading-spinner" id="globalSpinner">
     <div
         style="width: 44px; height: 44px; border: 4px solid #e2e8f0; border-top-color: var(--lib-primary); border-radius: 50%; animation: spin 0.8s linear infinite;">
@@ -593,11 +970,42 @@
                 <tbody>
                     {% for b in books %}
                     {% set avail = (b.stock_total or 0) - (b.reserved_qty or 0) %}
-                    <tr>
+                    {% set title_str = (b.title or b.item_name or '') %}
+                    {% set initials = (title_str.split()[0][0] if title_str.split() else '?') %}
+                    {% set cover_colors = ['#1e3a8a','#7c3aed','#0e7490','#065f46','#92400e','#9f1239','#1d4ed8','#6d28d9'] %}
+                    {% set color_idx = (title_str|length) % 8 %}
+                    {% set cover_color = cover_colors[color_idx] %}
+                    <tr class="clickable-row"
+                        data-item-id="{{ b.item_id }}"
+                        data-title="{{ title_str | e }}"
+                        data-publisher="{{ (b.publisher or 'Unknown Publisher') | e }}"
+                        data-grade="{{ b.grade_level | e }}"
+                        data-price-raw="{{ (b.price or 0) | int }}"
+                        data-price="{{ '%.2f' | format(b.price or 0) }}"
+                        data-stock="{{ b.stock_total or 0 }}"
+                        data-avail="{{ avail }}"
+                        data-color="{{ cover_color }}"
+                        data-initial="{{ initials }}"
+                        data-image="{{ b.image_url or '' }}">
                         <td>
-                            <div class="book-meta">
-                                <span class="book-name">{{ b.title or b.item_name }}</span>
-                                <span class="book-pub">{{ b.publisher or 'Unknown Publisher' }}</span>
+                            <div class="book-cover-wrap">
+                                {% if b.image_url %}
+                                    <img src="{{ b.image_url }}" alt="{{ title_str }}" class="book-cover"
+                                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                    <div class="book-cover-placeholder" style="background: {{ cover_color }}; display: none;">
+                                        <span class="spine"></span>
+                                        {{ initials }}
+                                    </div>
+                                {% else %}
+                                    <div class="book-cover-placeholder" style="background: {{ cover_color }};">
+                                        <span class="spine"></span>
+                                        {{ initials }}
+                                    </div>
+                                {% endif %}
+                                <div class="book-meta">
+                                    <span class="book-name">{{ title_str }}</span>
+                                    <span class="book-pub">{{ b.publisher or 'Unknown Publisher' }}</span>
+                                </div>
                             </div>
                         </td>
                         <td style="text-align: right;">
@@ -616,19 +1024,19 @@
                                         avail }}</span>
                                     {% endif %}
                         </td>
-                        <td style="text-align: center;">
+                        <td style="text-align: center;" onclick="event.stopPropagation()">
                             <div class="action-btns" style="justify-content: center;">
-                                <a href="{{ url_for('librarian.book_edit', item_id=b.item_id) }}" class="btn-icon"
-                                    title="Edit Book">
+                                <button class="btn-icon" title="Edit Book"
+                                    onclick="openEditModal(this.closest('tr'))">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                                         fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                                         stroke-linejoin="round">
                                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                                     </svg>
-                                </a>
-                                <a href="{{ url_for('librarian.book_restock', item_id=b.item_id) }}"
-                                    class="btn-icon btn-restock" title="Add Stock">
+                                </button>
+                                <button class="btn-icon btn-restock" title="Add Stock"
+                                    onclick="openRestockModal(this.closest('tr'))">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                                         fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                                         stroke-linejoin="round">
@@ -636,7 +1044,7 @@
                                         <rect x="1" y="3" width="22" height="5"></rect>
                                         <line x1="10" y1="12" x2="14" y2="12"></line>
                                     </svg>
-                                </a>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -692,5 +1100,162 @@
     const style = document.createElement('style');
     style.innerHTML = `@keyframes spin { to { transform: rotate(360deg); } }`;
     document.head.appendChild(style);
+
+    // ── Book Preview Modal ──
+    const modal         = document.getElementById('bookModal');
+    const modalClose    = document.getElementById('modalClose');
+    const modalCoverImg = document.getElementById('modalCoverImg');
+    const modalPlaceholder = document.getElementById('modalCoverPlaceholder');
+    const modalInitial  = document.getElementById('modalInitial');
+    const modalTitle    = document.getElementById('modalTitle');
+    const modalPub      = document.getElementById('modalPub');
+    const modalGrade    = document.getElementById('modalGrade');
+    const modalPrice    = document.getElementById('modalPrice');
+    const modalStock    = document.getElementById('modalStock');
+    const modalAvail    = document.getElementById('modalAvail');
+    const modalEditBtn  = document.getElementById('modalEditBtn');
+    const modalRestockBtn = document.getElementById('modalRestockBtn');
+
+    function openModal(row) {
+        const title    = row.dataset.title;
+        const pub      = row.dataset.publisher;
+        const grade    = row.dataset.grade;
+        const price    = row.dataset.price;
+        const stock    = row.dataset.stock;
+        const avail    = row.dataset.avail;
+        const color    = row.dataset.color;
+        const initial  = row.dataset.initial;
+        const image    = row.dataset.image;
+        const editUrl  = row.dataset.editUrl;
+        const restockUrl = row.dataset.restockUrl;
+
+        modalTitle.textContent  = title;
+        modalPub.textContent    = pub;
+        const d = row.dataset;
+        modalTitle.textContent  = d.title;
+        modalPub.textContent    = d.publisher;
+        modalGrade.textContent  = d.grade;
+        modalPrice.textContent  = '₱' + d.price;
+        modalStock.textContent  = d.stock;
+        modalAvail.textContent  = d.avail;
+        modalInitial.textContent = d.initial;
+        modalPlaceholder.style.background = d.color;
+
+        if (d.image) {
+            modalCoverImg.src = d.image;
+            modalCoverImg.style.display = 'block';
+            modalPlaceholder.style.display = 'none';
+            modalCoverImg.onerror = () => {
+                modalCoverImg.style.display = 'none';
+                modalPlaceholder.style.display = 'flex';
+            };
+        } else {
+            modalCoverImg.style.display = 'none';
+            modalPlaceholder.style.display = 'flex';
+        }
+
+        modal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+        modal.classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    document.querySelectorAll('.clickable-row').forEach(row => {
+        row.addEventListener('click', function(e) {
+            if (e.target.closest('button')) return;
+            openModal(this);
+        });
+    });
+
+    if (modalClose) modalClose.addEventListener('click', closeModal);
+    modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+
+    // ── Edit Book Modal ──
+    const editModal = document.getElementById('editModal');
+    const editModalClose = document.getElementById('editModalClose');
+    const editModalForm = document.getElementById('editModalForm');
+
+    window.openEditModal = function(row) {
+        const d = row.dataset;
+        document.getElementById('editModalSubtitle').textContent = d.title;
+        document.getElementById('editTitle').value      = d.title;
+        document.getElementById('editPublisher').value  = d.publisher;
+        document.getElementById('editPrice').value      = d.priceRaw || d.price.replace('.00','');
+        document.getElementById('editImageUrl').value   = d.image || '';
+        const gradeSelect = document.getElementById('editGrade');
+        for (let opt of gradeSelect.options) {
+            opt.selected = opt.value === d.grade;
+        }
+        editModalForm.action = `/librarian/books/${d.itemId}/edit`;
+        closeModal();
+        editModal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+    };
+
+    editModalClose.addEventListener('click', () => {
+        editModal.classList.remove('open');
+        document.body.style.overflow = '';
+    });
+    editModal.addEventListener('click', e => {
+        if (e.target === editModal) { editModal.classList.remove('open'); document.body.style.overflow = ''; }
+    });
+
+    // ── Restock Modal ──
+    const restockModal = document.getElementById('restockModal');
+    const restockModalClose = document.getElementById('restockModalClose');
+    const restockModalForm = document.getElementById('restockModalForm');
+
+    const restockQty = document.getElementById('restockQty');
+
+    window.openRestockModal = function(row) {
+        const d = row.dataset;
+        document.getElementById('restockModalSubtitle').textContent = d.title;
+        document.getElementById('restockCurrentStock').textContent  = d.stock;
+        restockQty.value = '';
+        restockModalForm.action = `/librarian/books/${d.itemId}/restock`;
+        closeModal();
+        restockModal.classList.add('open');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => restockQty.focus(), 250);
+    };
+
+    // Validation for Restock Quantity
+    if (restockQty) {
+        restockQty.addEventListener('keydown', e => {
+            if (['-', '+', 'e', 'E', '.'].includes(e.key)) e.preventDefault();
+        });
+        restockQty.addEventListener('input', function() {
+            if (this.value > 5000) this.value = 5000;
+            if (this.value < 0) this.value = '';
+        });
+    }
+
+    restockModalForm.addEventListener('submit', function(e) {
+        const val = parseInt(restockQty.value);
+        if (isNaN(val) || val < 1 || val > 5000) {
+            e.preventDefault();
+            alert("Please enter a valid quantity between 1 and 5,000.");
+        }
+    });
+
+    restockModalClose.addEventListener('click', () => {
+        restockModal.classList.remove('open');
+        document.body.style.overflow = '';
+    });
+    restockModal.addEventListener('click', e => {
+        if (e.target === restockModal) { restockModal.classList.remove('open'); document.body.style.overflow = ''; }
+    });
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            closeModal();
+            editModal.classList.remove('open');
+            restockModal.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+    });
 </script>
 {% endblock %}
