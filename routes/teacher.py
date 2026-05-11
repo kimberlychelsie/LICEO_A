@@ -1,4 +1,3 @@
-import re as _re
 import re
 from flask import Blueprint, render_template, request, session, redirect, url_for, flash, jsonify, send_file
 from db import get_db_connection
@@ -22,29 +21,44 @@ except ImportError:
     HAS_OCR = False
 
 # ── OCR Config ──
-if HAS_OCR:
-    tess_path = shutil.which("tesseract")
-    if tess_path:
-        pytesseract.pytesseract.tesseract_cmd = tess_path
-        print(f"OCR: Using Tesseract binary at {tess_path}")
-    elif os.name == 'nt':
-        # Fallback for Windows local development
+def get_tesseract_path():
+    """Dynamically find Tesseract binary path."""
+    if not HAS_OCR:
+        return None
+    
+    # 1. Try PATH
+    p = shutil.which("tesseract")
+    if p:
+        return p
+        
+    # 2. Try common Windows locations
+    if os.name == 'nt':
         win_paths = [
             r'C:\Program Files\Tesseract-OCR\tesseract.exe',
             r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
             os.path.join(os.environ.get('LOCALAPPDATA', ''), r'Tesseract-OCR\tesseract.exe'),
         ]
-        found = False
-        for p in win_paths:
-            if os.path.exists(p):
-                pytesseract.pytesseract.tesseract_cmd = p
-                print(f"OCR: Using Windows fallback path {p}")
-                found = True
-                break
-        if not found:
-            print("OCR Warning: Tesseract binary not found in PATH or standard Windows locations.")
+        for wp in win_paths:
+            if os.path.exists(wp):
+                return wp
+    return None
+
+def init_ocr():
+    """Set pytesseract command path."""
+    if not HAS_OCR:
+        return
+    path = get_tesseract_path()
+    if path:
+        pytesseract.pytesseract.tesseract_cmd = path
+        # Some versions use top-level attribute
+        if hasattr(pytesseract, 'tesseract_cmd'):
+            pytesseract.tesseract_cmd = path
+        print(f"OCR: Initialized with path {path}")
     else:
-        print("OCR Error: Tesseract binary not found in PATH (Linux/Railway).")
+        print("OCR Warning: Tesseract binary not found.")
+
+# Initial call
+init_ocr()
 
 teacher_bp = Blueprint("teacher", __name__)
 
@@ -63,7 +77,7 @@ def _require_teacher():
 
 def _normalize_grade(grade_str):
     """Accept both '7' and 'Grade 7' — returns (grade_full, grade_short)."""
-    m = _re.match(r'^Grade\s+(\d+)$', grade_str, _re.IGNORECASE)
+    m = re.match(r'^Grade\s+(\d+)$', grade_str, re.IGNORECASE)
     num = m.group(1) if m else None
     return grade_str, (num or grade_str)
 
@@ -239,6 +253,11 @@ def parse_image(file):
         raise ImportError("OCR libraries (pytesseract/Pillow) are not installed.")
     
     try:
+        # Re-verify path if it seems to be reset to default 'tesseract'
+        current_cmd = getattr(pytesseract.pytesseract, 'tesseract_cmd', 'tesseract')
+        if current_cmd == 'tesseract':
+            init_ocr()
+        
         img = Image.open(file)
         text = pytesseract.image_to_string(img)
         if not text.strip():
@@ -249,7 +268,7 @@ def parse_image(file):
         return parse_text_to_questions(text)
     except Exception as e:
         err_msg = str(e).lower()
-        if "tesseract is not installed" in err_msg or "no such file" in err_msg:
+        if "tesseract is not installed" in err_msg or "no such file" in err_msg or "tesseractnotfound" in err_msg:
             current_cmd = getattr(pytesseract.pytesseract, 'tesseract_cmd', 'Not Set')
             raise RuntimeError(f"Tesseract OCR engine not found. (Attempted path: {current_cmd}). Please install Tesseract-OCR and ensure it is in the expected path.")
         raise e
@@ -793,13 +812,12 @@ def teacher_announce():
         ann_id = cur.fetchone()[0]
 
         # Send notifications only to students enrolled in this year
-        import re as _re
-        if _re.match(r'^\d+$', grade.strip()):
+        if re.match(r'^\d+$', grade.strip()):
             grade_short = grade.strip()
             grade_full  = "Grade " + grade_short
         else:
             grade_full  = grade.strip()
-            _m2 = _re.match(r'^Grade\s+(\d+)$', grade_full, _re.IGNORECASE)
+            _m2 = re.match(r'^Grade\s+(\d+)$', grade_full, re.IGNORECASE)
             grade_short = _m2.group(1) if _m2 else grade_full
 
         cur.execute("""
