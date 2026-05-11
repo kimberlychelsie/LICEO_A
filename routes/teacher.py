@@ -25,25 +25,28 @@ def get_tesseract_path():
     """Dynamically find Tesseract binary path with aggressive searching."""
     if not HAS_OCR:
         return None
-    
-    # 1. Try PATH
+
+    # 1. Try PATH first (works on most systems)
     p = shutil.which("tesseract")
     if p:
         return p
-        
-    # 2. Try common Linux paths (Railway/Production)
-    linux_paths = [
-        "/usr/bin/tesseract",
-        "/usr/local/bin/tesseract",
-        "/usr/bin/tesseract-ocr",
-        "/app/.apt/usr/bin/tesseract", # Common for older Aptfile setups
-    ]
+
+    # 2. Search Nix store (Railway nixPkgs installs go to /nix/store/[hash]-tesseract-*/bin/)
     if os.name != 'nt':
-        for lp in linux_paths:
+        import glob
+        nix_candidates = glob.glob("/nix/store/*/bin/tesseract")
+        if nix_candidates:
+            # Sort to get most recent version
+            nix_candidates.sort(reverse=True)
+            return nix_candidates[0]
+
+    # 3. Try standard Linux paths (apt installs)
+    if os.name != 'nt':
+        for lp in ["/usr/bin/tesseract", "/usr/local/bin/tesseract", "/app/.apt/usr/bin/tesseract"]:
             if os.path.exists(lp):
                 return lp
 
-    # 3. Try common Windows locations
+    # 4. Try common Windows locations (local dev fallback)
     if os.name == 'nt':
         win_paths = [
             r'C:\Program Files\Tesseract-OCR\tesseract.exe',
@@ -55,6 +58,7 @@ def get_tesseract_path():
             if os.path.exists(wp):
                 return wp
     return None
+
 
 def init_ocr():
     """Set pytesseract command path."""
