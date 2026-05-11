@@ -1422,47 +1422,6 @@
         document.getElementById('rejectModal')?.addEventListener('click', function (e) {
             if (e.target === this) closeRejectModal();
         });
-
-        // Enable inline save button only when changes exist (per expanded form)
-        ['input', 'change'].forEach(event => {
-            document.addEventListener(event, function (e) {
-                const form = e.target.closest?.('.new-details-form');
-                if (!form) return;
-
-                const btn = form.querySelector('.save-inline-btn');
-                if (!btn) return;
-
-                // Archive mode: always disabled
-                if (!CAN_MODIFY) {
-                    btn.disabled = true;
-                    btn.style.opacity = '0.6';
-                    btn.style.cursor = 'not-allowed';
-                    return;
-                }
-
-                // If for some reason originals aren't captured, capture now
-                if (!form.__originals) {
-                    form.__originals = {};
-                    form.querySelectorAll('.track-change').forEach(function (el) {
-                        form.__originals[el.name] = el.value;
-                    });
-                    // If we capture NOW during an event, we might miss THIS change as "different"
-                    // But toggleNewDetails should have caught it.
-                }
-
-                // Detect changes
-                let changed = false;
-                form.querySelectorAll('.track-change').forEach(function (el) {
-                    const original = form.__originals[el.name] ?? '';
-                    if (original !== el.value) changed = true;
-                });
-
-                btn.disabled = !changed;
-                btn.style.opacity = changed ? '1' : '0.6';
-                btn.style.cursor = changed ? 'pointer' : 'not-allowed';
-                btn.style.background = changed ? '#10b981' : '#1e3a8a'; // Green when ready to save
-            });
-        });
     </script>
 
     <!-- ═══ TAB: ENROLLED STUDENTS ═══ -->
@@ -1941,5 +1900,62 @@
         const maxDate = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
         input.setAttribute('max', maxDate.toISOString().split('T')[0]);
     });
+
+    // FIX: Proactive change detection for Registrar forms
+    function initFormState(form) {
+        if (!form || form.__originals) return;
+        form.__originals = {};
+        form.querySelectorAll('.track-change').forEach(function(el) {
+            form.__originals[el.name] = el.value.trim();
+        });
+        updateFormButton(form);
+    }
+
+    function updateFormButton(form) {
+        const btn = form.querySelector('.save-inline-btn');
+        if (!btn || !CAN_MODIFY) return;
+
+        if (!form.__originals) {
+            initFormState(form);
+        }
+
+        let hasChanged = false;
+        form.querySelectorAll('.track-change').forEach(function(el) {
+            const original = form.__originals[el.name] || '';
+            const current = el.value.trim();
+            if (original !== current) {
+                hasChanged = true;
+            }
+        });
+
+        btn.disabled = !hasChanged;
+        btn.style.opacity = hasChanged ? '1' : '0.6';
+        btn.style.cursor = hasChanged ? 'pointer' : 'not-allowed';
+        btn.style.background = hasChanged ? '#10b981' : '#1e3a8a';
+    }
+
+    // Attach listeners to all track-change elements
+    document.querySelectorAll('.track-change').forEach(el => {
+        el.addEventListener('input', function() {
+            const form = this.closest('.new-details-form');
+            if (form) updateFormButton(form);
+        });
+        el.addEventListener('change', function() {
+            const form = this.closest('.new-details-form');
+            if (form) updateFormButton(form);
+        });
+    });
+
+    // Run on expansion
+    const originalToggle = window.toggleNewDetails;
+    window.toggleNewDetails = function(enrollmentId, btn) {
+        const result = originalToggle(enrollmentId, btn);
+        const row = document.getElementById('new-details-' + enrollmentId);
+        if (row && row.style.display !== 'none') {
+            const form = row.querySelector('.new-details-form');
+            if (form) initFormState(form);
+        }
+        return result;
+    };
 </script>
-{% endblock %}
+{% endblock %}

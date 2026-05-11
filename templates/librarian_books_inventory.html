@@ -516,6 +516,121 @@
         }
     }
 
+    /* ── Grid View Styles ── */
+    .view-controls {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 24px;
+        background: #fff;
+        padding: 6px;
+        border-radius: 14px;
+        width: fit-content;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .view-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        background: transparent;
+        color: var(--lib-muted);
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .view-btn:hover { background: var(--lib-bg); color: var(--lib-primary); }
+    .view-btn.active { background: var(--lib-primary); color: #fff; box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2); }
+
+    .books-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+        gap: 24px;
+        display: none; /* Hidden by default if table is active */
+    }
+
+    .book-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        border: 1px solid var(--lib-border);
+        transition: all 0.3s var(--ease);
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+    }
+
+    .book-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 15px 35px rgba(30, 58, 138, 0.12);
+        border-color: var(--lib-accent);
+    }
+
+    .card-cover-wrap {
+        width: 100%;
+        aspect-ratio: 3/4;
+        border-radius: 12px;
+        overflow: hidden;
+        margin-bottom: 16px;
+        box-shadow: 5px 5px 15px rgba(0,0,0,0.15);
+        position: relative;
+    }
+
+    .card-cover { width: 100%; height: 100%; object-fit: cover; }
+    .card-placeholder {
+        width: 100%; height: 100%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 48px; font-weight: 900; color: #fff;
+        position: relative;
+    }
+
+    .card-badge {
+        position: absolute;
+        top: 10px; right: 10px;
+        padding: 4px 10px;
+        border-radius: 99px;
+        font-size: 10px;
+        font-weight: 800;
+        z-index: 2;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+
+    .card-title {
+        font-size: 15px;
+        font-weight: 800;
+        color: var(--lib-primary);
+        line-height: 1.3;
+        margin-bottom: 4px;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .card-pub { font-size: 12px; font-weight: 600; color: var(--lib-muted); margin-bottom: 12px; }
+    .card-footer {
+        margin-top: auto;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 12px;
+        border-top: 1px solid #f1f5f9;
+    }
+
+    .card-price { font-weight: 800; color: var(--lib-text); }
+    .card-stock { font-size: 11px; font-weight: 700; color: var(--lib-muted); }
+
+    [data-view="grid"] .table-wrap { display: none; }
+    [data-view="grid"] .books-grid { display: grid; }
+    [data-view="table"] .books-grid { display: none; }
+    [data-view="table"] .table-wrap { display: block; }
+
+
     /* ── Book Preview Modal ── */
     .book-modal-overlay {
         position: fixed;
@@ -945,16 +1060,26 @@
 
     <!-- ── Inventory Content ── -->
     {% if items %}
+    <div class="view-controls">
+        <button class="view-btn active" onclick="setView('table')" id="btnTable" title="Table View">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+        </button>
+        <button class="view-btn" onclick="setView('grid')" id="btnGrid" title="Grid View">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+        </button>
+    </div>
+
     {% set grouped = items | groupby('grade_level') %}
 
     {% for grade, books in grouped %}
-    <div class="grade-section">
+    <div class="grade-section" data-view="table">
         <div class="grade-header">
             <h2>
                 {{ grade or 'General Collection' }}
                 <span class="grade-badge">{{ books|length }} Title{{ 's' if books|length != 1 }}</span>
             </h2>
         </div>
+
         <div class="table-wrap">
             <table class="inv-table">
                 <thead>
@@ -1052,8 +1177,64 @@
                 </tbody>
             </table>
         </div>
+
+        <div class="books-grid" style="padding: 24px;">
+            {% for b in books %}
+            {% set avail = (b.stock_total or 0) - (b.reserved_qty or 0) %}
+            {% set title_str = (b.title or b.item_name or '') %}
+            {% set initials = (title_str.split()[0][0] if title_str.split() else '?') %}
+            {% set color_idx = (title_str|length) % 8 %}
+            {% set cover_color = ['#1e3a8a','#7c3aed','#0e7490','#065f46','#92400e','#9f1239','#1d4ed8','#6d28d9'][color_idx] %}
+
+            <div class="book-card"
+                 onclick="openModal(this)"
+                 data-item-id="{{ b.item_id }}"
+                 data-title="{{ title_str | e }}"
+                 data-publisher="{{ (b.publisher or 'Unknown Publisher') | e }}"
+                 data-grade="{{ b.grade_level | e }}"
+                 data-price-raw="{{ (b.price or 0) | int }}"
+                 data-price="{{ '%.2f' | format(b.price or 0) }}"
+                 data-stock="{{ b.stock_total or 0 }}"
+                 data-avail="{{ avail }}"
+                 data-color="{{ cover_color }}"
+                 data-initial="{{ initials }}"
+                 data-image="{{ b.image_url or '' }}">
+
+                {% if avail <= 0 %}
+                    <span class="card-badge" style="background:#fef2f2; color:#dc2626;">Sold Out</span>
+                {% elif avail < 10 %}
+                    <span class="card-badge" style="background:#fffbeb; color:#d97706;">Low Stock</span>
+                {% endif %}
+
+                <div class="card-cover-wrap">
+                    {% if b.image_url %}
+                        <img src="{{ b.image_url }}" alt="{{ title_str }}" class="card-cover"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div class="card-placeholder" style="background: {{ cover_color }}; display: none;">
+                            <span class="spine" style="position:absolute;left:0;top:0;bottom:0;width:8px;background:rgba(0,0,0,0.2);"></span>
+                            {{ initials }}
+                        </div>
+                    {% else %}
+                        <div class="card-placeholder" style="background: {{ cover_color }};">
+                            <span class="spine" style="position:absolute;left:0;top:0;bottom:0;width:8px;background:rgba(0,0,0,0.2);"></span>
+                            {{ initials }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div class="card-title">{{ title_str }}</div>
+                <div class="card-pub">{{ b.publisher or 'Unknown Publisher' }}</div>
+
+                <div class="card-footer">
+                    <div class="card-price">₱{{ "%.2f"|format(b.price or 0) }}</div>
+                    <div class="card-stock">{{ b.stock_total or 0 }} in stock</div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
     </div>
     {% endfor %}
+
 
     {% else %}
     <div
@@ -1074,7 +1255,32 @@
 
 {% block scripts %}
 <script>
+    // ── View Toggle Logic ──
+    function setView(view) {
+        const sections = document.querySelectorAll('.grade-section');
+        const btnTable = document.getElementById('btnTable');
+        const btnGrid = document.getElementById('btnGrid');
+
+        sections.forEach(s => s.dataset.view = view);
+        localStorage.setItem('librarian_view_pref', view);
+
+        if (view === 'grid') {
+            btnGrid.classList.add('active');
+            btnTable.classList.remove('active');
+        } else {
+            btnTable.classList.add('active');
+            btnGrid.classList.remove('active');
+        }
+    }
+
+    // Initialize View Preference
+    document.addEventListener('DOMContentLoaded', () => {
+        const pref = localStorage.getItem('librarian_view_pref') || 'table';
+        setView(pref);
+    });
+
     const filterForm = document.getElementById('invFilterForm');
+
     const gradeSel = document.getElementById('invGrade');
     const searchInp = document.getElementById('invSearch');
     const spinner = document.getElementById('globalSpinner');

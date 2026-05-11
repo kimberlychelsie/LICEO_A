@@ -12,6 +12,7 @@ import pdfplumber
 from docx import Document
 from datetime import datetime, timezone
 import pytz
+import shutil
 
 try:
     import pytesseract
@@ -20,38 +21,30 @@ try:
 except ImportError:
     HAS_OCR = False
 
-# ── OCR Config (Windows) ──
-if HAS_OCR and os.name == 'nt':
-    tess_paths = [
-        r'C:\Program Files\Tesseract-OCR\tesseract.exe',
-        r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
-        r'C:\Users\Admin\AppData\Local\Tesseract-OCR\tesseract.exe',
-        os.path.join(os.environ.get('LOCALAPPDATA', ''), r'Tesseract-OCR\tesseract.exe'),
-        os.path.join(os.environ.get('USERPROFILE', ''), r'AppData\Local\Tesseract-OCR\tesseract.exe'),
-    ]
-    # Also check common paths for other users if Admin/Current fails
-    current_user = os.environ.get('USERNAME')
-    if current_user:
-        tess_paths.append(rf'C:\Users\{current_user}\AppData\Local\Tesseract-OCR\tesseract.exe')
-
-    found = False
-    for p in tess_paths:
-        if os.path.exists(p):
-            pytesseract.pytesseract.tesseract_cmd = p
-            found = True
-            break
-    
-    if not found:
-        # Final fallback: try to find it via 'where' command if it's in PATH but not configured
-        try:
-            import subprocess
-            result = subprocess.run(['where', 'tesseract'], capture_output=True, text=True)
-            if result.returncode == 0:
-                p = result.stdout.splitlines()[0].strip()
-                if os.path.exists(p):
-                    pytesseract.pytesseract.tesseract_cmd = p
-        except Exception:
-            pass
+# ── OCR Config ──
+if HAS_OCR:
+    tess_path = shutil.which("tesseract")
+    if tess_path:
+        pytesseract.pytesseract.tesseract_cmd = tess_path
+        print(f"OCR: Using Tesseract binary at {tess_path}")
+    elif os.name == 'nt':
+        # Fallback for Windows local development
+        win_paths = [
+            r'C:\Program Files\Tesseract-OCR\tesseract.exe',
+            r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
+            os.path.join(os.environ.get('LOCALAPPDATA', ''), r'Tesseract-OCR\tesseract.exe'),
+        ]
+        found = False
+        for p in win_paths:
+            if os.path.exists(p):
+                pytesseract.pytesseract.tesseract_cmd = p
+                print(f"OCR: Using Windows fallback path {p}")
+                found = True
+                break
+        if not found:
+            print("OCR Warning: Tesseract binary not found in PATH or standard Windows locations.")
+    else:
+        print("OCR Error: Tesseract binary not found in PATH (Linux/Railway).")
 
 teacher_bp = Blueprint("teacher", __name__)
 
