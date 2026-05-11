@@ -342,6 +342,7 @@
 
         {% if is_branch_active_status %}
         <form method="post" action="/teacher/announce" class="ann-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="from_page" value="announcements">
             <div style="display: flex; gap: 16px; margin-bottom: 8px;">
                 <div style="flex: 1;">
@@ -408,6 +409,7 @@
                                 </svg></button>
                             <form method="post" action="/teacher/announce/{{ a.announcement_id }}/delete"
                                 onsubmit="return confirm('Delete this announcement?')" style="margin:0;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="grade_level" value="{{ selected_grade }}">
                                 <input type="hidden" name="from_page" value="announcements">
                                 <button type="submit" class="btn-del-ann" title="Delete"><svg
@@ -432,6 +434,7 @@
 
                 <form method="post" action="/teacher/announce/{{ a.announcement_id }}/edit" class="ann-edit-form"
                     id="ann-edit-{{ a.announcement_id }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="grade_level" value="{{ selected_grade }}">
                     <input type="hidden" name="from_page" value="announcements">
                     <input type="text" name="title" class="ann-input" id="ann-edit-title-{{ a.announcement_id }}"

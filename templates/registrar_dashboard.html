@@ -870,6 +870,7 @@
 
                                 <form method="post" action="/registrar/enrollment/{{ enrollment.enrollment_id }}"
                                     class="new-details-form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <div style="display:grid; grid-template-columns: 1.2fr 1.2fr 1fr; gap:14px;">
                                         <!-- Personal & Contact -->
                                         <div
@@ -1178,6 +1179,7 @@
                                     <div style="display:flex; gap:10px;">
                                         {% if is_branch_active_status and can_modify %}
                                         <form method="post" action="/registrar/enrollments" style="margin:0;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="enrollment_id"
                                                 value="{{ enrollment.enrollment_id }}">
                                             <input type="hidden" name="year_id" value="{{ selected_year_id }}">
@@ -1319,6 +1321,7 @@
                 </div>
                 <form method="post" action="/registrar/enrollments"
                     onsubmit="return confirm('Reject this enrollment? This will require a reason.');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="enrollment_id" id="rejectEnrollmentId" value="">
                     <input type="hidden" name="year_id" value="{{ selected_year_id }}">
                     <input type="hidden" name="action" value="rejected">
@@ -1453,6 +1456,7 @@
                 <span>Students can currently log in and re-enroll for the next school year.</span>
             </div>
             <form method="post" action="/registrar/toggle-reenrollment">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="action" value="close">
                 <button type="submit" class="btn btn-danger btn-sm"
                     onclick="return confirm('Close re-enrollment for ALL students?')">
@@ -1468,6 +1472,7 @@
                     re-enroll.</span>
             </div>
             <form method="post" action="/registrar/toggle-reenrollment">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="action" value="open">
                 <button type="submit" class="btn btn-warning btn-sm"
                     onclick="return confirm('Open re-enrollment for ALL enrolled students?')">
@@ -1605,6 +1610,7 @@
                                 <form method="post" action="/registrar/link-parent/{{ e.enrollment_id }}"
                                     style="display:inline;"
                                     onsubmit="return confirm('Link this student to existing parent account \'{{ e.existing_parent_username }}\'?\nNo new account will be created.');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn-registrar btn-registrar-warn"
                                         title="Guardian email matches existing parent: {{ e.existing_parent_username }}">
                                         🔗 Link Child to Parent
@@ -1616,6 +1622,7 @@
                                 {% else %}
                                 <form method="post" action="/registrar/create-parent-account/{{ e.enrollment_id }}"
                                     style="display:inline;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn-registrar btn-registrar-sec">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
@@ -1723,6 +1730,7 @@
             <div class="modal-sub" id="modalGradeLevel"></div>
 
             <form method="post" id="createStudentForm" action="">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <label for="modalSectionSelect">
                     Assign to Section
                     <span style="color:#94a3b8; font-weight:400; text-transform:none;">

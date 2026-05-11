@@ -477,8 +477,19 @@
         </div>
     </section>
 
-    <div class="sd-grid">
+    {% if not enrolled_in_active_sy %}
+    <div style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border: 1px solid #f59e0b; border-radius: 16px; padding: 20px 24px; margin-bottom: 24px; display: flex; align-items: flex-start; gap: 16px;">
+        <div style="font-size: 1.5rem; flex-shrink: 0;">📋</div>
+        <div>
+            <div style="font-weight: 800; color: #92400e; font-size: 0.95rem; margin-bottom: 4px;">Not Yet Enrolled for {{ school_year_label or 'the Current School Year' }}</div>
+            <div style="font-size: 0.85rem; color: #78350f; font-weight: 500;">Your class subjects, announcements, and schedules will appear here once you have been enrolled and assigned to a section for the new school year. Your billing history remains accessible.</div>
+        </div>
+    </div>
+    {% endif %}
+
+
         <!-- Main Column -->
+        <div class="sd-grid">
         <div class="sd-col-main">
 
             <!-- Announcements Card -->
@@ -494,7 +505,9 @@
                     <span style="font-size: 0.75rem; font-weight: 600; color: var(--sd-muted);">Recent</span>
                 </div>
                 <div class="ann-list">
-                    {% if teacher_announcements %}
+                    {% if not enrolled_in_active_sy %}
+                    <p style="text-align: center; color: var(--sd-muted); font-size: 0.875rem; padding: 20px;">Announcements will be shown once you are enrolled for the active school year.</p>
+                    {% elif teacher_announcements %}
                     {% for ann in teacher_announcements %}
                     <div class="ann-item">
                         <div class="ann-title">{{ ann.title }}</div>
@@ -522,7 +535,9 @@
                     </h3>
                 </div>
                 <div class="subject-list">
-                    {% if subjects_for_grade %}
+                    {% if not enrolled_in_active_sy %}
+                    <p style="text-align: center; color: var(--sd-muted); font-size: 0.875rem; padding: 20px;">Subjects will appear once you are enrolled for the active school year.</p>
+                    {% elif subjects_for_grade %}
                     {% for sub in subjects_for_grade %}
                     <a href="{{ url_for('student_portal.subject_view', subject_id=sub.subject_id) }}"
                         class="subject-item">
@@ -538,7 +553,7 @@
                     {% endfor %}
                     {% else %}
                     <p style="text-align: center; color: var(--sd-muted); font-size: 0.875rem; padding: 20px;">No
-                        subjects assigned to your section.</p>
+                        subjects assigned to your section yet.</p>
                     {% endif %}
                 </div>
             </div>

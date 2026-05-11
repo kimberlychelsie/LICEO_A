@@ -220,12 +220,14 @@
             {% if exam.status == 'draft' %}
             <form method="POST" action="{{ url_for('teacher.teacher_exam_publish', exam_id=exam.exam_id) }}"
                 onsubmit="return handleBtnLoad(this, 'Creating...');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-success">Create {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam'
                     }}</button>
             </form>
             {% elif exam.status == 'published' %}
             <form method="POST" action="{{ url_for('teacher.teacher_exam_close', exam_id=exam.exam_id) }}"
                 onsubmit="return confirm('Close this {{ 'quiz' if exam.exam_type == 'quiz' else 'exam' }}?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button type="submit" class="btn btn-secondary">Close {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam'
                     }}</button>
             </form>
@@ -281,6 +283,7 @@
                 <form method="POST"
                     action="{{ url_for('teacher.teacher_exam_question_delete', exam_id=exam.exam_id, question_id=q.question_id) }}"
                     onsubmit="return confirm('Delete this question?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-danger"
                         style="padding:4px 10px; font-size:12px;">Delete</button>
                 </form>
@@ -348,6 +351,7 @@
         <!-- Step 2: fill questions (POST) -->
         <form method="post" action="{{ url_for('teacher.teacher_exam_questions_bulk_add', exam_id=exam.exam_id) }}"
             onsubmit="return handleBtnLoad(this, 'Saving Questions...');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             {% for i in range(mcq_n) %}
             <div class="q-card">
                 <div class="q-num">MCQ #{{ i+1 }}</div>
@@ -430,6 +434,7 @@
     <div class="card">
         <h2>Add Question</h2>
         <form method="POST" id="questionForm" onsubmit="return handleBtnLoad(this, 'Adding...');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <!-- Type toggle -->
             <div class="type-toggle">
                 <button type="button" class="type-btn active" id="btnMCQ" onclick="setType('mcq')">Multiple
@@ -534,6 +539,7 @@
         <form id="importForm" method="POST"
             action="{{ url_for('teacher.teacher_exam_import_questions', exam_id=exam.exam_id) }}"
             enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <label>Select File <span style="font-weight:400; color:#888;">(Import starts
                         automatically)</span></label>

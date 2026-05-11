@@ -307,6 +307,7 @@
 
             {% if is_branch_active_status and not is_history_mode %}
             <form method="post" action="{{ url_for('branch_admin.branch_admin_broadcast_station') }}" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="add_announcement" value="1">
                 
                 <div class="form-group-prem">
@@ -376,6 +377,7 @@
         {% if not is_history_mode %}
         <div style="display: flex; gap: 8px;">
             <form method="post" action="{{ url_for('branch_admin.announcement_toggle', announcement_id=a.id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="from_station" value="1">
                 <button type="submit" style="{% if a.is_active %}background: #fef2f2; color: #ef4444; border: 1px solid #fee2e2;{% else %}background: #f0fdf4; color: #16a34a; border: 1px solid #dcfce7;{% endif %} padding: 10px 18px; border-radius: 14px; font-weight: 800; font-size: 0.75rem; cursor: pointer; transition: all 0.2s;">
                     {{ 'Archive' if a.is_active else 'Restore' }}
@@ -383,6 +385,7 @@
             </form>
 
             <form method="post" action="{{ url_for('branch_admin.announcement_delete', announcement_id=a.id) }}" onsubmit="return confirm('Permanently delete this announcement?')">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="from_station" value="1">
                 <button type="submit" style="background: #ffffff; color: #94a3b8; border: 1px solid #e2e8f0; padding: 10px 18px; border-radius: 14px; font-weight: 800; font-size: 0.75rem; cursor: pointer; transition: all 0.2s;">
                     Delete

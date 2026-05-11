@@ -636,6 +636,7 @@
                 <div class="act-actions">
                     <form method="POST" action="/teacher/activities/{{ act.activity_id }}/toggle-status"
                         style="display:inline;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="active_tab" value="activities">
                         <button type="submit" class="btn-action btn-act-gray btn-sm-action" title="Toggle Status">
                             {% if act.status|lower == 'published' %}
@@ -666,6 +667,7 @@
                     {% if act.is_archived %}
                     <!-- Unarchive -->
                     <form method="POST" action="/teacher/activities/{{ act.activity_id }}/unarchive" style="display:inline;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="active_tab" value="activities">
                         <button type="submit" class="btn-action btn-act-gray btn-sm-action" title="Unarchive">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -677,6 +679,7 @@
                     <!-- Delete (Visible only when archived) -->
                     <form method="POST" action="{{ url_for('teacher.delete_activity', activity_id=act.activity_id) }}"
                         onsubmit="return confirm('Delete this activity permanently?');" style="display:inline;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="active_tab" value="activities">
                         <button type="submit" class="btn-action btn-act-red btn-sm-action" title="Delete">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -690,6 +693,7 @@
                     {% else %}
                     <!-- Archive (Replaces Delete for active items) -->
                     <form method="POST" action="/teacher/activities/{{ act.activity_id }}/archive" style="display:inline;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <input type="hidden" name="active_tab" value="activities">
                         <button type="submit" class="btn-action btn-act-gray btn-sm-action" title="Archive">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -772,6 +776,7 @@
                             <div style="display:flex; align-items:center; gap:5px;">
                                 <!-- Visibility Toggle -->
                                 <form method="POST" action="{{ url_for('teacher.toggle_exam_visibility', exam_id=q.exam_id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="active_tab" value="quizzes">
                                     <button type="submit" class="btn-action btn-act-gray" style="width:34px; height:34px; padding:0;" title="{{ 'Hide' if q.is_visible else 'Show' }}">
                                         {% if q.is_visible %}
@@ -799,6 +804,7 @@
                                 <!-- Archive/Unarchive and Delete -->
                                 {% if q.is_archived %}
                                     <form method="POST" action="/teacher/exams/{{ q.exam_id }}/unarchive">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="active_tab" value="quizzes">
                                         <button type="submit" class="btn-action btn-act-gray" style="width:34px; height:34px; padding:0;" title="Unarchive">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -808,6 +814,7 @@
                                         </button>
                                     </form>
                                     <form method="POST" action="{{ url_for('teacher.delete_exam', exam_id=q.exam_id) }}" onsubmit="return confirm('Delete this quiz permanently?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="active_tab" value="quizzes">
                                         <button type="submit" class="btn-action btn-act-red" style="width:34px; height:34px; padding:0;" title="Delete">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -815,6 +822,7 @@
                                     </form>
                                 {% else %}
                                     <form method="POST" action="/teacher/exams/{{ q.exam_id }}/archive">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="active_tab" value="quizzes">
                                         <button type="submit" class="btn-action btn-act-gray" style="width:34px; height:34px; padding:0;" title="Archive">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -905,6 +913,7 @@
                             <div style="display:flex; align-items:center; gap:5px;">
                                 <!-- Visibility Toggle -->
                                 <form method="POST" action="{{ url_for('teacher.toggle_exam_visibility', exam_id=e.exam_id) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <input type="hidden" name="active_tab" value="exams">
                                     <button type="submit" class="btn-action btn-act-gray" style="width:34px; height:34px; padding:0;" title="{{ 'Hide' if e.is_visible else 'Show' }}">
                                         {% if e.is_visible %}
@@ -932,6 +941,7 @@
                                 <!-- Archive/Unarchive and Delete -->
                                 {% if e.is_archived %}
                                     <form method="POST" action="/teacher/exams/{{ e.exam_id }}/unarchive">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="active_tab" value="exams">
                                         <button type="submit" class="btn-action btn-act-gray" style="width:34px; height:34px; padding:0;" title="Unarchive">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -941,6 +951,7 @@
                                         </button>
                                     </form>
                                     <form method="POST" action="{{ url_for('teacher.delete_exam', exam_id=e.exam_id) }}" onsubmit="return confirm('Delete this exam permanently?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="active_tab" value="exams">
                                         <button type="submit" class="btn-action btn-act-red" style="width:34px; height:34px; padding:0;" title="Delete">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
@@ -948,6 +959,7 @@
                                     </form>
                                 {% else %}
                                     <form method="POST" action="/teacher/exams/{{ e.exam_id }}/archive">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <input type="hidden" name="active_tab" value="exams">
                                         <button type="submit" class="btn-action btn-act-gray" style="width:34px; height:34px; padding:0;" title="Archive">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">

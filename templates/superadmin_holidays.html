@@ -106,6 +106,7 @@
                 <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 24px; color: #1e293b;">Create Holiday</h2>
                 <p style="font-size: 0.8rem; color: #64748b; margin: -16px 0 20px 0; font-weight: 600;">No need to add a year. This holiday repeats every year.</p>
                 <form method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="form-node">
                         <label>Month</label>
                         <select name="holiday_month" required style="width:100%; padding:12px 16px; border:1.5px solid #e2e8f0; border-radius:10px; font-weight:600; outline:none; background:#fff; cursor:pointer;">
@@ -168,12 +169,14 @@
                             </td>
                             <td style="text-align: right; display: flex; gap: 8px; justify-content: flex-end;">
                                 <form action="{{ url_for('super_admin.superadmin_holiday_toggle_status', holiday_id=h.id) }}" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn-status {{ 'unarchive' if h.status == 'archived' else '' }}">
                                         <i class="fas {{ 'fa-archive' if h.status == 'active' else 'fa-box-open' }}"></i>
                                         {{ 'Archive' if h.status == 'active' else 'Unarchive' }}
                                     </button>
                                 </form>
                                 <form action="{{ url_for('super_admin.superadmin_delete_holiday', holiday_id=h.id) }}" method="POST" onsubmit="return confirm('Delete this global holiday?');">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn-delete">
                                         <i class="fas fa-trash-alt"></i>
                                         Delete

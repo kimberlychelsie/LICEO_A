@@ -581,6 +581,7 @@
                                 <form
                                     action="{{ url_for('teacher.allow_resubmission', submission_id=sub.submission_id) }}"
                                     method="POST" style="margin:0;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="action-btn btn-resched" {% if sub.allow_resubmit
                                         %}disabled title="Already allowed" {% endif %} style="padding: 8px;">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
@@ -610,6 +611,7 @@
             <button class="close-modal" onclick="closeGradeModal()">&times;</button>
         </div>
         <form id="gradeForm" action="" method="POST">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="activity_id" value="{{ activity.activity_id }}">
             <div class="form-group">
                 <label class="form-label">Score (Max: {{ activity.max_score }})</label>

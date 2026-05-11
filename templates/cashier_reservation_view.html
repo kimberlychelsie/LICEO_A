@@ -363,11 +363,13 @@
             {% if is_branch_active_status %}
             <div class="action-group">
                 <form method="post" action="{{ url_for('cashier.cashier_mark_paid', reservation_id=header[0]) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button class="btn-action btn-go" type="submit" style="background: var(--cashier-success); box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);">
                         ✅ Mark as FULLY PAID
                     </button>
                 </form>
                 <form method="post" action="{{ url_for('cashier.cashier_cancel_reservation', reservation_id=header[0]) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button class="btn-action btn-stop" type="submit" onclick="return confirm('Immediately cancel this reservation?')">
                         ❌ Cancel Booking
                     </button>
@@ -382,11 +384,13 @@
             {% if is_branch_active_status %}
             <div class="action-group">
                 <form method="post" action="{{ url_for('cashier.cashier_mark_claimed', reservation_id=header[0]) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button class="btn-action btn-go" type="submit" style="background: var(--cashier-primary);">
                         🎉 Mark as CLAIMED
                     </button>
                 </form>
                 <form method="post" action="{{ url_for('cashier.cashier_cancel_reservation', reservation_id=header[0]) }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button class="btn-action btn-stop" type="submit" onclick="return confirm('Cancel reservation and initiate refund process?')">
                         ❌ Void Transaction
                     </button>

@@ -178,18 +178,27 @@ def inject_student_subjects():
         db = get_db_connection()
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
-            cursor.execute("SELECT section_id FROM enrollments WHERE enrollment_id = %s", (enrollment_id,))
-            enroll_row = cursor.fetchone()
-            if enroll_row and enroll_row['section_id']:
-                cursor.execute("""
-                    SELECT sub.subject_id, sub.name as subject_name
-                    FROM section_teachers st
-                    JOIN subjects sub ON st.subject_id = sub.subject_id
-                    WHERE st.section_id = %s
-                    ORDER BY sub.name
-                """, (enroll_row['section_id'],))
-                subjects = cursor.fetchall()
-                return dict(student_global_subjects=subjects)
+            # 1. Get student's current enrollment context
+            cursor.execute("SELECT section_id, branch_id, year_id FROM enrollments WHERE enrollment_id = %s", (enrollment_id,))
+            enr = cursor.fetchone()
+            
+            if enr and enr['section_id']:
+                # 2. Get the active year for this branch
+                cursor.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (enr['branch_id'],))
+                active_sy = cursor.fetchone()
+                active_year_id = active_sy['year_id'] if active_sy else None
+
+                # 3. Only show subjects if the enrollment year matches the active year
+                if enr['year_id'] == active_year_id and active_year_id is not None:
+                    cursor.execute("""
+                        SELECT sub.subject_id, sub.name as subject_name
+                        FROM section_teachers st
+                        JOIN subjects sub ON st.subject_id = sub.subject_id
+                        WHERE st.section_id = %s AND st.year_id = %s
+                        ORDER BY sub.name
+                    """, (enr['section_id'], active_year_id))
+                    subjects = cursor.fetchall()
+                    return dict(student_global_subjects=subjects)
         except:
             pass
         finally:
