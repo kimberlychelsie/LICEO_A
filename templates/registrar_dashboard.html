@@ -790,14 +790,16 @@
                 <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
                     <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Search Student</label>
                     <div style="display: flex; gap: 8px;">
-                        <input type="text" id="newSearch" placeholder="Search name or ID..." value="{{ q_new }}" 
+                        <input type="text" id="newSearch" placeholder="Search name or ID..." value="{{ q_new }}"
                             onkeydown="if(event.key==='Enter') doSearch('new')"
                             style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 100%; max-width: 400px;">
-                        <button type="button" onclick="doSearch('new')" class="btn-registrar" style="min-width: auto; padding: 0 16px;">
+                        <button type="button" onclick="doSearch('new')" class="btn-registrar"
+                            style="min-width: auto; padding: 0 16px;">
                             Search
                         </button>
                     </div>
-                    <div class="muted-note" style="font-size: 10px; margin-top: 2px;">Searches across all {{ total_new }} records</div>
+                    <div class="muted-note" style="font-size: 10px; margin-top: 2px;">Searches across all {{ total_new
+                        }} records</div>
                 </div>
             </div>
         </div>
@@ -870,7 +872,7 @@
 
                                 <form method="post" action="/registrar/enrollment/{{ enrollment.enrollment_id }}"
                                     class="new-details-form">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <div style="display:grid; grid-template-columns: 1.2fr 1.2fr 1fr; gap:14px;">
                                         <!-- Personal & Contact -->
                                         <div
@@ -1065,11 +1067,11 @@
                                             {% if enrollment.documents and enrollment.documents | length > 0 %}
                                             <div style="display:flex; flex-direction:column; gap:8px;">
                                                 {% for doc in enrollment.documents %}
-                                                <a href="javascript:void(0)" 
-                                                   onclick="openPreview('{{ doc.file_path }}', '{{ doc.file_name|replace("'", "\\'") }}'); markDocViewed('{{ enrollment.enrollment_id }}', this)"
-                                                   class="doc-view-link"
-                                                   data-enrollment-id="{{ enrollment.enrollment_id }}"
-                                                   style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; border:1px solid var(--border); border-radius:10px; text-decoration:none; color:#0f172a; background:#f8fafc; transition: all 0.2s;">
+                                                <a href="javascript:void(0)"
+                                                    onclick="openPreview('{{ doc.file_path }}', '{{ doc.file_name|replace("'", "\\'") }}'); markDocViewed('{{ enrollment.enrollment_id }}', this)"
+                                                    class="doc-view-link"
+                                                    data-enrollment-id="{{ enrollment.enrollment_id }}"
+                                                    style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 14px; border:1px solid var(--border); border-radius:10px; text-decoration:none; color:#0f172a; background:#f8fafc; transition: all 0.2s;">
                                                     <span
                                                         style="font-weight:700; font-size:0.86rem; display:flex; align-items:center; gap:8px;">
                                                         <span class="view-check" style="display:none; color:#10b981;">
@@ -1123,17 +1125,17 @@
                                             </div>
                                             <button type="submit" class="btn btn-primary btn-sm save-inline-btn" {% if
                                                 not can_modify %}disabled{% endif %}
-                                                style="margin-top:12px; width:100%; justify-content:center; background:#8aa0c8; border:none; display: flex; align-items: center; gap: 8px;">
+                                                style="margin-top:12px; width:100%; justify-content:center; background:#1e3a8a; border:none; display: flex; align-items: center; gap: 8px; font-weight: 800; padding: 10px; transition: all 0.2s; opacity: 0.6; cursor: not-allowed;">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                    stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                                                     <path
                                                         d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z">
                                                     </path>
                                                     <polyline points="17 21 17 13 7 13 7 21"></polyline>
                                                     <polyline points="7 3 7 8 15 8"></polyline>
                                                 </svg>
-                                                Save Changes
+                                                Save Information Changes
                                             </button>
 
                                             {% if not can_modify %}
@@ -1179,7 +1181,7 @@
                                     <div style="display:flex; gap:10px;">
                                         {% if is_branch_active_status and can_modify %}
                                         <form method="post" action="/registrar/enrollments" style="margin:0;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                             <input type="hidden" name="enrollment_id"
                                                 value="{{ enrollment.enrollment_id }}">
                                             <input type="hidden" name="year_id" value="{{ selected_year_id }}">
@@ -1321,7 +1323,7 @@
                 </div>
                 <form method="post" action="/registrar/enrollments"
                     onsubmit="return confirm('Reject this enrollment? This will require a reason.');">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="enrollment_id" id="rejectEnrollmentId" value="">
                     <input type="hidden" name="year_id" value="{{ selected_year_id }}">
                     <input type="hidden" name="action" value="rejected">
@@ -1350,6 +1352,17 @@
             const isOpen = row.style.display !== 'none';
             row.style.display = isOpen ? 'none' : '';
             if (btn) btn.textContent = isOpen ? 'View Details' : 'Hide Details';
+
+            // Capture original values for change detection immediately on open
+            if (!isOpen) {
+                const form = row.querySelector('.new-details-form');
+                if (form && !form.__originals) {
+                    form.__originals = {};
+                    form.querySelectorAll('.track-change').forEach(function (el) {
+                        form.__originals[el.name] = el.value;
+                    });
+                }
+            }
         }
 
         function markDocViewed(enrollmentId, link) {
@@ -1411,36 +1424,44 @@
         });
 
         // Enable inline save button only when changes exist (per expanded form)
-        document.addEventListener('input', function (e) {
-            const form = e.target.closest?.('.new-details-form');
-            if (!form) return;
+        ['input', 'change'].forEach(event => {
+            document.addEventListener(event, function (e) {
+                const form = e.target.closest?.('.new-details-form');
+                if (!form) return;
 
-            const btn = form.querySelector('.save-inline-btn');
-            if (!btn) return;
+                const btn = form.querySelector('.save-inline-btn');
+                if (!btn) return;
 
-            // Archive mode: always disabled
-            if (!CAN_MODIFY) {
-                btn.disabled = true;
-                btn.style.background = '#8aa0c8';
-                return;
-            }
+                // Archive mode: always disabled
+                if (!CAN_MODIFY) {
+                    btn.disabled = true;
+                    btn.style.opacity = '0.6';
+                    btn.style.cursor = 'not-allowed';
+                    return;
+                }
 
-            // Capture originals once
-            if (!form.__originals) {
-                form.__originals = {};
+                // If for some reason originals aren't captured, capture now
+                if (!form.__originals) {
+                    form.__originals = {};
+                    form.querySelectorAll('.track-change').forEach(function (el) {
+                        form.__originals[el.name] = el.value;
+                    });
+                    // If we capture NOW during an event, we might miss THIS change as "different"
+                    // But toggleNewDetails should have caught it.
+                }
+
+                // Detect changes
+                let changed = false;
                 form.querySelectorAll('.track-change').forEach(function (el) {
-                    form.__originals[el.name] = el.value;
+                    const original = form.__originals[el.name] ?? '';
+                    if (original !== el.value) changed = true;
                 });
-            }
 
-            // Detect changes
-            let changed = false;
-            form.querySelectorAll('.track-change').forEach(function (el) {
-                if ((form.__originals[el.name] ?? '') !== el.value) changed = true;
+                btn.disabled = !changed;
+                btn.style.opacity = changed ? '1' : '0.6';
+                btn.style.cursor = changed ? 'pointer' : 'not-allowed';
+                btn.style.background = changed ? '#10b981' : '#1e3a8a'; // Green when ready to save
             });
-
-            btn.disabled = !changed;
-            btn.style.background = changed ? '#1d4ed8' : '#8aa0c8';
         });
     </script>
 
@@ -1456,7 +1477,7 @@
                 <span>Students can currently log in and re-enroll for the next school year.</span>
             </div>
             <form method="post" action="/registrar/toggle-reenrollment">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="action" value="close">
                 <button type="submit" class="btn btn-danger btn-sm"
                     onclick="return confirm('Close re-enrollment for ALL students?')">
@@ -1472,7 +1493,7 @@
                     re-enroll.</span>
             </div>
             <form method="post" action="/registrar/toggle-reenrollment">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <input type="hidden" name="action" value="open">
                 <button type="submit" class="btn btn-warning btn-sm"
                     onclick="return confirm('Open re-enrollment for ALL enrolled students?')">
@@ -1510,14 +1531,16 @@
                 <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
                     <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Search Student</label>
                     <div style="display: flex; gap: 8px;">
-                        <input type="text" id="enrolledSearch" placeholder="Search name or ID..." value="{{ q_enrolled }}"
-                            onkeydown="if(event.key==='Enter') doSearch('enrolled')"
+                        <input type="text" id="enrolledSearch" placeholder="Search name or ID..."
+                            value="{{ q_enrolled }}" onkeydown="if(event.key==='Enter') doSearch('enrolled')"
                             style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 100%; max-width: 400px;">
-                        <button type="button" onclick="doSearch('enrolled')" class="btn-registrar" style="min-width: auto; padding: 0 16px;">
+                        <button type="button" onclick="doSearch('enrolled')" class="btn-registrar"
+                            style="min-width: auto; padding: 0 16px;">
                             Search
                         </button>
                     </div>
-                    <div class="muted-note" style="font-size: 10px; margin-top: 2px;">Searches across all {{ total_enrolled }} records</div>
+                    <div class="muted-note" style="font-size: 10px; margin-top: 2px;">Searches across all {{
+                        total_enrolled }} records</div>
                 </div>
             </div>
         </div>
@@ -1610,7 +1633,7 @@
                                 <form method="post" action="/registrar/link-parent/{{ e.enrollment_id }}"
                                     style="display:inline;"
                                     onsubmit="return confirm('Link this student to existing parent account \'{{ e.existing_parent_username }}\'?\nNo new account will be created.');">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn-registrar btn-registrar-warn"
                                         title="Guardian email matches existing parent: {{ e.existing_parent_username }}">
                                         🔗 Link Child to Parent
@@ -1622,7 +1645,7 @@
                                 {% else %}
                                 <form method="post" action="/registrar/create-parent-account/{{ e.enrollment_id }}"
                                     style="display:inline;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn-registrar btn-registrar-sec">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
@@ -1730,7 +1753,7 @@
             <div class="modal-sub" id="modalGradeLevel"></div>
 
             <form method="post" id="createStudentForm" action="">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <label for="modalSectionSelect">
                     Assign to Section
                     <span style="color:#94a3b8; font-weight:400; text-transform:none;">
@@ -1759,18 +1782,18 @@
         const yearId = '{{ selected_year_id }}';
         const qNew = document.getElementById('newSearch').value.trim();
         const qEnrolled = document.getElementById('enrolledSearch').value.trim();
-        
+
         let url = `/registrar/enrollments?year_id=${yearId}`;
         if (qNew) url += `&q_new=${encodeURIComponent(qNew)}`;
         if (qEnrolled) url += `&q_enrolled=${encodeURIComponent(qEnrolled)}`;
-        
+
         // When searching, reset the relevant page to 1
         if (type === 'new') url += '&p_new=1&p_enrolled={{ current_page_enrolled }}';
         else url += '&p_enrolled=1&p_new={{ current_page_new }}';
-        
+
         // Preserve tab
         if (type === 'enrolled' || window.location.hash === '#enrolled') url += '#enrolled';
-        
+
         window.location.href = url;
     }
 
