@@ -61,8 +61,31 @@ def proxy_pdf():
         return 'Unauthorized', 401
 
     try:
-        # Many CDNs like Cloudinary block default Python requests user-agents with 401/403.
-        # We mimic a standard browser to successfully fetch the raw resource.
+        # Import cloudinary_helper to ensure cloudinary is configured
+        import cloudinary_helper
+        if cloudinary_helper.CLOUDINARY_ENABLED:
+            import cloudinary.utils
+            
+            # Parse the public_id and resource_type from the URL
+            # e.g., https://res.cloudinary.com/.../raw/upload/v12345/folder/file.pdf
+            res_type = 'raw' if '/raw/upload/' in file_url else 'image'
+            if '/upload/' in file_url:
+                after_upload = file_url.split('/upload/')[1]
+                parts = after_upload.split('/')
+                # Remove version string (e.g., v1777421512) if present
+                if parts[0].startswith('v') and parts[0][1:].isdigit():
+                    public_id = '/'.join(parts[1:])
+                else:
+                    public_id = after_upload
+                
+                # Generate a signed URL using our API secret
+                file_url, _ = cloudinary.utils.cloudinary_url(
+                    public_id,
+                    resource_type=res_type,
+                    sign_url=True
+                )
+
+        # Fetch the (now signed) URL
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
