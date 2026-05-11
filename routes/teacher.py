@@ -22,7 +22,7 @@ except ImportError:
 
 # ── OCR Config ──
 def get_tesseract_path():
-    """Dynamically find Tesseract binary path."""
+    """Dynamically find Tesseract binary path with aggressive searching."""
     if not HAS_OCR:
         return None
     
@@ -31,12 +31,25 @@ def get_tesseract_path():
     if p:
         return p
         
-    # 2. Try common Windows locations
+    # 2. Try common Linux paths (Railway/Production)
+    linux_paths = [
+        "/usr/bin/tesseract",
+        "/usr/local/bin/tesseract",
+        "/usr/bin/tesseract-ocr",
+        "/app/.apt/usr/bin/tesseract", # Common for older Aptfile setups
+    ]
+    if os.name != 'nt':
+        for lp in linux_paths:
+            if os.path.exists(lp):
+                return lp
+
+    # 3. Try common Windows locations
     if os.name == 'nt':
         win_paths = [
             r'C:\Program Files\Tesseract-OCR\tesseract.exe',
             r'C:\Program Files (x86)\Tesseract-OCR\tesseract.exe',
             os.path.join(os.environ.get('LOCALAPPDATA', ''), r'Tesseract-OCR\tesseract.exe'),
+            os.path.join(os.environ.get('USERPROFILE', ''), r'AppData\Local\Tesseract-OCR\tesseract.exe'),
         ]
         for wp in win_paths:
             if os.path.exists(wp):
@@ -50,12 +63,14 @@ def init_ocr():
     path = get_tesseract_path()
     if path:
         pytesseract.pytesseract.tesseract_cmd = path
-        # Some versions use top-level attribute
-        if hasattr(pytesseract, 'tesseract_cmd'):
+        # Also set top-level if exists
+        try:
             pytesseract.tesseract_cmd = path
+        except:
+            pass
         print(f"OCR: Initialized with path {path}")
     else:
-        print("OCR Warning: Tesseract binary not found.")
+        print("OCR Warning: Tesseract binary not found in standard paths.")
 
 # Initial call
 init_ocr()
@@ -274,6 +289,35 @@ def parse_image(file):
         raise e
 
 
+
+@teacher_bp.route("/teacher/ocr-status")
+def teacher_ocr_status():
+    """Debug route to check OCR configuration."""
+    if not _require_teacher():
+        return "Unauthorized", 403
+    
+    import sys
+    import subprocess
+    
+    try:
+        tess_v = "Not Found"
+        cmd = getattr(pytesseract.pytesseract, 'tesseract_cmd', 'Not Set')
+        if cmd and cmd != 'tesseract':
+             res = subprocess.run([cmd, '--version'], capture_output=True, text=True)
+             tess_v = res.stdout.split('\n')[0] if res.returncode == 0 else f"Error: {res.stderr}"
+    except Exception as e:
+        tess_v = f"Exception: {str(e)}"
+
+    return jsonify({
+        "HAS_OCR": HAS_OCR,
+        "Python Version": sys.version,
+        "Platform": sys.platform,
+        "Tesseract Cmd": cmd,
+        "Tesseract Version": tess_v,
+        "Environment Path": os.environ.get('PATH', ''),
+        "Working Dir": os.getcwd(),
+        "Binary Found (Aggressive)": get_tesseract_path()
+    })
 
 def _get_active_school_year(cur, branch_id):
     cur.execute("""
