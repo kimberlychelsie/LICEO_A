@@ -61,7 +61,13 @@ def proxy_pdf():
         return 'Unauthorized', 401
 
     try:
-        r = req.get(file_url, timeout=15, stream=True)
+        # Fix Cloudinary URLs: 'raw/upload' often returns 401 for programmatic access.
+        # We can bypass this by fetching via the standard 'image/upload' path.
+        fetch_url = file_url
+        if 'cloudinary.com' in fetch_url and '/raw/upload/' in fetch_url:
+            fetch_url = fetch_url.replace('/raw/upload/', '/image/upload/')
+
+        r = req.get(fetch_url, timeout=15, stream=True)
         r.raise_for_status()
         filename = file_url.split('/')[-1].split('?')[0] or 'document.pdf'
 
