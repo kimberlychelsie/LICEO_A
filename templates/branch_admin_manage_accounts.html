@@ -488,10 +488,10 @@
 <table class="modern-table">
     <thead>
         <tr>
-            <th>Access Profile</th>
-            <th>Credentials ID</th>
+            <th>User Details</th>
+            <th>Username</th>
             <th>Status</th>
-            <th style="text-align: right;">Registry Actions</th>
+            <th style="text-align: right;">Actions</th>
         </tr>
     </thead>
     <tbody>
@@ -530,13 +530,13 @@
                 {% set is_active = (a.status != 'inactive') %}
                 {% endif %}
                 <span class="badge-status {{ 'badge-active' if is_active else 'badge-inactive' }}">
-                    {{ 'Verified Active' if is_active else 'Access Suspended' }}
+                    {{ 'Active' if is_active else 'Inactive' }}
                 </span>
             </td>
             <td style="text-align: right;">
                 <div style="display: flex; gap: 8px; justify-content: flex-end;">
                     <a href="{{ url_for('branch_admin.branch_admin_edit_account', user_id=a.user_id, role=role_filter) if a.role != 'student' else url_for('branch_admin.branch_admin_edit_student_account', account_id=a.account_id, role=role_filter) }}"
-                        class="btn-action-icon" title="Edit Profile">
+                        class="btn-action-icon" title="Edit">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
@@ -551,8 +551,8 @@
                         style="margin:0;">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                         <button type="submit" class="btn-action-icon"
-                            onclick="return confirm('Change access state for this user?')"
-                            title="{{ 'Suspend' if is_active else 'Restore' }}">
+                            onclick="return confirm('Change account status for this user?')"
+                            title="{{ 'Deactivate' if is_active else 'Activate' }}">
                             {% if is_active %}
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -575,7 +575,7 @@
                         action="{{ url_for('branch_admin.branch_admin_delete_account', user_id=a.user_id, role=role_filter) if a.role != 'student' else url_for('branch_admin.branch_admin_delete_student_account', account_id=a.account_id, role=role_filter) }}"
                         style="margin:0;" onsubmit="return confirm('Permanent deletion cannot be undone. Proceed?')">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn-action-icon btn-delete" title="Purge Record">
+                        <button type="submit" class="btn-action-icon btn-delete" title="Delete">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                 stroke-linejoin="round">
@@ -599,9 +599,9 @@
 
 <div class="ma-container">
     <header class="premium-header">
-        <h1>{{ (role_filter or 'Registrar')|title }} <span>Registry</span></h1>
+        <h1>{{ (role_filter or 'Registrar')|title }} <span>Account Management</span></h1>
         <p>
-            Managing personnel and accessibility for {{ session.get('branch_name', 'Liceo LMS') }}
+            Manage school accounts and user access for {{ session.get('branch_name', 'Liceo LMS') }}
 
         </p>
     </header>
@@ -611,12 +611,12 @@
     <!-- Create Account Section -->
     {% if is_branch_active_status and role_filter != 'student' %}
     <div class="data-card">
-        <h2>Provision New {{ (role_filter or 'Registrar')|title }} Access</h2>
+        <h2>Create New {{ (role_filter or 'Registrar')|title }} Account</h2>
         <form method="post" action="{{ url_for('branch_admin.branch_admin_manage_accounts') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-row">
                 <div class="form-group">
-                    <label>Assigned Directive</label>
+                    <label>Role</label>
                     <select class="form-control" name="role" required
                         onchange="window.location.href='?role='+this.value">
                         <option value="registrar" {% if role_filter=='registrar' %}selected{% endif %}>Registrar
@@ -646,12 +646,12 @@
 
             <div class="form-row">
                 <div class="form-group" style="flex: 2;">
-                    <label>Verification Email</label>
+                    <label>Email Address</label>
                     <input class="form-control" name="email" type="email" placeholder="example@domain.com" required>
                 </div>
                 {% if role_filter == 'teacher' %}
                 <div class="form-group" style="flex: 1;">
-                    <label>Academic Grade Assignment</label>
+                    <label>Academic Grade Level</label>
                     <select class="form-control" name="grade_level">
                         <option value="">Select Grade Level</option>
                         {% for g in grades %}
@@ -661,7 +661,7 @@
                 </div>
                 {% elif role_filter == 'student' %}
                 <div class="form-group" style="flex: 1;">
-                    <label>Registry Note</label>
+                    <label>Note</label>
                     <div class="form-control"
                         style="background: #fff9eb; border-color: #f59e0b; color: #92400e; font-size: 0.85rem; height: auto; min-height: 52px; display: flex; align-items: center; gap: 8px;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -676,7 +676,7 @@
                 {% endif %}
                 <div class="form-group" style="align-self: flex-end;">
                     <button class="btn-elegant btn-primary-ma" type="submit" style="width: 100%;">
-                        <span>Initialize Account</span>
+                        <span>Create Account</span>
                     </button>
                 </div>
             </div>
@@ -701,7 +701,7 @@
         <form method="get" class="search-registry-bar" id="filter-form">
             <input type="hidden" name="role" value="{{ role_filter }}">
             <div class="form-group" style="flex: 2; min-width: 300px;">
-                <label>Dynamic Search</label>
+                <label>Search Accounts</label>
                 <input type="text" name="search" class="form-control" placeholder="Filter by name, ID or username..."
                     value="{{ filter_search }}">
             </div>
@@ -726,7 +726,7 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>Assigned Section</label>
+                <label>Section</label>
                 <select name="section" class="form-control" onchange="this.form.submit()">
                     <option value="">All Sections</option>
                     {% for s in section_options %}
@@ -749,12 +749,12 @@
                 {% if view_mode == 'grouped' %}
                 <a href="?role={{ role_filter }}" class="btn-elegant"
                     style="background: #ffffff; border: 1.5px solid var(--ma-border); color: var(--ma-muted); text-decoration: none; padding: 0 20px;">
-                    Standard View
+                    Default View
                 </a>
                 {% else %}
                 <a href="?role={{ role_filter }}&view=grouped" class="btn-elegant"
                     style="background: #f1f5f9; color: var(--ma-primary); text-decoration: none; padding: 0 20px;">
-                    View All
+                    Group View
                 </a>
                 {% endif %}
                 {% endif %}
@@ -796,10 +796,9 @@
                     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
                 </svg>
             </div>
-            <h3 style="font-weight: 900; color: var(--ma-primary); font-size: 1.5rem; margin-bottom: 12px;">Zero Matches
-                Detected</h3>
+            <h3 style="font-weight: 900; color: var(--ma-primary); font-size: 1.5rem; margin-bottom: 12px;">No Accounts Found</h3>
             <p style="font-weight: 600; font-size: 1.1rem;">The registry contains no records matching your current
-                active filters.</p>
+                selected filters.</p>
         </div>
         {% endif %}
     </div>

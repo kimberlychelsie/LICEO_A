@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Broadcast Station — Branch Admin{% endblock %}
+{% block title %}Announcements — Branch Admin{% endblock %}
 
 {% block content %}
 <style>
@@ -290,7 +290,7 @@
 
 <div class="ma-container">
     <header class="premium-header">
-        <h1>Broadcast <span>Station</span></h1>
+        <h1>Branch <span>Announcements</span></h1>
         <p>Manage branch announcements and portal updates</p>
     </header>
 
@@ -299,10 +299,10 @@
         <div class="broadcast-card-glass">
             <h3>
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px;"><path d="M11 5L6 9H2v6h4l5 4V5z"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-                Broadcast Station
+                Create Announcement
             </h3>
             <p style="color: var(--ma-muted); font-size: 0.9rem; font-weight: 500; margin-bottom: 30px; margin-top: -10px;">
-                Draft announcements for the portal homepage. The monitor on the right will show your changes instantly.
+                Create announcements for the portal homepage. The preview panel updates automatically as you type.
             </p>
 
             {% if is_branch_active_status and not is_history_mode %}
@@ -310,16 +310,16 @@
                 <input type="hidden" name="add_announcement" value="1">
                 
                 <div class="form-group-prem">
-                    <label>Main Headline</label>
+                    <label>Announcement Title</label>
                     <input class="input-prem" id="headline_input" name="announcement_title" placeholder="e.g. Enrollment is now OPEN!" required oninput="syncPreview()">
                 </div>
 
                 <div class="form-group-prem">
-                    <label>Short Description</label>
+                    <label>Announcement Message</label>
                     <textarea class="input-prem" id="summary_input" name="announcement_message" placeholder="A brief summary for the homepage..." style="resize: none; height: 100px;" oninput="syncPreview()"></textarea>
                 </div>
                 <div class="form-group-prem">
-                    <label>Target Audience</label>
+                    <label>Audience</label>
                     <select class="input-prem" name="audience" id="audience_input" onchange="syncPreview()">
                       <option value="all" selected>All (Homepage)</option>
                       <option value="teacher">Teachers only (Teacher Dashboard)</option>
@@ -327,12 +327,12 @@
                   </div>
 
                 <div class="form-group-prem">
-                    <label>Cover Media (Poster)</label>
+                    <label>Announcement Image</label>
                     <input type="file" id="photo_input" name="announcement_photo" class="input-prem" style="padding: 12px; font-size: 0.8rem;" accept="image/*" onchange="previewImage(this)">
                 </div>
 
                 <button type="submit" class="btn-gold-prestige">
-                    <i class="fas fa-paper-plane"></i> Go Live on Portal
+                    <i class="fas fa-paper-plane"></i> Publish Announcement
                 </button>
             </form>
             {% endif %}
@@ -341,14 +341,14 @@
         <!-- LIVE VIEW PREVIEW CARD -->
         <div class="preview-card-wrapper">
             <div class="preview-card-v3">
-                <div class="preview-label-badge">Live Feed Preview</div>
+                <div class="preview-label-badge">Announcement Preview</div>
                 <div class="preview-img-slot" id="preview_img_container">
                     <i class="fas fa-image placeholder-icon" id="preview_placeholder"></i>
                     <img id="preview_img_tag" src="" alt="Live Preview">
                 </div>
                 <div class="preview-content-slot">
-                    <h2 id="preview_headline">Draft <span>Headline</span></h2>
-                    <p id="preview_summary">Your announcement summary will appear here as you type...</p>
+                    <h2 id="preview_headline">Announcement <span>Title</span></h2>
+                    <p id="preview_summary">Your announcement message preview will appear here...</p>
                 </div>
             </div>
         </div>
@@ -356,7 +356,7 @@
 
     <!-- FEED HISTORY -->
     {% if announcements_list %}
-    <div class="command-hub-title"><i class="fas fa-history"></i> Recent Broadcasts</div>
+    <div class="command-hub-title"><i class="fas fa-history"></i> Recent Announcements</div>
     {% for a in announcements_list %}
     <div class="stream-history-item" style="{% if not a.is_active %}opacity: 0.85; border-left: 5px solid #94a3b8; background: #f8fafc;{% endif %}">
         <div style="width: 80px; height: 50px; background: #f1f5f9; border-radius: 12px; overflow: hidden; flex-shrink: 0;">

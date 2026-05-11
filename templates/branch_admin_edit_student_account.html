@@ -155,28 +155,28 @@
 {% block content %}
 <div class="edit-container">
     <div class="edit-header">
-        <h1>Student Registry Update</h1>
-        <p>Modifying details for <strong>{{ student.full_name }}</strong></p>
+        <h1>Edit Student Account</h1>
+<p>Update details for <strong>{{ student.full_name }}</strong></p>
     </div>
 
     <div class="premium-card">
         <div style="text-align: center;">
-            <div class="role-badge">Student Domain</div>
+            <div class="role-badge">Student Account</div>
         </div>
 
         <form method="post" action="{{ url_for('branch_admin.branch_admin_edit_student_account', account_id=student.account_id, role=request.args.get('role', 'student')) }}">
             <div class="form-group">
-                <label>Legal Name</label>
+                <label>Full Name</label>
                 <input class="form-control" name="full_name" value="{{ student.full_name or '' }}" placeholder="Enter name" required oninput="this.value = this.value.replace(/[0-9]/g, '')">
             </div>
             
             <div class="form-group">
-                <label>Contact Email</label>
+                <label>Email Address</label>
                 <input class="form-control" name="email" type="email" value="{{ student.email or '' }}" placeholder="student@example.com" required>
             </div>
 
             <div class="form-group">
-                <label>Gender Identifier</label>
+                <label>Gender</label>
                 <select class="form-control" name="gender" required>
                     <option value="">— Select Gender —</option>
                     <option value="female" {% if student.gender == 'female' %}selected{% endif %}>Female</option>
@@ -185,16 +185,16 @@
             </div>
 
             <div class="form-group">
-                <label>Current Status/Grade</label>
+                <label>Grade Level</label>
                 <input class="form-control" name="grade_level" value="{{ student.grade_level or '' }}" placeholder="e.g. Grade 10">
             </div>
 
-            <button type="submit" class="btn-submit" id="submitBtn">Verify & Save Record</button>
+            <button type="submit" class="btn-submit" id="submitBtn">Save Changes</button>
         </form>
     </div>
 
     <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role=request.args.get('role', 'student')) }}" class="btn-cancel">
-        ← Return to Student Registry
+        ← Return to Student Accounts
     </a>
 </div>
 {% endblock %}
