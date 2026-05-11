@@ -38,6 +38,45 @@ def uploaded_file(filename):
     response.headers["Content-Disposition"] = "inline"
     return response
 
+@app.route('/proxy/pdf')
+def proxy_pdf():
+    """Server-side proxy to fetch and serve PDFs from Cloudinary with correct headers.
+    This bypasses browser CORS restrictions and Cloudinary's forced download headers.
+    Only Cloudinary URLs are allowed for security.
+    """
+    from urllib.parse import urlparse
+    import requests as req
+
+    file_url = request.args.get('url', '').strip()
+    if not file_url:
+        return 'No URL provided', 400
+
+    # Security: only proxy Cloudinary URLs
+    parsed = urlparse(file_url)
+    if 'cloudinary.com' not in parsed.netloc:
+        return 'Unauthorized: only Cloudinary URLs allowed', 403
+
+    # Must be logged in
+    if not session.get('user_id'):
+        return 'Unauthorized', 401
+
+    try:
+        r = req.get(file_url, timeout=15, stream=True)
+        r.raise_for_status()
+        filename = file_url.split('/')[-1].split('?')[0] or 'document.pdf'
+
+        from flask import Response, stream_with_context
+        response = Response(
+            stream_with_context(r.iter_content(chunk_size=8192)),
+            status=r.status_code,
+            content_type='application/pdf',
+        )
+        response.headers['Content-Disposition'] = f'inline; filename="{filename}"'
+        response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+        return response
+    except Exception as e:
+        return f'Proxy error: {str(e)}', 502
+
 app.config['MAIL_SERVER'] = os.getenv('MAIL_SERVER', 'smtp.hostinger.com')
 app.config['MAIL_PORT'] = int(os.getenv('MAIL_PORT', 465))
 app.config['MAIL_USE_TLS'] = os.getenv('MAIL_USE_TLS', 'False') == 'True'
