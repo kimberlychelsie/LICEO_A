@@ -614,11 +614,8 @@ def continuing_enrollment(branch_id):
             section_id_raw = request.form.get("section_id")
             section_id = int(section_id_raw) if section_id_raw and section_id_raw.isdigit() else None
 
-            cursor.execute("""
-                SELECT COALESCE(MAX(branch_enrollment_no), 0) + 1 AS next_no
-                FROM enrollments WHERE branch_id = %s
-            """, (branch_id,))
-            next_no = cursor.fetchone()["next_no"]
+            # Retain the original branch_enrollment_no / Student ID for continuing students
+            next_no = enrollment.get("branch_enrollment_no")
 
             cursor.execute("""
                 INSERT INTO enrollments
