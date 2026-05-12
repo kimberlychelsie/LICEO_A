@@ -19,7 +19,7 @@
             min-height: 100vh;
             display: flex;
             justify-content: center;
-            align-items: flex-start;
+            align-items: center;
             padding: 40px 20px;
             color: #1e293b;
         }
@@ -27,12 +27,13 @@
         .ce-card {
             background: white;
             border-radius: 24px;
-            padding: 48px 50px;
             width: 100%;
-            max-width: 760px;
+            max-width: 1100px;
             box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
             position: relative;
             overflow: hidden;
+            display: flex;
+            min-height: 600px;
         }
         
         .ce-card::before {
@@ -43,29 +44,40 @@
             width: 100%;
             height: 6px;
             background: linear-gradient(90deg, #1e3a8a, #f59e0b);
+            z-index: 10;
+        }
+
+        .ce-left {
+            flex: 1;
+            padding: 48px 50px;
+            display: flex;
+            flex-direction: column;
+            max-width: 50%;
+        }
+
+        .ce-right {
+            flex: 1;
+            background: #f8fafc;
+            padding: 48px 50px;
+            border-left: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
         }
 
         .ce-header {
-            text-align: center;
             color: #1e3a8a;
             font-weight: 900;
             font-size: 1.8rem;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
             letter-spacing: -0.02em;
         }
 
-        .ce-icon {
-            font-size: 3.5rem;
-            display: block;
-            margin-bottom: 12px;
-        }
-
         .ce-subtitle {
-            text-align: center;
             color: #64748b;
             font-size: 1rem;
             margin-bottom: 32px;
             font-weight: 500;
+            margin-top: 0;
         }
 
         .ce-welcome {
@@ -81,10 +93,12 @@
             color: #1e3a8a;
             font-size: 1.2rem;
             font-weight: 800;
+            display: block;
+            margin-bottom: 8px;
         }
 
         .ce-welcome p {
-            margin: 8px 0 0 0;
+            margin: 0;
             font-size: 1rem;
             color: #475569;
             line-height: 1.6;
@@ -99,10 +113,6 @@
             font-weight: 700;
             margin-bottom: 10px;
             font-size: 1rem;
-            color: #334155;
-        }
-
-        .ce-label.primary {
             color: #1e3a8a;
         }
 
@@ -120,24 +130,16 @@
             color: #0f172a;
         }
 
-        .ce-input:disabled {
-            background: #f1f5f9;
-            color: #64748b;
-            border-color: #cbd5e1;
-        }
-
         .ce-select {
             border-color: #cbd5e1;
             cursor: pointer;
             background: white;
         }
 
-        .ce-input:focus,
         .ce-select:focus {
             outline: none;
             border-color: #1e3a8a;
             box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.1);
-            background: white;
         }
 
         .ce-hint {
@@ -162,12 +164,6 @@
             border-radius: 16px;
             padding: 16px;
             text-align: center;
-            transition: all 0.2s;
-        }
-        
-        .grade-pill:hover {
-            border-color: #cbd5e1;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
 
         .grade-pill .pill-label {
@@ -201,30 +197,46 @@
             font-weight: 300;
         }
 
-        /* Subject preview */
-        #subjectPreview {
-            display: none;
-            background: #f8fafc;
-            border: 2px solid #e2e8f0;
-            border-radius: 16px;
-            padding: 24px;
-            margin-top: 24px;
-            animation: fadeSlideIn 0.3s ease;
+        /* Button */
+        .ce-btn {
+            background: #1e3a8a;
+            color: #fff;
+            border: none;
+            padding: 18px 24px;
+            font-size: 1.15rem;
+            font-weight: 800;
+            border-radius: 14px;
+            cursor: pointer;
+            width: 100%;
+            margin-top: auto;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
         }
 
-        @keyframes fadeSlideIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .ce-btn:hover:not(:disabled) {
+            background: #172554;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(30, 58, 138, 0.3);
         }
 
+        .ce-btn:disabled {
+            background: #cbd5e1;
+            box-shadow: none;
+            cursor: not-allowed;
+            color: #94a3b8;
+        }
+
+        /* Subject preview (Right Column) */
         .preview-title {
             font-weight: 800;
             color: #1e3a8a;
-            font-size: 1.1rem;
-            margin: 0 0 16px 0;
+            font-size: 1.3rem;
+            margin: 0 0 24px 0;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #e2e8f0;
         }
 
         .preview-title .badge {
@@ -232,16 +244,34 @@
             color: white;
             border-radius: 20px;
             padding: 4px 12px;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             font-weight: 800;
+        }
+
+        #subjectListContainer {
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 10px;
+        }
+        
+        #subjectListContainer::-webkit-scrollbar {
+            width: 6px;
+        }
+        #subjectListContainer::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        #subjectListContainer::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
         }
 
         .subject-list {
             list-style: none;
             margin: 0;
             padding: 0;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+            display: flex;
+            flex-direction: column;
             gap: 12px;
         }
 
@@ -251,62 +281,38 @@
             border-radius: 12px;
             padding: 16px;
             display: flex;
-            align-items: flex-start;
-            gap: 14px;
+            flex-direction: column;
             transition: all 0.2s;
         }
 
         .subject-item:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             border-color: #cbd5e1;
-        }
-
-        .subject-icon {
-            width: 42px;
-            height: 42px;
-            border-radius: 10px;
-            background: #eff6ff;
-            color: #1e3a8a;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.3rem;
-            flex-shrink: 0;
-        }
-
-        .subject-info {
-            flex: 1;
-            min-width: 0;
         }
 
         .subject-name {
             font-weight: 800;
             font-size: 1.05rem;
             color: #0f172a;
-            margin-bottom: 4px;
+            margin-bottom: 8px;
         }
 
         .teacher-name {
             font-size: 0.85rem;
             color: #475569;
             font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 4px;
+            margin-bottom: 8px;
         }
         
         .schedule-line {
             font-size: 0.82rem;
             color: #16a34a;
             font-weight: 600;
-            margin-top: 6px;
-            display: flex;
-            align-items: center;
-            gap: 4px;
             background: #f0fdf4;
-            padding: 4px 8px;
+            padding: 6px 10px;
             border-radius: 6px;
-            display: inline-flex;
+            display: inline-block;
+            align-self: flex-start;
         }
         
         .schedule-line.tba {
@@ -315,11 +321,9 @@
         }
 
         .no-subjects-msg, .preview-loading {
-            text-align: center;
             color: #64748b;
-            font-size: 1rem;
-            padding: 20px 0;
-            grid-column: 1 / -1;
+            font-size: 1.05rem;
+            padding: 40px 0;
             font-weight: 500;
         }
 
@@ -339,42 +343,18 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Button */
-        .ce-btn {
-            background: #1e3a8a;
-            color: #fff;
-            border: none;
-            padding: 18px 24px;
-            font-size: 1.15rem;
-            font-weight: 800;
-            border-radius: 14px;
-            cursor: pointer;
-            width: 100%;
-            margin-top: 16px;
-            transition: all 0.2s;
-            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
-        }
-
-        .ce-btn:hover:not(:disabled) {
-            background: #172554;
-            transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(30, 58, 138, 0.3);
-        }
-
-        .ce-btn:disabled {
-            background: #cbd5e1;
-            box-shadow: none;
-            cursor: not-allowed;
-            color: #94a3b8;
-        }
-        
         /* Mobile responsive */
-        @media (max-width: 600px) {
-            .subject-list {
-                grid-template-columns: 1fr;
-            }
+        @media (max-width: 900px) {
             .ce-card {
-                padding: 30px 24px;
+                flex-direction: column;
+            }
+            .ce-left {
+                max-width: 100%;
+                border-right: none;
+                border-bottom: 1px solid #e2e8f0;
+            }
+            .ce-right {
+                border-left: none;
             }
         }
 
@@ -394,83 +374,82 @@
 
 <body>
     <div class="ce-card">
-        <div class="ce-header">
-            <span class="ce-icon">&#127891;</span>
-            Continuing Enrollment
-        </div>
-        <p class="ce-subtitle">School Year Re-Enrollment Portal</p>
+        <!-- Left Side: Information and Form -->
+        <div class="ce-left">
+            <div class="ce-header">Continuing Enrollment</div>
+            <p class="ce-subtitle">School Year Re-Enrollment Portal</p>
 
-        <div class="flash-messages">
-            {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-            {% for category, msg in messages %}
-            <div class="flash {{ category }}">{{ msg }}</div>
-            {% endfor %}
-            {% endif %}
-            {% endwith %}
-        </div>
-
-        <div class="ce-welcome">
-            <strong>&#128075; Welcome back, {{ student_name }}!</strong>
-            <p>Choose your section for the upcoming school year. Your grade level will be automatically updated and
-                you'll be able to see your subjects and schedules right away.</p>
-        </div>
-
-        <!-- Grade Progress Pills -->
-        <div class="grade-pills">
-            <div class="grade-pill">
-                <div class="pill-label">Current Grade</div>
-                <div class="pill-value">{{ current_grade }}</div>
-            </div>
-            <div class="arrow-mid">&#8594;</div>
-            <div class="grade-pill next">
-                <div class="pill-label">Next Grade</div>
-                <div class="pill-value">{% if needs_strand %}Grade 11 (SHS){% else %}{{ next_grade }}{% endif %}</div>
-            </div>
-        </div>
-
-        <form method="POST">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            {% if needs_strand %}
-            <div class="ce-form-group">
-                <label class="ce-label primary">&#127919; Select Your SHS Strand (Grade 11)</label>
-                <select class="ce-select" name="grade_level" id="gradeSelect" required>
-                    <option value="" disabled selected>Select a strand...</option>
-                    {% for strand in shs_strands %}
-                    <option value="{{ strand }}">{{ strand }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            {% else %}
-            <input type="hidden" name="grade_level" value="{{ next_grade }}">
-            {% endif %}
-
-            <!-- Section Selection -->
-            <div class="ce-form-group">
-                <label class="ce-label primary">&#128218; Select Your Section</label>
-                <select class="ce-select" name="section_id" id="sectionSelect" required>
-                    <option value="" disabled selected>Select a section...</option>
-                </select>
-                <span class="ce-hint">Only sections for {{ next_grade }} are shown.</span>
+            <div class="flash-messages">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                {% for category, msg in messages %}
+                <div class="flash {{ category }}">{{ msg }}</div>
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
             </div>
 
-            <!-- Subject Preview Panel -->
-            <div id="subjectPreview">
-                <p class="preview-title">
-                    &#128214; Subjects & Schedules
-                    <span class="badge" id="subjectCount">0</span>
-                </p>
-                <div id="subjectListContainer">
-                    <div class="preview-loading">
-                        <span class="spinner"></span> Loading subjects...
-                    </div>
+            <div class="ce-welcome">
+                <strong>Welcome back, {{ student_name }}!</strong>
+                <p>Choose your section for the upcoming school year. Your grade level will be automatically updated and you'll be able to see your subjects and schedules right away.</p>
+            </div>
+
+            <!-- Grade Progress Pills -->
+            <div class="grade-pills">
+                <div class="grade-pill">
+                    <div class="pill-label">Current Grade</div>
+                    <div class="pill-value">{{ current_grade }}</div>
+                </div>
+                <div class="arrow-mid">&#8594;</div>
+                <div class="grade-pill next">
+                    <div class="pill-label">Next Grade</div>
+                    <div class="pill-value">{% if needs_strand %}Grade 11 (SHS){% else %}{{ next_grade }}{% endif %}</div>
                 </div>
             </div>
 
-            <button type="submit" class="ce-btn" id="submitBtn" disabled>
-                &#9989; Confirm Enrollment
-            </button>
-        </form>
+            <form method="POST" style="display: flex; flex-direction: column; flex: 1;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% if needs_strand %}
+                <div class="ce-form-group">
+                    <label class="ce-label">Select Your SHS Strand (Grade 11)</label>
+                    <select class="ce-select" name="grade_level" id="gradeSelect" required>
+                        <option value="" disabled selected>Select a strand...</option>
+                        {% for strand in shs_strands %}
+                        <option value="{{ strand }}">{{ strand }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                {% else %}
+                <input type="hidden" name="grade_level" value="{{ next_grade }}">
+                {% endif %}
+
+                <!-- Section Selection -->
+                <div class="ce-form-group">
+                    <label class="ce-label">Select Your Section</label>
+                    <select class="ce-select" name="section_id" id="sectionSelect" required>
+                        <option value="" disabled selected>Select a section...</option>
+                    </select>
+                    <span class="ce-hint">Only sections for {{ next_grade }} are shown.</span>
+                </div>
+
+                <button type="submit" class="ce-btn" id="submitBtn" disabled>
+                    Confirm Enrollment
+                </button>
+            </form>
+        </div>
+
+        <!-- Right Side: Subjects Preview -->
+        <div class="ce-right">
+            <p class="preview-title">
+                Subjects & Schedules
+                <span class="badge" id="subjectCount">0</span>
+            </p>
+            <div id="subjectListContainer">
+                <div class="no-subjects-msg">
+                    Please select a section to view the assigned subjects and schedules.
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Inline JSON of sections -->
@@ -486,7 +465,6 @@
 
             var gradeSelect = document.getElementById("gradeSelect");
             var sectionSelect = document.getElementById("sectionSelect");
-            var subjectPreview = document.getElementById("subjectPreview");
             var subjectListContainer = document.getElementById("subjectListContainer");
             var subjectCountBadge = document.getElementById("subjectCount");
             var submitBtn = document.getElementById("submitBtn");
@@ -494,7 +472,8 @@
             function updateSections() {
                 var selectedGrade = (gradeSelect ? gradeSelect.value : null) || nextGrade;
                 sectionSelect.innerHTML = '<option value="" disabled selected>Select a section...</option>';
-                subjectPreview.style.display = "none";
+                subjectListContainer.innerHTML = '<div class="no-subjects-msg">Please select a section to view the assigned subjects and schedules.</div>';
+                subjectCountBadge.textContent = "0";
                 submitBtn.disabled = true;
 
                 if (!selectedGrade) return;
@@ -523,7 +502,6 @@
             }
 
             function loadSubjects(sectionId) {
-                subjectPreview.style.display = "block";
                 subjectListContainer.innerHTML = '<div class="preview-loading"><span class="spinner"></span> Loading subjects...</div>';
                 subjectCountBadge.textContent = "...";
                 submitBtn.disabled = true;
@@ -532,7 +510,7 @@
                     .then(function (r) { return r.json(); })
                     .then(function (data) {
                         if (data.error) {
-                            subjectListContainer.innerHTML = '<p class="no-subjects-msg">&#9888; ' + data.error + '</p>';
+                            subjectListContainer.innerHTML = '<div class="no-subjects-msg">Error: ' + data.error + '</div>';
                             subjectCountBadge.textContent = "0";
                             submitBtn.disabled = false;
                             return;
@@ -541,28 +519,26 @@
                         subjectCountBadge.textContent = subjects.length;
 
                         if (subjects.length === 0) {
-                            subjectListContainer.innerHTML = '<p class="no-subjects-msg">&#128219; No subjects assigned to this section yet.<br><small>Check back after the admin configures the schedule.</small></p>';
+                            subjectListContainer.innerHTML = '<div class="no-subjects-msg">No subjects assigned to this section yet.<br><small>Check back after the admin configures the schedule.</small></div>';
                         } else {
-                            var icons = ["&#128216;", "&#128215;", "&#128217;", "&#128213;", "&#128211;", "&#128212;", "&#128210;", "&#128195;", "&#128196;", "&#128209;"];
                             var ul = document.createElement("ul");
                             ul.className = "subject-list";
-                            subjects.forEach(function (subj, idx) {
-                                var icon = icons[idx % icons.length];
+                            subjects.forEach(function (subj) {
                                 var teacherLine = "";
                                 if (subj.teacher_full_name) {
                                     var prefix = subj.teacher_gender === "female" ? "Ms. " : (subj.teacher_gender === "male" ? "Mr. " : "");
-                                    teacherLine = '<div class="teacher-name">&#128104;&#8205;&#127979; ' + prefix + subj.teacher_full_name + '</div>';
+                                    teacherLine = '<div class="teacher-name">Teacher: ' + prefix + subj.teacher_full_name + '</div>';
                                 } else {
-                                    teacherLine = '<div class="teacher-name" style="color:#94a3b8;">&#128104;&#8205;&#127979; Teacher TBA</div>';
+                                    teacherLine = '<div class="teacher-name" style="color:#94a3b8;">Teacher TBA</div>';
                                 }
                                 
                                 var schedText = subj.schedule_display || "TBA";
                                 var schedClass = schedText === "TBA" ? "schedule-line tba" : "schedule-line";
-                                var scheduleLine = '<div class="' + schedClass + '">&#128338; ' + schedText + '</div>';
+                                var scheduleLine = '<div class="' + schedClass + '">' + schedText + '</div>';
 
                                 var li = document.createElement("li");
                                 li.className = "subject-item";
-                                li.innerHTML = '<div class="subject-icon">' + icon + '</div><div class="subject-info"><div class="subject-name">' + subj.subject_name + '</div>' + teacherLine + scheduleLine + '</div>';
+                                li.innerHTML = '<div class="subject-name">' + subj.subject_name + '</div>' + teacherLine + scheduleLine;
                                 ul.appendChild(li);
                             });
                             subjectListContainer.innerHTML = "";
@@ -571,34 +547,31 @@
                         submitBtn.disabled = false;
                     })
                     .catch(function () {
-                        subjectListContainer.innerHTML = '<p class="no-subjects-msg">&#9888; Could not load subjects. You may still continue.</p>';
+                        subjectListContainer.innerHTML = '<div class="no-subjects-msg">Could not load subjects. You may still continue.</div>';
                         subjectCountBadge.textContent = "?";
                         submitBtn.disabled = false;
                     });
             }
 
-            // Strand dropdown change re-populates sections (SHS only)
             if (needsStrand && gradeSelect && gradeSelect.tagName === "SELECT") {
                 gradeSelect.addEventListener("change", updateSections);
             }
 
-            // Section change triggers subject load
             sectionSelect.addEventListener("change", function () {
                 var val = this.value;
                 if (val && !isNaN(parseInt(val, 10))) {
                     loadSubjects(parseInt(val, 10));
                 } else {
-                    subjectPreview.style.display = "none";
+                    subjectListContainer.innerHTML = '<div class="no-subjects-msg">Please select a section to view the assigned subjects and schedules.</div>';
+                    subjectCountBadge.textContent = "0";
                     submitBtn.disabled = true;
                 }
             });
 
-            // Auto-populate sections on load for non-SHS
             if (!needsStrand) {
                 updateSections();
             }
         });
     </script>
 </body>
-
 </html>
