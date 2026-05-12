@@ -793,7 +793,16 @@ def api_section_subjects_student(section_id):
                 sub.name        AS subject_name,
                 u.full_name     AS teacher_full_name,
                 u.username      AS teacher_username,
-                u.gender        AS teacher_gender
+                u.gender        AS teacher_gender,
+                (
+                    SELECT json_agg(json_build_object(
+                        'day', sc.day_of_week,
+                        'start_time', sc.start_time,
+                        'end_time', sc.end_time
+                    ))
+                    FROM schedules sc
+                    WHERE sc.section_id = st.section_id AND sc.subject_id = st.subject_id
+                ) as schedules_json
             FROM section_teachers st
             JOIN subjects sub   ON st.subject_id  = sub.subject_id
             LEFT JOIN users u   ON st.teacher_id  = u.user_id
@@ -801,10 +810,58 @@ def api_section_subjects_student(section_id):
             ORDER BY sub.name
         """, (section_id,))
         rows = cursor.fetchall() or []
+        
+        formatted_subjects = []
+        for r in rows:
+            subject = dict(r)
+            schedules = subject.pop('schedules_json', None)
+            schedule_display = "TBA"
+            
+            if schedules:
+                # Group days by identical time slots
+                time_groups = {}
+                for sc in schedules:
+                    if sc and sc.get('start_time') and sc.get('end_time'):
+                        # Convert times to AM/PM format
+                        try:
+                            from datetime import datetime
+                            st_str = sc['start_time']
+                            et_str = sc['end_time']
+                            # Handle different time string formats
+                            if len(st_str) == 5: st_str += ":00"
+                            if len(et_str) == 5: et_str += ":00"
+                            
+                            st_obj = datetime.strptime(st_str, "%H:%M:%S")
+                            et_obj = datetime.strptime(et_str, "%H:%M:%S")
+                            
+                            st_ampm = st_obj.strftime("%I:%M %p").lstrip('0')
+                            et_ampm = et_obj.strftime("%I:%M %p").lstrip('0')
+                            
+                            time_key = f"{st_ampm} - {et_ampm}"
+                            
+                            # Abbreviate day (e.g., Monday -> Mon)
+                            day = sc['day'][:3]
+                            
+                            if time_key not in time_groups:
+                                time_groups[time_key] = []
+                            time_groups[time_key].append(day)
+                        except Exception as e:
+                            pass
+                
+                if time_groups:
+                    # Format as: Mon/Wed/Fri 8:00 AM - 9:00 AM, Tue/Thu 1:00 PM - 2:00 PM
+                    display_parts = []
+                    for time_key, days in time_groups.items():
+                        days_str = "/".join(days)
+                        display_parts.append(f"{days_str} {time_key}")
+                    schedule_display = " | ".join(display_parts)
+                    
+            subject['schedule_display'] = schedule_display
+            formatted_subjects.append(subject)
 
         return {
             "section_name": sec["section_name"],
-            "subjects": [dict(r) for r in rows]
+            "subjects": formatted_subjects
         }
     finally:
         cursor.close()
