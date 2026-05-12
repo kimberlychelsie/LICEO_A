@@ -396,8 +396,14 @@ def registrar_enrollments():
                     LIMIT 1) AS existing_parent_username
             FROM enrollments e
             LEFT JOIN sections s          ON s.section_id    = e.section_id
-            LEFT JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
-            LEFT JOIN parent_student ps   ON ps.student_id   = e.enrollment_id
+            LEFT JOIN student_accounts sa ON sa.enrollment_id IN (
+                SELECT e2.enrollment_id FROM enrollments e2 
+                WHERE e2.branch_enrollment_no = e.branch_enrollment_no AND e2.branch_id = e.branch_id
+            )
+            LEFT JOIN parent_student ps ON ps.student_id IN (
+                SELECT e3.enrollment_id FROM enrollments e3 
+                WHERE e3.branch_enrollment_no = e.branch_enrollment_no AND e3.branch_id = e.branch_id
+            )
             LEFT JOIN users u             ON u.user_id        = ps.parent_id
             WHERE {enrolled_where}
             ORDER BY e.grade_level ASC, e.student_name ASC
@@ -1308,7 +1314,10 @@ def registrar_students_by_grade():
             FROM enrollments e
             LEFT JOIN sections s ON s.section_id = e.section_id
             LEFT JOIN enrollment_documents d ON d.enrollment_id = e.enrollment_id
-            LEFT JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
+            LEFT JOIN student_accounts sa ON sa.enrollment_id IN (
+                SELECT e2.enrollment_id FROM enrollments e2 
+                WHERE e2.branch_enrollment_no = e.branch_enrollment_no AND e2.branch_id = e.branch_id
+            )
             WHERE e.branch_id = %s AND e.year_id = %s
               AND e.status IN ('enrolled', 'approved', 'open_for_enrollment', 'completed')
         """
