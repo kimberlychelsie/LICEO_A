@@ -76,8 +76,8 @@ def registrar_home():
         cursor.execute("""
             SELECT
                 COUNT(*) FILTER (WHERE status = 'pending')                                     AS pending_count,
-                COUNT(*) FILTER (WHERE status IN ('enrolled','approved','open_for_enrollment')) AS enrolled_count,
-                COUNT(*) FILTER (WHERE status IN ('enrolled','approved','open_for_enrollment')
+                COUNT(*) FILTER (WHERE status IN ('enrolled','approved','open_for_enrollment','completed')) AS enrolled_count,
+                COUNT(*) FILTER (WHERE status IN ('enrolled','approved','open_for_enrollment','completed')
                                    AND section_id IS NULL)                                     AS no_section_count,
                 COUNT(*) FILTER (WHERE status = 'open_for_enrollment')                         AS reenroll_count
             FROM enrollments
@@ -91,7 +91,7 @@ def registrar_home():
             SELECT COUNT(*) AS cnt FROM enrollments e
             WHERE e.branch_id = %s
               AND e.year_id = %s
-              AND e.status IN ('enrolled','approved','open_for_enrollment')
+              AND e.status IN ('enrolled','approved','open_for_enrollment','completed')
               AND NOT EXISTS (
                   SELECT 1 FROM student_accounts sa WHERE sa.enrollment_id = e.enrollment_id
               )
@@ -113,7 +113,7 @@ def registrar_home():
             SELECT grade_level, COUNT(*) AS student_count
             FROM enrollments
             WHERE branch_id = %s AND year_id = %s
-              AND status IN ('enrolled', 'approved', 'open_for_enrollment')
+              AND status IN ('enrolled', 'approved', 'open_for_enrollment', 'completed')
             GROUP BY grade_level
             ORDER BY grade_level
         """, (branch_id, active_year_id))
@@ -359,7 +359,7 @@ def registrar_enrollments():
             new_enrollments.append(e)
 
         # --- ENROLLED students list (VIEW selected year) with Pagination ---
-        enrolled_where = "e.branch_id=%s AND e.year_id=%s AND e.status IN ('enrolled', 'open_for_enrollment', 'approved')"
+        enrolled_where = "e.branch_id=%s AND e.year_id=%s AND e.status IN ('enrolled', 'open_for_enrollment', 'approved', 'completed')"
         enrolled_params = [branch_id, selected_year_id]
         if q_enrolled:
             enrolled_where += " AND (e.student_name ILIKE %s OR CAST(e.branch_enrollment_no AS TEXT) ILIKE %s)"
@@ -408,11 +408,9 @@ def registrar_enrollments():
         cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s AND name NOT IN ('Grade 11', 'Grade 12') ORDER BY display_order", (branch_id,))
         grade_levels = [row["name"] for row in cursor.fetchall()]
 
-        # Re-enrollment open should only consider ACTIVE year data (otherwise confusing)
-        reenrollment_open = False
-        if can_modify:
-            reenrollment_open = any(e["status"] == "open_for_enrollment" for e in enrolled_students)
-
+        # Check if re-enrollment is open anywhere in the branch
+        cursor.execute("SELECT 1 FROM enrollments WHERE branch_id = %s AND status = 'open_for_enrollment' LIMIT 1", (branch_id,))
+        reenrollment_open = bool(cursor.fetchone())
         # Section options stay ACTIVE year only (since assigning sections is an active-year operation)
         cursor.execute("""
             SELECT s.section_id, s.section_name, g.name AS grade_level_name,
@@ -571,13 +569,23 @@ def toggle_reenrollment():
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         if action == "open":
-            cursor.execute("""
-                UPDATE enrollments SET status = 'open_for_enrollment'
-                WHERE branch_id = %s AND status IN ('enrolled', 'approved')
-            """, (branch_id,))
-            count = cursor.rowcount
-            db.commit()
-            flash(f"Re-enrollment opened for {count} student(s).", "success")
+            # Get the active school year
+            cursor.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
+            active_year = cursor.fetchone()
+            active_year_id = active_year["year_id"] if active_year else None
+
+            if active_year_id:
+                cursor.execute("""
+                    UPDATE enrollments SET status = 'open_for_enrollment'
+                    WHERE branch_id = %s 
+                      AND status IN ('enrolled', 'approved')
+                      AND (year_id IS NULL OR year_id != %s)
+                """, (branch_id, active_year_id))
+                count = cursor.rowcount
+                db.commit()
+                flash(f"Re-enrollment opened for {count} continuing student(s).", "success")
+            else:
+                flash("No active school year found. Please set an active school year first.", "error")
         else:
             cursor.execute("""
                 UPDATE enrollments SET status = 'enrolled'
@@ -616,7 +624,7 @@ def create_student_account(enrollment_id):
     try:
         cursor.execute("""
             SELECT * FROM enrollments
-            WHERE enrollment_id=%s AND branch_id=%s AND status IN ('approved', 'enrolled', 'open_for_enrollment')
+            WHERE enrollment_id=%s AND branch_id=%s AND status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
         """, (enrollment_id, branch_id))
         enrollment = cursor.fetchone()
 
@@ -771,7 +779,7 @@ def create_parent_account(enrollment_id):
     try:
         cursor.execute("""
             SELECT * FROM enrollments
-            WHERE enrollment_id=%s AND branch_id=%s AND status IN ('approved', 'enrolled', 'open_for_enrollment')
+            WHERE enrollment_id=%s AND branch_id=%s AND status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
         """, (enrollment_id, branch_id))
         enrollment = cursor.fetchone()
 
@@ -967,7 +975,7 @@ def link_parent_account(enrollment_id):
         cursor.execute("""
             SELECT * FROM enrollments
             WHERE enrollment_id=%s AND branch_id=%s
-              AND status IN ('approved', 'enrolled', 'open_for_enrollment')
+              AND status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
         """, (enrollment_id, branch_id))
         enrollment = cursor.fetchone()
 
@@ -1172,7 +1180,7 @@ def registrar_profile_pictures():
                        s.section_name, e.profile_image AS student_pic, e.status
                 FROM enrollments e
                 LEFT JOIN sections s ON e.section_id = s.section_id
-                WHERE e.branch_id = %s AND e.status IN ('enrolled', 'approved', 'open_for_enrollment')
+                WHERE e.branch_id = %s AND e.status IN ('enrolled', 'approved', 'open_for_enrollment', 'completed')
             """
             params = [branch_id]
             
@@ -1302,7 +1310,7 @@ def registrar_students_by_grade():
             LEFT JOIN enrollment_documents d ON d.enrollment_id = e.enrollment_id
             LEFT JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
             WHERE e.branch_id = %s AND e.year_id = %s
-              AND e.status IN ('enrolled', 'approved', 'open_for_enrollment')
+              AND e.status IN ('enrolled', 'approved', 'open_for_enrollment', 'completed')
         """
         params = [branch_id, year_filter]
 
