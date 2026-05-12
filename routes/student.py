@@ -733,14 +733,64 @@ def continuing_enrolled_confirmation(branch_id):
                     sub.name        AS subject_name,
                     u.full_name     AS teacher_full_name,
                     u.username      AS teacher_username,
-                    u.gender        AS teacher_gender
+                    u.gender        AS teacher_gender,
+                    (
+                        SELECT json_agg(json_build_object(
+                            'day', sc.day_of_week,
+                            'start_time', sc.start_time,
+                            'end_time', sc.end_time
+                        ))
+                        FROM schedules sc
+                        WHERE sc.section_id = st.section_id AND sc.subject_id = st.subject_id
+                    ) as schedules_json
                 FROM section_teachers st
                 JOIN subjects sub   ON st.subject_id  = sub.subject_id
                 LEFT JOIN users u   ON st.teacher_id  = u.user_id
                 WHERE st.section_id = %s
                 ORDER BY sub.name
             """, (section_id,))
-            subjects = cursor.fetchall() or []
+            rows = cursor.fetchall() or []
+            
+            for r in rows:
+                subject = dict(r)
+                schedules = subject.pop('schedules_json', None)
+                schedule_display = "TBA"
+                
+                if schedules:
+                    time_groups = {}
+                    for sc in schedules:
+                        if sc and sc.get('start_time') and sc.get('end_time'):
+                            try:
+                                from datetime import datetime
+                                st_str = sc['start_time']
+                                et_str = sc['end_time']
+                                if len(st_str) == 5: st_str += ":00"
+                                if len(et_str) == 5: et_str += ":00"
+                                
+                                st_obj = datetime.strptime(st_str, "%H:%M:%S")
+                                et_obj = datetime.strptime(et_str, "%H:%M:%S")
+                                
+                                st_ampm = st_obj.strftime("%I:%M %p").lstrip('0')
+                                et_ampm = et_obj.strftime("%I:%M %p").lstrip('0')
+                                
+                                time_key = f"{st_ampm} - {et_ampm}"
+                                day = sc['day'][:3]
+                                
+                                if time_key not in time_groups:
+                                    time_groups[time_key] = []
+                                time_groups[time_key].append(day)
+                            except Exception:
+                                pass
+                    
+                    if time_groups:
+                        display_parts = []
+                        for time_key, days in time_groups.items():
+                            days_str = "/".join(days)
+                            display_parts.append(f"{days_str} {time_key}")
+                        schedule_display = " | ".join(display_parts)
+                        
+                subject['schedule_display'] = schedule_display
+                subjects.append(subject)
 
         enrollment_id = session.get("enrollment_id")
         student_name = ""
