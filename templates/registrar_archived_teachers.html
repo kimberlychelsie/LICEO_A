@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Archived teachers – Registrar{% endblock %}
+
+{% block styles %}
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+:root {
+  --p: #1e3a8a; --a: #3b82f6; --bg: #f8fafc; --card: #ffffff;
+  --bd: #e2e8f0; --tx: #0f172a; --mu: #64748b;
+  --ok: #10b981; --warn: #f59e0b; --err: #ef4444;
+}
+body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
+.wrap { max-width: 1100px; margin: 0 auto; padding: 40px 28px; }
+
+.page-hero {
+  background: linear-gradient(135deg, #334155 0%, #1e293b 100%);
+  border-radius: 20px; padding: 28px 32px; color: #fff; margin-bottom: 28px;
+  box-shadow: 0 12px 28px -8px rgba(15,23,42,.35);
+}
+.page-hero h1 { font-size: 1.75rem; font-weight: 900; margin: 0 0 8px; letter-spacing: -.03em; }
+.page-hero p { margin: 0; opacity: .85; font-size: .95rem; font-weight: 600; }
+.page-hero a { color: #93c5fd; font-weight: 700; text-decoration: none; }
+.page-hero a:hover { text-decoration: underline; }
+
+.ctrl-bar {
+  background: var(--card); border: 1px solid var(--bd); border-radius: 16px;
+  padding: 16px 20px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end;
+}
+.fg label { display: block; font-size: .72rem; font-weight: 800; color: var(--mu); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+.fc {
+  width: 100%; padding: 11px 14px; border-radius: 10px; border: 1.5px solid var(--bd);
+  font-family: inherit; font-size: .9rem; font-weight: 600; color: var(--tx); background: #fcfcfc; box-sizing: border-box;
+}
+.btn-primary {
+  background: var(--p); color: #fff; border: none; border-radius: 10px;
+  padding: 11px 20px; font-weight: 800; font-size: .88rem; cursor: pointer;
+}
+.btn-primary:hover { background: var(--a); }
+
+.table-wrap {
+  background: var(--card); border: 1px solid var(--bd); border-radius: 20px;
+  overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,.05);
+  display: flex; flex-direction: column; max-height: min(68vh, 720px);
+}
+.table-scroll-inner { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; }
+.list-tip { flex-shrink: 0; padding: 14px 20px 0; margin: 0; font-size: .85rem; color: var(--mu); font-weight: 600; line-height: 1.45; }
+
+.mt { width: 100%; border-collapse: collapse; }
+.mt th { padding: 14px 18px; background: #f8fafc; font-size: .72rem; font-weight: 800; color: var(--mu); text-transform: uppercase; letter-spacing: .05em; border-bottom: 2px solid var(--bd); text-align: left; }
+.mt td { padding: 14px 18px; border-bottom: 1px solid var(--bd); vertical-align: middle; font-size: .9rem; }
+.mt tbody tr:last-child td { border-bottom: none; }
+
+.avatar { width: 40px; height: 40px; border-radius: 12px; background: linear-gradient(135deg, #475569, #64748b); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0; }
+.uname { font-weight: 800; color: var(--tx); }
+.uemail { font-size: .78rem; color: var(--mu); margin-top: 2px; }
+
+.badge { padding: 4px 10px; border-radius: 8px; font-size: .68rem; font-weight: 800; text-transform: uppercase; }
+.badge-advisory { background: #eff6ff; color: #1d4ed8; }
+.badge-subject  { background: #fdf4ff; color: #7e22ce; }
+.badge-active   { background: #ecfdf5; color: #065f46; }
+.badge-inactive { background: #fef2f2; color: #991b1b; }
+
+.btn-del {
+  padding: 8px 14px; border-radius: 8px; border: 1px solid #fecaca; background: #fff;
+  color: var(--err); font-weight: 800; font-size: .78rem; cursor: pointer; font-family: inherit;
+}
+.btn-del:hover { background: #fef2f2; }
+
+.empty-state { padding: 48px 20px; text-align: center; color: var(--mu); font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wrap">
+  <div class="page-hero">
+    <h1>Archived teachers</h1>
+    <p>Accounts removed from the main list. <strong>Delete</strong> here only if you are sure — this cannot be undone.</p>
+    <p style="margin-top:12px;"><a href="/registrar/manage-teachers">← Back to teachers</a></p>
+  </div>
+
+  <div class="ctrl-bar">
+    <form method="GET" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+      <div class="fg">
+        <label>Search</label>
+        <input type="text" class="fc" name="search" placeholder="Name or username" value="{{ filter_search }}" style="width:240px;">
+      </div>
+      <button type="submit" class="btn-primary">Search</button>
+    </form>
+  </div>
+
+  <div class="table-wrap">
+    {% if teachers %}
+    <p class="list-tip">These logins are paused. Use <strong>Delete</strong> only when the account should be erased from the system.</p>
+    <div class="table-scroll-inner">
+    <table class="mt">
+      <thead>
+        <tr>
+          <th>Teacher</th>
+          <th>Role</th>
+          <th>Subject / level</th>
+          <th>Login</th>
+          <th style="text-align:right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in teachers %}
+        <tr>
+          <td>
+            <div style="display:flex; align-items:center; gap:12px;">
+              <div class="avatar">{{ (t.full_name or 'T')[0]|upper }}</div>
+              <div>
+                <div class="uname">{{ t.full_name or '—' }}</div>
+                <div class="uemail">{{ t.email or t.username }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="badge {{ 'badge-advisory' if t.teacher_type == 'advisory' else 'badge-subject' }}">
+              {{ 'Adviser' if t.teacher_type == 'advisory' else 'Subject' }}
+            </span>
+          </td>
+          <td style="font-weight:600; color:var(--tx);">
+            {% if t.specialization_subject %}
+              <span style="color:var(--p);">{{ t.specialization_subject }}</span>
+              <div style="font-size:.72rem; color:var(--mu); margin-top:2px;">
+                {% if t.department == 'elementary' %}Elementary{% elif t.department == 'jhs' %}Junior high{% elif t.department == 'shs' %}Senior high{% else %}{{ t.department or '—' }}{% endif %}
+              </div>
+            {% else %}<span style="color:var(--mu);">—</span>{% endif %}
+          </td>
+          <td>
+            <span class="badge {{ 'badge-active' if t.status == 'active' else 'badge-inactive' }}">
+              {{ 'Active' if t.status == 'active' else 'Paused' }}
+            </span>
+          </td>
+          <td style="text-align:right;">
+            <form method="POST" action="/registrar/manage-teachers/archive/{{ t.user_id }}/delete" style="margin:0; display:inline;" onsubmit="return confirm('Permanently delete this teacher account? This cannot be undone.');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn-del">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    </div>
+    {% else %}
+    <div class="empty-state">No archived teachers. Use <strong>Manage → Archive</strong> on the main teachers page.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
