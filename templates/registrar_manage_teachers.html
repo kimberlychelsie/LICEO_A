@@ -347,17 +347,17 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
         </div>
       </div>
 
-      <div class="optional-block" id="subject-fields-wrap">
-        <p class="optional-title">Subject and school level <span id="subject-required-tag">(required for subject teachers)</span></p>
-        <p class="field-hint" id="subject-fields-intro" style="margin-top:0;">For subject teachers, this must match what they teach. For advisers it is optional but helps when linking classes later.</p>
+      <div class="optional-block" id="subject-fields-wrap" style="border-style: solid; border-color: var(--bd);">
+        <p class="optional-title">Subject and school level <span id="subject-required-tag">(required)</span></p>
+        <p class="field-hint" id="subject-fields-intro" style="margin-top:0;">Enter the subject and level to identify what subject they handle.</p>
         <div class="frow" style="margin-bottom:0;">
           <div class="fg">
-            <label id="spec-label">Subject they teach</label>
-            <input type="text" class="fc" name="specialization_subject" id="specialization_subject" placeholder="e.g. Math, English, Science">
+            <label id="spec-label">Subject they teach *</label>
+            <input type="text" class="fc" name="specialization_subject" id="specialization_subject" placeholder="e.g. Math, English, Science" required>
           </div>
           <div class="fg">
-            <label id="dept-label">School level</label>
-            <select class="fc" name="department" id="department_select">
+            <label id="dept-label">School level *</label>
+            <select class="fc" name="department" id="department_select" required>
               <option value="">Choose level…</option>
               <option value="elementary">Elementary (Nursery to Grade 6)</option>
               <option value="jhs">Junior high (Grades 7–10)</option>
@@ -607,17 +607,17 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
           </select>
         </div>
       </div>
-      <div class="optional-block" id="edit-subject-wrap">
-        <p class="optional-title">Subject and school level <span id="edit-subject-tag"></span></p>
-        <p class="field-hint" id="edit-subject-intro" style="margin-top:0;"></p>
+      <div class="optional-block" id="edit-subject-wrap" style="border-style: solid; border-color: var(--bd);">
+        <p class="optional-title">Subject and school level <span id="edit-subject-tag">(required)</span></p>
+        <p class="field-hint" id="edit-subject-intro" style="margin-top:0;">Enter the subject and level to identify what subject they handle.</p>
         <div class="frow" style="margin-bottom:0;">
           <div class="fg">
-            <label id="edit-spec-label">Subject</label>
-            <input type="text" class="fc" name="specialization_subject" id="edit_specialization_subject" placeholder="e.g. Math">
+            <label id="edit-spec-label">Subject they teach *</label>
+            <input type="text" class="fc" name="specialization_subject" id="edit_specialization_subject" placeholder="e.g. Math" required>
           </div>
           <div class="fg">
-            <label id="edit-dept-label">School level</label>
-            <select class="fc" name="department" id="edit_department_select">
+            <label id="edit-dept-label">School level *</label>
+            <select class="fc" name="department" id="edit_department_select" required>
               <option value="">Choose level…</option>
               <option value="elementary">Elementary (Nursery to Grade 6)</option>
               <option value="jhs">Junior high (Grades 7–10)</option>
@@ -722,28 +722,19 @@ function setEditFormType(type) {
   const wrap = document.getElementById('edit-subject-wrap');
   const specLabel = document.getElementById('edit-spec-label');
   const deptLabel = document.getElementById('edit-dept-label');
+  
   gradeWrap.style.display = type === 'advisory' ? '' : 'none';
   gradeSelect.disabled = type !== 'advisory';
-  if (type === 'advisory') {
-    gradeSelect.required = true;
-    subjSpec.required = false;
-    subjDept.required = false;
-    tag.textContent = '(optional)';
-    intro.textContent = 'Optional. Helps narrow the list when you assign classes.';
-    wrap.style.borderStyle = 'dashed';
-    specLabel.textContent = 'Main subject (optional)';
-    deptLabel.textContent = 'School level (optional)';
-  } else {
-    gradeSelect.required = false;
-    subjSpec.required = true;
-    subjDept.required = true;
-    tag.textContent = '(required)';
-    intro.textContent = 'Must match what they teach so assigning classes stays accurate.';
-    wrap.style.borderStyle = 'solid';
-    wrap.style.borderColor = 'var(--bd)';
-    specLabel.textContent = 'Subject they teach *';
-    deptLabel.textContent = 'School level *';
-  }
+  gradeSelect.required = type === 'advisory';
+  
+  subjSpec.required = true;
+  subjDept.required = true;
+  tag.textContent = '(required)';
+  intro.textContent = 'Enter the subject and level to identify what subject they handle.';
+  wrap.style.borderStyle = 'solid';
+  wrap.style.borderColor = 'var(--bd)';
+  specLabel.textContent = 'Subject they teach *';
+  deptLabel.textContent = 'School level *';
 }
 
 function setType(type) {
@@ -761,28 +752,17 @@ function setType(type) {
 
   gradeWrap.style.display = type === 'advisory' ? '' : 'none';
   gradeSelect.disabled = type !== 'advisory';
+  gradeSelect.required = type === 'advisory';
   document.querySelectorAll('[name="teacher_type"]').forEach(r => { r.checked = (r.value === type); });
 
-  if (type === 'advisory') {
-    gradeSelect.required = true;
-    subjSpec.required = false;
-    subjDept.required = false;
-    tag.textContent = '(optional — helps when linking classes)';
-    intro.textContent = 'If you add subject and school level here, the list when linking classes will be shorter and easier to use.';
-    wrap.style.borderStyle = 'dashed';
-    specLabel.textContent = 'Main subject (optional)';
-    deptLabel.textContent = 'School level (optional)';
-  } else {
-    gradeSelect.required = false;
-    subjSpec.required = true;
-    subjDept.required = true;
-    tag.textContent = '(required)';
-    intro.textContent = 'Enter the subject and level so this teacher only sees the right class slots.';
-    wrap.style.borderStyle = 'solid';
-    wrap.style.borderColor = 'var(--bd)';
-    specLabel.textContent = 'Subject they teach *';
-    deptLabel.textContent = 'School level *';
-  }
+  subjSpec.required = true;
+  subjDept.required = true;
+  tag.textContent = '(required)';
+  intro.textContent = 'Enter the subject and level to identify what subject they handle.';
+  wrap.style.borderStyle = 'solid';
+  wrap.style.borderColor = 'var(--bd)';
+  specLabel.textContent = 'Subject they teach *';
+  deptLabel.textContent = 'School level *';
 }
 
 // ── ASSIGN MODAL ──

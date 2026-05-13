@@ -3087,13 +3087,12 @@ def registrar_manage_teachers():
                 if not grade_level_id:
                     flash("Homeroom teachers need a grade level. Pick one from the list.", "error")
                     return redirect("/registrar/manage-teachers")
-            if teacher_type == "subject":
-                if not spec_subject:
-                    flash("Please enter the subject they teach (e.g. Math, English).", "error")
-                    return redirect("/registrar/manage-teachers")
-                if not department:
-                    flash("Please pick their school level (Elementary, JHS, or SHS).", "error")
-                    return redirect("/registrar/manage-teachers")
+            if not spec_subject:
+                flash("Please enter the subject they teach (e.g. Math, English).", "error")
+                return redirect("/registrar/manage-teachers")
+            if not department:
+                flash("Please pick their school level (Elementary, JHS, or SHS).", "error")
+                return redirect("/registrar/manage-teachers")
 
             cursor.execute("SELECT branch_code FROM branches WHERE branch_id=%s", (branch_id,))
             b_row = cursor.fetchone()
@@ -3285,13 +3284,12 @@ def registrar_edit_teacher(user_id):
     if teacher_type == "advisory" and not grade_level_id:
         flash("Adviser accounts need a grade level.", "error")
         return redirect("/registrar/manage-teachers")
-    if teacher_type == "subject":
-        if not spec_subject:
-            flash("Please enter the subject they teach.", "error")
-            return redirect("/registrar/manage-teachers")
-        if not department:
-            flash("Please pick their school level.", "error")
-            return redirect("/registrar/manage-teachers")
+    if not spec_subject:
+        flash("Please enter the subject they teach.", "error")
+        return redirect("/registrar/manage-teachers")
+    if not department:
+        flash("Please pick their school level.", "error")
+        return redirect("/registrar/manage-teachers")
 
     primary_grade = grade_level_id if teacher_type == "advisory" else None
 
