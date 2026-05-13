@@ -187,16 +187,22 @@ def super_admin_branches():
         try:
             cursor.execute("BEGIN;")
 
-            cursor.execute("SELECT 1 FROM branches WHERE branch_name=%s", (branch_name,))
+            cursor.execute("SELECT 1 FROM branches WHERE branch_name ILIKE %s", (branch_name,))
             if cursor.fetchone():
                 db.rollback()
                 flash("Branch name already exists.", "error")
                 return redirect(url_for("super_admin.super_admin_branches"))
 
-            cursor.execute("SELECT 1 FROM branches WHERE branch_code=%s", (branch_code,))
+            cursor.execute("SELECT 1 FROM branches WHERE branch_code ILIKE %s", (branch_code,))
             if cursor.fetchone():
                 db.rollback()
                 flash("Branch code already exists.", "error")
+                return redirect(url_for("super_admin.super_admin_branches"))
+                
+            cursor.execute("SELECT 1 FROM users WHERE email ILIKE %s", (admin_email,))
+            if cursor.fetchone():
+                db.rollback()
+                flash("Email address is already in use by another user.", "error")
                 return redirect(url_for("super_admin.super_admin_branches"))
 
             cursor.execute(
@@ -330,11 +336,27 @@ def super_admin_edit_branch(branch_id):
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         cursor.execute(
-            "SELECT branch_id FROM branches WHERE branch_code = %s AND branch_id != %s",
+            "SELECT branch_id FROM branches WHERE branch_code ILIKE %s AND branch_id != %s",
             (branch_code, branch_id)
         )
         if cursor.fetchone():
             flash(f"Branch code '{branch_code}' is already used by another branch.", "error")
+            return redirect(url_for("super_admin.super_admin_branches"))
+            
+        cursor.execute(
+            "SELECT branch_id FROM branches WHERE branch_name ILIKE %s AND branch_id != %s",
+            (branch_name, branch_id)
+        )
+        if cursor.fetchone():
+            flash(f"Branch name '{branch_name}' is already used by another branch.", "error")
+            return redirect(url_for("super_admin.super_admin_branches"))
+            
+        cursor.execute(
+            "SELECT user_id FROM users WHERE email ILIKE %s AND branch_id != %s AND role = 'branch_admin'",
+            (admin_email, branch_id)
+        )
+        if cursor.fetchone():
+            flash("Email address is already in use by another admin.", "error")
             return redirect(url_for("super_admin.super_admin_branches"))
 
         cursor.execute("""
