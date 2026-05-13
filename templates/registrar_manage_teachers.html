@@ -362,9 +362,9 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
           <div class="frow" id="advisory-grade-section">
             <div class="fg" style="max-width: 300px;">
               <label id="grade-label">Advisory Grade *</label>
-              <select class="fc" name="grade_level" id="grade_level_select">
+              <select class="fc" name="grade_level" id="grade_level_select" onchange="syncDeptFromGrade()">
                 {% for g in grades %}
-                <option value="{{ g.id }}">{{ g.name }}</option>
+                <option value="{{ g.id }}" data-name="{{ g.name }}">{{ g.name }}</option>
                 {% endfor %}
               </select>
               <p class="field-hint" id="grade-hint">Pick the primary grade this teacher will advise.</p>
@@ -379,12 +379,13 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
             </div>
             <div class="fg" style="max-width: 300px;">
               <label id="dept-label">School level *</label>
-              <select class="fc" name="department" id="department_select" required>
+              <select class="fc" name="department" id="department_select" required onchange="validateDeptMatch()">
                 <option value="elementary" selected>Elementary (Nursery to Grade 6)</option>
                 <option value="jhs">Junior high (Grades 7–10)</option>
                 <option value="shs">Senior high (Grades 11–12)</option>
               </select>
               <p class="field-hint" style="margin-top:6px;">Used for categorizing their subject assignments.</p>
+              <p id="dept-mismatch-hint" style="margin-top:6px; color:var(--err); font-size:.8rem; font-weight:700; display:none;">⚠ School level doesn’t match the selected advisory grade.</p>
             </div>
           </div>
         </div>
@@ -616,9 +617,9 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
       <div class="frow">
         <div class="fg" id="edit-advisory-grade-section" style="max-width: 250px;">
           <label id="edit-grade-label">Advisory grade *</label>
-          <select class="fc" name="grade_level" id="edit_grade_level_select">
+          <select class="fc" name="grade_level" id="edit_grade_level_select" onchange="syncEditDeptFromGrade()">
             {% for g in grades %}
-            <option value="{{ g.id }}">{{ g.name }}</option>
+            <option value="{{ g.id }}" data-name="{{ g.name }}">{{ g.name }}</option>
             {% endfor %}
           </select>
         </div>
@@ -633,11 +634,12 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
           </div>
           <div class="fg" style="max-width: 250px;">
             <label id="edit-dept-label">School level *</label>
-            <select class="fc" name="department" id="edit_department_select" required>
+            <select class="fc" name="department" id="edit_department_select" required onchange="validateEditDeptMatch()">
               <option value="elementary">Elementary (Nursery to Grade 6)</option>
               <option value="jhs">Junior high (Grades 7–10)</option>
               <option value="shs">Senior high (Grades 11–12)</option>
             </select>
+            <p id="edit-dept-mismatch-hint" style="margin-top:6px; color:var(--err); font-size:.8rem; font-weight:700; display:none;">⚠ School level doesn’t match the selected advisory grade.</p>
           </div>
         </div>
       </div>
@@ -749,9 +751,101 @@ function setType(type) {
   gradeSelect.required = type === 'advisory';
   
   document.querySelectorAll('[name="teacher_type"]').forEach(r => { r.checked = (r.value === type); });
+
+  // Sync dept when switching to advisory
+  if (type === 'advisory') syncDeptFromGrade();
+  else document.getElementById('dept-mismatch-hint').style.display = 'none';
 }
 
+// ── Grade → Department sync helpers ──
+function getDeptFromGradeName(name) {
+  const n = (name || '').toLowerCase();
+  if (n.includes('grade 11') || n.includes('grade 12') || n.includes('g11') || n.includes('g12')) return 'shs';
+  if (n.includes('grade 7') || n.includes('grade 8') || n.includes('grade 9') || n.includes('grade 10')
+    || n.includes('g7') || n.includes('g8') || n.includes('g9') || n.includes('g10')) return 'jhs';
+  return 'elementary'; // nursery, kinder, grade 1–6
+}
+
+function syncDeptFromGrade() {
+  const gradeSelect = document.getElementById('grade_level_select');
+  const deptSelect = document.getElementById('department_select');
+  if (!gradeSelect || !deptSelect) return;
+  const opt = gradeSelect.options[gradeSelect.selectedIndex];
+  const gradeName = opt ? (opt.getAttribute('data-name') || opt.text) : '';
+  const expected = getDeptFromGradeName(gradeName);
+  deptSelect.value = expected;
+  document.getElementById('dept-mismatch-hint').style.display = 'none';
+}
+
+function validateDeptMatch() {
+  const type = document.querySelector('[name="teacher_type"]:checked');
+  if (!type || type.value !== 'advisory') return true;
+  const gradeSelect = document.getElementById('grade_level_select');
+  const deptSelect = document.getElementById('department_select');
+  const hint = document.getElementById('dept-mismatch-hint');
+  const opt = gradeSelect.options[gradeSelect.selectedIndex];
+  const gradeName = opt ? (opt.getAttribute('data-name') || opt.text) : '';
+  const expected = getDeptFromGradeName(gradeName);
+  const mismatch = deptSelect.value !== expected;
+  hint.style.display = mismatch ? '' : 'none';
+  return !mismatch;
+}
+
+function syncEditDeptFromGrade() {
+  const gradeSelect = document.getElementById('edit_grade_level_select');
+  const deptSelect = document.getElementById('edit_department_select');
+  if (!gradeSelect || !deptSelect) return;
+  const opt = gradeSelect.options[gradeSelect.selectedIndex];
+  const gradeName = opt ? (opt.getAttribute('data-name') || opt.text) : '';
+  const expected = getDeptFromGradeName(gradeName);
+  deptSelect.value = expected;
+  document.getElementById('edit-dept-mismatch-hint').style.display = 'none';
+}
+
+function validateEditDeptMatch() {
+  const type = document.getElementById('edit_type_advisory');
+  if (!type || !type.checked) return true;
+  const gradeSelect = document.getElementById('edit_grade_level_select');
+  const deptSelect = document.getElementById('edit_department_select');
+  const hint = document.getElementById('edit-dept-mismatch-hint');
+  const opt = gradeSelect.options[gradeSelect.selectedIndex];
+  const gradeName = opt ? (opt.getAttribute('data-name') || opt.text) : '';
+  const expected = getDeptFromGradeName(gradeName);
+  const mismatch = deptSelect.value !== expected;
+  hint.style.display = mismatch ? '' : 'none';
+  return !mismatch;
+}
+
+// Block form submit if mismatch
+const _teacherForm = document.getElementById('teacher-form');
+if (_teacherForm) {
+  _teacherForm.addEventListener('submit', function(e) {
+    if (!validateDeptMatch()) {
+      e.preventDefault();
+      document.getElementById('department_select').focus();
+      alert('School level does not match the selected advisory grade. Please correct it before saving.');
+    }
+  });
+}
+
+const _editTeacherForm = document.getElementById('edit-teacher-form');
+if (_editTeacherForm) {
+  _editTeacherForm.addEventListener('submit', function(e) {
+    if (!validateEditDeptMatch()) {
+      e.preventDefault();
+      document.getElementById('edit_department_select').focus();
+      alert('School level does not match the selected advisory grade. Please correct it before saving.');
+    }
+  });
+}
+
+
 // ── ASSIGN MODAL ──
+// Init on load
+document.addEventListener('DOMContentLoaded', function() {
+  syncDeptFromGrade();
+});
+
 let modalTeacherId = null;
 let allModalSubjects = [];
 
