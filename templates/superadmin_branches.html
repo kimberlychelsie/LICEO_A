@@ -236,7 +236,12 @@
 
     <!-- Create New Branch -->
     <div class="modern-card">
-        <h2><i class="fas fa-plus-circle" style="color: var(--ma-gold);"></i> Create Branch</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <h2 style="margin: 0;"><i class="fas fa-plus-circle" style="color: var(--ma-gold);"></i> Create Branch</h2>
+            <button type="button" class="btn-prem" onclick="openRetiredAdminModal()" style="background: #f8fafc; border: 1px solid #cbd5e1; color: var(--ma-primary);">
+                <i class="fas fa-archive"></i> View Retired Principals
+            </button>
+        </div>
         <form method="POST" action="{{ url_for('super_admin.super_admin_branches') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="entry-grid">
@@ -404,6 +409,16 @@
                     <div class="form-node"><label>Gender</label><select name="new_gender" id="newGenderInput"><option value="Male">Male</option><option value="Female">Female</option></select></div>
                     <div class="form-node"><label>Email</label><input type="email" name="new_admin_email" id="newEmailInput" /></div>
                 </div>
+                
+                <div style="margin-top: 16px; background: #f8fafc; border: 1px dashed #cbd5e1; padding: 12px 16px; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
+                    <input type="checkbox" name="move_to_faculty" id="moveToFaculty" style="width: 18px; height: 18px; cursor: pointer;">
+                    <div style="display: flex; flex-direction: column;">
+                        <label for="moveToFaculty" style="font-size: 0.85rem; font-weight: 800; color: var(--ma-primary); cursor: pointer; margin: 0;">
+                            Assign current Principal to Faculty
+                        </label>
+                        <span style="font-size: 0.75rem; color: var(--ma-muted);">If unchecked, they will be archived as retired admin.</span>
+                    </div>
+                </div>
             </div>
 
             <div id="transferAdminFields" style="display: none;">
@@ -423,10 +438,44 @@
     </div>
 </div>
 
+<!-- Retired Admin Modal -->
+<div id="retiredAdminModal" class="glass-overlay">
+    <div class="glass-modal" style="max-width: 500px;">
+        <h2 style="font-weight: 900; color: var(--ma-primary); margin-bottom: 24px; text-align: center;"><i class="fas fa-chalkboard-teacher"></i> Assign to Faculty</h2>
+        {% if retired_admins_pool %}
+            <p style="font-size: 0.9rem; color: var(--ma-muted); text-align: center; margin-bottom: 24px;">Select a retired administrator to transition them back to the active Faculty roster.</p>
+            <div style="max-height: 300px; overflow-y: auto; padding-right: 10px;">
+                {% for ra in retired_admins_pool %}
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-weight: 800; color: var(--ma-primary); font-size: 0.95rem;">{{ ra.full_name }}</div>
+                        <div style="font-size: 0.75rem; color: var(--ma-muted);">@{{ ra.username }} • Branch ID: {{ ra.branch_id }}</div>
+                    </div>
+                    <form method="POST" action="/super-admin/transition-to-teacher/{{ ra.user_id }}" style="margin: 0;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn-prem btn-gold" style="padding: 8px 16px; font-size: 0.8rem;" onclick="return confirm('Are you sure you want to transition {{ ra.full_name|e }} to Faculty?');">Assign</button>
+                    </form>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div style="text-align: center; padding: 32px 0;">
+                <i class="fas fa-inbox" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 16px;"></i>
+                <div style="font-weight: 800; color: var(--ma-muted);">No retired administrators available.</div>
+            </div>
+        {% endif %}
+        <div style="margin-top: 24px;">
+            <button type="button" onclick="closeRetiredAdminModal()" class="btn-prem" style="width: 100%; background: #f1f5f9; color: var(--ma-muted);">Close</button>
+        </div>
+    </div>
+</div>
+
 <!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
 <script>
+    function openRetiredAdminModal() { document.getElementById('retiredAdminModal').style.display = 'flex'; }
+    function closeRetiredAdminModal() { document.getElementById('retiredAdminModal').style.display = 'none'; }
     // Laguna Town Coordinates Dictionary
     const lagunaCoords = {
         "majayjay": [14.1130, 121.5110],

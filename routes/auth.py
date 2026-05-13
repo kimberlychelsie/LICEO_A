@@ -395,10 +395,10 @@ def change_password():
                     """, (hashed_password, session.get("user_id")))
 
                 db.commit()
-                flash("Password changed successfully! Please log in with your new password.", "success")
-
                 # Logout the user so they can try the new password
                 session.clear()
+                flash("Password changed successfully! Please log in with your new password.", "success")
+
                 return redirect(url_for("auth.login"))
 
             except Exception as e:
