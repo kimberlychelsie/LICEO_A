@@ -607,6 +607,79 @@ def superadmin_branch_toggle_status(branch_id):
 
 
 # =======================
+# RESET BRANCH ADMIN PASSWORD
+# =======================
+@super_admin_bp.route("/super-admin/branch/<int:branch_id>/reset-password", methods=["POST"])
+def superadmin_branch_reset_password(branch_id):
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("SELECT u.user_id, u.username, u.email, u.full_name, b.branch_name FROM users u JOIN branches b ON u.branch_id = b.branch_id WHERE u.branch_id = %s AND u.role = 'branch_admin' LIMIT 1", (branch_id,))
+        admin = cur.fetchone()
+
+        if not admin:
+            flash("Admin not found for this branch.", "error")
+            return redirect(url_for("super_admin.super_admin_branches"))
+
+        if not admin["email"]:
+            flash("Admin has no email address. Cannot send new password.", "error")
+            return redirect(url_for("super_admin.super_admin_branches"))
+
+        temp_password = generate_password()
+        from werkzeug.security import generate_password_hash
+        hashed_pw = generate_password_hash(temp_password)
+
+        cur.execute("""
+            UPDATE users
+            SET password = %s, require_password_change = TRUE, last_password_change = NOW()
+            WHERE user_id = %s
+        """, (hashed_pw, admin["user_id"]))
+        db.commit()
+
+        # Send Email
+        subject = f"Password Reset - Liceo Management System"
+        html_body = f"""
+        <div style="font-family: 'Plus Jakarta Sans', sans-serif; background: #f8fafc; padding: 40px; border-radius: 24px; color: #0f172a; max-width: 600px; margin: 0 auto; border: 1px solid rgba(26, 58, 143, 0.1);">
+            <div style="background: linear-gradient(135deg, #1a3a8f 0%, #0c2461 100%); padding: 32px; border-radius: 20px 20px 0 0; text-align: center; color: #ffffff;">
+                <h2 style="margin: 0; font-size: 24px; font-weight: 800;">Liceo Management System</h2>
+                <p style="margin: 8px 0 0 0; opacity: 0.8;">Password Reset Request</p>
+            </div>
+            <div style="background: #ffffff; padding: 32px; border-radius: 0 0 20px 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05);">
+                <p>Hello <strong>{admin['full_name']}</strong>,</p>
+                <p>Your password for the <strong>{admin['branch_name']}</strong> administrative node has been successfully reset.</p>
+                
+                <div style="background: #f1f5f9; padding: 24px; border-radius: 16px; margin: 24px 0; border: 1px dashed #cbd5e1;">
+                    <div style="font-size: 15px; margin-bottom: 8px;"><strong>Username:</strong> <code style="color: #1a3a8f;">{admin['username']}</code></div>
+                    <div style="font-size: 15px;"><strong>New Temporary Password:</strong> <code style="color: #1a3a8f;">{temp_password}</code></div>
+                </div>
+
+                <div style="text-align: center; margin: 32px 0;">
+                    <a href="https://www.liceo-lms.com/" style="background: #facc15; color: #1a3a8f; text-decoration: none; padding: 16px 32px; border-radius: 12px; font-weight: 800;">Access Dashboard</a>
+                </div>
+
+                <p style="font-size: 13px; color: #64748b;">Note: For your security, you will be required to change your password upon your next login.</p>
+            </div>
+        </div>
+        """
+        body = f"Hello {admin['full_name']}, your password has been reset. Username: {admin['username']}, Temporary Password: {temp_password}"
+        send_email(admin["email"], subject, body, html_body=html_body)
+
+        flash(f"Password reset successfully for {admin['full_name']}! An email has been sent.", "success")
+
+    except Exception as e:
+        db.rollback()
+        flash(f"Failed to reset password: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+
+    return redirect(url_for("super_admin.super_admin_branches"))
+
+
+# =======================
 # FAQ MANAGEMENT
 # =======================
 @super_admin_bp.route("/super-admin/faqs", methods=["GET", "POST"])

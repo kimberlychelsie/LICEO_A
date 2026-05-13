@@ -264,8 +264,7 @@
                 <div class="form-node">
                     <label>Gender</label>
                     <select name="gender" required>
-                        <option value="">— Select —</option>
-                        <option value="Male">Male</option>
+                        <option value="Male" selected>Male</option>
                         <option value="Female">Female</option>
                     </select>
                 </div>
@@ -333,6 +332,12 @@
                                     <button type="button" class="action-item" onclick="openTransferModal('{{ b.branch_id }}', '{{ b.branch_name|e }}')">
                                         <i class="fas fa-user-shield"></i> Assign New Principal
                                     </button>
+                                    <form method="POST" action="/super-admin/branch/{{ b.branch_id }}/reset-password" style="display:contents;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="action-item" onclick="return confirm('Are you sure you want to reset the password for the current admin of {{ b.branch_name|e }}?')">
+                                            <i class="fas fa-key"></i> Reset Password
+                                        </button>
+                                    </form>
                                     <form method="POST" action="/super-admin/branch/{{ b.branch_id }}/toggle-status" style="display:contents;">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="action-item {% if b.is_active %}danger{% endif %}" onclick="return confirm('Change status?')">
