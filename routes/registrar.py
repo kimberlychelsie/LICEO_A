@@ -1224,6 +1224,7 @@ def registrar_profile_pictures():
                 LEFT JOIN section_teachers st ON u.user_id = st.teacher_id
                 LEFT JOIN subjects sub ON st.subject_id = sub.subject_id
                 WHERE u.branch_id = %s AND u.role = 'teacher'
+                  AND COALESCE(u.is_archived, FALSE) = FALSE
                 GROUP BY u.user_id, u.full_name, u.username, u.profile_image
                 ORDER BY u.full_name
             """, (branch_id,))
@@ -2396,7 +2397,12 @@ def registrar_assign_teachers():
             flash("Teacher assigned successfully!", "success")
             return redirect(url_for("registrar.registrar_assign_teachers", grade=grade_filter))
 
-        cursor.execute("SELECT user_id, username, full_name FROM users WHERE branch_id = %s AND role = 'teacher' ORDER BY full_name", (branch_id,))
+        cursor.execute(
+            """SELECT user_id, username, full_name FROM users
+               WHERE branch_id = %s AND role = 'teacher' AND COALESCE(is_archived, FALSE) = FALSE
+               ORDER BY full_name""",
+            (branch_id,),
+        )
         teachers = cursor.fetchall() or []
 
         base_query = """
@@ -2445,7 +2451,12 @@ def registrar_api_get_all_subjects(teacher_id):
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cursor.execute("SELECT teacher_type, specialization_subject, department FROM users WHERE user_id=%s AND branch_id=%s AND role='teacher'", (teacher_id, branch_id))
+        cursor.execute(
+            """SELECT teacher_type, specialization_subject, department FROM users
+               WHERE user_id=%s AND branch_id=%s AND role='teacher'
+                 AND COALESCE(is_archived, FALSE) = FALSE""",
+            (teacher_id, branch_id),
+        )
         teacher = cursor.fetchone()
         if not teacher: return {"error": "Teacher not found"}, 404
 
@@ -2505,6 +2516,13 @@ def registrar_assign_teachers_bulk():
     db = get_db_connection()
     cursor = db.cursor()
     try:
+        cursor.execute(
+            """SELECT 1 FROM users WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+               AND COALESCE(is_archived, FALSE) = FALSE""",
+            (teacher_id, branch_id),
+        )
+        if not cursor.fetchone():
+            return {"success": False, "message": "That teacher is not available (archived or missing)."}, 400
         cursor.execute("UPDATE section_teachers SET teacher_id = %s WHERE id = ANY(%s) AND section_id IN (SELECT section_id FROM sections WHERE branch_id = %s)", (teacher_id, assignment_ids, branch_id))
         db.commit()
         return {"success": True, "count": cursor.rowcount}
@@ -3006,7 +3024,8 @@ def _ensure_teacher_tables(cursor):
         ALTER TABLE users
         ADD COLUMN IF NOT EXISTS teacher_type VARCHAR(20) DEFAULT 'advisory',
         ADD COLUMN IF NOT EXISTS specialization_subject VARCHAR(100),
-        ADD COLUMN IF NOT EXISTS department VARCHAR(50)
+        ADD COLUMN IF NOT EXISTS department VARCHAR(50),
+        ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE
     """)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS teacher_grade_levels (
@@ -3047,7 +3066,6 @@ def registrar_manage_teachers():
             full_name      = (request.form.get("full_name")    or "").strip()
             gender         = (request.form.get("gender")       or "").strip().lower()
             user_email     = (request.form.get("email")        or "").strip()
-            custom_uname   = (request.form.get("username")     or "").strip()
             teacher_type   = (request.form.get("teacher_type") or "advisory").strip()
             grade_level_id = (request.form.get("grade_level")  or "").strip() or None
             
@@ -3056,52 +3074,49 @@ def registrar_manage_teachers():
             department   = (request.form.get("department") or "").strip()
 
             if not full_name:
-                flash("Full name is required.", "error")
+                flash("Please enter the teacher's full name.", "error")
                 return redirect("/registrar/manage-teachers")
             if gender not in ("male", "female"):
-                flash("Please select a gender.", "error")
+                flash("Please choose male or female.", "error")
                 return redirect("/registrar/manage-teachers")
             if not user_email:
-                flash("Email is required.", "error")
-                return redirect("/registrar/manage-teachers")
-            if custom_uname and not re.match(r'^[A-Za-z0-9_]+$', custom_uname):
-                flash("Username can only contain letters, numbers, and underscores.", "error")
+                flash("Please enter an email address.", "error")
                 return redirect("/registrar/manage-teachers")
             
+            if teacher_type == "advisory":
+                if not grade_level_id:
+                    flash("Homeroom teachers need a grade level. Pick one from the list.", "error")
+                    return redirect("/registrar/manage-teachers")
             if teacher_type == "subject":
                 if not spec_subject:
-                    flash("Specialization subject is required for Subject Teachers.", "error")
+                    flash("Please enter the subject they teach (e.g. Math, English).", "error")
                     return redirect("/registrar/manage-teachers")
                 if not department:
-                    flash("Department is required for Subject Teachers.", "error")
+                    flash("Please pick their school level (Elementary, JHS, or SHS).", "error")
                     return redirect("/registrar/manage-teachers")
 
             cursor.execute("SELECT branch_code FROM branches WHERE branch_id=%s", (branch_id,))
             b_row = cursor.fetchone()
             branch_code = ((b_row['branch_code'] or "") if b_row else "").strip().upper()
             if not branch_code:
-                flash("Branch code not configured.", "error")
+                flash("This branch has no short code yet. Ask admin to set branch code first.", "error")
                 return redirect("/registrar/manage-teachers")
 
-            if custom_uname:
-                base_username = custom_uname
-            else:
-                grade_suffix = ""
-                # For base username, we just pick the primary grade if advisory, or no suffix for subject
-                ref_grade_id = grade_level_id if teacher_type == "advisory" else None
-                if ref_grade_id:
-                    cursor.execute("SELECT name FROM grade_levels WHERE id=%s", (ref_grade_id,))
-                    g_row = cursor.fetchone()
-                    if g_row:
-                        g_name = g_row['name']
-                        m = re.search(r"(\d+)", g_name)
-                        if m:
-                            grade_suffix = m.group(1)
-                        elif "kinder" in g_name.lower():
-                            grade_suffix = "K"
-                        elif "nursery" in g_name.lower():
-                            grade_suffix = "N"
-                base_username = f"{branch_code}_Teacher{grade_suffix}" if grade_suffix else f"{branch_code}_Teacher"
+            grade_suffix = ""
+            ref_grade_id = grade_level_id if teacher_type == "advisory" else None
+            if ref_grade_id:
+                cursor.execute("SELECT name FROM grade_levels WHERE id=%s", (ref_grade_id,))
+                g_row = cursor.fetchone()
+                if g_row:
+                    g_name = g_row['name']
+                    m = re.search(r"(\d+)", g_name)
+                    if m:
+                        grade_suffix = m.group(1)
+                    elif "kinder" in g_name.lower():
+                        grade_suffix = "K"
+                    elif "nursery" in g_name.lower():
+                        grade_suffix = "N"
+            base_username = f"{branch_code}_Teacher{grade_suffix}" if grade_suffix else f"{branch_code}_Teacher"
 
             username = base_username
             suffix_counter = 2
@@ -3109,9 +3124,6 @@ def registrar_manage_teachers():
                 cursor.execute("SELECT 1 FROM users WHERE username=%s", (username,))
                 if not cursor.fetchone():
                     break
-                if custom_uname:
-                    flash(f"Username '{username}' already exists.", "error")
-                    return redirect("/registrar/manage-teachers")
                 username = f"{base_username}_{suffix_counter}"
                 suffix_counter += 1
 
@@ -3172,14 +3184,22 @@ Login URL: https://www.liceo-lms.com/
 Please log in and change your password immediately.
 
 -- The Liceo LMS Team"""
-                send_email(user_email, subject_line, body)
-                flash(f"Teacher account created. Credentials sent to {user_email}.", "success")
+                try:
+                    send_email(user_email, subject_line, body)
+                    flash(f"Account created. Login details were emailed to {user_email}.", "success")
+                except Exception as mail_err:
+                    flash(
+                        f"Account created, but the email could not be sent ({mail_err}). "
+                        "Copy the username and password from the green box below.",
+                        "warning",
+                    )
             else:
-                flash("Teacher account created successfully!", "success")
+                flash("Account created.", "success")
 
         query = """
             SELECT
                 u.user_id, u.username, u.full_name, u.gender, u.email,
+                u.grade_level_id,
                 COALESCE(u.status, 'active') AS status,
                 COALESCE(u.teacher_type, 'advisory') AS teacher_type,
                 COALESCE(g.name, '') AS primary_grade,
@@ -3194,6 +3214,7 @@ Please log in and change your password immediately.
             FROM users u
             LEFT JOIN grade_levels g ON u.grade_level_id = g.id
             WHERE u.branch_id = %s AND u.role = 'teacher'
+              AND COALESCE(u.is_archived, FALSE) = FALSE
         """
         params = [branch_id]
         if filter_search:
@@ -3216,12 +3237,13 @@ Please log in and change your password immediately.
                 COUNT(*) FILTER (WHERE teacher_type = 'subject') AS subject_count,
                 COUNT(*) FILTER (WHERE COALESCE(status,'active') = 'active') AS active_count
             FROM users WHERE branch_id = %s AND role = 'teacher'
+              AND COALESCE(is_archived, FALSE) = FALSE
         """, (branch_id,))
         stats = cursor.fetchone()
 
     except Exception as e:
         db.rollback()
-        flash(f"An error occurred: {str(e)}", "error")
+        flash(f"Something went wrong: {str(e)}", "error")
         teachers, grades, stats = [], [], None
     finally:
         cursor.close()
@@ -3233,8 +3255,123 @@ Please log in and change your password immediately.
         grades=grades,
         stats=stats,
         filter_search=filter_search,
-        filter_type=filter_type
+        filter_type=filter_type,
+        created_user=created_user,
     )
+
+
+@registrar_bp.route("/registrar/manage-teachers/<int:user_id>/edit", methods=["POST"])
+def registrar_edit_teacher(user_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    full_name = (request.form.get("full_name") or "").strip()
+    gender = (request.form.get("gender") or "").strip().lower()
+    user_email = (request.form.get("email") or "").strip()
+    teacher_type = (request.form.get("teacher_type") or "advisory").strip()
+    grade_level_id = (request.form.get("grade_level") or "").strip() or None
+    spec_subject = (request.form.get("specialization_subject") or "").strip()
+    department = (request.form.get("department") or "").strip()
+
+    if not full_name:
+        flash("Please enter the teacher's full name.", "error")
+        return redirect("/registrar/manage-teachers")
+    if gender not in ("male", "female"):
+        flash("Please choose male or female.", "error")
+        return redirect("/registrar/manage-teachers")
+    if not user_email:
+        flash("Please enter an email address.", "error")
+        return redirect("/registrar/manage-teachers")
+    if teacher_type == "advisory" and not grade_level_id:
+        flash("Adviser accounts need a grade level.", "error")
+        return redirect("/registrar/manage-teachers")
+    if teacher_type == "subject":
+        if not spec_subject:
+            flash("Please enter the subject they teach.", "error")
+            return redirect("/registrar/manage-teachers")
+        if not department:
+            flash("Please pick their school level.", "error")
+            return redirect("/registrar/manage-teachers")
+
+    primary_grade = grade_level_id if teacher_type == "advisory" else None
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute(
+            """SELECT 1 FROM users WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+               AND COALESCE(is_archived, FALSE) = FALSE""",
+            (user_id, branch_id),
+        )
+        if not cursor.fetchone():
+            flash("Teacher not found.", "error")
+            return redirect("/registrar/manage-teachers")
+
+        cursor.execute(
+            """
+            UPDATE users SET
+                full_name = %s, email = %s, gender = %s, teacher_type = %s,
+                grade_level_id = %s, specialization_subject = %s, department = %s
+            WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+              AND COALESCE(is_archived, FALSE) = FALSE
+            """,
+            (
+                full_name,
+                user_email,
+                gender,
+                teacher_type,
+                primary_grade,
+                spec_subject or None,
+                department or None,
+                user_id,
+                branch_id,
+            ),
+        )
+
+        cursor.execute("DELETE FROM teacher_grade_levels WHERE teacher_id = %s", (user_id,))
+        if department:
+            cursor.execute(
+                "SELECT id, name FROM grade_levels WHERE branch_id = %s ORDER BY display_order",
+                (branch_id,),
+            )
+            grade_rows = cursor.fetchall() or []
+            for g in grade_rows:
+                name = g["name"].lower()
+                num_match = re.search(r"\d+", name)
+                num = int(num_match.group(0)) if num_match else None
+                match = False
+                if department == "elementary":
+                    if num is None and ("nursery" in name or "kinder" in name):
+                        match = True
+                    elif num is not None and 1 <= num <= 6:
+                        match = True
+                elif department == "jhs":
+                    if num is not None and 7 <= num <= 10:
+                        match = True
+                elif department == "shs":
+                    if num is not None and 11 <= num <= 12:
+                        match = True
+                if match:
+                    try:
+                        cursor.execute(
+                            """
+                            INSERT INTO teacher_grade_levels (teacher_id, grade_level_id)
+                            VALUES (%s, %s) ON CONFLICT DO NOTHING
+                            """,
+                            (user_id, g["id"]),
+                        )
+                    except Exception:
+                        pass
+
+        db.commit()
+        flash("Teacher details saved.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not save changes: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+    return redirect("/registrar/manage-teachers")
 
 
 @registrar_bp.route("/registrar/manage-teachers/<int:user_id>/toggle", methods=["POST"])
@@ -3248,9 +3385,10 @@ def registrar_toggle_teacher(user_id):
             UPDATE users
             SET status = CASE WHEN COALESCE(status,'active') = 'active' THEN 'inactive' ELSE 'active' END
             WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+              AND COALESCE(is_archived, FALSE) = FALSE
         """, (user_id, session.get("branch_id")))
         db.commit()
-        flash("Teacher status updated.", "success")
+        flash("Login status updated.", "success")
     except Exception as e:
         db.rollback()
         flash(f"Failed: {str(e)}", "error")
@@ -3259,24 +3397,128 @@ def registrar_toggle_teacher(user_id):
     return redirect(request.referrer or "/registrar/manage-teachers")
 
 
-@registrar_bp.route("/registrar/manage-teachers/<int:user_id>/delete", methods=["POST"])
-def registrar_delete_teacher(user_id):
+@registrar_bp.route("/registrar/manage-teachers/<int:user_id>/archive", methods=["POST"])
+def registrar_archive_teacher(user_id):
+    """Soft-hide teacher from the main list and free section slots; login is turned off."""
     if session.get("role") != "registrar":
         return redirect("/")
+    branch_id = session.get("branch_id")
     db = get_db_connection()
     cursor = db.cursor()
     try:
+        cursor.execute(
+            """UPDATE users SET is_archived = TRUE, status = 'inactive'
+               WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+                 AND COALESCE(is_archived, FALSE) = FALSE""",
+            (user_id, branch_id),
+        )
+        if cursor.rowcount == 0:
+            flash("Teacher not found or already archived.", "error")
+        else:
+            cursor.execute(
+                """
+                UPDATE section_teachers st
+                SET teacher_id = NULL
+                FROM sections s
+                WHERE st.section_id = s.section_id
+                  AND st.teacher_id = %s AND s.branch_id = %s
+                """,
+                (user_id, branch_id),
+            )
+            flash("Teacher archived. You can permanently delete them from the Archive page.", "success")
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not archive: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+    return redirect(request.referrer or "/registrar/manage-teachers")
+
+
+@registrar_bp.route("/registrar/manage-teachers/archive", methods=["GET"])
+def registrar_archived_teachers():
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    filter_search = request.args.get("search", "").strip()
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    teachers = []
+    try:
+        _ensure_teacher_tables(cursor)
+        db.commit()
+        query = """
+            SELECT
+                u.user_id, u.username, u.full_name, u.gender, u.email,
+                u.grade_level_id,
+                COALESCE(u.status, 'active') AS status,
+                COALESCE(u.teacher_type, 'advisory') AS teacher_type,
+                COALESCE(g.name, '') AS primary_grade,
+                u.specialization_subject,
+                u.department
+            FROM users u
+            LEFT JOIN grade_levels g ON u.grade_level_id = g.id
+            WHERE u.branch_id = %s AND u.role = 'teacher' AND COALESCE(u.is_archived, FALSE) = TRUE
+        """
+        params = [branch_id]
+        if filter_search:
+            query += " AND (u.full_name ILIKE %s OR u.username ILIKE %s)"
+            params.extend([f"%{filter_search}%", f"%{filter_search}%"])
+        query += " ORDER BY u.full_name"
+        cursor.execute(query, params)
+        teachers = cursor.fetchall() or []
+    except Exception as e:
+        db.rollback()
+        flash(f"Something went wrong: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+    return render_template(
+        "registrar_archived_teachers.html",
+        teachers=teachers,
+        filter_search=filter_search,
+    )
+
+
+@registrar_bp.route("/registrar/manage-teachers/archive/<int:user_id>/delete", methods=["POST"])
+def registrar_delete_archived_teacher(user_id):
+    """Permanent delete — only allowed for archived teacher accounts."""
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute(
+            """SELECT 1 FROM users WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+               AND COALESCE(is_archived, FALSE) = TRUE""",
+            (user_id, branch_id),
+        )
+        if not cursor.fetchone():
+            flash("Only archived teachers can be deleted here.", "error")
+            return redirect("/registrar/manage-teachers/archive")
         cursor.execute("DELETE FROM teacher_grade_levels WHERE teacher_id = %s", (user_id,))
         cursor.execute(
-            "DELETE FROM users WHERE user_id = %s AND branch_id = %s AND role = 'teacher'",
-            (user_id, session.get("branch_id"))
+            "DELETE FROM users WHERE user_id = %s AND branch_id = %s AND role = 'teacher' AND COALESCE(is_archived, FALSE) = TRUE",
+            (user_id, branch_id),
         )
         db.commit()
-        flash("Teacher account permanently deleted.", "success")
+        flash("Teacher permanently removed.", "success")
     except Exception as e:
         db.rollback()
         flash(f"Failed to delete: {str(e)}", "error")
     finally:
-        cursor.close(); db.close()
+        cursor.close()
+        db.close()
+    return redirect("/registrar/manage-teachers/archive")
+
+
+@registrar_bp.route("/registrar/manage-teachers/<int:user_id>/delete", methods=["POST"])
+def registrar_delete_teacher_deprecated(user_id):
+    """Old URL: permanent delete now lives under /manage-teachers/archive/…/delete."""
+    if session.get("role") != "registrar":
+        return redirect("/")
+    flash("To remove a teacher permanently, open Teachers → Archive, then use Delete there.", "info")
     return redirect("/registrar/manage-teachers")
 
