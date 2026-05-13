@@ -207,9 +207,17 @@
     /* Actions Menu */
     .action-menu { position: relative; display: inline-block; }
     .action-btn {
-        background: #ffffff; color: #1a3a8f; border: 1.5px solid #e2e8f0;
+        background: #f1f5f9; color: #1a3a8f; border: 1.5px solid #e2e8f0;
         width: 36px; height: 36px; border-radius: 10px; cursor: pointer;
         display: flex; align-items: center; justify-content: center;
+        transition: all 0.2s ease;
+    }
+    .action-btn:hover {
+        background: #e2e8f0;
+        transform: scale(1.05);
+    }
+    .action-btn i {
+        font-size: 1.1rem;
     }
     .action-dropdown {
         position: absolute; top: 100%; right: 0; min-width: 180px;
@@ -218,6 +226,13 @@
         display: none; z-index: 1000; margin-top: 8px; overflow: hidden;
     }
     .action-dropdown.show { display: block; }
+    .action-dropdown.drop-up {
+        top: auto;
+        bottom: 100%;
+        margin-top: 0;
+        margin-bottom: 8px;
+        box-shadow: 0 -10px 15px -3px rgba(0, 0, 0, 0.1);
+    }
     .action-item {
         width: 100%; padding: 10px 16px; text-align: left; background: none; border: none;
         display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: #475569; cursor: pointer;
@@ -225,6 +240,9 @@
     .action-item:hover { background: #f8fafc; color: #1e40af; }
     .action-item.danger { color: #dc2626; }
 </style>
+
+<!-- Font Awesome -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
 <!-- Leaflet CSS -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -280,7 +298,7 @@
     </div>
 
     <!-- Registry Table -->
-    <div class="modern-card" style="padding:0; overflow:hidden;">
+    <div class="modern-card" style="padding:0;">
         <div style="padding: 32px; display: flex; align-items:center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
             <h2 style="margin:0;">Branch List</h2>
             <input type="text" id="branchSearch" placeholder="Search branch..." style="padding: 10px 16px; border: 1px solid var(--ma-border); border-radius: 12px; width: 300px;">
@@ -332,6 +350,14 @@
                                     <button type="button" class="action-item" onclick="openTransferModal('{{ b.branch_id }}', '{{ b.branch_name|e }}')">
                                         <i class="fas fa-user-shield"></i> Assign New Principal
                                     </button>
+                                    {% if b.admin_username %}
+                                    <form method="POST" action="/super-admin/branch/{{ b.branch_id }}/remove-principal" style="display:contents;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <button type="submit" class="action-item danger" onclick="return confirm('Are you sure you want to remove the current principal? They will be moved to retired admins.')">
+                                            <i class="fas fa-user-minus"></i> Remove Principal
+                                        </button>
+                                    </form>
+                                    {% endif %}
                                     <form method="POST" action="/super-admin/branch/{{ b.branch_id }}/reset-password" style="display:contents;">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                         <button type="submit" class="action-item" onclick="return confirm('Are you sure you want to reset the password for the current admin of {{ b.branch_name|e }}?')">
@@ -659,10 +685,24 @@ if (mode === 'new') {
 
     function toggleActionMenu(btn, event) {
         event.stopPropagation();
+        const dropdown = btn.nextElementSibling;
+        
         document.querySelectorAll('.action-dropdown').forEach(d => {
-            if (d !== btn.nextElementSibling) d.classList.remove('show');
+            if (d !== dropdown) d.classList.remove('show');
         });
-        btn.nextElementSibling.classList.toggle('show');
+        
+        dropdown.classList.remove('drop-up'); // Reset first
+        dropdown.classList.toggle('show');
+        
+        if (dropdown.classList.contains('show')) {
+            const rect = dropdown.getBoundingClientRect();
+            const viewportHeight = window.innerHeight;
+            
+            // If the dropdown goes below the viewport, flip it up
+            if (rect.bottom > viewportHeight) {
+                dropdown.classList.add('drop-up');
+            }
+        }
     }
     document.addEventListener('click', () => { document.querySelectorAll('.action-dropdown').forEach(d => d.classList.remove('show')); });
 

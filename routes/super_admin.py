@@ -563,6 +563,47 @@ def super_admin_transition_to_teacher(user_id):
 
 
 # =======================
+# REMOVE PRINCIPAL
+# =======================
+@super_admin_bp.route("/super-admin/branch/<int:branch_id>/remove-principal", methods=["POST"])
+def super_admin_remove_principal(branch_id):
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("BEGIN;")
+        
+        # Check if there is an admin to remove
+        cursor.execute("SELECT full_name FROM users WHERE branch_id = %s AND role = 'branch_admin'", (branch_id,))
+        admin = cursor.fetchone()
+        
+        if not admin:
+            flash("No principal found for this branch.", "error")
+            return redirect(url_for("super_admin.super_admin_branches"))
+
+        # Retire the current admin
+        cursor.execute("""
+            UPDATE users SET status = 'inactive', role = 'retired_admin'
+            WHERE branch_id = %s AND role = 'branch_admin'
+        """, (branch_id,))
+        
+        db.commit()
+        flash(f"Successfully removed {admin['full_name']} and moved to retired admins.", "success")
+        
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Failed to remove principal: {str(e)}")
+        flash("Failed to remove principal.", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(url_for("super_admin.super_admin_branches"))
+
+
+# =======================
 # TOGGLE BRANCH STATUS
 # =======================
 @super_admin_bp.route("/super-admin/branch/<int:branch_id>/toggle-status", methods=["POST"])
