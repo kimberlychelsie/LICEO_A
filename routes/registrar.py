@@ -3479,6 +3479,35 @@ def registrar_archived_teachers():
     )
 
 
+@registrar_bp.route("/registrar/manage-teachers/archive/<int:user_id>/unarchive", methods=["POST"])
+def registrar_unarchive_teacher(user_id):
+    """Restore teacher from archive back to main list."""
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute(
+            """UPDATE users SET is_archived = FALSE, status = 'active'
+               WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+                 AND COALESCE(is_archived, FALSE) = TRUE""",
+            (user_id, branch_id),
+        )
+        if cursor.rowcount == 0:
+            flash("Teacher not found or not archived.", "error")
+        else:
+            flash("Teacher restored. They are now back in the main list.", "success")
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not restore: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+    return redirect("/registrar/manage-teachers/archive")
+
+
 @registrar_bp.route("/registrar/manage-teachers/archive/<int:user_id>/delete", methods=["POST"])
 def registrar_delete_archived_teacher(user_id):
     """Permanent delete — only allowed for archived teacher accounts."""

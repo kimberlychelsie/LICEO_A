@@ -66,6 +66,13 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
 }
 .btn-del:hover { background: #fef2f2; }
 
+.btn-restore {
+  padding: 8px 14px; border-radius: 8px; border: 1px solid #bfdbfe; background: #fff;
+  color: var(--p); font-weight: 800; font-size: .78rem; cursor: pointer; font-family: inherit;
+  margin-left: 8px;
+}
+.btn-restore:hover { background: #eff6ff; }
+
 .empty-state { padding: 48px 20px; text-align: center; color: var(--mu); font-weight: 600; }
 </style>
 {% endblock %}
@@ -136,6 +143,10 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
             <form method="POST" action="/registrar/manage-teachers/archive/{{ t.user_id }}/delete" style="margin:0; display:inline;" onsubmit="return confirm('Permanently delete this teacher account? This cannot be undone.');">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn-del">Delete</button>
+            </form>
+            <form method="POST" action="/registrar/manage-teachers/archive/{{ t.user_id }}/unarchive" style="margin:0; display:inline;" onsubmit="return confirm('Restore this teacher back to the main list?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn-restore">Restore</button>
             </form>
           </td>
         </tr>
