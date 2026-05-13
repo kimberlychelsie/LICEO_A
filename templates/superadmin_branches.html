@@ -140,6 +140,7 @@
         border-radius: 20px;
         overflow-x: auto;
         border: 1px solid var(--ma-border);
+        min-height: 250px;
     }
 
     .vault-table {
@@ -686,6 +687,7 @@ if (mode === 'new') {
     function toggleActionMenu(btn, event) {
         event.stopPropagation();
         const dropdown = btn.nextElementSibling;
+        const container = btn.closest('.vault-wrapper');
         
         document.querySelectorAll('.action-dropdown').forEach(d => {
             if (d !== dropdown) d.classList.remove('show');
@@ -697,9 +699,10 @@ if (mode === 'new') {
         if (dropdown.classList.contains('show')) {
             const rect = dropdown.getBoundingClientRect();
             const viewportHeight = window.innerHeight;
+            const containerRect = container ? container.getBoundingClientRect() : null;
             
-            // If the dropdown goes below the viewport, flip it up
-            if (rect.bottom > viewportHeight) {
+            // Flip up if hitting viewport bottom OR container bottom
+            if (rect.bottom > viewportHeight || (containerRect && rect.bottom > containerRect.bottom - 10)) {
                 dropdown.classList.add('drop-up');
             }
         }
