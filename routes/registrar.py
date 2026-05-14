@@ -2937,7 +2937,7 @@ def registrar_assign_students():
 
             if section_id:
                 cursor.execute("""
-                    SELECT capacity, (SELECT COUNT(*) FROM enrollments WHERE section_id = s.section_id AND status IN ('approved', 'enrolled')) AS current_count
+                    SELECT capacity, (SELECT COUNT(*) FROM enrollments WHERE section_id = s.section_id AND status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')) AS current_count
                     FROM sections s JOIN school_years y ON s.year_id = y.year_id
                     WHERE s.section_id=%s AND s.branch_id=%s AND y.is_active = TRUE
                 """, (section_id, branch_id))
@@ -2954,7 +2954,7 @@ def registrar_assign_students():
             flash("Student section updated!", "success")
             return redirect(url_for("registrar.registrar_assign_students", grade=grade_filter))
 
-        cursor.execute("SELECT s.section_id, s.section_name, g.name AS grade_level_name, g.id AS grade_level_id, s.capacity, (SELECT COUNT(*) FROM enrollments e2 WHERE e2.section_id = s.section_id AND e2.status IN ('approved', 'enrolled')) AS current_count FROM sections s JOIN grade_levels g ON s.grade_level_id = g.id JOIN school_years y ON s.year_id = y.year_id WHERE s.branch_id = %s AND y.is_active = TRUE ORDER BY g.display_order, s.section_name", (branch_id,))
+        cursor.execute("SELECT s.section_id, s.section_name, g.name AS grade_level_name, g.id AS grade_level_id, s.capacity, (SELECT COUNT(*) FROM enrollments e2 WHERE e2.section_id = s.section_id AND e2.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')) AS current_count FROM sections s JOIN grade_levels g ON s.grade_level_id = g.id JOIN school_years y ON s.year_id = y.year_id WHERE s.branch_id = %s AND y.is_active = TRUE ORDER BY g.display_order, s.section_name", (branch_id,))
         all_sections = cursor.fetchall() or []
         filtered_sections = [s for s in all_sections if str(s['grade_level_id']) == grade_filter]
 
@@ -2967,7 +2967,7 @@ def registrar_assign_students():
         cursor.execute("""
             SELECT e.enrollment_id, e.student_name, e.grade_level, e.branch_enrollment_no, e.section_id, s.section_name
             FROM enrollments e LEFT JOIN sections s ON e.section_id = s.section_id
-            WHERE e.branch_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled') AND (e.grade_level ILIKE %s OR e.grade_level ILIKE %s)
+            WHERE e.branch_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed') AND (e.grade_level ILIKE %s OR e.grade_level ILIKE %s)
             ORDER BY e.student_name
         """, (branch_id, active_year_id, grade_name, grade_name.replace("Grade ", "")))
         students = cursor.fetchall() or []

@@ -3440,7 +3440,7 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
         FROM enrollments e
         JOIN sections s ON e.section_id = s.section_id
         WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s
-              AND e.status IN ('approved','enrolled')
+              AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
         ORDER BY e.student_name ASC
     """, (section_id, branch_id, year_id))
     students = cur.fetchall() or []
@@ -3897,7 +3897,7 @@ def participation_input(section_id, subject_id, period):
             LEFT JOIN participation_scores ps
                 ON ps.enrollment_id = e.enrollment_id
                AND ps.subject_id = %s AND ps.grading_period = %s
-            WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved','enrolled')
+            WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
             ORDER BY e.student_name
         """, (subject_id, period, section_id, branch_id, year_id))
         students = cur.fetchall() or []
@@ -3983,7 +3983,7 @@ def attendance_input(section_id, subject_id, period):
             LEFT JOIN attendance_scores att
                 ON att.enrollment_id = e.enrollment_id
                AND att.subject_id = %s AND att.grading_period = %s
-            WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved','enrolled')
+            WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
             ORDER BY e.student_name
         """, (subject_id, period, section_id, branch_id, year_id))
         students = cur.fetchall() or []
