@@ -513,7 +513,7 @@ def teacher_dashboard():
                       e.grade_level ILIKE %(grade_full)s
                       OR e.grade_level ILIKE %(grade_short)s
                   )
-                  AND e.status IN ('approved', 'enrolled')
+                  AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
                   AND e.year_id = %(year_id)s 
             """
             
@@ -879,7 +879,7 @@ def teacher_announce():
                   OR 
                   (%(target_section)s::text IS NULL AND (e.grade_level ILIKE %(grade_full)s OR e.grade_level ILIKE %(grade_short)s))
               )
-              AND e.status IN ('approved', 'enrolled')
+              AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
             UNION
             SELECT DISTINCT u.user_id
             FROM enrollments e
@@ -892,7 +892,7 @@ def teacher_announce():
                   OR 
                   (%(target_section)s::text IS NULL AND (e.grade_level ILIKE %(grade_full)s OR e.grade_level ILIKE %(grade_short)s))
               )
-              AND e.status IN ('approved', 'enrolled')
+              AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
         """, {
             "branch_id": branch_id,
             "year_id": year_id,
@@ -1363,13 +1363,13 @@ def create_activity():
                 SELECT DISTINCT u.user_id 
                 FROM enrollments e 
                     JOIN users u ON u.user_id = e.user_id 
-                    WHERE e.section_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled')
+                    WHERE e.section_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
                     UNION
                 SELECT DISTINCT u.user_id
                 FROM enrollments e
                 JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
                 JOIN users u ON u.username = sa.username
-                WHERE e.section_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled')
+                WHERE e.section_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
                     """, (section_id, year_id, section_id, year_id))
                     student_users = cur.fetchall()
                     if student_users:
@@ -1503,13 +1503,13 @@ def edit_activity(activity_id):
     SELECT DISTINCT u.user_id 
     FROM enrollments e 
     JOIN users u ON u.user_id = e.user_id 
-    WHERE e.section_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled')
+    WHERE e.section_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
     UNION
     SELECT DISTINCT u.user_id
     FROM enrollments e
     JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
     JOIN users u ON u.username = sa.username
-    WHERE e.section_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled')
+    WHERE e.section_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
 """, (activity['section_id'], year_id, activity['section_id'], year_id))
                 student_users = cur.fetchall()
                 if student_users:
@@ -1570,7 +1570,7 @@ def activity_submissions(activity_id):
             FROM enrollments e
             LEFT JOIN users u ON u.user_id = e.user_id
             WHERE e.section_id = %s
-              AND e.status IN ('approved', 'enrolled')
+              AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
               AND e.branch_id = %s
               AND e.year_id = %s
             ORDER BY e.student_name ASC
@@ -2492,13 +2492,13 @@ def toggle_exam_visibility(exam_id):
                     SELECT DISTINCT u.user_id
                     FROM enrollments e 
                     JOIN users u ON u.user_id = e.user_id
-                    WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+                    WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
                     UNION
                     SELECT DISTINCT u.user_id
                     FROM enrollments e
                     JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
                     JOIN users u ON u.username = sa.username
-                    WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+                    WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
                 """, (target['section_id'], target['section_id']))
                 students = cur.fetchall()
                 for s in students:
@@ -2738,7 +2738,7 @@ def teacher_exam_results(exam_id):
             LEFT JOIN exam_student_permissions esp ON esp.enrollment_id = e.enrollment_id AND esp.exam_id = %s
             LEFT JOIN individual_extensions ext ON ext.enrollment_id = e.enrollment_id 
                  AND ext.item_id = %s AND ext.item_type = %s
-            WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled')
+            WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
             AND e.branch_id = %s
             ORDER BY e.student_name ASC
         """, (exam['class_mode'] != 'Face-to-Face', exam_id, exam_id, exam_id, exam.get('exam_type', 'exam'), exam['section_id'], branch_id))
@@ -4078,7 +4078,7 @@ def api_teacher_classlist(section_id):
             WHERE e.section_id = %s 
               AND e.branch_id = %s 
               AND e.year_id = %s
-              AND e.status IN ('approved', 'enrolled')
+              AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
             ORDER BY e.student_name ASC
         """, (section_id, branch_id, year_id))
 
@@ -4221,7 +4221,7 @@ def teacher_update_exam_permissions(exam_id):
             """, (exam_id, enrollment_id, is_allowed))
         elif action == "allow_all":
             # Get all students in that section
-            cur.execute("SELECT enrollment_id FROM enrollments WHERE section_id = %s AND status IN ('approved', 'enrolled')", (exam['section_id'],))
+            cur.execute("SELECT enrollment_id FROM enrollments WHERE section_id = %s AND status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')", (exam['section_id'],))
             students = cur.fetchall()
             for s in students:
                 cur.execute("""
@@ -4232,7 +4232,7 @@ def teacher_update_exam_permissions(exam_id):
                 """, (exam_id, s['enrollment_id']))
         elif action == "deselect_all":
             # We can either delete them or set them to FALSE. Setting to FALSE is clearer.
-            cur.execute("SELECT enrollment_id FROM enrollments WHERE section_id = %s AND status IN ('approved', 'enrolled')", (exam['section_id'],))
+            cur.execute("SELECT enrollment_id FROM enrollments WHERE section_id = %s AND status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')", (exam['section_id'],))
             students = cur.fetchall()
             for s in students:
                 cur.execute("""
@@ -4343,7 +4343,7 @@ def toggle_activity_status(activity_id):
                 WHERE e.section_id = %s 
                   AND e.branch_id = %s
                   AND e.year_id = %s
-                  AND e.status IN ('approved', 'enrolled')
+                  AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
 
                 UNION
 
@@ -4354,7 +4354,7 @@ def toggle_activity_status(activity_id):
                 WHERE e.section_id = %s 
                   AND e.branch_id = %s
                   AND e.year_id = %s
-                  AND e.status IN ('approved', 'enrolled')
+                  AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
             """, (section_id, branch_id, year_id, section_id, branch_id, year_id))
 
             student_users = cur.fetchall()
@@ -4536,7 +4536,7 @@ def teacher_class_view(subject_id):
             WHERE e.section_id = %s 
               AND e.branch_id = %s 
               AND e.year_id = %s
-              AND e.status IN ('approved', 'enrolled')
+              AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
             ORDER BY e.student_name ASC
         """, (active_section_id, branch_id, year_id))
         enrolled_students = cur.fetchall() or []
@@ -4890,7 +4890,7 @@ def teacher_attendance():
                 LEFT JOIN daily_participation dp ON e.enrollment_id = dp.enrollment_id 
                      AND dp.subject_id = %s AND dp.participation_date = %s
                 WHERE e.section_id = %s AND e.branch_id = %s AND e.year_id = %s
-                  AND e.status IN ('approved', 'enrolled')
+                  AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
                 ORDER BY e.student_name ASC
             """, (sel_subject_id, sel_date, sel_subject_id, sel_date, sel_section_id, branch_id, sel_year_id))
             students = cur.fetchall()
@@ -4966,7 +4966,7 @@ def teacher_attendance_export():
             WHERE e.section_id = %s
               AND e.branch_id = %s
               AND e.year_id = %s
-              AND e.status IN ('approved', 'enrolled')
+              AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
             ORDER BY student_name ASC
         """, (
             sel_subject_id, branch_id, year_id,
