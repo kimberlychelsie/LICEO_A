@@ -12,6 +12,8 @@ from docx import Document
 from datetime import datetime, timezone
 import pytz
 import shutil
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
 
 try:
     import pytesseract
@@ -3751,8 +3753,108 @@ def class_record_export(section_id, subject_id):
         output = io.BytesIO()
         try:
             with pd.ExcelWriter(output, engine="openpyxl") as writer:
-                pd.DataFrame(summary_rows).to_excel(writer, sheet_name="Summary", index=False)
-                pd.DataFrame(detail_rows).to_excel(writer, sheet_name="Per Student Breakdown", index=False)
+                df_summary = pd.DataFrame(summary_rows)
+                df_detail = pd.DataFrame(detail_rows)
+
+                # Write data starting from row 7 to leave space for headers
+                df_summary.to_excel(writer, sheet_name="Summary", index=False, startrow=6)
+                df_detail.to_excel(writer, sheet_name="Per Student Breakdown", index=False, startrow=6)
+
+                # --- Style "Summary" Sheet ---
+                ws1 = writer.sheets["Summary"]
+                
+                # Brand Colors
+                navy_blue = "1A3A8F"
+                gold_accent = "D4AF37"
+                
+                # Header Section
+                ws1.merge_cells('A1:G1')
+                title_cell = ws1['A1']
+                title_cell.value = "LICEO DE MAJAYJAY - ACADEMIC CLASS RECORD"
+                title_cell.font = Font(size=16, bold=True, color=navy_blue)
+                title_cell.alignment = Alignment(horizontal="center")
+
+                ws1.merge_cells('A2:G2')
+                ws1['A2'].value = f"Subject: {context.get('subject_name')} | Section: {context.get('grade_level_name')} - {context.get('section_name')}"
+                ws1['A2'].font = Font(size=11, bold=True)
+                ws1['A2'].alignment = Alignment(horizontal="center")
+
+                ws1.merge_cells('A3:G3')
+                ws1['A3'].value = f"Grading Period: {period} Grading | School Year 2025-2026"
+                ws1['A3'].alignment = Alignment(horizontal="center")
+
+                ws1.merge_cells('A4:G4')
+                ws1['A4'].value = f"Teacher: {session.get('full_name', 'Faculty Member')}"
+                ws1['A4'].alignment = Alignment(horizontal="center")
+
+                ws1.merge_cells('A5:G5')
+                ws1['A5'].value = f"Report Generated: {datetime.now().strftime('%B %d, %Y %I:%M %p')}"
+                ws1['A5'].font = Font(size=8, italic=True, color="666666")
+                ws1['A5'].alignment = Alignment(horizontal="center")
+
+                # Table Header Styling (Row 7)
+                header_fill = PatternFill(start_color=navy_blue, end_color=navy_blue, fill_type="solid")
+                header_font = Font(color="FFFFFF", bold=True)
+                center_align = Alignment(horizontal="center", vertical="center")
+                thin_border = Border(
+                    left=Side(style='thin'), right=Side(style='thin'), 
+                    top=Side(style='thin'), bottom=Side(style='thin')
+                )
+
+                for cell in ws1[7]:
+                    cell.fill = header_fill
+                    cell.font = header_font
+                    cell.alignment = center_align
+                    cell.border = thin_border
+
+                # Auto-Adjust Column Widths & Style Data Rows
+                for col in ws1.columns:
+                    max_len = 0
+                    col_letter = get_column_letter(col[0].column)
+                    for cell in col[6:]: # From header downwards
+                        if cell.value:
+                            max_len = max(max_len, len(str(cell.value)))
+                        # Apply border and alignment to data cells
+                        if cell.row > 7:
+                            cell.border = thin_border
+                            if col_letter != 'B': # Center everything except names
+                                cell.alignment = center_align
+                    
+                    ws1.column_dimensions[col_letter].width = max_len + 4
+
+                # Color-code Remarks column (Column G / 7)
+                for row in range(8, 8 + len(df_summary)):
+                    rem_cell = ws1.cell(row=row, column=7)
+                    if rem_cell.value == "PASS":
+                        rem_cell.font = Font(color="16A34A", bold=True)
+                    elif rem_cell.value == "FAIL":
+                        rem_cell.font = Font(color="DC2626", bold=True)
+
+                # --- Style "Per Student Breakdown" Sheet ---
+                ws2 = writer.sheets["Per Student Breakdown"]
+                ws2.merge_cells('A1:Q1')
+                ws2['A1'].value = f"DETAILED GRADE BREAKDOWN - {context.get('subject_name')}"
+                ws2['A1'].font = Font(size=14, bold=True, color=navy_blue)
+                ws2['A1'].alignment = Alignment(horizontal="center")
+
+                for cell in ws2[7]:
+                    cell.fill = header_fill
+                    cell.font = header_font
+                    cell.alignment = center_align
+                    cell.border = thin_border
+
+                for col in ws2.columns:
+                    max_len = 0
+                    col_letter = get_column_letter(col[0].column)
+                    for cell in col[6:]:
+                        if cell.value:
+                            max_len = max(max_len, len(str(cell.value)))
+                        if cell.row > 7:
+                            cell.border = thin_border
+                            if col_letter != 'B':
+                                cell.alignment = center_align
+                    ws2.column_dimensions[col_letter].width = max_len + 4
+
             output.seek(0)
             return send_file(
                 output,
