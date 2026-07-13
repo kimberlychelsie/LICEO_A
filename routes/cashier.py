@@ -123,7 +123,7 @@ def billing_registry():
               ON e.enrollment_id = b.enrollment_id
             LEFT JOIN student_accounts sa
               ON e.enrollment_id = sa.enrollment_id
-            WHERE e.branch_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled')
+            WHERE e.branch_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled', 'pending')
         """
         params = [session.get("branch_id"), active_year_id]
 
