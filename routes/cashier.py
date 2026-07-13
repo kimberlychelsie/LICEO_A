@@ -161,7 +161,7 @@ def billing_registry():
         # Grade levels for filter dropdown
         cursor.execute("""
             SELECT DISTINCT grade_level FROM enrollments
-            WHERE branch_id = %s AND year_id = %s AND status IN ('approved','enrolled')
+            WHERE branch_id = %s AND year_id = %s AND status IN ('approved', 'enrolled', 'pending')
             ORDER BY grade_level
         """, (session.get("branch_id"), active_year_id))
         grade_levels = [r["grade_level"] for r in cursor.fetchall()]
