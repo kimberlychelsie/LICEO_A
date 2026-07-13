@@ -123,7 +123,7 @@ def billing_registry():
               ON e.enrollment_id = b.enrollment_id
             LEFT JOIN student_accounts sa
               ON e.enrollment_id = sa.enrollment_id
-            WHERE e.branch_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled', 'pending')
+            WHERE e.branch_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled')
         """
         params = [session.get("branch_id"), active_year_id]
 
@@ -161,7 +161,7 @@ def billing_registry():
         # Grade levels for filter dropdown
         cursor.execute("""
             SELECT DISTINCT grade_level FROM enrollments
-            WHERE branch_id = %s AND year_id = %s AND status IN ('approved', 'enrolled', 'pending')
+            WHERE branch_id = %s AND year_id = %s AND status IN ('approved', 'enrolled')
             ORDER BY grade_level
         """, (session.get("branch_id"), active_year_id))
         grade_levels = [r["grade_level"] for r in cursor.fetchall()]
