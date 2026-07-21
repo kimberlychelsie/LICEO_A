@@ -9,6 +9,7 @@ from cloudinary_helper import upload_enrollment_document
 from rapidfuzz import fuzz
 import logging
 from utils.send_email import send_email
+from extensions import csrf
 
 logger = logging.getLogger(__name__)
 
@@ -204,6 +205,7 @@ def compute_duplicate_score(new_name, new_dob, new_lrn, existing):
 # DUPLICATE CHECK API
 # =======================
 @student_bp.route("/api/check-duplicate", methods=["POST"])
+@csrf.exempt
 def check_duplicate():
     data = request.get_json(silent=True) or {}
     name = (data.get("name") or "").strip()
@@ -219,10 +221,18 @@ def check_duplicate():
     try:
         # Fetch existing enrollments from the DB (exclude rejected ones)
         cursor.execute("""
-            SELECT student_name, dob, lrn, enrollment_id, grade_level
-            FROM enrollments
-            WHERE status NOT IN ('rejected')
-        """)
+    SELECT
+        student_first_name,
+        student_middle_name,
+        student_last_name,
+        dob,
+        lrn,
+        enrollment_id,
+        grade_level
+    FROM enrollments
+    WHERE status NOT IN ('rejected')
+    AND branch_id = %s
+""", (branch_id,))
         existing_records = cursor.fetchall()
 
         best_score = 0
@@ -230,7 +240,19 @@ def check_duplicate():
         best_match = None
 
         for rec in existing_records:
-            score, reasons = compute_duplicate_score(name, dob, lrn, rec)
+            rec["student_name"] = " ".join(filter(None, [
+                rec["student_first_name"],
+                rec["student_middle_name"],
+                rec["student_last_name"]
+            ]))
+
+            score, reasons = compute_duplicate_score(
+                name,
+                dob or "",
+                lrn or "",
+                rec
+            )
+
             if score > best_score:
                 best_score = score
                 best_reasons = reasons
@@ -344,7 +366,10 @@ def enroll(branch_id):
                 return redirect(url_for("public.homepage"))
 
             # ── Student Details ──
-            student_name      = request.form.get("student_name", "").strip()
+            student_first_name = request.form.get("student_first_name", "").strip()
+            student_middle_name = request.form.get("student_middle_name", "").strip()
+            student_last_name = request.form.get("student_last_name", "").strip()
+
             grade_level       = normalize_grade_level(request.form.get("grade_level", "").strip())
             gender            = request.form.get("gender", "").strip()
             dob               = request.form.get("dob", "").strip() or None
@@ -355,15 +380,25 @@ def enroll(branch_id):
             birthplace        = request.form.get("birthplace", "").strip() or None
 
             # ── Guardian ──
-            guardian_name     = request.form.get("guardian_name", "").strip()
+            guardian_first_name = request.form.get("guardian_first_name", "").strip()
+            guardian_middle_name = request.form.get("guardian_middle_name", "").strip()
+            guardian_last_name = request.form.get("guardian_last_name", "").strip()
+
             guardian_contact  = request.form.get("guardian_contact", "").strip()
             guardian_email    = request.form.get("guardian_email", "").strip() or None
 
             # ── Parents ──
-            father_name       = request.form.get("father_name", "").strip() or None
+            father_first_name = request.form.get("father_first_name", "").strip() or None
+            father_middle_name = request.form.get("father_middle_name", "").strip() or None
+            father_last_name = request.form.get("father_last_name", "").strip() or None
+
             father_contact    = request.form.get("father_contact", "").strip() or None
             father_occupation = request.form.get("father_occupation", "").strip() or None
-            mother_name       = request.form.get("mother_name", "").strip() or None
+
+            mother_first_name = request.form.get("mother_first_name", "").strip() or None
+            mother_middle_name = request.form.get("mother_middle_name", "").strip() or None
+            mother_last_name = request.form.get("mother_last_name", "").strip() or None
+
             mother_contact    = request.form.get("mother_contact", "").strip() or None
             mother_occupation = request.form.get("mother_occupation", "").strip() or None
 
@@ -371,6 +406,31 @@ def enroll(branch_id):
             previous_school   = request.form.get("previous_school", "").strip() or None
             enroll_type_raw   = request.form.get("enroll_type", "").strip() or None
             enroll_semester   = request.form.get("enroll_semester", "").strip() or None
+
+            student_name = " ".join(filter(None, [
+                student_first_name,
+                student_middle_name,
+                student_last_name
+            ]))
+
+            guardian_name = " ".join(filter(None, [
+                guardian_first_name,
+                guardian_middle_name,
+                guardian_last_name
+            ]))
+
+            father_name = " ".join(filter(None, [
+                father_first_name,
+                father_middle_name,
+                father_last_name
+            ]))
+
+            mother_name = " ".join(filter(None, [
+                mother_first_name,
+                mother_middle_name,
+                mother_last_name
+            ]))
+
             # Combine Transferee + semester into a single stored value
             if enroll_type_raw == "Transferee" and enroll_semester:
                 enroll_type = f"Transferee - {enroll_semester}"
@@ -379,8 +439,8 @@ def enroll(branch_id):
             enroll_date       = request.form.get("enroll_date", "").strip() or None
             remarks           = request.form.get("remarks", "").strip() or None
 
-            if not student_name or ',' not in student_name or len(student_name) < 5:
-                flash("Please enter the full name in 'Last Name, First Name, M.I.' format.", "error")
+            if not student_first_name or not student_last_name:
+                flash("Student first name and last name are required.", "error")
                 return redirect(request.url)
             if not grade_level:
                 flash("Grade level is required.", "error")
@@ -391,7 +451,7 @@ def enroll(branch_id):
             if lrn and (not lrn.isdigit() or len(lrn) != 12):
                 flash("LRN must be a 12-digit number.", "error")
                 return redirect(request.url)
-            if not guardian_name:
+            if not guardian_first_name or not guardian_last_name:
                 flash("Guardian name is required.", "error")
                 return redirect(request.url)
             if not guardian_contact:
@@ -412,23 +472,52 @@ def enroll(branch_id):
 
             # ── SERVER-SIDE DUPLICATE CHECK ──
             cursor.execute("""
-                SELECT student_name, dob, lrn, grade_level
+                SELECT
+                    student_first_name,
+                    student_middle_name,
+                    student_last_name,
+                    dob,
+                    lrn,
+                    grade_level
                 FROM enrollments
                 WHERE status NOT IN ('rejected')
                 AND branch_id = %s
                 AND year_id = %s
             """, (branch_id, selected_sy_id))
             existing_records = cursor.fetchall()
+            
             best_score = 0
             best_reasons = []
+            best_match = None
+
             for rec in existing_records:
-                score, reasons = compute_duplicate_score(student_name, dob or "", lrn or "", rec)
+                rec["student_name"] = " ".join(filter(None, [
+                    rec["student_first_name"],
+                    rec["student_middle_name"],
+                    rec["student_last_name"]
+                ]))
+
+                score, reasons = compute_duplicate_score(
+                    student_name,
+                    dob or "",
+                    lrn or "",
+                    rec
+                )
+
                 if score > best_score:
                     best_score = score
                     best_reasons = reasons
+                    best_match = rec    
 
             if best_score >= 50:
                 reason_text = ", ".join(best_reasons)
+                if best_match:
+                    reason_text += (
+                        f"<br><br>"
+                        f"Existing record:<br>"
+                        f"<strong>{best_match['student_name']}</strong>"
+                        f" ({best_match['grade_level']})"
+                    )
                 return render_template(
                     "student_enroll.html",
                     branch=branch,
@@ -446,20 +535,23 @@ def enroll(branch_id):
             # ── Insert enrollment ──
             cursor.execute("""
                 INSERT INTO enrollments
-                  (student_name, grade_level, gender, dob, address, contact_number,
-                   guardian_name, guardian_contact, previous_school, branch_id, status,
+                  (student_first_name, student_middle_name, student_last_name, grade_level, gender, dob, address, contact_number,
+                   guardian_first_name, guardian_middle_name, guardian_last_name, guardian_contact, previous_school, branch_id, status,
                    branch_enrollment_no, lrn, email, guardian_email,
-                   birthplace, father_name, father_contact, father_occupation,
-                   mother_name, mother_contact, mother_occupation,
+                   birthplace, father_first_name, father_middle_name, father_last_name, father_contact, father_occupation,
+                   mother_first_name, mother_middle_name, mother_last_name, mother_contact, mother_occupation,
                    enroll_type, enroll_date, remarks, year_id)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s,%s,%s, %s,%s,%s,%s, %s,%s,%s, %s,%s,%s,%s)
-                RETURNING enrollment_id
+                VALUES (
+                    %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+                     %s,%s,%s,%s
+                )
+                RETURNING enrollment_id;
             """, (
-                student_name, grade_level, gender, dob, address, contact_number,
-                guardian_name, guardian_contact, previous_school, branch_id,
-                next_no, lrn, email, guardian_email,
-                birthplace, father_name, father_contact, father_occupation,
-                mother_name, mother_contact, mother_occupation,
+                student_first_name, student_middle_name, student_last_name, grade_level, gender, dob,
+                address, contact_number, guardian_first_name, guardian_middle_name, guardian_last_name,
+                guardian_contact, previous_school, branch_id, next_no, lrn, email, guardian_email, birthplace,
+                father_first_name, father_middle_name, father_last_name, father_contact, father_occupation,
+                mother_first_name, mother_middle_name, mother_last_name, mother_contact, mother_occupation,
                 enroll_type, enroll_date, remarks, selected_sy_id
             ))
             enrollment_id = cursor.fetchone()["enrollment_id"]
@@ -512,7 +604,7 @@ def enrollment_success(branch_id, enrollment_id):
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         cursor.execute(
-            "SELECT branch_enrollment_no, student_name FROM enrollments WHERE enrollment_id=%s",
+            "SELECT branch_enrollment_no, student_first_name,student_middle_name, student_last_name FROM enrollments WHERE enrollment_id=%s",
             (enrollment_id,),
         )
         row = cursor.fetchone()

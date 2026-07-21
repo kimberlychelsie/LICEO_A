@@ -7,7 +7,7 @@ from flask_wtf.csrf import CSRFProtect
 
 
 def _limiter_storage_uri() -> str:
-    """Rate-limit storage: Redis in production (shared across workers), else explicit memory."""
+    """Rate-limit storage: Redis in production, memory locally."""
     uri = (os.getenv("RATELIMIT_STORAGE_URI") or os.getenv("REDIS_URL") or "").strip()
     if uri:
         return uri
@@ -20,5 +20,5 @@ limiter = Limiter(
     storage_uri=_limiter_storage_uri(),
 )
 
-# Add this
+# Shared CSRF instance
 csrf = CSRFProtect()

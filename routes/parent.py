@@ -83,7 +83,9 @@ def dashboard():
 
     try:
         cursor.execute("""
-            SELECT ps.*, e.student_name, e.grade_level, e.status,
+            SELECT ps.*, e.student_first_name,
+    e.student_middle_name,
+    e.student_last_name, e.grade_level, e.status,
                    br.branch_name, br.location,
                    b.bill_id, b.total_amount, b.amount_paid, b.balance, b.status as bill_status,
                    e.enrollment_id
@@ -96,6 +98,12 @@ def dashboard():
         """, (session.get("user_id"),))
 
         children = cursor.fetchall()
+        for child in children:
+            child["student_name"] = " ".join(filter(None, [
+                child.get("student_first_name"),
+                child.get("student_middle_name"),
+                child.get("student_last_name"),
+            ]))
         return render_template("parent_dashboard.html", children=children)
 
     finally:
@@ -475,16 +483,24 @@ def child_bills(enrollment_id):
 
     try:
         cursor.execute("""
-            SELECT ps.*, e.student_name, e.grade_level, e.enrollment_id, e.branch_enrollment_no
+            SELECT ps.*,  e.student_first_name,
+    e.student_middle_name,
+    e.student_last_name, e.grade_level, e.enrollment_id, e.branch_enrollment_no
             FROM parent_student ps
             JOIN enrollments e ON ps.student_id = e.enrollment_id
             WHERE ps.parent_id=%s AND ps.student_id=%s
         """, (session.get("user_id"), enrollment_id))
 
         child = cursor.fetchone()
+        
         if not child:
             flash("Child not found or access denied", "error")
             return redirect(url_for("parent.dashboard"))
+        child["student_name"] = " ".join(filter(None, [
+            child.get("student_first_name"),
+            child.get("student_middle_name"),
+            child.get("student_last_name"),
+        ]))
 
         cursor.execute("SELECT * FROM billing WHERE enrollment_id=%s", (enrollment_id,))
         bill = cursor.fetchone()
@@ -542,13 +558,23 @@ def parent_reserve():
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         cursor.execute("""
-            SELECT e.enrollment_id, e.student_name, e.grade_level
+            SELECT e.enrollment_id, e.student_first_name,
+    e.student_middle_name,
+    e.student_last_name, e.grade_level
             FROM parent_student ps
             JOIN enrollments e ON ps.student_id = e.enrollment_id
             WHERE ps.parent_id = %s
-            ORDER BY e.student_name
+            ORDER BY e.student_last_name,
+    e.student_first_name,
+    e.student_middle_name
         """, (session.get("user_id"),))
         children = cursor.fetchall()
+        for child in children:
+            child["student_name"] = " ".join(filter(None, [
+                child.get("student_first_name"),
+                child.get("student_middle_name"),
+                child.get("student_last_name"),
+            ]))
 
         if not children:
             flash("No linked children found. Please link a child first.", "warning")

@@ -487,7 +487,9 @@ def teacher_dashboard():
             query_str = """
                 SELECT
                     e.enrollment_id,
-                    e.student_name,
+                    e.student_first_name,
+                    e.student_middle_name,
+                    e.student_last_name,
                     e.grade_level,
                     e.status            AS enrollment_status,
 
@@ -530,10 +532,22 @@ def teacher_dashboard():
                 query_str += " AND e.section_id = %(section_id)s "
                 query_params["section_id"] = selected_section_id
                 
-            query_str += " ORDER BY e.student_name ASC "
+            query_str += """
+            ORDER BY
+                e.student_last_name,
+                e.student_first_name,
+                e.student_middle_name
+            """
             
             cur.execute(query_str, query_params)
             students = cur.fetchall() or []
+
+            for s in students:
+                s["student_name"] = " ".join(filter(None, [
+                    s.get("student_first_name"),
+                    s.get("student_middle_name"),
+                    s.get("student_last_name")
+                ]))
 
             stats["total"] = len(students)
             for s in students:
@@ -1568,16 +1582,33 @@ def activity_submissions(activity_id):
             
         # Get all students enrolled in this section/class
         cur.execute('''
-            SELECT e.enrollment_id, e.student_name, u.user_id as student_user_id
+            SELECT
+                e.enrollment_id,
+                e.student_first_name,
+                e.student_middle_name,
+                e.student_last_name,
+                u.user_id AS student_user_id
             FROM enrollments e
-            LEFT JOIN users u ON u.user_id = e.user_id
+            LEFT JOIN student_accounts sa
+                ON sa.enrollment_id = e.enrollment_id
+            LEFT JOIN users u
+                ON u.username = sa.username
             WHERE e.section_id = %s
               AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
               AND e.branch_id = %s
               AND e.year_id = %s
-            ORDER BY e.student_name ASC
+            ORDER BY
+                e.student_last_name,
+                e.student_first_name,
+                e.student_middle_name
         ''', (activity['section_id'], activity['branch_id'], year_id))
         students = cur.fetchall()
+        for s in students:
+            s["student_name"] = " ".join(filter(None, [
+                s.get("student_first_name"),
+                s.get("student_middle_name"),
+                s.get("student_last_name")
+            ]))
         
         # Get all submissions for this activity
         cur.execute('''
@@ -2729,7 +2760,7 @@ def teacher_exam_results(exam_id):
 
         cur.execute("""
             SELECT
-                e.enrollment_id, e.student_name, e.grade_level,
+                e.enrollment_id,e.student_first_name, e.student_middle_name, e.student_last_name, e.grade_level,
                 r.result_id, r.score, r.total_points, COALESCE(r.status, 'Not Taken') AS status,
                 r.submitted_at, r.started_at, r.tab_switches,
                 (SELECT COUNT(*) FROM exam_tab_switches ts WHERE ts.result_id = r.result_id) AS switch_count,
@@ -2742,9 +2773,15 @@ def teacher_exam_results(exam_id):
                  AND ext.item_id = %s AND ext.item_type = %s
             WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
             AND e.branch_id = %s
-            ORDER BY e.student_name ASC
+            ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
         """, (exam['class_mode'] != 'Face-to-Face', exam_id, exam_id, exam_id, exam.get('exam_type', 'exam'), exam['section_id'], branch_id))
         results = cur.fetchall() or []
+        for r in results:
+            r["student_name"] = " ".join(filter(None, [
+                r.get("student_first_name"),
+                r.get("student_middle_name"),
+                r.get("student_last_name")
+            ]))
 
         # ✅ ADD THIS — convert UTC → PH time for display
         ph_tz = pytz.timezone("Asia/Manila")
@@ -3438,14 +3475,20 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
 
     # All students in the section
     cur.execute("""
-        SELECT e.enrollment_id, e.student_name
+        SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name
         FROM enrollments e
         JOIN sections s ON e.section_id = s.section_id
         WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s
               AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-        ORDER BY e.student_name ASC
+        ORDER BY  e.student_last_name, e.student_first_name, e.student_middle_name
     """, (section_id, branch_id, year_id))
     students = cur.fetchall() or []
+    for s in students:
+        s["student_name"] = " ".join(filter(None, [
+            s.get("student_first_name"),
+            s.get("student_middle_name"),
+            s.get("student_last_name")
+        ]))
 
     # Get subject's DepEd category for auto-weights
     cur.execute("SELECT deped_category FROM subjects WHERE subject_id = %s", (subject_id,))
@@ -3992,7 +4035,7 @@ def participation_input(section_id, subject_id, period):
 
         # GET — load current year students + scores
         cur.execute("""
-            SELECT e.enrollment_id, e.student_name,
+            SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name,
                    COALESCE(ps.score, 0) AS score
             FROM enrollments e
             JOIN sections s ON e.section_id = s.section_id
@@ -4000,9 +4043,16 @@ def participation_input(section_id, subject_id, period):
                 ON ps.enrollment_id = e.enrollment_id
                AND ps.subject_id = %s AND ps.grading_period = %s
             WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-            ORDER BY e.student_name
+            ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
         """, (subject_id, period, section_id, branch_id, year_id))
         students = cur.fetchall() or []
+
+        for s in students:
+            s["student_name"] = " ".join(filter(None, [
+                s.get("student_first_name"),
+                s.get("student_middle_name"),
+                s.get("student_last_name")
+            ]))
 
     finally:
         cur.close()
@@ -4078,7 +4128,7 @@ def attendance_input(section_id, subject_id, period):
                                     period=period))
 
         cur.execute("""
-            SELECT e.enrollment_id, e.student_name,
+            SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name,
                    COALESCE(att.score, 0) AS score
             FROM enrollments e
             JOIN sections s ON e.section_id = s.section_id
@@ -4086,9 +4136,15 @@ def attendance_input(section_id, subject_id, period):
                 ON att.enrollment_id = e.enrollment_id
                AND att.subject_id = %s AND att.grading_period = %s
             WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-            ORDER BY e.student_name
+            ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
         """, (subject_id, period, section_id, branch_id, year_id))
         students = cur.fetchall() or []
+        for s in students:
+            s["student_name"] = " ".join(filter(None, [
+                s.get("student_first_name"),
+                s.get("student_middle_name"),
+                s.get("student_last_name")
+            ]))
 
     finally:
         cur.close()
@@ -4174,17 +4230,24 @@ def api_teacher_classlist(section_id):
             return jsonify({"error": "Unauthorized section access"}), 403
 
         cur.execute("""
-            SELECT e.enrollment_id, e.student_name, u.user_id as student_user_id
+            SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name, u.user_id as student_user_id
             FROM enrollments e
             LEFT JOIN users u ON u.user_id = e.user_id
             WHERE e.section_id = %s 
               AND e.branch_id = %s 
               AND e.year_id = %s
               AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-            ORDER BY e.student_name ASC
+            ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
         """, (section_id, branch_id, year_id))
 
         students = cur.fetchall()
+
+        for s in students:
+            s["student_name"] = " ".join(filter(None, [
+                s.get("student_first_name"),
+                s.get("student_middle_name"),
+                s.get("student_last_name")
+            ]))
         return jsonify({"students": students})
 
     except Exception as e:
@@ -4633,15 +4696,22 @@ def teacher_class_view(subject_id):
         # ✅ STUDENTS (Class List) - Filtered by Section, Branch, and Year
         # We also ensure the status is 'approved' or 'enrolled'
         cur.execute("""
-            SELECT e.enrollment_id, e.student_name, e.status, e.grade_level, e.lrn, e.gender
+            SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name, e.status, e.grade_level, e.lrn, e.gender
             FROM enrollments e
             WHERE e.section_id = %s 
               AND e.branch_id = %s 
               AND e.year_id = %s
               AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-            ORDER BY e.student_name ASC
+            ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
         """, (active_section_id, branch_id, year_id))
         enrolled_students = cur.fetchall() or []
+
+        for s in enrolled_students:
+            s["student_name"] = " ".join(filter(None, [
+                s.get("student_first_name"),
+                s.get("student_middle_name"),
+                s.get("student_last_name")
+            ]))
         unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
 
     finally:
@@ -4896,7 +4966,7 @@ def teacher_attendance():
                             
                         # Get student info for emails and notifications
                         cur.execute("""
-                            SELECT e.enrollment_id, e.student_name, e.guardian_email,
+                            SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name, e.guardian_email,
                                    (SELECT name FROM subjects WHERE subject_id = %s LIMIT 1) as subject_name,
                                    ps.parent_id
                             FROM enrollments e
@@ -4904,6 +4974,11 @@ def teacher_attendance():
                             WHERE e.enrollment_id = ANY(%s)
                         """, (sel_subject_id, eids_int))
                         for r in cur.fetchall():
+                            r["student_name"] = " ".join(filter(None, [
+                                r.get("student_first_name"),
+                                r.get("student_middle_name"),
+                                r.get("student_last_name")
+                            ]))
                             student_info[r['enrollment_id']] = r
 
                     from utils.send_email import send_email
@@ -4983,7 +5058,8 @@ def teacher_attendance():
         students = []
         if sel_section_id and sel_subject_id:
             cur.execute("""
-                SELECT e.enrollment_id, COALESCE(u.full_name, e.student_name) AS full_name, e.lrn, e.gender,
+                SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name,
+    u.full_name, e.lrn, e.gender,
                        da.status AS cur_status, dp.points AS cur_part
                 FROM enrollments e
                 LEFT JOIN users u ON e.user_id = u.user_id
@@ -4993,9 +5069,21 @@ def teacher_attendance():
                      AND dp.subject_id = %s AND dp.participation_date = %s
                 WHERE e.section_id = %s AND e.branch_id = %s AND e.year_id = %s
                   AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-                ORDER BY e.student_name ASC
+                ORDER BY e.student_last_name,
+    e.student_first_name,
+    e.student_middle_name
             """, (sel_subject_id, sel_date, sel_subject_id, sel_date, sel_section_id, branch_id, sel_year_id))
-            students = cur.fetchall()
+            students = cur.fetchall() or []
+
+            for s in students:
+                s["full_name"] = (
+                    s.get("full_name")
+                    or " ".join(filter(None, [
+                        s.get("student_first_name"),
+                        s.get("student_middle_name"),
+                        s.get("student_last_name")
+                    ]))
+                )
 
         return render_template("teacher_attendance.html", 
                                assignments=assignments, 
@@ -5041,7 +5129,16 @@ def teacher_attendance_export():
 
         # Fetch students and their tallies
         cur.execute("""
-            SELECT COALESCE(u.full_name, e.student_name) AS student_name,
+            SELECT
+    COALESCE(
+        u.full_name,
+        CONCAT_WS(
+            ' ',
+            e.student_first_name,
+            e.student_middle_name,
+            e.student_last_name
+        )
+    ) AS student_name,
                    e.lrn,
                    COALESCE(att.attendance_points, 0) AS attendance_points,
                    COALESCE(att.present_days, 0) AS present_days,
@@ -5069,7 +5166,9 @@ def teacher_attendance_export():
               AND e.branch_id = %s
               AND e.year_id = %s
               AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-            ORDER BY student_name ASC
+            ORDER BY e.student_last_name,
+    e.student_first_name,
+    e.student_middle_name
         """, (
             sel_subject_id, branch_id, year_id,
             sel_subject_id, branch_id, year_id,

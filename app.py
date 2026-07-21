@@ -17,13 +17,13 @@ from extensions import limiter
 from routes.teacher import _get_active_school_year
 from flask import send_from_directory, make_response
 import psycopg2.extras
-from flask_wtf.csrf import CSRFProtect
+from extensions import limiter, csrf
 
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "liceo_secret_key_dev")
 limiter.init_app(app)
-csrf = CSRFProtect(app)
+csrf.init_app(app)
 app.jinja_env.add_extension('jinja2.ext.loopcontrols')
 app.config['UPLOAD_FOLDER'] = os.path.join(os.getcwd(), "uploads")
 

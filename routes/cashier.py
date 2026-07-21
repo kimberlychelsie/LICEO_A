@@ -132,7 +132,7 @@ def billing_registry():
             params.append(grade_filter)
 
         if search_q:
-            query += " AND (e.student_name ILIKE %s OR CAST(e.branch_enrollment_no AS TEXT) ILIKE %s)"
+            query += " AND (CONCAT_WS(' ', e.student_first_name ,e.student_middle_name, e.student_last_name) ILIKE %s OR CAST(e.branch_enrollment_no AS TEXT) ILIKE %s)"
             params += [f"%{search_q}%", f"%{search_q}%"]
 
         if status_filter == "no_bill":
@@ -152,11 +152,19 @@ def billing_registry():
                 WHEN b.status = 'partial' THEN 2
                 ELSE 3
               END,
-              e.student_name ASC
+              e.student_last_name ASC,
+              e.student_first_name ASC,
+              e.student_middle_name ASC
         """
 
         cursor.execute(query, params)
         enrollments = cursor.fetchall()
+        for e in enrollments:
+            e["student_name"] = " ".join(filter(None, [
+                e.get("student_first_name"),
+                e.get("student_middle_name"),
+                e.get("student_last_name"),
+            ]))
 
         # Grade levels for filter dropdown
         cursor.execute("""
@@ -336,8 +344,18 @@ def view_bill(bill_id):
 
     try:
         cursor.execute("""
-            SELECT b.*, e.student_name, e.grade_level, e.guardian_name, e.branch_enrollment_no,
-                   br.branch_name, u.username AS created_by_name
+            SELECT
+    b.*,
+    e.student_first_name,
+    e.student_middle_name,
+    e.student_last_name,
+    e.guardian_first_name,
+    e.guardian_middle_name,
+    e.guardian_last_name,
+    e.grade_level,
+    e.branch_enrollment_no,
+    br.branch_name,
+    u.username AS created_by_name
             FROM billing b
             JOIN enrollments e ON b.enrollment_id = e.enrollment_id
             JOIN branches br ON e.branch_id = br.branch_id
@@ -349,6 +367,18 @@ def view_bill(bill_id):
         if not bill:
             flash("Bill not found", "error")
             return redirect("/cashier")
+
+        bill["student_name"] = " ".join(filter(None, [
+            bill.get("student_first_name"),
+            bill.get("student_middle_name"),
+            bill.get("student_last_name"),
+        ]))
+
+        bill["guardian_name"] = " ".join(filter(None, [
+            bill.get("guardian_first_name"),
+            bill.get("guardian_middle_name"),
+            bill.get("guardian_last_name"),
+        ]))
 
         cursor.execute("""
             SELECT p.*, u.username AS received_by_name
@@ -396,7 +426,13 @@ def process_payment(bill_id):
 
     try:
         cursor.execute("""
-            SELECT b.*, e.student_name, e.grade_level
+            SELECT
+    b.*,
+    e.student_first_name,
+    e.student_middle_name,
+    e.student_last_name,
+    e.grade_level,
+                       e.branch_enrollment_no
             FROM billing b
             JOIN enrollments e ON b.enrollment_id = e.enrollment_id
             WHERE b.bill_id = %s AND e.branch_id = %s
@@ -406,6 +442,11 @@ def process_payment(bill_id):
         if not bill:
             flash("Bill not found", "error")
             return redirect("/cashier")
+        bill["student_name"] = " ".join(filter(None, [
+            bill.get("student_first_name"),
+            bill.get("student_middle_name"),
+            bill.get("student_last_name"),
+        ]))
 
         if bill["status"] == "paid":
             flash("This bill is already fully paid", "info")
@@ -489,11 +530,22 @@ def print_receipt(payment_id):
 
     try:
         cursor.execute("""
-            SELECT p.*,
-                   e.student_name, e.grade_level, e.guardian_name, e.branch_enrollment_no,
-                   b.total_amount, b.amount_paid, b.balance,
-                   br.branch_name, br.location,
-                   COALESCE(NULLIF(TRIM(u.full_name), ''), u.username) AS received_by_name
+            SELECT
+    p.*,
+    e.student_first_name,
+    e.student_middle_name,
+    e.student_last_name,
+    e.guardian_first_name,
+    e.guardian_middle_name,
+    e.guardian_last_name,
+    e.grade_level,
+    e.branch_enrollment_no,
+    b.total_amount,
+    b.amount_paid,
+    b.balance,
+    br.branch_name,
+    br.location,
+    COALESCE(NULLIF(TRIM(u.full_name), ''), u.username) AS received_by_name
             FROM payments p
             JOIN billing b ON p.bill_id = b.bill_id
             JOIN enrollments e ON p.enrollment_id = e.enrollment_id
@@ -506,6 +558,17 @@ def print_receipt(payment_id):
         if not payment:
             flash("Receipt not found", "error")
             return redirect("/cashier")
+        payment["student_name"] = " ".join(filter(None, [
+            payment.get("student_first_name"),
+            payment.get("student_middle_name"),
+            payment.get("student_last_name"),
+        ]))
+
+        payment["guardian_name"] = " ".join(filter(None, [
+            payment.get("guardian_first_name"),
+            payment.get("guardian_middle_name"),
+            payment.get("guardian_last_name"),
+        ]))
 
         payment["payment_date"] = _to_manila_naive(payment.get("payment_date"))
         return render_template("cashier_receipt.html", payment=payment)
@@ -532,7 +595,9 @@ def reports():
               p.amount,
               p.payment_method,
               p.payment_date,
-              e.student_name,
+              e.student_first_name,
+              e.student_middle_name,
+              e.student_last_name,        
               e.grade_level,
               e.branch_enrollment_no,
               u.username AS received_by_name
@@ -544,6 +609,13 @@ def reports():
             ORDER BY p.payment_date DESC
         """, (report_date, session.get("branch_id")))
         payments = cursor.fetchall()
+
+        for payment in payments:
+            payment["student_name"] = " ".join(filter(None, [
+                payment.get("student_first_name"),
+                payment.get("student_middle_name"),
+                payment.get("student_last_name"),
+            ]))
 
         cursor.execute("""
             SELECT
@@ -593,7 +665,14 @@ def search():
                     WHERE e.branch_id = %s
                       AND (
                         (%s AND (e.branch_enrollment_no = %s))
-                        OR (e.student_name ILIKE %s)
+                        OR (
+    CONCAT_WS(
+        ' ',
+        e.student_first_name,
+        e.student_middle_name,
+        e.student_last_name
+    ) ILIKE %s
+)
                       )
                     ORDER BY e.created_at DESC
                 """, (
@@ -604,6 +683,12 @@ def search():
                 ))
 
                 results = cursor.fetchall()
+                for r in results:
+                    r["student_name"] = " ".join(filter(None, [
+                        r.get("student_first_name"),
+                        r.get("student_middle_name"),
+                        r.get("student_last_name"),
+                    ]))
             finally:
                 cursor.close()
                 db.close()
@@ -630,7 +715,9 @@ def payment_history():
               p.amount,
               p.payment_method,
               p.payment_date,
-              e.student_name,
+              e.student_first_name,
+              e.student_middle_name,
+              e.student_last_name,
               e.grade_level,
               u.username AS received_by_name
             FROM payments p
@@ -641,6 +728,13 @@ def payment_history():
             ORDER BY p.payment_date DESC
         """, (date_from, date_to, session.get("branch_id")))
         payments = cursor.fetchall()
+
+        for payment in payments:
+            payment["student_name"] = " ".join(filter(None, [
+                payment.get("student_first_name"),
+                payment.get("student_middle_name"),
+                payment.get("student_last_name"),
+            ]))
 
         cursor.execute("""
             SELECT
@@ -699,11 +793,15 @@ def cashier_reservations():
                 r.student_user_id,         -- 2
                 r.student_grade_level,     -- 3
                 COALESCE(
-                    e.student_name,
+                CONCAT_WS(' ',
+                    e.student_first_name,
+                    e.student_middle_name,
+                    e.student_last_name
+                    ),
                     svp.student_name,
                     u.username,
                     ''
-                ) AS full_name,            -- 4
+                ) AS full_name,          -- 4
                 COALESCE(r.student_grade_level, svp.grade_level) AS grade_level, -- 5
                 NULL AS strand,            -- 6
                 r.status,                  -- 7
@@ -737,10 +835,18 @@ def cashier_reservations():
             LEFT JOIN users reserved_by ON reserved_by.user_id = r.reserved_by_user_id
             LEFT JOIN LATERAL (
                 SELECT
-                    e2.student_name,
-                    e2.grade_level,
-                    e2.guardian_name,
-                    ps2.relationship
+    CONCAT_WS(' ',
+        e2.student_first_name,
+        e2.student_middle_name,
+        e2.student_last_name
+    ) AS student_name,
+    e2.grade_level,
+    CONCAT_WS(' ',
+        e2.guardian_first_name,
+        e2.guardian_middle_name,
+        e2.guardian_last_name
+    ) AS guardian_name,
+    ps2.relationship
                 FROM parent_student ps2
                 JOIN enrollments e2 ON e2.enrollment_id = ps2.student_id
                 WHERE ps2.parent_id = r.reserved_by_user_id
@@ -780,11 +886,15 @@ def cashier_reservation_view(reservation_id):
                 r.student_user_id,
                 r.student_grade_level,
                 COALESCE(
-                    e.student_name,
-                    svp.student_name,
-                    u.username,
-                    ''
-                ) AS full_name,
+    CONCAT_WS(' ',
+        e.student_first_name,
+        e.student_middle_name,
+        e.student_last_name
+    ),
+    svp.student_name,
+    u.username,
+    ''
+) AS full_name,
                 COALESCE(r.student_grade_level, svp.grade_level) AS grade_level,
                 NULL AS strand,
                 r.status,
@@ -812,10 +922,18 @@ def cashier_reservation_view(reservation_id):
             LEFT JOIN users reserved_by ON reserved_by.user_id = r.reserved_by_user_id
             LEFT JOIN LATERAL (
                 SELECT
-                    e2.student_name,
-                    e2.grade_level,
-                    e2.guardian_name,
-                    ps2.relationship
+    CONCAT_WS(' ',
+        e2.student_first_name,
+        e2.student_middle_name,
+        e2.student_last_name
+    ) AS student_name,
+    e2.grade_level,
+    CONCAT_WS(' ',
+        e2.guardian_first_name,
+        e2.guardian_middle_name,
+        e2.guardian_last_name
+    ) AS guardian_name,
+    ps2.relationship
                 FROM parent_student ps2
                 JOIN enrollments e2 ON e2.enrollment_id = ps2.student_id
                 WHERE ps2.parent_id = r.reserved_by_user_id
@@ -1165,7 +1283,16 @@ def reservation_receipt(reservation_id):
                   ELSE NULL
                 END AS parent_name,                     -- 8
                 svp.relationship,                       -- 9
-                COALESCE(e.student_name, svp.student_name, u.username, '') AS student_name -- 10
+                COALESCE(
+    CONCAT_WS(' ',
+        e.student_first_name,
+        e.student_middle_name,
+        e.student_last_name
+    ),
+    svp.student_name,
+    u.username,
+    ''
+) AS student_name -- 10
             FROM reservations r
             LEFT JOIN users u ON u.user_id = r.student_user_id
             LEFT JOIN student_accounts sa ON sa.username = u.username
@@ -1174,10 +1301,18 @@ def reservation_receipt(reservation_id):
             LEFT JOIN users reserved_by ON reserved_by.user_id = r.reserved_by_user_id
             LEFT JOIN LATERAL (
                 SELECT
-                    e2.student_name,
-                    e2.grade_level,
-                    e2.guardian_name,
-                    ps2.relationship
+    CONCAT_WS(' ',
+        e2.student_first_name,
+        e2.student_middle_name,
+        e2.student_last_name
+    ) AS student_name,
+    e2.grade_level,
+    CONCAT_WS(' ',
+        e2.guardian_first_name,
+        e2.guardian_middle_name,
+        e2.guardian_last_name
+    ) AS guardian_name,
+    ps2.relationship
                 FROM parent_student ps2
                 JOIN enrollments e2 ON e2.enrollment_id = ps2.student_id
                 WHERE ps2.parent_id = r.reserved_by_user_id
@@ -1251,7 +1386,16 @@ def export_reservations_excel():
             SELECT
                 r.reservation_id,
                 COALESCE(u.username, '') AS username,
-                COALESCE(e.student_name, svp.student_name, u.username, '') AS full_name,
+                COALESCE(
+    CONCAT_WS(' ',
+        e.student_first_name,
+        e.student_middle_name,
+        e.student_last_name
+    ),
+    svp.student_name,
+    u.username,
+    ''
+) AS full_name,
                 COALESCE(r.student_grade_level, svp.grade_level) AS grade_level,
                 r.status,
                 r.created_at,
@@ -1280,7 +1424,19 @@ def export_reservations_excel():
             LEFT JOIN enrollments e ON e.enrollment_id = sa.enrollment_id
             LEFT JOIN users reserved_by ON reserved_by.user_id = r.reserved_by_user_id
             LEFT JOIN LATERAL (
-                SELECT e2.student_name, e2.grade_level, e2.guardian_name, ps2.relationship
+                SELECT
+    CONCAT_WS(' ',
+        e2.student_first_name,
+        e2.student_middle_name,
+        e2.student_last_name
+    ) AS student_name,
+    e2.grade_level,
+    CONCAT_WS(' ',
+        e2.guardian_first_name,
+        e2.guardian_middle_name,
+        e2.guardian_last_name
+    ) AS guardian_name,
+    ps2.relationship
                 FROM parent_student ps2
                 JOIN enrollments e2 ON e2.enrollment_id = ps2.student_id
                 WHERE ps2.parent_id = r.reserved_by_user_id
@@ -1411,7 +1567,16 @@ def export_reservation_detail_excel(reservation_id):
             SELECT
                 r.reservation_id,
                 COALESCE(u.username, '') AS username,
-                COALESCE(e.student_name, svp.student_name, u.username, '') AS full_name,
+                COALESCE(
+    CONCAT_WS(' ',
+        e.student_first_name,
+        e.student_middle_name,
+        e.student_last_name
+    ),
+    svp.student_name,
+    u.username,
+    ''
+) AS full_name,
                 COALESCE(r.student_grade_level, svp.grade_level) AS grade_level,
                 r.status,
                 r.created_at,
@@ -1430,7 +1595,19 @@ def export_reservation_detail_excel(reservation_id):
             LEFT JOIN enrollments e ON e.enrollment_id = sa.enrollment_id
             LEFT JOIN users reserved_by ON reserved_by.user_id = r.reserved_by_user_id
             LEFT JOIN LATERAL (
-                SELECT e2.student_name, e2.grade_level, e2.guardian_name, ps2.relationship
+                SELECT
+    CONCAT_WS(' ',
+        e2.student_first_name,
+        e2.student_middle_name,
+        e2.student_last_name
+    ) AS student_name,
+    e2.grade_level,
+    CONCAT_WS(' ',
+        e2.guardian_first_name,
+        e2.guardian_middle_name,
+        e2.guardian_last_name
+    ) AS guardian_name,
+    ps2.relationship
                 FROM parent_student ps2
                 JOIN enrollments e2 ON e2.enrollment_id = ps2.student_id
                 WHERE ps2.parent_id = r.reserved_by_user_id
@@ -1589,8 +1766,19 @@ def unpaid_report():
 
         # Fetch students with balances > 0 for this year
         cursor.execute("""
-            SELECT e.student_name, e.grade_level, e.branch_enrollment_no,
-                   b.bill_id, b.total_amount, b.amount_paid, b.balance, b.status
+            SELECT
+    CONCAT_WS(' ',
+        e.student_first_name,
+        e.student_middle_name,
+        e.student_last_name
+    ) AS student_name,
+    e.grade_level,
+    e.branch_enrollment_no,
+    b.bill_id,
+    b.total_amount,
+    b.amount_paid,
+    b.balance,
+    b.status
             FROM billing b
             JOIN enrollments e ON b.enrollment_id = e.enrollment_id
             WHERE b.branch_id = %s AND b.year_id = %s AND b.balance > 0

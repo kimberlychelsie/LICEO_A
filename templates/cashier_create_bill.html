@@ -202,16 +202,24 @@
 {% block content %}
 <div class="create-bill-container">
     <div class="premium-card">
-        <h1 class="page-title">📝 Official Bill Creation</h1>
+        <h1 class="page-title"> Create Billing Statement</h1>
 
         <div class="student-bar">
             <div class="bar-item">
-                <span class="lbl">Enrollment Ref</span>
-                <span class="val">#{{ enrollment.branch_enrollment_no }}</span>
+                <span class="lbl">Enrollment No.</span>
+                <span class="val">{{ enrollment.branch_enrollment_no }}</span>
             </div>
             <div class="bar-item">
                 <span class="lbl">Student Name</span>
-                <span class="val">{{ enrollment.student_name }}</span>
+                <span class="val">
+                    {{
+                        [
+                            enrollment.student_first_name,
+                            enrollment.student_middle_name,
+                            enrollment.student_last_name
+                        ] | select | join(' ')
+                    }}
+                </span>
             </div>
             <div class="bar-item">
                 <span class="lbl">Academic Level</span>
@@ -226,7 +234,7 @@
         <form method="POST" onsubmit="return confirm('Authorize the creation of this billing statement?');">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="fee-section">
-                <h3>💰 Fee Configuration</h3>
+                <h3>Billing Details</h3>
                 <div class="form-grid">
                     <div class="form-group">
                         <label class="form-label" for="tuition_fee">Tuition & Mandatory Fees (₱)</label>
@@ -248,7 +256,7 @@
             </div>
 
             <div class="fee-section">
-                <h3>📚 Textbooks & Materials</h3>
+                <h3> Textbooks & Materials</h3>
                 {% if books %}
                 <div class="reserved-items-well">
                     <strong>Reserved Items Found:</strong>
@@ -270,7 +278,7 @@
             </div>
 
             <div class="fee-section">
-                <h3>👕 Uniforms & Apparel</h3>
+                <h3> Uniforms</h3>
                 {% if uniforms %}
                 <div class="reserved-items-well" style="background: #fdf2f8; border-color: #fbcfe8;">
                     <strong style="color: #9d174d;">Reserved Apparel Found:</strong>
@@ -292,12 +300,12 @@
             </div>
 
             <div class="total-well">
-                <div class="lbl">Statement Total Amount</div>
+                <div class="lbl">Total Amount Due</div>
                 <div class="amt" id="total_amount_display">₱0.00</div>
             </div>
 
             <div class="action-flex">
-                <button type="submit" class="btn-create">✅ Issue Billing Statement</button>
+                <button type="submit" class="btn-create"> Issue Billing Statement</button>
                 <a href="/cashier" class="btn-cancel">Cancel</a>
             </div>
         </form>

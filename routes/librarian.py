@@ -802,7 +802,11 @@ def librarian_reservations():
                 r.student_user_id,
                 r.student_grade_level,
                 COALESCE(
-                    e.student_name,
+                    CONCAT_WS(' ',
+        e.student_first_name,
+        e.student_middle_name,
+        e.student_last_name
+    ),
                     svp.student_name,
                     u.username,
                     ''
@@ -838,10 +842,18 @@ def librarian_reservations():
             LEFT JOIN users reserved_by ON reserved_by.user_id = r.reserved_by_user_id
             LEFT JOIN LATERAL (
                 SELECT
-                    e2.student_name,
-                    e2.grade_level,
-                    e2.guardian_name,
-                    ps2.relationship
+    CONCAT_WS(' ',
+        e2.student_first_name,
+        e2.student_middle_name,
+        e2.student_last_name
+    ) AS student_name,
+    e2.grade_level,
+    CONCAT_WS(' ',
+        e2.guardian_first_name,
+        e2.guardian_middle_name,
+        e2.guardian_last_name
+    ) AS guardian_name,
+    ps2.relationship
                 FROM parent_student ps2
                 JOIN enrollments e2 ON e2.enrollment_id = ps2.student_id
                 WHERE ps2.parent_id = r.reserved_by_user_id

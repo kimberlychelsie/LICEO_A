@@ -114,8 +114,14 @@ def login():
                         enrollment_id = user.get("enrollment_id")
                         if enrollment_id:
                             cursor.execute("""
-                                SELECT e.enrollment_id, e.student_name, e.grade_level, e.branch_id,
-                                       sa.account_id
+                                SELECT
+                                    e.enrollment_id,
+                                    e.student_first_name,
+                                    e.student_middle_name,
+                                    e.student_last_name,
+                                    e.grade_level,
+                                    e.branch_id,
+                                    sa.account_id
                                 FROM enrollments e
                                 LEFT JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
                                 WHERE e.enrollment_id = %s
@@ -124,7 +130,7 @@ def login():
                         else:
                             cursor.execute("""
                                 SELECT sa.account_id, sa.enrollment_id,
-                                       e.student_name, e.grade_level, e.branch_id
+                                       e.student_first_name, e.student_middle_name, e.student_last_name, e.grade_level, e.branch_id
                                 FROM student_accounts sa
                                 JOIN enrollments e ON e.enrollment_id = sa.enrollment_id
                                 WHERE sa.username = %s
@@ -132,9 +138,15 @@ def login():
                             """, (username,))
                         en = cursor.fetchone()
                         if en:
-                            session["student_account_id"]  = en.get("account_id")
-                            session["enrollment_id"]       = en.get("enrollment_id")
-                            session["student_name"]        = en.get("student_name")
+                            student_name = " ".join(filter(None, [
+                                en.get("student_first_name"),
+                                en.get("student_middle_name"),
+                                en.get("student_last_name")
+                            ]))
+
+                            session["student_account_id"] = en.get("account_id")
+                            session["enrollment_id"] = en.get("enrollment_id")
+                            session["student_name"] = student_name
                             session["student_grade_level"] = en.get("grade_level")
                             session["branch_id"]           = en.get("branch_id") or session.get("branch_id")
 
@@ -180,7 +192,9 @@ def login():
                 SELECT
                     sa.*,
                     e.branch_id AS enroll_branch_id,
-                    e.student_name,
+                    e.student_first_name,
+                    e.student_middle_name,
+                    e.student_last_name,
                     e.grade_level,
                     e.email AS enroll_email
                 FROM student_accounts sa
@@ -266,7 +280,13 @@ def login():
 
                     # ✅ enrollment reference for filters (THIS IS WHAT YOU NEED)
                     session["enrollment_id"] = enrollment_id
-                    session["student_name"] = student.get("student_name")
+                    student_name = " ".join(filter(None, [
+                        student.get("student_first_name"),
+                        student.get("student_middle_name"),
+                        student.get("student_last_name")
+                    ]))
+
+                    session["student_name"] = student_name
                     session["student_grade_level"] = student.get("grade_level")
 
                     if check_password_change_required(student, is_student=True):
@@ -483,7 +503,7 @@ def forgot_password():
             cur.execute("""
                 SELECT
                     sa.account_id, sa.username, sa.branch_id,
-                    e.student_name,
+                    e.student_first_name, e.student_middle_name, e.student_last_name,
                     COALESCE(NULLIF(sa.email,''), NULLIF(e.email,''), NULLIF(e.guardian_email,'')) AS match_email
                 FROM student_accounts sa
                 LEFT JOIN enrollments e ON e.enrollment_id = sa.enrollment_id
@@ -518,7 +538,11 @@ def forgot_password():
                 db.commit()
 
                 link = f"{BASE_URL}/reset-password/{raw}"
-                who = s.get("student_name") or "Student"
+                who = " ".join(filter(None, [
+                    s.get("student_first_name"),
+                    s.get("student_middle_name"),
+                    s.get("student_last_name")
+                ])) or "Student"
                 body = (
                     "We received a request to reset your password.\n\n"
                     f"Account: Student ({s['username']}) - {who}\n"

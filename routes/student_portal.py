@@ -50,7 +50,7 @@ def dashboard():
             # Path A: logged in via student_accounts table
             cursor.execute("""
                 SELECT sa.account_id, sa.enrollment_id, sa.username, sa.email,
-                       e.student_name, e.grade_level, e.status, e.branch_id,
+                       e.student_first_name, e.student_middle_name, e.student_last_name, e.grade_level, e.status, e.branch_id,
                        e.branch_enrollment_no, e.section_id, e.profile_image,
                        e.year_id,
                        br.branch_name, br.location
@@ -65,7 +65,7 @@ def dashboard():
                 SELECT NULL AS account_id, e.enrollment_id,
                        e.branch_enrollment_no, e.section_id,
                        CAST(%s AS text) AS username, NULL AS email,
-                       e.student_name, e.grade_level, e.status, e.branch_id, e.profile_image,
+                       e.student_first_name, e.student_middle_name, e.student_last_name, e.grade_level, e.status, e.branch_id, e.profile_image,
                        e.year_id,
                        br.branch_name, br.location
                 FROM enrollments e
@@ -102,17 +102,24 @@ def dashboard():
         active_enrollment = None
         if active_year_id and account_id:
             cursor.execute("""
-                SELECT e.enrollment_id, e.section_id, e.grade_level, e.year_id, e.status
-                FROM student_accounts sa
-                JOIN enrollments e ON e.student_name = (
-                    SELECT student_name FROM enrollments WHERE enrollment_id = sa.enrollment_id LIMIT 1
-                )
-                WHERE sa.account_id = %s
-                  AND e.year_id = %s
-                  AND e.branch_id = %s
-                ORDER BY e.enrollment_id DESC
-                LIMIT 1
-            """, (account_id, active_year_id, branch_id))
+    SELECT e.enrollment_id,
+           e.section_id,
+           e.grade_level,
+           e.year_id,
+           e.status
+    FROM student_accounts sa
+    JOIN enrollments current_e
+      ON current_e.enrollment_id = sa.enrollment_id
+    JOIN enrollments e
+      ON e.student_first_name = current_e.student_first_name
+     AND COALESCE(e.student_middle_name, '') = COALESCE(current_e.student_middle_name, '')
+     AND e.student_last_name = current_e.student_last_name
+    WHERE sa.account_id = %s
+      AND e.year_id = %s
+      AND e.branch_id = %s
+    ORDER BY e.enrollment_id DESC
+    LIMIT 1
+""", (account_id, active_year_id, branch_id))
             active_enrollment = cursor.fetchone()
         elif active_year_id and enrollment_id:
             # Check if the session enrollment_id belongs to the active SY
@@ -303,11 +310,15 @@ def enrollment_status():
                 SELECT NULL::bigint AS account_id,
                        e.enrollment_id,
                        e.branch_enrollment_no,
-                       e.student_name,
+                       e.student_first_name,
+                       e.student_middle_name,
+                       e.student_last_name,
                        e.grade_level,
                        e.status,
                        e.branch_id,
-                       e.guardian_name,
+                       e.guardian_first_name,
+                       e.guardian_middle_name,
+                       e.guardian_last_name,
                        e.guardian_contact,
                        e.guardian_email,
                        e.contact_number,
@@ -327,10 +338,23 @@ def enrollment_status():
             flash("Student account not found", "error")
             return redirect(url_for("student_portal.dashboard"))
         enrollment = cursor.fetchone()
+        
 
         if not enrollment:
             flash("Enrollment not found", "error")
             return redirect(url_for("student_portal.dashboard"))
+        
+        enrollment["student_name"] = " ".join(filter(None, [
+            enrollment.get("student_first_name"),
+            enrollment.get("student_middle_name"),
+            enrollment.get("student_last_name")
+        ]))
+
+        enrollment["guardian_name"] = " ".join(filter(None, [
+            enrollment.get("guardian_first_name"),
+            enrollment.get("guardian_middle_name"),
+            enrollment.get("guardian_last_name")
+        ]))
 
         cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id=%s", (enrollment["enrollment_id"],))
         documents = cursor.fetchall()
@@ -368,7 +392,7 @@ def billing():
 
         if account_id:
             cursor.execute("""
-                SELECT sa.*, e.student_name, e.grade_level, e.branch_enrollment_no
+                SELECT sa.*,  e.student_first_name, e.student_middle_name, e.student_last_name, e.grade_level, e.branch_enrollment_no
                 FROM student_accounts sa
                 JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
                 WHERE sa.account_id = %s
@@ -378,7 +402,7 @@ def billing():
                 SELECT NULL::bigint AS account_id,
                        e.enrollment_id,
                        CAST(%s AS text) AS username,
-                       e.student_name,
+                       e.student_first_name, e.student_middle_name, e.student_last_name,
                        e.grade_level,
                        e.branch_enrollment_no,
                        e.email
@@ -390,10 +414,16 @@ def billing():
             flash("Student account not found", "error")
             return redirect("/")
         student = cursor.fetchone()
-
         if not student:
             flash("Student account not found", "error")
             return redirect("/")
+        student["student_name"] = " ".join(filter(None, [
+            student.get("student_first_name"),
+            student.get("student_middle_name"),
+            student.get("student_last_name")
+        ]))
+
+        
 
         cursor.execute("SELECT * FROM billing WHERE enrollment_id=%s", (student["enrollment_id"],))
         bill = cursor.fetchone()
@@ -1538,7 +1568,7 @@ def student_grades():
         if curr_enr_id:
             cur.execute("SELECT * FROM enrollments WHERE enrollment_id = %s", (curr_enr_id,))
             anchor_enr = cur.fetchone()
-
+    
         # 1. Fetch ALL enrollments for this student (by user_id or name/branch_no)
         all_enrollments = []
         if anchor_enr:
@@ -1546,7 +1576,7 @@ def student_grades():
             # 1. Match by user_id if valid
             # 2. Match by student_name
             cur.execute("""
-                SELECT e.enrollment_id, e.student_name, e.section_id, e.status, e.branch_enrollment_no,
+                SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                        e.year_id,
                        s.section_name, s.school_year, gl.name as grade_level_name
                 FROM enrollments e
@@ -1554,14 +1584,28 @@ def student_grades():
                 LEFT JOIN grade_levels gl ON s.grade_level_id = gl.id
                 WHERE (e.enrollment_id = %s)
                    OR (e.user_id IS NOT NULL AND e.user_id = %s)
-                   OR (e.student_name = %s)
+                   OR (
+    e.student_first_name = %s
+    AND COALESCE(e.student_middle_name,'') = COALESCE(%s,'')
+    AND e.student_last_name = %s
+)
                 ORDER BY e.created_at DESC
-            """, (curr_enr_id, anchor_enr['user_id'], anchor_enr['student_name']))
+            """, (curr_enr_id, anchor_enr['user_id'], anchor_enr["student_first_name"],
+    anchor_enr["student_middle_name"],
+    anchor_enr["student_last_name"],))
             all_enrollments = cur.fetchall() or []
+            for e in all_enrollments:
+                e["student_name"] = " ".join(filter(None, [
+                    e.get("student_first_name"),
+                    e.get("student_middle_name"),
+                    e.get("student_last_name"),
+                ]))
         elif user_id:
             # Fallback if no curr_enr_id but have user_id
             cur.execute("""
-                SELECT e.enrollment_id, e.student_name, e.section_id, e.status, e.branch_enrollment_no,
+                SELECT e.enrollment_id, e.student_first_name,
+e.student_middle_name,
+e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                        e.year_id,
                        s.section_name, s.school_year, gl.name as grade_level_name
                 FROM enrollments e
@@ -1572,6 +1616,12 @@ def student_grades():
             """, (user_id,))
             all_enrollments = cur.fetchall() or []
 
+            for e in all_enrollments:
+                e["student_name"] = " ".join(filter(None, [
+                    e.get("student_first_name"),
+                    e.get("student_middle_name"),
+                    e.get("student_last_name"),
+                ]))
         if not all_enrollments:
             # Provide empty placeholders instead of redirecting
             return render_template("student_grades.html",
@@ -1602,6 +1652,11 @@ def student_grades():
         
         enrollment_id = enr["enrollment_id"]
         section_id    = enr["section_id"]
+        enr["student_name"] = " ".join(filter(None, [
+            enr.get("student_first_name"),
+            enr.get("student_middle_name"),
+            enr.get("student_last_name"),
+        ]))
 
         if not section_id:
             # flash(f"No section assigned for {enr.get('school_year', 'this term')}.", "warning")
@@ -1681,7 +1736,7 @@ def student_my_schedule():
     try:
         # Get enrollment info (section, grade level, branch)
         cur.execute("""
-            SELECT e.enrollment_id, e.student_name, e.grade_level,
+            SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name, e.grade_level,
                    e.section_id, e.branch_id, e.year_id,
                    s.section_name, s.school_year
             FROM enrollments e
@@ -1689,6 +1744,13 @@ def student_my_schedule():
             WHERE e.enrollment_id = %s
         """, (enrollment_id,))
         enr = cur.fetchone()
+
+        if enr:
+            enr["student_name"] = " ".join(filter(None, [
+                enr.get("student_first_name"),
+                enr.get("student_middle_name"),
+                enr.get("student_last_name")
+            ]))
 
         if not enr:
             flash("Enrollment record not found.", "error")
@@ -1747,7 +1809,6 @@ def student_my_schedule():
         cur.close()
         db.close()
 
-
 @student_portal_bp.route("/student/profile")
 def student_profile():
     if not _require_student():
@@ -1760,26 +1821,65 @@ def student_profile():
 
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
     try:
         cur.execute("""
-            SELECT e.enrollment_id, e.branch_enrollment_no, e.student_name, e.grade_level, e.status, e.profile_image,
-                   e.gender, e.dob, e.address, e.contact_number, e.guardian_name, e.guardian_contact,
-                   e.previous_school, e.email, e.guardian_email, e.lrn,
-                   s.section_name,
-                   br.branch_name, br.location
+            SELECT
+                e.enrollment_id,
+                e.branch_enrollment_no,
+
+                e.student_first_name,
+                e.student_middle_name,
+                e.student_last_name,
+
+                e.grade_level,
+                e.status,
+                e.profile_image,
+                e.gender,
+                e.dob,
+                e.address,
+                e.contact_number,
+
+                e.guardian_first_name,
+                e.guardian_middle_name,
+                e.guardian_last_name,
+                e.guardian_contact,
+
+                e.previous_school,
+                e.email,
+                e.guardian_email,
+                e.lrn,
+
+                s.section_name,
+                br.branch_name,
+                br.location
+
             FROM enrollments e
             LEFT JOIN sections s ON e.section_id = s.section_id
             JOIN branches br ON e.branch_id = br.branch_id
             WHERE e.enrollment_id = %s
         """, (enrollment_id,))
+
         student = cur.fetchone()
 
         if not student:
             flash("Student profile not found.", "error")
             return redirect(url_for("student_portal.dashboard"))
-        
+
+        student["student_name"] = " ".join(filter(None, [
+            student.get("student_first_name"),
+            student.get("student_middle_name"),
+            student.get("student_last_name")
+        ]))
+
+        student["guardian_name"] = " ".join(filter(None, [
+            student.get("guardian_first_name"),
+            student.get("guardian_middle_name"),
+            student.get("guardian_last_name")
+        ]))
+
         return render_template("student_profile.html", student=student)
+
     finally:
         cur.close()
         db.close()
-

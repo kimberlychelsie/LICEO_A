@@ -100,12 +100,22 @@ def registrar_home():
 
         # ✅ Recent 5 pending enrollments for preview
         cursor.execute("""
-            SELECT student_name, grade_level, created_at, branch_enrollment_no AS display_no
-            FROM enrollments
-            WHERE branch_id=%s AND year_id=%s AND status='pending'
-            ORDER BY created_at DESC
-            LIMIT 5
-        """, (branch_id, active_year_id))
+    SELECT
+        CONCAT_WS(' ',
+            student_first_name,
+            student_middle_name,
+            student_last_name
+        ) AS student_name,
+        grade_level,
+        created_at,
+        branch_enrollment_no AS display_no
+    FROM enrollments
+    WHERE branch_id = %s
+      AND year_id = %s
+      AND status = 'pending'
+    ORDER BY created_at DESC
+    LIMIT 5
+""", (branch_id, active_year_id))
         recent_pending = cursor.fetchall()
         
         # ✅ Enrollment by Grade for Chart
@@ -255,7 +265,16 @@ def registrar_enrollments():
             if action == "rejected":
                 try:
                     cursor.execute("""
-                        SELECT e.student_name, e.email, e.guardian_email, e.branch_enrollment_no, b.branch_name
+                        SELECT
+                            CONCAT_WS(' ',
+                                e.student_first_name,
+                                e.student_middle_name,
+                                e.student_last_name
+                            ) AS student_name,
+                            e.email,
+                            e.guardian_email,
+                            e.branch_enrollment_no,
+                            b.branch_name
                         FROM enrollments e
                         JOIN branches b ON e.branch_id = b.branch_id
                         WHERE e.enrollment_id = %s
@@ -321,7 +340,16 @@ def registrar_enrollments():
         new_where = "e.branch_id=%s AND e.year_id=%s AND e.status IN ('pending', 'rejected')"
         new_params = [branch_id, selected_year_id]
         if q_new:
-            new_where += " AND (e.student_name ILIKE %s OR CAST(e.branch_enrollment_no AS TEXT) ILIKE %s)"
+            new_where += """
+            AND (
+                CONCAT_WS(' ',
+                    e.student_first_name,
+                    e.student_middle_name,
+                    e.student_last_name
+                ) ILIKE %s
+                OR CAST(e.branch_enrollment_no AS TEXT) ILIKE %s
+            )
+            """
             new_params.extend([f"%{q_new}%", f"%{q_new}%"])
 
         cursor.execute(f"SELECT COUNT(DISTINCT e.enrollment_id) FROM enrollments e WHERE {new_where}", tuple(new_params))
@@ -331,6 +359,12 @@ def registrar_enrollments():
         new_query_params = new_params + [limit, offset_new]
         cursor.execute(f"""
             SELECT e.*,
+                    CONCAT_WS(
+                         ' ',
+                        e.student_first_name,
+                        e.student_middle_name,
+                        e.student_last_name
+                    ) AS student_name,
                    e.branch_enrollment_no AS display_no,
                    COALESCE(
                        json_agg(
@@ -362,7 +396,16 @@ def registrar_enrollments():
         enrolled_where = "e.branch_id=%s AND e.year_id=%s AND e.status IN ('enrolled', 'open_for_enrollment', 'approved', 'completed')"
         enrolled_params = [branch_id, selected_year_id]
         if q_enrolled:
-            enrolled_where += " AND (e.student_name ILIKE %s OR CAST(e.branch_enrollment_no AS TEXT) ILIKE %s)"
+            enrolled_where += """
+            AND (
+                CONCAT_WS(' ',
+                    e.student_first_name,
+                    e.student_middle_name,
+                    e.student_last_name
+                ) ILIKE %s
+                OR CAST(e.branch_enrollment_no AS TEXT) ILIKE %s
+            )
+            """
             enrolled_params.extend([f"%{q_enrolled}%", f"%{q_enrolled}%"])
 
         cursor.execute(f"SELECT COUNT(*) FROM enrollments e WHERE {enrolled_where}", tuple(enrolled_params))
@@ -372,6 +415,12 @@ def registrar_enrollments():
         enrolled_query_params = enrolled_params + [limit, offset_enrolled]
         cursor.execute(f"""
             SELECT e.*,
+                    CONCAT_WS(
+                        ' ',
+                        e.student_first_name,
+                        e.student_middle_name,
+                        e.student_last_name
+                    ) AS student_name,
                    e.branch_enrollment_no AS display_no,
                    s.section_name,
                    CASE WHEN sa.enrollment_id IS NOT NULL THEN TRUE ELSE FALSE END AS has_student_account,
@@ -406,7 +455,11 @@ def registrar_enrollments():
             )
             LEFT JOIN users u             ON u.user_id        = ps.parent_id
             WHERE {enrolled_where}
-            ORDER BY e.grade_level ASC, e.student_name ASC
+           ORDER BY
+                e.grade_level ASC,
+                e.student_last_name ASC,
+                e.student_first_name ASC,
+                e.student_middle_name ASC
             LIMIT %s OFFSET %s
         """, tuple(enrolled_query_params))
         enrolled_students = cursor.fetchall()
@@ -485,11 +538,11 @@ def enrollment_detail(enrollment_id):
     try:
         if request.method == "POST":
             EDITABLE_FIELDS = [
-                "student_name", "grade_level", "gender", "dob", "birthplace",
+                "student_first_name", "student_middle_name", "student_last_name", "grade_level", "gender", "dob", "birthplace",
                 "lrn", "address", "contact_number", "email",
-                "guardian_name", "guardian_contact", "guardian_email",
-                "father_name", "father_contact", "father_occupation",
-                "mother_name", "mother_contact", "mother_occupation",
+                "guardian_first_name", "guardian_middle_name", "guardian_last_name", "guardian_contact", "guardian_email",
+                "father_first_name", "father_middle_name", "father_last_name", "father_contact", "father_occupation",
+                "mother_first_name", "mother_middle_name", "mother_last_name", "mother_contact", "mother_occupation",
                 "previous_school", "enroll_type", "remarks",
             ]
             sets = []
@@ -518,8 +571,36 @@ def enrollment_detail(enrollment_id):
             return redirect("/registrar/enrollments")
 
         cursor.execute("""
-            SELECT e.*, s.section_name, sy.label AS school_year_label
-            FROM enrollments e
+            SELECT
+    e.*,
+
+    CONCAT_WS(' ',
+        e.student_first_name,
+        e.student_middle_name,
+        e.student_last_name
+    ) AS student_name,
+
+    CONCAT_WS(' ',
+        e.guardian_first_name,
+        e.guardian_middle_name,
+        e.guardian_last_name
+    ) AS guardian_name,
+
+    CONCAT_WS(' ',
+        e.father_first_name,
+        e.father_middle_name,
+        e.father_last_name
+    ) AS father_name,
+
+    CONCAT_WS(' ',
+        e.mother_first_name,
+        e.mother_middle_name,
+        e.mother_last_name
+    ) AS mother_name,
+
+    s.section_name,
+    sy.label AS school_year_label
+FROM enrollments e
             LEFT JOIN sections s ON s.section_id = e.section_id
             LEFT JOIN school_years sy ON sy.year_id = e.year_id
             WHERE e.enrollment_id = %s AND e.branch_id = %s
@@ -633,6 +714,11 @@ def create_student_account(enrollment_id):
             WHERE enrollment_id=%s AND branch_id=%s AND status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
         """, (enrollment_id, branch_id))
         enrollment = cursor.fetchone()
+        student_name = " ".join(filter(None, [
+            enrollment.get("student_first_name"),
+            enrollment.get("student_middle_name"),
+            enrollment.get("student_last_name")
+        ]))
 
         if not enrollment:
             flash("Enrollment not found or not approved", "error")
@@ -696,11 +782,11 @@ def create_student_account(enrollment_id):
             # ─────── SEND EMAIL WITH CREDENTIALS ───────
             student_email = enrollment.get("email")
             if student_email:
-                subject = f"Enrollment Approved & Account Credentials - {enrollment.get('student_name')}"
+                subject = f"Enrollment Approved & Account Credentials - {student_name}"
                 
                 body = (
                     f"Congratulations! Your enrollment is approved.\n\n"
-                    f"Hello {enrollment.get('student_name')},\n"
+                    f"Hello {student_name},\n"
                     f"Your student account has been created.\n\n"
                     f"Username: {username}\n"
                     f"Temporary Password: {temp_password}\n\n"
@@ -715,7 +801,7 @@ def create_student_account(enrollment_id):
                         <p style="margin: 5px 0 0; opacity: 0.9; font-size: 16px;">Your Enrollment is Approved</p>
                     </div>
                     <div style="padding: 40px; color: #334155; line-height: 1.6;">
-                        <p style="font-size: 16px;">Hello <strong>{enrollment.get('student_name')}</strong>,</p>
+                        <p style="font-size: 16px;">Hello <strong>{student_name}</strong>,</p>
                         <p style="font-size: 16px;">We are pleased to inform you that your enrollment has been approved. Your student account is now ready for use.</p>
                         
                         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 25px; margin: 30px 0;">
@@ -748,7 +834,7 @@ def create_student_account(enrollment_id):
                 """
                 send_email(student_email, subject, body, html_body=html_body)
 
-            flash(f"Student account for {enrollment.get('student_name')} created! Credentials sent to {student_email}.", "success")
+            flash(f"Student account for {student_name} created! Credentials sent to {student_email}.", "success")
             return redirect("/registrar/enrollments")
         except Exception as e:
             db.rollback()
@@ -1122,8 +1208,23 @@ def registrar_profile_pictures():
                                 print(f"[DEBUG] student_accounts fallback failed: {e}")
                         
                         # IMMEDIATE RE-CHECK for debug logs
-                        cursor.execute("SELECT student_name, profile_image FROM enrollments WHERE enrollment_id = %s", (t_id,))
+                        cursor.execute("""
+                            SELECT
+                                student_first_name,
+                                student_middle_name,
+                                student_last_name,
+                                profile_image
+                                FROM enrollments
+                                WHERE enrollment_id = %s
+                            """, (t_id,))
                         recheck = cursor.fetchone()
+                        if recheck:
+                            recheck["student_name"] = " ".join(filter(None, [
+                                recheck.get("student_first_name"),
+                                recheck.get("student_middle_name"),
+                                recheck.get("student_last_name"),
+                            ]))
+
                         print(f"[DEBUG] Student Update Affected: {affected}")
                         print(f"[DEBUG] Verification Fetch (ID={t_id}): {recheck}")
                         
@@ -1182,7 +1283,9 @@ def registrar_profile_pictures():
             all_sections = cursor.fetchall()
 
             query = """
-                SELECT e.enrollment_id, e.branch_enrollment_no, e.student_name, e.grade_level, 
+                SELECT e.enrollment_id, e.branch_enrollment_no, e.student_first_name,
+                e.student_middle_name,
+                e.student_last_name, e.grade_level, 
                        s.section_name, e.profile_image AS student_pic, e.status
                 FROM enrollments e
                 LEFT JOIN sections s ON e.section_id = s.section_id
@@ -1205,11 +1308,19 @@ def registrar_profile_pictures():
                     WHEN 'Grade 5' THEN 7 WHEN 'Grade 6' THEN 8 WHEN 'Grade 7' THEN 9
                     WHEN 'Grade 8' THEN 10 WHEN 'Grade 9' THEN 11 WHEN 'Grade 10' THEN 12
                     WHEN 'Grade 11' THEN 13 WHEN 'Grade 12' THEN 14 ELSE 99
-                END, e.student_name
+                END, e.student_last_name,
+                     e.student_first_name,
+                     e.student_middle_name
             """
             
             cursor.execute(query, tuple(params))
             students = cursor.fetchall()
+            for s in students:
+                s["student_name"] = " ".join(filter(None, [
+                    s.get("student_first_name"),
+                    s.get("student_middle_name"),
+                    s.get("student_last_name"),
+                ]))
 
             # DEBUG: Print first 5 students to console to verify DB values
             print(f"[DEBUG] GET Profile Pictures - Branch: {branch_id}, Tab: {tab}")
@@ -1333,7 +1444,9 @@ def registrar_students_by_grade():
 
         query += """
             GROUP BY e.enrollment_id, s.section_name, sa.username
-            ORDER BY e.grade_level ASC, s.section_name ASC NULLS LAST, e.student_name ASC
+            ORDER BY e.grade_level ASC, s.section_name ASC NULLS LAST,  e.student_last_name ASC,
+    e.student_first_name ASC,
+    e.student_middle_name ASC
         """
 
         cursor.execute(query, tuple(params))
@@ -1342,6 +1455,11 @@ def registrar_students_by_grade():
         students = []
         for e in students_raw:
             e = dict(e)
+            e["student_name"] = " ".join(filter(None, [
+                e.get("student_first_name"),
+                e.get("student_middle_name"),
+                e.get("student_last_name"),
+            ]))
             if isinstance(e["documents"], str):
                 e["documents"] = json.loads(e["documents"])
             students.append(e)
@@ -1367,6 +1485,7 @@ def registrar_students_by_grade():
         db.close()
 
 
+
 @registrar_bp.route("/registrar/students-by-grade/update/<int:enrollment_id>", methods=["POST"])
 def registrar_students_by_grade_update(enrollment_id):
     if session.get("role") != "registrar":
@@ -1382,12 +1501,37 @@ def registrar_students_by_grade_update(enrollment_id):
     try:
         # Fields to update based on the inline form
         fields = [
-            "gender", "dob", "lrn", "email", "contact_number", "address",
-            "guardian_name", "guardian_contact", "guardian_email",
-            "father_name", "father_contact", "father_occupation",
-            "mother_name", "mother_contact", "mother_occupation",
-            "previous_school", "enroll_type"
-        ]
+    "gender",
+    "dob",
+    "lrn",
+    "email",
+    "contact_number",
+    "address",
+
+    # Guardian
+    "guardian_first_name",
+    "guardian_middle_name",
+    "guardian_last_name",
+    "guardian_contact",
+    "guardian_email",
+
+    # Father
+    "father_first_name",
+    "father_middle_name",
+    "father_last_name",
+    "father_contact",
+    "father_occupation",
+
+    # Mother
+    "mother_first_name",
+    "mother_middle_name",
+    "mother_last_name",
+    "mother_contact",
+    "mother_occupation",
+
+    "previous_school",
+    "enroll_type"
+]
         
         sets = []
         vals = []
@@ -1798,7 +1942,8 @@ def registrar_reset_student_password(enrollment_id):
     try:
         # Check if enrollment and account exist
         cursor.execute("""
-            SELECT e.enrollment_id, e.student_name, e.email as enr_email, sa.username, sa.email as acc_email
+            SELECT e.enrollment_id, e.student_first_name, e.student_middle_name,
+                e.student_last_name, e.email as enr_email, sa.username, sa.email as acc_email
             FROM enrollments e
             JOIN student_accounts sa ON e.enrollment_id = sa.enrollment_id
             WHERE e.enrollment_id = %s AND e.branch_id = %s
@@ -1807,6 +1952,11 @@ def registrar_reset_student_password(enrollment_id):
 
         if not data:
             return {"success": False, "message": "Student account not found."}, 404
+        data["student_name"] = " ".join(filter(None, [
+            data.get("student_first_name"),
+            data.get("student_middle_name"),
+            data.get("student_last_name"),
+        ]))
 
         target_email = data["acc_email"] or data["enr_email"]
         if not target_email:
@@ -2965,12 +3115,22 @@ def registrar_assign_students():
             grade_name = grade_row['name'] if grade_row else ""
 
         cursor.execute("""
-            SELECT e.enrollment_id, e.student_name, e.grade_level, e.branch_enrollment_no, e.section_id, s.section_name
+            SELECT e.enrollment_id, e.student_first_name,
+    e.student_middle_name,
+    e.student_last_name, e.grade_level, e.branch_enrollment_no, e.section_id, s.section_name
             FROM enrollments e LEFT JOIN sections s ON e.section_id = s.section_id
             WHERE e.branch_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed') AND (e.grade_level ILIKE %s OR e.grade_level ILIKE %s)
-            ORDER BY e.student_name
+            ORDER BY e.student_last_name,
+    e.student_first_name,
+    e.student_middle_name
         """, (branch_id, active_year_id, grade_name, grade_name.replace("Grade ", "")))
         students = cursor.fetchall() or []
+        for s in students:
+            s["student_name"] = " ".join(filter(None, [
+                s.get("student_first_name"),
+                s.get("student_middle_name"),
+                s.get("student_last_name"),
+            ]))
 
     except Exception as e:
         db.rollback()
