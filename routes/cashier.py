@@ -389,10 +389,38 @@ def view_bill(bill_id):
         """, (bill_id,))
         payments = cursor.fetchall()
 
-        # Fetch detailed reservations for breakdown
+        cursor.execute("SELECT SUM(amount) AS sum_amount FROM payments WHERE bill_id = %s AND target_type = 'tuition'", (bill_id,))
+        tuition_paid = cursor.fetchone()["sum_amount"] or Decimal(0)
+        
+        cursor.execute("SELECT SUM(amount) AS sum_amount FROM payments WHERE bill_id = %s AND target_type = 'other'", (bill_id,))
+        other_paid = cursor.fetchone()["sum_amount"] or Decimal(0)
+
+        cursor.execute("SELECT SUM(amount) AS sum_amount FROM payments WHERE bill_id = %s AND target_type = 'general'", (bill_id,))
+        general_paid = cursor.fetchone()["sum_amount"] or Decimal(0)
+
+        tuition_balance = bill["tuition_fee"] - tuition_paid
+        if general_paid > 0:
+            deduct = min(tuition_balance, general_paid)
+            tuition_balance -= deduct
+            general_paid -= deduct
+            
+        other_balance = bill["other_fees"] - other_paid
+        if general_paid > 0:
+            deduct = min(other_balance, general_paid)
+            other_balance -= deduct
+            general_paid -= deduct
+
+        bill["tuition_balance"] = max(Decimal(0), tuition_balance)
+        bill["other_balance"] = max(Decimal(0), other_balance)
+
+        # Fetch grouped reservations for breakdown
         cursor.execute("""
             SELECT
-                r.reservation_id, ii.item_name, ri.qty, ri.line_total, ii.category
+                r.reservation_id, 
+                STRING_AGG(ii.item_name || CASE WHEN ri.qty > 1 THEN ' (x' || ri.qty || ')' ELSE '' END, ', ') AS item_names,
+                SUM(ri.line_total) AS reservation_total,
+                r.status,
+                COALESCE((SELECT SUM(amount) FROM payments WHERE target_type='reservation' AND target_id=r.reservation_id), 0) AS paid_amount
             FROM reservation_items ri
             JOIN reservations r ON r.reservation_id = ri.reservation_id
             JOIN inventory_items ii ON ri.item_id = ii.item_id
@@ -402,9 +430,18 @@ def view_bill(bill_id):
                 WHERE sa.enrollment_id = %s
             )) 
             AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED')
+            GROUP BY r.reservation_id, r.status
             ORDER BY r.reservation_id ASC
         """, (bill["enrollment_id"], bill["enrollment_id"]))
         reservation_details = cursor.fetchall()
+        
+        for res in reservation_details:
+            res_bal = res["reservation_total"] - res["paid_amount"]
+            if general_paid > 0:
+                deduct = min(res_bal, general_paid)
+                res_bal -= deduct
+                general_paid -= deduct
+            res["balance"] = max(Decimal(0), res_bal)
 
         return render_template("cashier_view_bill.html", bill=bill, payments=payments, reservation_details=reservation_details)
     finally:
@@ -456,6 +493,9 @@ def process_payment(bill_id):
             amount = Decimal(request.form.get("amount", "0") or "0")
             payment_method = request.form.get("payment_method", "cash")
             notes = request.form.get("notes", "")
+            target_type = request.form.get("target_type", "general")
+            target_id_str = request.form.get("target_id", "")
+            target_id = int(target_id_str) if target_id_str.strip() else None
 
             if amount <= 0:
                 flash("Payment amount must be greater than zero", "error")
@@ -471,10 +511,10 @@ def process_payment(bill_id):
                     cursor.execute("""
                         INSERT INTO payments
                           (bill_id, enrollment_id, branch_id, year_id, amount, payment_method,
-                           receipt_number, notes, received_by)
+                           receipt_number, notes, received_by, target_type, target_id)
                         VALUES
                           (%s, %s, %s, %s, %s, %s,
-                           %s, %s, %s)
+                           %s, %s, %s, %s, %s)
                         RETURNING payment_id
                     """, (
                         bill_id,
@@ -486,6 +526,8 @@ def process_payment(bill_id):
                         receipt_number,
                         notes,
                         session.get("user_id"),
+                        target_type,
+                        target_id
                     ))
                     payment_id = cursor.fetchone()["payment_id"]
 
@@ -497,7 +539,34 @@ def process_payment(bill_id):
                     if new_balance < 0:
                         new_balance = Decimal("0")
 
-                    new_status = "paid" if new_balance == 0 else "partial"
+                    if target_type == 'reservation' and target_id:
+                        cursor.execute("SELECT SUM(amount) AS sum_paid FROM payments WHERE target_type='reservation' AND target_id=%s", (target_id,))
+                        r_paid = cursor.fetchone()["sum_paid"] or Decimal(0)
+                        
+                        cursor.execute("SELECT SUM(line_total) AS sum_total FROM reservation_items WHERE reservation_id=%s", (target_id,))
+                        r_total = cursor.fetchone()["sum_total"] or Decimal(0)
+                        
+                        if r_paid >= r_total:
+                            cursor.execute("""
+                                UPDATE reservations
+                                SET status = 'PAID'
+                                WHERE reservation_id = %s
+                            """, (target_id,))
+
+                    if new_balance == 0:
+                        new_status = "paid"
+                        # Auto-mark all reservations as PAID if entire bill is paid
+                        cursor.execute("""
+                            UPDATE reservations
+                            SET status = 'PAID'
+                            WHERE enrollment_id = %s OR student_user_id IN (
+                                SELECT u.user_id FROM student_accounts sa 
+                                JOIN users u ON sa.username = u.username 
+                                WHERE sa.enrollment_id = %s
+                            )
+                        """, (bill["enrollment_id"], bill["enrollment_id"]))
+                    else:
+                        new_status = "partial"
 
                     cursor.execute("""
                         UPDATE billing
@@ -514,7 +583,12 @@ def process_payment(bill_id):
                     db.rollback()
                     flash(f"Failed to process payment: {str(e)}", "error")
 
-        return render_template("cashier_process_payment.html", bill=bill)
+        target_type = request.args.get("target_type", "general")
+        target_id = request.args.get("target_id", "")
+        target_amount = request.args.get("target_amount", "")
+        target_name = request.args.get("target_name", "")
+
+        return render_template("cashier_process_payment.html", bill=bill, target_type=target_type, target_id=target_id, target_amount=target_amount, target_name=target_name)
     finally:
         cursor.close()
         db.close()

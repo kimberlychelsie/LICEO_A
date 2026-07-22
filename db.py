@@ -523,6 +523,12 @@ def get_db_connection():
                         WHERE p.bill_id = b.bill_id
                           AND p.year_id IS NULL
                     """)
+                
+                if 'target_type' not in pay_cols:
+                    cur.execute("ALTER TABLE payments ADD COLUMN target_type VARCHAR(50) DEFAULT 'general'")
+                if 'target_id' not in pay_cols:
+                    cur.execute("ALTER TABLE payments ADD COLUMN target_id INTEGER")
+
                 conn.commit()
             except Exception as e:
                 logger.warning(f"Could not migrate financial tables: {e}")

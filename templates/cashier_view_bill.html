@@ -101,12 +101,36 @@
         border: 1px solid var(--cashier-border);
     }
 
-    .kpi-well.total { background: #eef2ff; border-color: #c7d2fe; color: #3730a3; }
-    .kpi-well.paid { background: #ecfdf5; border-color: #a7f3d0; color: #065f46; }
-    .kpi-well.balance { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .kpi-well.total {
+        background: #eef2ff;
+        border-color: #c7d2fe;
+        color: #3730a3;
+    }
 
-    .kpi-well .label { font-size: 0.7rem; font-weight: 800; text-transform: uppercase; margin-bottom: 8px; opacity: 0.8; }
-    .kpi-well .value { font-size: 1.5rem; font-weight: 900; }
+    .kpi-well.paid {
+        background: #ecfdf5;
+        border-color: #a7f3d0;
+        color: #065f46;
+    }
+
+    .kpi-well.balance {
+        background: #fef2f2;
+        border-color: #fecaca;
+        color: #991b1b;
+    }
+
+    .kpi-well .label {
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        opacity: 0.8;
+    }
+
+    .kpi-well .value {
+        font-size: 1.5rem;
+        font-weight: 900;
+    }
 
     /* ── Fee Breakdown ── */
     .breakdown-table {
@@ -162,8 +186,22 @@
         overflow: hidden;
     }
 
-    .modern-table th { background: #fbfcfe; padding: 14px 20px; text-align: left; font-size: 0.75rem; color: var(--cashier-muted); text-transform: uppercase; border-bottom: 1px solid var(--cashier-border); }
-    .modern-table td { padding: 14px 20px; border-bottom: 1px solid var(--cashier-border); font-size: 0.9rem; font-weight: 600; }
+    .modern-table th {
+        background: #fbfcfe;
+        padding: 14px 20px;
+        text-align: left;
+        font-size: 0.75rem;
+        color: var(--cashier-muted);
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--cashier-border);
+    }
+
+    .modern-table td {
+        padding: 14px 20px;
+        border-bottom: 1px solid var(--cashier-border);
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
 
     .btn-print {
         display: inline-flex;
@@ -174,7 +212,9 @@
         font-weight: 700;
     }
 
-    .btn-print:hover { text-decoration: underline; }
+    .btn-print:hover {
+        text-decoration: underline;
+    }
 
     .action-row {
         margin-top: 40px;
@@ -192,14 +232,30 @@
         border: none;
     }
 
-    .btn-pay { background: var(--cashier-success); color: #fff; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2); }
-    .btn-pay:hover { background: #059669; transform: translateY(-2px); }
+    .btn-pay {
+        background: var(--cashier-success);
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+    }
 
-    .btn-back { background: #f1f5f9; color: var(--cashier-muted); }
-    .btn-back:hover { background: #e2e8f0; }
+    .btn-pay:hover {
+        background: #059669;
+        transform: translateY(-2px);
+    }
+
+    .btn-back {
+        background: #f1f5f9;
+        color: var(--cashier-muted);
+    }
+
+    .btn-back:hover {
+        background: #e2e8f0;
+    }
 
     @media (max-width: 600px) {
-        .kpi-row { grid-template-columns: 1fr; }
+        .kpi-row {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 {% endblock %}
@@ -209,25 +265,46 @@
 
     <div class="statement-header">
         <h1 class="statement-title" style="display: flex; align-items: center; gap: 10px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
             Billing Statement
         </h1>
         <div style="text-align: right;">
             {% if bill.status == 'paid' %}
-                <span style="background: #ecfdf5; color: #065f46; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 0.75rem; border: 1px solid #a7f3d0; display: inline-flex; align-items: center; gap: 6px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    PAID
-                </span>
+            <span
+                style="background: #ecfdf5; color: #065f46; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 0.75rem; border: 1px solid #a7f3d0; display: inline-flex; align-items: center; gap: 6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="20 6 9 17 4 12"></polyline>
+                </svg>
+                PAID
+            </span>
             {% elif bill.status == 'partial' %}
-                <span style="background: #fffbeb; color: #92400e; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 0.75rem; border: 1px solid #fde68a; display: inline-flex; align-items: center; gap: 6px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                    PARTIALLY PAID
-                </span>
+            <span
+                style="background: #fffbeb; color: #92400e; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 0.75rem; border: 1px solid #fde68a; display: inline-flex; align-items: center; gap: 6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                PARTIALLY PAID
+            </span>
             {% else %}
-                <span style="background: #fef2f2; color: #991b1b; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 0.75rem; border: 1px solid #fecaca; display: inline-flex; align-items: center; gap: 6px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                    PAYMENT DUE
-                </span>
+            <span
+                style="background: #fef2f2; color: #991b1b; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 0.75rem; border: 1px solid #fecaca; display: inline-flex; align-items: center; gap: 6px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                PAYMENT DUE
+            </span>
             {% endif %}
         </div>
     </div>
@@ -271,51 +348,105 @@
             </div>
         </div>
 
-        <h3 style="font-size: 1rem; font-weight: 800; color: var(--cashier-primary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        {% if bill.status != 'paid' %}
+        <h3
+            style="font-size: 1rem; font-weight: 800; color: var(--cashier-primary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
             Fee Breakdown
         </h3>
         <table class="breakdown-table">
             <thead>
                 <tr>
                     <th>Description</th>
-                    <th style="text-align: right;">Amount</th>
+                    <th style="text-align: right;">Balance</th>
+                    <th style="text-align: right; width: 100px;">Action</th>
                 </tr>
             </thead>
             <tbody>
                 <tr>
                     <td>Tuition & Mandatory Fees</td>
-                    <td style="text-align: right;">₱{{ "{:,.2f}".format(bill.tuition_fee) }}</td>
+                    <td style="text-align: right;">₱{{ "{:,.2f}".format(0 if bill.status=='paid' else
+                        bill.tuition_balance) }}</td>
+                    <td style="text-align: right;">
+                        {% if bill.tuition_balance <= 0 or bill.status=='paid' %} <span
+                            style="color:var(--cashier-success); font-weight:800; font-size:0.75rem;">PAID</span>
+                            {% else %}
+                            <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=tuition&target_amount={{ bill.tuition_balance }}&target_name=Tuition"
+                                style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; text-decoration: none; font-weight: 700; display: inline-block;">Pay
+                                Item</a>
+                            {% endif %}
+                    </td>
                 </tr>
-                
+
                 {% for res in reservation_details %}
                 <tr>
                     <td style="font-size: 0.9rem;">
-                        <span style="color: var(--cashier-muted); font-family: monospace;">[RES-{{ "%04d"|format(res.reservation_id) }}]</span>
-                        {{ res.item_name }} {% if res.qty > 1 %}(x{{ res.qty }}){% endif %}
+                        <span style="color: var(--cashier-muted); font-family: monospace;">[RES-{{
+                            "%04d"|format(res.reservation_id) }}]</span>
+                        {{ res.item_names }}
                     </td>
-                    <td style="text-align: right;">₱{{ "{:,.2f}".format(res.line_total) }}</td>
+                    <td style="text-align: right;">₱{{ "{:,.2f}".format(0 if bill.status=='paid' else res.balance) }}
+                    </td>
+                    <td style="text-align: right;">
+                        {% if res.balance <= 0 or res.status=='PAID' or bill.status=='paid' %} <span
+                            style="color:var(--cashier-success); font-weight:800; font-size:0.75rem;">PAID</span>
+                            {% else %}
+                            <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=reservation&target_id={{ res.reservation_id }}&target_amount={{ res.balance }}&target_name=Reservation%20%23{{ res.reservation_id }}"
+                                style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; text-decoration: none; font-weight: 700; display: inline-block;">Pay
+                                Item</a>
+                            {% endif %}
+                    </td>
                 </tr>
                 {% endfor %}
 
                 {% if bill.other_fees > 0 %}
                 <tr>
                     <td>Miscellaneous / Other Charges</td>
-                    <td style="text-align: right;">₱{{ "{:,.2f}".format(bill.other_fees) }}</td>
+                    <td style="text-align: right;">₱{{ "{:,.2f}".format(0 if bill.status=='paid' else
+                        bill.other_balance) }}</td>
+                    <td style="text-align: right;">
+                        {% if bill.other_balance <= 0 or bill.status=='paid' %} <span
+                            style="color:var(--cashier-success); font-weight:800; font-size:0.75rem;">PAID</span>
+                            {% else %}
+                            <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=other&target_amount={{ bill.other_balance }}&target_name=Miscellaneous"
+                                style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; text-decoration: none; font-weight: 700; display: inline-block;">Pay
+                                Item</a>
+                            {% endif %}
+                    </td>
                 </tr>
                 {% endif %}
 
                 <tr class="row-total">
-                    <td>TOTAL CHARGES</td>
-                    <td style="text-align: right;">₱{{ "{:,.2f}".format(bill.total_amount) }}</td>
+                    <td>REMAINING BALANCE</td>
+                    <td style="text-align: right; color: var(--cashier-primary); font-weight: 900;">₱{{
+                        "{:,.2f}".format(bill.balance) }}</td>
+                    <td style="text-align: right;">
+                        {% if bill.status != 'paid' and bill.balance > 0 %}
+                        <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=general&target_amount={{ bill.balance }}&target_name=Full+Remaining+Balance"
+                            style="padding: 6px 14px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-success); color: white; text-decoration: none; font-weight: 800; display: inline-block; white-space: nowrap;">
+                            Pay Balance
+                        </a>
+                        {% elif bill.status == 'paid' %}
+                        <span style="color:var(--cashier-success); font-weight:800; font-size:0.75rem;">SETTLED ✓</span>
+                        {% endif %}
+                    </td>
                 </tr>
             </tbody>
         </table>
+        {% endif %}
     </div>
 
     <div class="history-section">
         <h3 style="display: flex; align-items: center; gap: 10px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
             Payment History
         </h3>
         {% if payments %}
@@ -326,7 +457,6 @@
                         <th>Receipt No.</th>
                         <th>Transaction Date</th>
                         <th>Amount</th>
-                        <th>Method</th>
                         <th>Processed By</th>
                         <th style="text-align: right;">Action</th>
                     </tr>
@@ -337,11 +467,19 @@
                         <td><span style="color: var(--cashier-muted);">{{ p.receipt_number }}</span></td>
                         <td>{{ p.payment_date.strftime('%Y-%m-%d %I:%M %p') }}</td>
                         <td><span style="color: var(--cashier-success);">₱{{ "{:,.2f}".format(p.amount) }}</span></td>
-                        <td><span style="text-transform: capitalize;">{{ p.payment_method|replace('_', ' ') }}</span></td>
+                        </td>
                         <td>{{ p.received_by_name }}</td>
                         <td style="text-align: right;">
                             <a href="/cashier/receipt/{{ p.payment_id }}" target="_blank" class="btn-print">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                    stroke-linejoin="round" style="margin-right: 4px;">
+                                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                                    <path
+                                        d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2">
+                                    </path>
+                                    <rect x="6" y="14" width="12" height="8"></rect>
+                                </svg>
                                 Print Receipt
                             </a>
                         </td>
@@ -351,20 +489,17 @@
             </table>
         </div>
         {% else %}
-        <div style="text-align: center; padding: 48px; background: #fff; border: 1px dashed var(--cashier-border); border-radius: 20px; color: var(--cashier-muted);">
+        <div
+            style="text-align: center; padding: 48px; background: #fff; border: 1px dashed var(--cashier-border); border-radius: 20px; color: var(--cashier-muted);">
             No transactions have been processed for this bill yet.
         </div>
         {% endif %}
     </div>
 
     <div class="action-row">
-        {% if bill.status != 'paid' %}
-            <a href="/cashier/process-payment/{{ bill.bill_id }}" class="btn-main btn-pay" style="display: inline-flex; align-items: center; gap: 8px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
-                Process New Payment
-            </a>
-        {% endif %}
-        <a href="/cashier" class="btn-main btn-back" style="display: inline-flex; align-items: center; gap: 8px;">
+
+        <a href="/cashier/billing-registry" class="btn-main btn-back"
+            style="display: inline-flex; align-items: center; gap: 8px;">
             Return to Registry
         </a>
     </div>

@@ -54,6 +54,8 @@ def dashboard():
     stats = {"total_items": 0, "total_stock": 0, "reserved": 0, "low_stock": 0, "out_stock": 0, "well_stocked": 0}
     grade_breakdown = []
     recent_releases = []
+    pending_students = []
+    released_today = 0
 
     if branch_id:
         db = get_db_connection()
@@ -94,6 +96,7 @@ def dashboard():
                 print(f"[librarian.dashboard] grade_breakdown query error: {e}")
 
             # ── 3. Recent releases (last 5) ─────────────────────────────
+            try:
                 cur.execute("""
                     SELECT
                         br.release_id,
@@ -118,6 +121,62 @@ def dashboard():
             except Exception as e:
                 print(f"[librarian.dashboard] recent_releases query error: {e}")
 
+            # ── 4. Released Today ───────────────────────────────────────
+            try:
+                cur.execute("""
+                    SELECT COUNT(*) AS cnt
+                    FROM book_releases
+                    WHERE branch_id=%s 
+                      AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date = (CURRENT_TIMESTAMP AT TIME ZONE 'Asia/Manila')::date
+                """, (branch_id,))
+                row = cur.fetchone()
+                released_today = row["cnt"] if row else 0
+            except Exception as e:
+                print(f"[librarian.dashboard] released_today query error: {e}")
+
+            # ── 5. Pending Students (Paid / Reserved books) ─────────────
+            try:
+                cur.execute("""
+                    SELECT
+                        r.reservation_id,
+                        COALESCE(
+                            CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name),
+                            svp.student_name,
+                            u.username,
+                            'Unknown'
+                        ) AS full_name,
+                        r.status,
+                        r.created_at
+                    FROM reservations r
+                    LEFT JOIN users u ON u.user_id = r.student_user_id
+                    LEFT JOIN student_accounts sa ON sa.username = u.username
+                    LEFT JOIN enrollments e ON e.enrollment_id = sa.enrollment_id
+                    LEFT JOIN users reserved_by ON reserved_by.user_id = r.reserved_by_user_id
+                    LEFT JOIN LATERAL (
+                        SELECT
+                            CONCAT_WS(' ', e2.student_first_name, e2.student_middle_name, e2.student_last_name) AS student_name
+                        FROM parent_student ps2
+                        JOIN enrollments e2 ON e2.enrollment_id = ps2.student_id
+                        WHERE ps2.parent_id = r.reserved_by_user_id
+                        ORDER BY ps2.student_id LIMIT 1
+                    ) svp ON (reserved_by.role = 'parent')
+                    WHERE r.branch_id = %s
+                      AND r.status IN ('PAID', 'RESERVED')
+                      AND EXISTS (
+                          SELECT 1 FROM reservation_items ri
+                          JOIN inventory_items ii ON ri.item_id = ii.item_id
+                          WHERE ri.reservation_id = r.reservation_id AND UPPER(ii.category) = 'BOOK'
+                      )
+                    ORDER BY r.created_at ASC
+                    LIMIT 8
+                """, (branch_id,))
+                pending_students = cur.fetchall() or []
+                for p in pending_students:
+                    if p.get("created_at"):
+                        p["created_at"] = _to_manila_naive(p["created_at"])
+            except Exception as e:
+                print(f"[librarian.dashboard] pending_students query error: {e}")
+
         finally:
             cur.close()
             db.close()
@@ -127,6 +186,8 @@ def dashboard():
         stats=stats,
         grade_breakdown=grade_breakdown,
         recent_releases=recent_releases,
+        pending_students=pending_students,
+        released_today=released_today,
     )
 
 
@@ -641,27 +702,114 @@ def releases():
             JOIN inventory_items ii     ON ii.item_id = bri.item_id
             LEFT JOIN enrollments e     ON e.enrollment_id = br.enrollment_id
             WHERE br.branch_id = %s
+            ORDER BY br.created_at DESC
         """, (branch_id,))
         releases_rows = cur.fetchall() or []
         for rr in releases_rows:
             if rr.get("created_at"):
                 rr["created_at"] = _to_manila_naive(rr["created_at"])
 
+        # ── Reservation rows for Student Queue tab ──
+        cur.execute("""
+            SELECT
+                r.reservation_id,
+                COALESCE(u.username, '') AS username,
+                r.student_user_id,
+                r.student_grade_level,
+                COALESCE(
+                    CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name),
+                    svp.student_name,
+                    u.username,
+                    ''
+                ) AS full_name,
+                COALESCE(r.student_grade_level, svp.grade_level) AS grade_level,
+                r.status,
+                r.created_at,
+                CASE
+                  WHEN r.reserved_by_user_id IS NOT NULL
+                       AND reserved_by.role = 'parent'
+                  THEN 'parent'
+                  ELSE 'student'
+                END AS reserved_by_role,
+                CASE
+                  WHEN r.reserved_by_user_id IS NOT NULL
+                       AND reserved_by.role = 'parent'
+                  THEN COALESCE(svp.guardian_name, reserved_by.username)
+                  ELSE NULL
+                END AS parent_name,
+                (
+                    SELECT STRING_AGG(ii.item_name || ' (x' || ri.qty || ')', ', ')
+                    FROM reservation_items ri
+                    JOIN inventory_items ii ON ri.item_id = ii.item_id
+                    WHERE ri.reservation_id = r.reservation_id AND UPPER(ii.category) = 'BOOK'
+                ) AS reserved_books
+            FROM reservations r
+            LEFT JOIN users u ON u.user_id = r.student_user_id
+            LEFT JOIN student_accounts sa ON sa.username = u.username
+            LEFT JOIN enrollments e ON e.enrollment_id = sa.enrollment_id
+            LEFT JOIN users reserved_by ON reserved_by.user_id = r.reserved_by_user_id
+            LEFT JOIN LATERAL (
+                SELECT
+                    CONCAT_WS(' ', e2.student_first_name, e2.student_middle_name, e2.student_last_name) AS student_name,
+                    e2.grade_level,
+                    CONCAT_WS(' ', e2.guardian_first_name, e2.guardian_middle_name, e2.guardian_last_name) AS guardian_name,
+                    ps2.relationship
+                FROM parent_student ps2
+                JOIN enrollments e2 ON e2.enrollment_id = ps2.student_id
+                WHERE ps2.parent_id = r.reserved_by_user_id
+                ORDER BY ps2.student_id
+                LIMIT 1
+            ) svp ON (reserved_by.role = 'parent')
+            WHERE r.branch_id = %s
+              AND EXISTS (
+                  SELECT 1 FROM reservation_items ri
+                  JOIN inventory_items ii ON ri.item_id = ii.item_id
+                  WHERE ri.reservation_id = r.reservation_id AND UPPER(ii.category) = 'BOOK'
+              )
+            ORDER BY
+                CASE r.status
+                    WHEN 'PAID' THEN 0
+                    WHEN 'RESERVED' THEN 1
+                    WHEN 'CLAIMED' THEN 2
+                    WHEN 'CANCELLED' THEN 3
+                    ELSE 4
+                END,
+                r.created_at DESC
+        """, (branch_id,))
+        reservation_rows = cur.fetchall() or []
+        for row in reservation_rows:
+            if row.get("created_at"):
+                row["created_at"] = _to_manila_naive(row["created_at"])
+
+        # Status counts
+        status_counts = {"PAID": 0, "RESERVED": 0, "CLAIMED": 0, "CANCELLED": 0}
+        for row in reservation_rows:
+            s = (row.get("status") or "").upper()
+            if s in status_counts:
+                status_counts[s] += 1
+
     except Exception as e:
         db.rollback()
         flash(f"Error: {e}", "error")
         books = []
         releases_rows = []
+        reservation_rows = []
+        status_counts = {"PAID": 0, "RESERVED": 0, "CLAIMED": 0, "CANCELLED": 0}
     finally:
         cur.close()
         db.close()
+
+    active_tab = request.args.get("tab", "queue")
 
     return render_template(
         "librarian_releases.html",
         books=books,
         releases=releases_rows,
+        reservation_rows=reservation_rows,
+        status_counts=status_counts,
         grades=GRADES,
-        grade_filter=grade_filter
+        grade_filter=grade_filter,
+        active_tab=active_tab,
     )
 
 
@@ -786,98 +934,100 @@ def book_delete(item_id):
 
 @librarian_bp.route("/librarian/reservations")
 def librarian_reservations():
+    """Redirect old reservations page to the unified releases page."""
+    return redirect(url_for("librarian.releases", tab="queue"))
+
+@librarian_bp.route("/librarian/reservations/<int:reservation_id>/claim", methods=["POST"])
+def mark_reservation_claimed(reservation_id):
     if not _require_librarian():
         return redirect(url_for("auth.login"))
 
     branch_id = session.get("branch_id")
-    conn = get_db_connection()
-    cur = None
+    if not branch_id:
+        flash("No branch assigned.", "error")
+        return redirect(url_for("librarian.releases", tab="queue"))
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
     try:
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-
+        # Check reservation
         cur.execute("""
-            SELECT
-                r.reservation_id,
-                COALESCE(u.username, '') AS username,
-                r.student_user_id,
-                r.student_grade_level,
-                COALESCE(
-                    CONCAT_WS(' ',
-        e.student_first_name,
-        e.student_middle_name,
-        e.student_last_name
-    ),
-                    svp.student_name,
-                    u.username,
-                    ''
-                ) AS full_name,
-                COALESCE(r.student_grade_level, svp.grade_level) AS grade_level,
-                r.status,
-                r.created_at,
-                CASE
-                  WHEN r.reserved_by_user_id IS NOT NULL
-                       AND reserved_by.role = 'parent'
-                  THEN 'parent'
-                  ELSE 'student'
-                END AS reserved_by_role,
-                CASE
-                  WHEN r.reserved_by_user_id IS NOT NULL
-                       AND reserved_by.role = 'parent'
-                  THEN COALESCE(
-                    svp.guardian_name,
-                    reserved_by.username
-                  )
-                  ELSE NULL
-                END AS parent_name,
-                (
-                    SELECT STRING_AGG(ii.item_name || ' (x' || ri.qty || ')', ', ')
-                    FROM reservation_items ri
-                    JOIN inventory_items ii ON ri.item_id = ii.item_id
-                    WHERE ri.reservation_id = r.reservation_id AND UPPER(ii.category) = 'BOOK'
-                ) AS reserved_books
-            FROM reservations r
-            LEFT JOIN users u ON u.user_id = r.student_user_id
-            LEFT JOIN student_accounts sa ON sa.username = u.username
-            LEFT JOIN enrollments e ON e.enrollment_id = sa.enrollment_id
-            LEFT JOIN users reserved_by ON reserved_by.user_id = r.reserved_by_user_id
-            LEFT JOIN LATERAL (
-                SELECT
-    CONCAT_WS(' ',
-        e2.student_first_name,
-        e2.student_middle_name,
-        e2.student_last_name
-    ) AS student_name,
-    e2.grade_level,
-    CONCAT_WS(' ',
-        e2.guardian_first_name,
-        e2.guardian_middle_name,
-        e2.guardian_last_name
-    ) AS guardian_name,
-    ps2.relationship
-                FROM parent_student ps2
-                JOIN enrollments e2 ON e2.enrollment_id = ps2.student_id
-                WHERE ps2.parent_id = r.reserved_by_user_id
-                ORDER BY ps2.student_id
-                LIMIT 1
-            ) svp ON (reserved_by.role = 'parent')
-            WHERE r.branch_id = %s
-              AND EXISTS (
-                  SELECT 1 FROM reservation_items ri
-                  JOIN inventory_items ii ON ri.item_id = ii.item_id
-                  WHERE ri.reservation_id = r.reservation_id AND UPPER(ii.category) = 'BOOK'
-              )
-            ORDER BY r.created_at DESC
-        """, (branch_id,))
-        rows = cur.fetchall() or []
+            SELECT status, enrollment_id, student_user_id
+            FROM reservations
+            WHERE reservation_id = %s AND branch_id = %s
+            FOR UPDATE
+        """, (reservation_id, branch_id))
+        res = cur.fetchone()
 
-        # Convert created_at to Manila time
-        for row in rows:
-            if row.get("created_at"):
-                row["created_at"] = _to_manila_naive(row["created_at"])
+        if not res:
+            flash("Reservation not found.", "error")
+            return redirect(url_for("librarian.releases", tab="queue"))
 
+        if res["status"] != "PAID":
+            flash("Books can only be released if the reservation is PAID.", "error")
+            return redirect(url_for("librarian.releases", tab="queue"))
+
+        # Fetch student name
+        student_name = None
+        if res["enrollment_id"]:
+            cur.execute("SELECT CONCAT_WS(' ', student_first_name, student_middle_name, student_last_name) AS sname FROM enrollments WHERE enrollment_id = %s", (res["enrollment_id"],))
+            srow = cur.fetchone()
+            if srow:
+                student_name = srow["sname"]
+        elif res["student_user_id"]:
+            cur.execute("SELECT username FROM users WHERE user_id = %s", (res["student_user_id"],))
+            urow = cur.fetchone()
+            if urow:
+                student_name = urow["username"]
+
+        # Update reservation status to CLAIMED
+        cur.execute("""
+            UPDATE reservations
+            SET status = 'CLAIMED'
+            WHERE reservation_id = %s
+        """, (reservation_id,))
+
+        # Fetch items
+        cur.execute("""
+            SELECT item_id, qty, size_label, unit_price
+            FROM reservation_items
+            WHERE reservation_id = %s
+        """, (reservation_id,))
+        items = cur.fetchall()
+
+        if items:
+            # Create a book_release record
+            cur.execute("""
+                INSERT INTO book_releases (branch_id, enrollment_id, student_name, released_by_user_id)
+                VALUES (%s, %s, %s, %s)
+                RETURNING release_id
+            """, (branch_id, res["enrollment_id"], student_name, session.get("user_id")))
+            release_id = cur.fetchone()["release_id"]
+
+            for item in items:
+                # Insert release item
+                cur.execute("""
+                    INSERT INTO book_release_items (release_id, item_id, qty, unit_price)
+                    VALUES (%s, %s, %s, %s)
+                """, (release_id, item["item_id"], item["qty"], item["unit_price"]))
+
+                # Update inventory items
+                # The items were reserved, so we decrease both reserved_qty and stock_total.
+                cur.execute("""
+                    UPDATE inventory_items
+                    SET reserved_qty = GREATEST(0, reserved_qty - %s),
+                        stock_total = GREATEST(0, stock_total - %s)
+                    WHERE item_id = %s AND branch_id = %s
+                """, (item["qty"], item["qty"], item["item_id"], branch_id))
+
+        db.commit()
+        flash("Books successfully released for the reservation.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error marking reservation as claimed: {e}", "error")
     finally:
-        if cur:
-            cur.close()
-        conn.close()
+        cur.close()
+        db.close()
 
-    return render_template("librarian_reservations.html", rows=rows)
+    return redirect(url_for("librarian.releases", tab="queue"))

@@ -1515,14 +1515,7 @@ def student_reservation():
                 # Resolve enrollment_id for the reservation
                 target_enrollment_id = enrollment_id if role == "parent" else session.get("enrollment_id")
 
-                # Create one reservation ID per transaction
-                cursor_tx.execute("""
-                    INSERT INTO reservations (student_user_id, branch_id, student_grade_level, status, reserved_by_user_id, enrollment_id)
-                    VALUES (%s, %s, %s, 'RESERVED', %s, %s)
-                    RETURNING reservation_id
-                """, (student_user_id, branch_id, student_grade, reserved_by_user_id, target_enrollment_id))
-                reservation_id = cursor_tx.fetchone()['reservation_id']
-
+                reservation_ids = []
                 for sel in selected:
                     item_id = sel["item_id"]
                     qty = sel["qty"]
@@ -1572,6 +1565,15 @@ def student_reservation():
                     unit_price = float(r['price'] or 0)
                     line_total = unit_price * qty
 
+                    # Create one reservation per item
+                    cursor_tx.execute("""
+                        INSERT INTO reservations (student_user_id, branch_id, student_grade_level, status, reserved_by_user_id, enrollment_id)
+                        VALUES (%s, %s, %s, 'RESERVED', %s, %s)
+                        RETURNING reservation_id
+                    """, (student_user_id, branch_id, student_grade, reserved_by_user_id, target_enrollment_id))
+                    reservation_id = cursor_tx.fetchone()['reservation_id']
+                    reservation_ids.append(reservation_id)
+
                     cursor_tx.execute("""
                         INSERT INTO reservation_items (reservation_id, item_id, qty, size_label, unit_price, line_total)
                         VALUES (%s, %s, %s, %s, %s, %s)
@@ -1580,11 +1582,12 @@ def student_reservation():
                 db_tx.commit()
                 
                 # Redirect back to the same page with success_id to avoid form re-submission
+                last_id = reservation_ids[-1] if reservation_ids else 0
                 success_url = url_for("student.student_reservation", enrollment_id=target_enrollment_id)
                 if "?" in success_url:
-                    success_url += f"&success_id={reservation_id}"
+                    success_url += f"&success_id={last_id}"
                 else:
-                    success_url += f"?success_id={reservation_id}"
+                    success_url += f"?success_id={last_id}"
                 
                 return redirect(success_url)
 

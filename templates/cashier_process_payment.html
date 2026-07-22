@@ -226,13 +226,27 @@
         </div>
 
         <form method="POST">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="target_type" value="{{ target_type|default('general') }}">
+            <input type="hidden" name="target_id" value="{{ target_id|default('') }}">
+            
+            {% if target_name %}
+            <div style="background: #eff6ff; border: 1px solid #bfdbfe; padding: 16px; border-radius: 12px; margin-bottom: 24px; color: #1e3a8a;">
+                <div style="font-size: 0.75rem; font-weight: 800; text-transform: uppercase; margin-bottom: 4px; opacity: 0.8;">Targeting Specific Item</div>
+                <div style="font-weight: 800; font-size: 1.1rem;">{{ target_name }}</div>
+            </div>
+            {% endif %}
+
             <div class="form-group">
                 <label class="form-label" for="amount_input">Payment Amount (₱) *</label>
                 <input type="number" id="amount_input" name="amount" class="form-control" 
                   step="0.01" min="0.01" max="{{ bill.balance }}" placeholder="0.00" required
+                  value="{{ target_amount if target_amount else '' }}"
+                  {% if target_amount and target_type == 'reservation' %}readonly style="background: #f1f5f9; cursor: not-allowed;"{% endif %}
                   onkeydown="if(event.key==='-' || event.key==='+') return false;"
                   oninput="if(this.value.includes('.')){ let p = this.value.split('.'); if(p[1].length > 2) this.value = p[0] + '.' + p[1].substring(0,2); } if(parseFloat(this.value) > parseFloat('{{ bill.balance }}')) this.value = '{{ bill.balance }}';">
+                
+                {% if not target_amount or target_type != 'reservation' %}
                 <div class="presets-grid">
                     <button type="button" class="btn-preset" onclick="setAmount(500)">₱500</button>
                     <button type="button" class="btn-preset" onclick="setAmount(1000)">₱1,000</button>
@@ -240,6 +254,7 @@
                     <button type="button" class="btn-preset" onclick="setAmount(5000)">₱5,000</button>
                     <button type="button" class="btn-preset btn-full" onclick="setFullPayment()">FULL BALANCE</button>
                 </div>
+                {% endif %}
             </div>
 
             <div class="form-group">

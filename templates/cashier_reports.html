@@ -65,11 +65,19 @@
     .stat-card::before {
         content: '';
         position: absolute;
-        top: 0; left: 0; right: 0; height: 4px;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
     }
 
-    .stat-collection::before { background: var(--report-success); }
-    .stat-volume::before { background: var(--report-accent); }
+    .stat-collection::before {
+        background: var(--report-success);
+    }
+
+    .stat-volume::before {
+        background: var(--report-accent);
+    }
 
     .stat-label {
         font-size: 0.75rem;
@@ -152,9 +160,14 @@
         color: var(--report-primary);
     }
 
-    .table-wrapper { overflow-x: auto; }
+    .table-wrapper {
+        overflow-x: auto;
+    }
 
-    table { width: 100%; border-collapse: collapse; }
+    table {
+        width: 100%;
+        border-collapse: collapse;
+    }
 
     th {
         padding: 20px 24px;
@@ -174,8 +187,13 @@
         font-weight: 500;
     }
 
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #fbfcfe; }
+    tr:last-child td {
+        border-bottom: none;
+    }
+
+    tr:hover td {
+        background: #fbfcfe;
+    }
 
     .receipt-pill {
         display: inline-block;
@@ -208,7 +226,10 @@
         transition: all 0.2s;
     }
 
-    .btn-view:hover { background: #f1f5f9; border-color: var(--report-accent); }
+    .btn-view:hover {
+        background: #f1f5f9;
+        border-color: var(--report-accent);
+    }
 
     .empty-state {
         padding: 80px;
@@ -220,30 +241,46 @@
 
 {% block content %}
 <div class="report-wrap">
-    
+
     <div class="report-header">
         <div class="header-info">
             <h1>Daily Financial Report</h1>
-            <p>Auditing collections and transactions for the branch.</p>
+            <p>View daily collections and transactions.</p>
         </div>
-        <a href="{{ url_for('cashier.dashboard') }}" style="color: var(--report-muted); text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 6px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+        <a href="{{ url_for('cashier.dashboard') }}"
+            style="color: var(--report-muted); text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 6px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"></line>
+                <polyline points="12 19 5 12 12 5"></polyline>
+            </svg>
             Return to Console
         </a>
     </div>
 
     <!-- Date selector -->
     <form method="POST" class="date-selector-card">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <span class="form-label">Reviewing reports for:</span>
         <input type="date" name="report_date" class="date-input" value="{{ report_date }}">
         <button type="submit" class="btn-generate" style="display: flex; align-items: center; gap: 8px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <polyline points="1 20 1 14 7 14"></polyline>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
             Refresh Report
         </button>
         <div style="margin-left: auto;">
-            <button type="button" onclick="window.print()" class="btn-generate" style="background: var(--report-success); display: flex; align-items: center; gap: 8px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+            <button type="button" onclick="window.print()" class="btn-generate"
+                style="background: var(--report-success); display: flex; align-items: center; gap: 8px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                    <rect x="6" y="14" width="12" height="8"></rect>
+                </svg>
                 Print Report
             </button>
         </div>
@@ -252,11 +289,11 @@
     <!-- Summary stats -->
     <div class="summary-grid">
         <div class="stat-card stat-collection">
-            <div class="stat-label">Total Cash Collected</div>
+            <div class="stat-label">Total Payments</div>
             <div class="stat-value">₱{{ "%.2f"|format(summary.total_collected) }}</div>
         </div>
         <div class="stat-card stat-volume">
-            <div class="stat-label">Transaction Volume</div>
+            <div class="stat-label">Total Transactions</div>
             <div class="stat-value">{{ summary.transaction_count }}</div>
         </div>
     </div>
@@ -264,9 +301,9 @@
     <!-- Details table -->
     <div class="data-card">
         <div class="data-table-header">
-            <h2>Detailed Transaction Logs</h2>
+            <h2>Transaction History</h2>
         </div>
-        
+
         {% if payments %}
         <div class="table-wrapper">
             <table>
@@ -287,14 +324,16 @@
                         <td><span class="receipt-pill">{{ p.receipt_number }}</span></td>
                         <td>
                             <div style="font-weight: 700; color: var(--report-text);">{{ p.student_name }}</div>
-                            <div style="font-size: 0.75rem; color: var(--report-muted);">{{ p.payment_date.strftime('%I:%M %p') }}</div>
+                            <div style="font-size: 0.75rem; color: var(--report-muted);">{{
+                                p.payment_date.strftime('%I:%M %p') }}</div>
                         </td>
                         <td>{{ p.grade_level }}</td>
                         <td>#{{ p.branch_enrollment_no }}</td>
                         <td><span class="method-badge">{{ p.payment_method|title }}</span></td>
                         <td><strong style="color: var(--report-primary);">₱{{ "%.2f"|format(p.amount) }}</strong></td>
                         <td>
-                            <a href="{{ url_for('cashier.print_receipt', payment_id=p.payment_id) }}" class="btn-view">View OR</a>
+                            <a href="{{ url_for('cashier.print_receipt', payment_id=p.payment_id) }}"
+                                class="btn-view">View OR</a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -304,9 +343,15 @@
         {% else %}
         <div class="empty-state">
             <div style="margin-bottom: 16px; color: var(--report-border);">
-                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
             </div>
-            <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--report-text);">Zero Transactions for this date</h3>
+            <h3 style="font-size: 1.25rem; font-weight: 700; color: var(--report-text);">Zero Transactions for this date
+            </h3>
             <p style="margin-top: 8px;">Selected date: {{ report_date }}</p>
         </div>
         {% endif %}

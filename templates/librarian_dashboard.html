@@ -516,36 +516,33 @@
         </svg>
       </div>
       <div class="stat-info">
-        <div class="stat-value">{{ total }}</div>
-        <div class="stat-label">Catalog Titles</div>
+        <div class="stat-value">{{ stock }}</div>
+        <div class="stat-label">Total Textbooks</div>
       </div>
     </a>
-    <a href="{{ url_for('librarian.books_inventory') }}" class="stat-card">
+    <a href="{{ url_for('librarian.librarian_reservations') }}" class="stat-card">
       <div class="stat-icon-box" style="background: #fef3c7; color: #f59e0b;">
         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path
-            d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z">
-          </path>
-          <path d="m3.3 7 8.7 5 8.7-5"></path>
-          <path d="M12 22V12"></path>
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
         </svg>
       </div>
       <div class="stat-info">
-        <div class="stat-value">{{ stock }}</div>
-        <div class="stat-label">Total Units</div>
+        <div class="stat-value">{{ stats.reserved | default(0) }}</div>
+        <div class="stat-label">Pending for Release</div>
       </div>
     </a>
-    <a href="{{ url_for('librarian.books_inventory') }}?status=well" class="stat-card">
+    <a href="{{ url_for('librarian.releases_all') }}" class="stat-card">
       <div class="stat-icon-box" style="background: #ecfdf5; color: #10b981;">
         <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="20 6 9 17 4 12"></polyline>
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
         </svg>
       </div>
       <div class="stat-info">
-        <div class="stat-value">{{ wells }}</div>
-        <div class="stat-label">Well-Stocked</div>
+        <div class="stat-value">{{ released_today }}</div>
+        <div class="stat-label">Released Today</div>
       </div>
     </a>
     <a href="{{ url_for('librarian.books_inventory') }}?status=low" class="stat-card">
@@ -559,7 +556,7 @@
       </div>
       <div class="stat-info">
         <div class="stat-value">{{ issues }}</div>
-        <div class="stat-label">Stock Alerts</div>
+        <div class="stat-label">Low/Out of Stock</div>
       </div>
     </a>
   </div>
@@ -617,135 +614,117 @@
 
   {# ── Mid Row ── #}
   <div class="mid-section">
-    {# Inventory Health #}
-    <div class="dashboard-card">
+    {# Pending Releases #}
+    <div class="dashboard-card" style="padding: 24px;">
       <div class="card-header">
         <h2>
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="20" x2="18" y2="10"></line>
-            <line x1="12" y1="20" x2="12" y2="4"></line>
-            <line x1="6" y1="20" x2="6" y2="14"></line>
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
           </svg>
-          Collection Health
+          Students Waiting (Reserved Books)
         </h2>
+        <a href="{{ url_for('librarian.librarian_reservations') }}"
+          style="color: var(--lib-accent); font-weight: 800; font-size: 0.9rem; text-decoration: none;">View All →</a>
       </div>
-      <div class="health-container">
-        <div class="chart-box">
-          <canvas id="healthDoughnut"></canvas>
-          <div
-            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none; width: 100%;">
-            <div
-              style="font-size: 2.5rem; font-weight: 900; color: var(--lib-primary); line-height: 1; letter-spacing: -0.05em; margin-bottom: 2px; filter: drop-shadow(0 2px 4px rgba(30, 58, 138, 0.1));">
-              {{ total }}</div>
-            <div
-              style="font-size: 0.7rem; font-weight: 800; color: var(--lib-accent); text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.8;">
+      <div class="activity-feed">
+        {% for p in pending_students %}
+        <div class="activity-item">
+          <div class="act-icon" style="background: #fffbeb; color: #f59e0b;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </div>
+          <div class="act-details">
+            <div class="act-title">{{ p.full_name }}</div>
+            <div class="act-sub">
+              {{ p.created_at.strftime('%b %d, %Y') if p.created_at else '' }}
             </div>
           </div>
+          <div class="act-badge" style="background: #f59e0b;">{{ p.status }}</div>
         </div>
-        <div class="health-metrics">
-          <a href="{{ url_for('librarian.books_inventory') }}?status=well" class="metric-item metric-item-well">
-            <div class="metric-label">
-              <span class="metric-dot" style="color: #10b981; background: #10b981;"></span> Well Stocked
-            </div>
-            <div class="metric-val" style="color: #059669;">{{ wells }}</div>
-          </a>
-          <a href="{{ url_for('librarian.books_inventory') }}?status=low" class="metric-item metric-item-low">
-            <div class="metric-label">
-              <span class="metric-dot" style="color: #f59e0b; background: #f59e0b;"></span> Low Stock
-            </div>
-            <div class="metric-val" style="color: #d97706;">{{ stats.low_stock | default(0) }}</div>
-          </a>
-          <a href="{{ url_for('librarian.books_inventory') }}?status=out" class="metric-item metric-item-out">
-            <div class="metric-label">
-              <span class="metric-dot" style="color: #ef4444; background: #ef4444;"></span> Out of Stock
-            </div>
-            <div class="metric-val" style="color: #dc2626;">{{ stats.out_stock | default(0) }}</div>
-          </a>
-        </div>
+        {% else %}
+        <div style="text-align:center; padding: 40px; color: var(--lib-muted); font-weight: 600;">No pending releases</div>
+        {% endfor %}
       </div>
     </div>
 
-    {# Grade Distribution #}
-    <div class="dashboard-card">
+    {# ── Recent Activity ── #}
+    <div class="dashboard-card" style="padding: 24px;">
       <div class="card-header">
         <h2>
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-            <circle cx="9" cy="7" r="4"></circle>
-            <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="17 8 12 3 7 8"></polyline>
+            <line x1="12" y1="3" x2="12" y2="15"></line>
           </svg>
-          Grade Distribution
+          Recent Book Releases
         </h2>
+        <a href="{{ url_for('librarian.releases_all') }}"
+          style="color: var(--lib-accent); font-weight: 800; font-size: 0.9rem; text-decoration: none;">View All →</a>
       </div>
-      <div class="grade-stack">
-        {% if grade_breakdown %}
-        {% set max_count = grade_breakdown | map(attribute='book_count') | max %}
-        {% for g in grade_breakdown %}
-        {% set pct = ((g.book_count | int) / (max_count | int) * 100) if max_count > 0 else 0 %}
-        <div class="grade-row">
-          <div class="grade-meta">
-            <span>{{ g.grade_level or 'Unassigned' }}</span>
-            <span style="color: var(--lib-muted);">{{ g.book_count }}</span>
+      <div class="activity-feed">
+        {% for r in recent_releases %}
+        <div class="activity-item">
+          <div class="act-icon" style="background: #ecfdf5; color: #10b981;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            </svg>
           </div>
-          <div class="progress-track">
-            <div class="progress-fill" style="width: {{ pct }}%"></div>
+          <div class="act-details">
+            <div class="act-title">{{ r.book_title }}</div>
+            <div class="act-sub">
+              {{ r.student_name }} · {{ r.grade_level }}
+            </div>
           </div>
+          <div class="act-badge" style="background: #10b981;">{{ r.qty }} Qty</div>
         </div>
-        {% endfor %}
         {% else %}
-        <div style="text-align:center; padding: 40px; color: var(--lib-muted); font-weight: 600;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-            style="margin-bottom: 12px; opacity: 0.5;">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-          </svg><br>
-          No data available
-        </div>
-        {% endif %}
+        <div style="text-align:center; padding: 40px; color: var(--lib-muted); font-weight: 600;">No recent releases</div>
+        {% endfor %}
       </div>
     </div>
   </div>
 
-  {# ── Recent Activity ── #}
-  <div class="dashboard-card">
+  {# Grade Distribution #}
+  <div class="dashboard-card" style="margin-bottom: 40px;">
     <div class="card-header">
       <h2>
         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="17 8 12 3 7 8"></polyline>
-          <line x1="12" y1="3" x2="12" y2="15"></line>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
         </svg>
-        Recent Book Releases
+        Textbook Stock per Grade Level
       </h2>
-      <a href="{{ url_for('librarian.releases_all') }}"
-        style="color: var(--lib-accent); font-weight: 800; font-size: 0.9rem; text-decoration: none;">View All →</a>
     </div>
-    <div class="activity-feed">
-      {% for r in recent_releases %}
-      <div class="activity-item">
-        <div class="act-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-          </svg>
-        </div>
-        <div class="act-details">
-          <div class="act-title">{{ r.book_title }}</div>
-          <div class="act-sub">
-            {{ r.student_name }} · {{ r.grade_level }} · {{ r.created_at.strftime('%b %d, %Y') if r.created_at else ''
-            }}
-          </div>
-        </div>
-        <div class="act-badge">{{ r.qty }} Qty</div>
+    <div class="grade-stack" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; flex-direction: row; flex-wrap: wrap;">
+      {% if grade_breakdown %}
+      {% set max_count = grade_breakdown | map(attribute='book_count') | max %}
+      {% for g in grade_breakdown %}
+      <div class="activity-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+        <div style="font-weight: 800; font-size: 1.1rem; color: var(--lib-primary);">{{ g.grade_level or 'Unassigned' }}</div>
+        <div style="font-size: 0.85rem; color: var(--lib-muted); font-weight: 600;">Available Stock: <span style="color: #10b981; font-weight: 800; font-size: 1rem;">{{ g.available }}</span></div>
+        <div style="font-size: 0.85rem; color: var(--lib-muted); font-weight: 600;">Unique Titles: {{ g.book_count }}</div>
       </div>
-      {% else %}
-      <div style="text-align:center; padding: 40px; color: var(--lib-muted); font-weight: 600;">No recent releases</div>
       {% endfor %}
+      {% else %}
+      <div style="text-align:center; padding: 40px; color: var(--lib-muted); font-weight: 600; width: 100%;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+          style="margin-bottom: 12px; opacity: 0.5;">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg><br>
+        No data available
+      </div>
+      {% endif %}
     </div>
   </div>
 
@@ -755,38 +734,6 @@
 
 {% block scripts %}
 <script>
-  document.addEventListener('DOMContentLoaded', function () {
-    const canvas = document.getElementById('healthDoughnut');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
 
-    // Use stats object directly to avoid block scoping issues
-    const wells = {{ stats.well_stocked | default (0) | int
-  }};
-  const lows = {{ stats.low_stock | default (0) | int }};
-  const outs = {{ stats.out_stock | default (0) | int }};
-
-  new Chart(ctx, {
-    type: 'doughnut',
-    data: {
-      labels: ['Well Stocked', 'Low Stock', 'Out of Stock'],
-      datasets: [{
-        data: [wells, lows, outs],
-        backgroundColor: ['#1e3a8a', '#3b82f6', '#94a3b8'],
-        borderWidth: 2,
-        borderColor: '#ffffff',
-        cutout: '80%',
-        borderRadius: 5
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false }
-      }
-    }
-  });
-});
 </script>
 {% endblock %}
