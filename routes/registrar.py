@@ -634,6 +634,154 @@ FROM enrollments e
 
 
 # ══════════════════════════════════════════
+# ENROLLMENT DOCUMENTS — File Management
+# ══════════════════════════════════════════
+
+@registrar_bp.route("/registrar/documents")
+def registrar_documents():
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        # Filters
+        search_q    = (request.args.get("q") or "").strip()
+        doc_type_f  = (request.args.get("doc_type") or "").strip()
+        grade_f     = (request.args.get("grade") or "").strip()
+        year_f      = request.args.get("year_id")
+
+        # Get active school years for dropdown
+        cursor.execute("""
+            SELECT year_id, label FROM school_years
+            WHERE branch_id = %s ORDER BY label DESC
+        """, (branch_id,))
+        school_years = cursor.fetchall() or []
+
+        # Default to active year
+        if not year_f and school_years:
+            cursor.execute("SELECT year_id FROM school_years WHERE branch_id=%s AND is_active=TRUE LIMIT 1", (branch_id,))
+            row = cursor.fetchone()
+            year_f = str(row["year_id"]) if row else None
+
+        # Grade levels for filter
+        cursor.execute("SELECT name FROM grade_levels WHERE branch_id=%s ORDER BY display_order", (branch_id,))
+        grade_levels = [r["name"] for r in cursor.fetchall()]
+
+        # All distinct doc_types for this branch
+        cursor.execute("""
+            SELECT DISTINCT COALESCE(d.doc_type, d.file_name) AS doc_type
+            FROM enrollment_documents d
+            JOIN enrollments e ON e.enrollment_id = d.enrollment_id
+            WHERE e.branch_id = %s
+            ORDER BY 1
+        """, (branch_id,))
+        all_doc_types = [r["doc_type"] for r in cursor.fetchall()]
+
+        # Main query: fetch all documents with student info
+        sql = """
+            SELECT
+                d.doc_id,
+                d.enrollment_id,
+                d.file_name,
+                d.file_path,
+                COALESCE(d.doc_type, d.file_name) AS doc_type,
+                d.uploaded_at,
+                e.student_first_name,
+                e.student_middle_name,
+                e.student_last_name,
+                e.grade_level,
+                e.branch_enrollment_no,
+                e.status AS enrollment_status
+            FROM enrollment_documents d
+            JOIN enrollments e ON e.enrollment_id = d.enrollment_id
+            WHERE e.branch_id = %s
+        """
+        params = [branch_id]
+
+        if year_f:
+            sql += " AND e.year_id = %s"
+            params.append(year_f)
+
+        if search_q:
+            sql += """ AND (
+                e.student_first_name ILIKE %s OR
+                e.student_last_name  ILIKE %s OR
+                e.student_middle_name ILIKE %s OR
+                e.branch_enrollment_no ILIKE %s
+            )"""
+            like = f"%{search_q}%"
+            params += [like, like, like, like]
+
+        if doc_type_f:
+            sql += " AND COALESCE(d.doc_type, d.file_name) = %s"
+            params.append(doc_type_f)
+
+        if grade_f:
+            sql += " AND e.grade_level ILIKE %s"
+            params.append(f"%{grade_f}%")
+
+        sql += " ORDER BY e.student_last_name, e.student_first_name, d.uploaded_at DESC"
+
+        cursor.execute(sql, params)
+        documents = cursor.fetchall() or []
+
+        # Group documents by student (enrollment_id)
+        from collections import defaultdict
+        grouped = defaultdict(list)
+        student_info = {}
+        for doc in documents:
+            eid = doc["enrollment_id"]
+            grouped[eid].append(doc)
+            if eid not in student_info:
+                student_info[eid] = {
+                    "name": " ".join(filter(None, [
+                        doc["student_first_name"],
+                        doc["student_middle_name"],
+                        doc["student_last_name"],
+                    ])),
+                    "grade_level": doc["grade_level"],
+                    "enrollment_no": doc["branch_enrollment_no"],
+                    "status": doc["enrollment_status"],
+                    "enrollment_id": eid,
+                }
+
+        # Sort students alphabetically
+        students_with_docs = sorted(
+            [{"info": student_info[eid], "docs": docs} for eid, docs in grouped.items()],
+            key=lambda x: x["info"]["name"]
+        )
+
+        # Summary stats
+        total_docs     = len(documents)
+        total_students = len(students_with_docs)
+
+    except Exception as e:
+        flash(f"Error loading documents: {str(e)}", "error")
+        students_with_docs, school_years, grade_levels, all_doc_types = [], [], [], []
+        total_docs = total_students = 0
+        year_f = None
+    finally:
+        cursor.close()
+        db.close()
+
+    return render_template(
+        "registrar_documents.html",
+        students_with_docs=students_with_docs,
+        school_years=school_years,
+        grade_levels=grade_levels,
+        all_doc_types=all_doc_types,
+        search_q=search_q,
+        doc_type_f=doc_type_f,
+        grade_f=grade_f,
+        year_f=year_f,
+        total_docs=total_docs,
+        total_students=total_students,
+    )
+
+# ══════════════════════════════════════════
 # TOGGLE RE-ENROLLMENT
 # ══════════════════════════════════════════
 
