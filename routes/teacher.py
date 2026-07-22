@@ -3582,30 +3582,25 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
     if range_row:
         total_school_days = _count_school_days(cur, branch_id, year_id, range_row["start_date"], range_row["end_date"])
 
-    # Participation scores (from daily_participation)
-    participation_scores = {}
+    # Participation scores (from participation_scores table — 1-10 rating by teacher)
+    participation_scores = {}  # raw 1-10 values for display
     cur.execute("""
-        SELECT enrollment_id, AVG(points) * 20 AS ps -- Scale 1-5 to 1-100
-        FROM daily_participation
-        WHERE subject_id = %s AND branch_id = %s AND year_id = %s
-          AND participation_date BETWEEN %s AND %s
-        GROUP BY enrollment_id
-    """, (subject_id, branch_id, year_id, range_row["start_date"] if range_row else '1900-01-01', range_row["end_date"] if range_row else '1900-01-01'))
+        SELECT enrollment_id, score
+        FROM participation_scores
+        WHERE subject_id = %s AND grading_period = %s
+    """, (subject_id, period))
     for row in cur.fetchall():
-        participation_scores[row['enrollment_id']] = float(row['ps'] or 0)
+        participation_scores[row['enrollment_id']] = float(row['score'] or 0)
 
-    # Attendance scores (from daily_attendance)
-    attendance_scores = {}
-    if total_school_days > 0:
-        cur.execute("""
-            SELECT enrollment_id, (SUM(points) / %s) * 100 AS ps
-            FROM daily_attendance
-            WHERE subject_id = %s AND branch_id = %s AND year_id = %s
-              AND attendance_date BETWEEN %s AND %s
-            GROUP BY enrollment_id
-        """, (total_school_days, subject_id, branch_id, year_id, range_row["start_date"], range_row["end_date"]))
-        for row in cur.fetchall():
-            attendance_scores[row['enrollment_id']] = float(row['ps'] or 0)
+    # Attendance scores (from attendance_scores table — 1-10 rating by teacher)
+    attendance_scores = {}  # raw 1-10 values for display
+    cur.execute("""
+        SELECT enrollment_id, score
+        FROM attendance_scores
+        WHERE subject_id = %s AND grading_period = %s
+    """, (subject_id, period))
+    for row in cur.fetchall():
+        attendance_scores[row['enrollment_id']] = float(row['score'] or 0)
 
     def _cap_0_100(value):
         return max(0.0, min(100.0, float(value or 0)))
@@ -3616,18 +3611,21 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
         ww_score  = _cap_0_100(quiz_scores.get(eid, 0))          # Written Works (Quiz + Monthly Exam)
         qa_score  = _cap_0_100(exam_scores.get(eid, 0))          # Quarterly Assessment (Periodical Exam)
         act_score = _cap_0_100(activity_scores.get(eid, 0))
-        par_score = _cap_0_100(participation_scores.get(eid, 0))
-        att_score = _cap_0_100(attendance_scores.get(eid, 0))    # now part of PT
+        # Participation & Attendance: stored as 1-10, ×10 converts to 0-100 for grading
+        par_raw   = participation_scores.get(eid, None)   # raw 1-10 (or None if not entered)
+        att_raw   = attendance_scores.get(eid, None)      # raw 1-10 (or None if not entered)
+        par_score = _cap_0_100((par_raw or 0) * 10)      # scaled to 0-100 for PT
+        att_score = _cap_0_100((att_raw or 0) * 10)      # scaled to 0-100 for PT
 
         # Performance Tasks = average of all available: Activity, Participation, Attendance
-        has_activity = eid in activity_scores
-        has_participation = eid in participation_scores
-        has_attendance = eid in attendance_scores
+        has_activity      = eid in activity_scores
+        has_participation = par_raw is not None
+        has_attendance    = att_raw is not None
 
         pt_components = []
-        if has_activity: pt_components.append(act_score)
+        if has_activity:      pt_components.append(act_score)
         if has_participation: pt_components.append(par_score)
-        if has_attendance: pt_components.append(att_score)
+        if has_attendance:    pt_components.append(att_score)
         pt_score = _cap_0_100(sum(pt_components) / len(pt_components) if pt_components else 0)
 
         # DepEd auto-computation (weights unchanged)
@@ -3644,15 +3642,15 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
         records.append({
             'enrollment_id':   eid,
             'student_name':    s['student_name'],
-            'quiz':            round(ww_score, 2),    # WW (Quiz + Monthly Exam)
+            'quiz':            round(ww_score, 2),          # WW (Quiz + Monthly Exam)
             'activity':        round(act_score, 2),
-            'participation':   round(par_score, 2),
-            'attendance':      round(att_score, 2),   # now part of PT
+            'participation':   round(par_raw or 0, 1),      # raw 1-10 for display
+            'attendance':      round(att_raw or 0, 1),      # raw 1-10 for display
             'has_activity':    has_activity,
             'has_participation': has_participation,
             'has_attendance':  has_attendance,
-            'pt_score':        round(pt_score, 2),    # Combined PT
-            'exam':            round(qa_score, 2),    # QA (Periodical Exam)
+            'pt_score':        round(pt_score, 2),          # Combined PT (0-100)
+            'exam':            round(qa_score, 2),          # QA (Periodical Exam)
             'period_grade':    period_grade,
             'transmuted_grade': transmuted_grade,
             'transmutation_band': transmutation_band,
@@ -4016,7 +4014,8 @@ def participation_input(section_id, subject_id, period):
                 if key.startswith("score_"):
                     try:
                         eid   = int(key.split("_", 1)[1])
-                        score = max(0.0, min(100.0, float(val or 0)))
+                        # Accept 1-10 rating; clamp to valid range
+                        score = max(1.0, min(10.0, float(val or 1)))
                         cur.execute("""
                             INSERT INTO participation_scores
                                 (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, updated_at)
@@ -4110,7 +4109,8 @@ def attendance_input(section_id, subject_id, period):
                 if key.startswith("score_"):
                     try:
                         eid   = int(key.split("_", 1)[1])
-                        score = max(0.0, min(100.0, float(val or 0)))
+                        # Accept 1-10 rating; clamp to valid range
+                        score = max(1.0, min(10.0, float(val or 1)))
                         cur.execute("""
                             INSERT INTO attendance_scores
                                 (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, updated_at)

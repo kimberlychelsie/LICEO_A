@@ -583,9 +583,8 @@
             <strong>Activity + Participation + Attendance</strong> → Performance Tasks &nbsp;|&nbsp;
             <strong>Periodical Exam</strong> → Quarterly Assessment.
             Percentages are <strong>auto-set</strong> by subject type — no manual setup needed.
-            <br>
-            <strong>Note:</strong> Participation and Attendance here are auto-computed from daily records in the Attendance Hub.
         </div>
+
     </div>
     {% endif %}
 
@@ -645,8 +644,8 @@
                         {{ "%0.1f" | format(r.pt_score | float) }}
                         <div class="pt-breakdown">
                             {% if r.has_activity %}Act: {{ "%0.1f" | format(r.activity|float) }}{% endif %}
-                            {% if r.has_participation %} · Par: {{ "%0.1f" | format(r.participation|float) }}{% endif %}
-                            {% if r.has_attendance %} · Att: {{ "%0.1f" | format(r.attendance|float) }}{% endif %}
+                            {% if r.has_participation %} · Par: {{ r.participation | int }}/10{% endif %}
+                            {% if r.has_attendance %} · Att: {{ r.attendance | int }}/10{% endif %}
                         </div>
                     </td>
                     <td class="col-qa">{{ "%0.1f" | format(r.exam | float) }}</td>
@@ -667,8 +666,8 @@
                                 "student_name": {{ (r.student_name or "")|tojson }},
                                 "ww": {{ (r.quiz or 0)|float }},
                                 "act": {{ (r.activity or 0)|float }},
-                                "par": {{ (r.participation or 0)|float }},
-                                "att": {{ (r.attendance or 0)|float }},
+                                "par": {{ ((r.participation or 0)|float * 10) }},
+                                "att": {{ ((r.attendance or 0)|float * 10) }},
                                 "pt": {{ (r.pt_score or 0)|float }},
                                 "qa": {{ (r.exam or 0)|float }},
                                 "initial": {{ (r.period_grade or 0)|float }},
