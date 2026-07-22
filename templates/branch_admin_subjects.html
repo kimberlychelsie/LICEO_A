@@ -1,0 +1,818 @@
+﻿{% extends "base.html" %}
+{% block title %}Subjects Management{% endblock %}
+{% block content %}
+<style>
+    :root {
+        --ma-primary: #1a3a8f;
+        --ma-gold: #facc15;
+        --ma-bg: #f8fafc;
+        --ma-card: #ffffff;
+        --ma-border: rgba(26, 58, 143, 0.1);
+        --ma-text: #0f172a;
+        --ma-muted: #64748b;
+        --ma-accent: #3b82f6;
+    }
+
+    body {
+        background: var(--ma-bg);
+        color: var(--ma-text);
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+
+    .ba-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 32px 24px;
+    }
+
+    .premium-welcome {
+        background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
+        border-radius: 24px;
+        padding: 40px;
+        color: white;
+        margin-bottom: 32px;
+        box-shadow: 0 10px 30px rgba(26, 58, 143, 0.2);
+    }
+
+    .premium-welcome h1 {
+        font-size: 2.2rem;
+        font-weight: 800;
+        margin-bottom: 8px;
+        letter-spacing: -0.02em;
+        color: white;
+        margin: 0;
+    }
+
+    .status-line {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 500;
+        opacity: 0.9;
+        font-size: 0.9rem;
+    }
+
+    .pulse-dot {
+        width: 10px;
+        height: 10px;
+        background: var(--ma-gold);
+        border-radius: 50%;
+        box-shadow: 0 0 10px var(--ma-gold);
+    }
+
+    /* Cards */
+    .modern-card {
+        background: var(--ma-card);
+        border: 1px solid var(--ma-border);
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        margin-bottom: 24px;
+    }
+
+    .modern-card h2 {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--ma-primary);
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    /* Form Elements */
+    .form-node {
+        margin-bottom: 20px;
+    }
+
+    .form-node label {
+        display: block;
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: var(--ma-muted);
+        text-transform: uppercase;
+        margin-bottom: 8px;
+    }
+
+    .form-control {
+        width: 100%;
+        padding: 12px 16px;
+        border: 1px solid var(--ma-border);
+        border-radius: 12px;
+        font-size: 0.95rem;
+        transition: all 0.3s ease;
+    }
+
+    .form-control:focus {
+        outline: none;
+        border-color: var(--ma-primary);
+        box-shadow: 0 0 0 4px rgba(26, 58, 143, 0.05);
+    }
+
+    /* Buttons */
+    .btn-prem {
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        transition: all 0.3s ease;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+
+    .btn-prem:hover {
+        transform: translateY(-2px);
+    }
+
+    .btn-primary {
+        background: var(--ma-primary);
+        color: white;
+    }
+
+    .btn-gold {
+        background: var(--ma-gold);
+        color: var(--ma-primary);
+    }
+
+    .btn-danger {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .btn-secondary {
+        background: #f1f5f9;
+        color: var(--ma-muted);
+    }
+
+    .btn-prem:disabled {
+        background: #f1f5f9 !important;
+        color: #94a3b8 !important;
+        cursor: not-allowed !important;
+        transform: none !important;
+        opacity: 0.7;
+    }
+
+    /* Bulk Section Chooser */
+    .section-chooser-container {
+        border: 1px solid var(--ma-border);
+        border-radius: 12px;
+        background: #fff;
+        max-height: 350px;
+        overflow-y: auto;
+        padding: 16px;
+    }
+
+    .grade-group {
+        margin-bottom: 16px;
+    }
+
+    .grade-group:last-child {
+        margin-bottom: 0;
+    }
+
+    .grade-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #f1f5f9;
+        margin-bottom: 10px;
+    }
+
+    .grade-header span {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--ma-primary);
+        text-transform: uppercase;
+    }
+
+    .section-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+        gap: 8px;
+    }
+
+    .section-checkbox-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        cursor: pointer;
+        padding: 6px 10px;
+        border-radius: 8px;
+        background: #f8fafc;
+        border: 1px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .section-checkbox-label:hover {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+
+    .section-checkbox-label input {
+        accent-color: var(--ma-primary);
+    }
+
+    .bulk-controls {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+    }
+
+    .btn-tiny {
+        padding: 4px 8px;
+        font-size: 0.7rem;
+        background: #f1f5f9;
+        color: var(--ma-muted);
+        border: 1px solid var(--ma-border);
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .btn-tiny:hover {
+        background: var(--ma-primary);
+        color: white;
+    }
+
+    /* Table */
+    .vault-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .vault-table th {
+        text-align: left;
+        padding: 16px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--ma-muted);
+        text-transform: uppercase;
+        border-bottom: 1px solid var(--ma-border);
+    }
+
+    .vault-table td {
+        padding: 20px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.95rem;
+    }
+
+    /* Modal Overlay */
+    .glass-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(8px);
+        z-index: 2000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .glass-modal {
+        background: white;
+        border-radius: 24px;
+        padding: 32px;
+        width: 100%;
+        max-width: 450px;
+        box-shadow: 0 40px 100px -20px rgba(0, 0, 0, 0.3);
+    }
+
+    .confirm-modal {
+        text-align: center;
+    }
+
+    /* ── Responsive Refinements ── */
+    @media (max-width: 1024px) {
+        .ba-container { padding: 32px 20px; }
+        .premium-welcome h1 { font-size: 1.8rem; }
+    }
+
+    @media (max-width: 768px) {
+        .ba-container { padding: 12px 8px; }
+        .premium-welcome { padding: 16px; border-radius: 16px; margin-bottom: 20px; }
+        .premium-welcome h1 { font-size: 1.3rem; }
+        .status-line { font-size: 0.7rem; }
+
+        .modern-card { padding: 16px; border-radius: 16px; background: transparent; border: none; box-shadow: none; }
+        .modern-card h2 { font-size: 0.9rem; margin-bottom: 16px; padding: 0 4px; }
+
+        .form-control { padding: 10px 14px; font-size: 0.8rem; border-radius: 12px; }
+        .btn-prem { padding: 10px 16px; font-size: 0.8rem; border-radius: 12px; }
+
+        /* ── Table-to-Card Transformation ── */
+        .vault-table thead { display: none; }
+        .vault-table tbody { display: flex; flex-direction: column; gap: 12px; }
+        .vault-table tr { 
+            display: block; 
+            background: #fff; 
+            border-radius: 20px; 
+            padding: 16px; 
+            border: 1px solid var(--ma-border);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        }
+        .vault-table td { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 8px 0; 
+            border: none;
+            font-size: 0.75rem;
+        }
+        .vault-table td::before { 
+            content: attr(data-label); 
+            font-weight: 800; 
+            color: var(--ma-muted); 
+            font-size: 0.65rem;
+            text-transform: uppercase;
+        }
+        .vault-table td:first-child { 
+            background: #f8fafc; 
+            margin: -16px -16px 12px -16px; 
+            padding: 12px 16px; 
+            border-radius: 20px 20px 0 0; 
+            justify-content: flex-start;
+        }
+        .vault-table td:first-child::before { display: none; }
+        
+        .subject-entry-row {
+            grid-template-columns: 1fr !important;
+            gap: 8px !important;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 12px;
+            position: relative;
+        }
+
+        .subject-entry-row button {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+        }
+
+        .modern-card div[style*="display: flex; justify-content: space-between"] {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 12px;
+        }
+
+        .modern-card select[style*="width: 250px"] {
+            width: 100% !important;
+        }
+        
+        .table-responsive { overflow: visible; }
+    }
+
+    @media (max-width: 480px) {
+        .premium-welcome h1 { font-size: 1.1rem; }
+    }
+
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    @media (max-width: 768px) {
+        .vault-table {
+            min-width: 700px;
+        }
+    }
+</style>
+
+<div class="ba-container">
+
+    <div class="premium-welcome">
+        <h1>Subjects Management</h1>
+        <div class="status-line">
+            <span class="pulse-dot"></span>
+            Curriculum Control • {{ subjects|length }} Active Subjects
+        </div>
+    </div>
+
+    <div class="single-col" style="display: flex; flex-direction: column; gap: 32px;">
+        <!-- Add Form -->
+        {% if is_branch_active_status %}
+        <div class="col-form">
+            <div class="modern-card">
+                <h2>➕ Bulk Curriculum Builder</h2>
+                <form method="post" action="{{ url_for('branch_admin.branch_admin_subjects') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="form-node" style="background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid var(--ma-border); margin-bottom: 24px;">
+                        <h3 style="font-size: 0.85rem; color: var(--ma-primary); font-weight: 800; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                            <i class="fas fa-info-circle"></i> CATEGORY & GRADING GUIDE
+                        </h3>
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                            <div style="font-size: 0.75rem; line-height: 1.6;">
+                                <strong style="color: var(--ma-primary);">Language / Values</strong><br>
+                                <span style="color: var(--ma-muted);">WW 30% | PT 50% | QA 20%</span><br>
+                                <em style="font-size: 0.7rem;">(Fil, Eng, AP, EsP, Religion)</em>
+                            </div>
+                            <div style="font-size: 0.75rem; line-height: 1.6;">
+                                <strong style="color: var(--ma-primary);">Science / Math</strong><br>
+                                <span style="color: var(--ma-muted);">WW 40% | PT 40% | QA 20%</span><br>
+                                <em style="font-size: 0.7rem;">(Sci, Math)</em>
+                            </div>
+                            <div style="font-size: 0.75rem; line-height: 1.6;">
+                                <strong style="color: var(--ma-primary);">Skills / Technical</strong><br>
+                                <span style="color: var(--ma-muted);">WW 20% | PT 60% | QA 20%</span><br>
+                                <em style="font-size: 0.7rem;">(EPP, TLE, MAPEH, ICT)</em>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-node">
+                        <label>Subjects to Add</label>
+                        <div id="subjectEntries" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
+                            <div class="subject-entry-row" style="display: grid; grid-template-columns: 1fr 140px auto; gap: 8px; align-items: center;">
+                                <input type="text" name="names" class="form-control" placeholder="Subject Name" required oninput="autoDetectCategory(this)">
+                                <select name="categories" class="form-control" required style="font-size: 0.75rem; padding: 12px 8px;">
+                                    <option value="language">Language</option>
+                                    <option value="science_math">Sci / Math</option>
+                                    <option value="skills">Skills</option>
+                                </select>
+                                <button type="button" class="btn-tiny" style="background: transparent; border: none; color: #ef4444;" onclick="removeRow(this)">
+                                    <i class="fas fa-times-circle" style="font-size: 1.2rem;"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-prem btn-secondary" style="width: 100%; padding: 8px; font-size: 0.8rem;" onclick="addRow()">
+                            <i class="fas fa-plus-circle"></i> Add Another Subject
+                        </button>
+                    </div>
+
+                    <div class="form-node">
+                        <label>Assign to Sections</label>
+                        <div class="bulk-controls">
+                            <button type="button" class="btn-tiny" onclick="selectAllSections(true)">Select All</button>
+                            <button type="button" class="btn-tiny" onclick="selectAllSections(false)">Deselect All</button>
+                        </div>
+                        <div class="section-chooser-container">
+                            {% set ns = namespace(current_grade=None) %}
+                            {% for sec in section_options %}
+                                {% if ns.current_grade != sec.grade_level_name %}
+                                    {% if ns.current_grade != None %}</div></div>{% endif %}
+                                    <div class="grade-group" data-grade="{{ sec.grade_level_name }}">
+                                        <div class="grade-header">
+                                            <span>{{ sec.grade_level_name }}</span>
+                                        </div>
+                                        <div class="section-grid">
+                                    {% set ns.current_grade = sec.grade_level_name %}
+                                {% endif %}
+                                <label class="section-checkbox-label">
+                                    <input type="checkbox" name="section_ids" value="{{ sec.section_id }}">
+                                    {{ sec.section_name }}
+                                </label>
+                                {% if loop.last %}</div></div>{% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div style="font-size: 11.5px; color: var(--ma-muted); margin-bottom: 24px; line-height: 1.4; padding-top: 12px; font-style: italic;">
+                        <strong>Quick Hint:</strong> Type "Math" or "Science" to auto-select the category.
+                    </div>
+                    <button type="submit" class="btn-prem btn-primary" style="width: 100%;">🚀 Deploy Curriculum</button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Existing Subjects -->
+        <div class="col-table">
+            <div class="modern-card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <h2 style="margin: 0;">List of Existing Subjects</h2>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <label style="font-size: 0.75rem; font-weight: 800; color: var(--ma-muted); text-transform: uppercase;">Filter by Section:</label>
+                        <select class="form-control" style="width: 250px; font-size: 0.85rem;" onchange="window.location.href='/branch-admin/subjects?section_id=' + this.value">
+
+                            {% for sec in section_options %}
+                            <option value="{{ sec.section_id }}" {% if selected_section_id == sec.section_id|string %}selected{% endif %}>
+                                {{ sec.grade_level_name }} - {{ sec.section_name }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                {% if assignments %}
+                <div class="table-responsive">
+                    <table class="vault-table">
+                    <thead>
+                        <tr>
+                            <th>Identity</th>
+                            <th>Assigned To</th>
+                            <th>Status</th>
+                            <th style="text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in assignments %}
+                        <tr style="{% if a.is_archived %}opacity: 0.6; background: #f8fafc;{% endif %}">
+                            <td data-label="Identity">
+                                <div style="font-weight: 700; color: var(--ma-primary);">{{ a.name }}</div>
+                                {% if a.deped_category == 'science_math' %}
+                                <span class="badge-pill"
+                                    style="background: #dcfce7; color: #166534; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">SCI
+                                    / MATH</span>
+                                {% elif a.deped_category == 'skills' %}
+                                <span class="badge-pill"
+                                    style="background: #fef3c7; color: #92400e; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">SKILLS</span>
+                                {% else %}
+                                <span class="badge-pill"
+                                    style="background: #dbeafe; color: #1e40af; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">LANGUAGE</span>
+                                {% endif %}
+                            </td>
+                            <td data-label="Assigned To">
+                                <div style="color: var(--ma-muted); font-size: 0.85rem;">
+                                    <i class="fas fa-layer-group" style="font-size: 0.7rem; opacity: 0.5;"></i> {{ a.grade_level_name }} - {{ a.section_name }}
+                                </div>
+                            </td>
+                            <td data-label="Status">
+                                {% if a.is_archived %}
+                                <span style="background: #f1f5f9; color: #64748b; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px; text-transform: uppercase;">Archived</span>
+                                {% else %}
+                                <span style="background: #dcfce7; color: #15803d; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px; text-transform: uppercase;">Active</span>
+                                {% endif %}
+                            </td>
+                            <td data-label="Actions" style="text-align: right; white-space: nowrap;">
+                                {% if is_branch_active_status %}
+                                <div style="display: flex; gap: 6px; justify-content: flex-end;">
+                                    <button class="btn-prem btn-secondary" style="padding: 6px 14px; font-size: 0.7rem;"
+                                        onclick='openEditModal({{ a.subject_id }}, {{ a.name | tojson }}, "{{ a.section_id }}", "{{ a.deped_category }}")'>
+                                        <i class="fas fa-edit"></i> Edit
+                                    </button>
+                                    
+                                    <form action="/branch-admin/subjects/{{ a.subject_id }}/{{ a.section_id }}/toggle-archive" method="POST" style="display:inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        {% if a.is_archived %}
+                                        <button type="submit" class="btn-prem" style="background: #dcfce7; color: #15803d; padding: 6px 14px; font-size: 0.7rem;">
+                                            <i class="fas fa-undo"></i> Unarchive
+                                        </button>
+                                        {% else %}
+                                        <button type="submit" class="btn-prem" style="background: #f1f5f9; color: #64748b; padding: 6px 14px; font-size: 0.7rem;">
+                                            <i class="fas fa-archive"></i> Archive
+                                        </button>
+                                        {% endif %}
+                                    </form>
+
+                                    <button class="btn-prem btn-danger"
+                                        style="padding: 6px 12px; font-size: 0.7rem;"
+                                        onclick="confirmSubjectDelete({{ a.subject_id }}, '{{ a.name|e }}')">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+                {% else %}
+                <div style="text-align:center; padding: 40px; color: var(--ma-muted); font-size: 0.9rem;">
+                    <i class="fas fa-book-open"
+                        style="font-size: 2rem; display: block; margin-bottom: 12px; opacity: 0.5;"></i>
+                    No subjects found for the selected section.
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div id="deleteConfirmOverlay" class="glass-overlay">
+    <div class="glass-modal confirm-modal">
+        <div style="font-size: 3.5rem; margin-bottom: 20px;">🗑️</div>
+        <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 12px; color: #dc2626;">Remove Subject?</h2>
+        <p id="deleteConfirmMsg"
+            style="font-size: 0.9rem; color: var(--ma-muted); margin-bottom: 24px; line-height: 1.5;"></p>
+        <form id="deleteSubjectForm" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button type="button" onclick="closeDeleteModal()" class="btn-prem btn-secondary">Keep it</button>
+                <button type="submit" class="btn-prem" style="background: #dc2626; color: white;">Yes, Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Modal -->
+<div id="editModal" class="glass-overlay">
+    <div class="glass-modal">
+        <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 24px; color: var(--ma-primary);">✎ Edit Subject
+        </h2>
+        <form id="editForm" method="post" action="">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-node">
+                <label>Subject Identity</label>
+                <input type="text" name="name" id="edit_name" class="form-control" required>
+            </div>
+
+            <div class="form-node">
+                <label>Grade Level & Section</label>
+                <select name="section_id" id="edit_section_id" class="form-control" required>
+                    <option value="">Select Grade & Section</option>
+                    {% for sec in section_options %}
+                    <option value="{{ sec.section_id }}">{{ sec.grade_level_name }} – {{ sec.section_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-node">
+                <label>DepEd Category</label>
+                <select name="deped_category" id="edit_deped_category" class="form-control" required>
+                    <option value="language">Language / Values (WW 30%, PT 50%, QA 20%)</option>
+                    <option value="science_math">Science / Math (WW 40%, PT 40%, QA 20%)</option>
+                    <option value="skills">Skills (WW 20%, PT 60%, QA 20%)</option>
+                </select>
+            </div>
+
+            <div
+                style="font-size: 14px; color: var(--ma-muted); margin-bottom: 32px; line-height: 1.6; background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid var(--ma-border);">
+                <strong>Category Guide:</strong><br>
+                • <strong>Language:</strong> Fil, Eng, AP, EsP, Values<br>
+                • <strong>Science/Math:</strong> Sci, Math<br>
+                • <strong>Skills:</strong> EPP, TLE, MAPEH, ICT
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:12px;">
+                <button type="button" class="btn-prem btn-secondary" onclick="closeEditModal()">Dismiss</button>
+                <button type="submit" class="btn-prem btn-gold" id="editSubmitBtn" disabled>Commit Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function validateSubject(name, category) {
+        const n = name.trim().toLowerCase();
+        const cat = category.toLowerCase();
+
+        // Science/Math validation
+        if ((n.includes('science') || n.includes('math')) && cat !== 'science_math') {
+            alert('Validation Error: "Science" and "Mathematics" subjects must use the "Science / Math" category.');
+            return false;
+        }
+
+        // Language/Values validation
+        const langKeywords = ['filipino', 'english', 'ap', 'esp', 'religion', 'values', 'araling', 'pagpapakatao'];
+        if (langKeywords.some(k => n.includes(k)) && cat !== 'language') {
+            if (cat === 'science_math' || cat === 'skills') {
+                alert('Validation Error: This subject belongs to the "Language / Values" category according to the guide.');
+                return false;
+            }
+        }
+
+        // Skills validation
+        const skillKeywords = ['epp', 'tle', 'mapeh', 'computer', 'ict', 'music', 'arts', 'physical education', 'health'];
+        if (skillKeywords.some(k => n.includes(k)) && cat !== 'skills') {
+            if (cat === 'science_math' || cat === 'language') {
+                alert('Validation Error: This subject belongs to the "Skills" category (EPP, TLE, MAPEH, etc.).');
+                return false;
+            }
+        }
+        return true;
+    }
+
+    let initialSubjectData = {};
+
+    function openEditModal(subjectId, name, sectionId, category) {
+        document.getElementById('editForm').action = '/branch-admin/subjects/' + subjectId + '/edit';
+        document.getElementById('edit_name').value = name;
+        document.getElementById('edit_section_id').value = sectionId;
+        document.getElementById('edit_deped_category').value = category || 'language';
+
+        // Capture initial state
+        initialSubjectData = {
+            name: String(name).trim(),
+            section: String(sectionId),
+            category: String(category || 'language')
+        };
+
+        const submitBtn = document.getElementById('editSubmitBtn');
+        submitBtn.disabled = true;
+
+        document.getElementById('editModal').style.display = 'flex';
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    function confirmSubjectDelete(id, name) {
+        const overlay = document.getElementById('deleteConfirmOverlay');
+        const msg = document.getElementById('deleteConfirmMsg');
+        const form = document.getElementById('deleteSubjectForm');
+
+        msg.innerText = `Are you sure you want to permanently remove "${name}" from the curriculum? This action cannot be undone.`;
+        form.action = `/branch-admin/subjects/${id}/delete`;
+        overlay.style.display = 'flex';
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteConfirmOverlay').style.display = 'none';
+    }
+
+    // Monitor changes
+    ['edit_name', 'edit_section_id', 'edit_deped_category'].forEach(id => {
+        document.getElementById(id).addEventListener('input', function () {
+            const currentName = document.getElementById('edit_name').value.trim();
+            const currentSection = document.getElementById('edit_section_id').value;
+            const currentCat = document.getElementById('edit_deped_category').value;
+
+            const hasChanged = (
+                currentName !== initialSubjectData.name ||
+                currentSection !== initialSubjectData.section ||
+                currentCat !== initialSubjectData.category
+            );
+
+            document.getElementById('editSubmitBtn').disabled = !hasChanged;
+        });
+    });
+
+    // Bulk Subject Builder Logic
+    function addRow() {
+        const container = document.getElementById('subjectEntries');
+        const newRow = document.createElement('div');
+        newRow.className = 'subject-entry-row';
+        newRow.style.cssText = 'display: grid; grid-template-columns: 1fr 140px auto; gap: 8px; align-items: center;';
+        newRow.innerHTML = `
+            <input type="text" name="names" class="form-control" placeholder="Subject Name" required oninput="autoDetectCategory(this)">
+            <select name="categories" class="form-control" required style="font-size: 0.75rem; padding: 12px 8px;">
+                <option value="language">Language</option>
+                <option value="science_math">Sci / Math</option>
+                <option value="skills">Skills</option>
+            </select>
+            <button type="button" class="btn-tiny" style="background: transparent; border: none; color: #ef4444;" onclick="removeRow(this)">
+                <i class="fas fa-times-circle" style="font-size: 1.2rem;"></i>
+            </button>
+        `;
+        container.appendChild(newRow);
+    }
+
+    function removeRow(btn) {
+        const rows = document.querySelectorAll('.subject-entry-row');
+        if (rows.length > 1) {
+            btn.closest('.subject-entry-row').remove();
+        } else {
+            btn.closest('.subject-entry-row').querySelector('input').value = '';
+        }
+    }
+
+    function autoDetectCategory(input) {
+        const name = input.value.trim().toLowerCase();
+        const row = input.closest('.subject-entry-row');
+        const select = row.querySelector('select');
+
+        const sciMath = ['math', 'science', 'maths', 'biology', 'chemistry', 'physics', 'algebra', 'geometry', 'calculus'];
+        const skills = ['epp', 'tle', 'mapeh', 'computer', 'ict', 'music', 'arts', 'pe', 'physical education', 'health', 'livelihood'];
+        const lang = ['filipino', 'english', 'araling', 'panlipunan', 'esp', 'religion', 'values', 'christian', 'cle', 'mother tongue'];
+
+        if (sciMath.some(k => name.includes(k))) {
+            select.value = 'science_math';
+        } else if (skills.some(k => name.includes(k))) {
+            select.value = 'skills';
+        } else if (lang.some(k => name.includes(k))) {
+            select.value = 'language';
+        }
+    }
+
+    // Bulk Section Helpers
+    function selectAllSections(checked) {
+        document.querySelectorAll('input[name="section_ids"]').forEach(cb => {
+            cb.checked = checked;
+        });
+    }
+
+
+    // Attach validation to both forms
+    document.addEventListener('DOMContentLoaded', function () {
+        const addForm = document.querySelector('.col-form form');
+        if (addForm) {
+            addForm.onsubmit = function () {
+                const checkedCount = addForm.querySelectorAll('input[name="section_ids"]:checked').length;
+                if (checkedCount === 0) {
+                    alert('Please select at least one section.');
+                    return false;
+                }
+                return true;
+            };
+        }
+
+        const editForm = document.getElementById('editForm');
+        if (editForm) {
+            editForm.onsubmit = function () {
+                const name = document.getElementById('edit_name').value;
+                const cat = document.getElementById('edit_deped_category').value;
+                return validateSubject(name, cat);
+            };
+        }
+    });
+</script>
+{% endblock %}
