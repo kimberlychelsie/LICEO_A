@@ -2150,15 +2150,12 @@ def branch_admin_remove_teacher_assignment():
 
 
 # ══════════════════════════════════════════════════════
-# MANAGE TEACHERS — Registrar Module
+# MANAGE TEACHERS — Branch Admin Module
 # ══════════════════════════════════════════════════════
 
 def _ensure_teacher_tables(cursor):
     cursor.execute("""
         ALTER TABLE users
-        ADD COLUMN IF NOT EXISTS teacher_type VARCHAR(20) DEFAULT 'advisory',
-        ADD COLUMN IF NOT EXISTS specialization_subject VARCHAR(100),
-        ADD COLUMN IF NOT EXISTS department VARCHAR(50),
         ADD COLUMN IF NOT EXISTS is_archived BOOLEAN DEFAULT FALSE
     """)
     cursor.execute("""
@@ -2282,8 +2279,6 @@ def branch_admin_manage_teachers():
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
     try:
-        _ensure_teacher_tables(cursor)
-        db.commit()
 
         cursor.execute(
             "SELECT id, name FROM grade_levels WHERE branch_id = %s ORDER BY display_order",
@@ -2372,10 +2367,6 @@ Please log in and change your password immediately.
             SELECT
                 u.user_id, u.username, u.first_name, u.middle_name, u.last_name, u.full_name, u.gender, u.email,
                 COALESCE(u.status, 'active') AS status,
-                COALESCE(u.teacher_type, 'advisory') AS teacher_type,
-                u.grade_level_id,
-                COALESCE(u.specialization_subject, '') AS specialization_subject,
-                COALESCE(u.department, '') AS department,
                 adv_sec.section_name AS advisory_section,
                 adv_grade.name AS advisory_grade,
                 (
@@ -2389,8 +2380,7 @@ Please log in and change your password immediately.
             FROM users u
             LEFT JOIN sections adv_sec ON adv_sec.teacher_id = u.user_id AND adv_sec.branch_id = u.branch_id
             LEFT JOIN grade_levels adv_grade ON adv_sec.grade_level_id = adv_grade.id
-            WHERE u.branch_id = %s AND u.role = 'teacher'
-              AND COALESCE(u.is_archived, FALSE) = FALSE
+            WHERE u.branch_id = %s AND u.role = 'teacher' AND COALESCE(u.is_archived, FALSE) = FALSE
         """
         params = [branch_id]
         if filter_search:
@@ -2404,7 +2394,14 @@ Please log in and change your password immediately.
         cursor.execute("""
             SELECT
                 COUNT(*) AS total,
-                COUNT(*) FILTER (WHERE COALESCE(status,'active') = 'active') AS active_count
+                COUNT(*) FILTER (WHERE COALESCE(status,'active') = 'active') AS active_count,
+                COUNT(*) FILTER (
+                    WHERE EXISTS (SELECT 1 FROM sections s WHERE s.teacher_id = users.user_id)
+                ) AS advisory_count,
+                COUNT(*) FILTER (
+                    WHERE NOT EXISTS (SELECT 1 FROM sections s WHERE s.teacher_id = users.user_id)
+                      AND EXISTS (SELECT 1 FROM section_teachers st WHERE st.teacher_id = users.user_id)
+                ) AS subject_count
             FROM users WHERE branch_id = %s AND role = 'teacher'
               AND COALESCE(is_archived, FALSE) = FALSE
         """, (branch_id,))

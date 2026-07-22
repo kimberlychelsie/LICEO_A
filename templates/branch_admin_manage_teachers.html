@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}Teachers – Registrar{% endblock %}
 
 {% block styles %}
@@ -29,7 +29,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
 .page-hero p  { opacity: .75; font-size: 1rem; font-weight: 600; }
 
 /* Stats */
-.stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 32px; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 32px; }
 .stat-card {
   background: var(--card); border: 1px solid var(--bd); border-radius: 20px;
   padding: 24px 28px; display: flex; align-items: center; gap: 18px;
@@ -82,6 +82,11 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
 .manage-menu .warn-action { color: #b45309; }
 .manage-menu .muted { color: var(--mu); font-size: .78rem; font-weight: 700; padding: 8px 12px 4px; }
 .manage-menu hr { border: none; border-top: 1px solid var(--bd); margin: 6px 0; }
+.manage-wrap.is-upwards .manage-menu {
+  top: auto;
+  bottom: calc(100% + 6px);
+  box-shadow: 0 -12px 32px rgba(15,23,42,.12);
+}
 
 /* Multi-grade checkboxes */
 #subject-grades-section { display: block; }
@@ -117,27 +122,34 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
 
 /* Table — scroll only the list card, not the whole page */
 .table-wrap {
-  background: var(--card); border: 1px solid var(--bd); border-radius: 24px;
-  overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,.05);
-  display: flex; flex-direction: column; max-height: min(68vh, 720px);
+  background: var(--card); border: 1px solid var(--bd); border-radius: 20px;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,.05);
+  display: flex; flex-direction: column; 
+  /* override base.html overflow-x for the table wrapper so menus don't get clipped horizontally */
+  overflow: visible !important;
 }
-.table-scroll-inner { flex: 1; min-height: 0; overflow: auto; -webkit-overflow-scrolling: touch; }
+.table-scroll-inner { flex: 1; min-height: 0; padding-bottom: 20px; }
 .teacher-list-tip { flex-shrink: 0; padding: 14px 22px 0; margin: 0; }
-.mt { width: 100%; border-collapse: collapse; }
+.mt { width: 100%; border-collapse: separate; border-spacing: 0; }
 .mt th { padding: 18px 22px; background: #f8fafc; font-size: .75rem; font-weight: 800; color: var(--mu); text-transform: uppercase; letter-spacing: .05em; border-bottom: 2px solid var(--bd); text-align: left; }
-.mt td { padding: 18px 22px; border-bottom: 1px solid var(--bd); vertical-align: middle; }
+.mt th:first-child { border-top-left-radius: 20px; }
+.mt th:last-child { border-top-right-radius: 20px; }
+
+.mt td { padding: 18px 22px; border-bottom: 1px solid var(--bd); vertical-align: middle; background: #fff; transition: background 0.2s; }
 .mt tbody tr:last-child td { border-bottom: none; }
+.mt tbody tr:last-child td:first-child { border-bottom-left-radius: 20px; }
+.mt tbody tr:last-child td:last-child { border-bottom-right-radius: 20px; }
 .mt tbody tr:hover td { background: #f8fbff; }
 
-.avatar { width: 46px; height: 46px; border-radius: 14px; background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.2rem; flex-shrink: 0; }
-.uname { font-weight: 900; font-size: 1rem; color: var(--tx); }
-.uemail { font-size: .82rem; color: var(--mu); margin-top: 3px; }
+.avatar { width: 42px; height: 42px; border-radius: 12px; background: linear-gradient(135deg, #1e3a8a, #3b82f6); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 1.1rem; flex-shrink: 0; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3); }
+.uname { font-weight: 800; font-size: 1rem; color: var(--tx); letter-spacing: -0.01em; }
+.uemail { font-size: .8rem; color: var(--mu); margin-top: 4px; font-weight: 500; }
 
-.badge { padding: 5px 12px; border-radius: 8px; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
-.badge-advisory { background: #eff6ff; color: #1d4ed8; }
-.badge-subject  { background: #fdf4ff; color: #7e22ce; }
-.badge-active   { background: #ecfdf5; color: #065f46; }
-.badge-inactive { background: #fef2f2; color: #991b1b; }
+.badge { padding: 6px 14px; border-radius: 20px; font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+.badge-advisory { background: #e0e7ff; color: #3730a3; }
+.badge-subject  { background: #fae8ff; color: #86198f; }
+.badge-active   { background: #dcfce7; color: #166534; }
+.badge-inactive { background: #f3f4f6; color: #4b5563; }
 
 .btn-ic {
   width: 38px; height: 38px; border-radius: 10px; border: 1.5px solid var(--bd);
@@ -211,7 +223,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
 }
 
 @media (max-width: 768px) {
-  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .stats-grid { grid-template-columns: repeat(2, 1fr); }
   .frow { grid-template-columns: 1fr; }
 }
 </style>
@@ -227,34 +239,44 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
   </div>
 
   <!-- Stats -->
-  {% if stats %}
-  <div class="stats-row">
+  <div class="stats-grid">
     <div class="stat-card">
-      <div class="stat-icon" style="background:#eff6ff; color:#1e3a8a;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <div class="stat-icon" style="background:#e0e7ff; color:#3730a3;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       </div>
-      <div><div class="stat-val">{{ stats.total or 0 }}</div><div class="stat-lbl">All teachers</div></div>
+      <div class="stat-info">
+        <div class="stat-val">{{ stats.total if stats else 0 }}</div>
+        <div class="stat-lbl">Total Teachers</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background:#dcfce7; color:#166534;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      </div>
+      <div class="stat-info">
+        <div class="stat-val">{{ stats.active_count if stats else 0 }}</div>
+        <div class="stat-lbl">Active Accounts</div>
+      </div>
     </div>
     <div class="stat-card">
       <div class="stat-icon" style="background:#eff6ff; color:#1d4ed8;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
       </div>
-      <div><div class="stat-val">{{ stats.advisory_count or 0 }}</div><div class="stat-lbl">Adviser</div></div>
+      <div class="stat-info">
+        <div class="stat-val">{{ stats.advisory_count if stats else 0 }}</div>
+        <div class="stat-lbl">Advisers</div>
+      </div>
     </div>
     <div class="stat-card">
-      <div class="stat-icon" style="background:#fdf4ff; color:#7e22ce;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <div class="stat-icon" style="background:#fdf4ff; color:#a21caf;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
       </div>
-      <div><div class="stat-val">{{ stats.subject_count or 0 }}</div><div class="stat-lbl">Subject only</div></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon" style="background:#ecfdf5; color:#065f46;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      <div class="stat-info">
+        <div class="stat-val">{{ stats.subject_count if stats else 0 }}</div>
+        <div class="stat-lbl">Subject only</div>
       </div>
-      <div><div class="stat-val">{{ stats.active_count or 0 }}</div><div class="stat-lbl">Can log in</div></div>
     </div>
   </div>
-  {% endif %}
 
   {% if created_user %}
   <div class="cred-banner" id="teacher-cred-banner" role="status">
@@ -276,150 +298,63 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
   </div>
   {% endif %}
 
-  <!-- Create Form -->
-  {% if is_branch_active_status %}
-  <div class="form-card">
-    <h2>
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-      Add a teacher
-    </h2>
-
-    <div class="help-panel">
-      <h3>Quick steps</h3>
-      <ol>
-        <li>Fill in name, gender, and email. A username is auto-generated from the branch code and sent to the email on account creation.</li>
-        <li>Pick a role — <strong>Adviser</strong> manages one advisory section/grade and also teaches subjects; <strong>Subject Teacher</strong> focuses on specific subjects across multiple grades.</li>
-        <li>For <strong>Adviser</strong>: select the Advisory Grade, enter Subject Specializations, and set School Level. For <strong>Subject Teacher</strong>: enter Subject Specializations and set School Level only.</li>
-        <li>Once the account is created, open <strong>Manage → Assign teacher</strong> in the list below to link them to specific subject slots and sections.</li>
-      </ol>
+  <!-- Create Teacher -->
+  {% if not filter_search %}
+  <div style="background: var(--card); border: 1px solid var(--bd); border-radius: 20px; box-shadow: 0 10px 25px -5px rgba(0,0,0,.05); padding: 32px; margin-bottom: 32px;">
+    <div style="margin-bottom: 24px;">
+      <h3 style="margin: 0 0 8px; color: var(--tx); font-size: 1.2rem; font-weight: 800; display: flex; align-items: center; gap: 10px;">
+        <div style="width: 36px; height: 36px; border-radius: 10px; background: #eff6ff; color: var(--a); display: flex; align-items: center; justify-content: center;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        </div>
+        Create a new Teacher
+      </h3>
+      <p style="margin: 0; font-size: .9rem; color: var(--mu); line-height: 1.5; max-width: 800px;">Fill in the basic information to create an account. A username is auto-generated from the branch code. Afterwards, click <strong>Manage → Assign teacher</strong> in the list below to link them to specific subject slots and sections.</p>
     </div>
-
-    <form method="POST" id="teacher-form">
+    <form method="POST" action="/branch-admin/manage-teachers" id="teacher-form" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:16px; padding:24px;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <input type="hidden" name="action" value="create">
 
-      <div class="form-section">
-        <div class="form-section-title">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          Personal Details
+      <div class="frow">
+        <div class="fg">
+          <label>First name *</label>
+          <input type="text" class="fc" name="first_name" required oninput="this.value=this.value.replace(/[0-9]/g,'')">
         </div>
-        <div class="frow">
-          <div class="fg">
-            <label>First name *</label>
-            <input type="text" class="fc" name="first_name" placeholder="e.g. Maria" required
-              oninput="this.value=this.value.replace(/[0-9]/g,'')">
-          </div>
-          <div class="fg">
-            <label>Middle name (Optional)</label>
-            <input type="text" class="fc" name="middle_name" placeholder="e.g. Santos"
-              oninput="this.value=this.value.replace(/[0-9]/g,'')">
-          </div>
-          <div class="fg">
-            <label>Last name *</label>
-            <input type="text" class="fc" name="last_name" placeholder="e.g. Cruz" required
-              oninput="this.value=this.value.replace(/[0-9]/g,'')">
-          </div>
-          <div class="fg" style="max-width: 160px;">
-            <label>Gender *</label>
-            <select class="fc" name="gender" required>
-              <option value="female" selected>Female</option>
-              <option value="male">Male</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>Email *</label>
-            <input type="email" class="fc" name="email" placeholder="e.g. maria.santos@email.com" required>
-            <p class="field-hint">We send login details here when the account is created.</p>
-          </div>
+        <div class="fg">
+          <label>Middle name (Optional)</label>
+          <input type="text" class="fc" name="middle_name" oninput="this.value=this.value.replace(/[0-9]/g,'')">
+        </div>
+        <div class="fg">
+          <label>Last name *</label>
+          <input type="text" class="fc" name="last_name" required oninput="this.value=this.value.replace(/[0-9]/g,'')">
+        </div>
+      </div>
+      <div class="frow" style="margin-bottom: 0;">
+        <div class="fg">
+          <label>Gender *</label>
+          <select class="fc" name="gender" required>
+            <option value="">Choose…</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+          </select>
+        </div>
+        <div class="fg" style="flex:2;">
+          <label>Email *</label>
+          <input type="email" class="fc" name="email" placeholder="Used for sending login details" required>
         </div>
       </div>
 
-      <div class="form-section">
-        <div class="form-section-title">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
-          Assignment & Role
-        </div>
-        
-        <div class="role-cards">
-          <label class="role-card active" id="btn-advisory" onclick="setType('advisory')">
-            <input type="radio" name="teacher_type" value="advisory" checked style="display:none;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-              <div>
-                <div class="role-title">Adviser</div>
-                <div class="role-desc">Manages a specific advisory section/grade, and also teaches subject(s).</div>
-              </div>
-              <div class="role-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-              </div>
-            </div>
-          </label>
-          <label class="role-card" id="btn-subject" onclick="setType('subject')">
-            <input type="radio" name="teacher_type" value="subject" style="display:none;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-              <div>
-                <div class="role-title">Subject Teacher</div>
-                <div class="role-desc">Focuses solely on teaching specific subjects across multiple grades/sections.</div>
-              </div>
-              <div class="role-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-              </div>
-            </div>
-          </label>
-        </div>
-
-        <div class="dynamic-fields-container">
-          <div class="frow" id="advisory-grade-section">
-            <div class="fg" style="max-width: 300px;">
-              <label id="grade-label">Advisory Grade *</label>
-              <select class="fc" name="grade_level" id="grade_level_select" onchange="syncDeptFromGrade()">
-                {% for g in grades %}
-                <option value="{{ g.id }}" data-name="{{ g.name }}">{{ g.name }}</option>
-                {% endfor %}
-              </select>
-              <p class="field-hint" id="grade-hint">Pick the primary grade this teacher will advise.</p>
-            </div>
-          </div>
-
-          <div class="frow" style="margin-bottom:0;" id="subject-fields-wrap">
-            <div class="fg">
-              <label id="spec-label">Subject specializations *</label>
-              <input type="text" class="fc" name="specialization_subject" id="specialization_subject" placeholder="e.g. Math, English, Science" required>
-              <p class="field-hint" id="subject-fields-intro" style="margin-top:6px;">Enter the subjects they are qualified to handle.</p>
-            </div>
-            <div class="fg" style="max-width: 300px;">
-              <label id="dept-label">School level *</label>
-              <select class="fc" name="department" id="department_select" required onchange="validateDeptMatch()">
-                <option value="elementary" selected>Elementary (Nursery to Grade 6)</option>
-                <option value="jhs">Junior high (Grades 7–10)</option>
-                <option value="shs">Senior high (Grades 11–12)</option>
-              </select>
-              <p class="field-hint" style="margin-top:6px;">Used for categorizing their subject assignments.</p>
-              <p id="dept-mismatch-hint" style="margin-top:6px; color:var(--err); font-size:.8rem; font-weight:700; display:none;">⚠ School level doesn’t match the selected advisory grade.</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style="display:flex; justify-content:flex-end;">
-        <button type="submit" class="btn-primary" style="padding: 14px 32px; font-size: 1rem;">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-          Create account
+      <div style="display:flex; justify-content:flex-end; margin-top: 24px; border-top: 1px dashed #cbd5e1; padding-top: 20px;">
+        <button type="submit" class="btn-primary" style="padding: 12px 28px; font-size: .95rem; border-radius: 10px; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.25);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Create Account
         </button>
       </div>
     </form>
-
-
   </div>
   {% endif %}
 
   <!-- Filter Bar -->
   <div class="ctrl-bar">
-    <div class="type-tabs">
-      <a href="?type=advisory" class="ttab {% if filter_type == 'advisory' %}active{% endif %}">Adviser</a>
-      <a href="?type=subject" class="ttab {% if filter_type == 'subject' %}active{% endif %}">Subject</a>
-    </div>
-    <form method="GET" style="display:flex; gap:12px; align-items:flex-end; margin-left:auto;">
-      <input type="hidden" name="type" value="{{ filter_type }}">
+    <form method="GET" style="display:flex; gap:12px; align-items:flex-end; width:100%;">
       <div class="fg">
         <label>Find teacher</label>
         <input type="text" class="fc" name="search" placeholder="Type part of a name or username" value="{{ filter_search }}" style="width:260px;">
@@ -448,9 +383,8 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
         <tr>
           <th>Teacher</th>
           <th>Role</th>
-          <th>Subject / level</th>
-          <th>Advisory grade</th>
-          <th>Sections</th>
+          <th>Advisory Class</th>
+          <th>Subject Loads</th>
           <th>Account</th>
           <th style="text-align:right;">Action</th>
         </tr>
@@ -468,29 +402,21 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
             </div>
           </td>
           <td>
-            <span class="badge {{ 'badge-advisory' if t.teacher_type == 'advisory' else 'badge-subject' }}">
-              {{ 'Adviser' if t.teacher_type == 'advisory' else 'Subject' }}
-            </span>
-          </td>
-          <td style="font-size:.88rem; color:var(--tx); font-weight:600;">
-            {% if t.specialization_subject %}
-              <span style="color:var(--p); font-weight:800;">{{ t.specialization_subject }}</span>
-              <div style="font-size:0.75rem; color:var(--mu); margin-top:2px; font-weight:500;">
-                {% if t.department == 'elementary' %}Elementary{% elif t.department == 'jhs' %}Junior high{% elif t.department == 'shs' %}Senior high{% else %}{{ t.department or '—' }}{% endif %}
-              </div>
+            {% if t.advisory_section and t.assigned_sections %}
+              <span class="badge badge-advisory">Adviser & Subject</span>
+            {% elif t.advisory_section %}
+              <span class="badge badge-advisory">Adviser</span>
+            {% elif t.assigned_sections %}
+              <span class="badge badge-subject">Subject Teacher</span>
             {% else %}
-              <span style="color:var(--mu);">—</span>
+              <span class="badge badge-inactive" style="background:#f1f5f9; color:var(--mu);">Unassigned</span>
             {% endif %}
           </td>
           <td style="font-size:.88rem; color:var(--tx); font-weight:600;">
-            {% if t.teacher_type == 'advisory' %}
-              {% if t.primary_grade %}
-                <span style="color:var(--p); font-weight:800;">{{ t.primary_grade }}</span>
-              {% else %}
-                <span style="color:var(--mu);">Not set</span>
-              {% endif %}
+            {% if t.advisory_section %}
+              <span style="color:var(--p); font-weight:800;">{{ t.advisory_section }}</span>
             {% else %}
-              <span style="color:var(--mu); font-weight:500;">—</span>
+              <span style="color:var(--mu);">—</span>
             {% endif %}
           </td>
           <td style="font-size:.85rem; color:var(--mu);">
@@ -543,32 +469,46 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
 </div>
 
 <!-- ════ ASSIGN MODAL ════ -->
-<div id="assignModalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; padding: 20px;">
-  <div style="background:var(--card); width:100%; max-width:800px; max-height:90vh; border-radius:24px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.2);">
+<div id="assignModalOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); z-index:9999; align-items:center; justify-content:center; padding: 20px; backdrop-filter: blur(4px);">
+  <div style="background:#fff; width:100%; max-width:860px; max-height:88vh; border-radius:24px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
     <!-- Header -->
-    <div style="padding:24px 32px; border-bottom:1px solid var(--bd); display:flex; justify-content:space-between; align-items:center; background:#f8fafc;">
+    <div style="padding:24px 32px; display:flex; justify-content:space-between; align-items:center; background:#fff;">
       <div>
-        <h2 style="margin:0; font-size:1.4rem; font-weight:800; color:var(--p);">Link classes</h2>
-        <p style="margin:4px 0 0; font-size:.85rem; color:var(--mu);">Teacher: <strong id="modalTeacherName" style="color:var(--tx);"></strong></p>
+        <h2 style="margin:0; font-size:1.5rem; font-weight:800; color:var(--tx); letter-spacing:-0.02em;">Link classes</h2>
+        <p style="margin:4px 0 0; font-size:.9rem; color:var(--mu);">Assigning roles to: <strong id="modalTeacherName" style="color:var(--p);"></strong></p>
       </div>
-      <button type="button" onclick="closeAssignModal()" style="background:none; border:none; font-size:1.5rem; color:var(--mu); cursor:pointer;">&times;</button>
+      <button type="button" onclick="closeAssignModal()" style="background:#f1f5f9; border:none; width:36px; height:36px; border-radius:50%; font-size:1.2rem; color:var(--mu); cursor:pointer; display:flex; align-items:center; justify-content:center; transition: background 0.2s;">&times;</button>
     </div>
     
-    <!-- Toolbar -->
-    <div style="padding:16px 32px; background:#fff; border-bottom:1px solid var(--bd); display:flex; justify-content:space-between; align-items:center;">
-      <div style="font-weight:700; font-size:.9rem; color:var(--p);">
-        <span id="selCountBadge" style="background:var(--p); color:#fff; padding:3px 10px; border-radius:12px; font-size:.75rem; margin-right:8px; display:none;">0 picked</span>
-        Tick the subject slots this teacher should handle.
-      </div>
-      <div style="display:flex; gap:8px;">
-        <button onclick="selectAllSubjects()" type="button" style="padding:6px 12px; border-radius:8px; border:1px solid var(--bd); background:#f8fafc; cursor:pointer; font-size:.75rem; font-weight:700;">Pick all</button>
-        <button onclick="deselectAllSubjects()" type="button" style="padding:6px 12px; border-radius:8px; border:1px solid var(--bd); background:#f8fafc; cursor:pointer; font-size:.75rem; font-weight:700;">Clear</button>
+    <!-- Tabs Header -->
+    <div style="display:flex; border-bottom:1px solid #e2e8f0; background:#f8fafc; padding: 0 32px;">
+      <button id="tabBtnAdvisory" type="button" onclick="switchAssignTab('advisory')" style="padding:16px 24px; background:transparent; border:none; border-bottom:3px solid var(--a); color:var(--a); font-weight:800; cursor:pointer; font-size:.95rem; margin-right: 12px; transition: color 0.2s;">Advisory Class</button>
+      <button id="tabBtnSubjects" type="button" onclick="switchAssignTab('subjects')" style="padding:16px 24px; background:transparent; border:none; border-bottom:3px solid transparent; color:var(--mu); font-weight:700; cursor:pointer; font-size:.95rem; transition: color 0.2s;">Subject Loads</button>
+    </div>
+
+    <!-- Tab 1: Advisory Class -->
+    <div id="tabContentAdvisory" style="flex:1; overflow-y:auto; background:#fcfcfc; padding:24px 32px; display:block;">
+      <p style="margin-top:0; font-size:.9rem; color:var(--mu); margin-bottom:16px;">Select the section this teacher will advise (or choose None). They can only advise one section.</p>
+      <div id="modalAdvisoryBody">
+        <div style="text-align:center; padding:40px; color:var(--mu); font-weight:600;">Loading…</div>
       </div>
     </div>
 
-    <!-- Body -->
-    <div id="modalSubjectsBody" style="padding:24px 32px; flex:1; overflow-y:auto; background:#fcfcfc;">
-      <div style="text-align:center; padding:40px; color:var(--mu); font-weight:600;">Loading…</div>
+    <!-- Tab 2: Subject Loads -->
+    <div id="tabContentSubjects" style="flex:1; overflow-y:auto; background:#fcfcfc; display:none; flex-direction:column;">
+      <div style="padding:16px 32px; background:#fff; border-bottom:1px solid var(--bd); display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+        <div style="font-weight:700; font-size:.9rem; color:var(--p);">
+          <span id="selCountBadge" style="background:var(--p); color:#fff; padding:3px 10px; border-radius:12px; font-size:.75rem; margin-right:8px; display:none;">0 picked</span>
+          Tick the subject slots this teacher should handle.
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button onclick="selectAllSubjects()" type="button" style="padding:6px 12px; border-radius:8px; border:1px solid var(--bd); background:#f8fafc; cursor:pointer; font-size:.75rem; font-weight:700;">Pick all</button>
+          <button onclick="deselectAllSubjects()" type="button" style="padding:6px 12px; border-radius:8px; border:1px solid var(--bd); background:#f8fafc; cursor:pointer; font-size:.75rem; font-weight:700;">Clear</button>
+        </div>
+      </div>
+      <div id="modalSubjectsBody" style="padding:24px 32px; flex:1; overflow-y:auto;">
+        <div style="text-align:center; padding:40px; color:var(--mu); font-weight:600;">Loading…</div>
+      </div>
     </div>
 
     <!-- Footer -->
@@ -582,16 +522,16 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
 </div>
 
 <!-- Edit teacher modal -->
-<div id="editTeacherOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:10000; align-items:center; justify-content:center; padding:20px;" onclick="if(event.target===this)closeEditModal()">
-  <div style="background:var(--card); width:100%; max-width:560px; max-height:92vh; border-radius:20px; overflow:hidden; box-shadow:0 20px 40px rgba(0,0,0,0.2); display:flex; flex-direction:column;" onclick="event.stopPropagation()">
-    <div style="padding:20px 24px; border-bottom:1px solid var(--bd); display:flex; justify-content:space-between; align-items:center; background:#f8fafc;">
+<div id="editTeacherOverlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.6); z-index:10000; align-items:center; justify-content:center; padding:20px; backdrop-filter: blur(4px);" onclick="if(event.target===this)closeEditModal()">
+  <div style="background:#fff; width:100%; max-width:560px; max-height:92vh; border-radius:24px; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); display:flex; flex-direction:column;" onclick="event.stopPropagation()">
+    <div style="padding:24px 32px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; background:#fff;">
       <div>
-        <h2 style="margin:0; font-size:1.2rem; font-weight:800; color:var(--p);">Edit teacher</h2>
-        <p class="field-hint" style="margin:4px 0 0;">Update name, email, role, and subject details. Username stays the same.</p>
+        <h2 style="margin:0; font-size:1.4rem; font-weight:800; color:var(--tx); letter-spacing:-0.02em;">Edit teacher</h2>
+        <p class="field-hint" style="margin:4px 0 0; font-size:.9rem;">Update name, gender, and email. Username stays the same.</p>
       </div>
-      <button type="button" onclick="closeEditModal()" style="background:none; border:none; font-size:1.4rem; color:var(--mu); cursor:pointer;">×</button>
+      <button type="button" onclick="closeEditModal()" style="background:#f1f5f9; border:none; width:36px; height:36px; border-radius:50%; font-size:1.2rem; color:var(--mu); cursor:pointer; display:flex; align-items:center; justify-content:center; transition: background 0.2s;">&times;</button>
     </div>
-    <form id="edit-teacher-form" method="POST" action="#" style="padding:24px; overflow-y:auto;">
+    <form id="edit-teacher-form" method="POST" action="#" style="padding:32px; overflow-y:auto;">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <p class="field-hint" style="margin:0 0 12px;">Login: <strong id="edit-username-display"></strong></p>
       <div class="frow">
@@ -623,46 +563,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
           <input type="email" class="fc" name="email" id="edit_email" required>
         </div>
       </div>
-      <span class="section-label" style="margin-top:8px;">Role</span>
-      <div class="type-tabs" style="display: inline-flex; margin-bottom: 16px;">
-        <label class="ttab" id="edit-btn-advisory" onclick="setEditFormType('advisory')" style="cursor:pointer; margin:0;">
-          <input type="radio" name="teacher_type" value="advisory" id="edit_type_advisory" style="display:none;">
-          Adviser
-        </label>
-        <label class="ttab" id="edit-btn-subject" onclick="setEditFormType('subject')" style="cursor:pointer; margin:0;">
-          <input type="radio" name="teacher_type" value="subject" id="edit_type_subject" style="display:none;">
-          Subject Teacher
-        </label>
-      </div>
-      <div class="frow">
-        <div class="fg" id="edit-advisory-grade-section" style="max-width: 250px;">
-          <label id="edit-grade-label">Advisory grade *</label>
-          <select class="fc" name="grade_level" id="edit_grade_level_select" onchange="syncEditDeptFromGrade()">
-            {% for g in grades %}
-            <option value="{{ g.id }}" data-name="{{ g.name }}">{{ g.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-      </div>
-      <div class="optional-block" id="edit-subject-wrap" style="border-style: solid; border-color: var(--bd);">
-        <p class="optional-title">Subject and school level <span id="edit-subject-tag">(required)</span></p>
-        <p class="field-hint" id="edit-subject-intro" style="margin-top:0;">Enter the subject and level to identify what subject they handle.</p>
-        <div class="frow" style="margin-bottom:0;">
-          <div class="fg">
-            <label id="edit-spec-label">Subject they teach *</label>
-            <input type="text" class="fc" name="specialization_subject" id="edit_specialization_subject" placeholder="e.g. Math" required>
-          </div>
-          <div class="fg" style="max-width: 250px;">
-            <label id="edit-dept-label">School level *</label>
-            <select class="fc" name="department" id="edit_department_select" required onchange="validateEditDeptMatch()">
-              <option value="elementary">Elementary (Nursery to Grade 6)</option>
-              <option value="jhs">Junior high (Grades 7–10)</option>
-              <option value="shs">Senior high (Grades 11–12)</option>
-            </select>
-            <p id="edit-dept-mismatch-hint" style="margin-top:6px; color:var(--err); font-size:.8rem; font-weight:700; display:none;">⚠ School level doesn’t match the selected advisory grade.</p>
-          </div>
-        </div>
-      </div>
+
       <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
         <button type="button" onclick="closeEditModal()" style="padding:10px 18px; border-radius:10px; border:1px solid var(--bd); background:#fff; cursor:pointer; font-weight:700;">Cancel</button>
         <button type="submit" class="btn-primary" style="margin:0;">Save changes</button>
@@ -683,10 +584,6 @@ const TEACHER_ROWS = {
     'full_name': t.full_name or '',
     'email': t.email or '',
     'gender': (t.gender or '')|lower,
-    'teacher_type': t.teacher_type or 'advisory',
-    'grade_level_id': t.grade_level_id,
-    'specialization_subject': t.specialization_subject or '',
-    'department': t.department or '',
     'status': t.status or 'active'
   }|tojson }}{% if not loop.last %},{% endif %}
 {% endfor %}
@@ -707,6 +604,13 @@ function toggleManage(ev, id) {
   const open = wrap.classList.contains('is-open');
   closeAllManage();
   if (!open) {
+    // Check if close to bottom
+    const rect = wrap.getBoundingClientRect();
+    if (window.innerHeight - rect.bottom < 200) {
+      wrap.classList.add('is-upwards');
+    } else {
+      wrap.classList.remove('is-upwards');
+    }
     wrap.classList.add('is-open');
     wrap.querySelector('.btn-manage').setAttribute('aria-expanded', 'true');
   }
@@ -730,14 +634,6 @@ function manageEdit(id) {
   document.getElementById('edit_last_name').value = row.last_name || '';
   document.getElementById('edit_email').value = row.email || '';
   document.getElementById('edit_gender').value = row.gender === 'male' || row.gender === 'female' ? row.gender : '';
-  document.getElementById('edit_specialization_subject').value = row.specialization_subject || '';
-  document.getElementById('edit_department_select').value = row.department || '';
-  const gl = document.getElementById('edit_grade_level_select');
-  gl.value = row.grade_level_id != null ? String(row.grade_level_id) : '';
-  const ttype = row.teacher_type === 'subject' ? 'subject' : 'advisory';
-  document.getElementById('edit_type_advisory').checked = ttype === 'advisory';
-  document.getElementById('edit_type_subject').checked = ttype === 'subject';
-  setEditFormType(ttype);
   document.getElementById('editTeacherOverlay').style.display = 'flex';
 }
 
@@ -750,139 +646,47 @@ document.querySelectorAll('.manage-wrap').forEach(w => {
   w.addEventListener('click', function(e) { e.stopPropagation(); });
 });
 
-function setEditFormType(type) {
-  document.getElementById('edit-btn-advisory').classList.toggle('active', type === 'advisory');
-  document.getElementById('edit-btn-subject').classList.toggle('active', type === 'subject');
-  document.getElementById('edit_type_advisory').checked = type === 'advisory';
-  document.getElementById('edit_type_subject').checked = type === 'subject';
-  
-  const gradeWrap = document.getElementById('edit-advisory-grade-section');
-  const gradeSelect = document.getElementById('edit_grade_level_select');
-  
-  gradeWrap.style.display = type === 'advisory' ? '' : 'none';
-  gradeSelect.disabled = type !== 'advisory';
-  gradeSelect.required = type === 'advisory';
-}
-
-function setType(type) {
-  document.getElementById('btn-advisory').classList.toggle('active', type === 'advisory');
-  document.getElementById('btn-subject').classList.toggle('active', type === 'subject');
-  
-  const gradeWrap = document.getElementById('advisory-grade-section');
-  const gradeSelect = document.getElementById('grade_level_select');
-  
-  gradeWrap.style.display = type === 'advisory' ? '' : 'none';
-  gradeSelect.disabled = type !== 'advisory';
-  gradeSelect.required = type === 'advisory';
-  
-  document.querySelectorAll('[name="teacher_type"]').forEach(r => { r.checked = (r.value === type); });
-
-  // Sync dept when switching to advisory
-  if (type === 'advisory') syncDeptFromGrade();
-  else document.getElementById('dept-mismatch-hint').style.display = 'none';
-}
-
-// ── Grade → Department sync helpers ──
-function getDeptFromGradeName(name) {
-  const n = (name || '').toLowerCase();
-  if (n.includes('grade 11') || n.includes('grade 12') || n.includes('g11') || n.includes('g12')) return 'shs';
-  if (n.includes('grade 7') || n.includes('grade 8') || n.includes('grade 9') || n.includes('grade 10')
-    || n.includes('g7') || n.includes('g8') || n.includes('g9') || n.includes('g10')) return 'jhs';
-  return 'elementary'; // nursery, kinder, grade 1–6
-}
-
-function syncDeptFromGrade() {
-  const gradeSelect = document.getElementById('grade_level_select');
-  const deptSelect = document.getElementById('department_select');
-  if (!gradeSelect || !deptSelect) return;
-  const opt = gradeSelect.options[gradeSelect.selectedIndex];
-  const gradeName = opt ? (opt.getAttribute('data-name') || opt.text) : '';
-  const expected = getDeptFromGradeName(gradeName);
-  deptSelect.value = expected;
-  document.getElementById('dept-mismatch-hint').style.display = 'none';
-}
-
-function validateDeptMatch() {
-  const type = document.querySelector('[name="teacher_type"]:checked');
-  if (!type || type.value !== 'advisory') return true;
-  const gradeSelect = document.getElementById('grade_level_select');
-  const deptSelect = document.getElementById('department_select');
-  const hint = document.getElementById('dept-mismatch-hint');
-  const opt = gradeSelect.options[gradeSelect.selectedIndex];
-  const gradeName = opt ? (opt.getAttribute('data-name') || opt.text) : '';
-  const expected = getDeptFromGradeName(gradeName);
-  const mismatch = deptSelect.value !== expected;
-  hint.style.display = mismatch ? '' : 'none';
-  return !mismatch;
-}
-
-function syncEditDeptFromGrade() {
-  const gradeSelect = document.getElementById('edit_grade_level_select');
-  const deptSelect = document.getElementById('edit_department_select');
-  if (!gradeSelect || !deptSelect) return;
-  const opt = gradeSelect.options[gradeSelect.selectedIndex];
-  const gradeName = opt ? (opt.getAttribute('data-name') || opt.text) : '';
-  const expected = getDeptFromGradeName(gradeName);
-  deptSelect.value = expected;
-  document.getElementById('edit-dept-mismatch-hint').style.display = 'none';
-}
-
-function validateEditDeptMatch() {
-  const type = document.getElementById('edit_type_advisory');
-  if (!type || !type.checked) return true;
-  const gradeSelect = document.getElementById('edit_grade_level_select');
-  const deptSelect = document.getElementById('edit_department_select');
-  const hint = document.getElementById('edit-dept-mismatch-hint');
-  const opt = gradeSelect.options[gradeSelect.selectedIndex];
-  const gradeName = opt ? (opt.getAttribute('data-name') || opt.text) : '';
-  const expected = getDeptFromGradeName(gradeName);
-  const mismatch = deptSelect.value !== expected;
-  hint.style.display = mismatch ? '' : 'none';
-  return !mismatch;
-}
-
-// Block form submit if mismatch
-const _teacherForm = document.getElementById('teacher-form');
-if (_teacherForm) {
-  _teacherForm.addEventListener('submit', function(e) {
-    if (!validateDeptMatch()) {
-      e.preventDefault();
-      document.getElementById('department_select').focus();
-      alert('School level does not match the selected advisory grade. Please correct it before saving.');
-    }
-  });
-}
-
-const _editTeacherForm = document.getElementById('edit-teacher-form');
-if (_editTeacherForm) {
-  _editTeacherForm.addEventListener('submit', function(e) {
-    if (!validateEditDeptMatch()) {
-      e.preventDefault();
-      document.getElementById('edit_department_select').focus();
-      alert('School level does not match the selected advisory grade. Please correct it before saving.');
-    }
-  });
-}
-
-
 // ── ASSIGN MODAL ──
-// Init on load
-document.addEventListener('DOMContentLoaded', function() {
-  syncDeptFromGrade();
-});
 
 let modalTeacherId = null;
 let allModalSubjects = [];
+let allModalSections = [];
+let initialAdvisorySection = null;
+let selectedAdvisorySection = null;
+
+function switchAssignTab(tab) {
+  const btnAdv = document.getElementById('tabBtnAdvisory');
+  const btnSub = document.getElementById('tabBtnSubjects');
+  const conAdv = document.getElementById('tabContentAdvisory');
+  const conSub = document.getElementById('tabContentSubjects');
+
+  if (tab === 'advisory') {
+    btnAdv.style.background = 'transparent'; btnAdv.style.color = 'var(--a)'; btnAdv.style.fontWeight = '800'; btnAdv.style.borderBottomColor = 'var(--a)';
+    btnSub.style.background = 'transparent'; btnSub.style.color = 'var(--mu)'; btnSub.style.fontWeight = '700'; btnSub.style.borderBottomColor = 'transparent';
+    conAdv.style.display = 'block';
+    conSub.style.display = 'none';
+  } else {
+    btnSub.style.background = 'transparent'; btnSub.style.color = 'var(--a)'; btnSub.style.fontWeight = '800'; btnSub.style.borderBottomColor = 'var(--a)';
+    btnAdv.style.background = 'transparent'; btnAdv.style.color = 'var(--mu)'; btnAdv.style.fontWeight = '700'; btnAdv.style.borderBottomColor = 'transparent';
+    conSub.style.display = 'flex';
+    conAdv.style.display = 'none';
+  }
+}
 
 function openAssignModal(tid, tname) {
   modalTeacherId = tid;
   document.getElementById('modalTeacherName').textContent = tname || '';
   document.getElementById('assignModalOverlay').style.display = 'flex';
   document.getElementById('modalSubjectsBody').innerHTML = '<div style="text-align:center; padding:40px; color:var(--mu);">Loading…</div>';
+  document.getElementById('modalAdvisoryBody').innerHTML = '<div style="text-align:center; padding:40px; color:var(--mu);">Loading…</div>';
   document.getElementById('selCountBadge').style.display = 'none';
   const saveBtn = document.getElementById('modalSaveBtn');
   saveBtn.disabled = true;
   saveBtn.textContent = 'Save links';
+  
+  initialAdvisorySection = null;
+  selectedAdvisorySection = null;
+  switchAssignTab('advisory');
 
   fetch(`/branch-admin/api/get-all-subjects/${tid}`)
     .then(r => {
@@ -893,11 +697,15 @@ function openAssignModal(tid, tname) {
       if (data.error) throw new Error(data.error);
       if (data.success === false) throw new Error(data.message || 'Could not load subjects');
       allModalSubjects = data.subjects || [];
+      allModalSections = data.sections || [];
       renderModalSubjects();
+      renderModalSections();
+      updateModalCount();
     })
     .catch(err => {
-      document.getElementById('modalSubjectsBody').innerHTML =
-        '<div style="text-align:center; padding:40px; color:var(--err); font-weight:600;">' + (err.message || 'Something went wrong') + '</div>';
+      const errHtml = '<div style="text-align:center; padding:40px; color:var(--err); font-weight:600;">' + (err.message || 'Something went wrong') + '</div>';
+      document.getElementById('modalSubjectsBody').innerHTML = errHtml;
+      document.getElementById('modalAdvisoryBody').innerHTML = errHtml;
     });
 }
 
@@ -947,8 +755,85 @@ function renderModalSubjects() {
   container.innerHTML = html;
 }
 
+function renderModalSections() {
+  const container = document.getElementById('modalAdvisoryBody');
+  if (allModalSections.length === 0) {
+    container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--mu); font-weight:600;">No sections available for advisory.</div>';
+    return;
+  }
+
+  let html = `<label style="display:flex; align-items:center; gap:12px; padding:16px; border:2px solid var(--bd); border-radius:12px; margin-bottom:12px; cursor:pointer; background:#fff;" id="adv_none">
+      <input type="radio" name="advisory_sec" value="" onchange="selectAdvisory('')" style="width:18px; height:18px; accent-color:var(--a);">
+      <div style="font-weight:700; color:var(--tx);">None (Subject Teacher Only)</div>
+  </label>`;
+
+  const grouped = {};
+  allModalSections.forEach(s => {
+    if (!grouped[s.grade_level_name]) grouped[s.grade_level_name] = [];
+    grouped[s.grade_level_name].push(s);
+  });
+
+  Object.keys(grouped).forEach(grade => {
+    html += `<div style="font-size:.8rem; font-weight:800; color:var(--mu); text-transform:uppercase; margin:20px 0 10px; border-bottom:1px solid var(--bd); padding-bottom:6px;">${grade}</div>`;
+    grouped[grade].forEach(s => {
+      let isMyAdvisory = s.is_my_advisory;
+      if (isMyAdvisory) initialAdvisorySection = s.section_id.toString();
+      let hasOtherAdviser = s.adviser_id && !isMyAdvisory;
+      
+      let badgeHtml = isMyAdvisory 
+        ? '<span style="font-size:.65rem; background:#dbeafe; color:#1e40af; padding:2px 6px; border-radius:6px; font-weight:800;">Current</span>'
+        : (hasOtherAdviser ? `<span style="font-size:.65rem; background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:6px; font-weight:800;">Adviser: ${String(s.adviser_name).split(' ')[0]}</span>` : '<span style="font-size:.65rem; background:#f1f5f9; color:var(--mu); padding:2px 6px; border-radius:6px; font-weight:800;">Available</span>');
+
+      let disabled = hasOtherAdviser ? 'disabled' : '';
+      let opacity = hasOtherAdviser ? 'opacity:0.6;' : '';
+      let checked = isMyAdvisory ? 'checked' : '';
+
+      html += `<label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border:2px solid var(--bd); border-radius:12px; margin-bottom:8px; background:#fff; cursor:${hasOtherAdviser?'not-allowed':'pointer'}; transition:all 0.2s; ${opacity}" id="adv_${s.section_id}">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <input type="radio" name="advisory_sec" value="${s.section_id}" ${disabled} ${checked} onchange="selectAdvisory('${s.section_id}')" style="width:18px; height:18px; accent-color:var(--a);">
+            <div style="font-weight:700; color:var(--tx); font-size:.95rem;">${s.section_name}</div>
+          </div>
+          ${badgeHtml}
+      </label>`;
+    });
+  });
+  
+  if (initialAdvisorySection === null) {
+      initialAdvisorySection = ""; // Meaning None
+  }
+  selectedAdvisorySection = initialAdvisorySection;
+
+  container.innerHTML = html;
+  
+  if (selectedAdvisorySection === "") {
+      const noneRadio = container.querySelector('input[value=""]');
+      if (noneRadio) noneRadio.checked = true;
+  }
+  
+  highlightAdvisory();
+}
+
+function selectAdvisory(val) {
+    selectedAdvisorySection = val;
+    highlightAdvisory();
+    updateModalCount();
+}
+
+function highlightAdvisory() {
+    document.querySelectorAll('input[name="advisory_sec"]').forEach(rad => {
+        const parent = rad.closest('label');
+        if (rad.checked) {
+            parent.style.borderColor = 'var(--a)';
+            parent.style.background = '#eff6ff';
+        } else {
+            parent.style.borderColor = 'var(--bd)';
+            parent.style.background = '#fff';
+        }
+    });
+}
+
 function updateModalCount(el) {
-  if (el) {
+  if (el && el.classList && el.classList.contains('mod-sub-cb')) {
     const parent = document.getElementById('mitem_' + el.value);
     if (parent) {
       if (el.checked) { parent.style.borderColor = 'var(--a)'; parent.style.background = '#eff6ff'; }
@@ -960,7 +845,9 @@ function updateModalCount(el) {
   const badge = document.getElementById('selCountBadge');
   badge.textContent = count + ' picked';
   badge.style.display = count > 0 ? 'inline-block' : 'none';
-  document.getElementById('modalSaveBtn').disabled = count === 0;
+  
+  const advChanged = (selectedAdvisorySection !== initialAdvisorySection);
+  document.getElementById('modalSaveBtn').disabled = (count === 0 && !advChanged);
 }
 
 function selectAllSubjects() {
@@ -972,6 +859,7 @@ function deselectAllSubjects() {
 
 function submitModalAssignment() {
   const ids = Array.from(document.querySelectorAll('.mod-sub-cb:checked:not([disabled])')).map(c => parseInt(c.value, 10));
+  const advId = selectedAdvisorySection ? parseInt(selectedAdvisorySection, 10) : null;
   const btn = document.getElementById('modalSaveBtn');
   btn.disabled = true;
   btn.textContent = 'Saving…';
@@ -979,7 +867,11 @@ function submitModalAssignment() {
   fetch('/branch-admin/assign-teachers-bulk', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ teacher_id: parseInt(modalTeacherId, 10), assignment_ids: ids })
+    body: JSON.stringify({ 
+        teacher_id: parseInt(modalTeacherId, 10), 
+        assignment_ids: ids,
+        advisory_section_id: advId
+    })
   }).then(r => r.json()).then(d => {
     if (d.success) location.reload();
     else { alert(d.message || 'Could not save'); btn.disabled = false; btn.textContent = 'Save links'; }
@@ -991,7 +883,6 @@ function submitModalAssignment() {
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-  setType('advisory');
   const uBtn = document.getElementById('btn-copy-user');
   const pBtn = document.getElementById('btn-copy-pass');
   if (uBtn) uBtn.addEventListener('click', function() {
