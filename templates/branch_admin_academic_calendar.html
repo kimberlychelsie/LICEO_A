@@ -355,7 +355,7 @@
     <header class="premium-header">
         <h1>Academic <span>Calendar Setup</span></h1>
         <p>
-            Define grading period ranges and manage local holidays for this branch
+            Define grading period ranges for this branch
         </p>
     </header>
 
@@ -404,81 +404,6 @@
             </div>
         </div>
 
-        <!-- Holidays -->
-        <div style="display: flex; flex-direction: column; gap: 32px;">
-            <div class="modern-card">
-                <h2
-                    style="font-size: 1.4rem; font-weight: 900; margin-bottom: 24px; color: var(--ma-primary); display: flex; align-items: center; gap: 12px;">
-                    <i class="fas fa-map-marker-alt"></i> Add Local Holiday
-                </h2>
-                <form method="POST">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <input type="hidden" name="action" value="add_holiday">
-                    <div class="form-node">
-                        <label>Date</label>
-                        <input type="hidden" name="holiday_date" id="holiday_date_val">
-                        <input type="text" id="holiday_date_picker" placeholder="Select holiday date" readonly style="width:100%; padding:10px 14px; border:1.5px solid #e2e8f0; border-radius:10px;
-                                   font-weight:600; outline:none; background:#fff; cursor:pointer;
-                                   font-family:'Plus Jakarta Sans',sans-serif; font-size:0.9rem;">
-                    </div>
-                    <div class="form-node">
-                        <label>Holiday Name</label>
-                        <input type="text" name="holiday_name" placeholder="e.g. City Fiesta" required>
-                    </div>
-                    <button type="submit" class="btn-prem btn-gold" style="width: 100%;">Add Local Holiday</button>
-                </form>
-            </div>
-
-            <div class="modern-card" style="padding: 0; overflow: hidden;">
-                <div style="padding: 24px; border-bottom: 1px solid var(--ma-border);">
-                    <h2
-                        style="margin:0; font-size: 1.1rem; font-weight: 900; color: var(--ma-primary); text-transform: uppercase; letter-spacing: 0.1em; display: flex; align-items: center; gap: 10px;">
-                        <i class="fas fa-list-ul"></i> Holiday List
-                    </h2>
-                </div>
-                <div class="table-responsive">
-                    <table class="vault-table">
-                    <thead>
-                        <tr>
-                            <th>Date</th>
-                            <th>Event</th>
-                            <th style="text-align: right;">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for h in holidays %}
-                        <tr>
-                            <td data-label="Date">{{ h.holiday_date.strftime('%b %d') }}</td>
-                            <td data-label="Event">
-                                {{ h.holiday_name }}
-                                {% if h.branch_id is none %}
-                                <span class="badge-global">GLOBAL</span>
-                                {% endif %}
-                            </td>
-                            <td data-label="Action" style="text-align: right;">
-                                {% if h.branch_id is not none %}
-                                <form
-                                    action="{{ url_for('branch_admin.branch_admin_delete_holiday', holiday_id=h.id) }}"
-                                    method="POST" onsubmit="return confirm('Delete this local holiday?');">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit"
-                                        style="background:none; border:none; color:#ef4444; font-weight:800; cursor:pointer;">Delete</button>
-                                </form>
-                                {% else %}
-                                <span style="font-size: 0.7rem; color: #94a3b8;">LOCKED</span>
-                                {% endif %}
-                            </td>
-                        </tr>
-                        {% else %}
-                        <tr>
-                            <td colspan="3" style="text-align:center; padding: 30px; color: #94a3b8;">No events
-                                scheduled.</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
     </div>
 </div>
 
@@ -520,22 +445,6 @@
                     }
                 }
             });
-        });
-
-        // ── Holiday Date Picker ─────────────────────────────────────────────────
-        flatpickr('#holiday_date_picker', {
-            dateFormat: 'Y-m-d',
-            allowInput: false,
-            disableMobile: true,
-            onChange: function (selectedDates, dateStr) {
-                document.getElementById('holiday_date_val').value = dateStr;
-                if (selectedDates.length > 0) {
-                    const d = selectedDates[0];
-                    const opts = { year: 'numeric', month: 'long', day: 'numeric' };
-                    document.getElementById('holiday_date_picker').value =
-                        d.toLocaleDateString('en-US', opts);
-                }
-            }
         });
 
         // ── Validate hidden inputs before grading form submit ───────────────────

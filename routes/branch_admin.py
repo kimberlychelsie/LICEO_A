@@ -1066,22 +1066,7 @@ def branch_admin_academic_calendar():
                     db.rollback()
                     flash(f"Error saving ranges: {str(e)}", "error")
 
-            elif action == "add_holiday":
-                h_date_str = request.form.get("holiday_date")
-                h_name = request.form.get("holiday_name")
-                if h_date_str and h_name:
-                    try:
-                        cur.execute("""
-                                INSERT INTO holidays (branch_id, year_id, holiday_date, holiday_name)
-                                VALUES (%s, %s, %s, %s)
-                                ON CONFLICT (branch_id, year_id, holiday_date) DO UPDATE
-                                SET holiday_name = EXCLUDED.holiday_name
-                            """, (branch_id, year_id, h_date_str, h_name))
-                        db.commit()
-                        flash("Local holiday added.", "success")
-                    except Exception as e:
-                        db.rollback()
-                        flash(f"Error: {str(e)}", "error")
+
 
         # Fetch ranges
         cur.execute("""
@@ -1092,42 +1077,14 @@ def branch_admin_academic_calendar():
         ranges_raw = cur.fetchall() or []
         ranges = {r["period_name"]: r for r in ranges_raw}
 
-        # Fetch holidays (Local and Global)
-        cur.execute("""
-            SELECT id, holiday_date, holiday_name, branch_id
-            FROM holidays 
-            WHERE (branch_id = %s OR branch_id IS NULL) AND year_id = %s
-            ORDER BY holiday_date ASC
-        """, (branch_id, year_id))
-        holidays = cur.fetchall() or []
-
         return render_template("branch_admin_academic_calendar.html", 
-                               ranges=ranges, holidays=holidays, today=today_str)
+                               ranges=ranges, today=today_str)
 
     finally:
         cur.close()
         db.close()
 
-@branch_admin_bp.route("/branch-admin/academic-calendar/delete-holiday/<int:holiday_id>", methods=["POST"])
-def branch_admin_delete_holiday(holiday_id):
-    if session.get("role") != "branch_admin":
-        return redirect(url_for("auth.login"))
 
-    branch_id = session.get("branch_id")
-    db = get_db_connection()
-    cur = db.cursor()
-    try:
-        # Only allow deleting local holidays
-        cur.execute("DELETE FROM holidays WHERE id = %s AND branch_id = %s", (holiday_id, branch_id))
-        db.commit()
-        flash("Local holiday deleted.", "success")
-    except Exception as e:
-        db.rollback()
-        flash(f"Error: {str(e)}", "error")
-    finally:
-        cur.close()
-        db.close()
-    return redirect(url_for("branch_admin.branch_admin_academic_calendar"))
 
 
 
