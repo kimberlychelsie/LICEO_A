@@ -170,12 +170,16 @@ def super_admin_branches():
         branch_code = (request.form.get("branch_code") or "").strip().upper()
         location    = request.form.get("location", "").strip()
         admin_email = request.form.get("admin_email", "").strip()
-        admin_name  = request.form.get("admin_name", "").strip()
+        admin_first_name  = request.form.get("admin_first_name", "").strip()
+        admin_middle_name = request.form.get("admin_middle_name", "").strip()
+        admin_last_name   = request.form.get("admin_last_name", "").strip()
         gender      = request.form.get("gender", "").strip()
 
-        if not branch_name or not branch_code or not location or not admin_email or not admin_name or not gender:
-            flash("All fields (Branch Name, Code, Location, Admin Name, Gender, Email) are required.", "error")
+        if not branch_name or not branch_code or not location or not admin_email or not admin_first_name or not admin_last_name or not gender:
+            flash("All fields (Branch Name, Code, Location, Admin First/Last Name, Gender, Email) are required.", "error")
             return redirect(url_for("super_admin.super_admin_branches"))
+
+        admin_name = f"{admin_first_name} {admin_middle_name} {admin_last_name}".strip().replace("  ", " ")
 
         # USERNAME CONVENTION: [BRANCH_CODE]_Admin
         username      = f"{branch_code}_Admin"
@@ -212,8 +216,8 @@ def super_admin_branches():
             branch_id = cursor.fetchone()["branch_id"]
 
             cursor.execute(
-                "INSERT INTO users (branch_id, username, password, role, email, full_name, gender, require_password_change) VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE)",
-                (branch_id, username, hashed, "branch_admin", admin_email, admin_name, gender)
+                "INSERT INTO users (branch_id, username, password, role, email, first_name, middle_name, last_name, full_name, gender, require_password_change) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, TRUE)",
+                (branch_id, username, hashed, "branch_admin", admin_email, admin_first_name, admin_middle_name or None, admin_last_name, admin_name, gender)
             )
             
             # Auto-insert active school year for new branch
@@ -291,6 +295,9 @@ def super_admin_branches():
                 u.email AS admin_email,
                 u.user_id  AS admin_id,
                 u.full_name AS admin_full_name,
+                COALESCE(u.first_name, '') AS admin_first_name,
+                COALESCE(u.middle_name, '') AS admin_middle_name,
+                COALESCE(u.last_name, '') AS admin_last_name,
                 u.gender AS admin_gender,
                 (SELECT full_name FROM users WHERE branch_id = b.branch_id AND role = 'retired_admin' ORDER BY user_id DESC LIMIT 1) as retired_admin_name,
                 (SELECT user_id FROM users WHERE branch_id = b.branch_id AND role = 'retired_admin' ORDER BY user_id DESC LIMIT 1) as retired_admin_id
@@ -323,14 +330,19 @@ def super_admin_edit_branch(branch_id):
     if session.get("role") != "super_admin":
         return redirect(url_for("auth.login"))
 
-    branch_name = (request.form.get("branch_name") or "").strip()
-    branch_code = (request.form.get("branch_code") or "").strip().upper()
-    location    = (request.form.get("location") or "").strip()
-    admin_email = (request.form.get("admin_email") or "").strip()
+    branch_name  = (request.form.get("branch_name") or "").strip()
+    branch_code  = (request.form.get("branch_code") or "").strip().upper()
+    location     = (request.form.get("location") or "").strip()
+    admin_email  = (request.form.get("admin_email") or "").strip()
+    admin_first  = (request.form.get("admin_first_name") or "").strip()
+    admin_middle = (request.form.get("admin_middle_name") or "").strip()
+    admin_last   = (request.form.get("admin_last_name") or "").strip()
 
-    if not branch_name or not branch_code or not location or not admin_email:
-        flash("Branch Name, Code, Location, and Admin Email are required.", "error")
+    if not branch_name or not branch_code or not location or not admin_email or not admin_first or not admin_last:
+        flash("Branch Name, Code, Location, Admin First/Last Name, and Email are required.", "error")
         return redirect(url_for("super_admin.super_admin_branches"))
+
+    admin_full_name = f"{admin_first} {admin_middle} {admin_last}".strip().replace("  ", " ")
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -367,9 +379,9 @@ def super_admin_edit_branch(branch_id):
         
         cursor.execute("""
             UPDATE users
-            SET email = %s
+            SET email = %s, first_name = %s, middle_name = %s, last_name = %s, full_name = %s
             WHERE branch_id = %s AND role = 'branch_admin'
-        """, (admin_email, branch_id))
+        """, (admin_email, admin_first, admin_middle, admin_last, admin_full_name, branch_id))
         db.commit()
         flash(f"Branch updated! Code set to: {branch_code}", "success")
 
@@ -395,13 +407,17 @@ def super_admin_replace_admin(branch_id):
     replacement_mode = request.form.get("replacement_mode", "new")
     transfer_user_id = request.form.get("transfer_user_id")
 
-    admin_name  = (request.form.get("new_admin_name") or "").strip()
+    admin_first_name  = (request.form.get("new_admin_first_name") or "").strip()
+    admin_middle_name = (request.form.get("new_admin_middle_name") or "").strip()
+    admin_last_name   = (request.form.get("new_admin_last_name") or "").strip()
     admin_email = (request.form.get("new_admin_email") or "").strip()
     gender      = (request.form.get("new_gender") or "").strip()
 
-    if replacement_mode == 'new' and (not admin_name or not admin_email or not gender):
-        flash("Admin Name, Email, and Gender are required for new replacement.", "error")
+    if replacement_mode == 'new' and (not admin_first_name or not admin_last_name or not admin_email or not gender):
+        flash("Admin First/Last Name, Email, and Gender are required for new replacement.", "error")
         return redirect(url_for("super_admin.super_admin_branches"))
+
+    admin_name = f"{admin_first_name} {admin_middle_name} {admin_last_name}".strip().replace("  ", " ")
     
     if replacement_mode == 'transfer' and not transfer_user_id:
         flash("Please select an administrator to transfer.", "error")
@@ -450,9 +466,9 @@ def super_admin_replace_admin(branch_id):
             temp_password = generate_password()
             hashed = generate_password_hash(temp_password)
             cursor.execute("""
-                INSERT INTO users (branch_id, username, password, role, email, full_name, gender, require_password_change, status)
-                VALUES (%s, %s, %s, 'branch_admin', %s, %s, %s, TRUE, 'active')
-            """, (branch_id, username, hashed, admin_email, admin_name, gender))
+                INSERT INTO users (branch_id, username, password, role, email, first_name, middle_name, last_name, full_name, gender, require_password_change, status)
+                VALUES (%s, %s, %s, 'branch_admin', %s, %s, %s, %s, %s, %s, TRUE, 'active')
+            """, (branch_id, username, hashed, admin_email, admin_first_name, admin_middle_name or None, admin_last_name, admin_name, gender))
             
             # Email Notification for New Admin
             try:

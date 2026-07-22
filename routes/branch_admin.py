@@ -559,19 +559,23 @@ def branch_admin_manage_accounts():
         if request.method == "POST":
             role         = (request.form.get("role")         or "").strip().lower()
             grade_level  = (request.form.get("grade_level")  or "").strip()
-            full_name    = (request.form.get("full_name")    or "").strip()
+            first_name   = (request.form.get("first_name")   or "").strip()
+            middle_name  = (request.form.get("middle_name")  or "").strip()
+            last_name    = (request.form.get("last_name")    or "").strip()
             gender       = (request.form.get("gender")       or "").strip().lower()
             custom_uname = (request.form.get("username")     or "").strip()
-            user_email = (request.form.get("email") or "").strip()
+            user_email   = (request.form.get("email")        or "").strip()
+
+            full_name = f"{first_name} {middle_name} {last_name}".strip().replace("  ", " ")
 
             if role not in ("registrar", "cashier", "librarian", "teacher"):
                 flash("Invalid role selected.", "error")
                 return redirect("/branch-admin/manage-accounts")
 
+            if not first_name or not last_name:
+                flash("First name and Last name are required.", "error")
+                return redirect("/branch-admin/manage-accounts")
             if role == "teacher":
-                if not full_name:
-                    flash("Full name is required for teacher accounts.", "error")
-                    return redirect("/branch-admin/manage-accounts")
                 if gender not in ("male", "female"):
                     flash("Please select a gender for the teacher account.", "error")
                     return redirect("/branch-admin/manage-accounts")
@@ -632,16 +636,16 @@ def branch_admin_manage_accounts():
                 cursor.execute("""
                     INSERT INTO users
                         (branch_id, username, password, role, require_password_change,
-                         grade_level_id, full_name, gender, email)
-                    VALUES (%s, %s, %s, %s, TRUE, %s, %s, %s, %s)
+                         grade_level_id, first_name, middle_name, last_name, full_name, gender, email)
+                    VALUES (%s, %s, %s, %s, TRUE, %s, %s, %s, %s, %s, %s, %s)
                 """, (branch_id, username, hashed_password, role,
-                      grade_level or None, full_name or None, gender or None, user_email))
+                      grade_level or None, first_name, middle_name or None, last_name, full_name, gender or None, user_email))
             else:
                 cursor.execute("""
                     INSERT INTO users
-                        (branch_id, username, password, role, require_password_change, full_name, gender, email)
-                    VALUES (%s, %s, %s, %s, TRUE, %s, %s, %s)
-                """, (branch_id, username, hashed_password, role, full_name or None, gender or None, user_email))
+                        (branch_id, username, password, role, require_password_change, first_name, middle_name, last_name, full_name, gender, email)
+                    VALUES (%s, %s, %s, %s, TRUE, %s, %s, %s, %s, %s, %s)
+                """, (branch_id, username, hashed_password, role, first_name, middle_name or None, last_name, full_name, gender or None, user_email))
             db.commit()
             flash(f"Account for {full_name} created successfully! Credentials sent to {user_email}.", "success")
             created_user = {"username": username, "password": temp_password, "role": role}
@@ -820,14 +824,22 @@ def branch_admin_edit_account(user_id):
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         if request.method == "POST":
-            full_name = request.form.get("full_name")
+            first_name = request.form.get("first_name", "").strip()
+            middle_name = request.form.get("middle_name", "").strip()
+            last_name = request.form.get("last_name", "").strip()
             email = request.form.get("email")
             gender = request.form.get("gender")
             grade_level_id = request.form.get("grade_level")
+            
+            if not first_name or not last_name:
+                flash("First name and Last name are required.", "error")
+                return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
+                
+            full_name = f"{first_name} {middle_name} {last_name}".strip().replace("  ", " ")
             cursor.execute("""
-                UPDATE users SET full_name=%s, email=%s, gender=%s, grade_level_id=%s
+                UPDATE users SET first_name=%s, middle_name=%s, last_name=%s, full_name=%s, email=%s, gender=%s, grade_level_id=%s
                 WHERE user_id=%s AND branch_id=%s
-            """, (full_name, email, gender, grade_level_id or None, user_id, session.get("branch_id")))
+            """, (first_name, middle_name or None, last_name, full_name, email, gender, grade_level_id or None, user_id, session.get("branch_id")))
             db.commit()
             flash("Account updated successfully.", "success")
             return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))

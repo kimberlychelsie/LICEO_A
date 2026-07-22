@@ -77,7 +77,7 @@ def get_db_connection():
                 """)
             conn.commit()
 
-            # Profile image migration
+            # Profile image and name split migration
             try:
                 cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'users'")
                 user_cols = [r[0] for r in cur.fetchall()]
@@ -85,9 +85,38 @@ def get_db_connection():
                     cur.execute("ALTER TABLE users ADD COLUMN profile_image VARCHAR(255)")
                 if 'email' not in user_cols:
                     cur.execute("ALTER TABLE users ADD COLUMN email VARCHAR(255)")
+                if 'first_name' not in user_cols:
+                    cur.execute("ALTER TABLE users ADD COLUMN first_name VARCHAR(255)")
+                if 'middle_name' not in user_cols:
+                    cur.execute("ALTER TABLE users ADD COLUMN middle_name VARCHAR(255)")
+                if 'last_name' not in user_cols:
+                    cur.execute("ALTER TABLE users ADD COLUMN last_name VARCHAR(255)")
                 conn.commit()
+
+                # Backfill split name columns from full_name if first_name is empty
+                cur.execute("SELECT user_id, full_name FROM users WHERE first_name IS NULL AND full_name IS NOT NULL AND TRIM(full_name) <> ''")
+                unfilled = cur.fetchall()
+                if unfilled:
+                    for row in unfilled:
+                        uid = row[0]
+                        fname = (row[1] or "").strip()
+                        if fname:
+                            parts = fname.split()
+                            if len(parts) == 1:
+                                first, middle, last = parts[0], None, None
+                            elif len(parts) == 2:
+                                first, middle, last = parts[0], None, parts[1]
+                            else:
+                                first = parts[0]
+                                last = parts[-1]
+                                middle = " ".join(parts[1:-1])
+                            cur.execute(
+                                "UPDATE users SET first_name=%s, middle_name=%s, last_name=%s WHERE user_id=%s",
+                                (first, middle, last, uid)
+                            )
+                    conn.commit()
             except Exception as e:
-                logger.warning(f"Could not migrate users table: {e}")
+                logger.warning(f"Could not migrate users table or backfill names: {e}")
                 conn.rollback()  # Rollback failed transaction block
             
             try:

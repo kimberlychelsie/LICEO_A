@@ -1281,14 +1281,14 @@
 <body>
   <script>
     // Global CSRF handler for all fetch() POST requests
-    (function() {
+    (function () {
       const originalFetch = window.fetch;
-      window.fetch = function() {
+      window.fetch = function () {
         let [resource, config] = arguments;
-        if(config && config.method && config.method.toUpperCase() === 'POST') {
+        if (config && config.method && config.method.toUpperCase() === 'POST') {
           const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-          if(!config.headers) config.headers = {};
-          if(config.headers instanceof Headers) {
+          if (!config.headers) config.headers = {};
+          if (config.headers instanceof Headers) {
             config.headers.set('X-CSRFToken', csrfToken);
           } else {
             config.headers['X-CSRFToken'] = csrfToken;
@@ -1606,8 +1606,8 @@
       <!-- 6. Inventory -->
       <a class="sb-link {% if request.path.startswith('/registrar/inventory') %}active{% endif %}"
         href="/registrar/inventory">
-        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"></path>
             <path d="M3 6h18"></path>
             <path d="M16 10a4 4 0 0 1-8 0"></path>
@@ -1645,8 +1645,7 @@
           Grade Levels
         </a>
 
-        <a class="sb-link {% if request.path == '/registrar/sections' %}active{% endif %}"
-          href="/registrar/sections">
+        <a class="sb-link {% if request.path == '/registrar/sections' %}active{% endif %}" href="/registrar/sections">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
             style="vertical-align: middle; margin-right: 6px;">
@@ -1656,8 +1655,7 @@
           </svg>
           Sections
         </a>
-        <a class="sb-link {% if request.path == '/registrar/subjects' %}active{% endif %}"
-          href="/registrar/subjects">
+        <a class="sb-link {% if request.path == '/registrar/subjects' %}active{% endif %}" href="/registrar/subjects">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
             style="vertical-align: middle; margin-right: 6px;">
@@ -1963,7 +1961,8 @@
     </button>
     {% endif %}
 
-    <a class="top-brand" href="{% if required %}#{% else %}{{ dashboard_url }}{% endif %}" style="padding: 0; {% if required %}pointer-events: none;{% endif %}">
+    <a class="top-brand" href="{% if required %}#{% else %}{{ dashboard_url }}{% endif %}"
+      style="padding: 0; {% if required %}pointer-events: none;{% endif %}">
       <div class="top-brand-icon">
         <img src="{{ url_for('static', filename=dynamic_branch_logo) }}" alt="Logo">
       </div>
@@ -1977,7 +1976,8 @@
     </span>
 
     <div class="topbar-right">
-      {% if not required and session.get('role') in ['student', 'branch_admin', 'super_admin', 'librarian', 'teacher', 'registrar',
+      {% if not required and session.get('role') in ['student', 'branch_admin', 'super_admin', 'librarian', 'teacher',
+      'registrar',
       'cashier', 'parent'] %}
       <div class="notif-wrapper" style="margin-right: 8px;">
         <button class="notif-btn" id="notifBtn" onclick="toggleNotifs()">
@@ -2172,7 +2172,7 @@
   </header>
 
   <!-- ══ MAIN CONTENT ══ -->
-  <div class="main-wrap" id="mainWrap" {% if required %}style="margin-left: 0 !important;"{% endif %}>
+  <div class="main-wrap" id="mainWrap" {% if required %}style="margin-left: 0 !important;" {% endif %}>
     {% if not is_branch_active_status %}
     <div
       style="background-color: #fef2f2; color: #991b1b; padding: 12px 24px; border-bottom: 2px solid #fecaca; font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 10px;">

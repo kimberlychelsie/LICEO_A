@@ -3223,7 +3223,9 @@ def registrar_manage_teachers():
         grades = cursor.fetchall() or []
 
         if request.method == "POST":
-            full_name      = (request.form.get("full_name")    or "").strip()
+            first_name     = (request.form.get("first_name")   or "").strip()
+            middle_name    = (request.form.get("middle_name")  or "").strip()
+            last_name      = (request.form.get("last_name")    or "").strip()
             gender         = (request.form.get("gender")       or "").strip().lower()
             user_email     = (request.form.get("email")        or "").strip()
             teacher_type   = (request.form.get("teacher_type") or "advisory").strip()
@@ -3233,8 +3235,8 @@ def registrar_manage_teachers():
             spec_subject = (request.form.get("specialization_subject") or "").strip()
             department   = (request.form.get("department") or "").strip()
 
-            if not full_name:
-                flash("Please enter the teacher's full name.", "error")
+            if not first_name or not last_name:
+                flash("Please enter the teacher's first name and last name.", "error")
                 return redirect("/registrar/manage-teachers")
             if gender not in ("male", "female"):
                 flash("Please choose male or female.", "error")
@@ -3275,6 +3277,7 @@ def registrar_manage_teachers():
                         grade_suffix = "K"
                     elif "nursery" in g_name.lower():
                         grade_suffix = "N"
+            full_name = f"{first_name} {middle_name} {last_name}".strip().replace("  ", " ")
             base_username = f"{branch_code}_Teacher{grade_suffix}" if grade_suffix else f"{branch_code}_Teacher"
 
             username = base_username
@@ -3293,12 +3296,12 @@ def registrar_manage_teachers():
             cursor.execute("""
                 INSERT INTO users
                     (branch_id, username, password, role, require_password_change,
-                     grade_level_id, full_name, gender, email, teacher_type,
+                     grade_level_id, first_name, middle_name, last_name, full_name, gender, email, teacher_type,
                      specialization_subject, department)
-                VALUES (%s, %s, %s, 'teacher', TRUE, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, 'teacher', TRUE, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING user_id
             """, (branch_id, username, hashed_password,
-                  primary_grade, full_name, gender, user_email, teacher_type,
+                  primary_grade, first_name, middle_name or None, last_name, full_name, gender, user_email, teacher_type,
                   spec_subject, department))
             new_user_id = cursor.fetchone()['user_id']
 
@@ -3357,7 +3360,7 @@ Please log in and change your password immediately.
 
         query = """
             SELECT
-                u.user_id, u.username, u.full_name, u.gender, u.email,
+                u.user_id, u.username, u.first_name, u.middle_name, u.last_name, u.full_name, u.gender, u.email,
                 u.grade_level_id,
                 COALESCE(u.status, 'active') AS status,
                 COALESCE(u.teacher_type, 'advisory') AS teacher_type,
@@ -3423,8 +3426,9 @@ Please log in and change your password immediately.
 def registrar_edit_teacher(user_id):
     if session.get("role") != "registrar":
         return redirect("/")
-    branch_id = session.get("branch_id")
-    full_name = (request.form.get("full_name") or "").strip()
+    first_name  = (request.form.get("first_name") or "").strip()
+    middle_name = (request.form.get("middle_name") or "").strip()
+    last_name   = (request.form.get("last_name") or "").strip()
     gender = (request.form.get("gender") or "").strip().lower()
     user_email = (request.form.get("email") or "").strip()
     teacher_type = (request.form.get("teacher_type") or "advisory").strip()
@@ -3432,9 +3436,12 @@ def registrar_edit_teacher(user_id):
     spec_subject = (request.form.get("specialization_subject") or "").strip()
     department = (request.form.get("department") or "").strip()
 
-    if not full_name:
-        flash("Please enter the teacher's full name.", "error")
+    if not first_name or not last_name:
+        flash("Please enter the teacher's first name and last name.", "error")
         return redirect("/registrar/manage-teachers")
+    
+    full_name = f"{first_name} {middle_name} {last_name}".strip().replace("  ", " ")
+    return redirect("/registrar/manage-teachers")
     if gender not in ("male", "female"):
         flash("Please choose male or female.", "error")
         return redirect("/registrar/manage-teachers")
@@ -3468,12 +3475,15 @@ def registrar_edit_teacher(user_id):
         cursor.execute(
             """
             UPDATE users SET
-                full_name = %s, email = %s, gender = %s, teacher_type = %s,
+                first_name = %s, middle_name = %s, last_name = %s, full_name = %s, email = %s, gender = %s, teacher_type = %s,
                 grade_level_id = %s, specialization_subject = %s, department = %s
             WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
               AND COALESCE(is_archived, FALSE) = FALSE
             """,
             (
+                first_name,
+                middle_name or None,
+                last_name,
                 full_name,
                 user_email,
                 gender,
@@ -3482,7 +3492,7 @@ def registrar_edit_teacher(user_id):
                 spec_subject or None,
                 department or None,
                 user_id,
-                branch_id,
+                session.get("branch_id"),
             ),
         )
 

@@ -305,10 +305,19 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
         </div>
         <div class="frow">
           <div class="fg">
-            <label>Full name *</label>
-            <input type="text" class="fc" name="full_name" placeholder="e.g. Maria Santos" required
+            <label>First name *</label>
+            <input type="text" class="fc" name="first_name" placeholder="e.g. Maria" required
               oninput="this.value=this.value.replace(/[0-9]/g,'')">
-            <p class="field-hint">Use the name that should appear on school records.</p>
+          </div>
+          <div class="fg">
+            <label>Middle name (Optional)</label>
+            <input type="text" class="fc" name="middle_name" placeholder="e.g. Santos"
+              oninput="this.value=this.value.replace(/[0-9]/g,'')">
+          </div>
+          <div class="fg">
+            <label>Last name *</label>
+            <input type="text" class="fc" name="last_name" placeholder="e.g. Cruz" required
+              oninput="this.value=this.value.replace(/[0-9]/g,'')">
           </div>
           <div class="fg" style="max-width: 160px;">
             <label>Gender *</label>
@@ -587,8 +596,19 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
       <p class="field-hint" style="margin:0 0 12px;">Login: <strong id="edit-username-display"></strong></p>
       <div class="frow">
         <div class="fg">
-          <label>Full name *</label>
-          <input type="text" class="fc" name="full_name" id="edit_full_name" required>
+          <label>First name *</label>
+          <input type="text" class="fc" name="first_name" id="edit_first_name" required
+            oninput="this.value=this.value.replace(/[0-9]/g,'')">
+        </div>
+        <div class="fg">
+          <label>Middle name (Optional)</label>
+          <input type="text" class="fc" name="middle_name" id="edit_middle_name"
+            oninput="this.value=this.value.replace(/[0-9]/g,'')">
+        </div>
+        <div class="fg">
+          <label>Last name *</label>
+          <input type="text" class="fc" name="last_name" id="edit_last_name" required
+            oninput="this.value=this.value.replace(/[0-9]/g,'')">
         </div>
         <div class="fg">
           <label>Gender *</label>
@@ -657,6 +677,9 @@ const TEACHER_ROWS = {
   {{ t.user_id }}: {{ {
     'user_id': t.user_id,
     'username': t.username or '',
+    'first_name': t.first_name or '',
+    'middle_name': t.middle_name or '',
+    'last_name': t.last_name or '',
     'full_name': t.full_name or '',
     'email': t.email or '',
     'gender': (t.gender or '')|lower,
@@ -702,7 +725,9 @@ function manageEdit(id) {
   const f = document.getElementById('edit-teacher-form');
   f.action = '/registrar/manage-teachers/' + id + '/edit';
   document.getElementById('edit-username-display').textContent = row.username || '—';
-  document.getElementById('edit_full_name').value = row.full_name || '';
+  document.getElementById('edit_first_name').value = row.first_name || '';
+  document.getElementById('edit_middle_name').value = row.middle_name || '';
+  document.getElementById('edit_last_name').value = row.last_name || '';
   document.getElementById('edit_email').value = row.email || '';
   document.getElementById('edit_gender').value = row.gender === 'male' || row.gender === 'female' ? row.gender : '';
   document.getElementById('edit_specialization_subject').value = row.specialization_subject || '';
