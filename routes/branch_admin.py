@@ -2372,6 +2372,10 @@ Please log in and change your password immediately.
             SELECT
                 u.user_id, u.username, u.first_name, u.middle_name, u.last_name, u.full_name, u.gender, u.email,
                 COALESCE(u.status, 'active') AS status,
+                COALESCE(u.teacher_type, 'advisory') AS teacher_type,
+                u.grade_level_id,
+                COALESCE(u.specialization_subject, '') AS specialization_subject,
+                COALESCE(u.department, '') AS department,
                 adv_sec.section_name AS advisory_section,
                 adv_grade.name AS advisory_grade,
                 (
