@@ -427,6 +427,59 @@ def get_db_connection():
                 logger.warning(f"Could not migrate schedules table: {e}")
                 conn.rollback()
 
+            # Add ON DELETE CASCADE for enrollments related tables
+            try:
+                # 1. Clean up orphaned records to allow constraints
+                cur.execute("DELETE FROM student_accounts WHERE enrollment_id IS NOT NULL AND enrollment_id NOT IN (SELECT enrollment_id FROM enrollments)")
+                cur.execute("DELETE FROM activity_submissions WHERE enrollment_id IS NOT NULL AND enrollment_id NOT IN (SELECT enrollment_id FROM enrollments)")
+                cur.execute("DELETE FROM exam_results WHERE enrollment_id IS NOT NULL AND enrollment_id NOT IN (SELECT enrollment_id FROM enrollments)")
+                cur.execute("DELETE FROM attendance_scores WHERE enrollment_id IS NOT NULL AND enrollment_id NOT IN (SELECT enrollment_id FROM enrollments)")
+                cur.execute("DELETE FROM posted_grades WHERE enrollment_id IS NOT NULL AND enrollment_id NOT IN (SELECT enrollment_id FROM enrollments)")
+
+                # 2. Add CASCADE to student_accounts
+                cur.execute("""
+                    ALTER TABLE student_accounts
+                    DROP CONSTRAINT IF EXISTS student_accounts_enrollment_id_fkey,
+                    ADD CONSTRAINT student_accounts_enrollment_id_fkey
+                    FOREIGN KEY (enrollment_id) REFERENCES enrollments(enrollment_id) ON DELETE CASCADE
+                """)
+
+                # 3. Add CASCADE to activity_submissions
+                cur.execute("""
+                    ALTER TABLE activity_submissions
+                    DROP CONSTRAINT IF EXISTS activity_submissions_enrollment_id_fkey,
+                    ADD CONSTRAINT activity_submissions_enrollment_id_fkey
+                    FOREIGN KEY (enrollment_id) REFERENCES enrollments(enrollment_id) ON DELETE CASCADE
+                """)
+
+                # 4. Add CASCADE to exam_results
+                cur.execute("""
+                    ALTER TABLE exam_results
+                    DROP CONSTRAINT IF EXISTS exam_results_enrollment_id_fkey,
+                    ADD CONSTRAINT exam_results_enrollment_id_fkey
+                    FOREIGN KEY (enrollment_id) REFERENCES enrollments(enrollment_id) ON DELETE CASCADE
+                """)
+
+                # 5. Add CASCADE to attendance_scores
+                cur.execute("""
+                    ALTER TABLE attendance_scores
+                    DROP CONSTRAINT IF EXISTS attendance_scores_enrollment_id_fkey,
+                    ADD CONSTRAINT attendance_scores_enrollment_id_fkey
+                    FOREIGN KEY (enrollment_id) REFERENCES enrollments(enrollment_id) ON DELETE CASCADE
+                """)
+
+                # 6. Add CASCADE to posted_grades
+                cur.execute("""
+                    ALTER TABLE posted_grades
+                    DROP CONSTRAINT IF EXISTS posted_grades_enrollment_id_fkey,
+                    ADD CONSTRAINT posted_grades_enrollment_id_fkey
+                    FOREIGN KEY (enrollment_id) REFERENCES enrollments(enrollment_id) ON DELETE CASCADE
+                """)
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not add ON DELETE CASCADE to enrollment-related tables: {e}")
+                conn.rollback()
+
             # announcements migration
             try:
                 cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'announcements'")

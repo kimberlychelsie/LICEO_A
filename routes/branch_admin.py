@@ -910,9 +910,19 @@ def branch_admin_delete_student_account(account_id):
     db = get_db_connection()
     cursor = db.cursor()
     try:
+        # Also fetch the enrollment_id to delete the enrollment record
+        cursor.execute("SELECT enrollment_id FROM student_accounts WHERE account_id=%s AND branch_id=%s", (account_id, session.get("branch_id")))
+        res = cursor.fetchone()
+        
         cursor.execute("DELETE FROM student_accounts WHERE account_id=%s AND branch_id=%s", (account_id, session.get("branch_id")))
+        
+        if res:
+            enrollment_id = res[0]
+            # Deleting the enrollment will also cascade to submissions/results once we add the DB constraints
+            cursor.execute("DELETE FROM enrollments WHERE enrollment_id=%s", (enrollment_id,))
+            
         db.commit()
-        flash("Student account deleted.", "success")
+        flash("Student account and related enrollment deleted.", "success")
     except Exception as e:
         db.rollback()
         flash(f"Failed to delete student account: {str(e)}", "error")
