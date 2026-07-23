@@ -283,14 +283,14 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">📅 Grading Period</label>
+                    <label class="form-label">📅 Term</label>
                     <div
                         style="padding: 12px 16px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 10px; color: #1e40af; font-size: 0.9rem; font-weight: 500; display: flex; align-items: center; gap: 8px;">
                         <i class="fas fa-magic" style="color: #3b82f6;"></i>
                         {% set p = selected_period or '' %}
                         {% if p %}
-                        <span>Set to <b>{{ p }} Grading</b> <small style="font-weight:normal; margin-left:4px;">(Locked
-                                to selected grading period)</small></span>
+                        <span>Set to <b>{{ PERIOD_LABELS.get(p, p) }}</b> <small style="font-weight:normal; margin-left:4px;">(Locked
+                                to selected term)</small></span>
                         {% else %}
                         <span>Automatically assigned based on the <b>Due Date</b>.</span>
                         {% endif %}
@@ -298,7 +298,7 @@
                     <input type="hidden" name="grading_period" value="{{ selected_period or '' }}">
                     {% if p and p not in unlocked_periods %}
                     <small style="display:block; margin-top:6px; color:#b45309; font-weight:600;">
-                        {{ p }} Grading is not open yet based on Admin calendar.
+                        {{ PERIOD_LABELS.get(p, p) }} is not open yet based on Admin calendar.
                     </small>
                     {% endif %}
                 </div>
@@ -362,7 +362,7 @@
                 <a href="{{ url_for('teacher.teacher_class_view', subject_id=subject_id) if subject_id else url_for('teacher.activities') }}"
                     class="btn btn-cancel">Cancel</a>
                 <button type="submit" class="btn btn-create" {% if selected_period and selected_period not in
-                    unlocked_periods %}disabled title="This grading period is not open yet" {% endif %}>➕ Create
+                    unlocked_periods %}disabled title="This term is not open yet" {% endif %}>➕ Create
                     Activity</button>
             </div>
         </form>

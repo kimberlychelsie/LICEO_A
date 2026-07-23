@@ -1072,7 +1072,7 @@ def branch_admin_academic_calendar():
                                 SET start_date = EXCLUDED.start_date, end_date = EXCLUDED.end_date
                             """, (branch_id, year_id, p, start_d_str, end_d_str))
                     db.commit()
-                    flash("Grading periods updated successfully.", "success")
+                    flash("Terms updated successfully.", "success")
                 except Exception as e:
                     db.rollback()
                     flash(f"Error saving ranges: {str(e)}", "error")
