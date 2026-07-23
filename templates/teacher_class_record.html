@@ -423,51 +423,72 @@
     /* ── Inline Edit Cell ── */
     .score-cell {
         position: relative;
-        min-width: 110px;
+        min-width: 125px;
     }
 
     .score-display {
-        display: flex;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 5px;
+        gap: 6px;
         cursor: pointer;
-        border-radius: 8px;
-        padding: 4px 6px;
-        transition: background 0.15s;
+        border-radius: 10px;
+        padding: 5px 12px;
+        background: #ffffff;
+        border: 1.5px dashed transparent;
+        transition: all 0.2s ease;
+        user-select: none;
     }
+    .col-ww .score-display { border-color: rgba(37,99,235,0.3); color: #1d4ed8; }
+    .col-pt .score-display { border-color: rgba(22,163,74,0.3); color: #15803d; }
+    .col-qa .score-display { border-color: rgba(217,119,6,0.3); color: #b45309; }
+
     .score-display:hover {
-        background: rgba(0,0,0,0.06);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
     }
+    .col-ww .score-display:hover { border-color: #2563eb; background: #eff6ff; }
+    .col-pt .score-display:hover { border-color: #16a34a; background: #f0fdf4; }
+    .col-qa .score-display:hover { border-color: #d97706; background: #fffbeb; }
 
     .score-value {
-        font-weight: 700;
+        font-weight: 800;
         font-size: 0.95rem;
     }
 
     .edit-pencil {
-        opacity: 0;
-        font-size: 0.7rem;
-        color: #94a3b8;
-        transition: opacity 0.15s;
+        font-size: 0.75rem;
+        opacity: 0.45;
+        transition: opacity 0.15s, transform 0.15s;
     }
-    .score-display:hover .edit-pencil { opacity: 1; }
+    .score-display:hover .edit-pencil {
+        opacity: 1;
+        transform: scale(1.15);
+    }
 
-    /* Orange dot for overridden */
-    .override-dot {
-        width: 8px; height: 8px;
-        background: #f97316;
-        border-radius: 50%;
-        display: inline-block;
-        flex-shrink: 0;
-        box-shadow: 0 0 0 2px rgba(249,115,22,0.2);
+    /* Edited / Manual badge */
+    .edited-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        font-size: 0.65rem;
+        font-weight: 800;
+        padding: 2px 6px;
+        border-radius: 99px;
+        background: #ffedd5;
+        color: #c2410c;
+        border: 1px solid #fdba74;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
     }
 
     /* Inline edit form */
     .score-editor {
         display: none;
         flex-direction: column;
+        align-items: center;
         gap: 4px;
+        margin: 0 auto;
     }
 
     .score-editor.active { display: flex; }
@@ -476,47 +497,50 @@
     .score-input-row {
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: 4px;
     }
 
     .score-input {
-        width: 70px;
+        width: 72px;
         padding: 5px 8px;
-        border-radius: 7px;
-        border: 1.5px solid #93c5fd;
-        font-size: 0.88rem;
-        font-weight: 700;
+        border-radius: 8px;
+        border: 2px solid #2563eb;
+        font-size: 0.92rem;
+        font-weight: 800;
         text-align: center;
         background: #fff;
         outline: none;
-        transition: border-color 0.15s, box-shadow 0.15s;
-        color: #1e3a8a;
+        box-shadow: 0 2px 8px rgba(37,99,235,0.15);
+        color: #0f172a;
     }
     .score-input:focus {
-        border-color: #2563eb;
-        box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+        border-color: #1d4ed8;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.25);
     }
 
     .score-btn-save, .score-btn-cancel, .score-btn-reset {
-        width: 26px; height: 26px;
-        border-radius: 6px;
+        width: 28px; height: 28px;
+        border-radius: 8px;
         border: none;
         cursor: pointer;
-        font-size: 0.78rem;
+        font-size: 0.82rem;
+        font-weight: 800;
         display: flex; align-items: center; justify-content: center;
-        transition: background 0.15s, transform 0.1s;
+        transition: all 0.15s;
         flex-shrink: 0;
     }
-    .score-btn-save   { background: #22c55e; color: #fff; }
-    .score-btn-save:hover { background: #16a34a; transform: scale(1.08); }
+    .score-btn-save   { background: #16a34a; color: #fff; box-shadow: 0 2px 6px rgba(22,163,74,0.3); }
+    .score-btn-save:hover { background: #15803d; transform: scale(1.08); }
     .score-btn-cancel { background: #e2e8f0; color: #475569; }
     .score-btn-cancel:hover { background: #cbd5e1; }
-    .score-btn-reset  { background: #fed7aa; color: #c2410c; }
-    .score-btn-reset:hover { background: #fb923c; color: #fff; }
+    .score-btn-reset  { background: #ffedd5; color: #c2410c; border: 1px solid #fdba74; }
+    .score-btn-reset:hover { background: #ea580c; color: #fff; transform: scale(1.08); }
 
     .score-saving {
         font-size: 0.72rem;
-        color: #64748b;
+        color: #2563eb;
+        font-weight: 700;
         text-align: center;
     }
 
@@ -759,8 +783,8 @@
                     <td class="col-ww score-cell" id="cell-ww-{{ r.enrollment_id }}">
                         <div class="score-display" onclick="startEdit({{ r.enrollment_id }}, 'ww', this)">
                             <span class="score-value">{{ "%0.1f" | format(r.quiz | float) }}</span>
-                            {% if r.ww_overridden %}<span class="override-dot" title="Manually set"></span>{% endif %}
-                            <span class="edit-pencil">✏</span>
+                            {% if r.ww_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
+                            <span class="edit-pencil">✏️</span>
                         </div>
                         <div class="score-editor" id="editor-ww-{{ r.enrollment_id }}">
                             <div class="score-input-row">
@@ -783,8 +807,8 @@
                     <td class="col-pt score-cell" id="cell-pt-{{ r.enrollment_id }}">
                         <div class="score-display" onclick="startEdit({{ r.enrollment_id }}, 'pt', this)">
                             <span class="score-value">{{ "%0.1f" | format(r.pt_score | float) }}</span>
-                            {% if r.pt_overridden %}<span class="override-dot" title="Manually set"></span>{% endif %}
-                            <span class="edit-pencil">✏</span>
+                            {% if r.pt_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
+                            <span class="edit-pencil">✏️</span>
                         </div>
                         <div class="score-editor" id="editor-pt-{{ r.enrollment_id }}">
                             <div class="score-input-row">
@@ -812,8 +836,8 @@
                     <td class="col-qa score-cell" id="cell-qa-{{ r.enrollment_id }}">
                         <div class="score-display" onclick="startEdit({{ r.enrollment_id }}, 'qa', this)">
                             <span class="score-value">{{ "%0.1f" | format(r.exam | float) }}</span>
-                            {% if r.qa_overridden %}<span class="override-dot" title="Manually set"></span>{% endif %}
-                            <span class="edit-pencil">✏</span>
+                            {% if r.qa_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
+                            <span class="edit-pencil">✏️</span>
                         </div>
                         <div class="score-editor" id="editor-qa-{{ r.enrollment_id }}">
                             <div class="score-input-row">
@@ -1043,26 +1067,27 @@ async function resetEdit(eid, field, sectionId, subjectId, period) {
 }
 
 function applyUpdatedScores(eid, changedField, data) {
-    // Update each component display value and override dot
+    // Update each component display value and override badge
     const updateCell = (field, newVal, isOverridden) => {
         const display = document.querySelector(`#cell-${field}-${eid} .score-display`);
         if (!display) return;
         const valEl = display.querySelector('.score-value');
-        const dotEl = display.querySelector('.override-dot');
+        const badgeEl = display.querySelector('.edited-badge');
         if (valEl) valEl.textContent = parseFloat(newVal).toFixed(1);
 
         // Update input value too
         const inp = document.getElementById(`input-${field}-${eid}`);
         if (inp) inp.value = parseFloat(newVal).toFixed(1);
 
-        // Show/hide orange dot
-        if (isOverridden && !dotEl) {
-            const dot = document.createElement('span');
-            dot.className = 'override-dot';
-            dot.title = 'Manually set';
-            display.insertBefore(dot, display.querySelector('.edit-pencil'));
-        } else if (!isOverridden && dotEl) {
-            dotEl.remove();
+        // Show/hide edited badge
+        if (isOverridden && !badgeEl) {
+            const badge = document.createElement('span');
+            badge.className = 'edited-badge';
+            badge.title = 'Manually edited';
+            badge.textContent = 'Edited';
+            display.insertBefore(badge, display.querySelector('.edit-pencil'));
+        } else if (!isOverridden && badgeEl) {
+            badgeEl.remove();
         }
     };
 
