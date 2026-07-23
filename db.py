@@ -5,6 +5,8 @@ import psycopg2
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+_MIGRATIONS_RUN = False
+
 def get_db_connection():
     """
     Returns a new PostgreSQL database connection using environment variables:
@@ -32,9 +34,12 @@ def get_db_connection():
         with conn.cursor() as cur:
             cur.execute("SET timezone = 'UTC'")
             
-            # Simple migration for exams table
-            cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'exams'")
-            existing_cols = [r[0] for r in cur.fetchall()]
+        global _MIGRATIONS_RUN
+        if not _MIGRATIONS_RUN:
+            with conn.cursor() as cur:
+                # Simple migration for exams table
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'exams'")
+                existing_cols = [r[0] for r in cur.fetchall()]
             if 'grading_period' not in existing_cols:
                 cur.execute("ALTER TABLE exams ADD COLUMN grading_period VARCHAR(50)")
             if 'is_visible' not in existing_cols:
@@ -633,8 +638,9 @@ def get_db_connection():
             except Exception as e:
                 conn.rollback()
                 
-        # Commit successful things
-        conn.commit()
+            # Commit successful things
+            conn.commit()
+            _MIGRATIONS_RUN = True
 
         return conn
 
