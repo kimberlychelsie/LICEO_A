@@ -1333,7 +1333,7 @@ def create_activity():
                 return redirect(url_for("teacher.create_activity", subject_id=subject_id))
             unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
             if grading_period not in unlocked_periods:
-                flash(f"{grading_period} Grading is not open yet based on the Academic Calendar.", "error")
+                flash(f"{PERIOD_LABELS.get(grading_period, grading_period)} is not open yet based on the Academic Calendar.", "error")
                 return redirect(url_for("teacher.create_activity", subject_id=subject_id, period=grading_period))
             
             if not subject_id or not section_ids:
@@ -1492,7 +1492,7 @@ def edit_activity(activity_id):
                 return redirect(url_for("teacher.edit_activity", activity_id=activity_id))
             unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
             if grading_period not in unlocked_periods:
-                flash(f"{grading_period} Grading is not open yet based on the Academic Calendar.", "error")
+                flash(f"{PERIOD_LABELS.get(grading_period, grading_period)} is not open yet based on the Academic Calendar.", "error")
                 return redirect(url_for("teacher.edit_activity", activity_id=activity_id))
             
             attachment_path = activity['attachment_path']
@@ -1977,7 +1977,7 @@ def teacher_exam_create():
             return redirect(url_for("teacher.teacher_exam_create", subject_id=subject_id))
         unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
         if grading_period not in unlocked_periods:
-            flash(f"{grading_period} Grading is not open yet based on the Academic Calendar.", "error")
+            flash(f"{PERIOD_LABELS.get(grading_period, grading_period)} is not open yet based on the Academic Calendar.", "error")
             return redirect(url_for("teacher.teacher_exam_create", subject_id=subject_id, period=grading_period))
 
         if not title or not subject_id or not section_ids:
@@ -2648,7 +2648,7 @@ def teacher_quiz_create():
                 return redirect(url_for("teacher.teacher_quiz_create", subject_id=subject_id))
             unlocked_periods = _get_unlocked_grading_periods(cur, branch_id, year_id)
             if grading_period not in unlocked_periods:
-                flash(f"{grading_period} Grading is not open yet based on the Academic Calendar.", "error")
+                flash(f"{PERIOD_LABELS.get(grading_period, grading_period)} is not open yet based on the Academic Calendar.", "error")
                 return redirect(url_for("teacher.teacher_quiz_create", subject_id=subject_id, period=grading_period))
 
             if not title or not subject_id or not section_ids:
