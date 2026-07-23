@@ -932,10 +932,11 @@ def branch_admin_delete_student_account(account_id):
             ]
             for t in tables_to_clear:
                 try:
-                    # using psycopg2 with simple string formatting since table name can't be parameterized
+                    cursor.execute(f"SAVEPOINT delete_{t}")
                     cursor.execute(f"DELETE FROM {t} WHERE enrollment_id=%s", (enrollment_id,))
+                    cursor.execute(f"RELEASE SAVEPOINT delete_{t}")
                 except Exception:
-                    pass
+                    cursor.execute(f"ROLLBACK TO SAVEPOINT delete_{t}")
             
             # Now safe to delete the enrollment record
             cursor.execute("DELETE FROM enrollments WHERE enrollment_id=%s", (enrollment_id,))
