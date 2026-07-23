@@ -669,15 +669,38 @@
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     Export Excel
                 </a>
+
+                {% if submission_req.status in ['draft', 'rejected', None] %}
+                <form action="{{ url_for('teacher.teacher_submit_grades', section_id=section_id, subject_id=subject_id, period=period) }}"
+                    method="POST" style="display:inline;"
+                    onsubmit="return confirm('Submit {{ period }} Grading class record to Registrar for review?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="cr-btn cr-btn-solid" style="background:#2563eb; color:#fff;">
+                        Submit for Review
+                    </button>
+                </form>
+                {% elif submission_req.status == 'pending_registrar' %}
+                <span class="cr-btn cr-btn-ghost" style="background:rgba(254,243,199,0.3); color:#fef08a; border-color:rgba(254,243,199,0.5);">
+                    Pending Registrar Review
+                </span>
+                {% elif submission_req.status == 'pending_admin' %}
+                <span class="cr-btn cr-btn-ghost" style="background:rgba(219,234,254,0.3); color:#bfdbfe; border-color:rgba(219,234,254,0.5);">
+                    Pending Admin Approval
+                </span>
+                {% elif submission_req.status == 'approved_for_posting' %}
                 <form action="{{ url_for('teacher.teacher_post_grades', section_id=section_id, subject_id=subject_id, period=period) }}"
                     method="POST" style="display:inline;"
-                    onsubmit="return confirm('Post {{ period }} Grading grades to the student portal? This will overwrite any previously posted grades.');">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="cr-btn cr-btn-solid">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"></path><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"></path><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"></path><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path></svg>
+                    onsubmit="return confirm('Publish {{ period }} Grading grades to the student portal? This will make grades visible to students and parents.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="cr-btn cr-btn-solid" style="background:#16a34a; color:#fff;">
                         Post Grades
                     </button>
                 </form>
+                {% elif submission_req.status == 'posted' %}
+                <span class="cr-btn cr-btn-ghost" style="background:rgba(220,252,231,0.3); color:#86efac; border-color:rgba(220,252,231,0.5);">
+                    Grades Posted
+                </span>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -721,9 +744,18 @@
             <strong>Activity + Participation + Attendance</strong> → Performance Tasks &nbsp;|&nbsp;
             <strong>Periodical Exam</strong> → Term Assessment.
             Click any score cell to <strong>manually adjust</strong> it — the transmuted grade will <strong>re-compute automatically</strong>.
-            An <span style="color:#f97316;">●</span> dot means that component was manually set. Click ↩ to reset to auto.
         </div>
 
+    </div>
+    {% endif %}
+
+    {% if submission_req and submission_req.status == 'rejected' and submission_req.rejection_remarks %}
+    <div style="background: #fef2f2; border: 1.5px solid #fca5a5; color: #991b1b; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; font-size: 0.9rem;">
+        <strong>Rejection Remarks from Reviewer:</strong> {{ submission_req.rejection_remarks }}
+    </div>
+    {% elif submission_req and submission_req.status == 'approved_for_posting' %}
+    <div style="background: #f0fdf4; border: 1.5px solid #86efac; color: #166534; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; font-size: 0.9rem;">
+        <strong>Approved by Branch Admin!</strong> This class record has been reviewed and approved. Click "Post Grades" above to publish the grades to student and parent portals.
     </div>
     {% endif %}
 

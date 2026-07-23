@@ -2697,3 +2697,145 @@ def branch_admin_delete_teacher_deprecated(user_id):
         return redirect("/")
     flash("To remove a teacher permanently, open Teachers → Archive, then use Delete there.", "info")
     return redirect("/branch-admin/manage-teachers")
+
+
+# ══════════════════════════════════════════════════════════════
+# GRADE APPROVAL — BRANCH ADMIN
+# ══════════════════════════════════════════════════════════════
+
+@branch_admin_bp.route("/branch-admin/grade-approval")
+def branch_admin_grade_approval():
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
+        year_row = cur.fetchone()
+        year_id = year_row["year_id"] if year_row else 0
+
+        # Fetch all grade levels
+        cur.execute("SELECT id, name FROM grade_levels ORDER BY display_order, id")
+        grade_levels = cur.fetchall() or []
+
+        # Default Grade Level filter to Nursery if not selected
+        selected_grade_id = request.args.get("grade_level_id", type=int)
+        if not selected_grade_id:
+            nursery = next((g for g in grade_levels if "nursery" in g["name"].lower()), None)
+            if nursery:
+                selected_grade_id = nursery["id"]
+            elif grade_levels:
+                selected_grade_id = grade_levels[0]["id"]
+
+        selected_section_id = request.args.get("section_id", type=int)
+        selected_period = request.args.get("period", "1st")
+
+        # Fetch sections for selected grade level
+        cur.execute("""
+            SELECT s.section_id, s.section_name
+            FROM sections s
+            WHERE s.branch_id = %s AND s.year_id = %s AND s.grade_level_id = %s
+            ORDER BY s.section_name
+        """, (branch_id, year_id, selected_grade_id))
+        sections = cur.fetchall() or []
+
+        # Query grade submission requests
+        query = """
+            SELECT r.id, r.section_id, r.subject_id, r.grading_period, r.status,
+                   r.submitted_at, r.registrar_approved_at, r.rejection_remarks,
+                   s.section_name, g.name AS grade_level_name, sub.name AS subject_name,
+                   u.full_name AS teacher_name, reg.full_name AS registrar_name
+            FROM grade_submission_requests r
+            JOIN sections s ON r.section_id = s.section_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            JOIN subjects sub ON r.subject_id = sub.subject_id
+            LEFT JOIN users u ON r.submitted_by = u.user_id
+            LEFT JOIN users reg ON r.registrar_approved_by = reg.user_id
+            WHERE r.branch_id = %s AND r.year_id = %s AND s.grade_level_id = %s
+        """
+        params = [branch_id, year_id, selected_grade_id]
+
+        if selected_section_id:
+            query += " AND r.section_id = %s"
+            params.append(selected_section_id)
+
+        if selected_period:
+            query += " AND r.grading_period = %s"
+            params.append(selected_period)
+
+        query += " ORDER BY r.submitted_at DESC, s.section_name, sub.name"
+        cur.execute(query, params)
+        submissions = cur.fetchall() or []
+
+        return render_template("branch_admin_grade_approval.html",
+            grade_levels=grade_levels,
+            sections=sections,
+            submissions=submissions,
+            selected_grade_id=selected_grade_id,
+            selected_section_id=selected_section_id,
+            selected_period=selected_period
+        )
+    finally:
+        cur.close()
+        db.close()
+
+
+@branch_admin_bp.route("/branch-admin/grade-approval/<int:req_id>/approve", methods=["POST"])
+def branch_admin_approve_grade_request(req_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+    user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            UPDATE grade_submission_requests
+            SET status = 'approved_for_posting',
+                admin_approved_by = %s,
+                admin_approved_at = NOW(),
+                rejection_remarks = NULL
+            WHERE id = %s AND branch_id = %s AND status = 'pending_admin'
+        """, (user_id, req_id, branch_id))
+        db.commit()
+        flash("Grade submission approved for posting! The teacher can now publish these grades.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error approving request: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+    return redirect(request.referrer or url_for("branch_admin.branch_admin_grade_approval"))
+
+
+@branch_admin_bp.route("/branch-admin/grade-approval/<int:req_id>/reject", methods=["POST"])
+def branch_admin_reject_grade_request(req_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+    user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
+    remarks = request.form.get("rejection_remarks", "").strip() or "Please review and correct scores."
+
+    db = get_db_connection()
+    cur = db.cursor()
+    try:
+        cur.execute("""
+            UPDATE grade_submission_requests
+            SET status = 'rejected',
+                rejected_by = %s,
+                rejected_at = NOW(),
+                rejection_remarks = %s
+            WHERE id = %s AND branch_id = %s
+        """, (user_id, remarks, req_id, branch_id))
+        db.commit()
+        flash("Grade submission rejected and returned to Teacher with remarks.", "info")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error rejecting request: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+    return redirect(request.referrer or url_for("branch_admin.branch_admin_grade_approval"))

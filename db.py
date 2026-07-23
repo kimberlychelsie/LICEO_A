@@ -662,6 +662,34 @@ def get_db_connection():
                 logger.warning(f"Could not create grade_overrides table: {e}")
                 conn.rollback()
 
+            # ── grade_submission_requests table (Grade review/approval workflow) ──
+            try:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS grade_submission_requests (
+                        id                      SERIAL PRIMARY KEY,
+                        section_id              INTEGER NOT NULL REFERENCES sections(section_id) ON DELETE CASCADE,
+                        subject_id              INTEGER NOT NULL REFERENCES subjects(subject_id) ON DELETE CASCADE,
+                        grading_period          VARCHAR(20) NOT NULL,
+                        year_id                 INTEGER NOT NULL,
+                        branch_id               INTEGER NOT NULL,
+                        status                  VARCHAR(30) DEFAULT 'draft',
+                        submitted_by            INTEGER REFERENCES users(user_id),
+                        submitted_at            TIMESTAMP,
+                        registrar_approved_by   INTEGER REFERENCES users(user_id),
+                        registrar_approved_at   TIMESTAMP,
+                        admin_approved_by       INTEGER REFERENCES users(user_id),
+                        admin_approved_at       TIMESTAMP,
+                        rejection_remarks       TEXT,
+                        rejected_by             INTEGER REFERENCES users(user_id),
+                        rejected_at             TIMESTAMP,
+                        UNIQUE (section_id, subject_id, grading_period, year_id)
+                    )
+                """)
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not create grade_submission_requests table: {e}")
+                conn.rollback()
+
             # Commit successful things
             conn.commit()
             cur.close()

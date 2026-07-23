@@ -3733,6 +3733,14 @@ def class_record(section_id, subject_id):
         """, (subject_id, section_id, year_id))
         context = cur.fetchone()
 
+        # Fetch grade submission request status for this class record
+        cur.execute("""
+            SELECT status, rejection_remarks, submitted_at, registrar_approved_at, admin_approved_at
+            FROM grade_submission_requests
+            WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+        """, (section_id, subject_id, period, year_id))
+        submission_req = cur.fetchone() or {'status': 'draft', 'rejection_remarks': None}
+
         _, weights, records = _compute_period_grades(
             cur, user_id, branch_id, section_id, subject_id, period, year_id
         )
@@ -3744,6 +3752,7 @@ def class_record(section_id, subject_id):
             records=records,
             weights=weights,
             period=period,
+            submission_req=submission_req,
             grading_periods=GRADING_PERIODS)
     finally:
         cur.close()
@@ -4077,6 +4086,53 @@ def save_grade_override(section_id, subject_id):
         db.close()
 
 
+@teacher_bp.route("/teacher/submit-grades/<int:section_id>/<int:subject_id>/<string:period>", methods=["POST"])
+def teacher_submit_grades(section_id, subject_id, period):
+    """Submit class record to Registrar for Grade Review."""
+    if not _require_teacher(): return redirect("/")
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+    if period not in GRADING_PERIODS: return redirect(url_for("teacher.teacher_dashboard"))
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        cur.execute("""
+            SELECT 1 FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s AND s.year_id=%s
+        """, (user_id, section_id, subject_id, year_id))
+        if not cur.fetchone():
+            flash("Unauthorized.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        cur.execute("""
+            INSERT INTO grade_submission_requests
+                (section_id, subject_id, grading_period, year_id, branch_id, status, submitted_by, submitted_at, rejection_remarks)
+            VALUES (%s, %s, %s, %s, %s, 'pending_registrar', %s, NOW(), NULL)
+            ON CONFLICT (section_id, subject_id, grading_period, year_id)
+            DO UPDATE SET
+                status = 'pending_registrar',
+                submitted_by = EXCLUDED.submitted_by,
+                submitted_at = NOW(),
+                rejection_remarks = NULL
+        """, (section_id, subject_id, period, year_id, branch_id, user_id))
+        db.commit()
+        flash(f"Class record for {period} Grading has been submitted to the Registrar for review.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error submitting grades: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+    return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
+
+
 @teacher_bp.route("/teacher/post-grades/<int:section_id>/<int:subject_id>/<string:period>", methods=["POST"])
 def teacher_post_grades(section_id, subject_id, period):
     if not _require_teacher(): return redirect("/")
@@ -4101,6 +4157,16 @@ def teacher_post_grades(section_id, subject_id, period):
             flash("Unauthorized.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
 
+        # Check approval status
+        cur.execute("""
+            SELECT status FROM grade_submission_requests
+            WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+        """, (section_id, subject_id, period, year_id))
+        req = cur.fetchone()
+        if not req or req['status'] != 'approved_for_posting':
+            flash("Cannot post grades until they are reviewed by Registrar and approved by Branch Admin.", "error")
+            return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
+
         _, weights, records = _compute_period_grades(
             cur, user_id, branch_id, section_id, subject_id, period, year_id
         )
@@ -4118,6 +4184,12 @@ def teacher_post_grades(section_id, subject_id, period):
                     DO UPDATE SET grade = EXCLUDED.grade, posted_at = NOW(), posted_by = EXCLUDED.posted_by
                 """, (r['enrollment_id'], section_id, subject_id, period, r['transmuted_grade'], user_id, year_id))
         
+        cur.execute("""
+            UPDATE grade_submission_requests
+            SET status = 'posted'
+            WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+        """, (section_id, subject_id, period, year_id))
+
         db.commit()
         flash(f"Grades for {period} Grading have been posted to the Student Portal!", "success")
     except Exception as e:
