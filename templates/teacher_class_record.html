@@ -387,6 +387,12 @@
         color: #991b1b;
     }
 
+    .grade-preview {
+        background: #fef9c3;
+        color: #854d0e;
+        border: 1.5px dashed #eab308;
+    }
+
     /* PT breakdown */
     .pt-breakdown {
         font-size: 0.73rem;
@@ -412,6 +418,106 @@
         font-weight: 700;
         color: var(--text);
         margin: 0 0 6px;
+    }
+
+    /* ── Inline Edit Cell ── */
+    .score-cell {
+        position: relative;
+        min-width: 110px;
+    }
+
+    .score-display {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        cursor: pointer;
+        border-radius: 8px;
+        padding: 4px 6px;
+        transition: background 0.15s;
+    }
+    .score-display:hover {
+        background: rgba(0,0,0,0.06);
+    }
+
+    .score-value {
+        font-weight: 700;
+        font-size: 0.95rem;
+    }
+
+    .edit-pencil {
+        opacity: 0;
+        font-size: 0.7rem;
+        color: #94a3b8;
+        transition: opacity 0.15s;
+    }
+    .score-display:hover .edit-pencil { opacity: 1; }
+
+    /* Orange dot for overridden */
+    .override-dot {
+        width: 8px; height: 8px;
+        background: #f97316;
+        border-radius: 50%;
+        display: inline-block;
+        flex-shrink: 0;
+        box-shadow: 0 0 0 2px rgba(249,115,22,0.2);
+    }
+
+    /* Inline edit form */
+    .score-editor {
+        display: none;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .score-editor.active { display: flex; }
+    .score-display.hidden { display: none; }
+
+    .score-input-row {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .score-input {
+        width: 70px;
+        padding: 5px 8px;
+        border-radius: 7px;
+        border: 1.5px solid #93c5fd;
+        font-size: 0.88rem;
+        font-weight: 700;
+        text-align: center;
+        background: #fff;
+        outline: none;
+        transition: border-color 0.15s, box-shadow 0.15s;
+        color: #1e3a8a;
+    }
+    .score-input:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.12);
+    }
+
+    .score-btn-save, .score-btn-cancel, .score-btn-reset {
+        width: 26px; height: 26px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-size: 0.78rem;
+        display: flex; align-items: center; justify-content: center;
+        transition: background 0.15s, transform 0.1s;
+        flex-shrink: 0;
+    }
+    .score-btn-save   { background: #22c55e; color: #fff; }
+    .score-btn-save:hover { background: #16a34a; transform: scale(1.08); }
+    .score-btn-cancel { background: #e2e8f0; color: #475569; }
+    .score-btn-cancel:hover { background: #cbd5e1; }
+    .score-btn-reset  { background: #fed7aa; color: #c2410c; }
+    .score-btn-reset:hover { background: #fb923c; color: #fff; }
+
+    .score-saving {
+        font-size: 0.72rem;
+        color: #64748b;
+        text-align: center;
     }
 
     /* ── Transmutation modal ── */
@@ -590,7 +696,8 @@
             <strong>Quiz + Monthly Exam</strong> → Written Works &nbsp;|&nbsp;
             <strong>Activity + Participation + Attendance</strong> → Performance Tasks &nbsp;|&nbsp;
             <strong>Periodical Exam</strong> → Term Assessment.
-            Percentages are <strong>auto-set</strong> by subject type — no manual setup needed.
+            Click any score cell to <strong>manually adjust</strong> it — the transmuted grade will <strong>re-compute automatically</strong>.
+            An <span style="color:#f97316;">●</span> dot means that component was manually set. Click ↩ to reset to auto.
         </div>
 
     </div>
@@ -640,42 +747,112 @@
             </thead>
             <tbody>
                 {% for r in records %}
-                <tr>
+                <tr id="row-{{ r.enrollment_id }}">
                     <td>
                         <div class="student-cell">
                             <span class="student-num">{{ loop.index }}</span>
                             <span class="student-name-text" title="{{ r.student_name }}">{{ r.student_name }}</span>
                         </div>
                     </td>
-                    <td class="col-ww">{{ "%0.1f" | format(r.quiz | float) }}</td>
-                    <td class="col-pt">
-                        {{ "%0.1f" | format(r.pt_score | float) }}
+
+                    <!-- WW editable cell -->
+                    <td class="col-ww score-cell" id="cell-ww-{{ r.enrollment_id }}">
+                        <div class="score-display" onclick="startEdit({{ r.enrollment_id }}, 'ww', this)">
+                            <span class="score-value">{{ "%0.1f" | format(r.quiz | float) }}</span>
+                            {% if r.ww_overridden %}<span class="override-dot" title="Manually set"></span>{% endif %}
+                            <span class="edit-pencil">✏</span>
+                        </div>
+                        <div class="score-editor" id="editor-ww-{{ r.enrollment_id }}">
+                            <div class="score-input-row">
+                                <input type="number" class="score-input" id="input-ww-{{ r.enrollment_id }}"
+                                    value="{{ "%0.1f" | format(r.quiz | float) }}"
+                                    min="0" max="100" step="0.1"
+                                    onkeydown="handleKey(event, {{ r.enrollment_id }}, 'ww')"
+                                    oninput="livePreview({{ r.enrollment_id }}, {{ (weights.quiz_pct or 0)|float }}, {{ (weights.activity_pct or 0)|float }}, {{ (weights.exam_pct or 0)|float }})">
+                                <button class="score-btn-save" onclick="saveEdit({{ r.enrollment_id }}, 'ww', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Save">✓</button>
+                                <button class="score-btn-cancel" onclick="cancelEdit({{ r.enrollment_id }}, 'ww')" title="Cancel">✕</button>
+                                {% if r.ww_overridden %}
+                                <button class="score-btn-reset" onclick="resetEdit({{ r.enrollment_id }}, 'ww', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Reset to auto-computed">↩</button>
+                                {% endif %}
+                            </div>
+                            <div class="score-saving" id="saving-ww-{{ r.enrollment_id }}" style="display:none;">Saving…</div>
+                        </div>
+                    </td>
+
+                    <!-- PT editable cell -->
+                    <td class="col-pt score-cell" id="cell-pt-{{ r.enrollment_id }}">
+                        <div class="score-display" onclick="startEdit({{ r.enrollment_id }}, 'pt', this)">
+                            <span class="score-value">{{ "%0.1f" | format(r.pt_score | float) }}</span>
+                            {% if r.pt_overridden %}<span class="override-dot" title="Manually set"></span>{% endif %}
+                            <span class="edit-pencil">✏</span>
+                        </div>
+                        <div class="score-editor" id="editor-pt-{{ r.enrollment_id }}">
+                            <div class="score-input-row">
+                                <input type="number" class="score-input" id="input-pt-{{ r.enrollment_id }}"
+                                    value="{{ "%0.1f" | format(r.pt_score | float) }}"
+                                    min="0" max="100" step="0.1"
+                                    onkeydown="handleKey(event, {{ r.enrollment_id }}, 'pt')"
+                                    oninput="livePreview({{ r.enrollment_id }}, {{ (weights.quiz_pct or 0)|float }}, {{ (weights.activity_pct or 0)|float }}, {{ (weights.exam_pct or 0)|float }})">
+                                <button class="score-btn-save" onclick="saveEdit({{ r.enrollment_id }}, 'pt', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Save">✓</button>
+                                <button class="score-btn-cancel" onclick="cancelEdit({{ r.enrollment_id }}, 'pt')" title="Cancel">✕</button>
+                                {% if r.pt_overridden %}
+                                <button class="score-btn-reset" onclick="resetEdit({{ r.enrollment_id }}, 'pt', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Reset to auto-computed">↩</button>
+                                {% endif %}
+                            </div>
+                            <div class="score-saving" id="saving-pt-{{ r.enrollment_id }}" style="display:none;">Saving…</div>
+                        </div>
                         <div class="pt-breakdown">
                             {% if r.has_activity %}Act: {{ "%0.1f" | format(r.activity|float) }}{% endif %}
                             {% if r.has_participation %} · Par: {{ r.participation | int }}/10{% endif %}
                             {% if r.has_attendance %} · Att: {{ r.attendance | int }}/10{% endif %}
                         </div>
                     </td>
-                    <td class="col-qa">{{ "%0.1f" | format(r.exam | float) }}</td>
-                    <td>
+
+                    <!-- QA editable cell -->
+                    <td class="col-qa score-cell" id="cell-qa-{{ r.enrollment_id }}">
+                        <div class="score-display" onclick="startEdit({{ r.enrollment_id }}, 'qa', this)">
+                            <span class="score-value">{{ "%0.1f" | format(r.exam | float) }}</span>
+                            {% if r.qa_overridden %}<span class="override-dot" title="Manually set"></span>{% endif %}
+                            <span class="edit-pencil">✏</span>
+                        </div>
+                        <div class="score-editor" id="editor-qa-{{ r.enrollment_id }}">
+                            <div class="score-input-row">
+                                <input type="number" class="score-input" id="input-qa-{{ r.enrollment_id }}"
+                                    value="{{ "%0.1f" | format(r.exam | float) }}"
+                                    min="0" max="100" step="0.1"
+                                    onkeydown="handleKey(event, {{ r.enrollment_id }}, 'qa')"
+                                    oninput="livePreview({{ r.enrollment_id }}, {{ (weights.quiz_pct or 0)|float }}, {{ (weights.activity_pct or 0)|float }}, {{ (weights.exam_pct or 0)|float }})">
+                                <button class="score-btn-save" onclick="saveEdit({{ r.enrollment_id }}, 'qa', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Save">✓</button>
+                                <button class="score-btn-cancel" onclick="cancelEdit({{ r.enrollment_id }}, 'qa')" title="Cancel">✕</button>
+                                {% if r.qa_overridden %}
+                                <button class="score-btn-reset" onclick="resetEdit({{ r.enrollment_id }}, 'qa', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Reset to auto-computed">↩</button>
+                                {% endif %}
+                            </div>
+                            <div class="score-saving" id="saving-qa-{{ r.enrollment_id }}" style="display:none;">Saving…</div>
+                        </div>
+                    </td>
+
+                    <!-- Term Grade (always auto-computed) -->
+                    <td id="grade-cell-{{ r.enrollment_id }}">
                         {% if r.transmuted_grade is not none %}
-                        <span class="grade-pill {% if r.transmuted_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}">
+                        <span class="grade-pill {% if r.transmuted_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}"
+                              id="grade-pill-{{ r.enrollment_id }}">
                             {{ "%0.2f" | format(r.transmuted_grade | float) }}
                         </span>
                         {% else %}
-                        <span class="grade-pill" style="background:var(--bg); color:var(--muted); font-style:italic; font-size:0.8rem;">—</span>
+                        <span class="grade-pill" id="grade-pill-{{ r.enrollment_id }}"
+                              style="background:var(--bg); color:var(--muted); font-style:italic; font-size:0.8rem;">—</span>
                         {% endif %}
                     </td>
+
                     <td>
                         <button type="button"
                             class="cr-btn cr-btn-ghost"
                             style="padding:6px 10px; font-size:0.78rem; color:#1e3a8a; border-color:#bfdbfe; background:#eff6ff;"
                             onclick='openTransmutation({
+                                "enrollment_id": {{ r.enrollment_id }},
                                 "student_name": {{ (r.student_name or "")|tojson }},
                                 "ww": {{ (r.quiz or 0)|float }},
-                                "act": {{ (r.activity or 0)|float }},
-                                "par": {{ ((r.participation or 0)|float * 10) }},
-                                "att": {{ ((r.attendance or 0)|float * 10) }},
                                 "pt": {{ (r.pt_score or 0)|float }},
                                 "qa": {{ (r.exam or 0)|float }},
                                 "initial": {{ (r.period_grade or 0)|float }},
@@ -705,6 +882,7 @@
 
 </div>
 
+<!-- ── Transmutation Detail Modal ── -->
 <div id="tmOverlay" class="tm-overlay" onclick="closeTransmutation(event)">
     <div class="tm-modal" onclick="event.stopPropagation()">
         <div class="tm-head">
@@ -730,6 +908,178 @@
 </div>
 
 <script>
+// ── DepEd Transmutation Table (client-side for live preview) ──────────────────
+const TRANSMUTATION_RANGES = [
+    [98.40, 99.99, 99], [96.80, 98.39, 98], [95.20, 96.79, 97],
+    [93.60, 95.19, 96], [92.00, 93.59, 95], [90.40, 91.99, 94],
+    [88.80, 90.39, 93], [87.20, 88.79, 92], [85.60, 87.19, 91],
+    [84.00, 85.59, 90], [82.40, 83.99, 89], [80.80, 82.39, 88],
+    [79.20, 80.79, 87], [77.60, 79.19, 86], [76.00, 77.59, 85],
+    [74.40, 75.99, 84], [72.80, 74.39, 83], [71.20, 72.79, 82],
+    [69.60, 71.19, 81], [68.00, 69.59, 80], [66.40, 67.99, 79],
+    [64.80, 66.39, 78], [63.20, 64.79, 77], [61.60, 63.19, 76],
+    [60.00, 61.59, 75], [56.00, 59.99, 74], [52.00, 55.99, 73],
+    [48.00, 51.99, 72], [44.00, 47.99, 71], [40.00, 43.99, 70],
+    [36.00, 39.99, 69], [32.00, 35.99, 68], [28.00, 31.99, 67],
+    [24.00, 27.99, 66], [20.00, 23.99, 65], [16.00, 19.99, 64],
+    [12.00, 15.99, 63], [8.00, 11.99, 62],  [4.00, 7.99, 61],
+    [0.00, 3.99, 60]
+];
+
+function clientTransmute(initial) {
+    let x = Math.min(100, Math.max(0, parseFloat(initial) || 0));
+    if (x >= 100) return 100;
+    for (const [lo, hi, g] of TRANSMUTATION_RANGES) {
+        if (x >= lo && x <= hi) return g;
+    }
+    return 60;
+}
+
+// ── Inline Edit ───────────────────────────────────────────────────────────────
+function startEdit(eid, field, displayEl) {
+    // Hide display, show editor
+    displayEl.classList.add('hidden');
+    const editor = document.getElementById(`editor-${field}-${eid}`);
+    editor.classList.add('active');
+    const input = document.getElementById(`input-${field}-${eid}`);
+    input.focus();
+    input.select();
+}
+
+function cancelEdit(eid, field) {
+    document.getElementById(`editor-${field}-${eid}`).classList.remove('active');
+    const display = document.querySelector(`#cell-${field}-${eid} .score-display`);
+    display.classList.remove('hidden');
+    // Restore grade pill to original (remove preview)
+    const pill = document.getElementById(`grade-pill-${eid}`);
+    pill.classList.remove('grade-preview');
+}
+
+function handleKey(event, eid, field) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        // Find section/subject/period from nearest save button's onclick attr
+        const btn = event.target.closest('.score-editor').querySelector('.score-btn-save');
+        btn.click();
+    } else if (event.key === 'Escape') {
+        cancelEdit(eid, field);
+    }
+}
+
+// Live preview: update grade pill with a yellow dashed style while typing
+function livePreview(eid, wwPct, ptPct, qaPct) {
+    const ww = parseFloat(document.getElementById(`input-ww-${eid}`)?.value) || 0;
+    const pt = parseFloat(document.getElementById(`input-pt-${eid}`)?.value) || 0;
+    const qa = parseFloat(document.getElementById(`input-qa-${eid}`)?.value) || 0;
+
+    const initial = (ww * wwPct / 100) + (pt * ptPct / 100) + (qa * qaPct / 100);
+    const transmuted = clientTransmute(initial);
+
+    const pill = document.getElementById(`grade-pill-${eid}`);
+    if (pill) {
+        pill.textContent = transmuted.toFixed(2) + ' ✎';
+        pill.className = 'grade-pill grade-preview';
+    }
+}
+
+async function saveEdit(eid, field, sectionId, subjectId, period) {
+    const input  = document.getElementById(`input-${field}-${eid}`);
+    const saving = document.getElementById(`saving-${field}-${eid}`);
+    const value  = parseFloat(input.value);
+
+    if (isNaN(value) || value < 0 || value > 100) {
+        input.style.borderColor = '#ef4444';
+        input.title = 'Value must be 0 – 100';
+        setTimeout(() => { input.style.borderColor = ''; input.title = ''; }, 2000);
+        return;
+    }
+
+    saving.style.display = 'block';
+    const payload = { enrollment_id: eid, period, [field]: value };
+
+    try {
+        const resp = await fetch(`/teacher/class-record/${sectionId}/${subjectId}/override`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (!data.success) throw new Error(data.error || 'Save failed');
+
+        // Update displayed values
+        applyUpdatedScores(eid, field, data);
+    } catch(e) {
+        alert('Error saving: ' + e.message);
+    } finally {
+        saving.style.display = 'none';
+        cancelEdit(eid, field);
+    }
+}
+
+async function resetEdit(eid, field, sectionId, subjectId, period) {
+    if (!confirm(`Reset ${field.toUpperCase()} to auto-computed value?`)) return;
+    const saving = document.getElementById(`saving-${field}-${eid}`);
+    saving.style.display = 'block';
+
+    try {
+        const resp = await fetch(`/teacher/class-record/${sectionId}/${subjectId}/override`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ enrollment_id: eid, period, reset: field })
+        });
+        const data = await resp.json();
+        if (!data.success) throw new Error(data.error || 'Reset failed');
+
+        applyUpdatedScores(eid, field, data);
+        // Remove reset button since it's now auto
+        const resetBtn = document.querySelector(`#editor-${field}-${eid} .score-btn-reset`);
+        if (resetBtn) resetBtn.remove();
+    } catch(e) {
+        alert('Error resetting: ' + e.message);
+    } finally {
+        saving.style.display = 'none';
+        cancelEdit(eid, field);
+    }
+}
+
+function applyUpdatedScores(eid, changedField, data) {
+    // Update each component display value and override dot
+    const updateCell = (field, newVal, isOverridden) => {
+        const display = document.querySelector(`#cell-${field}-${eid} .score-display`);
+        if (!display) return;
+        const valEl = display.querySelector('.score-value');
+        const dotEl = display.querySelector('.override-dot');
+        if (valEl) valEl.textContent = parseFloat(newVal).toFixed(1);
+
+        // Update input value too
+        const inp = document.getElementById(`input-${field}-${eid}`);
+        if (inp) inp.value = parseFloat(newVal).toFixed(1);
+
+        // Show/hide orange dot
+        if (isOverridden && !dotEl) {
+            const dot = document.createElement('span');
+            dot.className = 'override-dot';
+            dot.title = 'Manually set';
+            display.insertBefore(dot, display.querySelector('.edit-pencil'));
+        } else if (!isOverridden && dotEl) {
+            dotEl.remove();
+        }
+    };
+
+    updateCell('ww', data.ww, data.ww_overridden);
+    updateCell('pt', data.pt, data.pt_overridden);
+    updateCell('qa', data.qa, data.qa_overridden);
+
+    // Update the term grade pill
+    const pill = document.getElementById(`grade-pill-${eid}`);
+    if (pill && data.transmuted_grade !== undefined) {
+        const g = parseFloat(data.transmuted_grade);
+        pill.textContent = g.toFixed(2);
+        pill.className = 'grade-pill ' + (g >= 75 ? 'grade-pass' : 'grade-fail');
+    }
+}
+
+// ── Transmutation Detail Modal ────────────────────────────────────────────────
 function openTransmutation(data) {
     document.getElementById("tmStudent").textContent = data.student_name || "Student";
     document.getElementById("tmWw").textContent = Number(data.ww || 0).toFixed(2);

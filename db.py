@@ -638,7 +638,30 @@ def get_db_connection():
                 conn.commit()
             except Exception as e:
                 conn.rollback()
-                
+            # ── grade_overrides table (teacher manual component score edits) ──
+            try:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS grade_overrides (
+                        id               SERIAL PRIMARY KEY,
+                        enrollment_id    INTEGER NOT NULL REFERENCES enrollments(enrollment_id) ON DELETE CASCADE,
+                        section_id       INTEGER NOT NULL,
+                        subject_id       INTEGER NOT NULL,
+                        grading_period   VARCHAR(20) NOT NULL,
+                        year_id          INTEGER NOT NULL,
+                        override_ww      NUMERIC(6,2),
+                        override_pt      NUMERIC(6,2),
+                        override_qa      NUMERIC(6,2),
+                        override_note    TEXT,
+                        overridden_by    INTEGER,
+                        overridden_at    TIMESTAMP DEFAULT NOW(),
+                        UNIQUE (enrollment_id, subject_id, grading_period, year_id)
+                    )
+                """)
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not create grade_overrides table: {e}")
+                conn.rollback()
+
             # Commit successful things
             conn.commit()
             cur.close()

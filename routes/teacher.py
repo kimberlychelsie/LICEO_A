@@ -3612,9 +3612,23 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
     def _cap_0_100(value):
         return max(0.0, min(100.0, float(value or 0)))
 
+    # Load any teacher-entered manual overrides for this section/subject/period/year
+    override_map = {}
+    if enrollment_ids:
+        cur.execute("""
+            SELECT enrollment_id, override_ww, override_pt, override_qa, override_note
+            FROM grade_overrides
+            WHERE section_id = %s AND subject_id = %s AND grading_period = %s AND year_id = %s
+              AND enrollment_id = ANY(%s)
+        """, (section_id, subject_id, period, year_id, enrollment_ids))
+        for row in cur.fetchall():
+            override_map[row['enrollment_id']] = row
+
     records = []
     for s in students:
         eid = s['enrollment_id']
+        ov  = override_map.get(eid)  # manual override row (or None)
+
         ww_score  = _cap_0_100(quiz_scores.get(eid, 0))          # Written Works (Quiz + Monthly Exam)
         qa_score  = _cap_0_100(exam_scores.get(eid, 0))          # Quarterly Assessment (Periodical Exam)
         act_score = _cap_0_100(activity_scores.get(eid, 0))
@@ -3635,7 +3649,18 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
         if has_attendance:    pt_components.append(att_score)
         pt_score = _cap_0_100(sum(pt_components) / len(pt_components) if pt_components else 0)
 
-        # DepEd auto-computation (weights unchanged)
+        # Apply teacher manual overrides to components (if set)
+        ww_overridden = ov and ov['override_ww'] is not None
+        pt_overridden = ov and ov['override_pt'] is not None
+        qa_overridden = ov and ov['override_qa'] is not None
+        if ww_overridden:
+            ww_score = _cap_0_100(ov['override_ww'])
+        if pt_overridden:
+            pt_score = _cap_0_100(ov['override_pt'])
+        if qa_overridden:
+            qa_score = _cap_0_100(ov['override_qa'])
+
+        # DepEd auto-computation always runs — never directly overridden
         period_grade = round(
             ww_score  * w['ww'] +
             pt_score  * w['pt'] +
@@ -3662,6 +3687,10 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
             'transmuted_grade': transmuted_grade,
             'transmutation_band': transmutation_band,
             'deped_category':  category,
+            'ww_overridden':   bool(ww_overridden),
+            'pt_overridden':   bool(pt_overridden),
+            'qa_overridden':   bool(qa_overridden),
+            'override_note':   (ov['override_note'] if ov else None),
         })
     return students, weights, records
 
@@ -3925,6 +3954,128 @@ def class_record_export(section_id, subject_id):
     finally:
         cur.close()
         db.close()
+
+# ── Grade Override Routes ─────────────────────────────────────────────────────
+
+@teacher_bp.route("/teacher/class-record/<int:section_id>/<int:subject_id>/override", methods=["POST"])
+def save_grade_override(section_id, subject_id):
+    """AJAX: Save teacher manual WW/PT/QA component score overrides for a student.
+    The transmuted grade is always re-computed server-side from the (possibly-overridden) values.
+    """
+    from flask import jsonify
+    if not _require_teacher():
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    user_id   = session.get('user_id')
+    branch_id = session.get('branch_id')
+
+    data          = request.get_json(force=True) or {}
+    enrollment_id = data.get('enrollment_id')
+    period        = data.get('period', '1st')
+    new_ww        = data.get('ww')    # None means "don't override this component"
+    new_pt        = data.get('pt')
+    new_qa        = data.get('qa')
+    note          = data.get('note', '').strip() or None
+    reset_field   = data.get('reset')  # 'ww'|'pt'|'qa'|'all' — resets that component
+
+    if period not in GRADING_PERIODS:
+        return jsonify({'success': False, 'error': 'Invalid period'}), 400
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            return jsonify({'success': False, 'error': 'No active school year'}), 400
+
+        # Verify teacher owns this assignment
+        cur.execute("""
+            SELECT 1 FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s AND s.year_id=%s
+        """, (user_id, section_id, subject_id, year_id))
+        if not cur.fetchone():
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+        # Handle field reset: set that column to NULL
+        if reset_field:
+            if reset_field == 'all':
+                cur.execute("""
+                    DELETE FROM grade_overrides
+                    WHERE enrollment_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+                """, (enrollment_id, subject_id, period, year_id))
+            else:
+                col = {'ww': 'override_ww', 'pt': 'override_pt', 'qa': 'override_qa'}.get(reset_field)
+                if col:
+                    cur.execute(f"""
+                        UPDATE grade_overrides
+                        SET {col} = NULL, overridden_at = NOW(), overridden_by = %s
+                        WHERE enrollment_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+                    """, (user_id, enrollment_id, subject_id, period, year_id))
+        else:
+            # Upsert the manual override values that were provided
+            def _to_numeric(v):
+                try:
+                    x = float(v)
+                    return max(0.0, min(100.0, x))
+                except (TypeError, ValueError):
+                    return None
+
+            ww_val = _to_numeric(new_ww)
+            pt_val = _to_numeric(new_pt)
+            qa_val = _to_numeric(new_qa)
+
+            # Only upsert if at least one component is being set
+            if any(v is not None for v in (ww_val, pt_val, qa_val)):
+                cur.execute("""
+                    INSERT INTO grade_overrides
+                        (enrollment_id, section_id, subject_id, grading_period, year_id,
+                         override_ww, override_pt, override_qa, override_note,
+                         overridden_by, overridden_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                    ON CONFLICT (enrollment_id, subject_id, grading_period, year_id)
+                    DO UPDATE SET
+                        override_ww  = CASE WHEN %s IS NOT NULL THEN %s ELSE grade_overrides.override_ww END,
+                        override_pt  = CASE WHEN %s IS NOT NULL THEN %s ELSE grade_overrides.override_pt END,
+                        override_qa  = CASE WHEN %s IS NOT NULL THEN %s ELSE grade_overrides.override_qa END,
+                        override_note = COALESCE(%s, grade_overrides.override_note),
+                        overridden_by = %s,
+                        overridden_at = NOW()
+                """, (
+                    enrollment_id, section_id, subject_id, period, year_id,
+                    ww_val, pt_val, qa_val, note, user_id,
+                    ww_val, ww_val, pt_val, pt_val, qa_val, qa_val, note, user_id
+                ))
+
+        db.commit()
+
+        # Re-compute the grade from scratch to return the updated values
+        _, weights, records = _compute_period_grades(
+            cur, user_id, branch_id, section_id, subject_id, period, year_id
+        )
+        updated = next((r for r in records if r['enrollment_id'] == enrollment_id), None)
+        if not updated:
+            return jsonify({'success': False, 'error': 'Student not found'}), 404
+
+        return jsonify({
+            'success':          True,
+            'ww':               updated['quiz'],
+            'pt':               updated['pt_score'],
+            'qa':               updated['exam'],
+            'initial_grade':    updated['period_grade'],
+            'transmuted_grade': updated['transmuted_grade'],
+            'band':             updated['transmutation_band'],
+            'ww_overridden':    updated['ww_overridden'],
+            'pt_overridden':    updated['pt_overridden'],
+            'qa_overridden':    updated['qa_overridden'],
+        })
+    except Exception as e:
+        db.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        cur.close()
+        db.close()
+
 
 @teacher_bp.route("/teacher/post-grades/<int:section_id>/<int:subject_id>/<string:period>", methods=["POST"])
 def teacher_post_grades(section_id, subject_id, period):
