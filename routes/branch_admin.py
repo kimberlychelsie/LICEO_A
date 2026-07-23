@@ -2817,7 +2817,10 @@ def branch_admin_reject_grade_request(req_id):
         return redirect("/")
     user_id = session.get("user_id")
     branch_id = session.get("branch_id")
-    remarks = request.form.get("rejection_remarks", "").strip() or "Please review and correct scores."
+    remarks = request.form.get("rejection_remarks", "").strip()
+    if len(remarks) < 5:
+        flash("Please provide detailed rejection remarks (at least 5 characters) explaining what the teacher needs to revise.", "error")
+        return redirect(request.referrer or url_for("branch_admin.branch_admin_grade_approval"))
 
     db = get_db_connection()
     cur = db.cursor()

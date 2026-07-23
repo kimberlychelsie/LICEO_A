@@ -508,6 +508,27 @@ def inject_branch_admin_notifications():
                     'created_at': now_ph
                 })
             
+            # 2. Grade Approval Alerts (pending_admin)
+            cursor.execute("""
+                SELECT r.*, sub.name AS subject_name, g.name AS grade_level_name, s.section_name, reg.full_name AS registrar_name
+                FROM grade_submission_requests r
+                JOIN subjects sub ON r.subject_id = sub.subject_id
+                JOIN sections s ON r.section_id = s.section_id
+                JOIN grade_levels g ON s.grade_level_id = g.id
+                LEFT JOIN users reg ON r.registrar_approved_by = reg.user_id
+                WHERE r.branch_id = %s AND r.status = 'pending_admin'
+                ORDER BY r.registrar_approved_at DESC
+                LIMIT 10
+            """, (branch_id,))
+            for req in cursor.fetchall():
+                alerts.append({
+                    'title': 'Grade Approval Needed',
+                    'message': f"{req['subject_name']} ({req['grade_level_name']} - {req['section_name']}) verified by {req['registrar_name'] or 'Registrar'}. Pending your approval.",
+                    'link': f"/branch-admin/grade-approval/{req['id']}/class-record",
+                    'is_read': False,
+                    'created_at': req.get('registrar_approved_at') or now_ph
+                })
+
             unread_count = len(alerts)
             return dict(branch_global_notifs=alerts, branch_unread_count=unread_count)
         except Exception as e:
@@ -517,6 +538,107 @@ def inject_branch_admin_notifications():
             cursor.close()
             db.close()
     return dict(branch_global_notifs=[], branch_unread_count=0)
+
+
+@app.context_processor
+def inject_registrar_notifications():
+    if session.get('role') == 'registrar':
+        branch_id = session.get('branch_id')
+        from db import get_db_connection
+        import psycopg2.extras
+        from datetime import datetime, timezone
+        import pytz
+        
+        db = get_db_connection()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            alerts = []
+            ph_tz = pytz.timezone("Asia/Manila")
+            now_ph = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+            
+            cursor.execute("""
+                SELECT r.*, sub.name AS subject_name, g.name AS grade_level_name, s.section_name, u.full_name AS teacher_name
+                FROM grade_submission_requests r
+                JOIN subjects sub ON r.subject_id = sub.subject_id
+                JOIN sections s ON r.section_id = s.section_id
+                JOIN grade_levels g ON s.grade_level_id = g.id
+                LEFT JOIN users u ON r.submitted_by = u.user_id
+                WHERE r.branch_id = %s AND r.status = 'pending_registrar'
+                ORDER BY r.submitted_at DESC
+                LIMIT 10
+            """, (branch_id,))
+            for req in cursor.fetchall():
+                alerts.append({
+                    'title': 'Grade Review Needed',
+                    'message': f"{req['subject_name']} ({req['grade_level_name']} - {req['section_name']}) submitted by {req['teacher_name'] or 'Teacher'} for review.",
+                    'link': f"/registrar/grade-review/{req['id']}/class-record",
+                    'is_read': False,
+                    'created_at': req.get('submitted_at') or now_ph
+                })
+            
+            return dict(registrar_global_notifs=alerts, registrar_unread_count=len(alerts))
+        except Exception as e:
+            print(f"Error in Registrar context processor: {e}")
+            return dict(registrar_global_notifs=[], registrar_unread_count=0)
+        finally:
+            cursor.close()
+            db.close()
+    return dict(registrar_global_notifs=[], registrar_unread_count=0)
+
+
+@app.context_processor
+def inject_teacher_notifications():
+    if session.get('role') == 'teacher':
+        user_id = session.get('user_id')
+        from db import get_db_connection
+        import psycopg2.extras
+        from datetime import datetime, timezone
+        import pytz
+        
+        db = get_db_connection()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            alerts = []
+            ph_tz = pytz.timezone("Asia/Manila")
+            now_ph = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+            
+            cursor.execute("""
+                SELECT r.*, sub.name AS subject_name, g.name AS grade_level_name, s.section_name
+                FROM grade_submission_requests r
+                JOIN subjects sub ON r.subject_id = sub.subject_id
+                JOIN sections s ON r.section_id = s.section_id
+                JOIN grade_levels g ON s.grade_level_id = g.id
+                WHERE r.submitted_by = %s AND r.status IN ('approved_for_posting', 'rejected')
+                ORDER BY COALESCE(r.admin_approved_at, r.submitted_at) DESC
+                LIMIT 10
+            """, (user_id,))
+            for req in cursor.fetchall():
+                if req['status'] == 'approved_for_posting':
+                    alerts.append({
+                        'title': 'Grade Submission Approved',
+                        'message': f"Your {req['grading_period']} Term grades for {req['subject_name']} ({req['section_name']}) were approved! You can now post grades.",
+                        'link': f"/teacher/class-record/{req['section_id']}/{req['subject_id']}?period={req['grading_period']}",
+                        'is_read': False,
+                        'created_at': req.get('admin_approved_at') or now_ph
+                    })
+                elif req['status'] == 'rejected':
+                    remarks = req.get('rejection_remarks') or 'Please review scores.'
+                    alerts.append({
+                        'title': 'Grade Submission Returned',
+                        'message': f"Your {req['grading_period']} Term grades for {req['subject_name']} ({req['section_name']}) were returned: \"{remarks}\"",
+                        'link': f"/teacher/class-record/{req['section_id']}/{req['subject_id']}?period={req['grading_period']}",
+                        'is_read': False,
+                        'created_at': now_ph
+                    })
+            
+            return dict(teacher_global_notifs=alerts, teacher_unread_count=len(alerts))
+        except Exception as e:
+            print(f"Error in Teacher context processor: {e}")
+            return dict(teacher_global_notifs=[], teacher_unread_count=0)
+        finally:
+            cursor.close()
+            db.close()
+    return dict(teacher_global_notifs=[], teacher_unread_count=0)
 
 @app.context_processor
 def inject_librarian_notifications():

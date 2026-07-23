@@ -4010,6 +4010,15 @@ def save_grade_override(section_id, subject_id):
         if not cur.fetchone():
             return jsonify({'success': False, 'error': 'Unauthorized'}), 403
 
+        # Lock grade edits if submission request is pending review or approved/posted
+        cur.execute("""
+            SELECT status FROM grade_submission_requests
+            WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+        """, (section_id, subject_id, period, year_id))
+        sub_req = cur.fetchone()
+        if sub_req and sub_req['status'] in ['pending_registrar', 'pending_admin', 'approved_for_posting', 'posted']:
+            return jsonify({'success': False, 'error': 'Class record is currently locked for review or already approved/posted.'}), 403
+
         # Handle field reset: set that column to NULL
         if reset_field:
             if reset_field == 'all':
@@ -4114,6 +4123,26 @@ def teacher_submit_grades(section_id, subject_id, period):
         if not cur.fetchone():
             flash("Unauthorized.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
+
+        # Sequential Term Check: Ensure preceding terms are posted before submitting subsequent terms
+        if period == '2nd':
+            cur.execute("""
+                SELECT status FROM grade_submission_requests
+                WHERE section_id=%s AND subject_id=%s AND grading_period='1st' AND year_id=%s
+            """, (section_id, subject_id, year_id))
+            prev_req = cur.fetchone()
+            if not prev_req or prev_req['status'] != 'posted':
+                flash("Cannot submit 2nd Term grades: 1st Term grades must be reviewed, approved, and posted first.", "error")
+                return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
+        elif period == '3rd':
+            cur.execute("""
+                SELECT status FROM grade_submission_requests
+                WHERE section_id=%s AND subject_id=%s AND grading_period='2nd' AND year_id=%s
+            """, (section_id, subject_id, year_id))
+            prev_req = cur.fetchone()
+            if not prev_req or prev_req['status'] != 'posted':
+                flash("Cannot submit 3rd Term grades: 2nd Term grades must be reviewed, approved, and posted first.", "error")
+                return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
 
         # Verify all 3 DepEd grade components (WW, PT, QA) are present before submitting
         students, weights, records = _compute_period_grades(
