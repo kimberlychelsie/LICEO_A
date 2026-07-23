@@ -1548,7 +1548,7 @@ def student_exam_result(result_id):
 # GRADES VIEW — STUDENT PORTAL
 # ══════════════════════════════════════════════════════════════
 
-GRADING_PERIODS = ["1st", "2nd", "3rd", "4th"]
+GRADING_PERIODS = ["1st", "2nd", "3rd"]
 
 
 @student_portal_bp.route("/student/grades")
@@ -1694,8 +1694,8 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
             sid = s["subject_id"]
             grades = posted_map.get(sid, {})
             period_vals = [float(v) for v in grades.values()]
-            # Final average only shows if ALL 4 periods are posted (rounded to whole number)
-            final_avg = int(round(sum(period_vals) / 4)) if len(period_vals) == 4 else None
+            # Finals shows only if ALL 3 terms are posted (rounded to whole number)
+            final_avg = int(round(sum(period_vals) / 3)) if len(period_vals) == 3 else None
 
             grade_data.append({
                 "subject_name": s["subject_name"],

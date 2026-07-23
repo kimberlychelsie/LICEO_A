@@ -588,10 +588,9 @@
         </div>
 
         <div class="filter-tabs">
-            <div class="filter-tab filter-tab-act active {% if '1st' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('act', '1st', this)">1st Grading</div>
-            <div class="filter-tab filter-tab-act {% if '2nd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('act', '2nd', this)">2nd Grading</div>
-            <div class="filter-tab filter-tab-act {% if '3rd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('act', '3rd', this)">3rd Grading</div>
-            <div class="filter-tab filter-tab-act {% if '4th' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('act', '4th', this)">4th Grading</div>
+            <div class="filter-tab filter-tab-act active {% if '1st' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('act', '1st', this)">1st Term</div>
+            <div class="filter-tab filter-tab-act {% if '2nd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('act', '2nd', this)">2nd Term</div>
+            <div class="filter-tab filter-tab-act {% if '3rd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('act', '3rd', this)">3rd Term</div>
         </div>
 
         <div class="stats-card">
@@ -627,7 +626,7 @@
                         Due: {{ act.due_date.strftime('%b %d, %Y %I:%M %p') if act.due_date else 'No deadline' }}
                         <span style="color:#e2e8f0;">·</span>
                         Max: <strong>{{ act.max_score }}</strong>
-                        <span class="badge badge-blue">{{ act.grading_period or 'N/A' }} Grading</span>
+                        <span class="badge badge-blue">{{ PERIOD_LABELS.get(act.grading_period, act.grading_period) }}</span>
                         {% if act.status == 'Published' %}<span class="badge badge-published">Published</span>
                         {% elif act.status == 'Draft' %}<span class="badge badge-draft">Draft</span>
                         {% else %}<span class="badge badge-closed">Closed</span>{% endif %}
@@ -732,10 +731,9 @@
         </div>
 
         <div class="filter-tabs">
-            <div class="filter-tab filter-tab-quiz active {% if '1st' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('quiz', '1st', this)">1st Grading</div>
-            <div class="filter-tab filter-tab-quiz {% if '2nd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('quiz', '2nd', this)">2nd Grading</div>
-            <div class="filter-tab filter-tab-quiz {% if '3rd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('quiz', '3rd', this)">3rd Grading</div>
-            <div class="filter-tab filter-tab-quiz {% if '4th' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('quiz', '4th', this)">4th Grading</div>
+            <div class="filter-tab filter-tab-quiz active {% if '1st' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('quiz', '1st', this)">1st Term</div>
+            <div class="filter-tab filter-tab-quiz {% if '2nd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('quiz', '2nd', this)">2nd Term</div>
+            <div class="filter-tab filter-tab-quiz {% if '3rd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('quiz', '3rd', this)">3rd Term</div>
         </div>
 
         <div class="table-card">
@@ -760,7 +758,7 @@
                         <td><strong>{{ q.title }}</strong></td>
                         <td style="color:var(--muted);">{{ class_info.grade_level_name }} - {{ class_info.section_name
                             }}</td>
-                        <td><span class="badge badge-blue">{{ q.grading_period or 'None' }}</span></td>
+                        <td><span class="badge badge-blue">{{ PERIOD_LABELS.get(q.grading_period, q.grading_period) }}</span></td>
                         <td>{{ q.duration_mins }} min</td>
                         <td>
                             {% if q.scheduled_start %}
@@ -862,10 +860,9 @@
         </div>
 
         <div class="filter-tabs">
-            <div class="filter-tab filter-tab-exam active {% if '1st' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('exam', '1st', this)">1st Grading</div>
-            <div class="filter-tab filter-tab-exam {% if '2nd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('exam', '2nd', this)">2nd Grading</div>
-            <div class="filter-tab filter-tab-exam {% if '3rd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('exam', '3rd', this)">3rd Grading</div>
-            <div class="filter-tab filter-tab-exam {% if '4th' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('exam', '4th', this)">4th Grading</div>
+            <div class="filter-tab filter-tab-exam active {% if '1st' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('exam', '1st', this)">1st Term</div>
+            <div class="filter-tab filter-tab-exam {% if '2nd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('exam', '2nd', this)">2nd Term</div>
+            <div class="filter-tab filter-tab-exam {% if '3rd' not in unlocked_periods %}disabled{% endif %}" onclick="filterItems('exam', '3rd', this)">3rd Term</div>
         </div>
 
         <div class="table-card">
@@ -897,7 +894,7 @@
                         </td>
                         <td style="color:var(--muted);">{{ class_info.grade_level_name }} - {{ class_info.section_name
                             }}</td>
-                        <td><span class="badge badge-blue">{{ e.grading_period or 'None' }}</span></td>
+                        <td><span class="badge badge-blue">{{ PERIOD_LABELS.get(e.grading_period, e.grading_period) }}</span></td>
                         <td>{{ e.duration_mins }} min</td>
                         <td>
                             {% if e.scheduled_start %}

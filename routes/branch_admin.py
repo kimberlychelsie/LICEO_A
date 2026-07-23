@@ -1040,7 +1040,7 @@ def branch_admin_academic_calendar():
             action = request.form.get("action")
 
             if action == "save_ranges":
-                periods = ["1st", "2nd", "3rd", "4th"]
+                periods = ["1st", "2nd", "3rd"]
                 try:
                     for p in periods:
                         start_d_str = request.form.get(f"{p}_start")
@@ -1051,7 +1051,8 @@ def branch_admin_academic_calendar():
                             s_dt = datetime.strptime(start_d_str, '%Y-%m-%d')
                             e_dt = datetime.strptime(end_d_str, '%Y-%m-%d')
                             if (e_dt - s_dt).days < 45:
-                                flash(f"For {p} Grading: Period must be at least 45 days (1.5 months).", "error")
+                                period_labels = {"1st": "1st Term", "2nd": "2nd Term", "3rd": "3rd Term"}
+                                flash(f"For {period_labels.get(p, p)}: Period must be at least 45 days (1.5 months).", "error")
                                 continue
 
                             cur.execute("""

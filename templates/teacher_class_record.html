@@ -556,7 +556,7 @@
     <div class="period-tabs">
         {% for p in grading_periods %}
         <a href="{{ url_for('teacher.class_record', section_id=section_id, subject_id=subject_id, period=p) }}"
-            class="ptab {% if p == period %}active{% endif %}">{{ p }} Grading</a>
+            class="ptab {% if p == period %}active{% endif %}">{{ PERIOD_LABELS.get(p, p) }}</a>
         {% endfor %}
     </div>
 
@@ -579,7 +579,7 @@
                 <div class="comp-weight comp-pt">{{ weights.activity_pct | int }}%</div>
             </div>
             <div class="deped-comp-card">
-                <div class="comp-label">Quarterly Assessment (QA)</div>
+                <div class="comp-label">Term Assessment (TA)</div>
                 <div class="comp-source">← Periodical Exam scores</div>
                 <div class="comp-weight comp-qa">{{ weights.exam_pct | int }}%</div>
             </div>
@@ -589,7 +589,7 @@
             <strong>Grade computation:</strong>
             <strong>Quiz + Monthly Exam</strong> → Written Works &nbsp;|&nbsp;
             <strong>Activity + Participation + Attendance</strong> → Performance Tasks &nbsp;|&nbsp;
-            <strong>Periodical Exam</strong> → Quarterly Assessment.
+            <strong>Periodical Exam</strong> → Term Assessment.
             Percentages are <strong>auto-set</strong> by subject type — no manual setup needed.
         </div>
 
@@ -620,14 +620,14 @@
                     <th class="th-qa">
                         <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                            Quarterly Assessment
+                            Term Assessment
                         </div>
                         <small>Periodical Exam · {{ weights.exam_pct | int }}%</small>
                     </th>
                     <th>
                         <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
-                            Quarterly Grade
+                            Term Grade
                         </div>
                     </th>
                     <th>

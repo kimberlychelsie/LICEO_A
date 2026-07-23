@@ -57,10 +57,9 @@
         .filter-tab.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
     </style>
     <div class="filter-tabs">
-        <div class="filter-tab active" onclick="filterQuizzes('1st', this)">1st Grading</div>
-        <div class="filter-tab" onclick="filterQuizzes('2nd', this)">2nd Grading</div>
-        <div class="filter-tab" onclick="filterQuizzes('3rd', this)">3rd Grading</div>
-        <div class="filter-tab" onclick="filterQuizzes('4th', this)">4th Grading</div>
+        <div class="filter-tab active" onclick="filterQuizzes('1st', this)">1st Term</div>
+        <div class="filter-tab" onclick="filterQuizzes('2nd', this)">2nd Term</div>
+        <div class="filter-tab" onclick="filterQuizzes('3rd', this)">3rd Term</div>
     </div>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -87,7 +86,7 @@
                 <td><strong>{{ q.title }}</strong></td>
                 <td>{{ q.subject_name }}</td>
                 <td>{{ q.grade_level_name }} - {{ q.section_name }}</td>
-                <td><span class="badge" style="background:#f3f0ff; color:#7c3aed;">{{ q.grading_period or 'None' }}</span></td>
+                <td><span class="badge" style="background:#f3f0ff; color:#7c3aed;">{{ PERIOD_LABELS.get(q.grading_period, q.grading_period) }}</span></td>
                 <td>{{ q.duration_mins }} min</td>
                 <td>
                     {% if q.scheduled_start %}

@@ -297,8 +297,8 @@
                         <i class="fas fa-magic" style="color: #3b82f6;"></i>
                         {% set p = selected_period or '' %}
                         {% if p %}
-                        <span>Set to <b>{{ p }} Grading</b> <small style="font-weight:normal; margin-left:4px;">(Locked
-                                to selected grading period)</small></span>
+                        <span>Set to <b>{{ PERIOD_LABELS.get(p, p) }}</b> <small style="font-weight:normal; margin-left:4px;">(Locked
+                                to selected term)</small></span>
                         {% else %}
                         <span>Automatically assigned based on the <b>Scheduled Start</b> date.</span>
                         {% endif %}
@@ -306,7 +306,7 @@
                     <input type="hidden" name="grading_period" value="{{ selected_period or '' }}">
                     {% if p and p not in unlocked_periods %}
                     <small style="display:block; margin-top:6px; color:#b45309; font-weight:600;">
-                        {{ p }} Grading is not open yet based on Admin calendar.
+                        {{ PERIOD_LABELS.get(p, p) }} is not open yet based on Admin calendar.
                     </small>
                     {% endif %}
                 </div>

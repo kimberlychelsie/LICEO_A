@@ -370,11 +370,10 @@
                 <form method="POST" id="grading-form">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="action" value="save_ranges">
-                    {% for p in ['1st', '2nd', '3rd', '4th'] %}
+                    {% for p in ['1st', '2nd', '3rd'] %}
                     <div
                         style="margin-bottom: 24px; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
-                        <h3 style="margin: 0 0 12px 0; font-size: 0.95rem; font-weight: 800; color: #1a3a8f;">{{ p }}
-                            Grading</h3>
+                        <h3 style="margin: 0 0 12px 0; font-size: 0.95rem; font-weight: 800; color: #1a3a8f;">{{ PERIOD_LABELS[p] }}</h3>
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                             <div class="form-node">
                                 <label>Start Date</label>
@@ -449,7 +448,7 @@
 
         // ── Validate hidden inputs before grading form submit ───────────────────
         document.getElementById('grading-form').addEventListener('submit', function (e) {
-            const periods = ['1st', '2nd', '3rd', '4th'];
+        const periods = ['1st', '2nd', '3rd'];
             for (const p of periods) {
                 const start = document.getElementById(p + '_start_val').value;
                 const end = document.getElementById(p + '_end_val').value;
@@ -468,7 +467,7 @@
 
                 if (dEnd < minEnd) {
                     e.preventDefault();
-                    alert('For ' + p + ' Grading: The period must be at least 1.5 months long.');
+                    alert('For ' + (PERIOD_LABELS ? PERIOD_LABELS[p] : p) + ': The period must be at least 1.5 months long.');
                     return;
                 }
             }

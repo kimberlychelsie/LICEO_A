@@ -3304,7 +3304,14 @@ def teacher_exam_reset(exam_id, enrollment_id):
 # GRADING PERIOD SYSTEM — TEACHER
 # ══════════════════════════════════════════════════════════════
 
-GRADING_PERIODS = ["1st", "2nd", "3rd", "4th"]
+GRADING_PERIODS = ["1st", "2nd", "3rd"]
+
+# Display labels for grading periods (new DepEd term-based system)
+PERIOD_LABELS = {
+    "1st": "1st Term",
+    "2nd": "2nd Term",
+    "3rd": "3rd Term",
+}
 
 # DepEd Order No. 8, s. 2015 — Fixed weights per subject category
 # Quiz -> Written Works (WW)
@@ -3766,8 +3773,8 @@ def class_record_export(section_id, subject_id):
                 "Student Name": r.get("student_name"),
                 "Written Works (WW)": r.get("quiz"),
                 "Performance Tasks (PT)": r.get("pt_score"),
-                "Quarterly Assessment (QA)": r.get("exam"),
-                "Quarterly Grade (Transmuted)": r.get("transmuted_grade"),
+                "Term Assessment (TA)": r.get("exam"),
+                "Term Grade (Transmuted)": r.get("transmuted_grade"),
                 "Remarks": remarks,
             })
             detail_rows.append({
@@ -3786,7 +3793,7 @@ def class_record_export(section_id, subject_id):
                 "QA Weight %": weights.get("exam_pct"),
                 "Subject": context.get("subject_name"),
                 "Section": f"{context.get('grade_level_name')} - {context.get('section_name')}",
-                "Period": f"{period} Grading",
+                "Period": PERIOD_LABELS.get(period, period),
             })
 
         filename_base = f"class_record_{context.get('subject_name','subject')}_{context.get('section_name','section')}_{period}grading".replace(" ", "_")
