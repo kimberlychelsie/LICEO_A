@@ -921,7 +921,23 @@ def branch_admin_delete_student_account(account_id):
         
         if res:
             enrollment_id = res[0]
-            # Deleting the enrollment will also cascade to submissions/results once we add the DB constraints
+            
+            # Explicitly delete child records because CASCADE might fail due to DB permissions
+            tables_to_clear = [
+                'attendance_scores', 'book_releases', 'payments', 'individual_extensions', 
+                'billing', 'daily_participation', 'finalized_grades', 'daily_attendance', 
+                'exam_student_permissions', 'exam_results', 'participation_scores', 
+                'activity_submissions', 'enrollment_books', 'enrollment_documents', 
+                'enrollment_uniforms', 'enrollment_history', 'posted_grades', 'extensions', 'reservations'
+            ]
+            for t in tables_to_clear:
+                try:
+                    # using psycopg2 with simple string formatting since table name can't be parameterized
+                    cursor.execute(f"DELETE FROM {t} WHERE enrollment_id=%s", (enrollment_id,))
+                except Exception:
+                    pass
+            
+            # Now safe to delete the enrollment record
             cursor.execute("DELETE FROM enrollments WHERE enrollment_id=%s", (enrollment_id,))
             
         db.commit()
