@@ -3696,7 +3696,8 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
 
 @teacher_bp.route("/teacher/class-record/<int:section_id>/<int:subject_id>")
 def class_record(section_id, subject_id):
-    if not _require_teacher():
+    role = session.get("role")
+    if role not in ["teacher", "registrar", "branch_admin", "super_admin"]:
         return redirect("/")
 
     user_id   = session.get("user_id")
@@ -3711,17 +3712,18 @@ def class_record(section_id, subject_id):
         year_id = _get_active_school_year(cur, branch_id)
         if not year_id:
             flash("No active school year.", "error")
-            return redirect(url_for("teacher.teacher_dashboard"))
+            return redirect("/")
 
-        # Owner check, for this year:
-        cur.execute("""
-            SELECT 1 FROM section_teachers st
-            JOIN sections s ON st.section_id = s.section_id
-            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s AND s.year_id=%s
-        """, (user_id, section_id, subject_id, year_id))
-        if not cur.fetchone():
-            flash("Unauthorized or assignment not found.", "error")
-            return redirect(url_for("teacher.teacher_dashboard"))
+        # Owner check ONLY for teachers:
+        if role == "teacher":
+            cur.execute("""
+                SELECT 1 FROM section_teachers st
+                JOIN sections s ON st.section_id = s.section_id
+                WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s AND s.year_id=%s
+            """, (user_id, section_id, subject_id, year_id))
+            if not cur.fetchone():
+                flash("Unauthorized or assignment not found.", "error")
+                return redirect(url_for("teacher.teacher_dashboard"))
 
         # Section/subject context (with year check)
         cur.execute("""
