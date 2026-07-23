@@ -88,7 +88,7 @@
         box-shadow: 0 6px 18px rgba(239, 68, 68, 0.45);
     }
 
-    /* DepEd Component Weights */
+    /* DepEd Component Weights Banner */
     .deped-banner {
         background: #ffffff;
         border: 1px solid #e2e8f0;
@@ -110,12 +110,13 @@
         border-radius: 14px;
         padding: 14px 20px;
         flex: 1;
-        min-width: 160px;
+        min-width: 180px;
         text-align: center;
     }
 
-    .comp-label { font-size: 0.72rem; color: #64748b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
-    .comp-weight { font-size: 1.6rem; font-weight: 900; margin-top: 4px; }
+    .comp-label { font-size: 0.74rem; color: #475569; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
+    .comp-source { font-size: 0.72rem; color: #94a3b8; margin-top: 2px; font-weight: 600; }
+    .comp-weight { font-size: 1.7rem; font-weight: 900; margin-top: 6px; }
     .comp-ww { color: #2563eb; }
     .comp-pt { color: #16a34a; }
     .comp-qa { color: #d97706; }
@@ -232,25 +233,26 @@
         </div>
     </div>
 
-    <!-- DepEd Component Weights -->
-    {% if weights %}
+    <!-- DepEd Component Weights Banner -->
     <div class="deped-banner">
         <div class="deped-components">
             <div class="deped-comp-card">
                 <div class="comp-label">Written Works (WW)</div>
-                <div class="comp-weight comp-ww">{{ weights.quiz_pct | int }}%</div>
+                <div class="comp-source">← Quiz + Monthly Exam scores</div>
+                <div class="comp-weight comp-ww">{{ (weights.quiz_pct if weights else 30) | int }}%</div>
             </div>
             <div class="deped-comp-card">
                 <div class="comp-label">Performance Tasks (PT)</div>
-                <div class="comp-weight comp-pt">{{ weights.activity_pct | int }}%</div>
+                <div class="comp-source">← Activities + Participation + Attendance</div>
+                <div class="comp-weight comp-pt">{{ (weights.activity_pct if weights else 50) | int }}%</div>
             </div>
             <div class="deped-comp-card">
                 <div class="comp-label">Term Assessment (TA)</div>
-                <div class="comp-weight comp-qa">{{ weights.exam_pct | int }}%</div>
+                <div class="comp-source">← Periodical Exam scores</div>
+                <div class="comp-weight comp-qa">{{ (weights.exam_pct if weights else 20) | int }}%</div>
             </div>
         </div>
     </div>
-    {% endif %}
 
     <!-- Student Grades Table -->
     <div class="cr-table-wrap">
@@ -259,9 +261,9 @@
             <thead>
                 <tr>
                     <th style="text-align:left;">Student</th>
-                    <th>Written Works ({{ weights.quiz_pct | int }}%)</th>
-                    <th>Performance Tasks ({{ weights.activity_pct | int }}%)</th>
-                    <th>Term Assessment ({{ weights.exam_pct | int }}%)</th>
+                    <th>Written Works ({{ (weights.quiz_pct if weights else 30) | int }}%)</th>
+                    <th>Performance Tasks ({{ (weights.activity_pct if weights else 50) | int }}%)</th>
+                    <th>Term Assessment ({{ (weights.exam_pct if weights else 20) | int }}%)</th>
                     <th>Term Grade</th>
                 </tr>
             </thead>
