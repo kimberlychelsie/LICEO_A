@@ -4008,3 +4008,44 @@ def registrar_reject_grade_request(req_id):
         db.close()
     return redirect(request.referrer or url_for("registrar.registrar_grade_review"))
 
+
+@registrar_bp.route("/registrar/grade-review/<int:req_id>/class-record")
+def registrar_view_class_record(req_id):
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT r.*, s.section_name, g.name AS grade_level_name, sub.name AS subject_name,
+                   u.full_name AS teacher_name
+            FROM grade_submission_requests r
+            JOIN sections s ON r.section_id = s.section_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            JOIN subjects sub ON r.subject_id = sub.subject_id
+            LEFT JOIN users u ON r.submitted_by = u.user_id
+            WHERE r.id = %s AND r.branch_id = %s
+        """, (req_id, branch_id))
+        req_info = cur.fetchone()
+        if not req_info:
+            flash("Grade submission request not found.", "error")
+            return redirect(url_for("registrar.registrar_grade_review"))
+
+        from routes.teacher import _compute_period_grades
+        _, weights, records = _compute_period_grades(
+            cur, req_info['submitted_by'], branch_id,
+            req_info['section_id'], req_info['subject_id'],
+            req_info['grading_period'], req_info['year_id']
+        )
+
+        return render_template("registrar_class_record_review.html",
+            req_info=req_info,
+            weights=weights,
+            records=records
+        )
+    finally:
+        cur.close()
+        db.close()
+

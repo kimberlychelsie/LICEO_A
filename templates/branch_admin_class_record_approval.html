@@ -1,0 +1,296 @@
+{% extends "base.html" %}
+{% block title %}Approve Class Record — {{ req_info.subject_name }}{% endblock %}
+
+{% block styles %}
+<style>
+    .cr-wrap { max-width: 1240px; margin: 0 auto; padding-bottom: 48px; }
+
+    .cr-hero {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #334155 100%);
+        border-radius: 20px;
+        padding: 28px 32px;
+        color: #fff;
+        margin-bottom: 24px;
+        box-shadow: 0 8px 24px rgba(15,23,42,0.25);
+    }
+
+    .cr-hero-inner {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .cr-hero-title {
+        font-size: 1.6rem;
+        font-weight: 900;
+        margin: 0 0 6px;
+        letter-spacing: -0.02em;
+    }
+
+    .cr-hero-sub {
+        font-size: 0.9rem;
+        color: rgba(255,255,255,0.85);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .cr-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 9px 16px;
+        border-radius: 10px;
+        font-size: 0.86rem;
+        font-weight: 700;
+        cursor: pointer;
+        text-decoration: none;
+        border: none;
+        transition: all 0.18s;
+        white-space: nowrap;
+    }
+
+    .cr-btn-ghost {
+        background: rgba(255,255,255,0.15);
+        color: #fff;
+        border: 1.5px solid rgba(255,255,255,0.25);
+    }
+    .cr-btn-ghost:hover { background: rgba(255,255,255,0.25); }
+
+    .cr-btn-approve { background: #16a34a; color: #fff; }
+    .cr-btn-approve:hover { background: #15803d; }
+    .cr-btn-reject { background: #ef4444; color: #fff; }
+    .cr-btn-reject:hover { background: #dc2626; }
+
+    /* DepEd components */
+    .deped-banner {
+        background: #f8fafc;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 20px 24px;
+        margin-bottom: 24px;
+    }
+    .deped-components {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .deped-comp-card {
+        background: #fff;
+        border: 1.5px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 12px 18px;
+        flex: 1;
+        min-width: 160px;
+        text-align: center;
+    }
+    .comp-label { font-size: 0.72rem; color: #64748b; font-weight: 800; text-transform: uppercase; }
+    .comp-weight { font-size: 1.5rem; font-weight: 900; margin-top: 4px; }
+    .comp-ww { color: #2563eb; }
+    .comp-pt { color: #16a34a; }
+    .comp-qa { color: #d97706; }
+
+    /* Table */
+    .cr-table-wrap {
+        border-radius: 16px;
+        border: 1px solid #e2e8f0;
+        background: #fff;
+        overflow-x: auto;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+    }
+    table.cr-table { width: 100%; border-collapse: collapse; font-size: 0.9rem; min-width: 680px; }
+    table.cr-table th {
+        background: #f8fafc;
+        padding: 14px 16px;
+        text-align: center;
+        font-weight: 800;
+        font-size: 0.76rem;
+        color: #1e3a8a;
+        text-transform: uppercase;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    table.cr-table td {
+        padding: 14px 16px;
+        border-bottom: 1px solid #f1f5f9;
+        text-align: center;
+        vertical-align: middle;
+    }
+    table.cr-table td:first-child { text-align: left; }
+
+    .grade-pill {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 60px;
+        padding: 4px 12px;
+        border-radius: 99px;
+        font-weight: 800;
+        font-size: 0.9rem;
+    }
+    .grade-pass { background: #dcfce7; color: #166534; }
+    .grade-fail { background: #fee2e2; color: #991b1b; }
+
+    .edited-chip {
+        display: inline-flex;
+        font-size: 0.65rem;
+        font-weight: 800;
+        padding: 2px 6px;
+        border-radius: 99px;
+        background: #ffedd5;
+        color: #c2410c;
+        border: 1px solid #fdba74;
+        margin-left: 4px;
+    }
+
+    /* Modal for Reject */
+    .reject-modal-overlay {
+        position: fixed; inset: 0; background: rgba(15,23,42,0.6);
+        display: none; align-items: center; justify-content: center; z-index: 2000;
+        backdrop-filter: blur(4px);
+    }
+    .reject-modal-overlay.show { display: flex; }
+    .reject-modal {
+        background: #fff; width: min(480px, 92vw); border-radius: 16px;
+        padding: 24px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cr-wrap">
+    <!-- Hero Header -->
+    <div class="cr-hero">
+        <div class="cr-hero-inner">
+            <div>
+                <h1 class="cr-hero-title">Approve Class Record</h1>
+                <p class="cr-hero-sub">
+                    <span>{{ req_info.subject_name }}</span> · 
+                    <span>{{ req_info.grade_level_name }} — {{ req_info.section_name }}</span> · 
+                    <span><strong>{{ req_info.grading_period }} Term</strong></span> · 
+                    <span>Teacher: {{ req_info.teacher_name or 'Teacher' }}</span> · 
+                    <span>Verified by Registrar: {{ req_info.registrar_name or 'Registrar' }}</span>
+                </p>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <a href="{{ url_for('branch_admin.branch_admin_grade_approval') }}" class="cr-btn cr-btn-ghost">
+                    ← Back to Grade Approval
+                </a>
+
+                {% if req_info.status == 'pending_admin' %}
+                <form action="{{ url_for('branch_admin.branch_admin_approve_grade_request', req_id=req_info.id) }}" method="POST" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="cr-btn cr-btn-approve" onclick="return confirm('Approve this class record for posting? The teacher will now be able to publish the grades.');">
+                        Approve for Posting
+                    </button>
+                </form>
+                <button type="button" class="cr-btn cr-btn-reject" onclick="openRejectModal()">
+                    Reject
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- DepEd Component Weights -->
+    {% if weights %}
+    <div class="deped-banner">
+        <div class="deped-components">
+            <div class="deped-comp-card">
+                <div class="comp-label">Written Works (WW)</div>
+                <div class="comp-weight comp-ww">{{ weights.quiz_pct | int }}%</div>
+            </div>
+            <div class="deped-comp-card">
+                <div class="comp-label">Performance Tasks (PT)</div>
+                <div class="comp-weight comp-pt">{{ weights.activity_pct | int }}%</div>
+            </div>
+            <div class="deped-comp-card">
+                <div class="comp-label">Term Assessment (TA)</div>
+                <div class="comp-weight comp-qa">{{ weights.exam_pct | int }}%</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Student Grades Table -->
+    <div class="cr-table-wrap">
+        {% if records %}
+        <table class="cr-table">
+            <thead>
+                <tr>
+                    <th style="text-align:left;">Student</th>
+                    <th>Written Works ({{ weights.quiz_pct | int }}%)</th>
+                    <th>Performance Tasks ({{ weights.activity_pct | int }}%)</th>
+                    <th>Term Assessment ({{ weights.exam_pct | int }}%)</th>
+                    <th>Term Grade</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr>
+                    <td style="font-weight:700; color:#0f172a;">
+                        {{ loop.index }}. {{ r.student_name }}
+                    </td>
+                    <td>
+                        <span style="font-weight:800; color:#1d4ed8;">{{ "%0.1f" | format(r.quiz | float) }}</span>
+                        {% if r.ww_overridden %}<span class="edited-chip">Edited</span>{% endif %}
+                    </td>
+                    <td>
+                        <span style="font-weight:800; color:#15803d;">{{ "%0.1f" | format(r.pt_score | float) }}</span>
+                        {% if r.pt_overridden %}<span class="edited-chip">Edited</span>{% endif %}
+                        <div style="font-size:0.72rem; color:#94a3b8; margin-top:2px;">
+                            {% if r.has_activity %}Act: {{ "%0.1f" | format(r.activity|float) }}{% endif %}
+                            {% if r.has_participation %} · Par: {{ r.participation | int }}/10{% endif %}
+                            {% if r.has_attendance %} · Att: {{ r.attendance | int }}/10{% endif %}
+                        </div>
+                    </td>
+                    <td>
+                        <span style="font-weight:800; color:#b45309;">{{ "%0.1f" | format(r.exam | float) }}</span>
+                        {% if r.qa_overridden %}<span class="edited-chip">Edited</span>{% endif %}
+                    </td>
+                    <td>
+                        {% if r.transmuted_grade is not none %}
+                        <span class="grade-pill {% if r.transmuted_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}">
+                            {{ "%0.2f" | format(r.transmuted_grade | float) }}
+                        </span>
+                        {% else %}
+                        <span style="color:#94a3b8; font-style:italic;">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div style="padding: 40px; text-align: center; color: #64748b;">
+            <p>No students enrolled in this section.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Reject Modal -->
+<div id="rejectModal" class="reject-modal-overlay">
+    <div class="reject-modal">
+        <h3 style="margin:0 0 8px; font-weight:800; color:#0f172a;">Return to Teacher</h3>
+        <p style="font-size:0.86rem; color:#64748b; margin-bottom:16px;">Please enter the reason for returning this class record to the teacher for correction.</p>
+        <form action="{{ url_for('branch_admin.branch_admin_reject_grade_request', req_id=req_info.id) }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="margin-bottom:18px;">
+                <textarea name="rejection_remarks" style="width:100%; height:96px; padding:12px; border-radius:10px; border:1.5px solid #cbd5e1; font-family:inherit; font-size:0.88rem; outline:none;" placeholder="Enter reason for rejection..." required></textarea>
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:10px;">
+                <button type="button" onclick="closeRejectModal()" style="padding:9px 16px; border-radius:9px; border:1px solid #cbd5e1; background:#fff; font-weight:700; cursor:pointer;">Cancel</button>
+                <button type="submit" style="padding:9px 16px; border-radius:9px; border:none; background:#ef4444; color:#fff; font-weight:800; cursor:pointer;">Return to Teacher</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openRejectModal() { document.getElementById("rejectModal").classList.add("show"); }
+function closeRejectModal() { document.getElementById("rejectModal").classList.remove("show"); }
+</script>
+{% endblock %}
