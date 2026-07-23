@@ -3668,8 +3668,9 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
             2
         )
 
-        transmuted_grade = _get_deped_transmuted_grade(period_grade)
-        transmutation_band = _get_transmutation_band(period_grade)
+        has_ww_score = (eid in quiz_scores) or bool(ww_overridden)
+        has_pt_score = has_activity or has_participation or has_attendance or bool(pt_overridden)
+        has_qa_score = (eid in exam_scores) or bool(qa_overridden)
 
         records.append({
             'enrollment_id':   eid,
@@ -3681,6 +3682,9 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
             'has_activity':    has_activity,
             'has_participation': has_participation,
             'has_attendance':  has_attendance,
+            'has_ww_score':    has_ww_score,
+            'has_pt_score':    has_pt_score,
+            'has_qa_score':    has_qa_score,
             'pt_score':        round(pt_score, 2),          # Combined PT (0-100)
             'exam':            round(qa_score, 2),          # QA (Periodical Exam)
             'period_grade':    period_grade,
@@ -4110,6 +4114,30 @@ def teacher_submit_grades(section_id, subject_id, period):
         if not cur.fetchone():
             flash("Unauthorized.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
+
+        # Verify all 3 DepEd grade components (WW, PT, QA) are present before submitting
+        students, weights, records = _compute_period_grades(
+            cur, user_id, branch_id, section_id, subject_id, period, year_id
+        )
+
+        if not records:
+            flash("Cannot submit class record: No enrolled students found in this section.", "error")
+            return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
+
+        missing_components = []
+        for r in records:
+            if not r.get('has_ww_score'):
+                missing_components.append("Written Works (WW)")
+            if not r.get('has_pt_score'):
+                missing_components.append("Performance Tasks (PT)")
+            if not r.get('has_qa_score'):
+                missing_components.append("Term Assessment (QA)")
+
+        if missing_components:
+            unique_missing = list(dict.fromkeys(missing_components))
+            missing_str = ", ".join(unique_missing)
+            flash(f"Cannot submit to Registrar: Missing grades for {missing_str}. All 3 DepEd components (WW, PT, and QA) must have scores or manual overrides before submitting.", "error")
+            return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
 
         cur.execute("""
             INSERT INTO grade_submission_requests
