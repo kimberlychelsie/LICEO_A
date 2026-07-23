@@ -3668,6 +3668,9 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
             2
         )
 
+        transmuted_grade = _get_deped_transmuted_grade(period_grade)
+        transmutation_band = _get_transmutation_band(period_grade)
+
         has_ww_score = (eid in quiz_scores) or bool(ww_overridden)
         has_pt_score = has_activity or has_participation or has_attendance or bool(pt_overridden)
         has_qa_score = (eid in exam_scores) or bool(qa_overridden)
