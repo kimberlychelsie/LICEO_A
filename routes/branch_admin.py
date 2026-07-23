@@ -687,7 +687,7 @@ def branch_admin_manage_accounts():
         if role_filter == "student":
             query = """
                 SELECT 
-                    sa.account_id, sa.username, 'student' AS role, e.student_name AS full_name,
+                    sa.account_id, sa.username, 'student' AS role, CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name) AS full_name,
                     e.gender, e.grade_level, sa.is_active, sa.email, e.enrollment_id,
                     s.section_name
                 FROM student_accounts sa
@@ -703,8 +703,8 @@ def branch_admin_manage_accounts():
                 query += " AND e.section_id = %s"
                 params.append(int(filter_section))
             if filter_search:
-                query += " AND (sa.username ILIKE %s OR e.student_name ILIKE %s)"
-                params.extend([f"%{filter_search}%", f"%{filter_search}%"])
+                query += " AND (sa.username ILIKE %s OR e.student_first_name ILIKE %s OR e.student_last_name ILIKE %s)"
+                params.extend([f"%{filter_search}%", f"%{filter_search}%", f"%{filter_search}%"])
             cursor.execute(query, tuple(params))
         elif role_filter == "teacher" and view_mode == "grouped":
             # Categorized by Section logic: One row per teacher-section pairing
@@ -866,15 +866,18 @@ def branch_admin_edit_student_account(account_id):
             grade_level = request.form.get("grade_level")
             cursor.execute("UPDATE student_accounts SET email=%s WHERE account_id=%s AND branch_id=%s", 
                            (email, account_id, session.get("branch_id")))
+            parts = full_name.split(" ", 1)
+            fname = parts[0]
+            lname = parts[1] if len(parts) > 1 else ""
             cursor.execute("""
-                UPDATE enrollments SET student_name=%s, gender=%s, grade_level=%s
+                UPDATE enrollments SET student_first_name=%s, student_last_name=%s, gender=%s, grade_level=%s
                 WHERE enrollment_id = (SELECT enrollment_id FROM student_accounts WHERE account_id=%s)
-            """, (full_name, gender, grade_level, account_id))
+            """, (fname, lname, gender, grade_level, account_id))
             db.commit()
             flash("Student account updated successfully.", "success")
             return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts", role='student'))
         cursor.execute("""
-            SELECT sa.*, e.student_name AS full_name, e.gender, e.grade_level
+            SELECT sa.*, CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name) AS full_name, e.gender, e.grade_level
             FROM student_accounts sa
             JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
             WHERE sa.account_id=%s AND sa.branch_id=%s
@@ -948,7 +951,7 @@ def get_filtered_accounts_api():
         if role == "student":
             query = """
                 SELECT 
-                    sa.account_id, sa.username, 'student' AS role, e.student_name AS full_name,
+                    sa.account_id, sa.username, 'student' AS role, CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name) AS full_name,
                     e.gender, e.grade_level, sa.is_active, sa.email, e.enrollment_id,
                     s.section_name
                 FROM student_accounts sa
@@ -964,7 +967,7 @@ def get_filtered_accounts_api():
                 query += " AND e.section_id = %s"
                 params.append(int(section))
             
-            query += " ORDER BY e.student_name ASC"
+            query += " ORDER BY e.student_last_name ASC, e.student_first_name ASC"
             cursor.execute(query, tuple(params))
         else:
             query = """
