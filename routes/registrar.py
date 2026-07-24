@@ -668,7 +668,14 @@ def registrar_documents():
 
         # Grade levels for filter
         cursor.execute("SELECT name FROM grade_levels WHERE branch_id=%s ORDER BY display_order", (branch_id,))
-        grade_levels = [r["name"] for r in cursor.fetchall()]
+        raw_grades = [r["name"] for r in cursor.fetchall()]
+        grade_levels = []
+        for g in raw_grades:
+            if g not in grade_levels:
+                grade_levels.append(g)
+
+        if not grade_f and grade_levels:
+            grade_f = "Nursery" if "Nursery" in grade_levels else grade_levels[0]
 
         # All distinct doc_types for this branch
         cursor.execute("""
