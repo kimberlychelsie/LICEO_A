@@ -646,67 +646,6 @@
             font-size: 0.75rem;
         }
 
-        /* Table to Card Transformation */
-        .health-table {
-            min-width: 0;
-        }
-
-        .health-table thead {
-            display: none;
-        }
-
-        .health-table,
-        .health-table tbody,
-        .health-table tr,
-        .health-table td {
-            display: block;
-            width: 100%;
-        }
-
-        .health-table tr {
-            margin-bottom: 16px;
-            border: 1px solid #f1f5f9;
-            border-radius: 16px;
-            padding: 16px;
-            background: #fff;
-        }
-
-        .health-table td {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 0;
-            border: none;
-        }
-
-        .health-table td::before {
-            content: attr(data-label);
-            font-weight: 800;
-            color: var(--ma-primary);
-            font-size: 0.7rem;
-            text-transform: uppercase;
-        }
-
-        .health-table td:first-child {
-            border-bottom: 1px solid #f1f5f9;
-            margin-bottom: 8px;
-            padding-bottom: 12px;
-        }
-
-        .health-table td:first-child::before {
-            display: none;
-        }
-
-        .health-table td:last-child {
-            margin-top: 8px;
-            padding-top: 8px;
-            border-top: 1px solid #f1f5f9;
-            justify-content: flex-end;
-        }
-
-        .health-table td:last-child::before {
-            display: none;
-        }
     }
 
     @media (max-width: 480px) {
@@ -1015,9 +954,12 @@
                         <th>Available</th>
                         <th>Status</th>
                         <th style="min-width: 200px;">Actions</th>
-                        {% for item in items %}
-                        {% set item_available = (item[7] or 0) - (item[8] or 0) %}
-                        {% set grade_display = item[11] if item[11] else (item[3] or 'All') %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    {% set item_available = (item[7] or 0) - (item[8] or 0) %}
+                    {% set grade_display = item[11] if item[11] else (item[3] or 'All') %}
                     <tr>
                         <td data-label="Item Details">
                             <div style="display: flex; align-items: center; gap: 16px;">
