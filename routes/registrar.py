@@ -708,9 +708,9 @@ def registrar_documents():
         """
         params = [branch_id]
 
-        if year_f:
+        if year_f and str(year_f).isdigit():
             sql += " AND e.year_id = %s"
-            params.append(year_f)
+            params.append(int(year_f))
 
         if search_q:
             sql += """ AND (
@@ -1540,9 +1540,16 @@ def registrar_students_by_grade():
         # Determine the active year id or fallback
         active_year_id = None
         for sy in school_years:
-            if sy["is_active"]:
+            if sy.get("is_active"):
                 active_year_id = sy["year_id"]
                 break
+        if not active_year_id and school_years:
+            active_year_id = school_years[0]["year_id"]
+
+        if year_filter and str(year_filter).isdigit():
+            year_filter = int(year_filter)
+        else:
+            year_filter = active_year_id
         
         cursor.execute("SELECT name FROM grade_levels WHERE name NOT IN ('Grade 11', 'Grade 12') ORDER BY id ASC")
         raw_grades = [row["name"] for row in cursor.fetchall()]
