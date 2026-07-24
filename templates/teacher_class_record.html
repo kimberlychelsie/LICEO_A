@@ -544,60 +544,344 @@
         text-align: center;
     }
 
-    /* ── Transmutation modal ── */
-    .tm-overlay {
+    /* ── Score Details Modal ── */
+    .sd-overlay {
         position: fixed;
         inset: 0;
-        background: rgba(15, 23, 42, 0.55);
+        background: rgba(10, 20, 50, 0.60);
         display: none;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
         z-index: 3000;
-        padding: 20px;
+        padding: 24px 16px;
+        overflow-y: auto;
+        backdrop-filter: blur(3px);
     }
-    .tm-overlay.show { display: flex; }
-    .tm-modal {
-        width: min(760px, 96vw);
+    .sd-overlay.show { display: flex; }
+
+    .sd-modal {
+        width: min(780px, 100%);
         background: #fff;
-        border-radius: 14px;
-        border: 1px solid var(--border);
-        box-shadow: 0 16px 40px rgba(0,0,0,.2);
+        border-radius: 18px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 24px 64px rgba(0,0,0,.22);
         overflow: hidden;
+        margin: auto;
+        animation: sdSlideIn 0.22s ease;
     }
-    .tm-head {
+    @keyframes sdSlideIn {
+        from { opacity: 0; transform: translateY(-18px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .sd-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        padding: 20px 24px 16px;
+        background: linear-gradient(135deg, #0f2a6b 0%, #1a3a8f 60%, #1e50d0 100%);
+        gap: 12px;
+    }
+    .sd-header-left {}
+    .sd-header-title {
+        font-size: 1.15rem;
+        font-weight: 900;
+        color: #fff;
+        margin: 0 0 3px;
+        letter-spacing: -0.01em;
+    }
+    .sd-header-sub {
+        font-size: 0.82rem;
+        color: rgba(255,255,255,0.72);
+        margin: 0;
+    }
+    .sd-close-btn {
+        background: rgba(255,255,255,0.15);
+        border: 1.5px solid rgba(255,255,255,0.25);
+        color: #fff;
+        border-radius: 8px;
+        padding: 6px 14px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background 0.15s;
+        flex-shrink: 0;
+        font-family: 'Inter', sans-serif;
+    }
+    .sd-close-btn:hover { background: rgba(255,255,255,0.28); }
+
+    /* Lock banner */
+    .sd-lock-banner {
+        background: #fffbeb;
+        border-bottom: 1.5px solid #fde68a;
+        padding: 11px 24px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.84rem;
+        color: #78350f;
+        font-weight: 600;
+    }
+    .sd-lock-icon {
+        width: 28px;
+        height: 28px;
+        background: #fef3c7;
+        border: 1.5px solid #fde68a;
+        border-radius: 6px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.9rem;
+        font-weight: 900;
+        color: #b45309;
+        flex-shrink: 0;
+    }
+
+    /* Instruction banner */
+    .sd-instructions {
+        background: #f0f7ff;
+        border-bottom: 1.5px solid #bfdbfe;
+        padding: 14px 24px;
+        font-size: 0.83rem;
+        color: #1e3a8a;
+        line-height: 1.55;
+    }
+    .sd-instructions strong { color: #1e3a8a; }
+    .sd-instructions p { margin: 0; }
+
+    /* Grade summary bar */
+    .sd-grade-bar {
+        display: flex;
+        gap: 0;
+        border-bottom: 1.5px solid #e2e8f0;
+        background: #f8fafc;
+    }
+    .sd-grade-cell {
+        flex: 1;
+        padding: 12px 16px;
+        text-align: center;
+        border-right: 1px solid #e2e8f0;
+    }
+    .sd-grade-cell:last-child { border-right: none; }
+    .sd-grade-label {
+        font-size: 0.68rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #94a3b8;
+        margin-bottom: 4px;
+    }
+    .sd-grade-val {
+        font-size: 1.1rem;
+        font-weight: 900;
+        letter-spacing: -0.02em;
+    }
+    .sd-grade-val.ww-color { color: #1d4ed8; }
+    .sd-grade-val.pt-color { color: #15803d; }
+    .sd-grade-val.qa-color { color: #b45309; }
+    .sd-grade-val.final-color { color: #0f172a; }
+    .sd-grade-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 800;
+    }
+    .sd-grade-badge.pass { background: #dcfce7; color: #166534; }
+    .sd-grade-badge.fail { background: #fee2e2; color: #991b1b; }
+    .sd-grade-badge.pending { background: #f1f5f9; color: #64748b; }
+
+    /* Section group */
+    .sd-section {
+        border-bottom: 1.5px solid #e2e8f0;
+    }
+    .sd-section:last-child { border-bottom: none; }
+    .sd-section-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding: 14px 18px;
+        padding: 13px 24px 10px;
         background: #f8fafc;
-        border-bottom: 1px solid var(--border);
-        font-weight: 800;
+        border-bottom: 1px solid #e2e8f0;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+    .sd-section-title {
+        font-size: 0.82rem;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
         color: #1e3a8a;
     }
-    .tm-body { padding: 16px 18px; }
-    .tm-close {
+    .sd-section-title.ww { color: #1d4ed8; }
+    .sd-section-title.pt { color: #15803d; }
+    .sd-section-title.qa { color: #b45309; }
+    .sd-section-avg {
+        font-size: 0.82rem;
+        color: #475569;
+    }
+    .sd-section-avg strong { color: #0f172a; font-weight: 800; }
+    .sd-section-avg .avg-weight {
+        font-size: 0.74rem;
+        color: #94a3b8;
+        margin-left: 8px;
+    }
+
+    /* Score rows */
+    .sd-score-row {
+        display: flex;
+        align-items: center;
+        padding: 11px 24px;
+        border-bottom: 1px solid #f1f5f9;
+        gap: 14px;
+        flex-wrap: wrap;
+        transition: background 0.12s;
+    }
+    .sd-score-row:last-child { border-bottom: none; }
+    .sd-score-row:hover { background: #fafbff; }
+    .sd-score-name {
+        flex: 1;
+        min-width: 140px;
+        font-size: 0.87rem;
+        font-weight: 600;
+        color: #1e293b;
+    }
+    .sd-score-name .missing-tag {
+        display: inline-block;
+        background: #fef2f2;
+        color: #b91c1c;
+        border: 1px solid #fca5a5;
+        font-size: 0.65rem;
+        font-weight: 800;
+        padding: 1px 7px;
+        border-radius: 99px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-left: 7px;
+        vertical-align: middle;
+    }
+    .sd-score-name .edited-tag {
+        display: inline-block;
+        background: #ffedd5;
+        color: #c2410c;
+        border: 1px solid #fdba74;
+        font-size: 0.65rem;
+        font-weight: 800;
+        padding: 1px 7px;
+        border-radius: 99px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-left: 7px;
+        vertical-align: middle;
+    }
+    .sd-score-display {
+        font-size: 0.92rem;
+        font-weight: 700;
+        color: #334155;
+        min-width: 80px;
+        text-align: right;
+    }
+    .sd-score-display.missing { color: #94a3b8; font-style: italic; }
+    .sd-score-actions {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    .sd-input {
+        width: 80px;
+        padding: 6px 8px;
+        border-radius: 8px;
+        border: 2px solid #2563eb;
+        font-size: 0.9rem;
+        font-weight: 700;
+        text-align: center;
+        background: #fff;
+        outline: none;
+        color: #0f172a;
+        transition: border-color 0.15s, box-shadow 0.15s;
+        font-family: 'Inter', sans-serif;
+    }
+    .sd-input:focus {
+        border-color: #1d4ed8;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.2);
+    }
+    .sd-input:disabled {
+        background: #f1f5f9;
+        border-color: #e2e8f0;
+        color: #94a3b8;
+        cursor: not-allowed;
+    }
+    .sd-input-of {
+        font-size: 0.78rem;
+        color: #94a3b8;
+        white-space: nowrap;
+    }
+    .sd-btn {
+        padding: 6px 13px;
+        border-radius: 8px;
         border: none;
-        background: transparent;
-        font-size: 1.3rem;
-        color: #64748b;
+        font-size: 0.8rem;
+        font-weight: 700;
         cursor: pointer;
+        transition: all 0.14s;
+        font-family: 'Inter', sans-serif;
+        white-space: nowrap;
     }
-    .tm-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(180px, 1fr));
+    .sd-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+    .sd-btn-save { background: #1d4ed8; color: #fff; }
+    .sd-btn-save:hover:not(:disabled) { background: #1e40af; transform: translateY(-1px); }
+    .sd-btn-reset { background: #fff; color: #64748b; border: 1.5px solid #e2e8f0; }
+    .sd-btn-reset:hover:not(:disabled) { background: #f1f5f9; }
+    .sd-saving-msg {
+        font-size: 0.75rem;
+        color: #2563eb;
+        font-weight: 700;
+        display: none;
+    }
+    .sd-err-msg {
+        font-size: 0.75rem;
+        color: #dc2626;
+        font-weight: 700;
+        display: none;
+    }
+
+    /* No-items empty state */
+    .sd-empty-row {
+        padding: 16px 24px;
+        font-size: 0.83rem;
+        color: #94a3b8;
+        font-style: italic;
+    }
+
+    /* Final grade bar at bottom */
+    .sd-final-bar {
+        padding: 16px 24px;
+        background: linear-gradient(135deg, #f0f4ff, #f5f0ff);
+        border-top: 1.5px solid #ddd6fe;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
         gap: 10px;
-        margin-bottom: 12px;
-        font-size: 0.86rem;
     }
-    .tm-item {
-        background: #f8fafc;
-        border: 1px solid var(--border);
-        border-radius: 10px;
-        padding: 8px 10px;
+    .sd-final-label {
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #4c1d95;
     }
-    .tm-label { color: #64748b; font-size: 0.76rem; font-weight: 700; text-transform: uppercase; }
-    .tm-val { color: #0f172a; font-weight: 700; margin-top: 2px; }
-    .tm-note {
+    .sd-final-grade {
+        font-size: 1.6rem;
+        font-weight: 900;
+        color: #1e1b4b;
+        letter-spacing: -0.03em;
+    }
+    .sd-final-note {
+        font-size: 0.78rem;
+        color: #6d28d9;
+        margin-top: 2px;
+    }
+    .sd-note {
         margin-top: 10px;
         background: #eef2ff;
         border: 1px solid #c7d2fe;
@@ -816,7 +1100,7 @@
                         <div class="score-display" onclick="startEdit({{ r.enrollment_id }}, 'ww', this)">
                             <span class="score-value">{{ "%0.1f" | format(r.quiz | float) }}</span>
                             {% if r.ww_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
-                            <span class="edit-pencil">✏️</span>
+
                         </div>
                         <div class="score-editor" id="editor-ww-{{ r.enrollment_id }}">
                             <div class="score-input-row">
@@ -825,8 +1109,8 @@
                                     min="0" max="100" step="0.1"
                                     onkeydown="handleKey(event, {{ r.enrollment_id }}, 'ww')"
                                     oninput="livePreview({{ r.enrollment_id }}, {{ (weights.quiz_pct or 0)|float }}, {{ (weights.activity_pct or 0)|float }}, {{ (weights.exam_pct or 0)|float }})">
-                                <button class="score-btn-save" onclick="saveEdit({{ r.enrollment_id }}, 'ww', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Save">✓</button>
-                                <button class="score-btn-cancel" onclick="cancelEdit({{ r.enrollment_id }}, 'ww')" title="Cancel">✕</button>
+                                <button class="score-btn-save" onclick="saveEdit({{ r.enrollment_id }}, 'ww', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Save">Save</button>
+                                <button class="score-btn-cancel" onclick="cancelEdit({{ r.enrollment_id }}, 'ww')" title="Cancel">Cancel</button>
                                 {% if r.ww_overridden %}
                                 <button class="score-btn-reset" onclick="resetEdit({{ r.enrollment_id }}, 'ww', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Reset to auto-computed">↩</button>
                                 {% endif %}
@@ -840,7 +1124,7 @@
                         <div class="score-display" onclick="startEdit({{ r.enrollment_id }}, 'pt', this)">
                             <span class="score-value">{{ "%0.1f" | format(r.pt_score | float) }}</span>
                             {% if r.pt_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
-                            <span class="edit-pencil">✏️</span>
+
                         </div>
                         <div class="score-editor" id="editor-pt-{{ r.enrollment_id }}">
                             <div class="score-input-row">
@@ -849,8 +1133,8 @@
                                     min="0" max="100" step="0.1"
                                     onkeydown="handleKey(event, {{ r.enrollment_id }}, 'pt')"
                                     oninput="livePreview({{ r.enrollment_id }}, {{ (weights.quiz_pct or 0)|float }}, {{ (weights.activity_pct or 0)|float }}, {{ (weights.exam_pct or 0)|float }})">
-                                <button class="score-btn-save" onclick="saveEdit({{ r.enrollment_id }}, 'pt', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Save">✓</button>
-                                <button class="score-btn-cancel" onclick="cancelEdit({{ r.enrollment_id }}, 'pt')" title="Cancel">✕</button>
+                                <button class="score-btn-save" onclick="saveEdit({{ r.enrollment_id }}, 'pt', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Save">Save</button>
+                                <button class="score-btn-cancel" onclick="cancelEdit({{ r.enrollment_id }}, 'pt')" title="Cancel">Cancel</button>
                                 {% if r.pt_overridden %}
                                 <button class="score-btn-reset" onclick="resetEdit({{ r.enrollment_id }}, 'pt', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Reset to auto-computed">↩</button>
                                 {% endif %}
@@ -869,7 +1153,7 @@
                         <div class="score-display" onclick="startEdit({{ r.enrollment_id }}, 'qa', this)">
                             <span class="score-value">{{ "%0.1f" | format(r.exam | float) }}</span>
                             {% if r.qa_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
-                            <span class="edit-pencil">✏️</span>
+
                         </div>
                         <div class="score-editor" id="editor-qa-{{ r.enrollment_id }}">
                             <div class="score-input-row">
@@ -878,8 +1162,8 @@
                                     min="0" max="100" step="0.1"
                                     onkeydown="handleKey(event, {{ r.enrollment_id }}, 'qa')"
                                     oninput="livePreview({{ r.enrollment_id }}, {{ (weights.quiz_pct or 0)|float }}, {{ (weights.activity_pct or 0)|float }}, {{ (weights.exam_pct or 0)|float }})">
-                                <button class="score-btn-save" onclick="saveEdit({{ r.enrollment_id }}, 'qa', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Save">✓</button>
-                                <button class="score-btn-cancel" onclick="cancelEdit({{ r.enrollment_id }}, 'qa')" title="Cancel">✕</button>
+                                <button class="score-btn-save" onclick="saveEdit({{ r.enrollment_id }}, 'qa', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Save">Save</button>
+                                <button class="score-btn-cancel" onclick="cancelEdit({{ r.enrollment_id }}, 'qa')" title="Cancel">Cancel</button>
                                 {% if r.qa_overridden %}
                                 <button class="score-btn-reset" onclick="resetEdit({{ r.enrollment_id }}, 'qa', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Reset to auto-computed">↩</button>
                                 {% endif %}
@@ -903,22 +1187,12 @@
 
                     <td>
                         <button type="button"
-                            class="cr-btn cr-btn-ghost"
-                            style="padding:6px 10px; font-size:0.78rem; color:#1e3a8a; border-color:#bfdbfe; background:#eff6ff;"
-                            onclick='openTransmutation({
-                                "enrollment_id": {{ r.enrollment_id }},
-                                "student_name": {{ (r.student_name or "")|tojson }},
-                                "ww": {{ (r.quiz or 0)|float }},
-                                "pt": {{ (r.pt_score or 0)|float }},
-                                "qa": {{ (r.exam or 0)|float }},
-                                "initial": {{ (r.period_grade or 0)|float }},
-                                "final": {{ (r.transmuted_grade or 0)|float }},
-                                "band": {{ (r.transmutation_band or "")|tojson }},
-                                "ww_pct": {{ (weights.quiz_pct or 0)|float }},
-                                "pt_pct": {{ (weights.activity_pct or 0)|float }},
-                                "qa_pct": {{ (weights.exam_pct or 0)|float }}
-                            })'>
-                            View
+                            class="cr-btn"
+                            style="padding:7px 14px; font-size:0.8rem; font-weight:700; color:#1e3a8a; border:1.5px solid #bfdbfe; background:#eff6ff; border-radius:10px; cursor:pointer; transition:all 0.15s; font-family:'Inter',sans-serif;"
+                            onmouseover="this.style.background='#dbeafe'; this.style.borderColor='#93c5fd';"
+                            onmouseout="this.style.background='#eff6ff'; this.style.borderColor='#bfdbfe';"
+                            onclick="openScoreDetails({{ r.enrollment_id }}, {{ section_id }}, {{ subject_id }}, '{{ period }}')">
+                            Score Details
                         </button>
                     </td>
                 </tr>
@@ -938,33 +1212,84 @@
 
 </div>
 
-<!-- ── Transmutation Detail Modal ── -->
-<div id="tmOverlay" class="tm-overlay" onclick="closeTransmutation(event)">
-    <div class="tm-modal" onclick="event.stopPropagation()">
-        <div class="tm-head">
-            <span>Student Transmutation Details</span>
-            <button class="tm-close" onclick="closeTransmutation()">&times;</button>
-        </div>
-        <div class="tm-body">
-            <div style="font-weight:800; color:#0f172a; margin-bottom:10px;" id="tmStudent">—</div>
-            <div class="tm-grid">
-                <div class="tm-item"><div class="tm-label">WW Raw</div><div class="tm-val" id="tmWw">0</div></div>
-                <div class="tm-item"><div class="tm-label">WW Weight</div><div class="tm-val" id="tmWwPct">0%</div></div>
-                <div class="tm-item"><div class="tm-label">PT Combined</div><div class="tm-val" id="tmPt">0</div></div>
-                <div class="tm-item"><div class="tm-label">PT Weight</div><div class="tm-val" id="tmPtPct">0%</div></div>
-                <div class="tm-item"><div class="tm-label">QA Raw</div><div class="tm-val" id="tmQa">0</div></div>
-                <div class="tm-item"><div class="tm-label">QA Weight</div><div class="tm-val" id="tmQaPct">0%</div></div>
-                <div class="tm-item"><div class="tm-label">Initial Grade</div><div class="tm-val" id="tmInitial">0</div></div>
-                <div class="tm-item"><div class="tm-label">Transmuted Grade</div><div class="tm-val" id="tmFinal">0</div></div>
-                <div class="tm-item"><div class="tm-label">Transmutation Range</div><div class="tm-val" id="tmBand">—</div></div>
+<!-- ── Score Details Modal ── -->
+<div id="sdOverlay" class="sd-overlay" onclick="sdCloseOnBackdrop(event)">
+    <div class="sd-modal" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="sdModalTitle">
+
+        <!-- Header -->
+        <div class="sd-header">
+            <div class="sd-header-left">
+                <div class="sd-header-title" id="sdModalTitle">Score Details</div>
+                <p class="sd-header-sub" id="sdStudentName">Loading...</p>
             </div>
-            <div class="tm-note" id="tmFormula"></div>
+            <button class="sd-close-btn" onclick="closeScoreDetails()">Close</button>
         </div>
+
+        <!-- Lock notice (shown only when submitted) -->
+        <div class="sd-lock-banner" id="sdLockBanner" style="display:none;">
+            <div class="sd-lock-icon">L</div>
+            <div>
+                <strong>Scores are locked for review.</strong>
+                Editing is disabled because this class record has been submitted.
+                If corrections are needed, ask the Registrar to return it for revision.
+            </div>
+        </div>
+
+        <!-- How-it-works instruction banner -->
+        <div class="sd-instructions">
+            <p>
+                <strong>How this works:</strong>
+                Each quiz, activity, and exam score is shown below.
+                Items marked <span style="color:#b91c1c; font-weight:700;">No Score</span> have not been recorded yet — you may enter a score for them.
+                Existing scores can also be corrected here.
+                After saving a score, the computed averages (Written Works, Performance Tasks, Term Assessment)
+                and the final term grade update automatically.
+            </p>
+        </div>
+
+        <!-- Grade summary strip -->
+        <div class="sd-grade-bar">
+            <div class="sd-grade-cell">
+                <div class="sd-grade-label">Written Works</div>
+                <div class="sd-grade-val ww-color" id="sdWwAvg">—</div>
+            </div>
+            <div class="sd-grade-cell">
+                <div class="sd-grade-label">Performance Tasks</div>
+                <div class="sd-grade-val pt-color" id="sdPtAvg">—</div>
+            </div>
+            <div class="sd-grade-cell">
+                <div class="sd-grade-label">Term Assessment</div>
+                <div class="sd-grade-val qa-color" id="sdQaAvg">—</div>
+            </div>
+            <div class="sd-grade-cell">
+                <div class="sd-grade-label">Term Grade</div>
+                <div id="sdFinalGrade" class="sd-grade-val final-color">—</div>
+            </div>
+        </div>
+
+        <!-- Score sections -->
+        <div id="sdBody">
+            <!-- Filled dynamically by JS -->
+            <div style="padding:40px; text-align:center; color:#94a3b8;">Loading scores...</div>
+        </div>
+
+        <!-- Bottom bar: final grade prominent -->
+        <div class="sd-final-bar">
+            <div>
+                <div class="sd-final-label">Computed Term Grade</div>
+                <div class="sd-final-note" id="sdFinalNote">Based on DepEd K-12 transmutation formula</div>
+            </div>
+            <div style="text-align:right;">
+                <div class="sd-final-grade" id="sdFinalGrade2">—</div>
+                <div id="sdPassFail" style="margin-top:2px;"></div>
+            </div>
+        </div>
+
     </div>
 </div>
 
 <script>
-// ── DepEd Transmutation Table (client-side for live preview) ──────────────────
+// ── DepEd Transmutation Table ─────────────────────────────────────────────────
 const TRANSMUTATION_RANGES = [
     [98.40, 99.99, 99], [96.80, 98.39, 98], [95.20, 96.79, 97],
     [93.60, 95.19, 96], [92.00, 93.59, 95], [90.40, 91.99, 94],
@@ -991,9 +1316,9 @@ function clientTransmute(initial) {
     return 60;
 }
 
-// ── Inline Edit ───────────────────────────────────────────────────────────────
+
+// ── Inline Edit (WW/PT/QA columns in the main table) ─────────────────────────
 function startEdit(eid, field, displayEl) {
-    // Hide display, show editor
     displayEl.classList.add('hidden');
     const editor = document.getElementById(`editor-${field}-${eid}`);
     editor.classList.add('active');
@@ -1006,15 +1331,13 @@ function cancelEdit(eid, field) {
     document.getElementById(`editor-${field}-${eid}`).classList.remove('active');
     const display = document.querySelector(`#cell-${field}-${eid} .score-display`);
     display.classList.remove('hidden');
-    // Restore grade pill to original (remove preview)
     const pill = document.getElementById(`grade-pill-${eid}`);
-    pill.classList.remove('grade-preview');
+    if (pill) pill.classList.remove('grade-preview');
 }
 
 function handleKey(event, eid, field) {
     if (event.key === 'Enter') {
         event.preventDefault();
-        // Find section/subject/period from nearest save button's onclick attr
         const btn = event.target.closest('.score-editor').querySelector('.score-btn-save');
         btn.click();
     } else if (event.key === 'Escape') {
@@ -1022,18 +1345,15 @@ function handleKey(event, eid, field) {
     }
 }
 
-// Live preview: update grade pill with a yellow dashed style while typing
 function livePreview(eid, wwPct, ptPct, qaPct) {
     const ww = parseFloat(document.getElementById(`input-ww-${eid}`)?.value) || 0;
     const pt = parseFloat(document.getElementById(`input-pt-${eid}`)?.value) || 0;
     const qa = parseFloat(document.getElementById(`input-qa-${eid}`)?.value) || 0;
-
     const initial = (ww * wwPct / 100) + (pt * ptPct / 100) + (qa * qaPct / 100);
     const transmuted = clientTransmute(initial);
-
     const pill = document.getElementById(`grade-pill-${eid}`);
     if (pill) {
-        pill.textContent = transmuted.toFixed(2) + ' ✎';
+        pill.textContent = transmuted.toFixed(2) + ' (preview)';
         pill.className = 'grade-pill grade-preview';
     }
 }
@@ -1042,27 +1362,20 @@ async function saveEdit(eid, field, sectionId, subjectId, period) {
     const input  = document.getElementById(`input-${field}-${eid}`);
     const saving = document.getElementById(`saving-${field}-${eid}`);
     const value  = parseFloat(input.value);
-
     if (isNaN(value) || value < 0 || value > 100) {
         input.style.borderColor = '#ef4444';
-        input.title = 'Value must be 0 – 100';
-        setTimeout(() => { input.style.borderColor = ''; input.title = ''; }, 2000);
+        setTimeout(() => { input.style.borderColor = ''; }, 2000);
         return;
     }
-
     saving.style.display = 'block';
-    const payload = { enrollment_id: eid, period, [field]: value };
-
     try {
         const resp = await fetch(`/teacher/class-record/${sectionId}/${subjectId}/override`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            body: JSON.stringify({ enrollment_id: eid, period, [field]: value })
         });
         const data = await resp.json();
         if (!data.success) throw new Error(data.error || 'Save failed');
-
-        // Update displayed values
         applyUpdatedScores(eid, field, data);
     } catch(e) {
         alert('Error saving: ' + e.message);
@@ -1073,10 +1386,9 @@ async function saveEdit(eid, field, sectionId, subjectId, period) {
 }
 
 async function resetEdit(eid, field, sectionId, subjectId, period) {
-    if (!confirm(`Reset ${field.toUpperCase()} to auto-computed value?`)) return;
+    if (!confirm(`Reset ${field.toUpperCase()} to the auto-computed value?`)) return;
     const saving = document.getElementById(`saving-${field}-${eid}`);
     saving.style.display = 'block';
-
     try {
         const resp = await fetch(`/teacher/class-record/${sectionId}/${subjectId}/override`, {
             method: 'POST',
@@ -1085,9 +1397,7 @@ async function resetEdit(eid, field, sectionId, subjectId, period) {
         });
         const data = await resp.json();
         if (!data.success) throw new Error(data.error || 'Reset failed');
-
         applyUpdatedScores(eid, field, data);
-        // Remove reset button since it's now auto
         const resetBtn = document.querySelector(`#editor-${field}-${eid} .score-btn-reset`);
         if (resetBtn) resetBtn.remove();
     } catch(e) {
@@ -1099,19 +1409,14 @@ async function resetEdit(eid, field, sectionId, subjectId, period) {
 }
 
 function applyUpdatedScores(eid, changedField, data) {
-    // Update each component display value and override badge
     const updateCell = (field, newVal, isOverridden) => {
         const display = document.querySelector(`#cell-${field}-${eid} .score-display`);
         if (!display) return;
-        const valEl = display.querySelector('.score-value');
+        const valEl  = display.querySelector('.score-value');
         const badgeEl = display.querySelector('.edited-badge');
         if (valEl) valEl.textContent = parseFloat(newVal).toFixed(1);
-
-        // Update input value too
         const inp = document.getElementById(`input-${field}-${eid}`);
         if (inp) inp.value = parseFloat(newVal).toFixed(1);
-
-        // Show/hide edited badge
         if (isOverridden && !badgeEl) {
             const badge = document.createElement('span');
             badge.className = 'edited-badge';
@@ -1122,12 +1427,9 @@ function applyUpdatedScores(eid, changedField, data) {
             badgeEl.remove();
         }
     };
-
     updateCell('ww', data.ww, data.ww_overridden);
     updateCell('pt', data.pt, data.pt_overridden);
     updateCell('qa', data.qa, data.qa_overridden);
-
-    // Update the term grade pill
     const pill = document.getElementById(`grade-pill-${eid}`);
     if (pill && data.transmuted_grade !== undefined) {
         const g = parseFloat(data.transmuted_grade);
@@ -1136,34 +1438,496 @@ function applyUpdatedScores(eid, changedField, data) {
     }
 }
 
-// ── Transmutation Detail Modal ────────────────────────────────────────────────
-function openTransmutation(data) {
-    document.getElementById("tmStudent").textContent = data.student_name || "Student";
-    document.getElementById("tmWw").textContent = Number(data.ww || 0).toFixed(2);
-    document.getElementById("tmPt").textContent = Number(data.pt || 0).toFixed(2);
-    document.getElementById("tmQa").textContent = Number(data.qa || 0).toFixed(2);
-    document.getElementById("tmWwPct").textContent = Number(data.ww_pct || 0).toFixed(0) + "%";
-    document.getElementById("tmPtPct").textContent = Number(data.pt_pct || 0).toFixed(0) + "%";
-    document.getElementById("tmQaPct").textContent = Number(data.qa_pct || 0).toFixed(0) + "%";
-    document.getElementById("tmInitial").textContent = Number(data.initial || 0).toFixed(2);
-    document.getElementById("tmFinal").textContent = Number(data.final || 0).toFixed(2);
-    document.getElementById("tmBand").textContent = data.band || "N/A";
+// ── Score Details Modal ───────────────────────────────────────────────────────
+// State: active context for the modal
+let _sdEnrollmentId = null;
+let _sdSectionId    = null;
+let _sdSubjectId    = null;
+let _sdPeriod       = null;
+let _sdIsLocked     = false;
+let _sdWeights      = { ww_pct: 0, pt_pct: 0, qa_pct: 0 };
+let _sdCurrentData  = null;
 
-    const wwW = (Number(data.ww || 0) * (Number(data.ww_pct || 0) / 100)).toFixed(2);
-    const ptW = (Number(data.pt || 0) * (Number(data.pt_pct || 0) / 100)).toFixed(2);
-    const qaW = (Number(data.qa || 0) * (Number(data.qa_pct || 0) / 100)).toFixed(2);
-    document.getElementById("tmFormula").textContent =
-        `Computation: (${Number(data.ww || 0).toFixed(2)} × ${Number(data.ww_pct || 0).toFixed(0)}%) + ` +
-        `(${Number(data.pt || 0).toFixed(2)} × ${Number(data.pt_pct || 0).toFixed(0)}%) + ` +
-        `(${Number(data.qa || 0).toFixed(2)} × ${Number(data.qa_pct || 0).toFixed(0)}%) = ` +
-        `${Number(data.initial || 0).toFixed(2)} initial grade. Weighted parts: WW ${wwW}, PT ${ptW}, QA ${qaW}.`;
+async function openScoreDetails(enrollmentId, sectionId, subjectId, period) {
+    _sdEnrollmentId = enrollmentId;
+    _sdSectionId    = sectionId;
+    _sdSubjectId    = subjectId;
+    _sdPeriod       = period;
 
-    document.getElementById("tmOverlay").classList.add("show");
+    // Open overlay with loading state
+    document.getElementById('sdStudentName').textContent = 'Loading...';
+    document.getElementById('sdBody').innerHTML =
+        '<div style="padding:40px; text-align:center; color:#94a3b8;">Loading scores...</div>';
+    sdResetSummaryBar();
+    document.getElementById('sdLockBanner').style.display = 'none';
+    document.getElementById('sdOverlay').classList.add('show');
+    document.body.style.overflow = 'hidden';
+
+    try {
+        const resp = await fetch(
+            `/teacher/class-record/${sectionId}/${subjectId}/student-scores/${enrollmentId}?period=${encodeURIComponent(period)}`
+        );
+        const data = await resp.json();
+        if (!data.success) throw new Error(data.error || 'Could not load scores.');
+        _sdCurrentData = data;
+        sdRenderModal(data);
+    } catch(e) {
+        document.getElementById('sdBody').innerHTML =
+            `<div style="padding:40px; text-align:center; color:#dc2626; font-weight:700;">
+                Could not load scores: ${e.message}
+             </div>`;
+    }
 }
 
-function closeTransmutation(evt) {
-    if (evt && evt.target && evt.target.id !== "tmOverlay") return;
-    document.getElementById("tmOverlay").classList.remove("show");
+function sdRenderModal(data) {
+    _sdIsLocked = data.is_locked;
+    _sdWeights  = data.weights || { ww_pct: 0, pt_pct: 0, qa_pct: 0 };
+
+    // Update header
+    document.getElementById('sdStudentName').textContent = data.student_name;
+
+    // Lock banner
+    const lockBanner = document.getElementById('sdLockBanner');
+    if (data.is_locked) {
+        lockBanner.style.display = 'flex';
+        let lockMsg = 'Scores are locked for review.';
+        if (data.submission_status === 'approved_for_posting') lockMsg = 'Scores are locked. Grades have been approved.';
+        if (data.submission_status === 'posted') lockMsg = 'Scores are locked. Grades have already been posted.';
+        lockBanner.querySelector('strong').textContent = lockMsg;
+    } else {
+        lockBanner.style.display = 'none';
+    }
+
+    // Update summary bar
+    sdUpdateSummaryBar(data.ww_avg, data.pt_avg, data.qa_avg, _sdWeights);
+
+    // Build body HTML
+    let html = '';
+
+    // ── Written Works section ──────────────────────────────────────────────────
+    const wwItems = [...(data.quizzes || []), ...(data.monthly || [])];
+    html += sdBuildSection(
+        'Written Works',
+        'ww',
+        `Quizzes + Monthly Exams — Weight: ${_sdWeights.ww_pct}%`,
+        data.ww_avg,
+        wwItems,
+        'quiz_monthly',
+        data.is_locked
+    );
+
+    // ── Performance Tasks section ──────────────────────────────────────────────
+    const ptItems = [
+        ...(data.activities || []).map(a => ({ ...a, item_type: 'activity' })),
+        data.participation && {
+            item_type: 'participation',
+            title: 'Participation Rating',
+            score: data.participation.score,
+            total: data.participation.max,
+            has_result: data.participation.has_result,
+        },
+        data.attendance && {
+            item_type: 'attendance',
+            title: 'Attendance Rating',
+            score: data.attendance.score,
+            total: data.attendance.max,
+            has_result: data.attendance.has_result,
+        },
+    ].filter(Boolean);
+    html += sdBuildSection(
+        'Performance Tasks',
+        'pt',
+        `Activities + Participation + Attendance — Weight: ${_sdWeights.pt_pct}%`,
+        data.pt_avg,
+        ptItems,
+        'activity_par_att',
+        data.is_locked
+    );
+
+    // ── Term Assessment section ────────────────────────────────────────────────
+    html += sdBuildSection(
+        'Term Assessment',
+        'qa',
+        `Periodical Exam — Weight: ${_sdWeights.qa_pct}%`,
+        data.qa_avg,
+        data.periodical || [],
+        'periodical',
+        data.is_locked
+    );
+
+    // ── Grade computation note ─────────────────────────────────────────────────
+    if (!data.is_locked) {
+        html += `<div style="padding:12px 24px 14px; font-size:0.79rem; color:#64748b; background:#f8fafc; border-top:1px solid #e2e8f0;">
+            Scores shown are the actual raw values from each quiz, activity, and exam.
+            Saving a score here updates the component average (Written Works, Performance Tasks, or Term Assessment)
+            which is then used to compute the final term grade.
+        </div>`;
+    }
+
+    document.getElementById('sdBody').innerHTML = html;
 }
+
+function sdBuildSection(title, colorClass, subtitle, avg, items, itemType, isLocked) {
+    const avgText = (avg !== null && avg !== undefined)
+        ? `<strong>${parseFloat(avg).toFixed(2)}</strong> out of 100`
+        : '<span style="color:#94a3b8;">Not yet computable</span>';
+
+    let rows = '';
+    if (!items || items.length === 0) {
+        rows = `<div class="sd-empty-row">No ${title.toLowerCase()} have been created for this grading period.</div>`;
+    } else {
+        rows = items.map(item => sdBuildScoreRow(item, isLocked, colorClass)).join('');
+    }
+
+    return `
+        <div class="sd-section">
+            <div class="sd-section-header">
+                <div class="sd-section-title ${colorClass}">${title}</div>
+                <div class="sd-section-avg">
+                    Average: ${avgText}
+                    <span class="avg-weight">${subtitle}</span>
+                </div>
+            </div>
+            ${rows}
+        </div>`;
+}
+
+function sdBuildScoreRow(item, isLocked, colorClass) {
+    const hasScore = item.has_result && item.score !== null && item.score !== undefined;
+    const scoreText = hasScore
+        ? `${parseFloat(item.score).toFixed(1)} / ${parseFloat(item.total || 100).toFixed(0)}`
+        : `— / ${parseFloat(item.total || 100).toFixed(0)}`;
+
+    const missingTag = !hasScore
+        ? `<span class="missing-tag">No Score</span>`
+        : '';
+
+    const inputVal = hasScore ? parseFloat(item.score).toFixed(1) : '';
+    const totalVal = parseFloat(item.total || 100).toFixed(0);
+
+    // Unique key for this row (exam_id, activity_id, or fixed string)
+    const rowKey = item.exam_id
+        ? `exam-${item.exam_id}`
+        : item.activity_id
+            ? `act-${item.activity_id}`
+            : (item.item_type || 'misc');
+
+    const disabledAttr = isLocked ? 'disabled' : '';
+
+    // Participation and Attendance are read-only here (managed in dedicated pages)
+    const isReadOnly = (item.item_type === 'participation' || item.item_type === 'attendance');
+
+    let actionsHtml = '';
+    if (isReadOnly) {
+        actionsHtml = `<span style="font-size:0.78rem; color:#94a3b8; font-style:italic;">
+            ${item.item_type === 'participation' ? 'Set in Participation page' : 'Set in Attendance page'}
+        </span>`;
+    } else if (isLocked) {
+        actionsHtml = `<span style="font-size:0.78rem; color:#94a3b8; font-style:italic;">Locked</span>`;
+    } else {
+        actionsHtml = `
+            <input type="number"
+                class="sd-input"
+                id="sdinput-${rowKey}"
+                value="${inputVal}"
+                min="0"
+                max="${totalVal}"
+                step="0.5"
+                placeholder="Score"
+                oninput="sdLiveRecompute()"
+                onkeydown="sdHandleKey(event, '${rowKey}', '${colorClass}')">
+            <span class="sd-input-of">/ ${totalVal}</span>
+            <button class="sd-btn sd-btn-save" id="sdbtn-${rowKey}"
+                onclick="sdSaveRow('${rowKey}', '${colorClass}', ${item.exam_id || 'null'}, ${item.activity_id || 'null'}, ${totalVal})">
+                Save
+            </button>
+            <span class="sd-saving-msg" id="sdsaving-${rowKey}">Saving...</span>
+            <span class="sd-err-msg"   id="sderr-${rowKey}"></span>`;
+    }
+
+    return `
+        <div class="sd-score-row" id="sdrow-${rowKey}">
+            <div class="sd-score-name">
+                ${item.title || 'Item'}
+                ${missingTag}
+            </div>
+            <div class="sd-score-display ${!hasScore ? 'missing' : ''}" id="sddisp-${rowKey}">
+                ${scoreText}
+            </div>
+            <div class="sd-score-actions">
+                ${actionsHtml}
+            </div>
+        </div>`;
+}
+
+function sdHandleKey(event, rowKey, colorClass) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        document.getElementById(`sdbtn-${rowKey}`)?.click();
+    }
+}
+
+function sdLiveRecompute() {
+    if (!_sdCurrentData) return;
+    const data = _sdCurrentData;
+
+    // Gather all current input values for WW items
+    const wwItems = [...(data.quizzes || []), ...(data.monthly || [])];
+    let wwTotalScore = 0, wwTotalPts = 0;
+    wwItems.forEach(item => {
+        const rowKey = item.exam_id ? `exam-${item.exam_id}` : 'misc';
+        const inp = document.getElementById(`sdinput-${rowKey}`);
+        const val = inp ? parseFloat(inp.value) : (item.has_result ? item.score : null);
+        if (val !== null && val !== undefined && !isNaN(val)) {
+            wwTotalScore += val;
+            wwTotalPts   += parseFloat(item.total || 100);
+        }
+    });
+    const wwAvg = wwTotalPts > 0 ? wwTotalScore / wwTotalPts * 100 : null;
+
+    // QA items
+    const qaItems = data.periodical || [];
+    let qaTotalScore = 0, qaTotalPts = 0;
+    qaItems.forEach(item => {
+        const rowKey = item.exam_id ? `exam-${item.exam_id}` : 'misc';
+        const inp = document.getElementById(`sdinput-${rowKey}`);
+        const val = inp ? parseFloat(inp.value) : (item.has_result ? item.score : null);
+        if (val !== null && val !== undefined && !isNaN(val)) {
+            qaTotalScore += val;
+            qaTotalPts   += parseFloat(item.total || 100);
+        }
+    });
+    const qaAvg = qaTotalPts > 0 ? qaTotalScore / qaTotalPts * 100 : null;
+
+    // PT items (activities only from inputs; participation/attendance stay as loaded)
+    const ptComponents = [];
+    (data.activities || []).forEach(item => {
+        const rowKey = item.activity_id ? `act-${item.activity_id}` : 'misc';
+        const inp = document.getElementById(`sdinput-${rowKey}`);
+        const val = inp ? parseFloat(inp.value) : (item.has_result ? item.score : null);
+        if (val !== null && val !== undefined && !isNaN(val)) {
+            ptComponents.push(val / parseFloat(item.total || 100) * 100);
+        }
+    });
+    if (data.participation?.has_result) ptComponents.push(Math.min(100, data.participation.score * 10));
+    if (data.attendance?.has_result)    ptComponents.push(Math.min(100, data.attendance.score * 10));
+    const ptAvg = ptComponents.length > 0 ? ptComponents.reduce((a,b) => a+b, 0) / ptComponents.length : null;
+
+    sdUpdateSummaryBar(wwAvg, ptAvg, qaAvg, _sdWeights);
+}
+
+function sdUpdateSummaryBar(wwAvg, ptAvg, qaAvg, weights) {
+    const fmt = v => (v !== null && v !== undefined) ? parseFloat(v).toFixed(2) : '—';
+    document.getElementById('sdWwAvg').textContent = fmt(wwAvg);
+    document.getElementById('sdPtAvg').textContent = fmt(ptAvg);
+    document.getElementById('sdQaAvg').textContent = fmt(qaAvg);
+
+    // Compute final grade
+    const ww = (wwAvg !== null && wwAvg !== undefined) ? parseFloat(wwAvg) : null;
+    const pt = (ptAvg !== null && ptAvg !== undefined) ? parseFloat(ptAvg) : null;
+    const qa = (qaAvg !== null && qaAvg !== undefined) ? parseFloat(qaAvg) : null;
+
+    let finalEl  = document.getElementById('sdFinalGrade');
+    let finalEl2 = document.getElementById('sdFinalGrade2');
+    let passFail = document.getElementById('sdPassFail');
+
+    if (ww !== null || pt !== null || qa !== null) {
+        const initial = ((ww || 0) * (weights.ww_pct / 100))
+                      + ((pt || 0) * (weights.pt_pct / 100))
+                      + ((qa || 0) * (weights.qa_pct / 100));
+        const transmuted = clientTransmute(initial);
+        const gText = transmuted.toFixed(2);
+        finalEl.textContent  = gText;
+        finalEl2.textContent = gText;
+        const isPass = transmuted >= 75;
+        const badgeClass = isPass ? 'pass' : 'fail';
+        const badgeText  = isPass ? 'PASS' : 'FAIL';
+        passFail.innerHTML = `<span class="sd-grade-badge ${badgeClass}">${badgeText}</span>`;
+    } else {
+        finalEl.textContent  = '—';
+        finalEl2.textContent = '—';
+        passFail.innerHTML   = `<span class="sd-grade-badge pending">Incomplete</span>`;
+    }
+}
+
+function sdResetSummaryBar() {
+    ['sdWwAvg','sdPtAvg','sdQaAvg','sdFinalGrade','sdFinalGrade2'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = '—';
+    });
+    const pf = document.getElementById('sdPassFail');
+    if (pf) pf.innerHTML = '';
+}
+
+async function sdSaveRow(rowKey, colorClass, examId, activityId, maxScore) {
+    const inp  = document.getElementById(`sdinput-${rowKey}`);
+    const save = document.getElementById(`sdsaving-${rowKey}`);
+    const err  = document.getElementById(`sderr-${rowKey}`);
+    const btn  = document.getElementById(`sdbtn-${rowKey}`);
+
+    if (!inp) return;
+    const val = parseFloat(inp.value);
+    if (isNaN(val) || val < 0 || val > parseFloat(maxScore)) {
+        inp.style.borderColor = '#ef4444';
+        if (err) {
+            err.textContent = `Value must be 0 to ${maxScore}`;
+            err.style.display = 'inline';
+            setTimeout(() => { err.style.display = 'none'; inp.style.borderColor = ''; }, 3000);
+        }
+        return;
+    }
+
+    // Show saving state
+    if (save) save.style.display = 'inline';
+    if (btn)  btn.disabled = true;
+    if (err)  err.style.display = 'none';
+    inp.style.borderColor = '';
+
+    try {
+        // Build WW or QA override by recomputing the component average with the new value
+        const data = _sdCurrentData;
+        let payload = { enrollment_id: _sdEnrollmentId, period: _sdPeriod };
+
+        if (colorClass === 'ww') {
+            // Recompute WW average with this exam's new score
+            const wwItems = [...(data.quizzes || []), ...(data.monthly || [])];
+            let totalScore = 0, totalPts = 0;
+            wwItems.forEach(item => {
+                const rk = item.exam_id ? `exam-${item.exam_id}` : 'misc';
+                let score;
+                if (rk === rowKey) {
+                    score = val; // use the new value
+                } else {
+                    const otherInp = document.getElementById(`sdinput-${rk}`);
+                    score = otherInp ? parseFloat(otherInp.value) : (item.has_result ? item.score : null);
+                }
+                if (score !== null && score !== undefined && !isNaN(score)) {
+                    totalScore += score;
+                    totalPts   += parseFloat(item.total || 100);
+                }
+            });
+            if (totalPts > 0) payload.ww = totalScore / totalPts * 100;
+
+        } else if (colorClass === 'qa') {
+            // Recompute QA average with this exam's new score
+            const qaItems = data.periodical || [];
+            let totalScore = 0, totalPts = 0;
+            qaItems.forEach(item => {
+                const rk = item.exam_id ? `exam-${item.exam_id}` : 'misc';
+                let score;
+                if (rk === rowKey) {
+                    score = val;
+                } else {
+                    const otherInp = document.getElementById(`sdinput-${rk}`);
+                    score = otherInp ? parseFloat(otherInp.value) : (item.has_result ? item.score : null);
+                }
+                if (score !== null && score !== undefined && !isNaN(score)) {
+                    totalScore += score;
+                    totalPts   += parseFloat(item.total || 100);
+                }
+            });
+            if (totalPts > 0) payload.qa = totalScore / totalPts * 100;
+
+        } else if (colorClass === 'pt') {
+            // Recompute PT average with this activity's new score
+            const ptComponents = [];
+            (data.activities || []).forEach(item => {
+                const rk = item.activity_id ? `act-${item.activity_id}` : 'misc';
+                let score;
+                if (rk === rowKey) {
+                    score = val;
+                } else {
+                    const otherInp = document.getElementById(`sdinput-${rk}`);
+                    score = otherInp ? parseFloat(otherInp.value) : (item.has_result ? item.score : null);
+                }
+                if (score !== null && score !== undefined && !isNaN(score)) {
+                    ptComponents.push(score / parseFloat(item.total || 100) * 100);
+                }
+            });
+            if (data.participation?.has_result) ptComponents.push(Math.min(100, data.participation.score * 10));
+            if (data.attendance?.has_result)    ptComponents.push(Math.min(100, data.attendance.score * 10));
+            if (ptComponents.length > 0)
+                payload.pt = ptComponents.reduce((a,b) => a+b, 0) / ptComponents.length;
+        }
+
+        // Call existing override endpoint
+        const resp = await fetch(
+            `/teacher/class-record/${_sdSectionId}/${_sdSubjectId}/override`,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }
+        );
+        const result = await resp.json();
+        if (!result.success) throw new Error(result.error || 'Save failed');
+
+        // Update the display value in this row
+        const disp = document.getElementById(`sddisp-${rowKey}`);
+        if (disp) {
+            disp.textContent = `${val.toFixed(1)} / ${parseFloat(maxScore).toFixed(0)}`;
+            disp.classList.remove('missing');
+        }
+
+        // Update the in-memory data so future recomputes are accurate
+        const allItems = [...(data.quizzes||[]), ...(data.monthly||[]),
+                          ...(data.periodical||[]), ...(data.activities||[])];
+        allItems.forEach(item => {
+            const rk = item.exam_id ? `exam-${item.exam_id}`
+                     : item.activity_id ? `act-${item.activity_id}` : null;
+            if (rk === rowKey) {
+                item.score = val;
+                item.has_result = true;
+            }
+        });
+
+        // Remove "No Score" tag in the row name
+        const rowEl = document.getElementById(`sdrow-${rowKey}`);
+        if (rowEl) {
+            const tag = rowEl.querySelector('.missing-tag');
+            if (tag) tag.remove();
+        }
+
+        // Sync summary bar + class record table grade pill
+        sdLiveRecompute();
+        applyUpdatedScores(_sdEnrollmentId, colorClass, result);
+
+        // Update modal summary averages from server-returned values
+        _sdCurrentData.ww_avg = result.ww;
+        _sdCurrentData.pt_avg = result.pt;
+        _sdCurrentData.qa_avg = result.qa;
+
+    } catch(e) {
+        if (err) {
+            err.textContent = 'Error: ' + e.message;
+            err.style.display = 'inline';
+            setTimeout(() => { err.style.display = 'none'; }, 4000);
+        }
+    } finally {
+        if (save) save.style.display = 'none';
+        if (btn)  btn.disabled = false;
+    }
+}
+
+function closeScoreDetails() {
+    document.getElementById('sdOverlay').classList.remove('show');
+    document.body.style.overflow = '';
+    _sdCurrentData = null;
+}
+
+function sdCloseOnBackdrop(event) {
+    if (event.target.id === 'sdOverlay') closeScoreDetails();
+}
+
+// Close modal with Escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        if (document.getElementById('sdOverlay').classList.contains('show')) {
+            closeScoreDetails();
+        }
+    }
+});
+
+
 </script>
 {% endblock %}

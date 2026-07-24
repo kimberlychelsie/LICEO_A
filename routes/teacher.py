@@ -3971,6 +3971,260 @@ def class_record_export(section_id, subject_id):
         cur.close()
         db.close()
 
+# ── Per-Student Score Breakdown Route ────────────────────────────────────────
+
+@teacher_bp.route(
+    "/teacher/class-record/<int:section_id>/<int:subject_id>/student-scores/<int:enrollment_id>"
+)
+def student_score_breakdown(section_id, subject_id, enrollment_id):
+    """AJAX: Return all individual quiz, monthly exam, activity, participation,
+    attendance, and periodical exam scores for one student in a grading period.
+    Used by the per-student Score Details modal in the class record page.
+    """
+    from flask import jsonify
+    if not _require_teacher():
+        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+    user_id   = session.get('user_id')
+    branch_id = session.get('branch_id')
+    period    = request.args.get('period', '1st')
+    if period not in GRADING_PERIODS:
+        return jsonify({'success': False, 'error': 'Invalid period'}), 400
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            return jsonify({'success': False, 'error': 'No active school year'}), 400
+
+        # Verify teacher owns this assignment
+        cur.execute("""
+            SELECT 1 FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s AND s.year_id=%s
+        """, (user_id, section_id, subject_id, year_id))
+        if not cur.fetchone():
+            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+
+        # Get student name
+        cur.execute("""
+            SELECT student_first_name, student_middle_name, student_last_name
+            FROM enrollments WHERE enrollment_id = %s
+        """, (enrollment_id,))
+        stu = cur.fetchone()
+        if not stu:
+            return jsonify({'success': False, 'error': 'Student not found'}), 404
+        student_name = " ".join(filter(None, [
+            stu['student_first_name'],
+            stu['student_middle_name'],
+            stu['student_last_name']
+        ]))
+
+        # Check submission lock status
+        cur.execute("""
+            SELECT status FROM grade_submission_requests
+            WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+        """, (section_id, subject_id, period, year_id))
+        sub_req = cur.fetchone()
+        locked_statuses = ['pending_registrar', 'pending_admin', 'approved_for_posting', 'posted']
+        is_locked = bool(sub_req and sub_req['status'] in locked_statuses)
+        submission_status = sub_req['status'] if sub_req else 'draft'
+
+        # Get subject DepEd category and weights
+        cur.execute("SELECT deped_category FROM subjects WHERE subject_id = %s", (subject_id,))
+        subj_row = cur.fetchone()
+        category = (subj_row['deped_category'] if subj_row and subj_row.get('deped_category') else 'language')
+        w = DEPED_WEIGHTS.get(category, DEPED_WEIGHTS['language'])
+        weights = {
+            'ww_pct':  round(w['ww'] * 100, 1),
+            'pt_pct':  round(w['pt'] * 100, 1),
+            'qa_pct':  round(w['qa'] * 100, 1),
+        }
+
+        # ── Written Works: individual quizzes and monthly exams ───────────────
+        cur.execute("""
+            SELECT e.exam_id, e.title, e.exam_type,
+                   er.score,
+                   COALESCE(
+                       er.total_points,
+                       (SELECT COALESCE(SUM(q.points), 100) FROM exam_questions q WHERE q.exam_id = e.exam_id),
+                       100
+                   ) AS total,
+                   er.status AS result_status
+            FROM exams e
+            LEFT JOIN exam_results er
+                   ON er.exam_id = e.exam_id
+                  AND er.enrollment_id = %s
+                  AND er.status IN ('submitted', 'auto_submitted')
+            WHERE e.section_id = %s AND e.subject_id = %s
+              AND e.exam_type IN ('quiz', 'monthly_exam')
+              AND e.grading_period = %s
+              AND e.is_archived = FALSE
+            ORDER BY e.exam_type DESC, e.created_at ASC
+        """, (enrollment_id, section_id, subject_id, period))
+        ww_rows = cur.fetchall() or []
+
+        quizzes = []
+        monthly = []
+        for row in ww_rows:
+            item = {
+                'exam_id': row['exam_id'],
+                'title':   row['title'],
+                'score':   float(row['score']) if row['score'] is not None else None,
+                'total':   float(row['total']) if row['total'] else 100.0,
+                'has_result': row['score'] is not None,
+            }
+            if row['exam_type'] == 'quiz':
+                quizzes.append(item)
+            else:
+                monthly.append(item)
+
+        # ── Term Assessment: periodical exams ─────────────────────────────────
+        cur.execute("""
+            SELECT e.exam_id, e.title,
+                   er.score,
+                   COALESCE(
+                       er.total_points,
+                       (SELECT COALESCE(SUM(q.points), 100) FROM exam_questions q WHERE q.exam_id = e.exam_id),
+                       100
+                   ) AS total,
+                   er.status AS result_status
+            FROM exams e
+            LEFT JOIN exam_results er
+                   ON er.exam_id = e.exam_id
+                  AND er.enrollment_id = %s
+                  AND er.status IN ('submitted', 'auto_submitted')
+            WHERE e.section_id = %s AND e.subject_id = %s
+              AND e.exam_type = 'exam'
+              AND e.grading_period = %s
+              AND e.is_archived = FALSE
+            ORDER BY e.created_at ASC
+        """, (enrollment_id, section_id, subject_id, period))
+        periodical = []
+        for row in (cur.fetchall() or []):
+            periodical.append({
+                'exam_id': row['exam_id'],
+                'title':   row['title'],
+                'score':   float(row['score']) if row['score'] is not None else None,
+                'total':   float(row['total']) if row['total'] else 100.0,
+                'has_result': row['score'] is not None,
+            })
+
+        # ── Performance Tasks: activities ────────────────────────────────────
+        cur.execute("""
+            SELECT a.activity_id, a.title,
+                   COALESCE(ag.raw_score, NULL) AS score,
+                   COALESCE(ag.max_score, a.max_score, 100) AS total
+            FROM activities a
+            LEFT JOIN activity_submissions asub
+                   ON asub.activity_id = a.activity_id
+                  AND asub.enrollment_id = %s
+            LEFT JOIN activity_grades ag
+                   ON ag.submission_id = asub.submission_id
+                  AND ag.activity_id = a.activity_id
+            WHERE a.section_id = %s AND a.subject_id = %s
+              AND a.grading_period = %s
+            ORDER BY a.created_at ASC
+        """, (enrollment_id, section_id, subject_id, period))
+        activities = []
+        for row in (cur.fetchall() or []):
+            activities.append({
+                'activity_id': row['activity_id'],
+                'title':       row['title'],
+                'score':       float(row['score']) if row['score'] is not None else None,
+                'total':       float(row['total']) if row['total'] else 100.0,
+                'has_result':  row['score'] is not None,
+            })
+
+        # ── Participation & Attendance (1-10 scale) ───────────────────────────
+        cur.execute("""
+            SELECT score FROM participation_scores
+            WHERE subject_id=%s AND grading_period=%s AND enrollment_id=%s
+        """, (subject_id, period, enrollment_id))
+        par_row = cur.fetchone()
+        participation = {
+            'score': float(par_row['score']) if par_row and par_row['score'] is not None else None,
+            'max':   10,
+            'has_result': par_row is not None and par_row['score'] is not None,
+        }
+
+        cur.execute("""
+            SELECT score FROM attendance_scores
+            WHERE subject_id=%s AND grading_period=%s AND enrollment_id=%s
+        """, (subject_id, period, enrollment_id))
+        att_row = cur.fetchone()
+        attendance = {
+            'score': float(att_row['score']) if att_row and att_row['score'] is not None else None,
+            'max':   10,
+            'has_result': att_row is not None and att_row['score'] is not None,
+        }
+
+        # ── Existing component overrides (to know what's been manually set) ──
+        cur.execute("""
+            SELECT override_ww, override_pt, override_qa, override_note
+            FROM grade_overrides
+            WHERE enrollment_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+        """, (enrollment_id, subject_id, period, year_id))
+        ov = cur.fetchone()
+
+        # ── Compute current component averages ────────────────────────────────
+        def _pct(score, total):
+            """Convert raw score to percentage."""
+            try:
+                return round(float(score) / float(total) * 100, 2) if total else 0.0
+            except Exception:
+                return 0.0
+
+        # WW average: all quizzes + monthly exams, averaged as aggregate pct
+        ww_total_score = sum(i['score'] for i in (quizzes + monthly) if i['score'] is not None)
+        ww_total_pts   = sum(i['total'] for i in (quizzes + monthly) if i['score'] is not None)
+        ww_avg = round(ww_total_score / ww_total_pts * 100, 2) if ww_total_pts else None
+
+        # QA average: periodical exams
+        qa_total_score = sum(i['score'] for i in periodical if i['score'] is not None)
+        qa_total_pts   = sum(i['total'] for i in periodical if i['score'] is not None)
+        qa_avg = round(qa_total_score / qa_total_pts * 100, 2) if qa_total_pts else None
+
+        # PT average: activities + participation×10 + attendance×10
+        pt_components = []
+        for item in activities:
+            if item['score'] is not None:
+                pt_components.append(_pct(item['score'], item['total']))
+        if participation['has_result']:
+            pt_components.append(min(100.0, participation['score'] * 10))
+        if attendance['has_result']:
+            pt_components.append(min(100.0, attendance['score'] * 10))
+        pt_avg = round(sum(pt_components) / len(pt_components), 2) if pt_components else None
+
+        return jsonify({
+            'success':          True,
+            'student_name':     student_name,
+            'enrollment_id':    enrollment_id,
+            'is_locked':        is_locked,
+            'submission_status': submission_status,
+            'weights':          weights,
+            'quizzes':          quizzes,
+            'monthly':          monthly,
+            'activities':       activities,
+            'participation':    participation,
+            'attendance':       attendance,
+            'periodical':       periodical,
+            'ww_avg':           ww_avg,
+            'pt_avg':           pt_avg,
+            'qa_avg':           qa_avg,
+            'ww_overridden':    ov and ov['override_ww'] is not None,
+            'pt_overridden':    ov and ov['override_pt'] is not None,
+            'qa_overridden':    ov and ov['override_qa'] is not None,
+            'override_note':    ov['override_note'] if ov else None,
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+    finally:
+        cur.close()
+        db.close()
+
+
 # ── Grade Override Routes ─────────────────────────────────────────────────────
 
 @teacher_bp.route("/teacher/class-record/<int:section_id>/<int:subject_id>/override", methods=["POST"])
