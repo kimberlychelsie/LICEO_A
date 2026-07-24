@@ -1537,11 +1537,15 @@ def registrar_students_by_grade():
                 active_year_id = sy["year_id"]
                 break
         
-        if not year_filter:
-            year_filter = active_year_id
-
         cursor.execute("SELECT name FROM grade_levels WHERE name NOT IN ('Grade 11', 'Grade 12') ORDER BY id ASC")
-        all_grades = [row["name"] for row in cursor.fetchall()]
+        raw_grades = [row["name"] for row in cursor.fetchall()]
+        all_grades = []
+        for g in raw_grades:
+            if g not in all_grades:
+                all_grades.append(g)
+
+        if not grade_filter and all_grades:
+            grade_filter = "Nursery" if "Nursery" in all_grades else all_grades[0]
         cursor.execute("""
     SELECT branch_id, branch_name
     FROM branches
