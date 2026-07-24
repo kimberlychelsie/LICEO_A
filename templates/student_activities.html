@@ -351,14 +351,6 @@
             <button class="filter-tab" onclick="setSubject('{{ sub | escape }}', this)">{{ sub }}</button>
             {% endfor %}
         </div>
-
-        <!-- Period Filter -->
-        <div class="filter-tabs">
-            <button class="filter-tab sub-filter-tab active" onclick="setPeriod('all', this)">All Terms</button>
-            <button class="filter-tab sub-filter-tab" onclick="setPeriod('1st', this)">1st Term</button>
-            <button class="filter-tab sub-filter-tab" onclick="setPeriod('2nd', this)">2nd Term</button>
-            <button class="filter-tab sub-filter-tab" onclick="setPeriod('3rd', this)">3rd Term</button>
-        </div>
     </div>
 
     <div class="activities-grid" id="activities-container">
@@ -384,7 +376,12 @@
                 <div class="act-card" data-subject="{{ act.subject_name | escape }}" data-period="{{ act.grading_period or 'none' }}">
                     <div class="act-header">
                         <div style="flex: 1;">
-                            <div class="act-cat-badge">Assignment</div>
+                            <div class="act-cat-badge">
+                                Assignment
+                                {% if act.grading_period %}
+                                &nbsp;&bull;&nbsp; <span style="color:#0c2461; font-weight:800;">{{ PERIOD_LABELS.get(act.grading_period, act.grading_period) }}</span>
+                                {% endif %}
+                            </div>
                             <h3 class="act-title">{{ act.title }}</h3>
                             <div class="act-subject">{{ act.subject_name }}</div>
                         </div>
