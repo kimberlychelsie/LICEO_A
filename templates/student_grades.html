@@ -122,22 +122,28 @@
         width: 100%;
         border-collapse: collapse;
         font-size: 0.95rem;
+        table-layout: fixed;
     }
 
     .grade-table th {
         background: #f8fafc;
-        padding: 20px 24px;
-        text-align: left;
+        padding: 18px 20px;
+        text-align: center;
         font-weight: 800;
         color: var(--sd-muted);
         text-transform: uppercase;
         letter-spacing: 0.08em;
-        font-size: 0.72rem;
+        font-size: 0.75rem;
         border-bottom: 2px solid var(--sd-border);
     }
 
+    .grade-table th.col-subject {
+        text-align: left;
+        width: 40%;
+    }
+
     .grade-table td {
-        padding: 20px 24px;
+        padding: 18px 20px;
         border-bottom: 1px solid #f1f5f9;
         color: var(--sd-text);
         vertical-align: middle;
@@ -146,35 +152,23 @@
     .grade-table tr:last-child td { border-bottom: none; }
     .grade-table tr:hover { background: #fbfcfe; }
 
-    .subject-info {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-    }
-
     .subject-name {
         font-weight: 800;
         color: var(--sd-text);
-        font-size: 1rem;
-    }
-
-    .subject-units {
-        font-size: 0.75rem;
-        font-weight: 700;
-        color: var(--sd-muted);
-        text-transform: uppercase;
+        font-size: 1.05rem;
     }
 
     .grade-cell {
         text-align: center;
         font-weight: 900;
         font-size: 1.15rem;
-        width: 120px;
+        width: 15%;
     }
 
     .final-cell {
         background: #f8fafc;
         border-left: 2px solid var(--sd-border);
+        width: 15%;
     }
 
     .grade-pass { color: #16a34a; }
@@ -215,6 +209,7 @@
         .grades-hero { flex-direction: column; align-items: stretch; padding: 32px; gap: 24px; }
         .term-selector-wrap { min-width: 0; }
         .grades-hero-content h1 { font-size: 2.2rem; }
+        .grade-table { table-layout: auto; }
     }
 </style>
 {% endblock %}
@@ -246,7 +241,7 @@
             <table class="grade-table">
                 <thead>
                     <tr>
-                        <th>Subject Details</th>
+                        <th class="col-subject">Subject Details</th>
                         <th style="text-align: center;">1st Term</th>
                         <th style="text-align: center;">2nd Term</th>
                         <th style="text-align: center;">3rd Term</th>
@@ -257,10 +252,7 @@
                     {% for subj in grade_data %}
                     <tr>
                         <td>
-                            <div class="subject-info">
-                                <span class="subject-name">{{ subj.subject_name }}</span>
-                                <span class="subject-units">{{ subj.subject_code or 'Academic' }}</span>
-                            </div>
+                            <span class="subject-name">{{ subj.subject_name }}</span>
                         </td>
                         
                         <td class="grade-cell {% if subj.grades.get('1st') %}{% if subj.grades['1st'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
