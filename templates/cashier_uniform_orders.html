@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Uniform Orders & Catalog{% endblock %}
-{% block page_title %}Uniform Orders & Catalog{% endblock %}
+{% block title %}Uniform Orders{% endblock %}
+{% block page_title %}Uniform Orders{% endblock %}
 
 {% block styles %}
 <style>
@@ -193,10 +193,10 @@
 
     <div class="page-header">
         <div>
-            <h1>Uniform Orders & Catalog</h1>
-            <p>Manage student pre-orders, onsite arrivals, and uniform pricing catalog.</p>
+            <h1>Uniform Orders</h1>
+            <p>Track student pre-orders, mark onsite arrivals, and manage the uniform catalog.</p>
         </div>
-        <button class="btn-add-item" onclick="openAddModal()">+ Add Uniform Item</button>
+        <button class="btn-add-item" onclick="openAddModal()">+ Add Uniform Set</button>
     </div>
 
     <!-- Main Navigation Tabs -->
@@ -316,57 +316,81 @@
         </div>
     </div>
 
-    <!-- TAB 2: UNIFORM CATALOG & PRICING -->
+    <!-- TAB 2: UNIFORM CATALOG & PRICING (Sets + Pieces grouped) -->
     <div class="tab-pane" id="pane-catalog">
         <div class="table-card">
             <div class="table-wrap">
                 <table class="uo-table">
                     <thead>
                         <tr>
-                            <th>Item Details</th>
+                            <th>Uniform Set / Piece</th>
                             <th>Grade Range</th>
                             <th>Available Sizes</th>
                             <th>Unit Price</th>
-                            <th>Mode</th>
+                            <th>Type</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                    {% for item in uniform_catalog %}
-                    <tr>
+                    {% for s in catalog_sets %}
+                    {# SET ROW #}
+                    <tr style="background: #f0f4ff; border-left: 4px solid var(--u-primary);">
                         <td>
                             <div style="display: flex; align-items: center; gap: 14px;">
-                                {% if item.image_url %}
+                                {% if s.image_url %}
                                 <div style="width: 44px; height: 44px; border-radius: 12px; overflow: hidden; border: 1px solid var(--u-border);">
-                                    <img src="{{ item.image_url }}" alt="{{ item.item_name }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                    <img src="{{ s.image_url }}" alt="{{ s.item_name }}" style="width: 100%; height: 100%; object-fit: cover;">
                                 </div>
                                 {% else %}
-                                <div style="width: 44px; height: 44px; border-radius: 12px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; color: var(--u-muted);">
+                                <div style="width: 44px; height: 44px; border-radius: 12px; background: #dbeafe; display: flex; align-items: center; justify-content: center; color: var(--u-primary);">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>
                                 </div>
                                 {% endif %}
                                 <div>
-                                    <strong style="color: var(--u-primary); font-size: 0.95rem;">{{ item.item_name }}</strong>
-                                    <span class="sub-text" style="display:block;">Uniform Item</span>
+                                    <strong style="color: var(--u-primary); font-size: 1rem;">{{ s.item_name }}</strong>
+                                    <span style="display:block; font-size:0.72rem; color: var(--u-accent); font-weight:700; text-transform:uppercase; letter-spacing:.04em;">Uniform Set</span>
                                 </div>
                             </div>
                         </td>
-                        <td><span class="grade-pill">{{ item.grade_level or 'All Grades' }}</span></td>
-                        <td><span style="font-size:0.8rem; font-weight:700; color:var(--u-muted);">{{ item.size_label or 'S, M, L, XL' }}</span></td>
-                        <td><span class="amount" style="color: var(--u-primary); font-size: 1.05rem;">₱{{ "%.2f"|format(item.price or 0) }}</span></td>
-                        <td><span class="badge badge-paid">Pre-Order Catalog</span></td>
+                        <td><span class="grade-pill">{{ s.grade_level or 'All Grades' }}</span></td>
+                        <td><span style="font-size:0.8rem; font-weight:700; color:var(--u-muted);">{{ s.size_label or 'XS, S, M, L, XL, XXL, XXXL' }}</span></td>
+                        <td><span class="amount" style="color: var(--u-primary); font-size: 1.05rem;">₱{{ "%.2f"|format(s.price or 0) }}</span><span style="font-size:0.7rem; color:var(--u-muted); display:block;">Full set</span></td>
+                        <td><span class="badge badge-ready">SET</span></td>
                         <td>
-                            <button class="btn-view" onclick="openPriceModal({{ item.item_id }}, '{{ item.item_name|replace("'","\\'")|safe }}', '{{ '%.2f'|format(item.price or 0) }}')">
-                                Edit Price
-                            </button>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                <button class="btn-view" onclick="openPriceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}', '{{ '%.2f'|format(s.price or 0) }}')">Edit Price</button>
+                                <button class="btn-onsite" style="padding:6px 12px; font-size:0.74rem;" onclick="openAddPieceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}')">+ Add Piece</button>
+                            </div>
                         </td>
                     </tr>
+                    {# PIECE ROWS under this set #}
+                    {% set pieces = pieces_by_set.get(s.item_id, []) %}
+                    {% for p in pieces %}
+                    <tr style="border-left: 4px solid #c7d2fe;">
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 14px; padding-left: 20px;">
+                                <div style="width: 6px; height: 6px; border-radius: 50%; background: var(--u-accent); flex-shrink:0;"></div>
+                                <div>
+                                    <span style="color: var(--u-text); font-weight:700; font-size:0.9rem;">{{ p.item_name }}</span>
+                                    <span style="display:block; font-size:0.7rem; color:var(--u-muted);">Individual Piece — can be ordered separately</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="grade-pill">{{ p.grade_level or '—' }}</span></td>
+                        <td><span style="font-size:0.8rem; font-weight:700; color:var(--u-muted);">{{ p.size_label or 'XS, S, M, L, XL, XXL, XXXL' }}</span></td>
+                        <td><span class="amount">₱{{ "%.2f"|format(p.price or 0) }}</span></td>
+                        <td><span class="badge badge-for-ordering">PIECE</span></td>
+                        <td>
+                            <button class="btn-view" onclick="openPriceModal({{ p.item_id }}, '{{ p.item_name|replace("'","\'")|safe }}', '{{ '%.2f'|format(p.price or 0) }}')">Edit Price</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
                     {% else %}
                     <tr>
                         <td colspan="6">
                             <div class="empty-state">
-                                <p>No uniform catalog items configured yet.</p>
-                                <button class="btn-add-item" style="margin-top:12px;" onclick="openAddModal()">+ Add First Uniform Item</button>
+                                <p>No uniform catalog sets configured yet.</p>
+                                <button class="btn-add-item" style="margin-top:12px;" onclick="openAddModal()">+ Add First Uniform Set</button>
                             </div>
                         </td>
                     </tr>
@@ -377,7 +401,6 @@
         </div>
     </div>
 
-</div>
 
 <!-- View Items Modal -->
 <div class="modal-backdrop" id="viewModal">
@@ -410,27 +433,27 @@
     </div>
 </div>
 
-<!-- Add Uniform Modal -->
+<!-- Add Uniform SET Modal -->
 <div class="modal-backdrop" id="addModal">
     <div class="modal-box">
-        <div class="modal-title">Add Uniform Catalog Item</div>
-        <div class="modal-sub">Create uniform item piece or set for pre-order catalog.</div>
+        <div class="modal-title">Add Uniform Set</div>
+        <div class="modal-sub">Create a new uniform set (e.g. JHS Boys Uniform Set). You can add individual pieces after.</div>
         <form id="addForm">
             <div class="form-group">
-                <label>Item Name</label>
-                <input type="text" id="addName" required placeholder="e.g. School Polo, School Skirt, PE Shirt, PE Pants">
+                <label>Set Name</label>
+                <input type="text" id="addName" required placeholder="e.g. JHS Boys Uniform Set, SHS Girls Uniform Set">
             </div>
             <div class="form-group">
                 <label>Grade Level</label>
-                <input type="text" id="addGrade" placeholder="e.g. Nursery, Elementary, Junior High, All Grades">
+                <input type="text" id="addGrade" placeholder="e.g. Grade 7-10, All Grades, Pre-Elementary">
             </div>
             <div class="form-group">
-                <label>Unit Price (₱)</label>
-                <input type="number" step="0.01" id="addPrice" required placeholder="0.00">
+                <label>Full Set Price (₱)</label>
+                <input type="number" step="0.01" id="addPrice" placeholder="0.00">
             </div>
             <div class="form-group">
                 <label>Available Sizes (comma separated)</label>
-                <input type="text" id="addSizes" placeholder="XS, S, M, L, XL, XXL" value="XS, S, M, L, XL, XXL">
+                <input type="text" id="addSizes" value="XS, S, M, L, XL, XXL, XXXL">
             </div>
             <div class="form-group">
                 <label>Image URL (Optional)</label>
@@ -438,7 +461,34 @@
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn-cancel-modal" onclick="closeModal('addModal')">Cancel</button>
-                <button type="submit" class="btn-save-modal">Save Uniform Item</button>
+                <button type="submit" class="btn-save-modal">Save Uniform Set</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Piece Modal -->
+<div class="modal-backdrop" id="addPieceModal">
+    <div class="modal-box">
+        <div class="modal-title">Add Piece to Set</div>
+        <div class="modal-sub" id="addPieceModalSub"></div>
+        <form id="addPieceForm">
+            <input type="hidden" id="pieceParentId">
+            <div class="form-group">
+                <label>Piece Name</label>
+                <input type="text" id="pieceName" required placeholder="e.g. Polo, Pants, Blouse, Skirt, PE Shirt">
+            </div>
+            <div class="form-group">
+                <label>Piece Price (₱)</label>
+                <input type="number" step="0.01" id="piecePrice" required placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>Available Sizes (comma separated)</label>
+                <input type="text" id="pieceSizes" value="XS, S, M, L, XL, XXL, XXXL">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel-modal" onclick="closeModal('addPieceModal')">Cancel</button>
+                <button type="submit" class="btn-save-modal">Add Piece</button>
             </div>
         </form>
     </div>
@@ -527,7 +577,26 @@
         fetch('/cashier/uniform-catalog/add', { method: 'POST', body: formData })
             .then(r => r.json())
             .then(data => {
-                if (data.success) { closeModal('addModal'); location.reload(); }
+    });
+
+    function openAddPieceModal(parentItemId, parentName) {
+        document.getElementById('pieceParentId').value = parentItemId;
+        document.getElementById('addPieceModalSub').textContent = 'Adding piece under: ' + parentName;
+        document.getElementById('addPieceModal').classList.add('open');
+    }
+
+    document.getElementById('addPieceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData();
+        formData.append('parent_item_id', document.getElementById('pieceParentId').value);
+        formData.append('item_name', document.getElementById('pieceName').value);
+        formData.append('price', document.getElementById('piecePrice').value);
+        formData.append('size_label', document.getElementById('pieceSizes').value);
+
+        fetch('/cashier/uniform-catalog/add-piece', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) { closeModal('addPieceModal'); location.reload(); }
                 else { alert('Error: ' + data.error); }
             });
     });

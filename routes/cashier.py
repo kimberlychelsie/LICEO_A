@@ -1935,14 +1935,33 @@ def uniform_orders():
         """, (branch_id,))
         stats = cursor.fetchone()
 
-        # Fetch uniform catalog items for catalog & pricing tab
+        # Fetch uniform SETS (top-level items) for catalog tab
         cursor.execute("""
             SELECT item_id, category, item_name, grade_level, price, image_url, is_active, size_label
             FROM inventory_items
             WHERE branch_id = %s AND UPPER(category) = 'UNIFORM'
+              AND (parent_item_id IS NULL)
             ORDER BY item_name ASC
         """, (branch_id,))
-        uniform_catalog = cursor.fetchall()
+        catalog_sets = cursor.fetchall()
+
+        # Fetch all pieces (items with a parent_item_id)
+        cursor.execute("""
+            SELECT item_id, item_name, grade_level, price, size_label, parent_item_id
+            FROM inventory_items
+            WHERE branch_id = %s AND UPPER(category) = 'UNIFORM'
+              AND parent_item_id IS NOT NULL
+            ORDER BY parent_item_id, item_name ASC
+        """, (branch_id,))
+        all_pieces = cursor.fetchall()
+
+        # Group pieces by parent_item_id
+        pieces_by_set = {}
+        for p in all_pieces:
+            pid = p['parent_item_id']
+            if pid not in pieces_by_set:
+                pieces_by_set[pid] = []
+            pieces_by_set[pid].append(p)
 
         return render_template(
             "cashier_uniform_orders.html",
@@ -1950,7 +1969,8 @@ def uniform_orders():
             stats=stats,
             status_filter=status_filter,
             search=search,
-            uniform_catalog=uniform_catalog
+            catalog_sets=catalog_sets,
+            pieces_by_set=pieces_by_set
         )
     finally:
         cursor.close()
@@ -2155,6 +2175,7 @@ def uniform_catalog_update_price():
 
 @cashier_bp.route("/cashier/uniform-catalog/add", methods=["POST"])
 def uniform_catalog_add():
+    """Add a new Uniform SET (top-level catalog item, no parent)."""
     if not _require_cashier():
         return jsonify({"error": "Unauthorized"}), 403
 
@@ -2162,7 +2183,7 @@ def uniform_catalog_add():
     item_name = request.form.get("item_name", "").strip()
     grade_level = request.form.get("grade_level", "All Grades").strip()
     price = request.form.get("price", "0").strip()
-    size_label = request.form.get("size_label", "S, M, L, XL").strip()
+    size_label = request.form.get("size_label", "XS, S, M, L, XL, XXL, XXXL").strip()
     image_url = request.form.get("image_url", "").strip()
 
     if not item_name:
@@ -2172,11 +2193,56 @@ def uniform_catalog_add():
     cursor = db.cursor()
     try:
         cursor.execute("""
-            INSERT INTO inventory_items (branch_id, category, item_name, grade_level, price, size_label, image_url, is_active, stock_total, stock_reserved)
-            VALUES (%s, 'UNIFORM', %s, %s, %s, %s, %s, TRUE, 0, 0)
-        """, (branch_id, item_name, grade_level, float(price), size_label, image_url or None))
+            INSERT INTO inventory_items
+              (branch_id, category, item_name, grade_level, price, size_label, image_url,
+               is_active, stock_total, stock_reserved, parent_item_id, is_set_piece)
+            VALUES (%s, 'UNIFORM', %s, %s, %s, %s, %s, TRUE, 0, 0, NULL, FALSE)
+        """, (branch_id, item_name, grade_level, float(price or 0), size_label, image_url or None))
         db.commit()
-        return jsonify({"success": True, "message": "Uniform catalog item added successfully"})
+        return jsonify({"success": True, "message": "Uniform set added successfully"})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@cashier_bp.route("/cashier/uniform-catalog/add-piece", methods=["POST"])
+def uniform_catalog_add_piece():
+    """Add an individual PIECE under a specific uniform set."""
+    if not _require_cashier():
+        return jsonify({"error": "Unauthorized"}), 403
+
+    branch_id = session.get("branch_id")
+    item_name = request.form.get("item_name", "").strip()
+    parent_item_id = request.form.get("parent_item_id", "").strip()
+    price = request.form.get("price", "0").strip()
+    size_label = request.form.get("size_label", "XS, S, M, L, XL, XXL, XXXL").strip()
+
+    if not item_name or not parent_item_id:
+        return jsonify({"error": "Item name and parent set are required"}), 400
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Inherit grade_level from parent set
+        cursor.execute(
+            "SELECT grade_level FROM inventory_items WHERE item_id = %s AND branch_id = %s",
+            (int(parent_item_id), branch_id)
+        )
+        parent = cursor.fetchone()
+        if not parent:
+            return jsonify({"error": "Parent set not found"}), 404
+
+        cursor.execute("""
+            INSERT INTO inventory_items
+              (branch_id, category, item_name, grade_level, price, size_label,
+               is_active, stock_total, stock_reserved, parent_item_id, is_set_piece)
+            VALUES (%s, 'UNIFORM', %s, %s, %s, %s, TRUE, 0, 0, %s, TRUE)
+        """, (branch_id, item_name, parent['grade_level'], float(price or 0), size_label, int(parent_item_id)))
+        db.commit()
+        return jsonify({"success": True, "message": "Piece added to set successfully"})
     except Exception as e:
         db.rollback()
         return jsonify({"error": str(e)}), 500
