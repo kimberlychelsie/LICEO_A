@@ -2015,6 +2015,31 @@ def uniform_mark_onsite(order_id):
                 updated_at = %s
             WHERE order_id = %s
         """, (bill_id, now, now, order_id))
+
+        # Send notification to student
+        student_user_id = order.get("student_user_id")
+        if not student_user_id:
+            cursor.execute("""
+                SELECT sa.user_id 
+                FROM student_accounts sa 
+                JOIN users u ON u.username = sa.username 
+                WHERE sa.enrollment_id = %s
+            """, (order["enrollment_id"],))
+            s_row = cursor.fetchone()
+            if s_row:
+                student_user_id = s_row["user_id"]
+
+        if student_user_id:
+            cursor.execute("""
+                INSERT INTO student_notifications (student_id, title, message, link)
+                VALUES (%s, %s, %s, %s)
+            """, (
+                student_user_id,
+                "Uniform Ready for Claim",
+                f"Your uniform order {order['order_number']} is now onsite! Your bill has been activated. Please proceed to the cashier to pay and claim.",
+                "/student/reservation"
+            ))
+
         db.commit()
 
         return jsonify({"success": True, "message": "Marked as Ready for Claim. Bill has been activated."})
