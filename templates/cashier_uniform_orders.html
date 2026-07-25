@@ -1,0 +1,452 @@
+{% extends "base.html" %}
+{% block title %}Uniform Orders{% endblock %}
+{% block page_title %}Uniform Orders{% endblock %}
+
+{% block styles %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+    :root {
+        --u-primary: #1e3a8a;
+        --u-accent: #3b82f6;
+        --u-success: #10b981;
+        --u-warning: #f59e0b;
+        --u-danger: #ef4444;
+        --u-claimed: #8b5cf6;
+        --u-bg: #f8fafc;
+        --u-card: #ffffff;
+        --u-text: #0f172a;
+        --u-muted: #64748b;
+        --u-border: #e2e8f0;
+    }
+
+    body { background: var(--u-bg); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+
+    .uo-container { max-width: 1400px; margin: 0 auto; padding: 32px 20px 80px; }
+
+    .page-header {
+        display: flex; align-items: flex-start; justify-content: space-between;
+        flex-wrap: wrap; gap: 16px; margin-bottom: 32px;
+    }
+    .page-header h1 {
+        font-size: 1.9rem; font-weight: 800; color: var(--u-primary); letter-spacing: -0.02em;
+    }
+    .page-header p { color: var(--u-muted); margin-top: 4px; font-size: 0.9rem; }
+
+    .stats-grid {
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px;
+    }
+    @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr; } }
+
+    .stat-card {
+        background: var(--u-card); border: 1px solid var(--u-border);
+        border-radius: 20px; padding: 20px 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        display: flex; align-items: center; gap: 16px;
+    }
+    .stat-icon {
+        width: 48px; height: 48px; border-radius: 14px;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .stat-icon svg { width: 22px; height: 22px; }
+    .stat-icon.blue { background: rgba(59,130,246,.12); color: #3b82f6; }
+    .stat-icon.orange { background: rgba(245,158,11,.12); color: #f59e0b; }
+    .stat-icon.green { background: rgba(16,185,129,.12); color: #10b981; }
+    .stat-icon.purple { background: rgba(139,92,246,.12); color: #8b5cf6; }
+    .stat-label { font-size: 0.75rem; color: var(--u-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+    .stat-value { font-size: 1.9rem; font-weight: 800; color: var(--u-text); line-height: 1.1; }
+
+    .filter-bar {
+        background: var(--u-card); border: 1px solid var(--u-border);
+        border-radius: 16px; padding: 20px 24px;
+        display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+    .filter-bar input[type="text"] {
+        flex: 1; min-width: 200px; padding: 10px 14px;
+        border: 1.5px solid var(--u-border); border-radius: 10px;
+        font-family: inherit; font-size: 0.875rem; outline: none;
+        transition: border-color .2s;
+    }
+    .filter-bar input[type="text"]:focus { border-color: var(--u-accent); }
+    .status-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+    .stab {
+        padding: 8px 18px; border-radius: 10px; font-size: 0.8rem; font-weight: 700;
+        border: 1.5px solid var(--u-border); background: var(--u-bg);
+        color: var(--u-muted); cursor: pointer; text-decoration: none; transition: all .15s;
+    }
+    .stab.active, .stab:hover { background: var(--u-primary); color: #fff; border-color: var(--u-primary); }
+
+    .table-card {
+        background: var(--u-card); border: 1px solid var(--u-border);
+        border-radius: 20px; overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .table-wrap { overflow-x: auto; }
+    .uo-table { width: 100%; border-collapse: collapse; min-width: 800px; }
+    .uo-table thead { background: #f8fafc; }
+    .uo-table th {
+        padding: 14px 16px; text-align: left; font-size: 0.72rem; font-weight: 800;
+        text-transform: uppercase; letter-spacing: .05em; color: var(--u-muted);
+        border-bottom: 1px solid var(--u-border);
+    }
+    .uo-table td { padding: 14px 16px; border-bottom: 1px solid #f1f5f9; font-size: 0.875rem; vertical-align: middle; }
+    .uo-table tr:last-child td { border-bottom: none; }
+    .uo-table tr:hover td { background: #f8fafc; }
+
+    .student-name { font-weight: 700; color: var(--u-text); }
+    .sub-text { font-size: 0.78rem; color: var(--u-muted); font-weight: 600; }
+    .grade-pill {
+        display: inline-block; padding: 3px 10px; border-radius: 30px;
+        font-size: 0.7rem; font-weight: 700; background: #f1f5f9; color: var(--u-muted);
+    }
+    .amount { font-weight: 800; color: var(--u-text); }
+
+    .badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 5px 12px; border-radius: 30px; font-size: 0.72rem; font-weight: 700;
+    }
+    .badge-for-ordering { background: rgba(245,158,11,.12); color: #d97706; }
+    .badge-ready { background: rgba(59,130,246,.12); color: #2563eb; }
+    .badge-claimed { background: rgba(139,92,246,.12); color: #7c3aed; }
+    .badge-cancelled { background: rgba(239,68,68,.12); color: #dc2626; }
+    .badge-paid { background: rgba(16,185,129,.12); color: #059669; }
+    .badge-unpaid { background: rgba(239,68,68,.1); color: #dc2626; }
+
+    .btn-onsite {
+        padding: 8px 14px; border-radius: 10px; font-size: 0.78rem; font-weight: 700;
+        background: var(--u-accent); color: #fff; border: none; cursor: pointer;
+        transition: all .15s; white-space: nowrap;
+    }
+    .btn-onsite:hover { background: #2563eb; }
+    .btn-claim {
+        padding: 8px 14px; border-radius: 10px; font-size: 0.78rem; font-weight: 700;
+        background: var(--u-success); color: #fff; border: none; cursor: pointer;
+        transition: all .15s; white-space: nowrap;
+    }
+    .btn-claim:hover { background: #059669; }
+    .btn-view {
+        padding: 7px 13px; border-radius: 10px; font-size: 0.78rem; font-weight: 700;
+        background: transparent; color: var(--u-muted); border: 1.5px solid var(--u-border);
+        cursor: pointer; transition: all .15s;
+    }
+    .btn-view:hover { border-color: var(--u-accent); color: var(--u-accent); }
+    .action-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    .empty-state { text-align: center; padding: 64px 24px; color: var(--u-muted); }
+    .empty-state svg { opacity: 0.25; margin-bottom: 12px; }
+    .empty-state p { font-size: 0.95rem; font-weight: 600; }
+
+    .modal-backdrop {
+        position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000;
+        display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal-box {
+        background: #fff; border-radius: 24px; padding: 32px; max-width: 480px; width: 100%;
+        box-shadow: 0 24px 64px rgba(0,0,0,.15);
+        animation: popIn .2s ease-out;
+    }
+    @keyframes popIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-title { font-size: 1.2rem; font-weight: 800; color: var(--u-text); margin-bottom: 6px; }
+    .modal-sub { font-size: 0.875rem; color: var(--u-muted); margin-bottom: 16px; }
+    .modal-notice {
+        border-radius: 12px; padding: 14px 16px;
+        font-size: .85rem; font-weight: 600; margin-bottom: 8px;
+    }
+    .modal-notice.blue { background: #eff6ff; color: #2563eb; }
+    .modal-notice.green { background: #f0fdf4; color: #059669; }
+    .modal-item-row {
+        display: flex; justify-content: space-between; padding: 8px 0;
+        border-bottom: 1px solid #f1f5f9; font-size: 0.875rem;
+    }
+    .modal-item-row:last-child { border-bottom: none; }
+    .modal-total {
+        display: flex; justify-content: space-between; font-weight: 800;
+        font-size: 1rem; margin-top: 12px; padding-top: 12px; border-top: 2px solid #f1f5f9;
+    }
+    .modal-actions { display: flex; gap: 12px; margin-top: 20px; }
+    .modal-actions button { flex: 1; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 0.9rem; border: none; cursor: pointer; transition: opacity .15s; }
+    .modal-actions button:disabled { opacity: .6; cursor: not-allowed; }
+    .btn-confirm-blue { background: var(--u-accent); color: #fff; }
+    .btn-confirm-green { background: var(--u-success); color: #fff; }
+    .btn-cancel-modal { background: #f1f5f9; color: var(--u-muted); }
+
+    @media (max-width: 600px) {
+        .page-header { flex-direction: column; }
+        .filter-bar { flex-direction: column; }
+        .filter-bar input[type="text"] { width: 100%; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="uo-container">
+
+    <div class="page-header">
+        <div>
+            <h1>Uniform Orders</h1>
+            <p>Track student uniform pre-orders, mark onsite arrivals, and process claims.</p>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon blue">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            </div>
+            <div>
+                <div class="stat-label">Total Orders</div>
+                <div class="stat-value">{{ stats.total or 0 }}</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon orange">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <div>
+                <div class="stat-label">For Ordering</div>
+                <div class="stat-value">{{ stats.for_ordering or 0 }}</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon green">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
+            </div>
+            <div>
+                <div class="stat-label">Ready for Claim</div>
+                <div class="stat-value">{{ stats.ready or 0 }}</div>
+            </div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon purple">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <div>
+                <div class="stat-label">Claimed</div>
+                <div class="stat-value">{{ stats.claimed or 0 }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <form class="filter-bar" method="get">
+        <input type="text" name="search" id="searchInput" placeholder="Search by student name or order #..." value="{{ search }}">
+        <div class="status-tabs">
+            <a href="?status=all&search={{ search }}" class="stab {% if status_filter == 'all' %}active{% endif %}">All</a>
+            <a href="?status=For+Ordering&search={{ search }}" class="stab {% if status_filter == 'For Ordering' %}active{% endif %}">For Ordering</a>
+            <a href="?status=Ready+for+Claim&search={{ search }}" class="stab {% if status_filter == 'Ready for Claim' %}active{% endif %}">Ready for Claim</a>
+            <a href="?status=Claimed&search={{ search }}" class="stab {% if status_filter == 'Claimed' %}active{% endif %}">Claimed</a>
+        </div>
+    </form>
+
+    <!-- Table -->
+    <div class="table-card">
+        <div class="table-wrap">
+            <table class="uo-table">
+                <thead>
+                    <tr>
+                        <th>Student</th>
+                        <th>Order #</th>
+                        <th>Grade</th>
+                        <th>Total Amount</th>
+                        <th>Payment</th>
+                        <th>Order Status</th>
+                        <th>Ordered On</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for o in orders %}
+                <tr>
+                    <td>
+                        <div class="student-name">{{ o.student_name }}</div>
+                        <div class="sub-text">{{ o.branch_enrollment_no or '' }}</div>
+                    </td>
+                    <td><span style="font-size:.82rem; font-weight:800; color:var(--u-primary);">{{ o.order_number }}</span></td>
+                    <td><span class="grade-pill">{{ o.grade_level or '—' }}</span></td>
+                    <td><span class="amount">₱{{ "%.2f"|format(o.total_amount) }}</span></td>
+                    <td>
+                        {% if o.payment_status == 'Paid' %}
+                        <span class="badge badge-paid">Paid</span>
+                        {% else %}
+                        <span class="badge badge-unpaid">Unpaid</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if o.order_status == 'For Ordering' %}
+                        <span class="badge badge-for-ordering">For Ordering</span>
+                        {% elif o.order_status == 'Ready for Claim' %}
+                        <span class="badge badge-ready">Ready for Claim</span>
+                        {% elif o.order_status == 'Claimed' %}
+                        <span class="badge badge-claimed">Claimed</span>
+                        {% else %}
+                        <span class="badge">{{ o.order_status }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="sub-text">
+                        {% if o.created_at %}{{ o.created_at.strftime('%b %d, %Y') }}{% else %}—{% endif %}
+                    </td>
+                    <td>
+                        <div class="action-group">
+                            <button class="btn-view" onclick="viewItems({{ o.order_id }}, '{{ o.student_name|replace("'","\\'")|safe }}', '{{ o.order_number }}')">View Items</button>
+                            {% if o.order_status == 'For Ordering' %}
+                            <button class="btn-onsite" onclick="confirmOnsite({{ o.order_id }}, '{{ o.student_name|replace("'","\\'")|safe }}', '{{ o.order_number }}', '{{ '%.2f'|format(o.total_amount) }}')">Mark Onsite</button>
+                            {% elif o.order_status == 'Ready for Claim' %}
+                            <button class="btn-claim" onclick="confirmClaim({{ o.order_id }}, '{{ o.student_name|replace("'","\\'")|safe }}', '{{ o.order_number }}')">Process Claim</button>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8">
+                        <div class="empty-state">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/></svg>
+                            <p>No uniform orders found.</p>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- View Items Modal -->
+<div class="modal-backdrop" id="viewModal">
+    <div class="modal-box">
+        <div class="modal-title" id="viewModalTitle">Order Items</div>
+        <div class="modal-sub" id="viewModalSub"></div>
+        <div id="viewModalItems"><p style="color:#64748b;font-size:.875rem;">Loading...</p></div>
+        <div class="modal-actions">
+            <button class="btn-cancel-modal" onclick="closeModal('viewModal')">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- Mark Onsite Modal -->
+<div class="modal-backdrop" id="onsiteModal">
+    <div class="modal-box">
+        <div class="modal-title">Mark as Onsite / Ready for Claim?</div>
+        <div class="modal-sub" id="onsiteModalSub"></div>
+        <div class="modal-notice blue">
+            This will activate the Uniform Bill of <strong>₱<span id="onsiteAmount"></span></strong> in the student's Billing Statement. The student can now pay at the cashier counter.
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel-modal" onclick="closeModal('onsiteModal')">Cancel</button>
+            <button class="btn-confirm-blue" id="onsiteConfirmBtn">Confirm — Mark Onsite</button>
+        </div>
+    </div>
+</div>
+
+<!-- Process Claim Modal -->
+<div class="modal-backdrop" id="claimModal">
+    <div class="modal-box">
+        <div class="modal-title">Process Uniform Claim?</div>
+        <div class="modal-sub" id="claimModalSub"></div>
+        <div class="modal-notice green">
+            Confirm that the student has physically received their uniform. This action marks the order as CLAIMED and cannot be undone.
+        </div>
+        <div class="modal-actions">
+            <button class="btn-cancel-modal" onclick="closeModal('claimModal')">Cancel</button>
+            <button class="btn-confirm-green" id="claimConfirmBtn">Confirm — Process Claim</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function closeModal(id) {
+        document.getElementById(id).classList.remove('open');
+    }
+
+    function viewItems(orderId, studentName, orderNo) {
+        document.getElementById('viewModalTitle').textContent = 'Order ' + orderNo;
+        document.getElementById('viewModalSub').textContent = 'Student: ' + studentName;
+        document.getElementById('viewModalItems').innerHTML = '<p style="color:#64748b;font-size:.875rem;">Loading items...</p>';
+        document.getElementById('viewModal').classList.add('open');
+
+        fetch('/cashier/uniform-orders/' + orderId + '/items')
+            .then(r => r.json())
+            .then(items => {
+                if (!items.length) {
+                    document.getElementById('viewModalItems').innerHTML = '<p style="color:#64748b;font-size:.875rem;">No items recorded.</p>';
+                    return;
+                }
+                let html = '';
+                let total = 0;
+                items.forEach(item => {
+                    html += '<div class="modal-item-row">' +
+                        '<span>' + item.item_name + ' (' + (item.size_label || 'N/A') + ') &times; ' + item.quantity + '</span>' +
+                        '<span style="font-weight:700;">&#8369;' + parseFloat(item.line_total).toFixed(2) + '</span>' +
+                        '</div>';
+                    total += parseFloat(item.line_total);
+                });
+                html += '<div class="modal-total"><span>Total</span><span>&#8369;' + total.toFixed(2) + '</span></div>';
+                document.getElementById('viewModalItems').innerHTML = html;
+            })
+            .catch(() => {
+                document.getElementById('viewModalItems').innerHTML = '<p style="color:#ef4444;">Failed to load items.</p>';
+            });
+    }
+
+    function confirmOnsite(orderId, studentName, orderNo, amount) {
+        document.getElementById('onsiteModalSub').textContent = studentName + ' — ' + orderNo;
+        document.getElementById('onsiteAmount').textContent = amount;
+        document.getElementById('onsiteModal').classList.add('open');
+
+        const btn = document.getElementById('onsiteConfirmBtn');
+        btn.disabled = false;
+        btn.textContent = 'Confirm — Mark Onsite';
+        btn.onclick = function () {
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+            fetch('/cashier/uniform-orders/' + orderId + '/mark-onsite', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) { closeModal('onsiteModal'); location.reload(); }
+                    else { alert('Error: ' + (data.error || 'Unknown error')); btn.disabled = false; btn.textContent = 'Confirm — Mark Onsite'; }
+                });
+        };
+    }
+
+    function confirmClaim(orderId, studentName, orderNo) {
+        document.getElementById('claimModalSub').textContent = studentName + ' — ' + orderNo;
+        document.getElementById('claimModal').classList.add('open');
+
+        const btn = document.getElementById('claimConfirmBtn');
+        btn.disabled = false;
+        btn.textContent = 'Confirm — Process Claim';
+        btn.onclick = function () {
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+            fetch('/cashier/uniform-orders/' + orderId + '/process-claim', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) { closeModal('claimModal'); location.reload(); }
+                    else { alert('Error: ' + (data.error || 'Unknown error')); btn.disabled = false; btn.textContent = 'Confirm — Process Claim'; }
+                });
+        };
+    }
+
+    document.querySelectorAll('.modal-backdrop').forEach(m => {
+        m.addEventListener('click', function (e) { if (e.target === this) closeModal(this.id); });
+    });
+
+    let searchTimeout;
+    document.getElementById('searchInput').addEventListener('input', function () {
+        clearTimeout(searchTimeout);
+        const val = this.value;
+        searchTimeout = setTimeout(() => {
+            const params = new URLSearchParams(window.location.search);
+            params.set('search', val);
+            window.location.search = params.toString();
+        }, 500);
+    });
+</script>
+{% endblock %}

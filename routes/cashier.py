@@ -1874,9 +1874,228 @@ def unpaid_report():
         db.close()
 
 
+
+
+@cashier_bp.route("/cashier/uniform-orders")
+def uniform_orders():
+    if not _require_cashier():
+        return redirect(url_for("auth.login"))
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        active_year_id = _get_active_year_id(cursor, branch_id)
+        status_filter = request.args.get("status", "all")
+        search = request.args.get("search", "").strip()
+
+        params = [branch_id]
+        where_extra = ""
+        if status_filter != "all":
+            where_extra += " AND uo.order_status = %s"
+            params.append(status_filter)
+        if search:
+            where_extra += """ AND (
+                LOWER(CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name)) LIKE %s
+                OR LOWER(uo.order_number) LIKE %s
+            )"""
+            params += [f"%{search.lower()}%", f"%{search.lower()}%"]
+
+        cursor.execute(f"""
+            SELECT
+                uo.order_id,
+                uo.order_number,
+                uo.total_amount,
+                uo.payment_status,
+                uo.order_status,
+                uo.created_at,
+                uo.onsite_arrived_at,
+                uo.claimed_at,
+                uo.enrollment_id,
+                uo.bill_id,
+                CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name) AS student_name,
+                e.grade_level,
+                e.branch_enrollment_no
+            FROM uniform_orders uo
+            JOIN enrollments e ON e.enrollment_id = uo.enrollment_id
+            WHERE uo.branch_id = %s
+            {where_extra}
+            ORDER BY uo.created_at DESC
+        """, params)
+        orders = cursor.fetchall()
+
+        # Stats
+        cursor.execute("""
+            SELECT
+                COUNT(*) FILTER (WHERE order_status = 'For Ordering') AS for_ordering,
+                COUNT(*) FILTER (WHERE order_status = 'Ready for Claim') AS ready,
+                COUNT(*) FILTER (WHERE order_status = 'Claimed') AS claimed,
+                COUNT(*) AS total
+            FROM uniform_orders WHERE branch_id = %s
+        """, (branch_id,))
+        stats = cursor.fetchone()
+
+        return render_template(
+            "cashier_uniform_orders.html",
+            orders=orders,
+            stats=stats,
+            status_filter=status_filter,
+            search=search
+        )
+    finally:
+        cursor.close()
+        db.close()
+
+
+@cashier_bp.route("/cashier/uniform-orders/<int:order_id>/mark-onsite", methods=["POST"])
+def uniform_mark_onsite(order_id):
+    if not _require_cashier():
+        return jsonify({"error": "Unauthorized"}), 403
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT uo.*, e.student_first_name, e.student_middle_name, e.student_last_name,
+                   e.year_id AS enroll_year_id, e.enrollment_id
+            FROM uniform_orders uo
+            JOIN enrollments e ON e.enrollment_id = uo.enrollment_id
+            WHERE uo.order_id = %s AND uo.branch_id = %s
+        """, (order_id, branch_id))
+        order = cursor.fetchone()
+        if not order:
+            return jsonify({"error": "Order not found"}), 404
+        if order["order_status"] != "For Ordering":
+            return jsonify({"error": "Order is already marked onsite or processed"}), 400
+
+        year_id = order["year_id"] or order["enroll_year_id"] or _get_active_year_id(cursor, branch_id)
+
+        # Activate billing entry if not yet linked
+        bill_id = order["bill_id"]
+        if not bill_id:
+            # Check if student already has a billing record
+            cursor.execute("""
+                SELECT bill_id, uniform_fee FROM billing WHERE enrollment_id = %s
+            """, (order["enrollment_id"],))
+            existing_bill = cursor.fetchone()
+            if existing_bill:
+                # Add uniform fee onto existing bill
+                new_uniform_fee = float(existing_bill["uniform_fee"] or 0) + float(order["total_amount"])
+                cursor.execute("""
+                    UPDATE billing
+                    SET uniform_fee = %s,
+                        total_amount = total_amount + %s,
+                        balance = balance + %s,
+                        updated_at = NOW()
+                    WHERE bill_id = %s
+                    RETURNING bill_id
+                """, (new_uniform_fee, order["total_amount"], order["total_amount"], existing_bill["bill_id"]))
+                bill_id = cursor.fetchone()["bill_id"]
+            else:
+                cursor.execute("""
+                    INSERT INTO billing
+                      (enrollment_id, branch_id, year_id, tuition_fee, books_fee, uniform_fee,
+                       other_fees, total_amount, amount_paid, balance, status, created_by)
+                    VALUES (%s, %s, %s, 0, 0, %s, 0, %s, 0, %s, 'pending', %s)
+                    RETURNING bill_id
+                """, (
+                    order["enrollment_id"], branch_id, year_id,
+                    order["total_amount"], order["total_amount"], order["total_amount"],
+                    session.get("user_id")
+                ))
+                bill_id = cursor.fetchone()["bill_id"]
+
+        now = _get_manila_now().replace(tzinfo=None)
+        cursor.execute("""
+            UPDATE uniform_orders
+            SET order_status = 'Ready for Claim',
+                bill_id = %s,
+                onsite_arrived_at = %s,
+                updated_at = %s
+            WHERE order_id = %s
+        """, (bill_id, now, now, order_id))
+        db.commit()
+
+        return jsonify({"success": True, "message": "Marked as Ready for Claim. Bill has been activated."})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@cashier_bp.route("/cashier/uniform-orders/<int:order_id>/process-claim", methods=["POST"])
+def uniform_process_claim(order_id):
+    if not _require_cashier():
+        return jsonify({"error": "Unauthorized"}), 403
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT uo.*, b.status AS bill_status, b.balance
+            FROM uniform_orders uo
+            LEFT JOIN billing b ON b.bill_id = uo.bill_id
+            WHERE uo.order_id = %s AND uo.branch_id = %s
+        """, (order_id, branch_id))
+        order = cursor.fetchone()
+        if not order:
+            return jsonify({"error": "Order not found"}), 404
+        if order["order_status"] not in ("Ready for Claim",):
+            return jsonify({"error": "Order is not yet Ready for Claim"}), 400
+        if order["bill_status"] not in ("paid", "full"):
+            # Allow override from staff but warn
+            pass
+
+        now = _get_manila_now().replace(tzinfo=None)
+        cursor.execute("""
+            UPDATE uniform_orders
+            SET order_status = 'Claimed',
+                payment_status = 'Paid',
+                claimed_at = %s,
+                claimed_by_user_id = %s,
+                updated_at = %s
+            WHERE order_id = %s
+        """, (now, session.get("user_id"), now, order_id))
+        db.commit()
+        return jsonify({"success": True, "message": "Order marked as Claimed."})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@cashier_bp.route("/cashier/uniform-orders/<int:order_id>/items")
+def uniform_order_items(order_id):
+    if not _require_cashier():
+        return jsonify({"error": "Unauthorized"}), 403
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT uoi.item_name, uoi.size_label, uoi.quantity, uoi.unit_price, uoi.line_total
+            FROM uniform_order_items uoi
+            JOIN uniform_orders uo ON uo.order_id = uoi.order_id
+            WHERE uoi.order_id = %s AND uo.branch_id = %s
+            ORDER BY uoi.item_id
+        """, (order_id, branch_id))
+        items = cursor.fetchall()
+        return jsonify([dict(i) for i in items])
+    finally:
+        cursor.close()
+        db.close()
+
+
 @cashier_bp.after_request
 def add_no_cache_headers(response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
-    return response
+    return response
