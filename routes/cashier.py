@@ -1931,6 +1931,7 @@ def uniform_orders():
                 COUNT(*) FILTER (WHERE order_status = 'Ready for Claim') AS ready,
                 COUNT(*) FILTER (WHERE order_status = 'Claimed') AS claimed,
                 COUNT(*) AS total
+            FROM uniform_orders WHERE branch_id = %s
         """, (branch_id,))
         stats = cursor.fetchone()
 
