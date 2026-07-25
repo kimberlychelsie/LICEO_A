@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Uniform Orders{% endblock %}
-{% block page_title %}Uniform Orders{% endblock %}
+{% block title %}Uniform Orders & Catalog{% endblock %}
+{% block page_title %}Uniform Orders & Catalog{% endblock %}
 
 {% block styles %}
 <style>
@@ -25,14 +25,33 @@
     .uo-container { max-width: 1400px; margin: 0 auto; padding: 32px 20px 80px; }
 
     .page-header {
-        display: flex; align-items: flex-start; justify-content: space-between;
-        flex-wrap: wrap; gap: 16px; margin-bottom: 32px;
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 16px; margin-bottom: 24px;
     }
     .page-header h1 {
         font-size: 1.9rem; font-weight: 800; color: var(--u-primary); letter-spacing: -0.02em;
     }
     .page-header p { color: var(--u-muted); margin-top: 4px; font-size: 0.9rem; }
 
+    /* Main Section Navigation Tabs */
+    .main-nav-tabs {
+        display: flex; gap: 12px; margin-bottom: 28px; border-bottom: 2px solid var(--u-border);
+        padding-bottom: 4px;
+    }
+    .main-tab {
+        padding: 12px 24px; font-size: 0.95rem; font-weight: 800; color: var(--u-muted);
+        background: transparent; border: none; border-bottom: 3px solid transparent;
+        cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 8px;
+    }
+    .main-tab.active {
+        color: var(--u-primary); border-bottom-color: var(--u-primary);
+    }
+    .main-tab:hover:not(.active) { color: var(--u-accent); }
+
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* Stats Grid */
     .stats-grid {
         display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px;
     }
@@ -57,6 +76,7 @@
     .stat-label { font-size: 0.75rem; color: var(--u-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
     .stat-value { font-size: 1.9rem; font-weight: 800; color: var(--u-text); line-height: 1.1; }
 
+    /* Filters */
     .filter-bar {
         background: var(--u-card); border: 1px solid var(--u-border);
         border-radius: 16px; padding: 20px 24px;
@@ -78,6 +98,7 @@
     }
     .stab.active, .stab:hover { background: var(--u-primary); color: #fff; border-color: var(--u-primary); }
 
+    /* Table Cards */
     .table-card {
         background: var(--u-card); border: 1px solid var(--u-border);
         border-radius: 20px; overflow: hidden;
@@ -110,20 +131,17 @@
     .badge-for-ordering { background: rgba(245,158,11,.12); color: #d97706; }
     .badge-ready { background: rgba(59,130,246,.12); color: #2563eb; }
     .badge-claimed { background: rgba(139,92,246,.12); color: #7c3aed; }
-    .badge-cancelled { background: rgba(239,68,68,.12); color: #dc2626; }
     .badge-paid { background: rgba(16,185,129,.12); color: #059669; }
     .badge-unpaid { background: rgba(239,68,68,.1); color: #dc2626; }
 
     .btn-onsite {
         padding: 8px 14px; border-radius: 10px; font-size: 0.78rem; font-weight: 700;
-        background: var(--u-accent); color: #fff; border: none; cursor: pointer;
-        transition: all .15s; white-space: nowrap;
+        background: var(--u-accent); color: #fff; border: none; cursor: pointer; transition: all .15s;
     }
     .btn-onsite:hover { background: #2563eb; }
     .btn-claim {
         padding: 8px 14px; border-radius: 10px; font-size: 0.78rem; font-weight: 700;
-        background: var(--u-success); color: #fff; border: none; cursor: pointer;
-        transition: all .15s; white-space: nowrap;
+        background: var(--u-success); color: #fff; border: none; cursor: pointer; transition: all .15s;
     }
     .btn-claim:hover { background: #059669; }
     .btn-view {
@@ -132,12 +150,19 @@
         cursor: pointer; transition: all .15s;
     }
     .btn-view:hover { border-color: var(--u-accent); color: var(--u-accent); }
+    .btn-add-item {
+        padding: 10px 20px; border-radius: 12px; font-size: 0.85rem; font-weight: 800;
+        background: var(--u-primary); color: #fff; border: none; cursor: pointer; transition: all .15s;
+    }
+    .btn-add-item:hover { background: #2563eb; }
+
     .action-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
     .empty-state { text-align: center; padding: 64px 24px; color: var(--u-muted); }
     .empty-state svg { opacity: 0.25; margin-bottom: 12px; }
     .empty-state p { font-size: 0.95rem; font-weight: 600; }
 
+    /* Modal Styling */
     .modal-backdrop {
         position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000;
         display: none; align-items: center; justify-content: center; padding: 16px;
@@ -145,39 +170,21 @@
     .modal-backdrop.open { display: flex; }
     .modal-box {
         background: #fff; border-radius: 24px; padding: 32px; max-width: 480px; width: 100%;
-        box-shadow: 0 24px 64px rgba(0,0,0,.15);
-        animation: popIn .2s ease-out;
+        box-shadow: 0 24px 64px rgba(0,0,0,.15); animation: popIn .2s ease-out;
     }
     @keyframes popIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     .modal-title { font-size: 1.2rem; font-weight: 800; color: var(--u-text); margin-bottom: 6px; }
     .modal-sub { font-size: 0.875rem; color: var(--u-muted); margin-bottom: 16px; }
-    .modal-notice {
-        border-radius: 12px; padding: 14px 16px;
-        font-size: .85rem; font-weight: 600; margin-bottom: 8px;
-    }
-    .modal-notice.blue { background: #eff6ff; color: #2563eb; }
-    .modal-notice.green { background: #f0fdf4; color: #059669; }
-    .modal-item-row {
-        display: flex; justify-content: space-between; padding: 8px 0;
-        border-bottom: 1px solid #f1f5f9; font-size: 0.875rem;
-    }
-    .modal-item-row:last-child { border-bottom: none; }
-    .modal-total {
-        display: flex; justify-content: space-between; font-weight: 800;
-        font-size: 1rem; margin-top: 12px; padding-top: 12px; border-top: 2px solid #f1f5f9;
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--u-text); margin-bottom: 6px; }
+    .form-group input, .form-group select {
+        width: 100%; padding: 10px 14px; border: 1.5px solid var(--u-border); border-radius: 10px;
+        font-family: inherit; font-size: 0.875rem; outline: none;
     }
     .modal-actions { display: flex; gap: 12px; margin-top: 20px; }
-    .modal-actions button { flex: 1; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 0.9rem; border: none; cursor: pointer; transition: opacity .15s; }
-    .modal-actions button:disabled { opacity: .6; cursor: not-allowed; }
-    .btn-confirm-blue { background: var(--u-accent); color: #fff; }
-    .btn-confirm-green { background: var(--u-success); color: #fff; }
+    .modal-actions button { flex: 1; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 0.9rem; border: none; cursor: pointer; }
     .btn-cancel-modal { background: #f1f5f9; color: var(--u-muted); }
-
-    @media (max-width: 600px) {
-        .page-header { flex-direction: column; }
-        .filter-bar { flex-direction: column; }
-        .filter-bar input[type="text"] { width: 100%; }
-    }
+    .btn-save-modal { background: var(--u-primary); color: #fff; }
 </style>
 {% endblock %}
 
@@ -186,134 +193,190 @@
 
     <div class="page-header">
         <div>
-            <h1>Uniform Orders</h1>
-            <p>Track student uniform pre-orders, mark onsite arrivals, and process claims.</p>
+            <h1>Uniform Orders & Catalog</h1>
+            <p>Manage student pre-orders, onsite arrivals, and uniform pricing catalog.</p>
         </div>
+        <button class="btn-add-item" onclick="openAddModal()">+ Add Uniform Item</button>
     </div>
 
-    <!-- Stats -->
-    <div class="stats-grid">
-        <div class="stat-card">
-            <div class="stat-icon blue">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-            </div>
-            <div>
-                <div class="stat-label">Total Orders</div>
-                <div class="stat-value">{{ stats.total or 0 }}</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon orange">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            </div>
-            <div>
-                <div class="stat-label">For Ordering</div>
-                <div class="stat-value">{{ stats.for_ordering or 0 }}</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon green">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg>
-            </div>
-            <div>
-                <div class="stat-label">Ready for Claim</div>
-                <div class="stat-value">{{ stats.ready or 0 }}</div>
-            </div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-icon purple">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            </div>
-            <div>
-                <div class="stat-label">Claimed</div>
-                <div class="stat-value">{{ stats.claimed or 0 }}</div>
-            </div>
-        </div>
+    <!-- Main Navigation Tabs -->
+    <div class="main-nav-tabs">
+        <button class="main-tab active" onclick="switchMainTab('preorders', this)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/></svg>
+            Pre-Orders Tracking
+        </button>
+        <button class="main-tab" onclick="switchMainTab('catalog', this)">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>
+            Uniform Catalog & Pricing
+        </button>
     </div>
 
-    <!-- Filters -->
-    <form class="filter-bar" method="get">
-        <input type="text" name="search" id="searchInput" placeholder="Search by student name or order #..." value="{{ search }}">
-        <div class="status-tabs">
-            <a href="?status=all&search={{ search }}" class="stab {% if status_filter == 'all' %}active{% endif %}">All</a>
-            <a href="?status=For+Ordering&search={{ search }}" class="stab {% if status_filter == 'For Ordering' %}active{% endif %}">For Ordering</a>
-            <a href="?status=Ready+for+Claim&search={{ search }}" class="stab {% if status_filter == 'Ready for Claim' %}active{% endif %}">Ready for Claim</a>
-            <a href="?status=Claimed&search={{ search }}" class="stab {% if status_filter == 'Claimed' %}active{% endif %}">Claimed</a>
+    <!-- TAB 1: PRE-ORDERS TRACKING -->
+    <div class="tab-pane active" id="pane-preorders">
+        <!-- Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon blue"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+                <div><div class="stat-label">Total Orders</div><div class="stat-value">{{ stats.total or 0 }}</div></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon orange"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                <div><div class="stat-label">For Ordering</div><div class="stat-value">{{ stats.for_ordering or 0 }}</div></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></div>
+                <div><div class="stat-label">Ready for Claim</div><div class="stat-value">{{ stats.ready or 0 }}</div></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon purple"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+                <div><div class="stat-label">Claimed</div><div class="stat-value">{{ stats.claimed or 0 }}</div></div>
+            </div>
         </div>
-    </form>
 
-    <!-- Table -->
-    <div class="table-card">
-        <div class="table-wrap">
-            <table class="uo-table">
-                <thead>
+        <!-- Filters -->
+        <form class="filter-bar" method="get">
+            <input type="text" name="search" id="searchInput" placeholder="Search by student name or order #..." value="{{ search }}">
+            <div class="status-tabs">
+                <a href="?status=all&search={{ search }}" class="stab {% if status_filter == 'all' %}active{% endif %}">All</a>
+                <a href="?status=For+Ordering&search={{ search }}" class="stab {% if status_filter == 'For Ordering' %}active{% endif %}">For Ordering</a>
+                <a href="?status=Ready+for+Claim&search={{ search }}" class="stab {% if status_filter == 'Ready for Claim' %}active{% endif %}">Ready for Claim</a>
+                <a href="?status=Claimed&search={{ search }}" class="stab {% if status_filter == 'Claimed' %}active{% endif %}">Claimed</a>
+            </div>
+        </form>
+
+        <!-- Orders Table -->
+        <div class="table-card">
+            <div class="table-wrap">
+                <table class="uo-table">
+                    <thead>
+                        <tr>
+                            <th>Student</th>
+                            <th>Order #</th>
+                            <th>Grade</th>
+                            <th>Total Amount</th>
+                            <th>Payment</th>
+                            <th>Order Status</th>
+                            <th>Ordered On</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for o in orders %}
                     <tr>
-                        <th>Student</th>
-                        <th>Order #</th>
-                        <th>Grade</th>
-                        <th>Total Amount</th>
-                        <th>Payment</th>
-                        <th>Order Status</th>
-                        <th>Ordered On</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                {% for o in orders %}
-                <tr>
-                    <td>
-                        <div class="student-name">{{ o.student_name }}</div>
-                        <div class="sub-text">{{ o.branch_enrollment_no or '' }}</div>
-                    </td>
-                    <td><span style="font-size:.82rem; font-weight:800; color:var(--u-primary);">{{ o.order_number }}</span></td>
-                    <td><span class="grade-pill">{{ o.grade_level or '—' }}</span></td>
-                    <td><span class="amount">₱{{ "%.2f"|format(o.total_amount) }}</span></td>
-                    <td>
-                        {% if o.payment_status == 'Paid' %}
-                        <span class="badge badge-paid">Paid</span>
-                        {% else %}
-                        <span class="badge badge-unpaid">Unpaid</span>
-                        {% endif %}
-                    </td>
-                    <td>
-                        {% if o.order_status == 'For Ordering' %}
-                        <span class="badge badge-for-ordering">For Ordering</span>
-                        {% elif o.order_status == 'Ready for Claim' %}
-                        <span class="badge badge-ready">Ready for Claim</span>
-                        {% elif o.order_status == 'Claimed' %}
-                        <span class="badge badge-claimed">Claimed</span>
-                        {% else %}
-                        <span class="badge">{{ o.order_status }}</span>
-                        {% endif %}
-                    </td>
-                    <td class="sub-text">
-                        {% if o.created_at %}{{ o.created_at.strftime('%b %d, %Y') }}{% else %}—{% endif %}
-                    </td>
-                    <td>
-                        <div class="action-group">
-                            <button class="btn-view" onclick="viewItems({{ o.order_id }}, '{{ o.student_name|replace("'","\\'")|safe }}', '{{ o.order_number }}')">View Items</button>
-                            {% if o.order_status == 'For Ordering' %}
-                            <button class="btn-onsite" onclick="confirmOnsite({{ o.order_id }}, '{{ o.student_name|replace("'","\\'")|safe }}', '{{ o.order_number }}', '{{ '%.2f'|format(o.total_amount) }}')">Mark Onsite</button>
-                            {% elif o.order_status == 'Ready for Claim' %}
-                            <button class="btn-claim" onclick="confirmClaim({{ o.order_id }}, '{{ o.student_name|replace("'","\\'")|safe }}', '{{ o.order_number }}')">Process Claim</button>
+                        <td>
+                            <div class="student-name">{{ o.student_name }}</div>
+                            <div class="sub-text">{{ o.branch_enrollment_no or '' }}</div>
+                        </td>
+                        <td><span style="font-size:.82rem; font-weight:800; color:var(--u-primary);">{{ o.order_number }}</span></td>
+                        <td><span class="grade-pill">{{ o.grade_level or '—' }}</span></td>
+                        <td><span class="amount">₱{{ "%.2f"|format(o.total_amount) }}</span></td>
+                        <td>
+                            {% if o.payment_status == 'Paid' %}
+                            <span class="badge badge-paid">Paid</span>
+                            {% else %}
+                            <span class="badge badge-unpaid">Unpaid</span>
                             {% endif %}
-                        </div>
-                    </td>
-                </tr>
-                {% else %}
-                <tr>
-                    <td colspan="8">
-                        <div class="empty-state">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/></svg>
-                            <p>No uniform orders found.</p>
-                        </div>
-                    </td>
-                </tr>
-                {% endfor %}
-                </tbody>
-            </table>
+                        </td>
+                        <td>
+                            {% if o.order_status == 'For Ordering' %}
+                            <span class="badge badge-for-ordering">For Ordering</span>
+                            {% elif o.order_status == 'Ready for Claim' %}
+                            <span class="badge badge-ready">Ready for Claim</span>
+                            {% elif o.order_status == 'Claimed' %}
+                            <span class="badge badge-claimed">Claimed</span>
+                            {% else %}
+                            <span class="badge">{{ o.order_status }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="sub-text">{% if o.created_at %}{{ o.created_at.strftime('%b %d, %Y') }}{% else %}—{% endif %}</td>
+                        <td>
+                            <div class="action-group">
+                                <button class="btn-view" onclick="viewItems({{ o.order_id }}, '{{ o.student_name|replace("'","\\'")|safe }}', '{{ o.order_number }}')">View Items</button>
+                                {% if o.order_status == 'For Ordering' %}
+                                <button class="btn-onsite" onclick="confirmOnsite({{ o.order_id }}, '{{ o.student_name|replace("'","\\'")|safe }}', '{{ o.order_number }}', '{{ '%.2f'|format(o.total_amount) }}')">Mark Onsite</button>
+                                {% elif o.order_status == 'Ready for Claim' %}
+                                <button class="btn-claim" onclick="confirmClaim({{ o.order_id }}, '{{ o.student_name|replace("'","\\'")|safe }}', '{{ o.order_number }}')">Process Claim</button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8">
+                            <div class="empty-state">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/></svg>
+                                <p>No uniform orders found.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
+
+    <!-- TAB 2: UNIFORM CATALOG & PRICING -->
+    <div class="tab-pane" id="pane-catalog">
+        <div class="table-card">
+            <div class="table-wrap">
+                <table class="uo-table">
+                    <thead>
+                        <tr>
+                            <th>Item Details</th>
+                            <th>Grade Range</th>
+                            <th>Available Sizes</th>
+                            <th>Unit Price</th>
+                            <th>Mode</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for item in uniform_catalog %}
+                    <tr>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 14px;">
+                                {% if item.image_url %}
+                                <div style="width: 44px; height: 44px; border-radius: 12px; overflow: hidden; border: 1px solid var(--u-border);">
+                                    <img src="{{ item.image_url }}" alt="{{ item.item_name }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                </div>
+                                {% else %}
+                                <div style="width: 44px; height: 44px; border-radius: 12px; background: #f1f5f9; display: flex; align-items: center; justify-content: center; color: var(--u-muted);">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <strong style="color: var(--u-primary); font-size: 0.95rem;">{{ item.item_name }}</strong>
+                                    <span class="sub-text" style="display:block;">Uniform Item</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="grade-pill">{{ item.grade_level or 'All Grades' }}</span></td>
+                        <td><span style="font-size:0.8rem; font-weight:700; color:var(--u-muted);">{{ item.size_label or 'S, M, L, XL' }}</span></td>
+                        <td><span class="amount" style="color: var(--u-primary); font-size: 1.05rem;">₱{{ "%.2f"|format(item.price or 0) }}</span></td>
+                        <td><span class="badge badge-paid">Pre-Order Catalog</span></td>
+                        <td>
+                            <button class="btn-view" onclick="openPriceModal({{ item.item_id }}, '{{ item.item_name|replace("'","\\'")|safe }}', '{{ '%.2f'|format(item.price or 0) }}')">
+                                Edit Price
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <p>No uniform catalog items configured yet.</p>
+                                <button class="btn-add-item" style="margin-top:12px;" onclick="openAddModal()">+ Add First Uniform Item</button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 <!-- View Items Modal -->
@@ -328,17 +391,70 @@
     </div>
 </div>
 
+<!-- Edit Price Modal -->
+<div class="modal-backdrop" id="priceModal">
+    <div class="modal-box">
+        <div class="modal-title">Edit Price</div>
+        <div class="modal-sub" id="priceModalSub"></div>
+        <form id="priceForm">
+            <input type="hidden" id="priceItemId">
+            <div class="form-group">
+                <label>Unit Price (₱)</label>
+                <input type="number" step="0.01" id="priceInput" required placeholder="0.00">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel-modal" onclick="closeModal('priceModal')">Cancel</button>
+                <button type="submit" class="btn-save-modal">Update Price</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Uniform Modal -->
+<div class="modal-backdrop" id="addModal">
+    <div class="modal-box">
+        <div class="modal-title">Add Uniform Catalog Item</div>
+        <div class="modal-sub">Create uniform item piece or set for pre-order catalog.</div>
+        <form id="addForm">
+            <div class="form-group">
+                <label>Item Name</label>
+                <input type="text" id="addName" required placeholder="e.g. School Polo, School Skirt, PE Shirt, PE Pants">
+            </div>
+            <div class="form-group">
+                <label>Grade Level</label>
+                <input type="text" id="addGrade" placeholder="e.g. Nursery, Elementary, Junior High, All Grades">
+            </div>
+            <div class="form-group">
+                <label>Unit Price (₱)</label>
+                <input type="number" step="0.01" id="addPrice" required placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>Available Sizes (comma separated)</label>
+                <input type="text" id="addSizes" placeholder="XS, S, M, L, XL, XXL" value="XS, S, M, L, XL, XXL">
+            </div>
+            <div class="form-group">
+                <label>Image URL (Optional)</label>
+                <input type="url" id="addImage" placeholder="https://...">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel-modal" onclick="closeModal('addModal')">Cancel</button>
+                <button type="submit" class="btn-save-modal">Save Uniform Item</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Mark Onsite Modal -->
 <div class="modal-backdrop" id="onsiteModal">
     <div class="modal-box">
         <div class="modal-title">Mark as Onsite / Ready for Claim?</div>
         <div class="modal-sub" id="onsiteModalSub"></div>
-        <div class="modal-notice blue">
-            This will activate the Uniform Bill of <strong>₱<span id="onsiteAmount"></span></strong> in the student's Billing Statement. The student can now pay at the cashier counter.
+        <div style="background:#eff6ff; border-radius:12px; padding:14px 16px; font-size:.85rem; color:#2563eb; font-weight:600; margin-bottom:8px;">
+            This will activate the Uniform Bill of <strong>₱<span id="onsiteAmount"></span></strong> in the student's Billing Statement. The student will receive a notification to pay at the cashier.
         </div>
         <div class="modal-actions">
             <button class="btn-cancel-modal" onclick="closeModal('onsiteModal')">Cancel</button>
-            <button class="btn-confirm-blue" id="onsiteConfirmBtn">Confirm — Mark Onsite</button>
+            <button class="btn-save-modal" id="onsiteConfirmBtn">Confirm — Mark Onsite</button>
         </div>
     </div>
 </div>
@@ -348,12 +464,12 @@
     <div class="modal-box">
         <div class="modal-title">Process Uniform Claim?</div>
         <div class="modal-sub" id="claimModalSub"></div>
-        <div class="modal-notice green">
-            Confirm that the student has physically received their uniform. This action marks the order as CLAIMED and cannot be undone.
+        <div style="background:#f0fdf4; border-radius:12px; padding:14px 16px; font-size:.85rem; color:#059669; font-weight:600; margin-bottom:8px;">
+            Confirm that the student has physically received their uniform. This action marks the order as CLAIMED.
         </div>
         <div class="modal-actions">
             <button class="btn-cancel-modal" onclick="closeModal('claimModal')">Cancel</button>
-            <button class="btn-confirm-green" id="claimConfirmBtn">Confirm — Process Claim</button>
+            <button class="btn-save-modal" style="background:var(--u-success);" id="claimConfirmBtn">Confirm — Process Claim</button>
         </div>
     </div>
 </div>
@@ -361,9 +477,60 @@
 
 {% block scripts %}
 <script>
+    function switchMainTab(tab, btn) {
+        document.querySelectorAll('.main-tab').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('pane-' + tab).classList.add('active');
+    }
+
     function closeModal(id) {
         document.getElementById(id).classList.remove('open');
     }
+
+    function openPriceModal(itemId, itemName, currentPrice) {
+        document.getElementById('priceItemId').value = itemId;
+        document.getElementById('priceModalSub').textContent = itemName;
+        document.getElementById('priceInput').value = currentPrice;
+        document.getElementById('priceModal').classList.add('open');
+    }
+
+    function openAddModal() {
+        document.getElementById('addModal').classList.add('open');
+    }
+
+    document.getElementById('priceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const itemId = document.getElementById('priceItemId').value;
+        const newPrice = document.getElementById('priceInput').value;
+        const formData = new FormData();
+        formData.append('item_id', itemId);
+        formData.append('new_price', newPrice);
+
+        fetch('/cashier/uniform-catalog/update-price', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) { closeModal('priceModal'); location.reload(); }
+                else { alert('Error: ' + data.error); }
+            });
+    });
+
+    document.getElementById('addForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const formData = new FormData();
+        formData.append('item_name', document.getElementById('addName').value);
+        formData.append('grade_level', document.getElementById('addGrade').value);
+        formData.append('price', document.getElementById('addPrice').value);
+        formData.append('size_label', document.getElementById('addSizes').value);
+        formData.append('image_url', document.getElementById('addImage').value);
+
+        fetch('/cashier/uniform-catalog/add', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) { closeModal('addModal'); location.reload(); }
+                else { alert('Error: ' + data.error); }
+            });
+    });
 
     function viewItems(orderId, studentName, orderNo) {
         document.getElementById('viewModalTitle').textContent = 'Order ' + orderNo;
@@ -450,3 +617,4 @@
     });
 </script>
 {% endblock %}
+

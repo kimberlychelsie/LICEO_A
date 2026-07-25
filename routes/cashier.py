@@ -1933,14 +1933,22 @@ def uniform_orders():
                 COUNT(*) AS total
             FROM uniform_orders WHERE branch_id = %s
         """, (branch_id,))
-        stats = cursor.fetchone()
+        # Fetch uniform catalog items for catalog & pricing tab
+        cursor.execute("""
+            SELECT item_id, category, item_name, grade_level, price, image_url, is_active, size_label
+            FROM inventory_items
+            WHERE branch_id = %s AND UPPER(category) = 'UNIFORM'
+            ORDER BY item_name ASC
+        """, (branch_id,))
+        uniform_catalog = cursor.fetchall()
 
         return render_template(
             "cashier_uniform_orders.html",
             orders=orders,
             stats=stats,
             status_filter=status_filter,
-            search=search
+            search=search,
+            uniform_catalog=uniform_catalog
         )
     finally:
         cursor.close()
@@ -2113,6 +2121,63 @@ def uniform_order_items(order_id):
         """, (order_id, branch_id))
         items = cursor.fetchall()
         return jsonify([dict(i) for i in items])
+    finally:
+        cursor.close()
+        db.close()
+
+
+@cashier_bp.route("/cashier/uniform-catalog/update-price", methods=["POST"])
+def uniform_catalog_update_price():
+    if not _require_cashier():
+        return jsonify({"error": "Unauthorized"}), 403
+
+    branch_id = session.get("branch_id")
+    item_id = request.form.get("item_id")
+    new_price = request.form.get("new_price")
+    if not item_id or not new_price:
+        return jsonify({"error": "Missing item_id or price"}), 400
+
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("UPDATE inventory_items SET price = %s WHERE item_id = %s AND branch_id = %s AND UPPER(category) = 'UNIFORM'", (float(new_price), item_id, branch_id))
+        db.commit()
+        return jsonify({"success": True, "message": "Price updated successfully"})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@cashier_bp.route("/cashier/uniform-catalog/add", methods=["POST"])
+def uniform_catalog_add():
+    if not _require_cashier():
+        return jsonify({"error": "Unauthorized"}), 403
+
+    branch_id = session.get("branch_id")
+    item_name = request.form.get("item_name", "").strip()
+    grade_level = request.form.get("grade_level", "All Grades").strip()
+    price = request.form.get("price", "0").strip()
+    size_label = request.form.get("size_label", "S, M, L, XL").strip()
+    image_url = request.form.get("image_url", "").strip()
+
+    if not item_name:
+        return jsonify({"error": "Item name is required"}), 400
+
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO inventory_items (branch_id, category, item_name, grade_level, price, size_label, image_url, is_active, stock_total, stock_reserved)
+            VALUES (%s, 'UNIFORM', %s, %s, %s, %s, %s, TRUE, 0, 0)
+        """, (branch_id, item_name, grade_level, float(price), size_label, image_url or None))
+        db.commit()
+        return jsonify({"success": True, "message": "Uniform catalog item added successfully"})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()
         db.close()
