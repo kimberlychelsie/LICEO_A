@@ -2078,5 +2078,25 @@
         }
         return result;
     };
+
+    (function pollRegistrarDashboard() {
+        let lastSig = null;
+        setInterval(() => {
+            fetch('/registrar/api/sidebar-badges')
+                .then(r => r.json())
+                .then(data => {
+                    const sig = String(data.enrollments_pending || 0);
+                    if (lastSig === null) {
+                        lastSig = sig;
+                        return;
+                    }
+                    if (lastSig !== sig) {
+                        lastSig = sig;
+                        location.reload();
+                    }
+                })
+                .catch(() => {});
+        }, 5000);
+    })();
 </script>
 {% endblock %}

@@ -728,4 +728,26 @@
     </div>
 
 </div>
+
+<script>
+(function pollBillingRegistry() {
+    let lastSig = null;
+    setInterval(() => {
+        fetch('/cashier/api/sidebar-badges')
+            .then(r => r.json())
+            .then(data => {
+                const sig = (data.billing_due || 0) + '|' + (data.uniform_orders || 0);
+                if (lastSig === null) {
+                    lastSig = sig;
+                    return;
+                }
+                if (lastSig !== sig) {
+                    lastSig = sig;
+                    location.reload();
+                }
+            })
+            .catch(() => {});
+    }, 5000);
+})();
+</script>
 {% endblock %}

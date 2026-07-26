@@ -113,8 +113,28 @@ def billing_registry():
 
         # Filters
         status_filter = request.args.get("status_filter", "")
-        grade_filter  = request.args.get("grade_filter", "")
+        grade_filter_raw = request.args.get("grade_filter")
         search_q      = request.args.get("q", "").strip()
+
+        # Grade levels for filter dropdown
+        cursor.execute("""
+            SELECT DISTINCT grade_level FROM enrollments
+            WHERE branch_id = %s AND year_id = %s AND status IN ('approved', 'enrolled')
+            ORDER BY grade_level
+        """, (session.get("branch_id"), active_year_id))
+        grade_levels = [r["grade_level"] for r in cursor.fetchall()]
+
+        if grade_filter_raw is None:
+            if "Nursery" in grade_levels:
+                grade_filter = "Nursery"
+            elif any("nursery" in g.lower() for g in grade_levels):
+                grade_filter = next(g for g in grade_levels if "nursery" in g.lower())
+            elif grade_levels:
+                grade_filter = grade_levels[0]
+            else:
+                grade_filter = ""
+        else:
+            grade_filter = grade_filter_raw.strip()
 
         query = """
             SELECT e.*, b.bill_id, b.balance, b.status AS bill_status,
@@ -1982,12 +2002,22 @@ def uniform_orders():
         """, (branch_id, active_year_id))
         grade_levels = [r["grade_level"] for r in cursor.fetchall()]
 
-        grade_filter = request.args.get("grade", "").strip()
-        if not grade_filter:
-            grade_filter = "all"
-        elif grade_filter.lower() != "all" and grade_filter not in grade_levels:
-            # Unknown grade — fall back to all (don't collapse Grade 11-GAS → Grade 11)
-            grade_filter = "all"
+        grade_filter_raw = request.args.get("grade")
+        if grade_filter_raw is None:
+            if "Nursery" in grade_levels:
+                grade_filter = "Nursery"
+            elif any("nursery" in g.lower() for g in grade_levels):
+                grade_filter = next(g for g in grade_levels if "nursery" in g.lower())
+            elif grade_levels:
+                grade_filter = grade_levels[0]
+            else:
+                grade_filter = "all"
+        else:
+            grade_filter = grade_filter_raw.strip()
+            if not grade_filter:
+                grade_filter = "all"
+            elif grade_filter.lower() != "all" and grade_filter not in grade_levels:
+                grade_filter = "all"
 
         params = [branch_id]
         where_extra = ""
