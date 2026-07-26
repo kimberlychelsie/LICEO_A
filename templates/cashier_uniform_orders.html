@@ -507,7 +507,11 @@
                         <td>
                             <div style="display:flex; gap:6px; flex-wrap:wrap;" onclick="event.stopPropagation()">
                                 <button class="btn-view" onclick="openPriceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}', '{{ '%.2f'|format(s.price or 0) }}', '{{ '%.0f'|format(s.size_price_step or 20) }}', false)">Edit Price</button>
-                                <button class="btn-onsite" style="padding:6px 12px; font-size:0.74rem;" onclick="openAddPieceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}')">+ Add Piece</button>
+                                {% if pieces|length >= 2 %}
+                                <button class="btn-onsite" style="padding:6px 12px; font-size:0.74rem; background:#94a3b8; cursor:not-allowed;" disabled title="Maximum 2 pieces reached for this set">+ Add Piece (Max 2 Reached)</button>
+                                {% else %}
+                                <button class="btn-onsite" style="padding:6px 12px; font-size:0.74rem;" onclick="openAddPieceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}', {{ pieces|length }})">+ Add Piece</button>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -1004,7 +1008,11 @@
             });
     });
 
-    function openAddPieceModal(parentItemId, parentName) {
+    function openAddPieceModal(parentItemId, parentName, existingCount) {
+        if (existingCount !== undefined && existingCount >= 2) {
+            alert('This uniform set already has the maximum 2 pieces allowed (e.g. Polo and Pants). You cannot add more pieces.');
+            return;
+        }
         try {
             sessionStorage.setItem('uo_active_tab', 'catalog');
             let opened = JSON.parse(sessionStorage.getItem('uo_open_sets') || '[]');

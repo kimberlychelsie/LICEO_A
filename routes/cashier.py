@@ -2507,6 +2507,15 @@ def uniform_catalog_add_piece():
         if not parent:
             return jsonify({"error": "Parent set not found"}), 404
 
+        # Enforce max 2 pieces per set (e.g. Polo & Pants)
+        cursor.execute(
+            "SELECT COUNT(*) AS piece_count FROM inventory_items WHERE parent_item_id = %s AND branch_id = %s",
+            (int(parent_item_id), branch_id)
+        )
+        p_row = cursor.fetchone()
+        if p_row and int(p_row["piece_count"] or 0) >= 2:
+            return jsonify({"error": "Maximum 2 pieces allowed per uniform set (e.g. Polo and Pants)."}), 400
+
         cursor.execute("""
             INSERT INTO inventory_items
               (branch_id, category, item_name, grade_level, price, size_label,
