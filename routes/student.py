@@ -72,14 +72,14 @@ def save_doc_file(cursor, enrollment_id, fileobj, doc_type):
 # GRADE RANGE MAPPINGS
 # =======================
 GRADE_MAPPINGS = {
-    'Pre-Elementary Boys Set': ['Kinder', 'Grade 1', 'Grade 2', 'Grade 3'],
-    'Pre-Elementary Girls Set': ['Kinder', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6'],
+    'Pre-Elementary Boys Set': ['Nursery', 'Kinder', 'Grade 1', 'Grade 2', 'Grade 3'],
+    'Pre-Elementary Girls Set': ['Nursery', 'Kinder', 'Grade 1', 'Grade 2', 'Grade 3', 'Grade 4', 'Grade 5', 'Grade 6'],
     'Elementary G4-6 Boys Set': ['Grade 4', 'Grade 5', 'Grade 6'],
     'JHS Boys Uniform Set': ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'],
     'JHS Girls Uniform Set': ['Grade 7', 'Grade 8', 'Grade 9', 'Grade 10'],
     'SHS Boys Uniform Set': ['Grade 11', 'Grade 12'],
     'SHS Girls Uniform Set': ['Grade 11', 'Grade 12'],
-    'PE Uniform': ['Kinder'] + [f'Grade {i}' for i in range(1, 13)],
+    'PE Uniform': ['Nursery', 'Kinder'] + [f'Grade {i}' for i in range(1, 13)],
 }
 
 def allowed_file(filename):
