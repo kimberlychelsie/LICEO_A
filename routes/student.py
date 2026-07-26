@@ -1468,16 +1468,28 @@ def student_reservation():
             else:
                 return redirect("/student/dashboard")
 
+        def normalize_set_name(name: str) -> str:
+            if not name:
+                return ""
+            return str(name).replace("–", "-").replace("—", "-").strip()
+
+        def find_grade_mapping_key(name: str):
+            if not name:
+                return None
+            norm = normalize_set_name(name).lower()
+            for key in GRADE_MAPPINGS:
+                if normalize_set_name(key).lower() == norm:
+                    return key
+            return None
+
         def is_item_visible_for_student(item_name: str, item_grade_level, student_grade_level: str, parent_name=None) -> bool:
             if not student_grade_level:
                 return True
 
-            # 1. Authoritative set-name mapping (also used for pieces via parent set name)
-            mapping_name = item_name if item_name in GRADE_MAPPINGS else (
-                parent_name if parent_name in GRADE_MAPPINGS else None
-            )
-            if mapping_name:
-                return any(grades_compatible(student_grade_level, g) for g in GRADE_MAPPINGS[mapping_name])
+            # 1. Authoritative set-name mapping (normalized for dash variants like 'G4–6' vs 'G4-6')
+            key = find_grade_mapping_key(item_name) or find_grade_mapping_key(parent_name)
+            if key:
+                return any(grades_compatible(student_grade_level, g) for g in GRADE_MAPPINGS[key])
 
             # 2. For custom items not in GRADE_MAPPINGS:
             if not item_grade_level:
