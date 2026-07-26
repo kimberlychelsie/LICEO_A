@@ -132,9 +132,11 @@ def billing_registry():
             elif grade_levels:
                 grade_filter = grade_levels[0]
             else:
-                grade_filter = ""
+                grade_filter = "all"
         else:
             grade_filter = grade_filter_raw.strip()
+
+        sql_grade_filter = "" if grade_filter.lower() == "all" else grade_filter
 
         query = """
             SELECT e.*, b.bill_id, b.balance, b.status AS bill_status,
@@ -149,9 +151,9 @@ def billing_registry():
         """
         params = [session.get("branch_id"), active_year_id]
 
-        if grade_filter:
+        if sql_grade_filter:
             query += " AND e.grade_level = %s"
-            params.append(grade_filter)
+            params.append(sql_grade_filter)
 
         if search_q:
             query += " AND (CONCAT_WS(' ', e.student_first_name ,e.student_middle_name, e.student_last_name) ILIKE %s OR CAST(e.branch_enrollment_no AS TEXT) ILIKE %s)"
