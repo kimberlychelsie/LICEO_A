@@ -323,7 +323,12 @@
                     </div>
                     {% for res in reservation_details %}
                     <div class="receipt-item">
-                        <span class="item-name" style="font-size: 0.8rem;">{{ res.item_name }} (x{{ res.qty }})</span>
+                        <span class="item-name" style="font-size: 0.8rem;">
+                            {{ res.item_name }} (x{{ res.qty }})
+                            {% if res.order_status %}
+                            <span style="font-size:0.65rem; background:#ffedd5; color:#c2410c; padding:2px 6px; border-radius:4px; font-weight:800; margin-left:6px;">{{ res.order_status }}</span>
+                            {% endif %}
+                        </span>
                         <span class="item-val">₱{{ "{:,.2f}".format(res.line_total) }}</span>
                     </div>
                     {% endfor %}

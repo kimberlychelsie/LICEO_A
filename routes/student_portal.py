@@ -445,15 +445,45 @@ def billing():
                 r.status,
                 r.created_at,
                 COALESCE(SUM(ri.line_total), 0) AS total_amount,
-                STRING_AGG(DISTINCT ii.item_name, ', ' ORDER BY ii.item_name) AS items
+                STRING_AGG(DISTINCT ii.item_name, ', ' ORDER BY ii.item_name) AS item_names
             FROM reservations r
             LEFT JOIN reservation_items ri ON ri.reservation_id = r.reservation_id
             LEFT JOIN inventory_items ii ON ii.item_id = ri.item_id
             WHERE r.student_user_id = %s AND r.status != 'CANCELLED'
+              AND EXISTS (
+                  SELECT 1 FROM reservation_items ri2
+                  JOIN inventory_items ii2 ON ii2.item_id = ri2.item_id
+                  WHERE ri2.reservation_id = r.reservation_id
+                    AND UPPER(COALESCE(ii2.category, '')) <> 'UNIFORM'
+              )
             GROUP BY r.reservation_id, r.status, r.created_at
             ORDER BY r.created_at DESC
         """, (session.get("user_id"),))
         reservations = cursor.fetchall()
+
+        uniform_orders = []
+        if bill:
+            cursor.execute("""
+                SELECT
+                    uo.order_id,
+                    uo.order_number,
+                    uo.order_status,
+                    uo.payment_status,
+                    uo.total_amount,
+                    STRING_AGG(
+                        uoi.item_name
+                        || CASE WHEN uoi.size_label IS NOT NULL AND uoi.size_label <> ''
+                                THEN ' (' || uoi.size_label || ')' ELSE '' END,
+                        ', ' ORDER BY uoi.item_name
+                    ) AS item_names
+                FROM uniform_orders uo
+                JOIN uniform_order_items uoi ON uoi.order_id = uo.order_id
+                WHERE uo.bill_id = %s
+                   OR (uo.enrollment_id = %s AND uo.order_status IN ('Ready for Claim', 'Claimed'))
+                GROUP BY uo.order_id, uo.order_number, uo.order_status, uo.payment_status, uo.total_amount
+                ORDER BY uo.order_id ASC
+            """, (bill["bill_id"], student["enrollment_id"]))
+            uniform_orders = cursor.fetchall() or []
 
         # Sync billing totals to handle any discrepancies from cancelled reservations
         if bill:
@@ -498,7 +528,8 @@ def billing():
             student=student,
             bill=bill,
             payments=payments,
-            reservations=reservations
+            reservations=reservations,
+            uniform_orders=uniform_orders,
         )
 
     finally:

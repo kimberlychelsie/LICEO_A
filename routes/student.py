@@ -3,12 +3,16 @@ from werkzeug.utils import secure_filename
 import os
 import uuid
 import re
+import secrets
+import logging
+from datetime import datetime
+import pytz
 import psycopg2.extras
 from db import get_db_connection, is_branch_active
 from cloudinary_helper import upload_enrollment_document
 from rapidfuzz import fuzz
-import logging
 from utils.send_email import send_email
+from utils.uniform_pricing import DEFAULT_SIZE_PRICE_STEP, parse_size_list, price_for_size, size_price_map
 from extensions import csrf
 
 logger = logging.getLogger(__name__)
@@ -114,6 +118,46 @@ def normalize_grade_level(raw):
     return raw
 
 
+def base_grade_level(raw):
+    """
+    Strip strand suffixes so 'Grade 11-GAS' / '11-STEM' → 'Grade 11'.
+    Used for uniform/book catalog visibility matching.
+    """
+    raw = str(raw or "").strip()
+    if not raw:
+        return None
+    low = raw.lower()
+    if "kinder" in low:
+        return "Kinder"
+    if "nursery" in low:
+        return "Nursery"
+    # Prefer digits before a strand hyphen: Grade 11-GAS, 11-GAS, Grade 11
+    m = re.search(r"(?:grade\s*)?(\d+)\s*(?:-|$|\s)", low)
+    if not m:
+        m = re.search(r"(\d+)", low)
+    if m:
+        return f"Grade {int(m.group(1))}"
+    return normalize_grade_level(raw)
+
+
+def grades_compatible(student_grade, allowed_grade) -> bool:
+    """True if student grade matches an allowed catalog grade (strand-aware)."""
+    if not student_grade or not allowed_grade:
+        return False
+    s = str(student_grade).strip().lower()
+    a = str(allowed_grade).strip().lower()
+    if s == a:
+        return True
+    sb = base_grade_level(student_grade)
+    ab = base_grade_level(allowed_grade)
+    if sb and ab and sb.lower() == ab.lower():
+        return True
+    # Also allow 'Grade 11' allowed vs student 'Grade 11-GAS'
+    if sb and a == sb.lower():
+        return True
+    return False
+
+
 def get_logged_student_grade_level():
     """
     Returns enrollments.grade_level for the logged-in student using enrollment_id
@@ -137,6 +181,39 @@ def get_logged_student_grade_level():
     finally:
         cursor.close()
         db.close()
+
+
+def _build_reservation_catalog(items):
+    """
+    Build display groups: books stay flat; uniform sets nest their pieces
+    for accordion UI on the student reservation page.
+    """
+    books = [i for i in items if str(i.get("category") or "").upper() == "BOOK"]
+    uniforms = [i for i in items if str(i.get("category") or "").upper() == "UNIFORM"]
+    sets = [i for i in uniforms if not i.get("parent_item_id") and not i.get("is_set_piece")]
+    pieces = [i for i in uniforms if i.get("parent_item_id") or i.get("is_set_piece")]
+    set_ids = {s["item_id"] for s in sets}
+    pieces_by_parent = {}
+    orphans = []
+    for p in pieces:
+        pid = p.get("parent_item_id")
+        if pid in set_ids:
+            pieces_by_parent.setdefault(pid, []).append(p)
+        else:
+            orphans.append(p)
+
+    catalog = []
+    for b in books:
+        catalog.append({"kind": "book", "item": b, "pieces": []})
+    for s in sets:
+        catalog.append({
+            "kind": "uniform_set",
+            "item": s,
+            "pieces": pieces_by_parent.get(s["item_id"], []),
+        })
+    for p in orphans:
+        catalog.append({"kind": "uniform_piece", "item": p, "pieces": []})
+    return catalog
 
 
 def template_exists(template_name):
@@ -1317,6 +1394,7 @@ def student_reservation():
     message = None
     error = None
     items = []
+    catalog_groups = []
 
     search = request.args.get('search', '').strip()
     category_filter = request.args.get('category', '').strip()
@@ -1390,17 +1468,40 @@ def student_reservation():
             else:
                 return redirect("/student/dashboard")
 
-        def is_item_visible_for_student(item_name: str, item_grade_level, student_grade_level: str) -> bool:
+        def is_item_visible_for_student(item_name: str, item_grade_level, student_grade_level: str, parent_name=None) -> bool:
             if not student_grade_level:
                 return True
 
-            if item_name in GRADE_MAPPINGS:
-                return student_grade_level in GRADE_MAPPINGS[item_name]
+            # Prefer set-name mapping (also used for pieces via parent set name)
+            mapping_name = item_name if item_name in GRADE_MAPPINGS else (
+                parent_name if parent_name in GRADE_MAPPINGS else None
+            )
+            if mapping_name:
+                return any(grades_compatible(student_grade_level, g) for g in GRADE_MAPPINGS[mapping_name])
 
             if not item_grade_level:
                 return False
 
-            return str(item_grade_level).strip().lower() == str(student_grade_level).strip().lower()
+            # Exact or strand-normalized match; also support ranges like "Grade 7-10"
+            if grades_compatible(student_grade_level, item_grade_level):
+                return True
+
+            gl = str(item_grade_level).strip().lower()
+            if "all" in gl:
+                return True
+
+            # Range: Grade 7-10 / Grades 7 to 10
+            range_m = re.search(r"(\d+)\s*[-–to]+\s*(\d+)", gl)
+            if range_m:
+                lo, hi = int(range_m.group(1)), int(range_m.group(2))
+                sb = base_grade_level(student_grade_level)
+                if sb:
+                    nums = re.search(r"(\d+)", sb)
+                    if nums:
+                        n = int(nums.group(1))
+                        return lo <= n <= hi
+
+            return False
 
         def get_grade_order(item_name, grade_level):
             name_lower = str(item_name or "").lower()
@@ -1420,7 +1521,9 @@ def student_reservation():
 
         query = """
             SELECT item_id, category, item_name, grade_level, is_common, size_label,
-                   price, stock_total, reserved_qty, image_url
+                   price, stock_total, reserved_qty, image_url,
+                   COALESCE(size_price_step, 20) AS size_price_step,
+                   parent_item_id, COALESCE(is_set_piece, FALSE) AS is_set_piece
             FROM inventory_items
             WHERE branch_id = %s AND is_active = TRUE
         """
@@ -1436,13 +1539,28 @@ def student_reservation():
 
         cursor.execute(query, tuple(params))
         rows = cursor.fetchall() or []
+
+        # Map parent set names so pieces inherit grade visibility from their set
+        parent_names = {
+            r["item_id"]: r["item_name"]
+            for r in rows
+            if r.get("parent_item_id") is None
+        }
         
         # Sort using Python for precise grade sequence control
         rows = sorted(rows, key=lambda r: (0 if r['category'] == 'BOOK' else 1, get_grade_order(r['item_name'], r['grade_level']), r['item_name'].lower()))
 
         for r in rows:
-            if bool(r['is_common']) or is_item_visible_for_student(r['item_name'], r['grade_level'], student_grade):
-                available = int(r['stock_total'] or 0) - int(r['reserved_qty'] or 0)
+            parent_name = parent_names.get(r.get("parent_item_id")) if r.get("parent_item_id") else None
+            if bool(r['is_common']) or is_item_visible_for_student(
+                r['item_name'], r['grade_level'], student_grade, parent_name=parent_name
+            ):
+                is_uniform = str(r['category'] or "").upper() == "UNIFORM"
+                # Uniforms are pre-order — always available; books still use stock
+                if is_uniform:
+                    available = 999
+                else:
+                    available = int(r['stock_total'] or 0) - int(r['reserved_qty'] or 0)
                 
                 cursor.execute("""
                     SELECT size_id, size_label, stock_total, reserved_qty 
@@ -1450,22 +1568,37 @@ def student_reservation():
                     WHERE item_id = %s
                 """, (r['item_id'],))
                 sizes_rows = cursor.fetchall() or []
+
+                # For uniforms without per-size stock rows, use catalog size_label list
+                if is_uniform and not sizes_rows:
+                    sizes_rows = [{"size_label": s, "stock_total": 999, "reserved_qty": 0, "size_id": None}
+                                  for s in parse_size_list(r['size_label'])]
                 
                 # Sort standard clothing sizes logically
                 def get_size_rank(lbl):
                     lbl_up = str(lbl).upper().strip()
-                    mapping = {"XXS":1, "XS":2, "S":3, "M":4, "L":5, "XL":6, "XXL":7, "2XL":7, "3XL":8, "4XL":9}
+                    mapping = {"XXS":1, "XS":2, "S":3, "M":4, "L":5, "XL":6, "XXL":7, "2XL":7, "3XL":8, "XXXL":8, "4XL":9}
                     return mapping.get(lbl_up, 99)
 
                 sizes_rows = sorted(sizes_rows, key=lambda x: (get_size_rank(x['size_label']), x['size_label']))
+
+                step = r.get('size_price_step') or DEFAULT_SIZE_PRICE_STEP
+                size_labels_ordered = [s['size_label'] for s in sizes_rows] if sizes_rows else parse_size_list(r['size_label'])
+                price_map = size_price_map(r['price'], size_labels_ordered, step) if is_uniform else {}
                 
                 sizes = []
                 for s in sizes_rows:
-                    s_available = int(s['stock_total'] or 0) - int(s['reserved_qty'] or 0)
+                    if is_uniform:
+                        s_available = 999
+                        s_price = price_map.get(s['size_label'], float(r['price'] or 0))
+                    else:
+                        s_available = int(s['stock_total'] or 0) - int(s['reserved_qty'] or 0)
+                        s_price = float(r['price'] or 0)
                     sizes.append({
-                        "size_id": s['size_id'],
+                        "size_id": s.get('size_id'),
                         "size_label": s['size_label'],
-                        "available": s_available
+                        "available": s_available,
+                        "price": s_price,
                     })
 
                 items.append({
@@ -1476,11 +1609,18 @@ def student_reservation():
                     "is_common": bool(r['is_common']),
                     "size_label": r['size_label'],
                     "price": float(r['price'] or 0),
+                    "size_price_step": float(step) if is_uniform else 0,
+                    "size_prices": price_map,
                     "available": available,
                     "image_url": r['image_url'],
-                    "sizes": sizes
+                    "sizes": sizes,
+                    "is_preorder": is_uniform,
+                    "parent_item_id": r.get("parent_item_id"),
+                    "is_set_piece": bool(r.get("is_set_piece")),
                 })
 
+        # Group uniforms: sets with nested pieces for accordion UI
+        catalog_groups = _build_reservation_catalog(items)
         if request.method == "POST":
             selected = []
             for it in items:
@@ -1501,6 +1641,7 @@ def student_reservation():
                 return render_template_safe(
                     "student_reservation.html",
                     items=items,
+                    catalog_groups=catalog_groups,
                     student_grade=student_grade,
                     branch_id=branch_id,
                     search=search,
@@ -1516,13 +1657,16 @@ def student_reservation():
                 target_enrollment_id = enrollment_id if role == "parent" else session.get("enrollment_id")
 
                 reservation_ids = []
+                uniform_lines = []  # collect uniform pre-order lines → uniform_orders
+
                 for sel in selected:
                     item_id = sel["item_id"]
                     qty = sel["qty"]
                     size = sel["size"]
 
                     cursor_tx.execute("""
-                        SELECT stock_total, reserved_qty, price, size_label, item_name
+                        SELECT stock_total, reserved_qty, price, size_label, item_name, category,
+                               COALESCE(size_price_step, 20) AS size_price_step
                         FROM inventory_items
                         WHERE item_id = %s AND branch_id = %s AND is_active = TRUE
                         FOR UPDATE
@@ -1531,11 +1675,30 @@ def student_reservation():
                     if not r:
                         raise Exception("Item not found.")
 
+                    is_uniform = str(r.get('category') or "").upper() == "UNIFORM"
+                    stored_size = size if size else (None if is_uniform else r['size_label'])
+
+                    if is_uniform:
+                        # Pre-order catalog — no stock hold; goes to uniform_orders (not billing yet)
+                        if not stored_size:
+                            raise Exception(f"Please select a size for: {r['item_name']}")
+                        unit_price = price_for_size(
+                            r['price'], stored_size, r['size_label'], r.get('size_price_step')
+                        )
+                        line_total = unit_price * qty
+                        uniform_lines.append({
+                            "inventory_item_id": item_id,
+                            "item_name": r["item_name"],
+                            "size_label": stored_size,
+                            "unit_price": unit_price,
+                            "quantity": qty,
+                            "line_total": line_total,
+                        })
+                        continue
+
                     available = int(r['stock_total'] or 0) - int(r['reserved_qty'] or 0)
                     if qty > available:
                         raise Exception(f"Not enough overall stock for: {r['item_name']}")
-
-                    stored_size = size if size else r['size_label']
 
                     if stored_size:
                         cursor_tx.execute("""
@@ -1565,7 +1728,7 @@ def student_reservation():
                     unit_price = float(r['price'] or 0)
                     line_total = unit_price * qty
 
-                    # Create one reservation per item
+                    # Books / stocked items → reservations
                     cursor_tx.execute("""
                         INSERT INTO reservations (student_user_id, branch_id, student_grade_level, status, reserved_by_user_id, enrollment_id)
                         VALUES (%s, %s, %s, 'RESERVED', %s, %s)
@@ -1579,15 +1742,67 @@ def student_reservation():
                         VALUES (%s, %s, %s, %s, %s, %s)
                     """, (reservation_id, item_id, qty, stored_size, unit_price, line_total))
 
+                uniform_order_number = None
+                if uniform_lines:
+                    year_id = get_active_school_year_id(cursor_tx, branch_id)
+                    total_amount = sum(float(x["line_total"]) for x in uniform_lines)
+                    stamp = datetime.now(pytz.timezone("Asia/Manila")).strftime("%Y%m%d")
+                    order_number = f"UO-{stamp}-{secrets.token_hex(2).upper()}"
+
+                    cursor_tx.execute("""
+                        INSERT INTO uniform_orders
+                          (order_number, enrollment_id, student_user_id, branch_id, year_id,
+                           total_amount, payment_status, order_status, created_by_user_id)
+                        VALUES (%s, %s, %s, %s, %s, %s, 'Unpaid', 'For Ordering', %s)
+                        RETURNING order_id, order_number
+                    """, (
+                        order_number, target_enrollment_id, student_user_id, branch_id, year_id,
+                        total_amount, reserved_by_user_id
+                    ))
+                    uo = cursor_tx.fetchone()
+                    uniform_order_number = uo["order_number"]
+                    order_id = uo["order_id"]
+
+                    for line in uniform_lines:
+                        cursor_tx.execute("""
+                            INSERT INTO uniform_order_items
+                              (order_id, inventory_item_id, item_name, size_label, unit_price, quantity, line_total)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        """, (
+                            order_id, line["inventory_item_id"], line["item_name"], line["size_label"],
+                            line["unit_price"], line["quantity"], line["line_total"]
+                        ))
+
+                    # Notify student of pre-order
+                    if student_user_id:
+                        cursor_tx.execute("""
+                            INSERT INTO student_notifications (student_id, title, message, link)
+                            VALUES (%s, %s, %s, %s)
+                        """, (
+                            student_user_id,
+                            "Uniform Pre-Order Submitted",
+                            f"Your uniform pre-order {order_number} is now For Ordering. "
+                            "You will be notified when it arrives onsite for payment and claim.",
+                            "/student/reservations"
+                        ))
+
                 db_tx.commit()
                 
                 # Redirect back to the same page with success_id to avoid form re-submission
                 last_id = reservation_ids[-1] if reservation_ids else 0
                 success_url = url_for("student.student_reservation", enrollment_id=target_enrollment_id)
-                if "?" in success_url:
-                    success_url += f"&success_id={last_id}"
-                else:
-                    success_url += f"?success_id={last_id}"
+                sep = "&" if "?" in success_url else "?"
+                if last_id:
+                    success_url += f"{sep}success_id={last_id}"
+                    sep = "&"
+                if uniform_order_number:
+                    success_url += f"{sep}uo={uniform_order_number}"
+                    flash(
+                        f"Uniform pre-order {uniform_order_number} submitted! "
+                        "It will appear in cashier Uniform Orders (For Ordering). "
+                        "Billing activates when the order arrives onsite.",
+                        "success"
+                    )
                 
                 return redirect(success_url)
 
@@ -1634,6 +1849,7 @@ def student_reservation():
     return render_template_safe(
         "student_reservation.html",
         items=items,
+        catalog_groups=catalog_groups,
         student_grade=student_grade,
         branch_id=branch_id,
         search=search,
@@ -1650,6 +1866,7 @@ def student_reservations_list():
 
     branch_id = session.get("branch_id")
     student_user_id = session.get("user_id")
+    enrollment_id = session.get("enrollment_id")
 
     if not branch_id or not student_user_id:
         session.clear()
@@ -1660,23 +1877,66 @@ def student_reservations_list():
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
+        # Book / material reservations only — uniforms live in uniform_orders (no ghost RES rows)
         cur.execute("""
             SELECT
-                r.reservation_id,
+                r.reservation_id AS ref_id,
+                'RES' AS ref_type,
                 r.status,
                 r.created_at,
                 COALESCE(SUM(ri.line_total), 0) AS total_amount,
                 COALESCE(SUM(ri.qty), 0) AS total_qty,
-                STRING_AGG(DISTINCT ii.item_name, ', ' ORDER BY ii.item_name) AS items
+                STRING_AGG(DISTINCT ii.item_name, ', ' ORDER BY ii.item_name) AS item_names
             FROM reservations r
             LEFT JOIN reservation_items ri ON ri.reservation_id = r.reservation_id
             LEFT JOIN inventory_items ii ON ii.item_id = ri.item_id
             WHERE r.student_user_id = %s AND r.branch_id = %s
+              AND UPPER(COALESCE(r.status, '')) NOT IN ('CANCELLED', 'REJECTED')
+              AND EXISTS (
+                  SELECT 1 FROM reservation_items ri2
+                  JOIN inventory_items ii2 ON ii2.item_id = ri2.item_id
+                  WHERE ri2.reservation_id = r.reservation_id
+                    AND UPPER(COALESCE(ii2.category, '')) <> 'UNIFORM'
+              )
             GROUP BY r.reservation_id, r.status, r.created_at
             ORDER BY r.created_at DESC
         """, (student_user_id, branch_id))
+        rows = list(cur.fetchall() or [])
 
-        rows = cur.fetchall() or []
+        # Uniform pre-orders (cashier Uniform Orders tracking)
+        cur.execute("""
+            SELECT
+                uo.order_id AS ref_id,
+                'UO' AS ref_type,
+                uo.order_number,
+                uo.order_status AS status,
+                uo.payment_status,
+                uo.created_at,
+                uo.total_amount,
+                COALESCE(SUM(uoi.quantity), 0) AS total_qty,
+                STRING_AGG(DISTINCT uoi.item_name, ', ' ORDER BY uoi.item_name) AS item_names
+            FROM uniform_orders uo
+            LEFT JOIN uniform_order_items uoi ON uoi.order_id = uo.order_id
+            WHERE uo.branch_id = %s
+              AND (uo.student_user_id = %s OR uo.enrollment_id = %s)
+            GROUP BY uo.order_id, uo.order_number, uo.order_status, uo.payment_status,
+                     uo.created_at, uo.total_amount
+            ORDER BY uo.created_at DESC
+        """, (branch_id, student_user_id, enrollment_id))
+        for u in cur.fetchall() or []:
+            rows.append({
+                "ref_id": u["ref_id"],
+                "ref_type": "UO",
+                "order_number": u.get("order_number"),
+                "status": u["status"],
+                "created_at": u["created_at"],
+                "total_amount": u["total_amount"],
+                "total_qty": u["total_qty"],
+                "item_names": u["item_names"],
+                "payment_status": u.get("payment_status"),
+            })
+
+        rows.sort(key=lambda r: r.get("created_at") or datetime.min, reverse=True)
 
     finally:
         if cur:

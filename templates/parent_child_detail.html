@@ -440,7 +440,18 @@
                 <thead><tr><th>Type</th><th>Size</th><th style="text-align:right;">Qty</th></tr></thead>
                 <tbody>
                     {% for uniform in uniforms %}
-                    <tr><td>{{ uniform.uniform_type }} {% if uniform.is_reservation %}<span style="font-size:0.6rem; background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px; font-weight:800;">RESERVED</span>{% endif %}</td><td><span style="background:var(--slate-100); padding:4px 10px; border-radius:8px; font-weight:800;">{{ uniform.size }}</span></td><td style="text-align:right; font-weight:800;">{{ uniform.quantity }}</td></tr>
+                    <tr>
+                        <td>
+                            {{ uniform.uniform_type }}
+                            {% if uniform.order_status %}
+                            <span style="font-size:0.6rem; background:#ffedd5; color:#c2410c; padding:2px 6px; border-radius:4px; font-weight:800;">{{ uniform.order_status }}</span>
+                            {% elif uniform.is_reservation %}
+                            <span style="font-size:0.6rem; background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px; font-weight:800;">Reserved</span>
+                            {% endif %}
+                        </td>
+                        <td><span style="background:var(--slate-100); padding:4px 10px; border-radius:8px; font-weight:800;">{{ uniform.size }}</span></td>
+                        <td style="text-align:right; font-weight:800;">{{ uniform.quantity }}</td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>

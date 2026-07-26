@@ -429,7 +429,7 @@
                         <tr>
                             <td>
                                 <div style="display: flex; flex-direction: column;">
-                                    <span>{{ r.get('items', 'Reservation') }}</span>
+                                    <span>{{ r.item_names or 'Reservation' }}</span>
                                     <span style="font-size: 0.75rem; color: var(--sd-muted);">Ref: #RES-{{ "%04d"|format(r.reservation_id) }}</span>
                                 </div>
                             </td>
@@ -437,16 +437,28 @@
                         </tr>
                         {% endfor %}
                     {% endif %}
+                    {% if uniform_orders %}
+                        {% for uo in uniform_orders %}
+                        <tr>
+                            <td>
+                                <div style="display: flex; flex-direction: column;">
+                                    <span>{{ uo.item_names }}</span>
+                                    <span style="font-size: 0.75rem; color: var(--sd-muted);">{{ uo.order_number }} · {{ uo.order_status }}</span>
+                                </div>
+                            </td>
+                            <td class="amount">₱{{ "%.2f"|format(uo.total_amount) }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% elif bill.uniform_fee > 0 %}
+                    <tr>
+                        <td>Uniforms</td>
+                        <td class="amount">₱{{ "%.2f"|format(bill.uniform_fee) }}</td>
+                    </tr>
+                    {% endif %}
                     {% if bill.books_fee > 0 %}
                     <tr>
                         <td>Books & Materials</td>
                         <td class="amount">₱{{ "%.2f"|format(bill.books_fee) }}</td>
-                    </tr>
-                    {% endif %}
-                    {% if bill.uniform_fee > 0 %}
-                    <tr>
-                        <td>Uniforms</td>
-                        <td class="amount">₱{{ "%.2f"|format(bill.uniform_fee) }}</td>
                     </tr>
                     {% endif %}
                     {% if bill.other_fees > 0 %}

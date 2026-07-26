@@ -524,13 +524,19 @@ def get_db_connection():
                 logger.warning(f"Could not migrate activity_submissions: {e}")
                 conn.rollback()
 
-            # ── Inventory Items image_url migration ──
+            # ── Inventory Items image_url / uniform catalog migration ──
             try:
                 cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'inventory_items'")
                 inv_cols = [r[0] for r in cur.fetchall()]
                 if 'image_url' not in inv_cols:
                     cur.execute("ALTER TABLE inventory_items ADD COLUMN image_url TEXT")
-                
+                if 'parent_item_id' not in inv_cols:
+                    cur.execute("ALTER TABLE inventory_items ADD COLUMN parent_item_id INTEGER")
+                if 'is_set_piece' not in inv_cols:
+                    cur.execute("ALTER TABLE inventory_items ADD COLUMN is_set_piece BOOLEAN DEFAULT FALSE")
+                if 'size_price_step' not in inv_cols:
+                    cur.execute("ALTER TABLE inventory_items ADD COLUMN size_price_step NUMERIC(12,2) DEFAULT 20")
+
                 # Auto-populate uniform images from static folder if missing
                 uniform_images = {
                     'Pre-Elementary Boys Set': '/static/img/PRE_ELEM_BOYS_SET.jpg',
@@ -552,7 +558,7 @@ def get_db_connection():
                 
                 conn.commit()
             except Exception as e:
-                logger.warning(f"Could not migrate inventory_items image_url: {e}")
+                logger.warning(f"Could not migrate inventory_items catalog columns: {e}")
                 conn.rollback()
 
             # ── Financial year_id migration ──

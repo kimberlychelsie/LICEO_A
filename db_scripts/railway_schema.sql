@@ -183,6 +183,9 @@ CREATE TABLE IF NOT EXISTS public.inventory_items (
     created_at   timestamp NOT NULL DEFAULT now(),
     image_url    text,
     publisher    character varying(100),
+    parent_item_id integer,
+    is_set_piece boolean NOT NULL DEFAULT false,
+    size_price_step numeric(12,2) NOT NULL DEFAULT 20,
     CONSTRAINT inventory_items_pkey PRIMARY KEY (item_id),
     CONSTRAINT inventory_items_branch_id_fkey FOREIGN KEY (branch_id)
         REFERENCES public.branches (branch_id) ON DELETE CASCADE,
@@ -266,6 +269,9 @@ CREATE TABLE IF NOT EXISTS public.payments (
     receipt_number character varying(50),
     notes          text,
     received_by    integer NOT NULL,
+    target_type    character varying(50) DEFAULT 'general',
+    target_id      integer,
+    year_id        integer,
     CONSTRAINT payments_pkey PRIMARY KEY (payment_id),
     CONSTRAINT payments_receipt_number_key UNIQUE (receipt_number),
     CONSTRAINT payments_bill_id_fkey FOREIGN KEY (bill_id)

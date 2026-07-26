@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}Uniform Orders{% endblock %}
-{% block page_title %}Uniform Orders{% endblock %}
+{% block page_title %}{% endblock %}
 
 {% block styles %}
 <style>
@@ -134,6 +134,13 @@
     .badge-paid { background: rgba(16,185,129,.12); color: #059669; }
     .badge-unpaid { background: rgba(239,68,68,.1); color: #dc2626; }
 
+    .badge-creator {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; margin-top: 4px;
+    }
+    .badge-creator-parent { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .badge-creator-student { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+
     .btn-onsite {
         padding: 8px 14px; border-radius: 10px; font-size: 0.78rem; font-weight: 700;
         background: var(--u-accent); color: #fff; border: none; cursor: pointer; transition: all .15s;
@@ -150,11 +157,85 @@
         cursor: pointer; transition: all .15s;
     }
     .btn-view:hover { border-color: var(--u-accent); color: var(--u-accent); }
+    .btn-delete-piece {
+        padding: 7px 13px; border-radius: 10px; font-size: 0.78rem; font-weight: 700;
+        background: transparent; color: #dc2626; border: 1.5px solid #fecaca;
+        cursor: pointer; transition: all .15s;
+    }
+    .btn-delete-piece:hover { background: #fef2f2; border-color: #dc2626; }
     .btn-add-item {
         padding: 10px 20px; border-radius: 12px; font-size: 0.85rem; font-weight: 800;
         background: var(--u-primary); color: #fff; border: none; cursor: pointer; transition: all .15s;
     }
     .btn-add-item:hover { background: #2563eb; }
+
+    .set-row {
+        background: #f0f4ff;
+        border-left: 4px solid var(--u-primary);
+        cursor: pointer;
+        user-select: none;
+    }
+    .set-row:hover { background: #e8efff; }
+    .set-row.open { background: #e0eaff; }
+    .set-toggle-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: #dbeafe;
+        color: var(--u-primary);
+        transition: transform .2s;
+        flex-shrink: 0;
+    }
+    .set-row.open .set-toggle-icon { transform: rotate(180deg); }
+    .piece-row {
+        border-left: 4px solid #c7d2fe;
+        display: none;
+        background: #fafbff;
+    }
+    .piece-row.visible { display: table-row; }
+    .piece-count-hint {
+        display: block;
+        font-size: 0.7rem;
+        color: var(--u-muted);
+        font-weight: 600;
+        margin-top: 2px;
+    }
+    .grade-select-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+    .grade-select-wrap label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--u-muted);
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        white-space: nowrap;
+    }
+    .grade-select {
+        min-width: 220px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1.5px solid var(--u-border);
+        background: #fff;
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--u-text);
+        font-family: inherit;
+        cursor: pointer;
+    }
+    .grade-select:focus {
+        outline: none;
+        border-color: var(--u-primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+    #btnAddUniformSet { display: none; }
+    body.uo-tab-catalog #btnAddUniformSet { display: inline-flex; }
 
     .action-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
@@ -162,15 +243,26 @@
     .empty-state svg { opacity: 0.25; margin-bottom: 12px; }
     .empty-state p { font-size: 0.95rem; font-weight: 600; }
 
-    /* Modal Styling */
+    /* Modal Styling — above topbar/sidebar (1100–1200) */
     .modal-backdrop {
-        position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1000;
+        position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 5000;
         display: none; align-items: center; justify-content: center; padding: 16px;
+        pointer-events: none;
     }
-    .modal-backdrop.open { display: flex; }
+    .modal-backdrop.open {
+        display: flex;
+        pointer-events: auto;
+    }
     .modal-box {
         background: #fff; border-radius: 24px; padding: 32px; max-width: 480px; width: 100%;
         box-shadow: 0 24px 64px rgba(0,0,0,.15); animation: popIn .2s ease-out;
+        position: relative; z-index: 1;
+        max-height: min(90vh, 640px); overflow-y: auto;
+    }
+    .btn-view, .btn-onsite, .btn-claim {
+        position: relative;
+        z-index: 2;
+        pointer-events: auto;
     }
     @keyframes popIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     .modal-title { font-size: 1.2rem; font-weight: 800; color: var(--u-text); margin-bottom: 6px; }
@@ -196,16 +288,16 @@
             <h1>Uniform Orders</h1>
             <p>Track student pre-orders, mark onsite arrivals, and manage the uniform catalog.</p>
         </div>
-        <button class="btn-add-item" onclick="openAddModal()">+ Add Uniform Set</button>
+        <button class="btn-add-item" id="btnAddUniformSet" onclick="openAddModal()">+ Add Uniform Set</button>
     </div>
 
     <!-- Main Navigation Tabs -->
     <div class="main-nav-tabs">
-        <button class="main-tab active" onclick="switchMainTab('preorders', this)">
+        <button class="main-tab active" data-tab="preorders" onclick="switchMainTab('preorders', this)">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/></svg>
             Pre-Orders Tracking
         </button>
-        <button class="main-tab" onclick="switchMainTab('catalog', this)">
+        <button class="main-tab" data-tab="catalog" onclick="switchMainTab('catalog', this)">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>
             Uniform Catalog & Pricing
         </button>
@@ -217,30 +309,42 @@
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-icon blue"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
-                <div><div class="stat-label">Total Orders</div><div class="stat-value">{{ stats.total or 0 }}</div></div>
+                <div><div class="stat-label">Total Orders</div><div class="stat-value" id="statTotal">{{ stats.total or 0 }}</div></div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon orange"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
-                <div><div class="stat-label">For Ordering</div><div class="stat-value">{{ stats.for_ordering or 0 }}</div></div>
+                <div><div class="stat-label">For Ordering</div><div class="stat-value" id="statForOrdering">{{ stats.for_ordering or 0 }}</div></div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon green"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><path d="M12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></svg></div>
-                <div><div class="stat-label">Ready for Claim</div><div class="stat-value">{{ stats.ready or 0 }}</div></div>
+                <div><div class="stat-label">Ready for Claim</div><div class="stat-value" id="statReady">{{ stats.ready or 0 }}</div></div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon purple"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
-                <div><div class="stat-label">Claimed</div><div class="stat-value">{{ stats.claimed or 0 }}</div></div>
+                <div><div class="stat-label">Claimed</div><div class="stat-value" id="statClaimed">{{ stats.claimed or 0 }}</div></div>
             </div>
         </div>
 
+        <!-- Grade filter (dropdown) -->
+        <div class="grade-select-wrap">
+            <label for="gradeSelect">Grade Level</label>
+            <select id="gradeSelect" class="grade-select" onchange="onGradeFilterChange(this)">
+                <option value="all" {% if grade_filter == 'all' or not grade_filter %}selected{% endif %}>— All Grades —</option>
+                {% for g in grade_levels %}
+                <option value="{{ g }}" {% if grade_filter == g %}selected{% endif %}>{{ g }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
         <!-- Filters -->
-        <form class="filter-bar" method="get">
+        <form class="filter-bar" method="get" id="uoFilterForm">
+            <input type="hidden" name="grade" id="gradeHidden" value="{{ grade_filter }}">
             <input type="text" name="search" id="searchInput" placeholder="Search by student name or order #..." value="{{ search }}">
             <div class="status-tabs">
-                <a href="?status=all&search={{ search }}" class="stab {% if status_filter == 'all' %}active{% endif %}">All</a>
-                <a href="?status=For+Ordering&search={{ search }}" class="stab {% if status_filter == 'For Ordering' %}active{% endif %}">For Ordering</a>
-                <a href="?status=Ready+for+Claim&search={{ search }}" class="stab {% if status_filter == 'Ready for Claim' %}active{% endif %}">Ready for Claim</a>
-                <a href="?status=Claimed&search={{ search }}" class="stab {% if status_filter == 'Claimed' %}active{% endif %}">Claimed</a>
+                <a href="?grade={{ grade_filter|urlencode }}&status=all&search={{ search|urlencode }}" class="stab {% if status_filter == 'all' %}active{% endif %}">All</a>
+                <a href="?grade={{ grade_filter|urlencode }}&status=For+Ordering&search={{ search|urlencode }}" class="stab {% if status_filter == 'For Ordering' %}active{% endif %}">For Ordering</a>
+                <a href="?grade={{ grade_filter|urlencode }}&status=Ready+for+Claim&search={{ search|urlencode }}" class="stab {% if status_filter == 'Ready for Claim' %}active{% endif %}">Ready for Claim</a>
+                <a href="?grade={{ grade_filter|urlencode }}&status=Claimed&search={{ search|urlencode }}" class="stab {% if status_filter == 'Claimed' %}active{% endif %}">Claimed</a>
             </div>
         </form>
 
@@ -266,6 +370,24 @@
                         <td>
                             <div class="student-name">{{ o.student_name }}</div>
                             <div class="sub-text">{{ o.branch_enrollment_no or '' }}</div>
+                            {% if o.creator_role == 'parent' %}
+                            <div>
+                                <span class="badge-creator badge-creator-parent" title="Ordered by Parent">
+                                    <i class="fas fa-user-shield"></i> 
+                                    {% if o.creator_name and o.creator_name.strip().lower() not in ['parent', ''] %}
+                                        Parent: {{ o.creator_name }}
+                                    {% else %}
+                                        Parent
+                                    {% endif %}
+                                </span>
+                            </div>
+                            {% else %}
+                            <div>
+                                <span class="badge-creator badge-creator-student" title="Ordered by Student">
+                                    <i class="fas fa-user-graduate"></i> Student
+                                </span>
+                            </div>
+                            {% endif %}
                         </td>
                         <td><span style="font-size:.82rem; font-weight:800; color:var(--u-primary);">{{ o.order_number }}</span></td>
                         <td><span class="grade-pill">{{ o.grade_level or '—' }}</span></td>
@@ -291,11 +413,23 @@
                         <td class="sub-text">{% if o.created_at %}{{ o.created_at.strftime('%b %d, %Y') }}{% else %}—{% endif %}</td>
                         <td>
                             <div class="action-group">
-                                <button class="btn-view" onclick="viewItems({{ o.order_id }}, '{{ o.student_name|replace("'","\\'")|safe }}', '{{ o.order_number }}')">View Items</button>
+                                <button type="button" class="btn-view js-view-items"
+                                    data-order-id="{{ o.order_id }}"
+                                    data-student="{{ o.student_name or '' }}"
+                                    data-order-no="{{ o.order_number or '' }}"
+                                    data-creator-role="{{ o.creator_role or '' }}"
+                                    data-creator-name="{{ o.creator_name or '' }}">View Items</button>
                                 {% if o.order_status == 'For Ordering' %}
-                                <button class="btn-onsite" onclick="confirmOnsite({{ o.order_id }}, '{{ o.student_name|replace("'","\\'")|safe }}', '{{ o.order_number }}', '{{ '%.2f'|format(o.total_amount) }}')">Mark Onsite</button>
+                                <button type="button" class="btn-onsite js-mark-onsite"
+                                    data-order-id="{{ o.order_id }}"
+                                    data-student="{{ o.student_name or '' }}"
+                                    data-order-no="{{ o.order_number or '' }}"
+                                    data-amount="{{ '%.2f'|format(o.total_amount) }}">Mark Onsite</button>
                                 {% elif o.order_status == 'Ready for Claim' %}
-                                <button class="btn-claim" onclick="confirmClaim({{ o.order_id }}, '{{ o.student_name|replace("'","\\'")|safe }}', '{{ o.order_number }}')">Process Claim</button>
+                                <button type="button" class="btn-claim js-process-claim"
+                                    data-order-id="{{ o.order_id }}"
+                                    data-student="{{ o.student_name or '' }}"
+                                    data-order-no="{{ o.order_number or '' }}">Process Claim</button>
                                 {% endif %}
                             </div>
                         </td>
@@ -333,10 +467,14 @@
                     </thead>
                     <tbody>
                     {% for s in catalog_sets %}
-                    {# SET ROW #}
-                    <tr style="background: #f0f4ff; border-left: 4px solid var(--u-primary);">
+                    {% set pieces = pieces_by_set.get(s.item_id, []) %}
+                    {# SET ROW — click to expand pieces #}
+                    <tr class="set-row" data-set-id="{{ s.item_id }}" onclick="toggleCatalogSet({{ s.item_id }})">
                         <td>
                             <div style="display: flex; align-items: center; gap: 14px;">
+                                <span class="set-toggle-icon">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                                </span>
                                 {% if s.image_url %}
                                 <div style="width: 44px; height: 44px; border-radius: 12px; overflow: hidden; border: 1px solid var(--u-border);">
                                     <img src="{{ s.image_url }}" alt="{{ s.item_name }}" style="width: 100%; height: 100%; object-fit: cover;">
@@ -349,26 +487,35 @@
                                 <div>
                                     <strong style="color: var(--u-primary); font-size: 1rem;">{{ s.item_name }}</strong>
                                     <span style="display:block; font-size:0.72rem; color: var(--u-accent); font-weight:700; text-transform:uppercase; letter-spacing:.04em;">Uniform Set</span>
+                                    <span class="piece-count-hint">
+                                        {% if pieces|length > 0 %}
+                                        {{ pieces|length }} piece{{ 's' if pieces|length != 1 else '' }} · click to expand
+                                        {% else %}
+                                        No pieces yet · click + Add Piece
+                                        {% endif %}
+                                    </span>
                                 </div>
                             </div>
                         </td>
                         <td><span class="grade-pill">{{ s.grade_level or 'All Grades' }}</span></td>
                         <td><span style="font-size:0.8rem; font-weight:700; color:var(--u-muted);">{{ s.size_label or 'XS, S, M, L, XL, XXL, XXXL' }}</span></td>
-                        <td><span class="amount" style="color: var(--u-primary); font-size: 1.05rem;">₱{{ "%.2f"|format(s.price or 0) }}</span><span style="font-size:0.7rem; color:var(--u-muted); display:block;">Full set</span></td>
+                        <td>
+                            <span class="amount" style="color: var(--u-primary); font-size: 1.05rem;">₱{{ "%.2f"|format(s.price or 0) }}</span>
+                            <span style="font-size:0.7rem; color:var(--u-muted); display:block;">Base (smallest) · +₱{{ "%.0f"|format(s.size_price_step or 20) }}/size</span>
+                        </td>
                         <td><span class="badge badge-ready">SET</span></td>
                         <td>
-                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                                <button class="btn-view" onclick="openPriceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}', '{{ '%.2f'|format(s.price or 0) }}')">Edit Price</button>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;" onclick="event.stopPropagation()">
+                                <button class="btn-view" onclick="openPriceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}', '{{ '%.2f'|format(s.price or 0) }}', '{{ '%.0f'|format(s.size_price_step or 20) }}')">Edit Price</button>
                                 <button class="btn-onsite" style="padding:6px 12px; font-size:0.74rem;" onclick="openAddPieceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}')">+ Add Piece</button>
                             </div>
                         </td>
                     </tr>
-                    {# PIECE ROWS under this set #}
-                    {% set pieces = pieces_by_set.get(s.item_id, []) %}
+                    {# PIECE ROWS — hidden until set is expanded #}
                     {% for p in pieces %}
-                    <tr style="border-left: 4px solid #c7d2fe;">
+                    <tr class="piece-row" data-parent-set="{{ s.item_id }}">
                         <td>
-                            <div style="display: flex; align-items: center; gap: 14px; padding-left: 20px;">
+                            <div style="display: flex; align-items: center; gap: 14px; padding-left: 48px;">
                                 <div style="width: 6px; height: 6px; border-radius: 50%; background: var(--u-accent); flex-shrink:0;"></div>
                                 <div>
                                     <span style="color: var(--u-text); font-weight:700; font-size:0.9rem;">{{ p.item_name }}</span>
@@ -378,10 +525,16 @@
                         </td>
                         <td><span class="grade-pill">{{ p.grade_level or '—' }}</span></td>
                         <td><span style="font-size:0.8rem; font-weight:700; color:var(--u-muted);">{{ p.size_label or 'XS, S, M, L, XL, XXL, XXXL' }}</span></td>
-                        <td><span class="amount">₱{{ "%.2f"|format(p.price or 0) }}</span></td>
+                        <td>
+                            <span class="amount">₱{{ "%.2f"|format(p.price or 0) }}</span>
+                            <span style="font-size:0.7rem; color:var(--u-muted); display:block;">Base · +₱{{ "%.0f"|format(p.size_price_step or 20) }}/size</span>
+                        </td>
                         <td><span class="badge badge-for-ordering">PIECE</span></td>
                         <td>
-                            <button class="btn-view" onclick="openPriceModal({{ p.item_id }}, '{{ p.item_name|replace("'","\'")|safe }}', '{{ '%.2f'|format(p.price or 0) }}')">Edit Price</button>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                <button class="btn-view" onclick="openPriceModal({{ p.item_id }}, '{{ p.item_name|replace("'","\'")|safe }}', '{{ '%.2f'|format(p.price or 0) }}', '{{ '%.0f'|format(p.size_price_step or 20) }}')">Edit Price</button>
+                                <button class="btn-delete-piece" onclick="deletePiece({{ p.item_id }}, '{{ p.item_name|replace("'","\'")|safe }}', {{ s.item_id }})">Delete</button>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -409,7 +562,7 @@
         <div class="modal-sub" id="viewModalSub"></div>
         <div id="viewModalItems"><p style="color:#64748b;font-size:.875rem;">Loading...</p></div>
         <div class="modal-actions">
-            <button class="btn-cancel-modal" onclick="closeModal('viewModal')">Close</button>
+            <button type="button" class="btn-cancel-modal" onclick="closeModal('viewModal')">Close</button>
         </div>
     </div>
 </div>
@@ -422,8 +575,13 @@
         <form id="priceForm">
             <input type="hidden" id="priceItemId">
             <div class="form-group">
-                <label>Unit Price (₱)</label>
+                <label>Base Price — smallest size (₱)</label>
                 <input type="number" step="0.01" id="priceInput" required placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>Add per next size (₱)</label>
+                <input type="number" step="0.01" id="priceStepInput" value="20" required>
+                <small style="color:#64748b; font-size:0.75rem;">e.g. base 450 + ₱20 → M=470, L=490</small>
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn-cancel-modal" onclick="closeModal('priceModal')">Cancel</button>
@@ -448,8 +606,13 @@
                 <input type="text" id="addGrade" placeholder="e.g. Grade 7-10, All Grades, Pre-Elementary">
             </div>
             <div class="form-group">
-                <label>Full Set Price (₱)</label>
+                <label>Base Set Price — smallest size (₱)</label>
                 <input type="number" step="0.01" id="addPrice" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>Add per next size (₱)</label>
+                <input type="number" step="0.01" id="addPriceStep" value="20">
+                <small style="color:#64748b; font-size:0.75rem;">Base applies to smallest size; each next size adds this amount.</small>
             </div>
             <div class="form-group">
                 <label>Available Sizes (comma separated)</label>
@@ -479,8 +642,13 @@
                 <input type="text" id="pieceName" required placeholder="e.g. Polo, Pants, Blouse, Skirt, PE Shirt">
             </div>
             <div class="form-group">
-                <label>Piece Price (₱)</label>
+                <label>Base Piece Price — smallest size (₱)</label>
                 <input type="number" step="0.01" id="piecePrice" required placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>Add per next size (₱)</label>
+                <input type="number" step="0.01" id="piecePriceStep" value="20">
+                <small style="color:#64748b; font-size:0.75rem;">e.g. Polo 450 → M=470, L=490</small>
             </div>
             <div class="form-group">
                 <label>Available Sizes (comma separated)</label>
@@ -527,25 +695,191 @@
 
 {% block scripts %}
 <script>
+    function closeModal(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('open');
+    }
+
+    // Action buttons via data-* (avoids broken onclick quotes)
+    document.addEventListener('click', function (e) {
+        const viewBtn = e.target.closest('.js-view-items');
+        if (viewBtn) {
+            e.preventDefault();
+            viewItems(
+                parseInt(viewBtn.dataset.orderId, 10),
+                viewBtn.dataset.student || '',
+                viewBtn.dataset.orderNo || '',
+                viewBtn.dataset.creatorRole || '',
+                viewBtn.dataset.creatorName || ''
+            );
+            return;
+        }
+        const onsiteBtn = e.target.closest('.js-mark-onsite');
+        if (onsiteBtn) {
+            e.preventDefault();
+            confirmOnsite(
+                parseInt(onsiteBtn.dataset.orderId, 10),
+                onsiteBtn.dataset.student || '',
+                onsiteBtn.dataset.orderNo || '',
+                onsiteBtn.dataset.amount || '0'
+            );
+            return;
+        }
+        const claimBtn = e.target.closest('.js-process-claim');
+        if (claimBtn) {
+            e.preventDefault();
+            confirmClaim(
+                parseInt(claimBtn.dataset.orderId, 10),
+                claimBtn.dataset.student || '',
+                claimBtn.dataset.orderNo || ''
+            );
+        }
+    });
+
     function switchMainTab(tab, btn) {
         document.querySelectorAll('.main-tab').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
-        btn.classList.add('active');
-        document.getElementById('pane-' + tab).classList.add('active');
+        const tabBtn = btn || document.querySelector('.main-tab[data-tab="' + tab + '"]');
+        if (tabBtn) tabBtn.classList.add('active');
+        else {
+            document.querySelectorAll('.main-tab').forEach(b => {
+                if ((b.getAttribute('data-tab') || '') === tab) b.classList.add('active');
+            });
+        }
+        const pane = document.getElementById('pane-' + tab);
+        if (pane) pane.classList.add('active');
+        document.body.classList.toggle('uo-tab-catalog', tab === 'catalog');
+        try {
+            sessionStorage.setItem('uo_active_tab', tab);
+            if (history.replaceState) {
+                history.replaceState(null, '', '#' + tab);
+            } else {
+                location.hash = tab;
+            }
+        } catch (e) {}
     }
 
-    function closeModal(id) {
-        document.getElementById(id).classList.remove('open');
+    function reloadStayOnCatalog(expandSetId) {
+        try {
+            sessionStorage.setItem('uo_active_tab', 'catalog');
+            if (expandSetId) sessionStorage.setItem('uo_expand_set', String(expandSetId));
+        } catch (e) {}
+        location.hash = 'catalog';
+        location.reload();
     }
 
-    function openPriceModal(itemId, itemName, currentPrice) {
+    function toggleCatalogSet(setId) {
+        const setRow = document.querySelector('.set-row[data-set-id="' + setId + '"]');
+        if (!setRow) return;
+        const open = setRow.classList.toggle('open');
+        document.querySelectorAll('.piece-row[data-parent-set="' + setId + '"]').forEach(row => {
+            row.classList.toggle('visible', open);
+        });
+        try {
+            let opened = JSON.parse(sessionStorage.getItem('uo_open_sets') || '[]');
+            if (open) {
+                if (opened.indexOf(setId) === -1) opened.push(setId);
+            } else {
+                opened = opened.filter(id => id !== setId);
+            }
+            sessionStorage.setItem('uo_open_sets', JSON.stringify(opened));
+        } catch (e) {}
+    }
+
+    function restoreCatalogState() {
+        let tab = 'preorders';
+        try {
+            if (location.hash === '#catalog') tab = 'catalog';
+            else tab = sessionStorage.getItem('uo_active_tab') || 'preorders';
+        } catch (e) {}
+        if (tab === 'catalog') {
+            document.querySelectorAll('.main-tab').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.main-tab').forEach(b => {
+                if ((b.getAttribute('data-tab') || '') === 'catalog') b.classList.add('active');
+            });
+            const pane = document.getElementById('pane-catalog');
+            if (pane) pane.classList.add('active');
+            document.body.classList.add('uo-tab-catalog');
+        } else {
+            document.body.classList.remove('uo-tab-catalog');
+        }
+        try {
+            let opened = JSON.parse(sessionStorage.getItem('uo_open_sets') || '[]');
+            const expandOne = sessionStorage.getItem('uo_expand_set');
+            if (expandOne) {
+                const id = parseInt(expandOne, 10);
+                if (!isNaN(id) && opened.indexOf(id) === -1) opened.push(id);
+                sessionStorage.removeItem('uo_expand_set');
+            }
+            opened.forEach(id => {
+                const setRow = document.querySelector('.set-row[data-set-id="' + id + '"]');
+                if (!setRow) return;
+                setRow.classList.add('open');
+                document.querySelectorAll('.piece-row[data-parent-set="' + id + '"]').forEach(row => {
+                    row.classList.add('visible');
+                });
+            });
+            sessionStorage.setItem('uo_open_sets', JSON.stringify(opened));
+        } catch (e) {}
+    }
+
+    document.addEventListener('DOMContentLoaded', restoreCatalogState);
+
+    // Live refresh while on Pre-Orders Tracking — reload when new orders appear
+    (function liveUniformTracking() {
+        let lastSig = [
+            {{ stats.for_ordering or 0 }},
+            {{ stats.ready or 0 }},
+            {{ stats.claimed or 0 }},
+            {{ stats.total or 0 }}
+        ].join('|');
+        setInterval(function () {
+            const pre = document.getElementById('pane-preorders');
+            if (!pre || !pre.classList.contains('active')) return;
+            fetch('/cashier/api/sidebar-badges')
+                .then(r => r.json())
+                .then(data => {
+                    if (data.error) return;
+                    const sig = [
+                        data.uniform_for_ordering || 0,
+                        data.uniform_ready || 0,
+                        {{ stats.claimed or 0 }},
+                        (data.uniform_for_ordering || 0) + (data.uniform_ready || 0) + {{ stats.claimed or 0 }}
+                    ].join('|');
+                    // Compare for_ordering + ready primarily
+                    const live = (data.uniform_for_ordering || 0) + '|' + (data.uniform_ready || 0);
+                    const prev = lastSig.split('|').slice(0, 2).join('|');
+                    if (live !== prev) {
+                        lastSig = live + '|' + lastSig.split('|').slice(2).join('|');
+                        location.reload();
+                    }
+                })
+                .catch(() => {});
+        }, 8000);
+    })();
+
+    function onGradeFilterChange(sel) {
+        const grade = sel.value;
+        const status = {{ status_filter|tojson }};
+        const search = {{ search|tojson }};
+        const params = new URLSearchParams();
+        params.set('grade', grade);
+        params.set('status', status || 'all');
+        if (search) params.set('search', search);
+        location.href = '?' + params.toString();
+    }
+
+    function openPriceModal(itemId, itemName, currentPrice, priceStep) {
         document.getElementById('priceItemId').value = itemId;
         document.getElementById('priceModalSub').textContent = itemName;
         document.getElementById('priceInput').value = currentPrice;
+        document.getElementById('priceStepInput').value = priceStep || 20;
         document.getElementById('priceModal').classList.add('open');
     }
 
     function openAddModal() {
+        try { sessionStorage.setItem('uo_active_tab', 'catalog'); } catch (e) {}
         document.getElementById('addModal').classList.add('open');
     }
 
@@ -556,11 +890,12 @@
         const formData = new FormData();
         formData.append('item_id', itemId);
         formData.append('new_price', newPrice);
+        formData.append('size_price_step', document.getElementById('priceStepInput').value);
 
         fetch('/cashier/uniform-catalog/update-price', { method: 'POST', body: formData })
             .then(r => r.json())
             .then(data => {
-                if (data.success) { closeModal('priceModal'); location.reload(); }
+                if (data.success) { closeModal('priceModal'); reloadStayOnCatalog(); }
                 else { alert('Error: ' + data.error); }
             });
     });
@@ -571,18 +906,25 @@
         formData.append('item_name', document.getElementById('addName').value);
         formData.append('grade_level', document.getElementById('addGrade').value);
         formData.append('price', document.getElementById('addPrice').value);
+        formData.append('size_price_step', document.getElementById('addPriceStep').value);
         formData.append('size_label', document.getElementById('addSizes').value);
         formData.append('image_url', document.getElementById('addImage').value);
 
         fetch('/cashier/uniform-catalog/add', { method: 'POST', body: formData })
             .then(r => r.json())
             .then(data => {
-                if (data.success) { closeModal('addModal'); location.reload(); }
+                if (data.success) { closeModal('addModal'); reloadStayOnCatalog(); }
                 else { alert('Error: ' + data.error); }
             });
     });
 
     function openAddPieceModal(parentItemId, parentName) {
+        try {
+            sessionStorage.setItem('uo_active_tab', 'catalog');
+            let opened = JSON.parse(sessionStorage.getItem('uo_open_sets') || '[]');
+            if (opened.indexOf(parentItemId) === -1) opened.push(parentItemId);
+            sessionStorage.setItem('uo_open_sets', JSON.stringify(opened));
+        } catch (e) {}
         document.getElementById('pieceParentId').value = parentItemId;
         document.getElementById('addPieceModalSub').textContent = 'Adding piece under: ' + parentName;
         document.getElementById('addPieceModal').classList.add('open');
@@ -590,29 +932,73 @@
 
     document.getElementById('addPieceForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        const parentId = document.getElementById('pieceParentId').value;
         const formData = new FormData();
-        formData.append('parent_item_id', document.getElementById('pieceParentId').value);
+        formData.append('parent_item_id', parentId);
         formData.append('item_name', document.getElementById('pieceName').value);
         formData.append('price', document.getElementById('piecePrice').value);
+        formData.append('size_price_step', document.getElementById('piecePriceStep').value);
         formData.append('size_label', document.getElementById('pieceSizes').value);
 
         fetch('/cashier/uniform-catalog/add-piece', { method: 'POST', body: formData })
             .then(r => r.json())
             .then(data => {
-                if (data.success) { closeModal('addPieceModal'); location.reload(); }
-                else { alert('Error: ' + data.error); }
+                if (data.success) {
+                    closeModal('addPieceModal');
+                    reloadStayOnCatalog(parseInt(parentId, 10));
+                } else { alert('Error: ' + data.error); }
             });
     });
 
-    function viewItems(orderId, studentName, orderNo) {
+    function deletePiece(itemId, itemName, parentSetId) {
+        if (!confirm('Delete piece "' + itemName + '"? This cannot be undone.')) return;
+        const formData = new FormData();
+        formData.append('item_id', itemId);
+        fetch('/cashier/uniform-catalog/delete-piece', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) reloadStayOnCatalog(parentSetId);
+                else alert('Error: ' + (data.error || 'Failed to delete'));
+            })
+            .catch(() => alert('Failed to delete piece.'));
+    }
+
+    function viewItems(orderId, studentName, orderNo, creatorRole, creatorName) {
         document.getElementById('viewModalTitle').textContent = 'Order ' + orderNo;
-        document.getElementById('viewModalSub').textContent = 'Student: ' + studentName;
+        let subText = 'Student: ' + (studentName || '—');
+        if (creatorRole === 'parent') {
+            if (creatorName && creatorName.trim().toLowerCase() !== 'parent') {
+                subText += ' • Reserved by Parent: ' + creatorName;
+            } else {
+                subText += ' • Reserved by Parent';
+            }
+        } else if (creatorRole === 'student') {
+            subText += ' • Reserved by Student';
+        }
+        document.getElementById('viewModalSub').textContent = subText;
         document.getElementById('viewModalItems').innerHTML = '<p style="color:#64748b;font-size:.875rem;">Loading items...</p>';
         document.getElementById('viewModal').classList.add('open');
 
         fetch('/cashier/uniform-orders/' + orderId + '/items')
             .then(r => r.json())
-            .then(items => {
+            .then(res => {
+                const items = Array.isArray(res) ? res : (res.items || []);
+                const cRole = (typeof res === 'object' && !Array.isArray(res) && res.creator_role) ? res.creator_role : creatorRole;
+                const cName = (typeof res === 'object' && !Array.isArray(res) && res.creator_name) ? res.creator_name : creatorName;
+                if (cRole) {
+                    let updatedSub = 'Student: ' + (studentName || '—');
+                    if (cRole === 'parent') {
+                        if (cName && cName.trim().toLowerCase() !== 'parent') {
+                            updatedSub += ' • Reserved by Parent: ' + cName;
+                        } else {
+                            updatedSub += ' • Reserved by Parent';
+                        }
+                    } else {
+                        updatedSub += ' • Reserved by Student';
+                    }
+                    document.getElementById('viewModalSub').textContent = updatedSub;
+                }
+
                 if (!items.length) {
                     document.getElementById('viewModalItems').innerHTML = '<p style="color:#64748b;font-size:.875rem;">No items recorded.</p>';
                     return;

@@ -281,6 +281,28 @@
       color: var(--sidebar-active-text);
     }
 
+    .sb-count {
+      margin-left: auto;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 6px;
+      border-radius: 999px;
+      background: #ef4444;
+      color: #fff;
+      font-size: 0.68rem;
+      font-weight: 800;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .sb-link.active .sb-count {
+      background: rgba(255, 255, 255, 0.28);
+      color: #fff;
+    }
+
     .sb-icon {
       font-size: 1.25rem;
       flex-shrink: 0;
@@ -602,7 +624,8 @@
       body.sidebar-collapsed .sb-user-role,
       body.sidebar-collapsed .school-year-badge,
       body.sidebar-collapsed .sb-dropdown-arrow,
-      body.sidebar-collapsed .sb-section-label {
+      body.sidebar-collapsed .sb-section-label,
+      body.sidebar-collapsed .sb-count {
         display: none !important;
       }
 
@@ -1556,6 +1579,7 @@
             <line x1="16" y1="17" x2="8" y2="17"></line>
             <polyline points="10 9 9 9 8 9"></polyline>
           </svg></span> Enrollments
+        <span class="sb-count" id="sbBadgeEnrollments" data-badge="enrollments"></span>
       </a>
 
       <!-- 5. Students by Grade -->
@@ -1616,6 +1640,7 @@
             <line x1="3" y1="12" x2="3.01" y2="12"></line>
             <line x1="3" y1="18" x2="3.01" y2="18"></line>
           </svg></span> Billing Registry
+        <span class="sb-count" id="sbBadgeBilling" data-badge="billing_due"></span>
       </a>
 
       <a class="sb-link {% if request.path == '/cashier/payment-history' %}active{% endif %}"
@@ -1637,6 +1662,7 @@
             <path d="M12 22V7M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
             <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
           </svg></span> Uniform Orders
+        <span class="sb-count" id="sbBadgeUniforms" data-badge="uniform_orders"></span>
       </a>
       <a class="sb-link {% if request.path == '/cashier/reports' %}active{% endif %}" href="/cashier/reports">
         <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
@@ -2767,6 +2793,41 @@
       if (e.key === 'Escape') closePreview();
     });
   </script>
+
+  <script>
+    (function sidebarLiveBadges() {
+      const role = {{ (session.get('role') or '')|tojson }};
+      let url = null;
+      if (role === 'cashier') url = '/cashier/api/sidebar-badges';
+      else if (role === 'registrar') url = '/registrar/api/sidebar-badges';
+      if (!url) return;
+
+      function applyBadges(data) {
+        document.querySelectorAll('.sb-count[data-badge]').forEach(el => {
+          const key = el.getAttribute('data-badge');
+          const n = parseInt(data[key] || 0, 10) || 0;
+          if (n > 0) {
+            el.textContent = n > 99 ? '99+' : String(n);
+            el.style.display = 'inline-flex';
+          } else {
+            el.textContent = '';
+            el.style.display = 'none';
+          }
+        });
+      }
+
+      function poll() {
+        fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+          .then(r => r.ok ? r.json() : null)
+          .then(data => { if (data && !data.error) applyBadges(data); })
+          .catch(() => {});
+      }
+
+      poll();
+      setInterval(poll, 10000);
+    })();
+  </script>
+
 </body>
 
 </html>

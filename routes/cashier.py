@@ -8,8 +8,10 @@ import secrets
 import psycopg2.extras
 import pandas as pd
 from openpyxl.styles import Font, Fill, Alignment, PatternFill, Border, Side
+from utils.uniform_pricing import DEFAULT_SIZE_PRICE_STEP, parse_size_list, size_price_map
 
 cashier_bp = Blueprint("cashier", __name__)
+
 
 def _get_manila_now():
     import pytz
@@ -413,7 +415,7 @@ def view_bill(bill_id):
         bill["tuition_balance"] = max(Decimal(0), tuition_balance)
         bill["other_balance"] = max(Decimal(0), other_balance)
 
-        # Fetch grouped reservations for breakdown
+        # Fetch grouped reservations for breakdown (books/materials only — uniforms via UO)
         cursor.execute("""
             SELECT
                 r.reservation_id, 
@@ -430,7 +432,9 @@ def view_bill(bill_id):
                 WHERE sa.enrollment_id = %s
             )) 
             AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED')
+            AND UPPER(COALESCE(ii.category, '')) <> 'UNIFORM'
             GROUP BY r.reservation_id, r.status
+            HAVING COUNT(*) FILTER (WHERE UPPER(COALESCE(ii.category, '')) <> 'UNIFORM') > 0
             ORDER BY r.reservation_id ASC
         """, (bill["enrollment_id"], bill["enrollment_id"]))
         reservation_details = cursor.fetchall()
@@ -443,7 +447,49 @@ def view_bill(bill_id):
                 general_paid -= deduct
             res["balance"] = max(Decimal(0), res_bal)
 
-        return render_template("cashier_view_bill.html", bill=bill, payments=payments, reservation_details=reservation_details)
+        # Uniform pre-orders linked to this bill (itemized like reservations)
+        cursor.execute("""
+            SELECT
+                uo.order_id,
+                uo.order_number,
+                uo.order_status,
+                uo.payment_status,
+                uo.total_amount AS order_total,
+                STRING_AGG(
+                    uoi.item_name
+                    || CASE WHEN uoi.size_label IS NOT NULL AND uoi.size_label <> ''
+                            THEN ' (' || uoi.size_label || ')' ELSE '' END
+                    || CASE WHEN uoi.quantity > 1 THEN ' x' || uoi.quantity ELSE '' END,
+                    ', ' ORDER BY uoi.item_name
+                ) AS item_names,
+                COALESCE((
+                    SELECT SUM(amount) FROM payments
+                    WHERE target_type = 'uniform_order' AND target_id = uo.order_id
+                ), 0) AS paid_amount
+            FROM uniform_orders uo
+            JOIN uniform_order_items uoi ON uoi.order_id = uo.order_id
+            WHERE uo.bill_id = %s
+               OR (uo.enrollment_id = %s AND uo.order_status IN ('Ready for Claim', 'Claimed'))
+            GROUP BY uo.order_id, uo.order_number, uo.order_status, uo.payment_status, uo.total_amount
+            ORDER BY uo.order_id ASC
+        """, (bill_id, bill["enrollment_id"]))
+        uniform_order_details = cursor.fetchall() or []
+
+        for uo in uniform_order_details:
+            uo_bal = Decimal(str(uo["order_total"] or 0)) - Decimal(str(uo["paid_amount"] or 0))
+            if general_paid > 0:
+                deduct = min(uo_bal, general_paid)
+                uo_bal -= deduct
+                general_paid -= deduct
+            uo["balance"] = max(Decimal(0), uo_bal)
+
+        return render_template(
+            "cashier_view_bill.html",
+            bill=bill,
+            payments=payments,
+            reservation_details=reservation_details,
+            uniform_order_details=uniform_order_details,
+        )
     finally:
         cursor.close()
         db.close()
@@ -553,18 +599,52 @@ def process_payment(bill_id):
                                 WHERE reservation_id = %s
                             """, (target_id,))
 
+                    if target_type == 'uniform_order' and target_id:
+                        cursor.execute(
+                            "SELECT SUM(amount) AS sum_paid FROM payments WHERE target_type='uniform_order' AND target_id=%s",
+                            (target_id,),
+                        )
+                        u_paid = cursor.fetchone()["sum_paid"] or Decimal(0)
+                        cursor.execute(
+                            "SELECT total_amount FROM uniform_orders WHERE order_id=%s",
+                            (target_id,),
+                        )
+                        u_row = cursor.fetchone()
+                        u_total = Decimal(str((u_row or {}).get("total_amount") or 0))
+                        if u_paid >= u_total and u_total > 0:
+                            cursor.execute("""
+                                UPDATE uniform_orders
+                                SET payment_status = 'Paid', updated_at = NOW()
+                                WHERE order_id = %s
+                            """, (target_id,))
+
                     if new_balance == 0:
                         new_status = "paid"
-                        # Auto-mark all reservations as PAID if entire bill is paid
+                        # Auto-mark active book/material reservations only — never revive CANCELLED
+                        # and never touch uniform-only rows (those live in uniform_orders).
                         cursor.execute("""
-                            UPDATE reservations
+                            UPDATE reservations r
                             SET status = 'PAID'
-                            WHERE enrollment_id = %s OR student_user_id IN (
-                                SELECT u.user_id FROM student_accounts sa 
-                                JOIN users u ON sa.username = u.username 
-                                WHERE sa.enrollment_id = %s
+                            WHERE (
+                                r.enrollment_id = %s OR r.student_user_id IN (
+                                    SELECT u.user_id FROM student_accounts sa
+                                    JOIN users u ON sa.username = u.username
+                                    WHERE sa.enrollment_id = %s
+                                )
+                            )
+                            AND UPPER(COALESCE(r.status, '')) NOT IN ('CANCELLED', 'REJECTED')
+                            AND EXISTS (
+                                SELECT 1 FROM reservation_items ri
+                                JOIN inventory_items ii ON ii.item_id = ri.item_id
+                                WHERE ri.reservation_id = r.reservation_id
+                                  AND UPPER(COALESCE(ii.category, '')) <> 'UNIFORM'
                             )
                         """, (bill["enrollment_id"], bill["enrollment_id"]))
+                        cursor.execute("""
+                            UPDATE uniform_orders
+                            SET payment_status = 'Paid', updated_at = NOW()
+                            WHERE bill_id = %s OR enrollment_id = %s
+                        """, (bill_id, bill["enrollment_id"]))
                     else:
                         new_status = "partial"
 
@@ -1889,11 +1969,35 @@ def uniform_orders():
         status_filter = request.args.get("status", "all")
         search = request.args.get("search", "").strip()
 
+        # Grade+section options from enrollments (same as Billing Registry — e.g. Grade 11-GAS)
+        cursor.execute("""
+            SELECT DISTINCT grade_level
+            FROM enrollments
+            WHERE branch_id = %s
+              AND year_id = %s
+              AND grade_level IS NOT NULL
+              AND TRIM(grade_level) <> ''
+              AND status IN ('approved', 'enrolled')
+            ORDER BY grade_level
+        """, (branch_id, active_year_id))
+        grade_levels = [r["grade_level"] for r in cursor.fetchall()]
+
+        grade_filter = request.args.get("grade", "").strip()
+        if not grade_filter:
+            grade_filter = "all"
+        elif grade_filter.lower() != "all" and grade_filter not in grade_levels:
+            # Unknown grade — fall back to all (don't collapse Grade 11-GAS → Grade 11)
+            grade_filter = "all"
+
         params = [branch_id]
         where_extra = ""
         if status_filter != "all":
             where_extra += " AND uo.order_status = %s"
             params.append(status_filter)
+        if grade_filter and grade_filter.lower() != "all":
+            # Exact match so Grade 11-GAS is not mixed with other Grade 11 sections
+            where_extra += " AND e.grade_level = %s"
+            params.append(grade_filter)
         if search:
             where_extra += """ AND (
                 LOWER(CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name)) LIKE %s
@@ -1913,18 +2017,22 @@ def uniform_orders():
                 uo.claimed_at,
                 uo.enrollment_id,
                 uo.bill_id,
+                uo.created_by_user_id,
                 CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name) AS student_name,
                 e.grade_level,
-                e.branch_enrollment_no
+                e.branch_enrollment_no,
+                u_creator.role AS creator_role,
+                COALESCE(NULLIF(u_creator.full_name, ''), CONCAT_WS(' ', u_creator.first_name, u_creator.last_name), u_creator.username) AS creator_name
             FROM uniform_orders uo
             JOIN enrollments e ON e.enrollment_id = uo.enrollment_id
+            LEFT JOIN users u_creator ON u_creator.user_id = uo.created_by_user_id
             WHERE uo.branch_id = %s
             {where_extra}
             ORDER BY uo.created_at DESC
         """, params)
         orders = cursor.fetchall()
 
-        # Stats
+        # Stats (branch-wide, not grade-filtered — overview cards)
         cursor.execute("""
             SELECT
                 COUNT(*) FILTER (WHERE order_status = 'For Ordering') AS for_ordering,
@@ -1937,7 +2045,8 @@ def uniform_orders():
 
         # Fetch uniform SETS (top-level items) for catalog tab
         cursor.execute("""
-            SELECT item_id, category, item_name, grade_level, price, image_url, is_active, size_label
+            SELECT item_id, category, item_name, grade_level, price, image_url, is_active, size_label,
+                   COALESCE(size_price_step, 20) AS size_price_step
             FROM inventory_items
             WHERE branch_id = %s AND UPPER(category) = 'UNIFORM'
               AND (parent_item_id IS NULL)
@@ -1947,13 +2056,20 @@ def uniform_orders():
 
         # Fetch all pieces (items with a parent_item_id)
         cursor.execute("""
-            SELECT item_id, item_name, grade_level, price, size_label, parent_item_id
+            SELECT item_id, item_name, grade_level, price, size_label, parent_item_id,
+                   COALESCE(size_price_step, 20) AS size_price_step
             FROM inventory_items
             WHERE branch_id = %s AND UPPER(category) = 'UNIFORM'
               AND parent_item_id IS NOT NULL
             ORDER BY parent_item_id, item_name ASC
         """, (branch_id,))
         all_pieces = cursor.fetchall()
+
+        # Attach size→price map for display
+        for row in catalog_sets:
+            row["size_prices"] = size_price_map(row["price"], row["size_label"], row["size_price_step"])
+        for row in all_pieces:
+            row["size_prices"] = size_price_map(row["price"], row["size_label"], row["size_price_step"])
 
         # Group pieces by parent_item_id
         pieces_by_set = {}
@@ -1968,10 +2084,59 @@ def uniform_orders():
             orders=orders,
             stats=stats,
             status_filter=status_filter,
+            grade_filter=grade_filter,
+            grade_levels=grade_levels,
             search=search,
             catalog_sets=catalog_sets,
             pieces_by_set=pieces_by_set
         )
+    finally:
+        cursor.close()
+        db.close()
+
+
+@cashier_bp.route("/cashier/api/sidebar-badges")
+def cashier_sidebar_badges():
+    """Live counts for cashier sidebar badges (AJAX poll)."""
+    if not _require_cashier():
+        return jsonify({"error": "Unauthorized"}), 403
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT COUNT(*) AS n FROM uniform_orders
+            WHERE branch_id = %s AND order_status = 'For Ordering'
+        """, (branch_id,))
+        for_ordering = int(cursor.fetchone()["n"] or 0)
+
+        cursor.execute("""
+            SELECT COUNT(*) AS n FROM uniform_orders
+            WHERE branch_id = %s AND order_status = 'Ready for Claim'
+        """, (branch_id,))
+        ready_claim = int(cursor.fetchone()["n"] or 0)
+
+        cursor.execute("""
+            SELECT COUNT(*) AS n FROM billing b
+            JOIN enrollments e ON e.enrollment_id = b.enrollment_id
+            WHERE e.branch_id = %s AND COALESCE(b.balance, 0) > 0
+              AND LOWER(COALESCE(b.status, '')) NOT IN ('paid', 'full')
+        """, (branch_id,))
+        billing_due = int(cursor.fetchone()["n"] or 0)
+
+        cursor.execute("""
+            SELECT COUNT(*) AS n FROM reservations r
+            WHERE r.branch_id = %s AND UPPER(r.status) = 'RESERVED'
+        """, (branch_id,))
+        reserved = int(cursor.fetchone()["n"] or 0)
+
+        return jsonify({
+            "uniform_for_ordering": for_ordering,
+            "uniform_ready": ready_claim,
+            "uniform_orders": for_ordering + ready_claim,
+            "billing_due": billing_due,
+            "reservations": reserved,
+        })
     finally:
         cursor.close()
         db.close()
@@ -2050,10 +2215,11 @@ def uniform_mark_onsite(order_id):
         student_user_id = order.get("student_user_id")
         if not student_user_id:
             cursor.execute("""
-                SELECT sa.user_id 
-                FROM student_accounts sa 
-                JOIN users u ON u.username = sa.username 
+                SELECT u.user_id
+                FROM student_accounts sa
+                JOIN users u ON u.username = sa.username
                 WHERE sa.enrollment_id = %s
+                LIMIT 1
             """, (order["enrollment_id"],))
             s_row = cursor.fetchone()
             if s_row:
@@ -2067,7 +2233,7 @@ def uniform_mark_onsite(order_id):
                 student_user_id,
                 "Uniform Ready for Claim",
                 f"Your uniform order {order['order_number']} is now onsite! Your bill has been activated. Please proceed to the cashier to pay and claim.",
-                "/student/reservation"
+                "/student/reservations"
             ))
 
         db.commit()
@@ -2115,6 +2281,30 @@ def uniform_process_claim(order_id):
                 updated_at = %s
             WHERE order_id = %s
         """, (now, session.get("user_id"), now, order_id))
+
+        student_user_id = order.get("student_user_id")
+        if not student_user_id:
+            cursor.execute("""
+                SELECT u.user_id
+                FROM student_accounts sa
+                JOIN users u ON u.username = sa.username
+                WHERE sa.enrollment_id = %s
+                LIMIT 1
+            """, (order["enrollment_id"],))
+            s_row = cursor.fetchone()
+            if s_row:
+                student_user_id = s_row["user_id"]
+        if student_user_id:
+            cursor.execute("""
+                INSERT INTO student_notifications (student_id, title, message, link)
+                VALUES (%s, %s, %s, %s)
+            """, (
+                student_user_id,
+                "Uniform Claimed",
+                f"Your uniform order {order['order_number']} has been claimed. Thank you!",
+                "/student/reservations"
+            ))
+
         db.commit()
         return jsonify({"success": True, "message": "Order marked as Claimed."})
     except Exception as e:
@@ -2135,6 +2325,15 @@ def uniform_order_items(order_id):
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         cursor.execute("""
+            SELECT uo.created_by_user_id, u_creator.role AS creator_role,
+                   COALESCE(NULLIF(u_creator.full_name, ''), CONCAT_WS(' ', u_creator.first_name, u_creator.last_name), u_creator.username) AS creator_name
+            FROM uniform_orders uo
+            LEFT JOIN users u_creator ON u_creator.user_id = uo.created_by_user_id
+            WHERE uo.order_id = %s AND uo.branch_id = %s
+        """, (order_id, branch_id))
+        meta = cursor.fetchone() or {}
+
+        cursor.execute("""
             SELECT uoi.item_name, uoi.size_label, uoi.quantity, uoi.unit_price, uoi.line_total
             FROM uniform_order_items uoi
             JOIN uniform_orders uo ON uo.order_id = uoi.order_id
@@ -2142,7 +2341,11 @@ def uniform_order_items(order_id):
             ORDER BY uoi.item_id
         """, (order_id, branch_id))
         items = cursor.fetchall()
-        return jsonify([dict(i) for i in items])
+        return jsonify({
+            "creator_role": meta.get("creator_role"),
+            "creator_name": meta.get("creator_name"),
+            "items": [dict(i) for i in items]
+        })
     finally:
         cursor.close()
         db.close()
@@ -2156,13 +2359,18 @@ def uniform_catalog_update_price():
     branch_id = session.get("branch_id")
     item_id = request.form.get("item_id")
     new_price = request.form.get("new_price")
+    size_price_step = request.form.get("size_price_step", str(DEFAULT_SIZE_PRICE_STEP))
     if not item_id or not new_price:
         return jsonify({"error": "Missing item_id or price"}), 400
 
     db = get_db_connection()
     cursor = db.cursor()
     try:
-        cursor.execute("UPDATE inventory_items SET price = %s WHERE item_id = %s AND branch_id = %s AND UPPER(category) = 'UNIFORM'", (float(new_price), item_id, branch_id))
+        cursor.execute("""
+            UPDATE inventory_items
+            SET price = %s, size_price_step = %s
+            WHERE item_id = %s AND branch_id = %s AND UPPER(category) = 'UNIFORM'
+        """, (float(new_price), float(size_price_step or DEFAULT_SIZE_PRICE_STEP), item_id, branch_id))
         db.commit()
         return jsonify({"success": True, "message": "Price updated successfully"})
     except Exception as e:
@@ -2184,10 +2392,14 @@ def uniform_catalog_add():
     grade_level = request.form.get("grade_level", "All Grades").strip()
     price = request.form.get("price", "0").strip()
     size_label = request.form.get("size_label", "XS, S, M, L, XL, XXL, XXXL").strip()
+    size_price_step = request.form.get("size_price_step", str(DEFAULT_SIZE_PRICE_STEP)).strip()
     image_url = request.form.get("image_url", "").strip()
 
     if not item_name:
         return jsonify({"error": "Item name is required"}), 400
+
+    # Normalize size list order
+    size_label = ", ".join(parse_size_list(size_label))
 
     db = get_db_connection()
     cursor = db.cursor()
@@ -2195,9 +2407,12 @@ def uniform_catalog_add():
         cursor.execute("""
             INSERT INTO inventory_items
               (branch_id, category, item_name, grade_level, price, size_label, image_url,
-               is_active, stock_total, stock_reserved, parent_item_id, is_set_piece)
-            VALUES (%s, 'UNIFORM', %s, %s, %s, %s, %s, TRUE, 0, 0, NULL, FALSE)
-        """, (branch_id, item_name, grade_level, float(price or 0), size_label, image_url or None))
+               is_active, parent_item_id, is_set_piece, size_price_step)
+            VALUES (%s, 'UNIFORM', %s, %s, %s, %s, %s, TRUE, NULL, FALSE, %s)
+        """, (
+            branch_id, item_name, grade_level, float(price or 0), size_label,
+            image_url or None, float(size_price_step or DEFAULT_SIZE_PRICE_STEP)
+        ))
         db.commit()
         return jsonify({"success": True, "message": "Uniform set added successfully"})
     except Exception as e:
@@ -2219,9 +2434,12 @@ def uniform_catalog_add_piece():
     parent_item_id = request.form.get("parent_item_id", "").strip()
     price = request.form.get("price", "0").strip()
     size_label = request.form.get("size_label", "XS, S, M, L, XL, XXL, XXXL").strip()
+    size_price_step = request.form.get("size_price_step", str(DEFAULT_SIZE_PRICE_STEP)).strip()
 
     if not item_name or not parent_item_id:
         return jsonify({"error": "Item name and parent set are required"}), 400
+
+    size_label = ", ".join(parse_size_list(size_label))
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -2238,11 +2456,54 @@ def uniform_catalog_add_piece():
         cursor.execute("""
             INSERT INTO inventory_items
               (branch_id, category, item_name, grade_level, price, size_label,
-               is_active, stock_total, stock_reserved, parent_item_id, is_set_piece)
-            VALUES (%s, 'UNIFORM', %s, %s, %s, %s, TRUE, 0, 0, %s, TRUE)
-        """, (branch_id, item_name, parent['grade_level'], float(price or 0), size_label, int(parent_item_id)))
+               is_active, parent_item_id, is_set_piece, size_price_step)
+            VALUES (%s, 'UNIFORM', %s, %s, %s, %s, TRUE, %s, TRUE, %s)
+        """, (
+            branch_id, item_name, parent['grade_level'], float(price or 0), size_label,
+            int(parent_item_id), float(size_price_step or DEFAULT_SIZE_PRICE_STEP)
+        ))
         db.commit()
         return jsonify({"success": True, "message": "Piece added to set successfully"})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@cashier_bp.route("/cashier/uniform-catalog/delete-piece", methods=["POST"])
+def uniform_catalog_delete_piece():
+    """Delete an individual uniform PIECE (not a full set)."""
+    if not _require_cashier():
+        return jsonify({"error": "Unauthorized"}), 403
+
+    branch_id = session.get("branch_id")
+    item_id = request.form.get("item_id", "").strip()
+    if not item_id:
+        return jsonify({"error": "Missing item_id"}), 400
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT item_id, item_name, parent_item_id, COALESCE(is_set_piece, FALSE) AS is_set_piece
+            FROM inventory_items
+            WHERE item_id = %s AND branch_id = %s AND UPPER(category) = 'UNIFORM'
+        """, (int(item_id), branch_id))
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({"error": "Piece not found"}), 404
+        if not row["parent_item_id"] and not row["is_set_piece"]:
+            return jsonify({"error": "Only individual pieces can be deleted here"}), 400
+
+        cursor.execute("""
+            DELETE FROM inventory_items
+            WHERE item_id = %s AND branch_id = %s
+              AND (parent_item_id IS NOT NULL OR COALESCE(is_set_piece, FALSE) = TRUE)
+        """, (int(item_id), branch_id))
+        db.commit()
+        return jsonify({"success": True, "message": f"Deleted piece: {row['item_name']}"})
     except Exception as e:
         db.rollback()
         return jsonify({"error": str(e)}), 500
@@ -2256,4 +2517,4 @@ def add_no_cache_headers(response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
-    return response
+    return response

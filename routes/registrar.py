@@ -33,6 +33,45 @@ def is_valid_email(email):
     return bool(re.match(email_regex, email))
 
 
+@registrar_bp.route("/registrar/api/sidebar-badges")
+def registrar_sidebar_badges():
+    """Live counts for registrar sidebar badges (AJAX poll)."""
+    if session.get("role") != "registrar":
+        return jsonify({"error": "Unauthorized"}), 403
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT year_id FROM school_years
+            WHERE branch_id = %s AND is_active = TRUE LIMIT 1
+        """, (branch_id,))
+        yr = cursor.fetchone()
+        year_id = yr["year_id"] if yr else None
+
+        pending = 0
+        if year_id:
+            cursor.execute("""
+                SELECT COUNT(*) AS n FROM enrollments
+                WHERE branch_id = %s AND year_id = %s AND status = 'pending'
+            """, (branch_id, year_id))
+            pending = int(cursor.fetchone()["n"] or 0)
+        else:
+            cursor.execute("""
+                SELECT COUNT(*) AS n FROM enrollments
+                WHERE branch_id = %s AND status = 'pending'
+            """, (branch_id,))
+            pending = int(cursor.fetchone()["n"] or 0)
+
+        return jsonify({
+            "enrollments_pending": pending,
+            "enrollments": pending,
+        })
+    finally:
+        cursor.close()
+        db.close()
+
+
 # ══════════════════════════════════════════
 # HOME — Overview Dashboard
 # ══════════════════════════════════════════

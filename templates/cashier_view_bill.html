@@ -403,6 +403,26 @@
                 </tr>
                 {% endfor %}
 
+                {% for uo in uniform_order_details %}
+                <tr>
+                    <td style="font-size: 0.9rem;">
+                        <span style="color: var(--cashier-muted); font-family: monospace;">[{{ uo.order_number }}]</span>
+                        {{ uo.item_names }}
+                        <div style="font-size:0.7rem; color:var(--cashier-muted); font-weight:700; margin-top:4px;">Uniform Pre-Order · {{ uo.order_status }}</div>
+                    </td>
+                    <td style="text-align: right;">₱{{ "{:,.2f}".format(0 if bill.status=='paid' else uo.balance) }}</td>
+                    <td style="text-align: right;">
+                        {% if uo.balance <= 0 or uo.payment_status == 'Paid' or bill.status == 'paid' %}
+                        <span style="color:var(--cashier-success); font-weight:800; font-size:0.75rem;">PAID</span>
+                        {% else %}
+                        <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=uniform_order&target_id={{ uo.order_id }}&target_amount={{ uo.balance }}&target_name={{ uo.item_names|urlencode }}"
+                            style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; text-decoration: none; font-weight: 700; display: inline-block;">Pay
+                            Item</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+
                 {% if bill.other_fees > 0 %}
                 <tr>
                     <td>Miscellaneous / Other Charges</td>

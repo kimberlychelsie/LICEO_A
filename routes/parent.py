@@ -221,6 +221,7 @@ def child_detail(enrollment_id):
                 WHERE sa.enrollment_id = %s
             )) 
             AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED')
+              AND UPPER(COALESCE(ii.category, '')) <> 'UNIFORM'
         """, (enrollment_id, enrollment_id))
         reserved_items = cursor.fetchall()
 
@@ -239,6 +240,29 @@ def child_detail(enrollment_id):
                     'quantity': item['qty'],
                     'is_reservation': True
                 })
+
+        # Uniform pre-orders (same statuses as cashier: For Ordering / Ready for Claim / Claimed)
+        cursor.execute("""
+            SELECT uoi.item_name, uoi.size_label, uoi.quantity, uo.order_status, uo.order_number
+            FROM uniform_order_items uoi
+            JOIN uniform_orders uo ON uo.order_id = uoi.order_id
+            WHERE uo.enrollment_id = %s
+               OR uo.student_user_id IN (
+                    SELECT u.user_id FROM student_accounts sa
+                    JOIN users u ON sa.username = u.username
+                    WHERE sa.enrollment_id = %s
+               )
+            ORDER BY uo.created_at DESC
+        """, (enrollment_id, enrollment_id))
+        for uitem in cursor.fetchall() or []:
+            uniforms.append({
+                'uniform_type': uitem['item_name'],
+                'size': uitem['size_label'] or 'N/A',
+                'quantity': uitem['quantity'],
+                'is_reservation': True,
+                'order_status': uitem['order_status'],
+                'order_number': uitem.get('order_number'),
+            })
 
         cursor.execute("""
             SELECT s.name AS subject_name, a.title AS activity_title,
@@ -531,9 +555,32 @@ def child_bills(enrollment_id):
                     WHERE sa.enrollment_id = %s
                 )) 
                 AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED')
+                AND UPPER(COALESCE(ii.category, '')) <> 'UNIFORM'
                 ORDER BY r.reservation_id ASC
             """, (enrollment_id, enrollment_id))
             reservation_details = cursor.fetchall()
+
+            # Include uniform pre-orders in billing breakdown (status matches cashier)
+            cursor.execute("""
+                SELECT
+                    uo.order_id AS reservation_id,
+                    uoi.item_name,
+                    uoi.quantity AS qty,
+                    uoi.line_total,
+                    'uniform' AS category,
+                    uo.order_status,
+                    uo.order_number
+                FROM uniform_order_items uoi
+                JOIN uniform_orders uo ON uo.order_id = uoi.order_id
+                WHERE uo.enrollment_id = %s
+                   OR uo.student_user_id IN (
+                        SELECT u.user_id FROM student_accounts sa
+                        JOIN users u ON sa.username = u.username
+                        WHERE sa.enrollment_id = %s
+                   )
+                ORDER BY uo.order_id ASC
+            """, (enrollment_id, enrollment_id))
+            reservation_details = list(reservation_details or []) + list(cursor.fetchall() or [])
 
         return render_template(
             "parent_child_bills.html",

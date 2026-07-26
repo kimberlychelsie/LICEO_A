@@ -180,14 +180,13 @@
         max-width: 300px;
     }
 
-    /* ── Status Badges ── */
+    /* ── Status Badges (same casing as cashier: "For Ordering") ── */
     .badge {
         padding: 6px 12px;
         border-radius: 9999px;
         font-size: 0.75rem;
         font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.02em;
         display: inline-block;
     }
 
@@ -195,6 +194,9 @@
     .status-paid      { background: #dcfce7; color: #15803d; }
     .status-claimed   { background: #dbeafe; color: #1e40af; }
     .status-cancelled { background: #fee2e2; color: #991b1b; }
+    .status-for-ordering { background: #ffedd5; color: #c2410c; }
+    .status-ready-for-claim { background: #dbeafe; color: #1d4ed8; }
+    .status-unpaid { background: #fee2e2; color: #991b1b; }
 
     /* ── Animations ── */
     @keyframes fadeInDown {
@@ -223,8 +225,8 @@
     <!-- Hero Header -->
     <header class="res-hero">
         <div class="res-hero-content">
-            <h1>Reservation <span>History</span></h1>
-            <p>Track your academic materials and supplies</p>
+            <h1>Order & Reservation <span>History</span></h1>
+            <p>Track your books, materials, and uniform pre-orders</p>
         </div>
         
         <div class="res-hero-actions" style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end;">
@@ -259,19 +261,35 @@
                 </thead>
                 <tbody>
                     {% for r in rows %}
-                    {% set val = r.values() | list %}
                     <tr>
-                        <td class="res-id">RES-{{ "%04d"|format(val[0]|int) }}</td>
-                        <td class="res-items">{{ val[5] if val[5] else 'N/A' }}</td>
+                        <td class="res-id">
+                            {% if r.ref_type == 'UO' %}
+                                {{ r.order_number or ('UO-' ~ '%04d'|format(r.ref_id|int)) }}
+                            {% else %}
+                                RES-{{ "%04d"|format(r.ref_id|int) }}
+                            {% endif %}
+                        </td>
+                        <td class="res-items">
+                            {{ r.item_names or 'N/A' }}
+                            {% if r.ref_type == 'UO' %}
+                            <div style="font-size:0.7rem; color:var(--sd-muted); font-weight:700; margin-top:4px;">Uniform Pre-Order</div>
+                            {% endif %}
+                        </td>
                         <td style="font-weight: 600; color: var(--sd-muted);">
-                            {{ val[2].strftime('%b %d, %Y') if val[2] and val[2].strftime else val[2] }}
+                            {{ r.created_at.strftime('%b %d, %Y') if r.created_at and r.created_at.strftime else r.created_at }}
                         </td>
                         <td>
-                            <span class="badge status-{{ val[1]|lower }}">{{ val[1] }}</span>
+                            {% set status_slug = (r.status or '')|lower|replace(' ', '-') %}
+                            <span class="badge status-{{ status_slug }}">{{ r.status }}</span>
+                            {% if r.ref_type == 'UO' and r.payment_status %}
+                            <div style="margin-top:6px;">
+                                <span class="badge status-{{ (r.payment_status or '')|lower }}" style="font-size:0.65rem;">{{ r.payment_status }}</span>
+                            </div>
+                            {% endif %}
                         </td>
-                        <td style="text-align: right; font-weight: 700;">{{ val[4] }}</td>
+                        <td style="text-align: right; font-weight: 700;">{{ r.total_qty }}</td>
                         <td style="text-align: right; font-weight: 900; color: var(--sd-primary);">
-                            ₱{{ "%.2f"|format(val[3]|float) }}
+                            ₱{{ "%.2f"|format(r.total_amount|float) }}
                         </td>
                     </tr>
                     {% endfor %}
