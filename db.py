@@ -745,6 +745,10 @@ def get_db_connection():
                         cur.execute("ALTER TABLE uniform_orders ADD COLUMN onsite_arrived_at TIMESTAMP")
                     if 'claimed_at' not in uo_cols:
                         cur.execute("ALTER TABLE uniform_orders ADD COLUMN claimed_at TIMESTAMP")
+                    if 'claimed_by_user_id' not in uo_cols:
+                        cur.execute("ALTER TABLE uniform_orders ADD COLUMN claimed_by_user_id INTEGER")
+                    if 'updated_at' not in uo_cols:
+                        cur.execute("ALTER TABLE uniform_orders ADD COLUMN updated_at TIMESTAMP DEFAULT NOW()")
                     conn.commit()
 
                 # Migration for missing columns in inventory_items

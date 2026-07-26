@@ -2202,14 +2202,30 @@ def uniform_mark_onsite(order_id):
                 bill_id = cursor.fetchone()["bill_id"]
 
         now = _get_manila_now().replace(tzinfo=None)
-        cursor.execute("""
-            UPDATE uniform_orders
-            SET order_status = 'Ready for Claim',
-                bill_id = %s,
-                onsite_arrived_at = %s,
-                updated_at = %s
-            WHERE order_id = %s
-        """, (bill_id, now, now, order_id))
+        # Ensure updated_at column exists in uniform_orders
+        try:
+            cursor.execute("ALTER TABLE uniform_orders ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT NOW()")
+            cursor.execute("ALTER TABLE uniform_orders ADD COLUMN IF NOT EXISTS claimed_by_user_id INTEGER")
+        except Exception:
+            pass
+
+        try:
+            cursor.execute("""
+                UPDATE uniform_orders
+                SET order_status = 'Ready for Claim',
+                    bill_id = %s,
+                    onsite_arrived_at = %s,
+                    updated_at = %s
+                WHERE order_id = %s
+            """, (bill_id, now, now, order_id))
+        except Exception:
+            cursor.execute("""
+                UPDATE uniform_orders
+                SET order_status = 'Ready for Claim',
+                    bill_id = %s,
+                    onsite_arrived_at = %s
+                WHERE order_id = %s
+            """, (bill_id, now, order_id))
 
         # Send notification to student
         student_user_id = order.get("student_user_id")
@@ -2272,15 +2288,24 @@ def uniform_process_claim(order_id):
             pass
 
         now = _get_manila_now().replace(tzinfo=None)
-        cursor.execute("""
-            UPDATE uniform_orders
-            SET order_status = 'Claimed',
-                payment_status = 'Paid',
-                claimed_at = %s,
-                claimed_by_user_id = %s,
-                updated_at = %s
-            WHERE order_id = %s
-        """, (now, session.get("user_id"), now, order_id))
+        try:
+            cursor.execute("""
+                UPDATE uniform_orders
+                SET order_status = 'Claimed',
+                    payment_status = 'Paid',
+                    claimed_at = %s,
+                    claimed_by_user_id = %s,
+                    updated_at = %s
+                WHERE order_id = %s
+            """, (now, session.get("user_id"), now, order_id))
+        except Exception:
+            cursor.execute("""
+                UPDATE uniform_orders
+                SET order_status = 'Claimed',
+                    payment_status = 'Paid',
+                    claimed_at = %s
+                WHERE order_id = %s
+            """, (now, order_id))
 
         student_user_id = order.get("student_user_id")
         if not student_user_id:
