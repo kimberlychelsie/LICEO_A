@@ -355,6 +355,36 @@ CREATE TABLE IF NOT EXISTS public.teacher_section_assignments (
         REFERENCES public.sections (id) ON DELETE CASCADE
 );
 
+-- ── uniform_orders & uniform_order_items ──────────────────────
+CREATE TABLE IF NOT EXISTS public.uniform_orders (
+    order_id            serial PRIMARY KEY,
+    order_number        character varying(50) UNIQUE NOT NULL,
+    enrollment_id       integer NOT NULL REFERENCES public.enrollments(enrollment_id) ON DELETE CASCADE,
+    student_user_id     integer,
+    branch_id           integer NOT NULL,
+    year_id             integer,
+    total_amount        numeric(10,2) NOT NULL DEFAULT 0.00,
+    payment_status      character varying(20) DEFAULT 'Unpaid',
+    order_status        character varying(30) DEFAULT 'For Ordering',
+    created_by_user_id  integer,
+    bill_id             integer,
+    created_at          timestamp DEFAULT now(),
+    onsite_arrived_at   timestamp,
+    claimed_at          timestamp
+);
+
+CREATE TABLE IF NOT EXISTS public.uniform_order_items (
+    item_id             serial PRIMARY KEY,
+    order_id            integer NOT NULL REFERENCES public.uniform_orders(order_id) ON DELETE CASCADE,
+    inventory_item_id   integer,
+    item_name           character varying(255) NOT NULL,
+    size_label          character varying(50),
+    unit_price          numeric(10,2) NOT NULL DEFAULT 0.00,
+    quantity            integer NOT NULL DEFAULT 1,
+    line_total          numeric(10,2) NOT NULL DEFAULT 0.00,
+    created_at          timestamp DEFAULT now()
+);
+
 -- ── Indexes ──────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_billing_branch_id ON public.billing (branch_id);
 CREATE INDEX IF NOT EXISTS idx_billing_enrollment_id ON public.billing (enrollment_id);

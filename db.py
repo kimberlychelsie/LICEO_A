@@ -696,6 +696,72 @@ def get_db_connection():
                 logger.warning(f"Could not create grade_submission_requests table: {e}")
                 conn.rollback()
 
+            # ── uniform_orders and uniform_order_items tables migration ──
+            try:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS uniform_orders (
+                        order_id            SERIAL PRIMARY KEY,
+                        order_number        VARCHAR(50) UNIQUE NOT NULL,
+                        enrollment_id       INTEGER NOT NULL REFERENCES enrollments(enrollment_id) ON DELETE CASCADE,
+                        student_user_id     INTEGER,
+                        branch_id           INTEGER NOT NULL,
+                        year_id             INTEGER,
+                        total_amount        NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+                        payment_status      VARCHAR(20) DEFAULT 'Unpaid',
+                        order_status        VARCHAR(30) DEFAULT 'For Ordering',
+                        created_by_user_id  INTEGER,
+                        bill_id             INTEGER,
+                        created_at          TIMESTAMP DEFAULT NOW(),
+                        onsite_arrived_at   TIMESTAMP,
+                        claimed_at          TIMESTAMP
+                    )
+                """)
+                conn.commit()
+
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS uniform_order_items (
+                        item_id             SERIAL PRIMARY KEY,
+                        order_id            INTEGER NOT NULL REFERENCES uniform_orders(order_id) ON DELETE CASCADE,
+                        inventory_item_id   INTEGER,
+                        item_name           VARCHAR(255) NOT NULL,
+                        size_label          VARCHAR(50),
+                        unit_price          NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+                        quantity            INTEGER NOT NULL DEFAULT 1,
+                        line_total          NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+                        created_at          TIMESTAMP DEFAULT NOW()
+                    )
+                """)
+                conn.commit()
+
+                # Migration for missing columns in uniform_orders
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'uniform_orders'")
+                uo_cols = [r[0] for r in cur.fetchall()]
+                if uo_cols:
+                    if 'created_by_user_id' not in uo_cols:
+                        cur.execute("ALTER TABLE uniform_orders ADD COLUMN created_by_user_id INTEGER")
+                    if 'bill_id' not in uo_cols:
+                        cur.execute("ALTER TABLE uniform_orders ADD COLUMN bill_id INTEGER")
+                    if 'onsite_arrived_at' not in uo_cols:
+                        cur.execute("ALTER TABLE uniform_orders ADD COLUMN onsite_arrived_at TIMESTAMP")
+                    if 'claimed_at' not in uo_cols:
+                        cur.execute("ALTER TABLE uniform_orders ADD COLUMN claimed_at TIMESTAMP")
+                    conn.commit()
+
+                # Migration for missing columns in inventory_items
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'inventory_items'")
+                ii_cols = [r[0] for r in cur.fetchall()]
+                if ii_cols:
+                    if 'size_price_step' not in ii_cols:
+                        cur.execute("ALTER TABLE inventory_items ADD COLUMN size_price_step NUMERIC(10,2) DEFAULT 20.00")
+                    if 'parent_item_id' not in ii_cols:
+                        cur.execute("ALTER TABLE inventory_items ADD COLUMN parent_item_id INTEGER")
+                    if 'is_set_piece' not in ii_cols:
+                        cur.execute("ALTER TABLE inventory_items ADD COLUMN is_set_piece BOOLEAN DEFAULT FALSE")
+                    conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not create or migrate uniform_orders tables: {e}")
+                conn.rollback()
+
             # Commit successful things
             conn.commit()
             cur.close()
