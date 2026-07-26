@@ -1472,26 +1472,16 @@ def student_reservation():
             if not student_grade_level:
                 return True
 
-            sg_clean = str(student_grade_level).strip()
-            sg_lower = sg_clean.lower()
-            sg_base = base_grade_level(sg_clean)
-            sg_num = None
-            if sg_base:
-                m_num = re.search(r"(\d+)", sg_base)
-                if m_num:
-                    sg_num = int(m_num.group(1))
-
-            # 1. Prefer predefined set-name mapping (also used for pieces via parent set name)
+            # 1. Authoritative set-name mapping (also used for pieces via parent set name)
             mapping_name = item_name if item_name in GRADE_MAPPINGS else (
                 parent_name if parent_name in GRADE_MAPPINGS else None
             )
             if mapping_name:
-                if any(grades_compatible(student_grade_level, g) for g in GRADE_MAPPINGS[mapping_name]):
-                    return True
+                return any(grades_compatible(student_grade_level, g) for g in GRADE_MAPPINGS[mapping_name])
 
-            # 2. If item has no grade level specified, show to all
+            # 2. For custom items not in GRADE_MAPPINGS:
             if not item_grade_level:
-                return True
+                return False
 
             gl_str = str(item_grade_level).strip()
             gl_lower = gl_str.lower()
@@ -1499,21 +1489,19 @@ def student_reservation():
             if "all" in gl_lower:
                 return True
 
-            # 3. Flexible part matching for comma/slash/pipe separated grade strings (e.g., "Nursery, Kinder, Grade 1-3")
-            grade_parts = [p.strip() for p in re.split(r"[,/|;]+", gl_lower) if p.strip()]
-            for part in grade_parts:
-                if grades_compatible(student_grade_level, part):
-                    return True
-                if sg_lower in part or part in sg_lower:
-                    return True
-                if sg_base and (sg_base.lower() in part or part in sg_base.lower()):
-                    return True
-                # Range matching in part: e.g. "grade 1-3" or "7-10"
-                r_match = re.search(r"(\d+)\s*[-–to]+\s*(\d+)", part)
-                if r_match and sg_num is not None:
-                    lo, hi = int(r_match.group(1)), int(r_match.group(2))
-                    if lo <= sg_num <= hi:
-                        return True
+            if grades_compatible(student_grade_level, item_grade_level):
+                return True
+
+            # Range matching (e.g., "Grade 7-10" or "7-10")
+            sg_base = base_grade_level(student_grade_level)
+            if sg_base:
+                m_num = re.search(r"(\d+)", sg_base)
+                if m_num:
+                    sg_num = int(m_num.group(1))
+                    range_m = re.search(r"(\d+)\s*[-–to]+\s*(\d+)", gl_lower)
+                    if range_m:
+                        lo, hi = int(range_m.group(1)), int(range_m.group(2))
+                        return lo <= sg_num <= hi
 
             return False
 
