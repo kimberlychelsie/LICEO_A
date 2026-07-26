@@ -2358,19 +2358,47 @@ def uniform_catalog_update_price():
 
     branch_id = session.get("branch_id")
     item_id = request.form.get("item_id")
-    new_price = request.form.get("new_price")
-    size_price_step = request.form.get("size_price_step", str(DEFAULT_SIZE_PRICE_STEP))
-    if not item_id or not new_price:
+    new_price_str = (request.form.get("new_price") or "").strip()
+    size_price_step_str = (request.form.get("size_price_step") or str(DEFAULT_SIZE_PRICE_STEP)).strip()
+
+    if not item_id or not new_price_str:
         return jsonify({"error": "Missing item_id or price"}), 400
 
-    db = get_db_connection()
-    cursor = db.cursor()
     try:
+        new_price = float(new_price_str)
+        size_price_step = float(size_price_step_str or DEFAULT_SIZE_PRICE_STEP)
+    except ValueError:
+        return jsonify({"error": "Price must be a valid number"}), 400
+
+    if new_price < 0:
+        return jsonify({"error": "Price cannot be negative"}), 400
+    if size_price_step < 0 or size_price_step > 999.99:
+        return jsonify({"error": "Price increment per size must be between ₱0.00 and ₱999.99 (max 3 digits)"}), 400
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute(
+            "SELECT parent_item_id, item_name FROM inventory_items WHERE item_id = %s AND branch_id = %s",
+            (item_id, branch_id)
+        )
+        row = cursor.fetchone()
+        if not row:
+            return jsonify({"error": "Item not found"}), 404
+
+        is_piece = row["parent_item_id"] is not None
+        if is_piece:
+            if new_price > 999.99:
+                return jsonify({"error": "Individual piece price cannot exceed ₱999.99 (maximum 3 digits)"}), 400
+        else:
+            if new_price > 9999.99:
+                return jsonify({"error": "Full set price cannot exceed ₱9,999.99 (maximum 4 digits)"}), 400
+
         cursor.execute("""
             UPDATE inventory_items
             SET price = %s, size_price_step = %s
             WHERE item_id = %s AND branch_id = %s AND UPPER(category) = 'UNIFORM'
-        """, (float(new_price), float(size_price_step or DEFAULT_SIZE_PRICE_STEP), item_id, branch_id))
+        """, (new_price, size_price_step, item_id, branch_id))
         db.commit()
         return jsonify({"success": True, "message": "Price updated successfully"})
     except Exception as e:
@@ -2398,6 +2426,19 @@ def uniform_catalog_add():
     if not item_name:
         return jsonify({"error": "Item name is required"}), 400
 
+    try:
+        price_val = float(price or 0)
+        step_val = float(size_price_step or DEFAULT_SIZE_PRICE_STEP)
+    except ValueError:
+        return jsonify({"error": "Price must be a valid number"}), 400
+
+    if price_val < 0:
+        return jsonify({"error": "Price cannot be negative"}), 400
+    if price_val > 9999.99:
+        return jsonify({"error": "Full set price cannot exceed ₱9,999.99 (maximum 4 digits)"}), 400
+    if step_val < 0 or step_val > 999.99:
+        return jsonify({"error": "Price increment per size must be between ₱0.00 and ₱999.99 (max 3 digits)"}), 400
+
     # Normalize size list order
     size_label = ", ".join(parse_size_list(size_label))
 
@@ -2410,8 +2451,8 @@ def uniform_catalog_add():
                is_active, parent_item_id, is_set_piece, size_price_step)
             VALUES (%s, 'UNIFORM', %s, %s, %s, %s, %s, TRUE, NULL, FALSE, %s)
         """, (
-            branch_id, item_name, grade_level, float(price or 0), size_label,
-            image_url or None, float(size_price_step or DEFAULT_SIZE_PRICE_STEP)
+            branch_id, item_name, grade_level, price_val, size_label,
+            image_url or None, step_val
         ))
         db.commit()
         return jsonify({"success": True, "message": "Uniform set added successfully"})
@@ -2439,6 +2480,19 @@ def uniform_catalog_add_piece():
     if not item_name or not parent_item_id:
         return jsonify({"error": "Item name and parent set are required"}), 400
 
+    try:
+        price_val = float(price or 0)
+        step_val = float(size_price_step or DEFAULT_SIZE_PRICE_STEP)
+    except ValueError:
+        return jsonify({"error": "Price must be a valid number"}), 400
+
+    if price_val < 0:
+        return jsonify({"error": "Price cannot be negative"}), 400
+    if price_val > 999.99:
+        return jsonify({"error": "Individual piece price cannot exceed ₱999.99 (maximum 3 digits)"}), 400
+    if step_val < 0 or step_val > 999.99:
+        return jsonify({"error": "Price increment per size must be between ₱0.00 and ₱999.99 (max 3 digits)"}), 400
+
     size_label = ", ".join(parse_size_list(size_label))
 
     db = get_db_connection()
@@ -2459,8 +2513,8 @@ def uniform_catalog_add_piece():
                is_active, parent_item_id, is_set_piece, size_price_step)
             VALUES (%s, 'UNIFORM', %s, %s, %s, %s, TRUE, %s, TRUE, %s)
         """, (
-            branch_id, item_name, parent['grade_level'], float(price or 0), size_label,
-            int(parent_item_id), float(size_price_step or DEFAULT_SIZE_PRICE_STEP)
+            branch_id, item_name, parent['grade_level'], price_val, size_label,
+            int(parent_item_id), step_val
         ))
         db.commit()
         return jsonify({"success": True, "message": "Piece added to set successfully"})

@@ -506,7 +506,7 @@
                         <td><span class="badge badge-ready">SET</span></td>
                         <td>
                             <div style="display:flex; gap:6px; flex-wrap:wrap;" onclick="event.stopPropagation()">
-                                <button class="btn-view" onclick="openPriceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}', '{{ '%.2f'|format(s.price or 0) }}', '{{ '%.0f'|format(s.size_price_step or 20) }}')">Edit Price</button>
+                                <button class="btn-view" onclick="openPriceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}', '{{ '%.2f'|format(s.price or 0) }}', '{{ '%.0f'|format(s.size_price_step or 20) }}', false)">Edit Price</button>
                                 <button class="btn-onsite" style="padding:6px 12px; font-size:0.74rem;" onclick="openAddPieceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}')">+ Add Piece</button>
                             </div>
                         </td>
@@ -532,7 +532,7 @@
                         <td><span class="badge badge-for-ordering">PIECE</span></td>
                         <td>
                             <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                                <button class="btn-view" onclick="openPriceModal({{ p.item_id }}, '{{ p.item_name|replace("'","\'")|safe }}', '{{ '%.2f'|format(p.price or 0) }}', '{{ '%.0f'|format(p.size_price_step or 20) }}')">Edit Price</button>
+                                <button class="btn-view" onclick="openPriceModal({{ p.item_id }}, '{{ p.item_name|replace("'","\'")|safe }}', '{{ '%.2f'|format(p.price or 0) }}', '{{ '%.0f'|format(p.size_price_step or 20) }}', true)">Edit Price</button>
                                 <button class="btn-delete-piece" onclick="deletePiece({{ p.item_id }}, '{{ p.item_name|replace("'","\'")|safe }}', {{ s.item_id }})">Delete</button>
                             </div>
                         </td>
@@ -576,12 +576,15 @@
             <input type="hidden" id="priceItemId">
             <div class="form-group">
                 <label>Base Price — smallest size (₱)</label>
-                <input type="number" step="0.01" id="priceInput" required placeholder="0.00">
+                <input type="number" step="0.01" id="priceInput" min="0" required placeholder="0.00" oninput="enforcePriceLimit(this)">
+                <small style="color:#2563eb; font-size:0.75rem; font-weight:600; display:block; margin-top:4px;" id="priceMaxHint">
+                    Piece: Max 3 digits (₱999.99) • Set: Max 4 digits (₱9,999.99)
+                </small>
             </div>
             <div class="form-group">
                 <label>Add per next size (₱)</label>
-                <input type="number" step="0.01" id="priceStepInput" value="20" required>
-                <small style="color:#64748b; font-size:0.75rem;">e.g. base 450 + ₱20 → M=470, L=490</small>
+                <input type="number" step="0.01" id="priceStepInput" min="0" max="999.99" value="20" required oninput="enforcePriceLimit(this)">
+                <small style="color:#64748b; font-size:0.75rem;">Max 3 digits (up to ₱999.99 per size increment)</small>
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn-cancel-modal" onclick="closeModal('priceModal')">Cancel</button>
@@ -595,7 +598,7 @@
 <div class="modal-backdrop" id="addModal">
     <div class="modal-box">
         <div class="modal-title">Add Uniform Set</div>
-        <div class="modal-sub">Create a new uniform set (e.g. JHS Boys Uniform Set). You can add individual pieces after.</div>
+        <div class="modal-sub">Create a new uniform set (e.g. JHS Boys Uniform Set). Max 4 digits (up to ₱9,999.99).</div>
         <form id="addForm">
             <div class="form-group">
                 <label>Set Name</label>
@@ -606,12 +609,12 @@
                 <input type="text" id="addGrade" placeholder="e.g. Grade 7-10, All Grades, Pre-Elementary">
             </div>
             <div class="form-group">
-                <label>Base Set Price — smallest size (₱)</label>
-                <input type="number" step="0.01" id="addPrice" placeholder="0.00">
+                <label>Base Set Price — smallest size (₱) <span style="color:#dc2626; font-size:0.75rem;">(Max 4 digits: ₱9,999.99)</span></label>
+                <input type="number" step="0.01" id="addPrice" min="0" max="9999.99" placeholder="0.00" oninput="enforcePriceLimit(this)">
             </div>
             <div class="form-group">
                 <label>Add per next size (₱)</label>
-                <input type="number" step="0.01" id="addPriceStep" value="20">
+                <input type="number" step="0.01" id="addPriceStep" min="0" max="999.99" value="20" oninput="enforcePriceLimit(this)">
                 <small style="color:#64748b; font-size:0.75rem;">Base applies to smallest size; each next size adds this amount.</small>
             </div>
             <div class="form-group">
@@ -642,12 +645,12 @@
                 <input type="text" id="pieceName" required placeholder="e.g. Polo, Pants, Blouse, Skirt, PE Shirt">
             </div>
             <div class="form-group">
-                <label>Base Piece Price — smallest size (₱)</label>
-                <input type="number" step="0.01" id="piecePrice" required placeholder="0.00">
+                <label>Base Piece Price — smallest size (₱) <span style="color:#dc2626; font-size:0.75rem;">(Max 3 digits: ₱999.99)</span></label>
+                <input type="number" step="0.01" id="piecePrice" min="0" max="999.99" required placeholder="0.00" oninput="enforcePriceLimit(this)">
             </div>
             <div class="form-group">
                 <label>Add per next size (₱)</label>
-                <input type="number" step="0.01" id="piecePriceStep" value="20">
+                <input type="number" step="0.01" id="piecePriceStep" min="0" max="999.99" value="20" oninput="enforcePriceLimit(this)">
                 <small style="color:#64748b; font-size:0.75rem;">e.g. Polo 450 → M=470, L=490</small>
             </div>
             <div class="form-group">
@@ -870,11 +873,32 @@
         location.href = '?' + params.toString();
     }
 
-    function openPriceModal(itemId, itemName, currentPrice, priceStep) {
+    function enforcePriceLimit(inputEl) {
+        const maxVal = parseFloat(inputEl.getAttribute('max') || 9999.99);
+        let val = parseFloat(inputEl.value);
+        if (!isNaN(val) && val > maxVal) {
+            inputEl.value = maxVal;
+        }
+    }
+
+    function openPriceModal(itemId, itemName, currentPrice, priceStep, isPiece) {
         document.getElementById('priceItemId').value = itemId;
-        document.getElementById('priceModalSub').textContent = itemName;
-        document.getElementById('priceInput').value = currentPrice;
-        document.getElementById('priceStepInput').value = priceStep || 20;
+        document.getElementById('priceModalSub').textContent = itemName + (isPiece ? ' (Piece)' : ' (Set)');
+        
+        const priceInput = document.getElementById('priceInput');
+        priceInput.value = currentPrice;
+        const maxVal = isPiece ? '999.99' : '9999.99';
+        priceInput.setAttribute('max', maxVal);
+        priceInput.setAttribute('data-is-piece', isPiece ? '1' : '0');
+
+        const hintEl = document.getElementById('priceMaxHint');
+        if (hintEl) {
+            hintEl.textContent = isPiece
+                ? 'Piece price limit: Max 3 digits (up to ₱999.99)'
+                : 'Full set price limit: Max 4 digits (up to ₱9,999.99)';
+        }
+
+        document.getElementById('priceStepInput').setAttribute('max', '999.99');
         document.getElementById('priceModal').classList.add('open');
     }
 
@@ -886,7 +910,16 @@
     document.getElementById('priceForm').addEventListener('submit', function(e) {
         e.preventDefault();
         const itemId = document.getElementById('priceItemId').value;
-        const newPrice = document.getElementById('priceInput').value;
+        const priceInput = document.getElementById('priceInput');
+        const isPiece = priceInput.getAttribute('data-is-piece') === '1';
+        const maxAllowed = isPiece ? 999.99 : 9999.99;
+        const newPrice = parseFloat(priceInput.value || 0);
+
+        if (newPrice > maxAllowed) {
+            alert('Price cannot exceed ₱' + maxAllowed.toLocaleString() + ' (' + (isPiece ? 'max 3 digits for piece' : 'max 4 digits for set') + ').');
+            return;
+        }
+
         const formData = new FormData();
         formData.append('item_id', itemId);
         formData.append('new_price', newPrice);
@@ -902,10 +935,16 @@
 
     document.getElementById('addForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        const priceVal = parseFloat(document.getElementById('addPrice').value || 0);
+        if (priceVal > 9999.99) {
+            alert('Full set price cannot exceed ₱9,999.99 (max 4 digits).');
+            return;
+        }
+
         const formData = new FormData();
         formData.append('item_name', document.getElementById('addName').value);
         formData.append('grade_level', document.getElementById('addGrade').value);
-        formData.append('price', document.getElementById('addPrice').value);
+        formData.append('price', priceVal);
         formData.append('size_price_step', document.getElementById('addPriceStep').value);
         formData.append('size_label', document.getElementById('addSizes').value);
         formData.append('image_url', document.getElementById('addImage').value);
@@ -926,17 +965,23 @@
             sessionStorage.setItem('uo_open_sets', JSON.stringify(opened));
         } catch (e) {}
         document.getElementById('pieceParentId').value = parentItemId;
-        document.getElementById('addPieceModalSub').textContent = 'Adding piece under: ' + parentName;
+        document.getElementById('addPieceModalSub').textContent = 'Adding piece under: ' + parentName + ' (Max 3 digits: ₱999.99)';
         document.getElementById('addPieceModal').classList.add('open');
     }
 
     document.getElementById('addPieceForm').addEventListener('submit', function(e) {
         e.preventDefault();
+        const priceVal = parseFloat(document.getElementById('piecePrice').value || 0);
+        if (priceVal > 999.99) {
+            alert('Individual piece price cannot exceed ₱999.99 (max 3 digits).');
+            return;
+        }
+
         const parentId = document.getElementById('pieceParentId').value;
         const formData = new FormData();
         formData.append('parent_item_id', parentId);
         formData.append('item_name', document.getElementById('pieceName').value);
-        formData.append('price', document.getElementById('piecePrice').value);
+        formData.append('price', priceVal);
         formData.append('size_price_step', document.getElementById('piecePriceStep').value);
         formData.append('size_label', document.getElementById('pieceSizes').value);
 
