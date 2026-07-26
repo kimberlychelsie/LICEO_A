@@ -576,15 +576,15 @@
             <input type="hidden" id="priceItemId">
             <div class="form-group">
                 <label>Base Price — smallest size (₱)</label>
-                <input type="number" step="0.01" id="priceInput" min="0" required placeholder="0.00" oninput="enforcePriceLimit(this)">
+                <input type="text" inputmode="decimal" id="priceInput" required placeholder="0.00" onkeydown="filterPriceKeys(event)" oninput="sanitizePriceInput(this)">
                 <small style="color:#2563eb; font-size:0.75rem; font-weight:600; display:block; margin-top:4px;" id="priceMaxHint">
                     Piece: Max 3 digits (₱999.99) • Set: Max 4 digits (₱9,999.99)
                 </small>
             </div>
             <div class="form-group">
                 <label>Add per next size (₱)</label>
-                <input type="number" step="0.01" id="priceStepInput" min="0" max="999.99" value="20" required oninput="enforcePriceLimit(this)">
-                <small style="color:#64748b; font-size:0.75rem;">Max 3 digits (up to ₱999.99 per size increment)</small>
+                <input type="text" id="priceStepInput" value="20" readonly style="background:#f1f5f9; color:#475569; cursor:not-allowed; font-weight:700;">
+                <small style="color:#64748b; font-size:0.75rem;">Standard fixed increment: ₱20.00 per larger size</small>
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn-cancel-modal" onclick="closeModal('priceModal')">Cancel</button>
@@ -610,12 +610,12 @@
             </div>
             <div class="form-group">
                 <label>Base Set Price — smallest size (₱) <span style="color:#dc2626; font-size:0.75rem;">(Max 4 digits: ₱9,999.99)</span></label>
-                <input type="number" step="0.01" id="addPrice" min="0" max="9999.99" placeholder="0.00" oninput="enforcePriceLimit(this)">
+                <input type="text" inputmode="decimal" id="addPrice" data-is-piece="0" placeholder="0.00" onkeydown="filterPriceKeys(event)" oninput="sanitizePriceInput(this)">
             </div>
             <div class="form-group">
                 <label>Add per next size (₱)</label>
-                <input type="number" step="0.01" id="addPriceStep" min="0" max="999.99" value="20" oninput="enforcePriceLimit(this)">
-                <small style="color:#64748b; font-size:0.75rem;">Base applies to smallest size; each next size adds this amount.</small>
+                <input type="text" id="addPriceStep" value="20" readonly style="background:#f1f5f9; color:#475569; cursor:not-allowed; font-weight:700;">
+                <small style="color:#64748b; font-size:0.75rem;">Standard fixed increment: ₱20.00 per larger size</small>
             </div>
             <div class="form-group">
                 <label>Available Sizes (comma separated)</label>
@@ -646,12 +646,12 @@
             </div>
             <div class="form-group">
                 <label>Base Piece Price — smallest size (₱) <span style="color:#dc2626; font-size:0.75rem;">(Max 3 digits: ₱999.99)</span></label>
-                <input type="number" step="0.01" id="piecePrice" min="0" max="999.99" required placeholder="0.00" oninput="enforcePriceLimit(this)">
+                <input type="text" inputmode="decimal" id="piecePrice" data-is-piece="1" required placeholder="0.00" onkeydown="filterPriceKeys(event)" oninput="sanitizePriceInput(this)">
             </div>
             <div class="form-group">
                 <label>Add per next size (₱)</label>
-                <input type="number" step="0.01" id="piecePriceStep" min="0" max="999.99" value="20" oninput="enforcePriceLimit(this)">
-                <small style="color:#64748b; font-size:0.75rem;">e.g. Polo 450 → M=470, L=490</small>
+                <input type="text" id="piecePriceStep" value="20" readonly style="background:#f1f5f9; color:#475569; cursor:not-allowed; font-weight:700;">
+                <small style="color:#64748b; font-size:0.75rem;">Standard fixed increment: ₱20.00 per larger size</small>
             </div>
             <div class="form-group">
                 <label>Available Sizes (comma separated)</label>
@@ -663,6 +663,7 @@
             </div>
         </form>
     </div>
+</div>
 </div>
 
 <!-- Mark Onsite Modal -->
@@ -873,12 +874,57 @@
         location.href = '?' + params.toString();
     }
 
-    function enforcePriceLimit(inputEl) {
-        const maxVal = parseFloat(inputEl.getAttribute('max') || 9999.99);
-        let val = parseFloat(inputEl.value);
-        if (!isNaN(val) && val > maxVal) {
-            inputEl.value = maxVal;
+    function filterPriceKeys(e) {
+        // Block 'e', 'E', '+', '-'
+        if (['e', 'E', '+', '-'].includes(e.key)) {
+            e.preventDefault();
+            return;
         }
+    }
+
+    function sanitizePriceInput(inputEl) {
+        let isPiece = inputEl.getAttribute('data-is-piece') === '1' || inputEl.id === 'piecePrice';
+        let maxDigits = isPiece ? 3 : 4;
+        let maxVal = isPiece ? 999.99 : 9999.99;
+
+        let val = inputEl.value || '';
+
+        // Strip non-digits and non-decimals
+        val = val.replace(/[^0-9.]/g, '');
+
+        // Allow at most one decimal point
+        const parts = val.split('.');
+        if (parts.length > 2) {
+            val = parts[0] + '.' + parts.slice(1).join('');
+        }
+
+        let [integerPart, decimalPart] = val.split('.');
+
+        // Strip excess leading zeros if integer > 1 digit (e.g. 0005 -> 5, 00 -> 0)
+        if (integerPart && integerPart.length > 1 && integerPart.startsWith('0')) {
+            integerPart = integerPart.replace(/^0+/, '') || '0';
+        }
+
+        // Limit integer part length (3 digits for piece, 4 digits for set)
+        if (integerPart && integerPart.length > maxDigits) {
+            integerPart = integerPart.slice(0, maxDigits);
+        }
+
+        // Limit decimal part length to 2 digits
+        if (decimalPart !== undefined) {
+            decimalPart = decimalPart.slice(0, 2);
+            val = integerPart + '.' + decimalPart;
+        } else {
+            val = integerPart;
+        }
+
+        // Enforce upper limit bound
+        const num = parseFloat(val);
+        if (!isNaN(num) && num > maxVal) {
+            val = String(maxVal);
+        }
+
+        inputEl.value = val;
     }
 
     function openPriceModal(itemId, itemName, currentPrice, priceStep, isPiece) {
@@ -898,12 +944,13 @@
                 : 'Full set price limit: Max 4 digits (up to ₱9,999.99)';
         }
 
-        document.getElementById('priceStepInput').setAttribute('max', '999.99');
+        document.getElementById('priceStepInput').value = '20';
         document.getElementById('priceModal').classList.add('open');
     }
 
     function openAddModal() {
         try { sessionStorage.setItem('uo_active_tab', 'catalog'); } catch (e) {}
+        document.getElementById('addPriceStep').value = '20';
         document.getElementById('addModal').classList.add('open');
     }
 
@@ -965,6 +1012,7 @@
             sessionStorage.setItem('uo_open_sets', JSON.stringify(opened));
         } catch (e) {}
         document.getElementById('pieceParentId').value = parentItemId;
+        document.getElementById('piecePriceStep').value = '20';
         document.getElementById('addPieceModalSub').textContent = 'Adding piece under: ' + parentName + ' (Max 3 digits: ₱999.99)';
         document.getElementById('addPieceModal').classList.add('open');
     }
