@@ -2354,9 +2354,8 @@ def uniform_process_claim(order_id):
             return jsonify({"error": "Order not found"}), 404
         if order["order_status"] not in ("Ready for Claim",):
             return jsonify({"error": "Order is not yet Ready for Claim"}), 400
-        if order["bill_status"] not in ("paid", "full"):
-            # Allow override from staff but warn
-            pass
+        if (order.get("payment_status") or "").lower() != "paid":
+            return jsonify({"error": "Uniform order is Unpaid. Payment must be collected at Cashier before release."}), 400
 
         now = _get_manila_now().replace(tzinfo=None)
         try:

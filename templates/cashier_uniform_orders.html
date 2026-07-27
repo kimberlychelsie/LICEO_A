@@ -426,10 +426,20 @@
                                     data-order-no="{{ o.order_number or '' }}"
                                     data-amount="{{ '%.2f'|format(o.total_amount) }}">Mark Onsite</button>
                                 {% elif o.order_status == 'Ready for Claim' %}
-                                <button type="button" class="btn-claim js-process-claim"
-                                    data-order-id="{{ o.order_id }}"
-                                    data-student="{{ o.student_name or '' }}"
-                                    data-order-no="{{ o.order_number or '' }}">Process Claim</button>
+                                    {% if o.payment_status == 'Paid' %}
+                                    <button type="button" class="btn-claim js-process-claim"
+                                        data-order-id="{{ o.order_id }}"
+                                        data-student="{{ o.student_name or '' }}"
+                                        data-order-no="{{ o.order_number or '' }}">Process Claim</button>
+                                    {% else %}
+                                    <a href="{% if o.bill_id %}/cashier/bill/{{ o.bill_id }}{% else %}/cashier/billing-registry{% endif %}"
+                                        class="btn-pay-first"
+                                        style="background: #fff1f2; color: #be123c; border: 1px solid #fecdd3; padding: 6px 12px; border-radius: 8px; font-size: 0.75rem; font-weight: 800; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;"
+                                        title="Uniform is unpaid. Click to open bill statement and collect payment.">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                        Pay ₱{{ '%.2f'|format(o.total_amount) }} First
+                                    </a>
+                                    {% endif %}
                                 {% endif %}
                             </div>
                         </td>
