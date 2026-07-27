@@ -7,7 +7,7 @@ from cloudinary_helper import upload_file
 from datetime import datetime, timezone
 import json
 from datetime import timedelta
-import pytz
+from utils.uniform_pricing import DEFAULT_SIZE_PRICE_STEP, parse_size_list, size_price_map, price_for_size
 
 # Setup logging
 logging.basicConfig(level=logging.ERROR)

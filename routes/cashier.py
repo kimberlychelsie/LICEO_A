@@ -8,7 +8,7 @@ import secrets
 import psycopg2.extras
 import pandas as pd
 from openpyxl.styles import Font, Fill, Alignment, PatternFill, Border, Side
-from utils.uniform_pricing import DEFAULT_SIZE_PRICE_STEP, parse_size_list, size_price_map
+from utils.uniform_pricing import DEFAULT_SIZE_PRICE_STEP, parse_size_list, size_price_map, price_for_size
 
 cashier_bp = Blueprint("cashier", __name__)
 
