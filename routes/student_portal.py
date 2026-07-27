@@ -485,6 +485,55 @@ def billing():
             """, (bill["bill_id"], student["enrollment_id"]))
             uniform_orders = cursor.fetchall() or []
 
+            for uo in uniform_orders:
+                cursor.execute("""
+                    SELECT uoi.item_name, uoi.size_label, uoi.unit_price, uoi.quantity, uoi.line_total, uoi.inventory_item_id
+                    FROM uniform_order_items uoi
+                    WHERE uoi.order_id = %s
+                    ORDER BY uoi.item_name ASC
+                """, (uo["order_id"],))
+                uoi_items = cursor.fetchall() or []
+
+                pieces_list = []
+                for item in uoi_items:
+                    inv_id = item.get("inventory_item_id")
+                    size_lbl = item.get("size_label") or ""
+                    if inv_id:
+                        cursor.execute("""
+                            SELECT item_name, price, size_label, COALESCE(size_price_step, 20) AS size_price_step
+                            FROM inventory_items
+                            WHERE parent_item_id = %s AND is_active = TRUE
+                            ORDER BY item_name ASC
+                        """, (inv_id,))
+                        child_pieces = cursor.fetchall()
+                        if child_pieces:
+                            for cp in child_pieces:
+                                cp_price = price_for_size(cp["price"], size_lbl, cp["size_label"], cp.get("size_price_step"))
+                                pieces_list.append({
+                                    "item_name": cp["item_name"],
+                                    "size_label": size_lbl,
+                                    "unit_price": cp_price,
+                                    "quantity": item["quantity"],
+                                    "line_total": float(cp_price) * float(item["quantity"])
+                                })
+                        else:
+                            pieces_list.append({
+                                "item_name": item["item_name"],
+                                "size_label": size_lbl,
+                                "unit_price": float(item["unit_price"] or 0),
+                                "quantity": item["quantity"],
+                                "line_total": float(item["line_total"] or 0)
+                            })
+                    else:
+                        pieces_list.append({
+                            "item_name": item["item_name"],
+                            "size_label": size_lbl,
+                            "unit_price": float(item["unit_price"] or 0),
+                            "quantity": item["quantity"],
+                            "line_total": float(item["line_total"] or 0)
+                        })
+                uo["pieces"] = pieces_list
+
         # Sync billing totals to handle any discrepancies from cancelled or newly added reservations
         if bill:
             active_res_total = sum(float(r['total_amount'] or 0) for r in reservations)

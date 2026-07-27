@@ -442,11 +442,36 @@
                         <tr>
                             <td>
                                 <div style="display: flex; flex-direction: column;">
-                                    <span>{{ uo.item_names }}</span>
-                                    <span style="font-size: 0.75rem; color: var(--sd-muted);">{{ uo.order_number }} · {{ uo.order_status }}</span>
+                                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+                                        <div>
+                                            <strong style="color: var(--sd-text);">{{ uo.item_names }}</strong>
+                                            <div style="font-size: 0.75rem; color: var(--sd-muted);">{{ uo.order_number }} · {{ uo.order_status }}</div>
+                                        </div>
+                                        {% if uo.pieces and uo.pieces|length > 0 %}
+                                        <button type="button" onclick="toggleUoPiecesStudent({{ uo.order_id }})"
+                                            style="background: #e0e7ff; color: #3730a3; border: 1px solid #c7d2fe; padding: 4px 10px; border-radius: 8px; font-size: 0.72rem; font-weight: 800; cursor: pointer; display: inline-flex; align-items: center; gap: 4px;">
+                                            <span>Pieces Breakdown</span>
+                                            <svg id="uo-chevron-student-{{ uo.order_id }}" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+
+                                    {% if uo.pieces and uo.pieces|length > 0 %}
+                                    <div id="uo-pieces-student-{{ uo.order_id }}" style="display: none; margin-top: 10px; padding: 10px 14px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;">
+                                        <div style="font-size: 0.68rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.04em;">Set Piece Price Breakdown</div>
+                                        {% for p in uo.pieces %}
+                                        <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; padding: 4px 0; border-bottom: 1px dashed #e2e8f0;">
+                                            <span style="color: var(--sd-text); font-weight: 600;">
+                                                • {{ p.item_name }} {% if p.size_label %}({{ p.size_label }}){% endif %} {% if p.quantity > 1 %}x{{ p.quantity }}{% endif %}
+                                            </span>
+                                            <span style="font-weight: 800; color: var(--sd-primary);">₱{{ "{:,.2f}".format(p.line_total) }}</span>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
                                 </div>
                             </td>
-                            <td class="amount">₱{{ "%.2f"|format(uo.total_amount) }}</td>
+                            <td class="amount" style="vertical-align: top; padding-top: 16px;">₱{{ "%.2f"|format(uo.total_amount) }}</td>
                         </tr>
                         {% endfor %}
                     {% elif bill.uniform_fee > 0 %}
@@ -514,4 +539,19 @@
         </a>
     </div>
 </div>
+
+<script>
+function toggleUoPiecesStudent(orderId) {
+    const panel = document.getElementById('uo-pieces-student-' + orderId);
+    const chevron = document.getElementById('uo-chevron-student-' + orderId);
+    if (!panel) return;
+    if (panel.style.display === 'none') {
+        panel.style.display = 'block';
+        if (chevron) chevron.style.transform = 'rotate(180deg)';
+    } else {
+        panel.style.display = 'none';
+        if (chevron) chevron.style.transform = 'rotate(0deg)';
+    }
+}
+</script>
 {% endblock %}
