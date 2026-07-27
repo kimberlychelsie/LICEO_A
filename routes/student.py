@@ -1827,29 +1827,64 @@ def student_reservation():
                 cursor_tx.close()
                 db_tx.close()
 
-        # If success_id was provided, fetch the details to show the success message on the same page
-        if success_id:
+        # If success_id or uo was provided, fetch all details to show in the success modal on the same page
+        success_id = request.args.get("success_id")
+        uo_num = request.args.get("uo")
+
+        if success_id or uo_num:
             try:
-                cursor.execute("""
-                    SELECT r.reservation_id, r.status, r.created_at
-                    FROM reservations r
-                    WHERE r.reservation_id = %s 
-                      AND (r.student_user_id = %s OR r.reserved_by_user_id = %s)
-                    LIMIT 1
-                """, (success_id, student_user_id, reserved_by_user_id))
-                res_row = cursor.fetchone()
-                if res_row:
+                combined_items = []
+                ref_parts = []
+                created_at = None
+
+                if success_id:
                     cursor.execute("""
-                        SELECT ii.item_name, ri.qty, ri.size_label, ri.unit_price, ri.line_total
-                        FROM reservation_items ri
-                        JOIN inventory_items ii ON ii.item_id = ri.item_id
-                        WHERE ri.reservation_id = %s
-                    """, (success_id,))
-                    res_items = cursor.fetchall()
+                        SELECT r.reservation_id, r.status, r.created_at
+                        FROM reservations r
+                        WHERE r.reservation_id = %s 
+                          AND (r.student_user_id = %s OR r.reserved_by_user_id = %s)
+                        LIMIT 1
+                    """, (success_id, student_user_id, reserved_by_user_id))
+                    res_row = cursor.fetchone()
+                    if res_row:
+                        created_at = res_row["created_at"]
+                        ref_parts.append(f"#{res_row['reservation_id']}")
+                        cursor.execute("""
+                            SELECT ii.item_name, ri.qty, ri.size_label, ri.unit_price, ri.line_total
+                            FROM reservation_items ri
+                            JOIN inventory_items ii ON ii.item_id = ri.item_id
+                            WHERE ri.reservation_id = %s
+                        """, (success_id,))
+                        for item in cursor.fetchall():
+                            combined_items.append(dict(item))
+
+                if uo_num:
+                    cursor.execute("""
+                        SELECT order_id, order_number, created_at
+                        FROM uniform_orders
+                        WHERE order_number = %s
+                        LIMIT 1
+                    """, (uo_num,))
+                    uo_row = cursor.fetchone()
+                    if uo_row:
+                        if not created_at:
+                            created_at = uo_row["created_at"]
+                        ref_parts.append(uo_row["order_number"])
+                        cursor.execute("""
+                            SELECT item_name, quantity AS qty, size_label, unit_price, line_total
+                            FROM uniform_order_items
+                            WHERE order_id = %s
+                        """, (uo_row["order_id"],))
+                        for item in cursor.fetchall():
+                            combined_items.append(dict(item))
+
+                if combined_items:
+                    total_amount = sum(float(x["line_total"] or 0) for x in combined_items)
                     success_data = {
-                        "reservation": res_row,
-                        "reserved_items": res_items,
-                        "total": sum(float(x['line_total'] or 0) for x in res_items)
+                        "ref_id": " & ".join(ref_parts),
+                        "created_at": created_at,
+                        "reserved_items": combined_items,
+                        "total": total_amount
                     }
             except Exception as e:
                 logger.error(f"Error fetching success data: {e}")

@@ -1466,9 +1466,9 @@
         <div class="modal-body">
             <div class="receipt-container">
                 <div class="receipt-header">
-                    <div class="receipt-id">#{{ success_data.reservation.reservation_id }}</div>
-                    <div class="receipt-date">{% if success_data.reservation.created_at %}{{
-                        success_data.reservation.created_at.strftime('%b %d, %Y') }}{% else %}N/A{% endif %}</div>
+                    <div class="receipt-id">{{ success_data.ref_id or ("#" ~ success_data.reservation.reservation_id if success_data.reservation else "RESERVATION") }}</div>
+                    <div class="receipt-date">{% if success_data.created_at %}{{
+                        success_data.created_at.strftime('%b %d, %Y') }}{% elif success_data.reservation and success_data.reservation.created_at %}{{ success_data.reservation.created_at.strftime('%b %d, %Y') }}{% else %}N/A{% endif %}</div>
                 </div>
 
                 <div class="receipt-items-list" style="max-height: 250px; overflow-y: auto;">
