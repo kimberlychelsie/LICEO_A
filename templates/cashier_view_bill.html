@@ -348,7 +348,7 @@
             </div>
         </div>
 
-        {% if bill.status != 'paid' %}
+        {% if bill.balance > 0 %}
         <h3
             style="font-size: 1rem; font-weight: 800; color: var(--cashier-primary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
@@ -356,7 +356,7 @@
                 <circle cx="11" cy="11" r="8"></circle>
                 <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
             </svg>
-            Fee Breakdown
+            Fee Breakdown (Outstanding Items)
         </h3>
         <table class="breakdown-table">
             <thead>
@@ -367,75 +367,62 @@
                 </tr>
             </thead>
             <tbody>
+                {% if bill.tuition_balance > 0 %}
                 <tr>
                     <td>Tuition & Mandatory Fees</td>
-                    <td style="text-align: right;">₱{{ "{:,.2f}".format(0 if bill.status=='paid' else
-                        bill.tuition_balance) }}</td>
+                    <td style="text-align: right;">₱{{ "{:,.2f}".format(bill.tuition_balance) }}</td>
                     <td style="text-align: right;">
-                        {% if bill.tuition_balance <= 0 or bill.status=='paid' %} <span
-                            style="color:var(--cashier-success); font-weight:800; font-size:0.75rem;">PAID</span>
-                            {% else %}
-                            <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=tuition&target_amount={{ bill.tuition_balance }}&target_name=Tuition"
-                                style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; text-decoration: none; font-weight: 700; display: inline-block;">Pay
-                                Item</a>
-                            {% endif %}
+                        <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=tuition&target_amount={{ bill.tuition_balance }}&target_name=Tuition"
+                            style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; text-decoration: none; font-weight: 700; display: inline-block;">Pay
+                            Item</a>
                     </td>
                 </tr>
+                {% endif %}
 
                 {% for res in reservation_details %}
+                {% if res.balance > 0 and res.status != 'PAID' %}
                 <tr>
                     <td style="font-size: 0.9rem;">
                         <span style="color: var(--cashier-muted); font-family: monospace;">[RES-{{
                             "%04d"|format(res.reservation_id) }}]</span>
                         {{ res.item_names }}
                     </td>
-                    <td style="text-align: right;">₱{{ "{:,.2f}".format(0 if bill.status=='paid' else res.balance) }}
-                    </td>
+                    <td style="text-align: right;">₱{{ "{:,.2f}".format(res.balance) }}</td>
                     <td style="text-align: right;">
-                        {% if res.balance <= 0 or res.status=='PAID' or bill.status=='paid' %} <span
-                            style="color:var(--cashier-success); font-weight:800; font-size:0.75rem;">PAID</span>
-                            {% else %}
-                            <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=reservation&target_id={{ res.reservation_id }}&target_amount={{ res.balance }}&target_name=Reservation%20%23{{ res.reservation_id }}"
-                                style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; text-decoration: none; font-weight: 700; display: inline-block;">Pay
-                                Item</a>
-                            {% endif %}
+                        <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=reservation&target_id={{ res.reservation_id }}&target_amount={{ res.balance }}&target_name=Reservation%20%23{{ res.reservation_id }}"
+                            style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; text-decoration: none; font-weight: 700; display: inline-block;">Pay
+                            Item</a>
                     </td>
                 </tr>
+                {% endif %}
                 {% endfor %}
 
                 {% for uo in uniform_order_details %}
+                {% if uo.balance > 0 and uo.payment_status != 'Paid' %}
                 <tr>
                     <td style="font-size: 0.9rem;">
                         <span style="color: var(--cashier-muted); font-family: monospace;">[{{ uo.order_number }}]</span>
                         {{ uo.item_names }}
                         <div style="font-size:0.7rem; color:var(--cashier-muted); font-weight:700; margin-top:4px;">Uniform Pre-Order · {{ uo.order_status }}</div>
                     </td>
-                    <td style="text-align: right;">₱{{ "{:,.2f}".format(0 if bill.status=='paid' else uo.balance) }}</td>
+                    <td style="text-align: right;">₱{{ "{:,.2f}".format(uo.balance) }}</td>
                     <td style="text-align: right;">
-                        {% if uo.balance <= 0 or uo.payment_status == 'Paid' or bill.status == 'paid' %}
-                        <span style="color:var(--cashier-success); font-weight:800; font-size:0.75rem;">PAID</span>
-                        {% else %}
                         <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=uniform_order&target_id={{ uo.order_id }}&target_amount={{ uo.balance }}&target_name={{ uo.item_names|urlencode }}"
                             style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; text-decoration: none; font-weight: 700; display: inline-block;">Pay
                             Item</a>
-                        {% endif %}
                     </td>
                 </tr>
+                {% endif %}
                 {% endfor %}
 
-                {% if bill.other_fees > 0 %}
+                {% if bill.other_balance > 0 %}
                 <tr>
                     <td>Miscellaneous / Other Charges</td>
-                    <td style="text-align: right;">₱{{ "{:,.2f}".format(0 if bill.status=='paid' else
-                        bill.other_balance) }}</td>
+                    <td style="text-align: right;">₱{{ "{:,.2f}".format(bill.other_balance) }}</td>
                     <td style="text-align: right;">
-                        {% if bill.other_balance <= 0 or bill.status=='paid' %} <span
-                            style="color:var(--cashier-success); font-weight:800; font-size:0.75rem;">PAID</span>
-                            {% else %}
-                            <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=other&target_amount={{ bill.other_balance }}&target_name=Miscellaneous"
-                                style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; text-decoration: none; font-weight: 700; display: inline-block;">Pay
-                                Item</a>
-                            {% endif %}
+                        <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=other&target_amount={{ bill.other_balance }}&target_name=Miscellaneous"
+                            style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; text-decoration: none; font-weight: 700; display: inline-block;">Pay
+                            Item</a>
                     </td>
                 </tr>
                 {% endif %}
@@ -445,18 +432,19 @@
                     <td style="text-align: right; color: var(--cashier-primary); font-weight: 900;">₱{{
                         "{:,.2f}".format(bill.balance) }}</td>
                     <td style="text-align: right;">
-                        {% if bill.status != 'paid' and bill.balance > 0 %}
                         <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=general&target_amount={{ bill.balance }}&target_name=Full+Remaining+Balance"
                             style="padding: 6px 14px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-success); color: white; text-decoration: none; font-weight: 800; display: inline-block; white-space: nowrap;">
                             Pay Balance
                         </a>
-                        {% elif bill.status == 'paid' %}
-                        <span style="color:var(--cashier-success); font-weight:800; font-size:0.75rem;">SETTLED ✓</span>
-                        {% endif %}
                     </td>
                 </tr>
             </tbody>
         </table>
+        {% else %}
+        <div style="background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 16px; padding: 24px; text-align: center; color: #065f46; font-weight: 800; margin-bottom: 24px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            All items in this billing statement have been fully settled!
+        </div>
         {% endif %}
     </div>
 

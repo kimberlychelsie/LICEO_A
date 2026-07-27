@@ -485,43 +485,37 @@ def billing():
             """, (bill["bill_id"], student["enrollment_id"]))
             uniform_orders = cursor.fetchall() or []
 
-        # Sync billing totals to handle any discrepancies from cancelled reservations
+        # Sync billing totals to handle any discrepancies from cancelled or newly added reservations
         if bill:
             active_res_total = sum(float(r['total_amount'] or 0) for r in reservations)
+            active_uo_total = sum(float(u['total_amount'] or 0) for u in uniform_orders)
             tuition = float(bill['tuition_fee'] or 0)
             other = float(bill['other_fees'] or 0)
-            
-            # If there are active reservations, we trust the dynamic total from them.
-            # However, we must also account for books_fee and uniform_fee if they were 
-            # manually entered without a reservation record (e.g. legacy or direct sale).
-            # To avoid double counting, we only add them if active_res_total is 0 OR 
-            # if we want to support both. Given the system design, reservations usually 
-            # populate these fields. 
-            
-            # Improved logic: If a reservation exists, it contributes to active_res_total.
-            # The bill.books_fee and bill.uniform_fee are snapshots.
-            # We'll include them in the expected total if they are set.
-            books = float(bill['books_fee'] or 0)
-            uniform = float(bill['uniform_fee'] or 0)
-            
-            # Note: If active_res_total is used, it usually covers what would be in books/uniform.
-            # But the sync logic was wiping out manual fees.
-            # Let's check if the reservations already account for the type of fees.
-            expected_total = tuition + other + active_res_total
-            
-            # If active_res_total is 0, then we MUST include the bill's books/uniform fees 
-            # because they might be manual entries.
-            if active_res_total == 0:
-                expected_total += books + uniform
 
-            if abs(float(bill['total_amount'] or 0) - expected_total) > 0.01:
-                new_balance = max(expected_total - float(bill['amount_paid'] or 0), 0)
-                new_status = 'paid' if new_balance == 0 and expected_total > 0 else ('pending' if float(bill['amount_paid'] or 0) == 0 else 'partial')
-                cursor.execute("UPDATE billing SET total_amount=%s, balance=%s, status=%s WHERE bill_id=%s",
-                             (expected_total, new_balance, new_status, bill['bill_id']))
-                db.commit()
-                cursor.execute("SELECT * FROM billing WHERE bill_id=%s", (bill['bill_id'],))
-                bill = cursor.fetchone()
+            books = float(bill['books_fee'] or 0) if active_res_total == 0 else active_res_total
+            uniform = float(bill['uniform_fee'] or 0) if active_uo_total == 0 else active_uo_total
+
+            expected_total = tuition + other + books + uniform
+
+            cursor.execute("SELECT COALESCE(SUM(amount), 0) AS total_paid FROM payments WHERE bill_id = %s", (bill['bill_id'],))
+            total_paid = float(cursor.fetchone()["total_paid"] or 0)
+
+            new_balance = max(expected_total - total_paid, 0.0)
+            new_status = 'paid' if new_balance <= 0 and expected_total > 0 else ('partial' if total_paid > 0 else 'pending')
+
+            cursor.execute("""
+                UPDATE billing
+                SET books_fee = %s,
+                    uniform_fee = %s,
+                    total_amount = %s,
+                    amount_paid = %s,
+                    balance = %s,
+                    status = %s
+                WHERE bill_id = %s
+            """, (books, uniform, expected_total, total_paid, new_balance, new_status, bill['bill_id']))
+            db.commit()
+            cursor.execute("SELECT * FROM billing WHERE bill_id=%s", (bill['bill_id'],))
+            bill = cursor.fetchone()
 
         return render_template(
             "student_billing_view.html",

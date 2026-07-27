@@ -505,6 +505,45 @@ def view_bill(bill_id):
                 general_paid -= deduct
             uo["balance"] = max(Decimal(0), uo_bal)
 
+        # Recalculate true Total Fee, Paid Amount, and Balance across entire bill
+        books_sum = sum(Decimal(str(r["reservation_total"] or 0)) for r in reservation_details)
+        uniforms_sum = sum(Decimal(str(u["order_total"] or 0)) for u in uniform_order_details)
+
+        calc_tuition = Decimal(str(bill.get("tuition_fee") or 0))
+        calc_other = Decimal(str(bill.get("other_fees") or 0))
+        calc_total = calc_tuition + calc_other + books_sum + uniforms_sum
+
+        cursor.execute("SELECT COALESCE(SUM(amount), 0) AS total_paid FROM payments WHERE bill_id = %s", (bill_id,))
+        calc_paid = cursor.fetchone()["total_paid"] or Decimal(0)
+        calc_balance = max(Decimal(0), calc_total - calc_paid)
+
+        if calc_balance <= 0 and calc_total > 0:
+            calc_status = "paid"
+        elif calc_paid > 0:
+            calc_status = "partial"
+        else:
+            calc_status = "pending"
+
+        bill["books_fee"] = books_sum
+        bill["uniform_fee"] = uniforms_sum
+        bill["total_amount"] = calc_total
+        bill["amount_paid"] = calc_paid
+        bill["balance"] = calc_balance
+        bill["status"] = calc_status
+
+        # Persist synced totals to DB so Billing Registry & Student/Parent portal match 100%
+        cursor.execute("""
+            UPDATE billing
+            SET books_fee = %s,
+                uniform_fee = %s,
+                total_amount = %s,
+                amount_paid = %s,
+                balance = %s,
+                status = %s
+            WHERE bill_id = %s
+        """, (books_sum, uniforms_sum, calc_total, calc_paid, calc_balance, calc_status, bill_id))
+        db.commit()
+
         return render_template(
             "cashier_view_bill.html",
             bill=bill,
