@@ -1059,16 +1059,16 @@
                                 <select class="size-select size-select-js" name="size_{{ it.item_id }}"
                                     data-item-id="{{ it.item_id }}" {% if it.available <=0 %}disabled{% endif %}
                                     onchange="onUniformSizeChange(this)">
-                                    <option value="">-- Size --</option>
                                     {% if it.sizes and it.sizes|length > 0 %}
                                         {% for s in it.sizes %}
                                         <option value="{{ s.size_label }}" data-price="{{ s.price }}"
+                                            {% if loop.first %}selected{% endif %}
                                             {% if s.available <= 0 and not it.is_preorder %}disabled{% endif %}>
                                             {{ s.size_label }} — ₱{{ "{:,.2f}".format(s.price or it.price or 0) }}{% if s.available <= 0 and not it.is_preorder %} (Out){% endif %}
                                         </option>
                                         {% endfor %}
                                     {% else %}
-                                        <option value="XS" data-price="{{ it.price }}">XS</option>
+                                        <option value="XS" data-price="{{ it.price }}" selected>XS</option>
                                         <option value="S" data-price="{{ it.price }}">S</option>
                                         <option value="M" data-price="{{ it.price }}">M</option>
                                         <option value="L" data-price="{{ it.price }}">L</option>
@@ -1447,6 +1447,7 @@
     });
 
     // Init
+    document.querySelectorAll('.size-select-js').forEach(s => onUniformSizeChange(s));
     filterItems();
     updateTotal();
 </script>
