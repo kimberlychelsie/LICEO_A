@@ -232,6 +232,17 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
 {% block content %}
 <div class="wrap">
 
+  <!-- Account Role Navigation Tabs -->
+  <div style="background: var(--card); border: 1px solid var(--bd); border-radius: 20px; padding: 14px 20px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,.04);">
+    <div style="display: flex; flex-wrap: wrap; gap: 8px; padding: 6px; background: #f1f5f9; border-radius: 16px; width: fit-content;">
+      <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role='registrar') }}" style="padding: 8px 20px; border-radius: 12px; font-size: 0.88rem; font-weight: 800; text-decoration: none; color: #64748b; transition: all 0.2s;">Registrars</a>
+      <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role='cashier') }}" style="padding: 8px 20px; border-radius: 12px; font-size: 0.88rem; font-weight: 800; text-decoration: none; color: #64748b; transition: all 0.2s;">Cashiers</a>
+      <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role='librarian') }}" style="padding: 8px 20px; border-radius: 12px; font-size: 0.88rem; font-weight: 800; text-decoration: none; color: #64748b; transition: all 0.2s;">Librarians</a>
+      <a href="{{ url_for('branch_admin.branch_admin_manage_teachers') }}" style="padding: 8px 20px; border-radius: 12px; font-size: 0.88rem; font-weight: 800; text-decoration: none; color: #1e3a8a; background: #fff; box-shadow: 0 4px 10px rgba(0,0,0,.05);">Teachers</a>
+      <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role='student') }}" style="padding: 8px 20px; border-radius: 12px; font-size: 0.88rem; font-weight: 800; text-decoration: none; color: #64748b; transition: all 0.2s;">Students</a>
+    </div>
+  </div>
+
   <!-- Hero -->
   <div class="page-hero">
     <h1>Teachers</h1>
@@ -515,7 +526,7 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
     <div style="padding:20px 32px; border-top:1px solid var(--bd); background:#fff; display:flex; justify-content:flex-end; gap:12px;">
       <button onclick="closeAssignModal()" type="button" style="padding:10px 20px; border-radius:10px; border:1px solid var(--bd); background:#fff; cursor:pointer; font-weight:700;">Close</button>
       <button id="modalSaveBtn" type="button" onclick="submitModalAssignment()" disabled style="padding:10px 24px; border-radius:10px; border:none; background:var(--p); color:#fff; cursor:pointer; font-weight:800; display:flex; gap:8px; align-items:center;">
-        Save links
+        Save Subject Loads
       </button>
     </div>
   </div>
@@ -682,7 +693,7 @@ function openAssignModal(tid, tname) {
   document.getElementById('selCountBadge').style.display = 'none';
   const saveBtn = document.getElementById('modalSaveBtn');
   saveBtn.disabled = true;
-  saveBtn.textContent = 'Save links';
+  saveBtn.textContent = 'Save Subject Loads';
   
   initialAdvisorySection = null;
   selectedAdvisorySection = null;
@@ -732,17 +743,25 @@ function renderModalSubjects() {
     html += '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:12px;">';
     grouped[grade].forEach(s => {
       let isSelf = s.is_assigned_to_this_teacher;
-      let disabled = isSelf ? 'disabled checked' : '';
-      let border = isSelf ? 'border-color:var(--a); background:#eff6ff;' : (s.current_teacher_name ? 'border-color:var(--warn); background:#fffbf1;' : 'border-color:var(--bd); background:#fff;');
+      let hasOtherTeacher = s.current_teacher_name && !isSelf;
+      let disabled = (isSelf || hasOtherTeacher) ? 'disabled' : '';
+      let checked = isSelf ? 'checked' : '';
+
+      let borderStyle = isSelf
+        ? 'border-color:var(--a); background:#eff6ff; cursor:default;'
+        : (hasOtherTeacher
+            ? 'border-color:#cbd5e1; background:#f8fafc; opacity:0.6; cursor:not-allowed;'
+            : 'border-color:var(--bd); background:#fff; cursor:pointer;');
+
       let badgeHtml = isSelf
         ? '<span style="font-size:.65rem; background:#dbeafe; color:#1e40af; padding:2px 6px; border-radius:6px; font-weight:800;">Already yours</span>'
-        : (s.current_teacher_name
-            ? `<span style="font-size:.65rem; background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:6px; font-weight:800;">With ${String(s.current_teacher_name).split(' ')[0]}</span>`
+        : (hasOtherTeacher
+            ? `<span style="font-size:.65rem; background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:6px; font-weight:800;">With ${String(s.current_teacher_name).split(' ')[0]}</span>`
             : '<span style="font-size:.65rem; background:#f1f5f9; color:var(--mu); padding:2px 6px; border-radius:6px; font-weight:800;">Open</span>');
 
       html += `
-        <label id="mitem_${s.assignment_id}" style="display:flex; flex-direction:column; padding:14px; border-radius:14px; border:2px solid transparent; ${border} cursor:${isSelf?'default':'pointer'}; transition:all .2s;">
-          <input type="checkbox" class="mod-sub-cb" value="${s.assignment_id}" ${disabled} style="display:none;" onchange="updateModalCount(this)">
+        <label id="mitem_${s.assignment_id}" style="display:flex; flex-direction:column; padding:14px; border-radius:14px; border:2px solid transparent; ${borderStyle} transition:all .2s;">
+          <input type="checkbox" class="mod-sub-cb" value="${s.assignment_id}" ${disabled} ${checked} style="display:none;" onchange="updateModalCount(this)">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <span style="font-size:.7rem; font-weight:800; background:#e2e8f0; padding:2px 6px; border-radius:4px; color:var(--tx);">${s.section_name}</span>
             ${badgeHtml}
@@ -874,11 +893,11 @@ function submitModalAssignment() {
     })
   }).then(r => r.json()).then(d => {
     if (d.success) location.reload();
-    else { alert(d.message || 'Could not save'); btn.disabled = false; btn.textContent = 'Save links'; }
+    else { alert(d.message || 'Could not save'); btn.disabled = false; btn.textContent = 'Save Subject Loads'; }
   }).catch(() => {
     alert('Could not save. Check your connection and try again.');
     btn.disabled = false;
-    btn.textContent = 'Save links';
+    btn.textContent = 'Save Subject Loads';
   });
 }
 

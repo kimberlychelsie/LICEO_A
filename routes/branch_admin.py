@@ -539,6 +539,8 @@ def branch_admin_manage_accounts():
         return redirect(url_for("auth.login"))
 
     role_filter = (request.args.get("role") or "registrar").strip().lower()
+    if role_filter == "teacher":
+        return redirect(url_for("branch_admin.branch_admin_manage_teachers"))
     view_mode = (request.args.get("view") or "flat").strip().lower()
     created_user = None
     filter_grade = request.args.get("grade", "")
