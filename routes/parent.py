@@ -346,7 +346,7 @@ def child_detail(enrollment_id):
                 sid = s["subject_id"]
                 grades = posted_map.get(sid, {})
                 period_vals = [float(v) for v in grades.values()]
-                final_avg = int(round(sum(period_vals) / 4)) if len(period_vals) == 4 else None
+                final_avg = int(round(sum(period_vals) / len(period_vals))) if len(period_vals) == 3 else None
 
                 grade_data.append({
                     "subject_name": s["subject_name"],
