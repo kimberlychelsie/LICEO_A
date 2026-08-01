@@ -4447,6 +4447,62 @@ def teacher_submit_grades(section_id, subject_id, period):
     return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
 
 
+@teacher_bp.route("/teacher/unsubmit-grades/<int:section_id>/<int:subject_id>/<string:period>", methods=["POST"])
+def teacher_unsubmit_grades(section_id, subject_id, period):
+    """Cancel grade submission and return status to draft for editing."""
+    if not _require_teacher(): return redirect("/")
+    user_id   = session.get("user_id")
+    branch_id = session.get("branch_id")
+    if period not in GRADING_PERIODS: return redirect(url_for("teacher.teacher_dashboard"))
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        year_id = _get_active_school_year(cur, branch_id)
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        cur.execute("""
+            SELECT 1 FROM section_teachers st
+            JOIN sections s ON st.section_id = s.section_id
+            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s AND s.year_id=%s
+        """, (user_id, section_id, subject_id, year_id))
+        if not cur.fetchone():
+            flash("Unauthorized.", "error")
+            return redirect(url_for("teacher.teacher_dashboard"))
+
+        cur.execute("""
+            SELECT status FROM grade_submission_requests
+            WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+        """, (section_id, subject_id, period, year_id))
+        req = cur.fetchone()
+        if not req:
+            flash("No submission request found.", "error")
+            return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
+
+        if req['status'] not in ['pending_registrar', 'pending_admin']:
+            flash(f"Cannot cancel submission: Current status is '{req['status']}'. Only pending submissions can be cancelled.", "error")
+            return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
+
+        cur.execute("""
+            UPDATE grade_submission_requests
+            SET status = 'draft',
+                rejection_remarks = 'Submission cancelled by teacher for editing.'
+            WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+        """, (section_id, subject_id, period, year_id))
+        db.commit()
+        flash(f"Submission for {period} Grading has been cancelled. The class record is now editable again.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error cancelling submission: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+    return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
+
+
+
 @teacher_bp.route("/teacher/post-grades/<int:section_id>/<int:subject_id>/<string:period>", methods=["POST"])
 def teacher_post_grades(section_id, subject_id, period):
     if not _require_teacher(): return redirect("/")

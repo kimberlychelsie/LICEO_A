@@ -431,25 +431,16 @@
         align-items: center;
         justify-content: center;
         gap: 6px;
-        cursor: pointer;
+        cursor: default;
         border-radius: 10px;
         padding: 5px 12px;
-        background: #ffffff;
-        border: 1.5px dashed transparent;
+        border: 1.5px solid transparent;
         transition: all 0.2s ease;
         user-select: none;
     }
-    .col-ww .score-display { border-color: rgba(37,99,235,0.3); color: #1d4ed8; }
-    .col-pt .score-display { border-color: rgba(22,163,74,0.3); color: #15803d; }
-    .col-qa .score-display { border-color: rgba(217,119,6,0.3); color: #b45309; }
-
-    .score-display:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-    }
-    .col-ww .score-display:hover { border-color: #2563eb; background: #eff6ff; }
-    .col-pt .score-display:hover { border-color: #16a34a; background: #f0fdf4; }
-    .col-qa .score-display:hover { border-color: #d97706; background: #fffbeb; }
+    .col-ww .score-display { border-color: rgba(37,99,235,0.2); color: #1d4ed8; background: #eff6ff; }
+    .col-pt .score-display { border-color: rgba(22,163,74,0.2); color: #15803d; background: #f0fdf4; }
+    .col-qa .score-display { border-color: rgba(217,119,6,0.2); color: #b45309; background: #fffbeb; }
 
     .score-value {
         font-weight: 800;
@@ -963,14 +954,21 @@
                         Submit for Review
                     </button>
                 </form>
-                {% elif submission_req.status == 'pending_registrar' %}
-                <span class="cr-btn cr-btn-ghost" style="background:rgba(254,243,199,0.3); color:#fef08a; border-color:rgba(254,243,199,0.5);">
-                    Pending Registrar Review
-                </span>
-                {% elif submission_req.status == 'pending_admin' %}
-                <span class="cr-btn cr-btn-ghost" style="background:rgba(219,234,254,0.3); color:#bfdbfe; border-color:rgba(219,234,254,0.5);">
-                    Pending Admin Approval
-                </span>
+                {% elif submission_req.status in ['pending_registrar', 'pending_admin'] %}
+                <div style="display:inline-flex; align-items:center; gap:8px;">
+                    <span class="cr-btn cr-btn-ghost" style="background:rgba(254,243,199,0.25); color:#fef08a; border-color:rgba(254,243,199,0.45); font-weight:700;">
+                        {% if submission_req.status == 'pending_registrar' %}Pending Registrar Review{% else %}Pending Admin Approval{% endif %}
+                    </span>
+                    <form action="{{ url_for('teacher.teacher_unsubmit_grades', section_id=section_id, subject_id=subject_id, period=period) }}"
+                        method="POST" style="display:inline;"
+                        onsubmit="return confirm('Cancel submission for {{ period }} Grading and return class record to draft mode so you can make edits?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="cr-btn cr-btn-ghost" style="background:rgba(239,68,68,0.25); color:#fca5a5; border-color:rgba(239,68,68,0.45); font-weight:700;" title="Cancel submission to make changes">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
+                            Cancel Submission
+                        </button>
+                    </form>
+                </div>
                 {% elif submission_req.status == 'approved_for_posting' %}
                 <form action="{{ url_for('teacher.teacher_post_grades', section_id=section_id, subject_id=subject_id, period=period) }}"
                     method="POST" style="display:inline;"
@@ -1027,7 +1025,7 @@
             <strong>Quiz + Monthly Exam</strong> → Written Works &nbsp;|&nbsp;
             <strong>Activity + Participation + Attendance</strong> → Performance Tasks &nbsp;|&nbsp;
             <strong>Periodical Exam</strong> → Term Assessment.
-            Click any score cell to <strong>manually adjust</strong> it — the transmuted grade will <strong>re-compute automatically</strong>.
+            Click <strong>Score Details</strong> to view and edit student scores — the transmuted grade will <strong>re-compute automatically</strong>.
         </div>
 
     </div>
@@ -1036,6 +1034,21 @@
     {% if submission_req and submission_req.status == 'rejected' and submission_req.rejection_remarks %}
     <div style="background: #fef2f2; border: 1.5px solid #fca5a5; color: #991b1b; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; font-size: 0.9rem;">
         <strong>Rejection Remarks from Reviewer:</strong> {{ submission_req.rejection_remarks }}
+    </div>
+    {% elif submission_req and submission_req.status in ['pending_registrar', 'pending_admin'] %}
+    <div style="background: #fffbe0; border: 1.5px solid #fde047; color: #854d0e; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            <span><strong>Submitted for Review:</strong> This class record is currently pending approval. Need to make changes? You can cancel the submission anytime before it is approved.</span>
+        </div>
+        <form action="{{ url_for('teacher.teacher_unsubmit_grades', section_id=section_id, subject_id=subject_id, period=period) }}"
+            method="POST" style="display:inline;"
+            onsubmit="return confirm('Cancel submission for {{ period }} Grading and return class record to draft mode so you can make edits?');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" style="background:#dc2626; color:#fff; border:none; padding:8px 16px; border-radius:10px; font-size:0.82rem; font-weight:800; cursor:pointer; font-family:inherit; transition:background 0.15s;" onmouseover="this.style.background='#b91c1c';" onmouseout="this.style.background='#dc2626';">
+                Cancel Submission
+            </button>
+        </form>
     </div>
     {% elif submission_req and submission_req.status == 'approved_for_posting' %}
     <div style="background: #f0fdf4; border: 1.5px solid #86efac; color: #166534; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; font-size: 0.9rem;">
@@ -1095,51 +1108,19 @@
                         </div>
                     </td>
 
-                    <!-- WW editable cell -->
+                    <!-- WW cell (Read-only summary) -->
                     <td class="col-ww score-cell" id="cell-ww-{{ r.enrollment_id }}">
-                        <div class="score-display" onclick="startEdit({{ r.enrollment_id }}, 'ww', this)">
+                        <div class="score-display">
                             <span class="score-value">{{ "%0.1f" | format(r.quiz | float) }}</span>
                             {% if r.ww_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
-
-                        </div>
-                        <div class="score-editor" id="editor-ww-{{ r.enrollment_id }}">
-                            <div class="score-input-row">
-                                <input type="number" class="score-input" id="input-ww-{{ r.enrollment_id }}"
-                                    value="{{ "%0.1f" | format(r.quiz | float) }}"
-                                    min="0" max="100" step="0.1"
-                                    onkeydown="handleKey(event, {{ r.enrollment_id }}, 'ww')"
-                                    oninput="livePreview({{ r.enrollment_id }}, {{ (weights.quiz_pct or 0)|float }}, {{ (weights.activity_pct or 0)|float }}, {{ (weights.exam_pct or 0)|float }})">
-                                <button class="score-btn-save" onclick="saveEdit({{ r.enrollment_id }}, 'ww', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Save">Save</button>
-                                <button class="score-btn-cancel" onclick="cancelEdit({{ r.enrollment_id }}, 'ww')" title="Cancel">Cancel</button>
-                                {% if r.ww_overridden %}
-                                <button class="score-btn-reset" onclick="resetEdit({{ r.enrollment_id }}, 'ww', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Reset to auto-computed">↩</button>
-                                {% endif %}
-                            </div>
-                            <div class="score-saving" id="saving-ww-{{ r.enrollment_id }}" style="display:none;">Saving…</div>
                         </div>
                     </td>
 
-                    <!-- PT editable cell -->
+                    <!-- PT cell (Read-only summary) -->
                     <td class="col-pt score-cell" id="cell-pt-{{ r.enrollment_id }}">
-                        <div class="score-display" onclick="startEdit({{ r.enrollment_id }}, 'pt', this)">
+                        <div class="score-display">
                             <span class="score-value">{{ "%0.1f" | format(r.pt_score | float) }}</span>
                             {% if r.pt_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
-
-                        </div>
-                        <div class="score-editor" id="editor-pt-{{ r.enrollment_id }}">
-                            <div class="score-input-row">
-                                <input type="number" class="score-input" id="input-pt-{{ r.enrollment_id }}"
-                                    value="{{ "%0.1f" | format(r.pt_score | float) }}"
-                                    min="0" max="100" step="0.1"
-                                    onkeydown="handleKey(event, {{ r.enrollment_id }}, 'pt')"
-                                    oninput="livePreview({{ r.enrollment_id }}, {{ (weights.quiz_pct or 0)|float }}, {{ (weights.activity_pct or 0)|float }}, {{ (weights.exam_pct or 0)|float }})">
-                                <button class="score-btn-save" onclick="saveEdit({{ r.enrollment_id }}, 'pt', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Save">Save</button>
-                                <button class="score-btn-cancel" onclick="cancelEdit({{ r.enrollment_id }}, 'pt')" title="Cancel">Cancel</button>
-                                {% if r.pt_overridden %}
-                                <button class="score-btn-reset" onclick="resetEdit({{ r.enrollment_id }}, 'pt', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Reset to auto-computed">↩</button>
-                                {% endif %}
-                            </div>
-                            <div class="score-saving" id="saving-pt-{{ r.enrollment_id }}" style="display:none;">Saving…</div>
                         </div>
                         <div class="pt-breakdown">
                             {% if r.has_activity %}Act: {{ "%0.1f" | format(r.activity|float) }}{% endif %}
@@ -1148,27 +1129,11 @@
                         </div>
                     </td>
 
-                    <!-- QA editable cell -->
+                    <!-- QA cell (Read-only summary) -->
                     <td class="col-qa score-cell" id="cell-qa-{{ r.enrollment_id }}">
-                        <div class="score-display" onclick="startEdit({{ r.enrollment_id }}, 'qa', this)">
+                        <div class="score-display">
                             <span class="score-value">{{ "%0.1f" | format(r.exam | float) }}</span>
                             {% if r.qa_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
-
-                        </div>
-                        <div class="score-editor" id="editor-qa-{{ r.enrollment_id }}">
-                            <div class="score-input-row">
-                                <input type="number" class="score-input" id="input-qa-{{ r.enrollment_id }}"
-                                    value="{{ "%0.1f" | format(r.exam | float) }}"
-                                    min="0" max="100" step="0.1"
-                                    onkeydown="handleKey(event, {{ r.enrollment_id }}, 'qa')"
-                                    oninput="livePreview({{ r.enrollment_id }}, {{ (weights.quiz_pct or 0)|float }}, {{ (weights.activity_pct or 0)|float }}, {{ (weights.exam_pct or 0)|float }})">
-                                <button class="score-btn-save" onclick="saveEdit({{ r.enrollment_id }}, 'qa', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Save">Save</button>
-                                <button class="score-btn-cancel" onclick="cancelEdit({{ r.enrollment_id }}, 'qa')" title="Cancel">Cancel</button>
-                                {% if r.qa_overridden %}
-                                <button class="score-btn-reset" onclick="resetEdit({{ r.enrollment_id }}, 'qa', {{ section_id }}, {{ subject_id }}, '{{ period }}')" title="Reset to auto-computed">↩</button>
-                                {% endif %}
-                            </div>
-                            <div class="score-saving" id="saving-qa-{{ r.enrollment_id }}" style="display:none;">Saving…</div>
                         </div>
                     </td>
 
@@ -1422,7 +1387,7 @@ function applyUpdatedScores(eid, changedField, data) {
             badge.className = 'edited-badge';
             badge.title = 'Manually edited';
             badge.textContent = 'Edited';
-            display.insertBefore(badge, display.querySelector('.edit-pencil'));
+            display.appendChild(badge);
         } else if (!isOverridden && badgeEl) {
             badgeEl.remove();
         }
