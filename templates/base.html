@@ -1452,14 +1452,16 @@
             <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
           </svg></span> Reserve Items
       </a>
-      <a class="sb-link {% if request.path.startswith('/parent/bills') or '/bills' in request.path %}active{% endif %}" href="/parent/bills">
+      <a class="sb-link {% if request.path.startswith('/parent/bills') or '/bills' in request.path %}active{% endif %}"
+        href="/parent/bills">
         <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="5" width="20" height="14" rx="2"></rect>
             <line x1="2" y1="10" x2="22" y2="10"></line>
           </svg></span> Billing
       </a>
-      <a class="sb-link {% if request.path.startswith('/parent/reservations') %}active{% endif %}" href="/parent/reservations">
+      <a class="sb-link {% if request.path.startswith('/parent/reservations') %}active{% endif %}"
+        href="/parent/reservations">
         <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -1663,7 +1665,8 @@
       </a>
 
 
-      <a class="sb-link {% if request.path == '/cashier/uniform-orders' %}active{% endif %}" href="/cashier/uniform-orders">
+      <a class="sb-link {% if request.path == '/cashier/uniform-orders' %}active{% endif %}"
+        href="/cashier/uniform-orders">
         <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="20 12 20 22 4 22 4 12"></polyline>
@@ -1716,7 +1719,7 @@
             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="18" y1="20" x2="18" y2="10"></line>
             <line x1="12" y1="20" x2="12" y2="4"></line>
-            <line x1="6"  y1="20" x2="6"  y2="14"></line>
+            <line x1="6" y1="20" x2="6" y2="14"></line>
           </svg></span> Reports
       </a>
 
@@ -1806,12 +1809,15 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
             style="vertical-align: middle; margin-right: 6px;">
-            <path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"></path>
+            <path
+              d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526">
+            </path>
             <circle cx="12" cy="8" r="6"></circle>
           </svg>
           Grade Levels
         </a>
-        <a class="sb-link {% if request.path == '/branch-admin/sections' %}active{% endif %}" href="/branch-admin/sections">
+        <a class="sb-link {% if request.path == '/branch-admin/sections' %}active{% endif %}"
+          href="/branch-admin/sections">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
             style="vertical-align: middle; margin-right: 6px;">
@@ -1821,7 +1827,8 @@
           </svg>
           Sections
         </a>
-        <a class="sb-link {% if request.path == '/branch-admin/subjects' %}active{% endif %}" href="/branch-admin/subjects">
+        <a class="sb-link {% if request.path == '/branch-admin/subjects' %}active{% endif %}"
+          href="/branch-admin/subjects">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
             style="vertical-align: middle; margin-right: 6px;">
@@ -2803,36 +2810,37 @@
 
   <script>
     (function sidebarLiveBadges() {
-      const role = {{ (session.get('role') or '')|tojson }};
-      let url = null;
-      if (role === 'cashier') url = '/cashier/api/sidebar-badges';
-      else if (role === 'registrar') url = '/registrar/api/sidebar-badges';
-      if (!url) return;
+      const role = {{ (session.get('role') or '')| tojson
+    }};
+    let url = null;
+    if (role === 'cashier') url = '/cashier/api/sidebar-badges';
+    else if (role === 'registrar') url = '/registrar/api/sidebar-badges';
+    if (!url) return;
 
-      function applyBadges(data) {
-        document.querySelectorAll('.sb-count[data-badge]').forEach(el => {
-          const key = el.getAttribute('data-badge');
-          const n = parseInt(data[key] || 0, 10) || 0;
-          if (n > 0) {
-            el.textContent = n > 99 ? '99+' : String(n);
-            el.style.display = 'inline-flex';
-          } else {
-            el.textContent = '';
-            el.style.display = 'none';
-          }
-        });
-      }
+    function applyBadges(data) {
+      document.querySelectorAll('.sb-count[data-badge]').forEach(el => {
+        const key = el.getAttribute('data-badge');
+        const n = parseInt(data[key] || 0, 10) || 0;
+        if (n > 0) {
+          el.textContent = n > 99 ? '99+' : String(n);
+          el.style.display = 'inline-flex';
+        } else {
+          el.textContent = '';
+          el.style.display = 'none';
+        }
+      });
+    }
 
-      function poll() {
-        fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
-          .then(r => r.ok ? r.json() : null)
-          .then(data => { if (data && !data.error) applyBadges(data); })
-          .catch(() => {});
-      }
+    function poll() {
+      fetch(url, { headers: { 'Accept': 'application/json' }, credentials: 'same-origin' })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => { if (data && !data.error) applyBadges(data); })
+        .catch(() => { });
+    }
 
-      poll();
-      setInterval(poll, 10000);
-    })();
+    poll();
+    setInterval(poll, 10000);
+    }) ();
   </script>
 
 </body>
