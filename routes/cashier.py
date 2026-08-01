@@ -1190,7 +1190,7 @@ def export_reports_pdf():
         Spacer(1, 4*mm),
     ]
 
-    col_headers = ["#", "OR Number", "Student Name", "Grade", "Method", "Amount", "Date"]
+    col_headers = ["#", "OR Number", "Student Name", "Grade", "Amount", "Date"]
     tbl_data = [col_headers]
     import pytz as _pytz
     ph_tz = _pytz.timezone("Asia/Manila")
@@ -1200,15 +1200,15 @@ def export_reports_pdf():
             pd_val = pd_val.astimezone(ph_tz).strftime("%m/%d/%Y %H:%M")
         tbl_data.append([
             str(i), p.get("receipt_number", ""), p.get("student_name", ""),
-            p.get("grade_level", ""), str(p.get("payment_method", "")).upper(),
-            f"P{float(p.get('amount', 0)):,.2f}", str(pd_val) if pd_val else "",
+            p.get("grade_level", ""), f"P{float(p.get('amount', 0)):,.2f}",
+            str(pd_val) if pd_val else "",
         ])
-    tbl_data.append(["", "", "", "", "TOTAL",
+    tbl_data.append(["", "", "", "TOTAL",
                      f"P{float(summary['total_collected']):,.2f}", ""])
 
     avail_w = letter[0] - 40*mm
-    cw = [0.05*avail_w, 0.12*avail_w, 0.26*avail_w,
-          0.09*avail_w, 0.12*avail_w, 0.12*avail_w, 0.13*avail_w]
+    cw = [0.05*avail_w, 0.15*avail_w, 0.32*avail_w,
+          0.15*avail_w, 0.16*avail_w, 0.17*avail_w]
 
     tbl = Table(tbl_data, colWidths=cw, repeatRows=1)
     tbl.setStyle(TableStyle([
@@ -1221,7 +1221,7 @@ def export_reports_pdf():
         ("ROWBACKGROUNDS",(0,1), (-1,-2), [light_bg, rl_colors.white]),
         ("FONTNAME",      (0,1), (-1,-1), "Helvetica"),
         ("FONTSIZE",      (0,1), (-1,-1), 8),
-        ("ALIGN",         (5,1), (5,-1), "RIGHT"),
+        ("ALIGN",         (4,1), (4,-1), "RIGHT"),
         ("BACKGROUND",    (0,-1), (-1,-1), rl_colors.HexColor("#EFF6FF")),
         ("FONTNAME",      (0,-1), (-1,-1), "Helvetica-Bold"),
         ("GRID",          (0,0), (-1,-1), 0.5, border_c),
