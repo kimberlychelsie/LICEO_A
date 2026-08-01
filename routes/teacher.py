@@ -3751,17 +3751,10 @@ def class_record(section_id, subject_id):
             map_2nd = {r['enrollment_id']: r for r in (records_2nd or [])}
             map_3rd = {r['enrollment_id']: r for r in (records_3rd or [])}
 
-            cur.execute("""
-                SELECT e.enrollment_id, u.full_name AS student_name
-                FROM enrollments e
-                JOIN users u ON e.student_id = u.user_id
-                WHERE e.section_id = %s AND e.year_id = %s AND e.status = 'enrolled'
-                ORDER BY u.full_name ASC
-            """, (section_id, year_id))
-            students = cur.fetchall() or []
+            all_students = records_1st or records_2nd or records_3rd or []
 
             records = []
-            for s in students:
+            for s in all_students:
                 eid = s['enrollment_id']
                 r1 = map_1st.get(eid, {})
                 r2 = map_2nd.get(eid, {})
@@ -3862,18 +3855,11 @@ def class_record_export(section_id, subject_id):
             map_2nd = {r['enrollment_id']: r for r in (records_2nd or [])}
             map_3rd = {r['enrollment_id']: r for r in (records_3rd or [])}
 
-            cur.execute("""
-                SELECT e.enrollment_id, u.full_name AS student_name
-                FROM enrollments e
-                JOIN users u ON e.student_id = u.user_id
-                WHERE e.section_id = %s AND e.year_id = %s AND e.status = 'enrolled'
-                ORDER BY u.full_name ASC
-            """, (section_id, year_id))
-            students = cur.fetchall() or []
+            all_students = records_1st or records_2nd or records_3rd or []
 
             summary_rows = []
             detail_rows = []
-            for idx, s in enumerate(students, start=1):
+            for idx, s in enumerate(all_students, start=1):
                 eid = s['enrollment_id']
                 g1 = map_1st.get(eid, {}).get('transmuted_grade')
                 g2 = map_2nd.get(eid, {}).get('transmuted_grade')
@@ -3903,6 +3889,7 @@ def class_record_export(section_id, subject_id):
                     "Subject": context.get("subject_name"),
                     "Section": f"{context.get('grade_level_name')} - {context.get('section_name')}",
                 })
+
         else:
             _, weights, records = _compute_period_grades(
                 cur, user_id, branch_id, section_id, subject_id, period, year_id
