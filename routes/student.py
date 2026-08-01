@@ -1501,6 +1501,30 @@ def student_reservation():
             if "all" in gl_lower:
                 return True
 
+            # Match generic dropdown categories
+            sg_lower = str(student_grade_level).strip().lower()
+            if "pre-elem" in gl_lower and sg_lower in ("nursery", "kinder"):
+                return True
+            if "elementary" in gl_lower and not "pre-elem" in gl_lower:
+                # Grade 1 to 6
+                try:
+                    m = re.search(r"grade\s+(\d+)", sg_lower)
+                    if m and 1 <= int(m.group(1)) <= 6:
+                        return True
+                except: pass
+            if "jhs" in gl_lower:
+                try:
+                    m = re.search(r"grade\s+(\d+)", sg_lower)
+                    if m and 7 <= int(m.group(1)) <= 10:
+                        return True
+                except: pass
+            if "shs" in gl_lower:
+                try:
+                    m = re.search(r"grade\s+(\d+)", sg_lower)
+                    if m and 11 <= int(m.group(1)) <= 12:
+                        return True
+                except: pass
+
             if grades_compatible(student_grade_level, item_grade_level):
                 return True
 
