@@ -1444,7 +1444,19 @@ def lib_export_reports_pdf():
         Spacer(1, 4*mm),
     ]
 
-    col_headers = ["Date", "Student Name", "Grade", "Account", "Qty", "Books"]
+    cell_st = ParagraphStyle("cell", parent=styles["Normal"], fontName="Helvetica", fontSize=7, leading=9)
+    cell_bold_st = ParagraphStyle("cell_bold", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=7, leading=9)
+    cell_center_st = ParagraphStyle("cell_center", parent=styles["Normal"], fontName="Helvetica", fontSize=7, leading=9, alignment=TA_CENTER)
+    hdr_st = ParagraphStyle("hdr", parent=styles["Normal"], fontName="Helvetica-Bold", fontSize=8, leading=10, textColor=rl_colors.white, alignment=TA_CENTER)
+
+    col_headers = [
+        Paragraph("Date", hdr_st),
+        Paragraph("Student Name", hdr_st),
+        Paragraph("Grade", hdr_st),
+        Paragraph("Account", hdr_st),
+        Paragraph("Qty", hdr_st),
+        Paragraph("Books", hdr_st)
+    ]
     tbl_data = [col_headers]
     ph_tz = _pytz.timezone("Asia/Manila")
     for t in transactions:
@@ -1454,12 +1466,12 @@ def lib_export_reports_pdf():
         enr_no = t.get("branch_enrollment_no")
         acct   = f"LDMAJ_{int(enr_no):04d}" if enr_no else "—"
         tbl_data.append([
-            str(dt_val) if dt_val else "",
-            t.get("student_name", ""),
-            t.get("grade_level", ""),
-            acct,
-            str(int(t.get("qty_released", 0))),
-            t.get("books_list", ""),
+            Paragraph(str(dt_val) if dt_val else "", cell_st),
+            Paragraph(t.get("student_name", "") or "", cell_bold_st),
+            Paragraph(t.get("grade_level", "") or "", cell_center_st),
+            Paragraph(acct, cell_center_st),
+            Paragraph(str(int(t.get("qty_released", 0))), cell_center_st),
+            Paragraph(t.get("books_list", "") or "", cell_st),
         ])
 
     avail_w = landscape(letter)[0] - 40*mm
@@ -1468,22 +1480,14 @@ def lib_export_reports_pdf():
     tbl = Table(tbl_data, colWidths=cw, repeatRows=1)
     tbl.setStyle(TableStyle([
         ("BACKGROUND",    (0,0), (-1,0), navy),
-        ("TEXTCOLOR",     (0,0), (-1,0), rl_colors.white),
-        ("FONTNAME",      (0,0), (-1,0), "Helvetica-Bold"),
-        ("FONTSIZE",      (0,0), (-1,0), 8),
-        ("ALIGN",         (0,0), (-1,0), "CENTER"),
         ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
         ("ROWBACKGROUNDS",(0,1), (-1,-1), [light_bg, rl_colors.white]),
-        ("FONTNAME",      (0,1), (-1,-1), "Helvetica"),
-        ("FONTSIZE",      (0,1), (-1,-1), 7),
-        ("ALIGN",         (4,1), (4,-1), "CENTER"),
         ("GRID",          (0,0), (-1,-1), 0.5, border_c),
         ("LINEBELOW",     (0,0), (-1,0), 1.5, navy),
-        ("TOPPADDING",    (0,0), (-1,-1), 4),
-        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
-        ("LEFTPADDING",   (0,0), (-1,-1), 4),
-        ("RIGHTPADDING",  (0,0), (-1,-1), 4),
-        ("WORDWRAP",      (5,1), (5,-1), 1),
+        ("TOPPADDING",    (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+        ("LEFTPADDING",   (0,0), (-1,-1), 5),
+        ("RIGHTPADDING",  (0,0), (-1,-1), 5),
     ]))
     story.append(tbl)
 
