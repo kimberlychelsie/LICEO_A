@@ -1722,8 +1722,7 @@ def student_reservation():
                         # Pre-order catalog — no stock hold; goes to uniform_orders (not billing yet)
                         if not stored_size:
                             raise Exception(f"Please select a size for: {r['item_name']}")
-                        is_piece_item = bool(r.get('parent_item_id') or r.get('is_set_piece'))
-                        step_to_use = 0 if is_piece_item else r.get('size_price_step')
+                        step_to_use = r.get('size_price_step')
                         unit_price = price_for_size(
                             r['price'], stored_size, r['size_label'], step_to_use
                         )
