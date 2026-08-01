@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, session, flash, url_for, jsonify
+from flask import Blueprint, render_template, request, redirect, session, flash, url_for, jsonify, Response
 from db import get_db_connection
 import psycopg2.extras
 
@@ -1181,4 +1181,317 @@ def reports():
         start_date=start_date,
         end_date=end_date,
         grades=GRADES,
+    )
+
+
+# ── Librarian Reports: Excel Export ──────────────────────────
+@librarian_bp.route("/librarian/reports/export/excel")
+def lib_export_reports_excel():
+    if not _require_librarian():
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    today_str = str(_get_manila_today_lib())
+    report_range   = request.args.get("range", "today")
+    report_date    = request.args.get("date", today_str)
+    report_date_end = request.args.get("date_end", today_str)
+    start_date, end_date = _lib_report_range(report_range, report_date, report_date_end)
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Summary
+        cur.execute("""
+            SELECT
+                COUNT(DISTINCT br.release_id)  AS total_releases,
+                COALESCE(SUM(bri.qty), 0)      AS total_books_released,
+                COUNT(DISTINCT CASE WHEN br.enrollment_id IS NOT NULL THEN br.enrollment_id END) AS total_students
+            FROM book_releases br
+            JOIN book_release_items bri ON bri.release_id = br.release_id
+            WHERE br.branch_id = %s
+              AND DATE(br.created_at AT TIME ZONE 'Asia/Manila') BETWEEN %s AND %s
+        """, (branch_id, start_date, end_date))
+        summary = cur.fetchone() or {"total_releases": 0, "total_books_released": 0, "total_students": 0}
+
+        # Transactions
+        cur.execute("""
+            SELECT
+                br.created_at,
+                COALESCE(
+                    CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name),
+                    br.student_name, 'Walk-in'
+                )                               AS student_name,
+                COALESCE(e.grade_level, '—')    AS grade_level,
+                e.branch_enrollment_no,
+                COALESCE(SUM(bri.qty), 0)       AS qty_released,
+                STRING_AGG(ii.item_name || ' (x' || bri.qty || ')', ', '
+                           ORDER BY ii.item_name) AS books_list
+            FROM book_releases br
+            JOIN book_release_items bri ON bri.release_id = br.release_id
+            JOIN inventory_items ii     ON ii.item_id = bri.item_id
+            LEFT JOIN enrollments e     ON e.enrollment_id = br.enrollment_id
+            WHERE br.branch_id = %s
+              AND DATE(br.created_at AT TIME ZONE 'Asia/Manila') BETWEEN %s AND %s
+            GROUP BY br.release_id, br.created_at, br.student_name,
+                     e.student_first_name, e.student_middle_name, e.student_last_name,
+                     e.grade_level, e.branch_enrollment_no
+            ORDER BY br.created_at DESC
+        """, (branch_id, start_date, end_date))
+        transactions = cur.fetchall() or []
+    finally:
+        cur.close()
+        db.close()
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    import io as _io
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Library Release Report"
+
+    hdr_font  = Font(name="Calibri", bold=True, size=11, color="FFFFFF")
+    hdr_fill  = PatternFill("solid", fgColor="1E3A8A")
+    hdr_align = Alignment(horizontal="center", vertical="center")
+    thin_side = Side(style="thin", color="CBD5E1")
+    thin_bdr  = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+    center_al = Alignment(horizontal="center", vertical="center")
+    NCOLS = 6
+
+    ws.merge_cells(f"A1:{get_column_letter(NCOLS)}1")
+    ws["A1"] = "LICEO DE MAJAYJAY \u2014 LIBRARY RELEASE REPORT"
+    ws["A1"].font      = Font(name="Calibri", bold=True, size=14, color="1E3A8A")
+    ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[1].height = 26
+
+    range_label = {
+        "today":   f"Today ({start_date})",
+        "weekly":  f"This Week ({start_date} to {end_date})",
+        "monthly": f"This Month ({start_date} to {end_date})",
+        "yearly":  f"This Year ({start_date} to {end_date})",
+        "custom":  f"Custom Range ({start_date} to {end_date})",
+    }.get(report_range, str(start_date))
+
+    ws.merge_cells(f"A2:{get_column_letter(NCOLS)}2")
+    ws["A2"] = f"Period: {range_label}"
+    ws["A2"].font      = Font(name="Calibri", italic=True, size=10, color="475569")
+    ws["A2"].alignment = Alignment(horizontal="center")
+
+    ws.merge_cells(f"A3:{get_column_letter(NCOLS)}3")
+    ws["A3"] = (
+        f"Total Releases: {summary['total_releases']}   |   "
+        f"Books Released: {summary['total_books_released']}   |   "
+        f"Students Served: {summary['total_students']}"
+    )
+    ws["A3"].font      = Font(name="Calibri", bold=True, size=10)
+    ws["A3"].alignment = Alignment(horizontal="center")
+    ws.row_dimensions[3].height = 18
+
+    headers = ["Date", "Student Name", "Grade", "Account", "Qty", "Books"]
+    ws.append([""] * NCOLS)
+    ws.row_dimensions[4].height = 6
+    ws.append(headers)
+    for col_idx in range(1, NCOLS + 1):
+        cell = ws.cell(row=5, column=col_idx)
+        cell.font = hdr_font; cell.fill = hdr_fill
+        cell.alignment = hdr_align; cell.border = thin_bdr
+    ws.row_dimensions[5].height = 22
+
+    ph_tz = _pytz.timezone("Asia/Manila")
+    for i, t in enumerate(transactions, 1):
+        dt_val = t.get("created_at")
+        if dt_val and hasattr(dt_val, "astimezone"):
+            dt_val = dt_val.astimezone(ph_tz).strftime("%Y-%m-%d %H:%M")
+        enr_no = t.get("branch_enrollment_no")
+        acct   = f"LDMAJ_{int(enr_no):04d}" if enr_no else "—"
+        row = [
+            str(dt_val) if dt_val else "",
+            t.get("student_name", ""),
+            t.get("grade_level", ""),
+            acct,
+            int(t.get("qty_released", 0)),
+            t.get("books_list", ""),
+        ]
+        ws.append(row)
+        data_row = ws.max_row
+        for col_idx in range(1, NCOLS + 1):
+            cell = ws.cell(row=data_row, column=col_idx)
+            cell.border = thin_bdr; cell.alignment = center_al
+            cell.font   = Font(name="Calibri", size=10)
+        if i % 2 == 0:
+            alt = PatternFill("solid", fgColor="F8FAFC")
+            for col_idx in range(1, NCOLS + 1):
+                ws.cell(row=data_row, column=col_idx).fill = alt
+
+    for i, w in enumerate([20, 28, 14, 14, 6, 50], 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+    buf = _io.BytesIO()
+    wb.save(buf); buf.seek(0)
+    filename = f"Library_Release_Report_{report_range}_{start_date}.xlsx"
+    return Response(
+        buf.read(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+# ── Librarian Reports: PDF Export ────────────────────────────
+@librarian_bp.route("/librarian/reports/export/pdf")
+def lib_export_reports_pdf():
+    if not _require_librarian():
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    today_str = str(_get_manila_today_lib())
+    report_range   = request.args.get("range", "today")
+    report_date    = request.args.get("date", today_str)
+    report_date_end = request.args.get("date_end", today_str)
+    start_date, end_date = _lib_report_range(report_range, report_date, report_date_end)
+
+    db  = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("""
+            SELECT
+                COUNT(DISTINCT br.release_id)  AS total_releases,
+                COALESCE(SUM(bri.qty), 0)      AS total_books_released,
+                COUNT(DISTINCT CASE WHEN br.enrollment_id IS NOT NULL THEN br.enrollment_id END) AS total_students
+            FROM book_releases br
+            JOIN book_release_items bri ON bri.release_id = br.release_id
+            WHERE br.branch_id = %s
+              AND DATE(br.created_at AT TIME ZONE 'Asia/Manila') BETWEEN %s AND %s
+        """, (branch_id, start_date, end_date))
+        summary = cur.fetchone() or {"total_releases": 0, "total_books_released": 0, "total_students": 0}
+
+        cur.execute("""
+            SELECT
+                br.created_at,
+                COALESCE(
+                    CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name),
+                    br.student_name, 'Walk-in'
+                )                               AS student_name,
+                COALESCE(e.grade_level, '—')    AS grade_level,
+                e.branch_enrollment_no,
+                COALESCE(SUM(bri.qty), 0)       AS qty_released,
+                STRING_AGG(ii.item_name || ' (x' || bri.qty || ')', ', '
+                           ORDER BY ii.item_name) AS books_list
+            FROM book_releases br
+            JOIN book_release_items bri ON bri.release_id = br.release_id
+            JOIN inventory_items ii     ON ii.item_id = bri.item_id
+            LEFT JOIN enrollments e     ON e.enrollment_id = br.enrollment_id
+            WHERE br.branch_id = %s
+              AND DATE(br.created_at AT TIME ZONE 'Asia/Manila') BETWEEN %s AND %s
+            GROUP BY br.release_id, br.created_at, br.student_name,
+                     e.student_first_name, e.student_middle_name, e.student_last_name,
+                     e.grade_level, e.branch_enrollment_no
+            ORDER BY br.created_at DESC
+        """, (branch_id, start_date, end_date))
+        transactions = cur.fetchall() or []
+    finally:
+        cur.close()
+        db.close()
+
+    from reportlab.lib import colors as rl_colors
+    from reportlab.lib.pagesizes import letter, landscape
+    from reportlab.lib.units import mm
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
+    from reportlab.lib.enums import TA_CENTER
+    import io as _io
+
+    buf = _io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=landscape(letter),
+                            leftMargin=20*mm, rightMargin=20*mm,
+                            topMargin=18*mm, bottomMargin=18*mm)
+
+    styles  = getSampleStyleSheet()
+    navy    = rl_colors.HexColor("#1E3A8A")
+    slate   = rl_colors.HexColor("#475569")
+    light_bg = rl_colors.HexColor("#F8FAFC")
+    border_c = rl_colors.HexColor("#CBD5E1")
+
+    title_st = ParagraphStyle("title", parent=styles["Normal"],
+        fontName="Helvetica-Bold", fontSize=16, textColor=navy,
+        alignment=TA_CENTER, spaceAfter=4)
+    sub_st = ParagraphStyle("sub", parent=styles["Normal"],
+        fontName="Helvetica", fontSize=9, textColor=slate,
+        alignment=TA_CENTER, spaceAfter=2)
+    label_st = ParagraphStyle("label", parent=styles["Normal"],
+        fontName="Helvetica-Bold", fontSize=9, textColor=navy,
+        alignment=TA_CENTER, spaceAfter=10)
+
+    range_label = {
+        "today":   f"Today: {start_date}",
+        "weekly":  f"This Week: {start_date} to {end_date}",
+        "monthly": f"This Month: {start_date} to {end_date}",
+        "yearly":  f"This Year: {start_date} to {end_date}",
+        "custom":  f"Custom Range: {start_date} to {end_date}",
+    }.get(report_range, str(start_date))
+
+    story = [
+        Paragraph("LICEO DE MAJAYJAY", title_st),
+        Paragraph("Library Release Report", sub_st),
+        Paragraph(range_label, sub_st),
+        HRFlowable(width="100%", thickness=2, color=navy, spaceAfter=8),
+        Paragraph(
+            f"Total Releases: <b>{summary['total_releases']}</b> | "
+            f"Books Released: <b>{summary['total_books_released']}</b> | "
+            f"Students Served: <b>{summary['total_students']}</b>",
+            label_st
+        ),
+        Spacer(1, 4*mm),
+    ]
+
+    col_headers = ["Date", "Student Name", "Grade", "Account", "Qty", "Books"]
+    tbl_data = [col_headers]
+    ph_tz = _pytz.timezone("Asia/Manila")
+    for t in transactions:
+        dt_val = t.get("created_at")
+        if dt_val and hasattr(dt_val, "astimezone"):
+            dt_val = dt_val.astimezone(ph_tz).strftime("%m/%d/%Y %H:%M")
+        enr_no = t.get("branch_enrollment_no")
+        acct   = f"LDMAJ_{int(enr_no):04d}" if enr_no else "—"
+        tbl_data.append([
+            str(dt_val) if dt_val else "",
+            t.get("student_name", ""),
+            t.get("grade_level", ""),
+            acct,
+            str(int(t.get("qty_released", 0))),
+            t.get("books_list", ""),
+        ])
+
+    avail_w = landscape(letter)[0] - 40*mm
+    cw = [0.13*avail_w, 0.22*avail_w, 0.09*avail_w, 0.10*avail_w, 0.05*avail_w, 0.41*avail_w]
+
+    tbl = Table(tbl_data, colWidths=cw, repeatRows=1)
+    tbl.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0), (-1,0), navy),
+        ("TEXTCOLOR",     (0,0), (-1,0), rl_colors.white),
+        ("FONTNAME",      (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE",      (0,0), (-1,0), 8),
+        ("ALIGN",         (0,0), (-1,0), "CENTER"),
+        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+        ("ROWBACKGROUNDS",(0,1), (-1,-1), [light_bg, rl_colors.white]),
+        ("FONTNAME",      (0,1), (-1,-1), "Helvetica"),
+        ("FONTSIZE",      (0,1), (-1,-1), 7),
+        ("ALIGN",         (4,1), (4,-1), "CENTER"),
+        ("GRID",          (0,0), (-1,-1), 0.5, border_c),
+        ("LINEBELOW",     (0,0), (-1,0), 1.5, navy),
+        ("TOPPADDING",    (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+        ("LEFTPADDING",   (0,0), (-1,-1), 4),
+        ("RIGHTPADDING",  (0,0), (-1,-1), 4),
+        ("WORDWRAP",      (5,1), (5,-1), 1),
+    ]))
+    story.append(tbl)
+
+    doc.build(story)
+    buf.seek(0)
+    filename = f"Library_Release_Report_{report_range}_{start_date}.pdf"
+    return Response(
+        buf.read(),
+        mimetype="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
     )

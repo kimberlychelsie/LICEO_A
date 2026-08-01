@@ -220,6 +220,31 @@
                 </svg>
                 Refresh
             </button>
+
+            <div class="sep"></div>
+
+            <button type="button" onclick="exportReport('excel')"
+                style="display:flex;align-items:center;gap:6px;padding:9px 18px;background:#16a34a;color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+                Export Excel
+            </button>
+
+            <button type="button" onclick="exportReport('pdf')"
+                style="display:flex;align-items:center;gap:6px;padding:9px 18px;background:#dc2626;color:#fff;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="9" y1="15" x2="15" y2="15"></line>
+                </svg>
+                Export PDF
+            </button>
         </div>
     </form>
 
@@ -355,6 +380,17 @@ function handleRangeChange(val) {
     di.disabled = (val !== 'today');
     df.disabled = (val !== 'custom');
     de.disabled = (val !== 'custom');
+}
+function exportReport(fmt) {
+    var range = document.getElementById('range-select').value;
+    var url   = '/librarian/reports/export/' + fmt + '?range=' + range;
+    if (range === 'today') {
+        url += '&date=' + document.getElementById('date-input').value;
+    } else if (range === 'custom') {
+        url += '&date='     + document.getElementById('date-from-input').value;
+        url += '&date_end=' + document.getElementById('date-end-input').value;
+    }
+    window.location.href = url;
 }
 </script>
 {% endblock %}
