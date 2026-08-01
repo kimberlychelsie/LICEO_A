@@ -538,7 +538,7 @@ def branch_admin_manage_accounts():
         flash("No branch assigned.", "error")
         return redirect(url_for("auth.login"))
 
-    role_filter = (request.args.get("role") or "registrar").strip().lower()
+    role_filter = (request.args.get("role") or "all_staff").strip().lower()
     if role_filter == "teacher":
         return redirect(url_for("branch_admin.branch_admin_manage_teachers"))
     view_mode = (request.args.get("view") or "flat").strip().lower()
@@ -728,7 +728,14 @@ def branch_admin_manage_accounts():
                 params.extend([f"%{filter_search}%", f"%{filter_search}%"])
             cursor.execute(query, tuple(params))
         else:
-            query = """
+            if role_filter == "all_staff":
+                query_role_cond = "u.role IN ('registrar', 'cashier', 'librarian', 'teacher')"
+                params = [branch_id]
+            else:
+                query_role_cond = "u.role = %s"
+                params = [branch_id, role_filter]
+                
+            query = f"""
                 SELECT
                     u.user_id, u.username, u.role, u.full_name, u.gender,
                     u.email, COALESCE(g.name, u.grade_level) AS grade_level, u.status,
@@ -738,9 +745,8 @@ def branch_admin_manage_accounts():
                      WHERE st2.teacher_id = u.user_id) AS sections
                 FROM users u
                 LEFT JOIN grade_levels g ON u.grade_level_id = g.id
-                WHERE u.branch_id = %s AND u.role = %s
+                WHERE u.branch_id = %s AND {query_role_cond}
             """
-            params = [branch_id, role_filter]
             if filter_grade and role_filter == "teacher":
                 query += " AND u.grade_level_id = %s"
                 params.append(int(filter_grade))

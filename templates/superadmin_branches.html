@@ -406,10 +406,6 @@
     <div class="modern-card" style="padding: 24px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
             <h2 style="margin: 0;"><i class="fas fa-plus-circle" style="color: var(--ma-gold);"></i> Create Branch</h2>
-            <button type="button" class="btn-prem" onclick="openRetiredAdminModal()"
-                style="background: #f8fafc; border: 1px solid #cbd5e1; color: var(--ma-primary);">
-                <i class="fas fa-archive"></i> View Retired Principals
-            </button>
         </div>
         <form method="POST" action="{{ url_for('super_admin.super_admin_branches') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -528,10 +524,6 @@
                                     <button type="button" class="action-item"
                                         onclick="openEditBranch('{{ b.branch_id }}','{{ b.branch_name|e }}','{{ b.branch_code }}','{{ b.location|e }}','{{ b.admin_email }}','{{ b.admin_first_name|e }}','{{ b.admin_middle_name|e }}','{{ b.admin_last_name|e }}')">
                                         <i class="fas fa-edit"></i> Edit Details
-                                    </button>
-                                    <button type="button" class="action-item"
-                                        onclick="openTransferModal('{{ b.branch_id }}', '{{ b.branch_name|e }}')">
-                                        <i class="fas fa-user-shield"></i> Assign New Principal
                                     </button>
                                     {% if b.admin_username %}
                                     <form method="POST" action="/super-admin/branch/{{ b.branch_id }}/remove-principal"
