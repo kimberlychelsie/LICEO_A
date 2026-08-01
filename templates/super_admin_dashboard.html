@@ -68,12 +68,12 @@
         box-shadow: 0 0 10px var(--ma-gold);
     }
 
-    /* ── Compact Shortcuts ── */
+    /* ── Top Branch Performance ── */
     .shortcut-grid {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
         gap: 20px;
-        margin-bottom: 32px;
+        margin-bottom: 24px;
     }
 
     .action-card {
@@ -119,29 +119,191 @@
         line-height: 1.3;
     }
 
-    /* ── Dashboard Layout ── */
-    .dashboard-grid {
+    /* ── Main Dashboard Grid ── */
+    .main-dash-grid {
         display: grid;
-        grid-template-columns: 1fr 340px;
+        grid-template-columns: 1fr 320px;
         gap: 20px;
+        margin-bottom: 20px;
     }
 
     .content-card {
         background: var(--ma-card);
         border: 1px solid var(--ma-border);
         border-radius: 24px;
-        padding: 20px;
+        padding: 22px 24px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
     }
 
-    .content-card h2 {
-        font-size: 1.15rem;
-        font-weight: 800;
-        color: var(--ma-primary);
-        margin-bottom: 24px;
+    /* ── Branch Status List ── */
+    .bsl-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .bsl-expand-btn {
         display: flex;
         align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: 1.5px solid var(--ma-border);
+        background: #f8fafc;
+        cursor: pointer;
+        color: var(--ma-primary);
+        font-size: 1.1rem;
+        font-weight: 700;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+    }
+
+    .bsl-expand-btn:hover {
+        background: var(--ma-primary);
+        color: #fff;
+        border-color: var(--ma-primary);
+        transform: scale(1.08);
+    }
+
+    .bsl-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .bsl-item {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 8px 14px;
+        border-radius: 12px;
+        transition: background 0.15s ease;
+    }
+
+    .bsl-item:hover {
+        background: #f8fafc;
+    }
+
+    .bsl-dot {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .bsl-green {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .bsl-amber {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .bsl-red {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .bsl-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .bsl-name {
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--ma-text);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .bsl-code {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: var(--ma-muted);
+    }
+
+    .bsl-status {
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-top: 2px;
+    }
+
+    .bsl-status-ok {
+        color: #16a34a;
+    }
+
+    .bsl-status-warn {
+        color: #d97706;
+    }
+
+    .bsl-status-err {
+        color: #dc2626;
+    }
+
+    /* ── Quick Actions ── */
+    .qa-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
         gap: 10px;
+    }
+
+    .qa-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 14px 8px;
+        border-radius: 14px;
+        text-decoration: none;
+        background: #f8fafc;
+        border: 1px solid var(--ma-border);
+        transition: all 0.2s ease;
+        text-align: center;
+    }
+
+    .qa-btn:hover {
+        background: #eff6ff;
+        border-color: #93c5fd;
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.1);
+    }
+
+    .qa-icon {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .qa-btn span {
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: var(--ma-muted);
+        line-height: 1.2;
+    }
+
+    .qa-btn:hover span {
+        color: var(--ma-primary);
+    }
+
+    /* ── Below-fold grid ── */
+    .dashboard-grid {
+        display: grid;
+        grid-template-columns: 1fr 340px;
+        gap: 20px;
     }
 
     /* ── Simplified Table ── */
@@ -193,16 +355,6 @@
         width: 160px;
         height: 160px;
         margin: 0 auto 24px;
-    }
-
-    .donut-svg {
-        transform: rotate(-90deg);
-    }
-
-    .donut-slice {
-        fill: none;
-        stroke-width: 12;
-        stroke-linecap: round;
     }
 
     .dc-center {
@@ -276,9 +428,131 @@
         color: #9f1239;
     }
 
+    /* ── Full Branch List Modal (slide in from right) ── */
+    .branch-modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.55);
+        z-index: 9000;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+            visibility 0.3s;
+        backdrop-filter: blur(4px);
+    }
+
+    .branch-modal-overlay.open {
+        opacity: 1;
+        visibility: visible;
+    }
+
+    .branch-modal-panel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: min(92vw, 1100px);
+        height: 100vh;
+        background: #fff;
+        box-shadow: -8px 0 40px rgba(0, 0, 0, 0.15);
+        display: flex;
+        flex-direction: column;
+        transform: translateX(100%);
+        transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 9001;
+    }
+
+    .branch-modal-overlay.open .branch-modal-panel {
+        transform: translateX(0);
+    }
+
+    .branch-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px 28px;
+        border-bottom: 1px solid #e2e8f0;
+        background: #fff;
+        flex-shrink: 0;
+    }
+
+    .branch-modal-header h2 {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: var(--ma-primary);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 0;
+    }
+
+    .branch-modal-close {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: none;
+        background: #f1f5f9;
+        color: #64748b;
+        font-size: 1.4rem;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s;
+    }
+
+    .branch-modal-close:hover {
+        background: #fee2e2;
+        color: #ef4444;
+    }
+
+    .branch-modal-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 20px 28px 28px;
+    }
+
+    .branch-modal-search {
+        margin-bottom: 16px;
+        position: relative;
+    }
+
+    .branch-modal-search input {
+        width: 100%;
+        padding: 10px 14px 10px 40px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        font-size: 0.9rem;
+        outline: none;
+        transition: border-color 0.15s;
+        font-family: inherit;
+    }
+
+    .branch-modal-search input:focus {
+        border-color: var(--ma-primary);
+        box-shadow: 0 0 0 3px rgba(26, 58, 143, 0.08);
+    }
+
+    .branch-modal-search svg {
+        position: absolute;
+        left: 13px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+    }
+
     @media (max-width: 1000px) {
+        .main-dash-grid {
+            grid-template-columns: 1fr;
+        }
+
         .dashboard-grid {
             grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 600px) {
+        .qa-grid {
+            grid-template-columns: repeat(2, 1fr);
         }
     }
 </style>
@@ -287,89 +561,275 @@
     <!-- Header -->
     <div class="premium-welcome">
         <h1>Welcome, Super Admin</h1>
-        <div class="status-line">
-            <span class="pulse-dot"></span>
-            Liceo SMS Dashboard • {{ active_branches }} Branches Active Now
-        </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="shortcut-grid">
-        <a href="{{ url_for('super_admin.super_admin_branches') }}" class="action-card">
-            <div class="action-icon" style="background: #eff6ff; color: #2563eb;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect width="16" height="20" x="4" y="2" rx="2" ry="2"></rect>
-                    <path d="M9 22v-4h6v4"></path>
-                    <path d="M8 6h.01"></path>
-                    <path d="M16 6h.01"></path>
-                    <path d="M8 10h.01"></path>
-                    <path d="M16 10h.01"></path>
-                    <path d="M8 14h.01"></path>
-                    <path d="M16 14h.01"></path>
-                </svg>
-            </div>
-            <div class="action-info">
-                <h3>Manage Branches</h3>
-                <p>Add or edit branch account details and settings.</p>
-            </div>
-        </a>
-        <a href="{{ url_for('super_admin.superadmin_faqs') }}" class="action-card">
-            <div class="action-icon" style="background: #f0fdf4; color: #166534;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path>
-                </svg>
-            </div>
-            <div class="action-info">
-                <h3>Manage FAQs</h3>
-                <p>Change chatbot questions and answers easily.</p>
-            </div>
-        </a>
-        <a href="/change-password" class="action-card">
-            <div class="action-icon" style="background: #fff1f2; color: #be123c;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                </svg>
-            </div>
-            <div class="action-info">
-                <h3>Admin Password</h3>
-                <p>Update your dashboard login password.</p>
-            </div>
-        </a>
-    </div>
 
-    <!-- NEW: TOP 3 BRANCH PERFORMANCE -->
-    <div class="shortcut-grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
-        {% for b in top_branches %}
-        <div class="action-card" style="border-left: 4px solid var(--ma-gold); cursor: default;">
-            <div class="action-icon" style="background: #fefce8; color: #854d0e; font-weight: 800; font-size: 0.9rem;">
-                #{{ loop.index }}</div>
-            <div class="action-info">
-                <h3 style="color: var(--ma-primary);">{{ b.branch_name }}</h3>
-                <p style="font-weight: 700;">{{ b.total_students }} Total Students</p>
-                <p style="font-size: 0.7rem;">Active Node Security Protocol</p>
-            </div>
-        </div>
-        {% endfor %}
-    </div>
 
-    <div class="dashboard-grid">
-        <!-- Branch Table -->
-        <div class="content-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                <h2 style="margin: 0;"><i class="fas fa-list"></i> Branch Status List</h2>
-                <div style="position: relative; max-width: 250px; width: 100%;">
-                    <i class="fas fa-search"
-                        style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--ma-muted); font-size: 0.8rem;"></i>
-                    <input type="text" id="branchSearch" placeholder="Search branch..."
-                        style="width: 100%; padding: 8px 12px 8px 32px; border: 1px solid var(--ma-border); border-radius: 10px; font-size: 0.85rem; outline: none;">
+    <!-- ═══ MAIN: Branch Status List (left) + Quick Actions (right) ═══ -->
+    <div class="main-dash-grid">
+
+        <!-- LEFT COLUMN -->
+        <div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;">
+
+            <!-- Compact Branch Status List -->
+            <div class="content-card" style="padding: 16px 20px;">
+                <div class="bsl-header">
+                    <h2
+                        style="margin:0; font-size:1.1rem; font-weight:800; color:var(--ma-primary); display:flex; align-items:center; gap:10px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="8" y1="6" x2="21" y2="6" />
+                            <line x1="8" y1="12" x2="21" y2="12" />
+                            <line x1="8" y1="18" x2="21" y2="18" />
+                            <line x1="3" y1="6" x2="3.01" y2="6" />
+                            <line x1="3" y1="12" x2="3.01" y2="12" />
+                            <line x1="3" y1="18" x2="3.01" y2="18" />
+                        </svg>
+                        Branch Status List
+                    </h2>
+                    <button class="bsl-expand-btn" onclick="openBranchModal()" title="View all branches">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="bsl-list">
+                    {% for b in branch_health[:5] %}
+                    <div class="bsl-item">
+
+
+                        <div class="bsl-info">
+                            <div class="bsl-name">
+                                {{ b.branch_name }}
+                                {% if b.branch_code %}<span class="bsl-code">({{ b.branch_code }})</span>{% endif %}
+                            </div>
+                            <div class="bsl-status
+                            {%- if b.is_active and b.pending_count == 0 %} bsl-status-ok
+                            {%- elif b.is_active %} bsl-status-warn
+                            {%- else %} bsl-status-err{%- endif %}">
+                                {% if b.is_active and b.pending_count == 0 %}
+                                LMS Status: OK &bull; Active
+                                {% elif b.is_active %}
+                                {{ b.pending_count }} Pending &bull; Under Review
+                                {% else %}
+                                Inactive Branch &bull; System Alert
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div style="padding: 24px; text-align: center; color: var(--ma-muted); font-size: 0.88rem;">
+                        No branches found.
+                    </div>
+                    {% endfor %}
+
+                    {% if branch_health | length > 5 %}
+                    <div style="padding: 10px 14px; text-align: center;">
+                        <button onclick="openBranchModal()"
+                            style="background: none; border: none; color: var(--ma-primary); font-weight: 700; font-size: 0.82rem; cursor: pointer; text-decoration: underline; font-family: inherit;">
+                            View all branches
+                        </button>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
-            <div class="table-container">
-                <table class="status-table" id="branchTable">
+
+            <!-- Branch Enrollment Distribution -->
+            <div class="content-card" style="padding: 16px 20px;">
+                <div class="bsl-header">
+                    <h2
+                        style="margin:0; font-size:1.1rem; font-weight:800; color:var(--ma-primary); display:flex; align-items:center; gap:10px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                        </svg>
+                        Enrollment By Branch
+                        <span
+                            style="font-size: 0.8rem; font-weight: 600; color: #2563eb; background: #eff6ff; padding: 2px 8px; border-radius: 12px; margin-left: 8px;">SY:
+                            {{ active_school_year }}</span>
+                    </h2>
+                    <button class="bsl-expand-btn" onclick="openEnrollmentModal()" title="View all distribution">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 18l6-6-6-6" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="bsl-list">
+                    {% for e in enrollment_dist[:5] %}
+                    <div class="bsl-item">
+                        <div class="bsl-dot" style="background:#eff6ff; color:#3b82f6;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                                <circle cx="9" cy="7" r="4" />
+                            </svg>
+                        </div>
+                        <div class="bsl-info">
+                            <div class="bsl-name">
+                                {{ e.branch_name }}
+                                <span class="bsl-code">(Total: {{ e.total_enrollees }})</span>
+                            </div>
+                            <div class="bsl-status"
+                                style="color: var(--ma-muted); font-size: 0.75rem; font-weight: 600; margin-top:2px;">
+                                Pre-Elem: <span style="color:#3b82f6;">{{ e.pre_elem }}</span> &bull;
+                                Elem: <span style="color:#3b82f6;">{{ e.elem }}</span> &bull;
+                                JHS: <span style="color:#3b82f6;">{{ e.jhs }}</span> &bull;
+                                SHS: <span style="color:#3b82f6;">{{ e.shs }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div style="padding: 24px; text-align: center; color: var(--ma-muted); font-size: 0.88rem;">
+                        No enrollment data found.
+                    </div>
+                    {% endfor %}
+
+                    {% if enrollment_dist | length > 5 %}
+                    <div style="padding: 10px 14px; text-align: center;">
+                        <button onclick="openEnrollmentModal()"
+                            style="background: none; border: none; color: var(--ma-primary); font-weight: 700; font-size: 0.82rem; cursor: pointer; text-decoration: underline; font-family: inherit;">
+                            View all
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div> <!-- End LEFT COLUMN wrapper -->
+
+        <!-- RIGHT COLUMN -->
+        <div style="display: flex; flex-direction: column; gap: 20px; align-self: start;">
+            <!-- Quick Actions -->
+            <div class="content-card">
+                <h2
+                    style="font-size:1.1rem; font-weight:800; color:var(--ma-primary); margin-bottom:18px; display:flex; align-items:center; gap:10px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                    </svg>
+                    Quick Actions
+                </h2>
+                <div class="qa-grid">
+                    <a href="{{ url_for('super_admin.super_admin_branches') }}" class="qa-btn">
+                        <div class="qa-icon" style="background:#eff6ff; color:#2563eb;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect width="16" height="20" x="4" y="2" rx="2" />
+                                <path d="M9 22v-4h6v4" />
+                                <path d="M8 6h.01" />
+                                <path d="M16 6h.01" />
+                                <path d="M8 10h.01" />
+                                <path d="M16 10h.01" />
+                                <path d="M8 14h.01" />
+                                <path d="M16 14h.01" />
+                            </svg>
+                        </div>
+                        <span>Manage Branches</span>
+                    </a>
+                    <a href="{{ url_for('super_admin.superadmin_school_years') }}" class="qa-btn">
+                        <div class="qa-icon" style="background:#eff6ff; color:#2563eb;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+                                <line x1="16" y1="2" x2="16" y2="6" />
+                                <line x1="8" y1="2" x2="8" y2="6" />
+                                <line x1="3" y1="10" x2="21" y2="10" />
+                            </svg>
+                        </div>
+                        <span>School Years</span>
+                    </a>
+
+                    <a href="{{ url_for('super_admin.superadmin_faqs') }}" class="qa-btn">
+                        <div class="qa-icon" style="background:#eff6ff; color:#2563eb;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+                            </svg>
+                        </div>
+                        <span>Manage FAQs</span>
+                    </a>
+                    <a href="/change-password" class="qa-btn">
+                        <div class="qa-icon" style="background:#eff6ff; color:#2563eb;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                            </svg>
+                        </div>
+                        <span>Change Password</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Active School Year Display -->
+            <div class="content-card"
+                style="text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 26px 20px; background: linear-gradient(145deg, #ffffff 0%, #eff6ff 100%);">
+                <div
+                    style="width: 44px; height: 44px; border-radius: 50%; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(37,99,235,0.15);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                </div>
+                <h3
+                    style="margin: 0; font-size: 0.75rem; color: #2563eb; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800;">
+                    Active School Year</h3>
+                <div style="font-size: 1.4rem; font-weight: 900; color: var(--ma-primary); margin-top: 5px;">{{
+                    active_school_year }}</div>
+            </div>
+
+        </div> <!-- End RIGHT COLUMN wrapper -->
+    </div>
+
+
+</div>
+
+<!-- ═══ FULL BRANCH LIST PANEL (slides in from right) ═══ -->
+<div class="branch-modal-overlay" id="branchModalOverlay" onclick="closeBranchModal(event)">
+    <div class="branch-modal-panel" onclick="event.stopPropagation()">
+        <div class="branch-modal-header">
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="8" y1="6" x2="21" y2="6" />
+                    <line x1="8" y1="12" x2="21" y2="12" />
+                    <line x1="8" y1="18" x2="21" y2="18" />
+                    <line x1="3" y1="6" x2="3.01" y2="6" />
+                    <line x1="3" y1="12" x2="3.01" y2="12" />
+                    <line x1="3" y1="18" x2="3.01" y2="18" />
+                </svg>
+                All Branch Status List
+                <span style="font-size: 0.8rem; font-weight: 500; color: var(--ma-muted); margin-left: 4px;">({{
+                    branch_health | length }} branches)</span>
+            </h2>
+            <button class="branch-modal-close" onclick="closeBranchModalDirect()" title="Close">&times;</button>
+        </div>
+        <div class="branch-modal-body">
+            <div class="branch-modal-search">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input type="text" id="modalBranchSearch" placeholder="Search branch name or code..."
+                    oninput="filterModalBranches(this.value)">
+            </div>
+            <div class="table-container" style="max-height: calc(100vh - 185px);">
+                <table class="status-table" id="modalBranchTable">
                     <thead>
                         <tr>
                             <th>Branch Name</th>
@@ -397,9 +857,7 @@
                             <td>
                                 {% if b.pending_count > 0 %}
                                 <span class="badge-pill bg-light-amber">{{ b.pending_count }} PENDING</span>
-                                {% else %}
-                                <span style="color: #aaa;">None</span>
-                                {% endif %}
+                                {% else %}<span style="color: #aaa;">None</span>{% endif %}
                             </td>
                             <td>
                                 <div
@@ -410,7 +868,7 @@
                                 <div
                                     style="width: 80px; height: 6px; background: #e2e8f0; border-radius: 3px; margin-top: 4px; overflow: hidden;">
                                     <div
-                                        style="width: {{ b.attendance_rate }}%; height: 100%; background: {% if b.attendance_rate >= 90 %}#16a34a{% elif b.attendance_rate >= 75 %}#facc15{% else %}#ef4444{% endif %}; transition: width 1s ease-in-out;">
+                                        style="width: {{ b.attendance_rate }}%; height: 100%; background: {% if b.attendance_rate >= 90 %}#16a34a{% elif b.attendance_rate >= 75 %}#facc15{% else %}#ef4444{% endif %};">
                                     </div>
                                 </div>
                             </td>
@@ -418,9 +876,8 @@
                                 {% if b.last_active %}
                                 <div style="font-size: 0.8rem; font-weight: 600; color: #1e40af;">{{
                                     b.last_active.strftime('%b %d, %I:%M %p') }}</div>
-                                {% else %}
-                                <span style="color: #94a3b8; font-size: 0.75rem;">Never Active</span>
-                                {% endif %}
+                                {% else %}<span style="color: #94a3b8; font-size: 0.75rem;">Never Active</span>{% endif
+                                %}
                             </td>
                             <td>
                                 {% if b.is_active %}
@@ -435,71 +892,68 @@
                 </table>
             </div>
         </div>
+    </div>
+</div>
 
-        <!-- Summary Chart -->
-        <div class="content-card" style="text-align: center;">
-            <h2><i class="fas fa-chart-pie"></i> System Overview</h2>
-
-            <div class="donut-container">
-                <canvas id="systemChart" style="width: 100%; height: 100%;"></canvas>
-                <div class="dc-center">
-                    <span class="dc-count" id="totalRecords">0</span>
-                    <div class="dc-text">Total Records</div>
-                </div>
+<!-- ═══ FULL ENROLLMENT DISTRIBUTION PANEL (slides in from right) ═══ -->
+<div class="branch-modal-overlay" id="enrollmentModalOverlay" onclick="closeEnrollmentModal(event)">
+    <div class="branch-modal-panel" onclick="event.stopPropagation()">
+        <div class="branch-modal-header">
+            <h2>
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                Branch Enrollment Distribution
+                <span style="font-size: 0.8rem; font-weight: 500; color: var(--ma-muted); margin-left: 4px;">(SY: {{
+                    active_school_year }})</span>
+            </h2>
+            <button class="branch-modal-close" onclick="closeEnrollmentModalDirect()" title="Close">&times;</button>
+        </div>
+        <div class="branch-modal-body">
+            <div class="branch-modal-search">
+                <i class="fas fa-search"
+                    style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--ma-muted); font-size: 0.9rem;"></i>
+                <input type="text" id="modalEnrollmentSearch" placeholder="Search branch..."
+                    onkeyup="filterModalEnrollments(this.value)">
             </div>
-
-            <div class="chart-legend">
-                <div class="legend-item">
-                    <span class="legend-box" style="background: var(--ma-primary);"></span> Branches ({{ total_branches
-                    }})
-                </div>
-                <div class="legend-item">
-                    <span class="legend-box" style="background: var(--ma-gold);"></span> Active Students ({{
-                    total_students - total_pending }})
-                </div>
-                <div class="legend-item">
-                    <span class="legend-box" style="background: #64748b);"></span> Pending ({{ total_pending }})
-                </div>
-                <div class="legend-item">
-                    <span class="legend-box" style="background: var(--ma-accent);"></span> Staff ({{ total_staff }})
-                </div>
-            </div>
-
-            <div
-                style="margin-top: 24px; padding: 18px; background: #f8fafc; border: 1px solid var(--ma-border); border-radius: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-                <div style="text-align: left;">
-                    <div
-                        style="font-size: 0.65rem; color: var(--ma-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">
-                        Active Nodes</div>
-                    <div style="font-size: 1.1rem; font-weight: 900; color: var(--ma-primary);">{{ active_branches }}/{{
-                        total_branches }}</div>
-                </div>
-                <div
-                    style="text-align: center; border-left: 1px solid var(--ma-border); border-right: 1px solid var(--ma-border);">
-                    <div
-                        style="font-size: 0.65rem; color: var(--ma-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">
-                        Avg Attendance</div>
-                    <div style="font-size: 1.1rem; font-weight: 900; color: #8b5cf6;">{{ global_attendance_rate | round
-                        | int if global_attendance_rate % 1 == 0 else global_attendance_rate }}%</div>
-                </div>
-                <div style="text-align: right;">
-                    <div
-                        style="font-size: 0.65rem; color: var(--ma-muted); font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">
-                        System Health</div>
-                    <div style="font-size: 1.1rem; font-weight: 900; color: #10b981;">{{ ((active_branches /
-                        total_branches * 100)|round|int) if total_branches > 0 else 100 }}%</div>
-                </div>
-            </div>
-
-            <!-- NEW: WORKFORCE DISTRIBUTION CHART -->
-            <div style="margin-top: 32px; text-align: left;">
-                <h2
-                    style="font-size: 1.15rem; font-weight: 800; color: var(--ma-primary); margin-bottom: 20px; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-users-cog"></i> Total Accounts
-                </h2>
-                <div style="height: 200px;">
-                    <canvas id="workforceChart"></canvas>
-                </div>
+            <div class="table-container">
+                <table class="status-table" id="modalEnrollmentTable">
+                    <thead>
+                        <tr>
+                            <th>Branch Name</th>
+                            <th>Total Enrollees</th>
+                            <th>Pre-Elem</th>
+                            <th>Elementary</th>
+                            <th>Junior HS</th>
+                            <th>Senior HS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in enrollment_dist %}
+                        <tr>
+                            <td>
+                                <div style="font-weight: 700; color: var(--ma-primary);">{{ e.branch_name }}</div>
+                            </td>
+                            <td>
+                                <div style="font-weight: 800; font-size: 1rem; color: var(--ma-primary);">{{
+                                    e.total_enrollees }}</div>
+                            </td>
+                            <td><span class="badge-pill" style="background:#eff6ff; color:#2563eb;">{{ e.pre_elem
+                                    }}</span></td>
+                            <td><span class="badge-pill" style="background:#eff6ff; color:#2563eb;">{{ e.elem }}</span>
+                            </td>
+                            <td><span class="badge-pill" style="background:#fdf4ff; color:#9333ea;">{{ e.jhs }}</span>
+                            </td>
+                            <td><span class="badge-pill" style="background:#fefce8; color:#ca8a04;">{{ e.shs }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -507,98 +961,65 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const totalPop = {{ total_branches + total_students + total_staff }};
-        const countEl = document.getElementById('totalRecords');
-        const labelEl = document.querySelector('.dc-text');
+    // ── Branch Modal ──
+    function openBranchModal() {
+        document.getElementById('branchModalOverlay').classList.add('open');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => {
+            const inp = document.getElementById('modalBranchSearch');
+            if (inp) inp.focus();
+        }, 380);
+    }
 
-        // Initial State
-        countEl.innerText = totalPop;
+    function closeBranchModal(e) {
+        if (e.target === document.getElementById('branchModalOverlay')) closeBranchModalDirect();
+    }
 
-        const ctx = document.getElementById('systemChart').getContext('2d');
-        const systemChart = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: ['Branches', 'Active Students', 'Pending', 'Staff'],
-                datasets: [{
-                    data: [
-                        {{ total_branches }},
-                        {{ total_students - total_pending }},
-                        {{ total_pending }},
-                        {{ total_staff }}
-                    ],
-                    backgroundColor: ['#1a3a8f', '#facc15', '#64748b', '#3b82f6'],
-                    borderWidth: 2,
-                    borderColor: '#ffffff',
-                    hoverOffset: 12
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '75%',
-                plugins: {
-                    legend: { display: false },
-                    tooltip: { enabled: false }
-                },
-                onHover: (event, chartElement) => {
-                    if (chartElement.length > 0) {
-                        const index = chartElement[0].index;
-                        const label = systemChart.data.labels[index];
-                        const value = systemChart.data.datasets[0].data[index];
+    function closeBranchModalDirect() {
+        document.getElementById('branchModalOverlay').classList.remove('open');
+        document.body.style.overflow = '';
+    }
 
-                        countEl.innerText = value;
-                        labelEl.innerText = label;
-                        countEl.style.color = systemChart.data.datasets[0].backgroundColor[index];
-                    } else {
-                        countEl.innerText = totalPop;
-                        labelEl.innerText = 'Total Records';
-                        countEl.style.color = 'var(--ma-primary)';
-                    }
-                }
-            }
+    function filterModalBranches(query) {
+        const q = query.toLowerCase();
+        document.querySelectorAll('#modalBranchTable tbody tr').forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(q) ? '' : 'none';
         });
+    }
 
-        // Workforce Chart
-        const wfCtx = document.getElementById('workforceChart').getContext('2d');
-        const workforceChart = new Chart(wfCtx, {
-            type: 'bar',
-            data: {
-                labels: [{% for w in workforce_stats %}'{{ w.role | title }}'{% if not loop.last %}, {% endif %}{% endfor %}],
-                datasets: [{
-                    label: 'Headcount',
-                    data: [{% for w in workforce_stats %}{{ w.cnt }}{% if not loop.last %}, {% endif %}{% endfor %}],
-                    backgroundColor: '#3b82f6',
-                    borderRadius: 8,
-                    barThickness: 20
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    x: { grid: { display: false }, ticks: { display: false } },
-                    y: { grid: { display: false } }
-                }
-            }
-        });
-
-        // Branch Search Filter
-        const searchInput = document.getElementById('branchSearch');
-        if (searchInput) {
-            searchInput.addEventListener('keyup', function () {
-                const query = this.value.toLowerCase();
-                const rows = document.querySelectorAll('#branchTable tbody tr');
-                rows.forEach(row => {
-                    const text = row.innerText.toLowerCase();
-                    row.style.display = text.includes(query) ? '' : 'none';
-                });
-            });
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            closeBranchModalDirect();
+            closeEnrollmentModalDirect();
         }
     });
+
+    // ── Enrollment Modal ──
+    function openEnrollmentModal() {
+        document.getElementById('enrollmentModalOverlay').classList.add('open');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => {
+            const inp = document.getElementById('modalEnrollmentSearch');
+            if (inp) inp.focus();
+        }, 380);
+    }
+
+    function closeEnrollmentModal(e) {
+        if (e.target === document.getElementById('enrollmentModalOverlay')) closeEnrollmentModalDirect();
+    }
+
+    function closeEnrollmentModalDirect() {
+        document.getElementById('enrollmentModalOverlay').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    function filterModalEnrollments(query) {
+        const q = query.toLowerCase();
+        document.querySelectorAll('#modalEnrollmentTable tbody tr').forEach(row => {
+            row.style.display = row.innerText.toLowerCase().includes(q) ? '' : 'none';
+        });
+    }
+
+
 </script>
 {% endblock %}

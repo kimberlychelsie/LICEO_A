@@ -129,7 +129,26 @@ def super_admin_dashboard():
         """)
         global_attendance_rate = cursor.fetchone()["rate"] or 0
         
-        top_branches = branch_health[:3]
+        # ── Active School Year ──
+        cursor.execute("SELECT label FROM school_years WHERE is_active = TRUE LIMIT 1")
+        sy_row = cursor.fetchone()
+        active_school_year = sy_row["label"] if sy_row else "No Active SY"
+
+        # ── Branch Enrollment Distribution ──
+        cursor.execute("""
+            SELECT 
+                b.branch_name,
+                SUM(CASE WHEN e.grade_level ILIKE '%pre%' OR e.grade_level ILIKE '%nursery%' OR e.grade_level ILIKE '%kinder%' THEN 1 ELSE 0 END) as pre_elem,
+                SUM(CASE WHEN e.grade_level ILIKE '%grade 1 %' OR e.grade_level ILIKE '%grade 2%' OR e.grade_level ILIKE '%grade 3%' OR e.grade_level ILIKE '%grade 4%' OR e.grade_level ILIKE '%grade 5%' OR e.grade_level ILIKE '%grade 6%' OR e.grade_level ILIKE '%grade 1' OR e.grade_level ILIKE '%elementary%' THEN 1 ELSE 0 END) as elem,
+                SUM(CASE WHEN e.grade_level ILIKE '%grade 7%' OR e.grade_level ILIKE '%grade 8%' OR e.grade_level ILIKE '%grade 9%' OR e.grade_level ILIKE '%grade 10%' OR e.grade_level ILIKE '%jhs%' OR e.grade_level ILIKE '%junior%' THEN 1 ELSE 0 END) as jhs,
+                SUM(CASE WHEN e.grade_level ILIKE '%grade 11%' OR e.grade_level ILIKE '%grade 12%' OR e.grade_level ILIKE '%shs%' OR e.grade_level ILIKE '%senior%' THEN 1 ELSE 0 END) as shs,
+                COUNT(e.enrollment_id) as total_enrollees
+            FROM branches b
+            LEFT JOIN enrollments e ON e.branch_id = b.branch_id 
+            GROUP BY b.branch_id, b.branch_name
+            ORDER BY total_enrollees DESC
+        """)
+        enrollment_dist = cursor.fetchall() or []
 
         return render_template(
             "super_admin_dashboard.html",
@@ -141,7 +160,8 @@ def super_admin_dashboard():
             workforce_stats=workforce_stats,
             funnel_stats=funnel_stats,
             branch_health=branch_health,
-            top_branches=top_branches,
+            active_school_year=active_school_year,
+            enrollment_dist=enrollment_dist,
             global_attendance_rate=global_attendance_rate,
             missing_code=missing_code,
             missing_admin=missing_admin,
@@ -767,9 +787,33 @@ def superadmin_faqs():
             else:
                 error = "Question and answer are required."
 
-        cur.execute("SELECT id, question, answer FROM chatbot_faqs WHERE branch_id IS NULL ORDER BY id ASC")
+        try:
+            page = max(1, int(request.args.get('page', 1)))
+        except ValueError:
+            page = 1
+        per_page = 10
+        offset = (page - 1) * per_page
+
+        cur.execute("""
+            SELECT id, question, answer, COUNT(*) OVER() as total_count 
+            FROM chatbot_faqs 
+            WHERE branch_id IS NULL 
+            ORDER BY id DESC
+            LIMIT %s OFFSET %s
+        """, (per_page, offset))
+        
         faqs = cur.fetchall() or []
-        return render_template("superadmin_faqs.html", faqs=faqs, message=message, error=error)
+        total_items = faqs[0][3] if faqs else 0
+        total_pages = (total_items + per_page - 1) // per_page
+
+        return render_template(
+            "superadmin_faqs.html", 
+            faqs=faqs, 
+            message=message, 
+            error=error,
+            page=page,
+            total_pages=total_pages
+        )
 
     finally:
         try:
@@ -957,7 +1001,7 @@ def superadmin_set_active_year():
                     """, (new_year_id, new_year_id, old_year_id, branch_id))
 
         db.commit()
-        flash(f"GLOBAL RESET COMPLETE: '{label}' is now the only active year for all active nodes.", "success")
+        flash(f"All branches updated to School Year {label}", "success")
     except Exception as e:
         db.rollback()
         flash(f"Error setting active school year: {e}", "error")

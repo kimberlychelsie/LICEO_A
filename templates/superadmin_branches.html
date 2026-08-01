@@ -74,10 +74,44 @@
     }
 
     /* ── High-Fidelity Form ── */
+    .branch-layout-grid {
+        display: grid;
+        grid-template-columns: 450px 1fr;
+        gap: 24px;
+        align-items: start;
+        margin-bottom: 32px;
+    }
+    @media (max-width: 1024px) {
+        .branch-layout-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .bsl-expand-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        border: 1.5px solid var(--ma-border);
+        background: #f8fafc;
+        cursor: pointer;
+        color: var(--ma-primary);
+        font-size: 1rem;
+        font-weight: 700;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+    }
+    .bsl-expand-btn:hover {
+        background: var(--ma-primary);
+        color: #fff;
+        border-color: var(--ma-primary);
+        transform: scale(1.08);
+    }
     .entry-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        gap: 20px;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
         margin-bottom: 24px;
     }
 
@@ -290,6 +324,61 @@
     .action-item.danger {
         color: #dc2626;
     }
+
+    .stat-box {
+        background: #f8fafc;
+        border: 1px solid var(--ma-border);
+        border-radius: 16px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 900;
+        color: var(--ma-primary);
+        line-height: 1;
+        margin-bottom: 8px;
+    }
+    .stat-label {
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: var(--ma-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .page-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        border: none;
+        background: transparent;
+        color: #64748b;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        font-size: 0.95rem;
+    }
+    .page-btn:hover:not(:disabled) {
+        background: #f1f5f9;
+        color: #3b82f6;
+    }
+    .page-btn.active {
+        background: #3b82f6;
+        color: white;
+        box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);
+    }
+    .page-btn:disabled {
+        color: #cbd5e1;
+        cursor: not-allowed;
+    }
 </style>
 
 <!-- Font Awesome -->
@@ -303,8 +392,18 @@
         <h1>Branch Management</h1>
     </div>
 
+    <!-- 1. COLLAPSIBLE ADD BRANCH -->
+    <div class="modern-card" style="padding: 0; margin-bottom: 24px; border: 2px dashed #cbd5e1; cursor: pointer; transition: all 0.2s; background: #f8fafc;" onclick="toggleCreateBranchForm()" id="addBranchHeader">
+        <div style="padding: 20px; display: flex; justify-content: center; align-items: center; gap: 12px; color: var(--ma-primary);">
+            <i class="fas fa-plus-circle" style="font-size: 1.2rem; color: var(--ma-gold);"></i>
+            <h2 style="margin: 0; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.05em;">Add New Branch (Click to expand)</h2>
+            <i class="fas fa-chevron-down" id="addBranchChevron" style="transition: transform 0.3s;"></i>
+        </div>
+    </div>
+
+    <div id="createBranchFormContainer" style="display: none; margin-bottom: 24px;">
     <!-- Create New Branch -->
-    <div class="modern-card">
+    <div class="modern-card" style="padding: 24px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
             <h2 style="margin: 0;"><i class="fas fa-plus-circle" style="color: var(--ma-gold);"></i> Create Branch</h2>
             <button type="button" class="btn-prem" onclick="openRetiredAdminModal()"
@@ -314,20 +413,8 @@
         </div>
         <form method="POST" action="{{ url_for('super_admin.super_admin_branches') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="entry-grid">
-                <div class="form-node">
-                    <label>Branch Name</label>
-                    <input type="text" name="branch_name" placeholder="e.g. Liceo de Majayjay" required>
-                </div>
-                <div class="form-node">
-                    <label>Branch Code</label>
-                    <input type="text" name="branch_code" placeholder="e.g. LDMAJ" style="text-transform: uppercase;"
-                        required>
-                </div>
-                <div class="form-node">
-                    <label>Location (Town Name)</label>
-                    <input type="text" name="location" placeholder="e.g. Majayjay" required>
-                </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px;">
+                <!-- Row 1: Admin Name -->
                 <div class="form-node">
                     <label>Admin First Name</label>
                     <input type="text" name="admin_first_name" placeholder="e.g. Jocelyn" required>
@@ -340,6 +427,22 @@
                     <label>Admin Last Name</label>
                     <input type="text" name="admin_last_name" placeholder="e.g. Ramirez" required>
                 </div>
+
+                <!-- Row 2: Branch Details -->
+                <div class="form-node">
+                    <label>Branch Name</label>
+                    <input type="text" name="branch_name" placeholder="e.g. Liceo de Majayjay" required>
+                </div>
+                <div class="form-node">
+                    <label>Branch Code</label>
+                    <input type="text" name="branch_code" placeholder="e.g. LDMAJ" style="text-transform: uppercase;" required>
+                </div>
+                <div class="form-node">
+                    <label>Location (Town Name)</label>
+                    <input type="text" name="location" placeholder="e.g. Majayjay" required>
+                </div>
+
+                <!-- Row 3: Additional Details -->
                 <div class="form-node">
                     <label>Gender</label>
                     <select name="gender" required>
@@ -357,14 +460,17 @@
             </div>
         </form>
     </div>
+    </div>
 
-    <!-- Registry Table -->
+    <!-- 3. BRANCH LIST -->
     <div class="modern-card" style="padding:0;">
         <div
-            style="padding: 32px; display: flex; align-items:center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
-            <h2 style="margin:0;">Branch List</h2>
+            style="padding: 24px; display: flex; align-items:center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
+            <h2 style="margin:0; display:flex; align-items:center; gap: 10px;">
+                Branch List
+            </h2>
             <input type="text" id="branchSearch" placeholder="Search branch..."
-                style="padding: 10px 16px; border: 1px solid var(--ma-border); border-radius: 12px; width: 300px;">
+                style="padding: 10px 16px; border: 1px solid var(--ma-border); border-radius: 12px; width: 250px;">
         </div>
 
         <div class="vault-wrapper">
@@ -460,17 +566,15 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <!-- Pagination Controls -->
+            <div id="paginationControls" style="display: flex; justify-content: center; align-items: center; padding: 24px; gap: 8px; border-top: 1px solid var(--ma-border);">
+                <button type="button" class="page-btn" id="prevPageBtn" onclick="changePage(-1)"><i class="fas fa-chevron-left"></i></button>
+                <div id="pageNumbers" style="display: flex; gap: 4px; align-items: center;">
+                    <!-- JS will inject page numbers here -->
+                </div>
+                <button type="button" class="page-btn" id="nextPageBtn" onclick="changePage(1)"><i class="fas fa-chevron-right"></i></button>
+            </div>
         </div>
-    </div>
-
-    <!-- Global Network Map -->
-    <div class="modern-card">
-        <h2><i class="fas fa-map-marked-alt" style="color: var(--ma-gold);"></i> Branch Locations</h2>
-        <p style="font-size: 0.85rem; color: var(--ma-muted); margin-top: -16px; margin-bottom: 24px;">
-            Interactive map showing all registered Liceo branches across Laguna.
-        </p>
-        <div id="globalNetworkMap"
-            style="height: 500px; border-radius: 20px; border: 2px solid var(--ma-border); z-index: 1;"></div>
     </div>
 </div>
 
@@ -889,11 +993,89 @@
     }
     document.addEventListener('click', () => { document.querySelectorAll('.action-dropdown').forEach(d => d.classList.remove('show')); });
 
+    // Branch List Pagination & Search
+    let currentPage = 1;
+    const itemsPerPage = 5;
+    let filteredRows = [];
+    const tableRows = Array.from(document.querySelectorAll('.vault-table tbody tr'));
+
+    function renderTable() {
+        const query = document.getElementById('branchSearch').value.toLowerCase();
+        
+        filteredRows = tableRows.filter(row => row.innerText.toLowerCase().includes(query));
+        const totalPages = Math.ceil(filteredRows.length / itemsPerPage) || 1;
+        
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+
+        const startIndex = (currentPage - 1) * itemsPerPage;
+        const endIndex = startIndex + itemsPerPage;
+
+        tableRows.forEach(row => row.style.display = 'none');
+        filteredRows.slice(startIndex, endIndex).forEach(row => row.style.display = '');
+
+        renderPagination(totalPages);
+    }
+
+    function renderPagination(totalPages) {
+        const pageNumbers = document.getElementById('pageNumbers');
+        pageNumbers.innerHTML = '';
+        
+        let startPage = Math.max(1, currentPage - 2);
+        let endPage = Math.min(totalPages, currentPage + 2);
+        
+        if (currentPage <= 3) endPage = Math.min(totalPages, 5);
+        if (currentPage >= totalPages - 2) startPage = Math.max(1, totalPages - 4);
+
+        if (startPage > 1) {
+            pageNumbers.innerHTML += `<button type="button" class="page-btn" onclick="goToPage(1)">1</button>`;
+            if (startPage > 2) pageNumbers.innerHTML += `<span style="display:flex; align-items:center; color: #cbd5e1; padding: 0 4px;">...</span>`;
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            pageNumbers.innerHTML += `<button type="button" class="page-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+        }
+
+        if (endPage < totalPages) {
+            if (endPage < totalPages - 1) pageNumbers.innerHTML += `<span style="display:flex; align-items:center; color: #cbd5e1; padding: 0 4px;">...</span>`;
+            pageNumbers.innerHTML += `<button type="button" class="page-btn" onclick="goToPage(${totalPages})">${totalPages}</button>`;
+        }
+
+        document.getElementById('prevPageBtn').disabled = currentPage === 1;
+        document.getElementById('nextPageBtn').disabled = currentPage === totalPages;
+    }
+
+    function goToPage(page) {
+        const query = document.getElementById('branchSearch').value.toLowerCase();
+        const totalPages = Math.ceil(tableRows.filter(r => r.innerText.toLowerCase().includes(query)).length / itemsPerPage) || 1;
+        if (page >= 1 && page <= totalPages) {
+            currentPage = page;
+            renderTable();
+        }
+    }
+
+    function changePage(delta) {
+        goToPage(currentPage + delta);
+    }
+
     document.getElementById('branchSearch').addEventListener('keyup', function () {
-        const query = this.value.toLowerCase();
-        document.querySelectorAll('.vault-table tbody tr').forEach(row => {
-            row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none';
-        });
+        currentPage = 1;
+        renderTable();
     });
+
+    // Initial render
+    renderTable();
+
+    function toggleCreateBranchForm() {
+        const container = document.getElementById('createBranchFormContainer');
+        const chevron = document.getElementById('addBranchChevron');
+        if (container.style.display === 'none') {
+            container.style.display = 'block';
+            chevron.style.transform = 'rotate(180deg)';
+        } else {
+            container.style.display = 'none';
+            chevron.style.transform = 'rotate(0deg)';
+        }
+    }
 </script>
 {% endblock %}

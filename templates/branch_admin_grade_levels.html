@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 {% block title %}Grade Levels{% endblock %}
 {% block content %}
 <style>
@@ -210,62 +210,118 @@
 
     /* ── Responsive Refinements ── */
     @media (max-width: 1024px) {
-        .ba-container { padding: 32px 20px; }
-        .premium-welcome h1 { font-size: 1.8rem; }
+        .ba-container {
+            padding: 32px 20px;
+        }
+
+        .premium-welcome h1 {
+            font-size: 1.8rem;
+        }
     }
 
     @media (max-width: 768px) {
-        .ba-container { padding: 12px 8px; }
-        .premium-welcome { padding: 16px; border-radius: 16px; margin-bottom: 20px; }
-        .premium-welcome h1 { font-size: 1.3rem; }
-        .status-line { font-size: 0.7rem; }
+        .ba-container {
+            padding: 12px 8px;
+        }
 
-        .modern-card { padding: 16px; border-radius: 16px; background: transparent; border: none; box-shadow: none; }
-        .modern-card h2 { font-size: 0.9rem; margin-bottom: 16px; padding: 0 4px; }
+        .premium-welcome {
+            padding: 16px;
+            border-radius: 16px;
+            margin-bottom: 20px;
+        }
 
-        .form-control { padding: 10px 14px; font-size: 0.8rem; border-radius: 12px; }
-        .btn-prem { padding: 10px 16px; font-size: 0.8rem; border-radius: 12px; }
+        .premium-welcome h1 {
+            font-size: 1.3rem;
+        }
+
+        .status-line {
+            font-size: 0.7rem;
+        }
+
+        .modern-card {
+            padding: 16px;
+            border-radius: 16px;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+        }
+
+        .modern-card h2 {
+            font-size: 0.9rem;
+            margin-bottom: 16px;
+            padding: 0 4px;
+        }
+
+        .form-control {
+            padding: 10px 14px;
+            font-size: 0.8rem;
+            border-radius: 12px;
+        }
+
+        .btn-prem {
+            padding: 10px 16px;
+            font-size: 0.8rem;
+            border-radius: 12px;
+        }
 
         /* ── Table-to-Card Transformation ── */
-        .vault-table thead { display: none; }
-        .vault-table tbody { display: flex; flex-direction: column; gap: 12px; }
-        .vault-table tr { 
-            display: block; 
-            background: #fff; 
-            border-radius: 20px; 
-            padding: 16px; 
+        .vault-table thead {
+            display: none;
+        }
+
+        .vault-table tbody {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .vault-table tr {
+            display: block;
+            background: #fff;
+            border-radius: 20px;
+            padding: 16px;
             border: 1px solid var(--ma-border);
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
         }
-        .vault-table td { 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            padding: 8px 0; 
+
+        .vault-table td {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
             border: none;
             font-size: 0.75rem;
         }
-        .vault-table td::before { 
-            content: attr(data-label); 
-            font-weight: 800; 
-            color: var(--ma-muted); 
+
+        .vault-table td::before {
+            content: attr(data-label);
+            font-weight: 800;
+            color: var(--ma-muted);
             font-size: 0.65rem;
             text-transform: uppercase;
         }
-        .vault-table td:first-child { 
-            background: #f8fafc; 
-            margin: -16px -16px 12px -16px; 
-            padding: 12px 16px; 
-            border-radius: 20px 20px 0 0; 
+
+        .vault-table td:first-child {
+            background: #f8fafc;
+            margin: -16px -16px 12px -16px;
+            padding: 12px 16px;
+            border-radius: 20px 20px 0 0;
             justify-content: flex-start;
         }
-        .vault-table td:first-child::before { display: none; }
-        
-        .table-responsive { overflow: visible; }
+
+        .vault-table td:first-child::before {
+            display: none;
+        }
+
+        .table-responsive {
+            overflow: visible;
+        }
     }
 
     @media (max-width: 480px) {
-        .premium-welcome h1 { font-size: 1.1rem; }
+        .premium-welcome h1 {
+            font-size: 1.1rem;
+        }
     }
 
     .table-responsive {
@@ -283,42 +339,58 @@
 
 <div class="ba-container">
 
-    <div class="premium-welcome">
-        <h1>Grade Level Registry</h1>
-        <div class="status-line">
-            <span class="pulse-dot"></span>
-            Academic Grade Levels Configuration
-        </div>
-    </div>
+    <header style="margin-bottom: 32px;">
+        <h1
+            style="font-size: 2.8rem; font-weight: 900; color: #1e40af; letter-spacing: -1.5px; margin: 0; line-height: 1.1;">
+            Grade Level Registry</h1>
+    </header>
 
     <div class="single-col" style="display: flex; flex-direction: column; gap: 32px;">
         <!-- Add Form -->
         {% if is_branch_active_status %}
         <div class="col-form" style="max-width: 600px; width: 100%; margin: 0 auto;">
-            <div class="modern-card">
-                <h2>Add Grade Level</h2>
-                <form method="post" action="{{ url_for('branch_admin.branch_admin_grade_levels') }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="form-node">
-                        <label>Level Name</label>
-                        <select class="form-control" name="name" required>
-                            <option value="" disabled selected>-- Select Grade Level --</option>
-                            {% for master_name in available_grade_names %}
-                                <option value="{{ master_name }}">{{ master_name }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
+            <!-- Collapsible Add Header -->
+            <div class="modern-card"
+                style="padding: 0; margin-bottom: 24px; border: 2px dashed #cbd5e1; cursor: pointer; transition: all 0.2s; background: #f8fafc;"
+                onclick="toggleCreateGradeForm()" id="addGradeHeader">
+                <div
+                    style="padding: 20px; display: flex; justify-content: center; align-items: center; gap: 12px; color: var(--ma-primary);">
+                    <i class="fas fa-plus-circle" style="font-size: 1.2rem; color: var(--ma-gold);"></i>
+                    <h2
+                        style="margin: 0; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block;">
+                        ADD NEW GRADE LEVEL (CLICK TO EXPAND)</h2>
+                    <i class="fas fa-chevron-down" id="addGradeChevron" style="transition: transform 0.3s;"></i>
+                </div>
+            </div>
 
-                    {% if grades|length >= 20 %}
-                    <button type="button" class="btn-prem btn-primary" disabled style="width: 100%;">Limit
-                        Reached</button>
-                    <div
-                        style="font-size: 0.75rem; color: #dc2626; margin-top: 12px; text-align: center; font-weight: 600;">
-                        Maximum of 20 levels reached.</div>
-                    {% else %}
-                    <button type="submit" class="btn-prem btn-primary" style="width: 100%;">Add Grade Level</button>
-                    {% endif %}
-                </form>
+            <!-- Add Form Container -->
+            <div id="createGradeFormContainer" style="display: none;">
+                <div class="modern-card">
+                    <h2 style="margin-top: 0;"><i class="fas fa-plus-circle" style="color: var(--ma-gold);"></i> Add
+                        Grade Level</h2>
+                    <form method="post" action="{{ url_for('branch_admin.branch_admin_grade_levels') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="form-node">
+                            <label>Level Name</label>
+                            <select class="form-control" name="name" required>
+                                <option value="" disabled selected>-- Select Grade Level --</option>
+                                {% for master_name in available_grade_names %}
+                                <option value="{{ master_name }}">{{ master_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        {% if grades|length >= 20 %}
+                        <button type="button" class="btn-prem btn-primary" disabled style="width: 100%;">Limit
+                            Reached</button>
+                        <div
+                            style="font-size: 0.75rem; color: #dc2626; margin-top: 12px; text-align: center; font-weight: 600;">
+                            Maximum of 20 levels reached.</div>
+                        {% else %}
+                        <button type="submit" class="btn-prem btn-primary" style="width: 100%;">Add Grade Level</button>
+                        {% endif %}
+                    </form>
+                </div>
             </div>
         </div>
         {% endif %}
@@ -330,37 +402,41 @@
                 {% if grades %}
                 <div class="table-responsive">
                     <table class="vault-table">
-                    <thead>
-                        <tr>
-                            <th style="width: 80px;">Order</th>
-                            <th>Identity</th>
-                            <th style="text-align: right;">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for g in grades %}
-                        <tr>
-                            <td data-label="Order">
-                                <strong style="color: var(--ma-primary);">{{ g[2] }}</strong>
-                            </td>
-                            <td data-label="Identity">
-                                <div style="font-weight: 800; color: var(--ma-primary);">{{ g[1] }}</div>
-                            </td>
-                            <td data-label="Actions" style="text-align: right; white-space: nowrap;">
-                                <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                                    <button class="btn-prem btn-primary" style="padding: 6px 16px; font-size: 0.8rem;" onclick='openEditModal({{ g[0] }}, {{ g[2] }}, {{ g[1]|tojson }})'>
-                                        <i class="fas fa-edit"></i> Edit
-                                    </button>
-                                    <button class="btn-prem btn-danger" style="padding: 6px 16px; font-size: 0.8rem;" onclick="confirmGradeDelete({{ g[0] }}, '{{ g[1]|e }}')">
-                                        <i class="fas fa-trash"></i> Delete
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                        <thead>
+                            <tr>
+                                <th style="width: 80px;">Order</th>
+                                <th>Identity</th>
+                                <th style="text-align: right;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for g in grades %}
+                            <tr>
+                                <td data-label="Order">
+                                    <strong style="color: var(--ma-primary);">{{ g[2] }}</strong>
+                                </td>
+                                <td data-label="Identity">
+                                    <div style="font-weight: 800; color: var(--ma-primary);">{{ g[1] }}</div>
+                                </td>
+                                <td data-label="Actions" style="text-align: right; white-space: nowrap;">
+                                    <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                        <button class="btn-prem btn-primary"
+                                            style="padding: 6px 16px; font-size: 0.8rem;"
+                                            onclick='openEditModal({{ g[0] }}, {{ g[2] }}, {{ g[1]|tojson }})'>
+                                            <i class="fas fa-edit"></i> Edit
+                                        </button>
+                                        <button class="btn-prem btn-danger"
+                                            style="padding: 6px 16px; font-size: 0.8rem;"
+                                            onclick="confirmGradeDelete({{ g[0] }}, '{{ g[1]|e }}')">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
                 {% else %}
                 <div style="text-align:center; padding: 40px; color: var(--ma-muted); font-size: 0.9rem;">
                     <i class="fas fa-folder-open"
@@ -409,7 +485,7 @@
                 <select name="edit_name" id="edit_name" class="form-control" required>
                     <option value="" disabled>-- Select Grade Level --</option>
                     {% for master_name in available_grade_names %}
-                        <option value="{{ master_name }}">{{ master_name }}</option>
+                    <option value="{{ master_name }}">{{ master_name }}</option>
                     {% endfor %}
                 </select>
             </div>
@@ -423,6 +499,18 @@
 </div>
 
 <script>
+    function toggleCreateGradeForm() {
+        const container = document.getElementById('createGradeFormContainer');
+        const chevron = document.getElementById('addGradeChevron');
+        if (container.style.display === 'none') {
+            container.style.display = 'block';
+            chevron.style.transform = 'rotate(180deg)';
+        } else {
+            container.style.display = 'none';
+            chevron.style.transform = 'rotate(0deg)';
+        }
+    }
+
     let initialGradeData = {};
 
     function openEditModal(gradeId, order, name) {
