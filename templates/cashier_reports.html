@@ -132,11 +132,71 @@
         border: none;
         cursor: pointer;
         transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
 
     .btn-generate:hover {
         background: #1e40af;
         transform: translateY(-1px);
+    }
+
+    .btn-export {
+        padding: 10px 20px;
+        border-radius: 10px;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+    }
+
+    .btn-export-excel {
+        background: #16a34a;
+        color: #fff;
+    }
+
+    .btn-export-excel:hover {
+        background: #15803d;
+        transform: translateY(-1px);
+    }
+
+    .btn-export-pdf {
+        background: #dc2626;
+        color: #fff;
+    }
+
+    .btn-export-pdf:hover {
+        background: #b91c1c;
+        transform: translateY(-1px);
+    }
+
+    .range-select {
+        padding: 10px 16px;
+        border-radius: 10px;
+        border: 1.5px solid var(--report-border);
+        font-family: inherit;
+        font-weight: 600;
+        color: var(--report-text);
+        background: #fbfcfe;
+        cursor: pointer;
+    }
+
+    .controls-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .controls-row .sep {
+        width: 1px;
+        height: 32px;
+        background: var(--report-border);
     }
 
     /* ── Table Section ── */
@@ -236,6 +296,171 @@
         text-align: center;
         color: var(--report-muted);
     }
+
+    /* ── Official Print Stylesheet ── */
+    @media print {
+        @page {
+            size: letter;
+            margin: 18mm 20mm;
+        }
+
+        body {
+            background: #ffffff !important;
+            color: #0f172a !important;
+            font-family: 'Plus Jakarta Sans', sans-serif !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        /* Hide all website navigation & non-printable elements */
+        .sb-sidebar, .sidebar, nav, header, .date-selector-card, .header-info p,
+        .btn-view, th:last-child, td:last-child, .faq-widget, .chat-widget, .no-print,
+        a[href*="dashboard"] {
+            display: none !important;
+        }
+
+        .report-wrap {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+        }
+
+        .report-header {
+            border-bottom: 2px solid #1e3a8a !important;
+            padding-bottom: 12px !important;
+            margin-bottom: 20px !important;
+            display: block !important;
+        }
+
+        .header-info h1 {
+            font-size: 1.4rem !important;
+            color: #1e3a8a !important;
+            margin: 0 !important;
+            text-transform: uppercase;
+            letter-spacing: -0.01em;
+        }
+
+        .print-only-header {
+            display: block !important;
+            font-size: 0.8rem;
+            color: #475569;
+            font-weight: 600;
+            margin-top: 4px;
+            line-height: 1.6;
+        }
+
+        .summary-grid {
+            display: flex !important;
+            gap: 16px !important;
+            margin-bottom: 20px !important;
+        }
+
+        .stat-card {
+            flex: 1 !important;
+            padding: 14px 18px !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 10px !important;
+            box-shadow: none !important;
+            background: #f8fafc !important;
+        }
+
+        .stat-label {
+            font-size: 0.65rem !important;
+            color: #475569 !important;
+        }
+
+        .stat-value {
+            font-size: 1.5rem !important;
+            color: #0f172a !important;
+        }
+
+        .data-card {
+            box-shadow: none !important;
+            border: 1px solid #cbd5e1 !important;
+            border-radius: 10px !important;
+        }
+
+        .data-table-header {
+            padding: 10px 18px !important;
+            background: #f1f5f9 !important;
+            border-bottom: 1px solid #cbd5e1 !important;
+        }
+
+        .data-table-header h2 {
+            font-size: 0.85rem !important;
+            color: #0f172a !important;
+        }
+
+        table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+        }
+
+        th {
+            padding: 8px 12px !important;
+            font-size: 0.65rem !important;
+            background: #f8fafc !important;
+            color: #334155 !important;
+            border-bottom: 2px solid #cbd5e1 !important;
+        }
+
+        td {
+            padding: 8px 12px !important;
+            font-size: 0.78rem !important;
+            border-bottom: 1px solid #e2e8f0 !important;
+            color: #0f172a !important;
+        }
+
+        .receipt-pill {
+            background: none !important;
+            color: #0f172a !important;
+            font-weight: 800 !important;
+            padding: 0 !important;
+        }
+
+        .method-badge {
+            background: none !important;
+            color: #334155 !important;
+            padding: 0 !important;
+        }
+
+        .print-signatures-block {
+            display: flex !important;
+            justify-content: space-between;
+            margin-top: 48px;
+            padding-top: 16px;
+        }
+
+        .print-sig-box {
+            width: 220px;
+            text-align: center;
+        }
+
+        .print-sig-name {
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+        }
+
+        .print-sig-line {
+            border-bottom: 1px solid #0f172a;
+            height: 30px;
+            margin-bottom: 4px;
+        }
+
+        .print-sig-title {
+            font-size: 0.68rem;
+            font-weight: 600;
+            color: #64748b;
+            text-transform: uppercase;
+        }
+    }
+
+    .print-only-header, .print-signatures-block {
+        display: none;
+    }
 </style>
 {% endblock %}
 
@@ -245,9 +470,14 @@
     <div class="report-header">
         <div class="header-info">
             <h1>Daily Financial Report</h1>
-            <p>View daily collections and transactions.</p>
+            <p class="no-print">View daily collections and transactions.</p>
+            <div class="print-only-header">
+                <strong>LICEO DE MAJAYJAY</strong> — Financial Collection Report<br>
+                Period: {% if date_start == date_end %}{{ date_start }}{% else %}{{ date_start }} to {{ date_end }}{% endif %}<br>
+                Prepared By: {{ cashier_name }}
+            </div>
         </div>
-        <a href="{{ url_for('cashier.dashboard') }}"
+        <a href="{{ url_for('cashier.dashboard') }}" class="no-print"
             style="color: var(--report-muted); text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 6px;">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -258,33 +488,68 @@
         </a>
     </div>
 
-    <!-- Date selector -->
-    <form method="POST" class="date-selector-card">
+    <!-- Controls card: date, range, export -->
+    <form method="POST" class="date-selector-card no-print" id="report-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <span class="form-label">Reviewing reports for:</span>
-        <input type="date" name="report_date" class="date-input" value="{{ report_date }}">
-        <button type="submit" class="btn-generate" style="display: flex; align-items: center; gap: 8px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="23 4 23 10 17 10"></polyline>
-                <polyline points="1 20 1 14 7 14"></polyline>
-                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-            </svg>
-            Refresh Report
-        </button>
-        <div style="margin-left: auto;">
-            <button type="button" onclick="window.print()" class="btn-generate"
-                style="background: var(--report-success); display: flex; align-items: center; gap: 8px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+        <div class="controls-row">
+            <span class="form-label">Period:</span>
+            <select name="report_range" id="range-select" class="range-select" onchange="handleRangeChange(this.value)">
+                <option value="today" {% if report_range == 'today' %}selected{% endif %}>Today</option>
+                <option value="weekly" {% if report_range == 'weekly' %}selected{% endif %}>This Week</option>
+                <option value="monthly" {% if report_range == 'monthly' %}selected{% endif %}>This Month</option>
+                <option value="yearly" {% if report_range == 'yearly' %}selected{% endif %}>This Year</option>
+                <option value="custom" {% if report_range == 'custom' %}selected{% endif %}>Custom Date</option>
+            </select>
+            <input type="date" name="report_date" id="date-input" class="date-input"
+                value="{{ report_date }}"
+                style="display: {{ 'block' if report_range in ('today','custom','') else 'none' }};">
+            <button type="submit" class="btn-generate">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="6 9 6 2 18 2 18 9"></polyline>
-                    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
-                    <rect x="6" y="14" width="12" height="8"></rect>
+                    <polyline points="23 4 23 10 17 10"></polyline>
+                    <polyline points="1 20 1 14 7 14"></polyline>
+                    <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
                 </svg>
-                Print Report
+                Refresh
+            </button>
+            <div class="sep"></div>
+            <!-- Export buttons -->
+            <button type="button" onclick="exportReport('excel')" class="btn-export btn-export-excel">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+                Export Excel
+            </button>
+            <button type="button" onclick="exportReport('pdf')" class="btn-export btn-export-pdf">
+                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="9" y1="15" x2="15" y2="15"></line>
+                </svg>
+                Export PDF
             </button>
         </div>
     </form>
+
+    <script>
+    function handleRangeChange(val) {
+        var di = document.getElementById('date-input');
+        di.style.display = (val === 'today' || val === 'custom') ? 'block' : 'none';
+    }
+    function exportReport(fmt) {
+        var range = document.getElementById('range-select').value;
+        var date  = document.getElementById('date-input').value;
+        var url   = '/cashier/reports/export/' + fmt + '?range=' + range;
+        if (range === 'today' || range === 'custom') url += '&date=' + date;
+        window.location.href = url;
+    }
+    </script>
 
     <!-- Summary stats -->
     <div class="summary-grid">
@@ -355,6 +620,20 @@
             <p style="margin-top: 8px;">Selected date: {{ report_date }}</p>
         </div>
         {% endif %}
+    </div>
+
+    <!-- Print Official Signatures Block -->
+    <div class="print-signatures-block">
+        <div class="print-sig-box">
+            <div class="print-sig-line"></div>
+            <div class="print-sig-name">{{ cashier_name }}</div>
+            <div class="print-sig-title">Cashier</div>
+        </div>
+        <div class="print-sig-box">
+            <div class="print-sig-line"></div>
+            <div class="print-sig-name">{{ branch_admin_name }}</div>
+            <div class="print-sig-title">Branch Administrator</div>
+        </div>
     </div>
 
 </div>

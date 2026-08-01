@@ -855,66 +855,381 @@ def print_receipt(payment_id):
         db.close()
 
 
+def _get_report_date_range(report_range, report_date):
+    from datetime import timedelta
+    today = _get_manila_today()
+    if report_range == "weekly":
+        start = today - timedelta(days=today.weekday())
+        end   = start + timedelta(days=6)
+    elif report_range == "monthly":
+        import calendar
+        start = today.replace(day=1)
+        last  = calendar.monthrange(today.year, today.month)[1]
+        end   = today.replace(day=last)
+    elif report_range == "yearly":
+        start = today.replace(month=1, day=1)
+        end   = today.replace(month=12, day=31)
+    else:
+        try:
+            from datetime import date as _date
+            d = _date.fromisoformat(report_date) if report_date else today
+        except Exception:
+            d = today
+        start = end = d
+    return start, end
+
+
+def _fetch_report_payments(cursor, branch_id, start_date, end_date):
+    cursor.execute("""
+        SELECT p.payment_id, p.receipt_number, p.amount, p.payment_method, p.payment_date,
+               e.student_first_name, e.student_middle_name, e.student_last_name,
+               e.grade_level, e.branch_enrollment_no,
+               COALESCE(NULLIF(TRIM(u.full_name),''), u.username) AS received_by_name
+        FROM payments p
+        JOIN enrollments e ON p.enrollment_id = e.enrollment_id
+        JOIN users u ON p.received_by = u.user_id
+        WHERE p.payment_date::date BETWEEN %s AND %s
+          AND e.branch_id = %s
+        ORDER BY p.payment_date DESC
+    """, (start_date, end_date, branch_id))
+    payments = cursor.fetchall()
+    for payment in payments:
+        payment["student_name"] = " ".join(filter(None, [
+            payment.get("student_first_name"),
+            payment.get("student_middle_name"),
+            payment.get("student_last_name"),
+        ]))
+    return payments
+
+
+def _fetch_report_summary(cursor, branch_id, start_date, end_date):
+    cursor.execute("""
+        SELECT COUNT(*) AS transaction_count,
+               COALESCE(SUM(p.amount), 0) AS total_collected
+        FROM payments p
+        JOIN enrollments e ON p.enrollment_id = e.enrollment_id
+        WHERE p.payment_date::date BETWEEN %s AND %s
+          AND e.branch_id = %s
+    """, (start_date, end_date, branch_id))
+    return cursor.fetchone() or {"transaction_count": 0, "total_collected": 0}
+
+
+def _fetch_branch_admin_name(cursor, branch_id):
+    cursor.execute("""
+        SELECT COALESCE(NULLIF(TRIM(full_name), ''), username) AS admin_name
+        FROM users WHERE branch_id = %s AND role = 'branch_admin' LIMIT 1
+    """, (branch_id,))
+    row = cursor.fetchone()
+    return row["admin_name"] if row else "Branch Administrator"
+
+
 @cashier_bp.route("/cashier/reports", methods=["GET", "POST"])
 def reports():
     if not _require_cashier():
         return redirect("/")
 
-    report_date = request.form.get("report_date", _get_manila_today().strftime("%Y-%m-%d"))
+    report_range = request.form.get("report_range", "today")
+    report_date  = request.form.get("report_date", _get_manila_today().strftime("%Y-%m-%d"))
+    start_date, end_date = _get_report_date_range(report_range, report_date)
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-
     try:
-        cursor.execute("""
-            SELECT
-              p.payment_id,
-              p.receipt_number,
-              p.amount,
-              p.payment_method,
-              p.payment_date,
-              e.student_first_name,
-              e.student_middle_name,
-              e.student_last_name,        
-              e.grade_level,
-              e.branch_enrollment_no,
-              u.username AS received_by_name
-            FROM payments p
-            JOIN enrollments e ON p.enrollment_id = e.enrollment_id
-            JOIN users u ON p.received_by = u.user_id
-            WHERE p.payment_date::date = %s
-              AND e.branch_id = %s
-            ORDER BY p.payment_date DESC
-        """, (report_date, session.get("branch_id")))
-        payments = cursor.fetchall()
-
-        for payment in payments:
-            payment["student_name"] = " ".join(filter(None, [
-                payment.get("student_first_name"),
-                payment.get("student_middle_name"),
-                payment.get("student_last_name"),
-            ]))
-
-        cursor.execute("""
-            SELECT
-              COUNT(*) AS transaction_count,
-              COALESCE(SUM(p.amount), 0) AS total_collected
-            FROM payments p
-            JOIN enrollments e ON p.enrollment_id = e.enrollment_id
-            WHERE p.payment_date::date = %s
-              AND e.branch_id = %s
-        """, (report_date, session.get("branch_id")))
-        summary = cursor.fetchone() or {"transaction_count": 0, "total_collected": 0}
+        branch_id = session.get("branch_id")
+        payments  = _fetch_report_payments(cursor, branch_id, start_date, end_date)
+        summary   = _fetch_report_summary(cursor, branch_id, start_date, end_date)
+        branch_admin_name = _fetch_branch_admin_name(cursor, branch_id)
+        cashier_name = session.get("full_name") or session.get("username") or "Authorized Cashier"
 
         return render_template(
             "cashier_reports.html",
             payments=payments,
             summary=summary,
-            report_date=report_date
+            report_date=report_date,
+            report_range=report_range,
+            date_start=str(start_date),
+            date_end=str(end_date),
+            cashier_name=cashier_name,
+            branch_admin_name=branch_admin_name
         )
     finally:
         cursor.close()
         db.close()
+
+
+@cashier_bp.route("/cashier/reports/export/excel")
+def export_reports_excel():
+    if not _require_cashier():
+        return redirect("/")
+
+    report_range = request.args.get("range", "today")
+    report_date  = request.args.get("date", _get_manila_today().strftime("%Y-%m-%d"))
+    start_date, end_date = _get_report_date_range(report_range, report_date)
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        branch_id = session.get("branch_id")
+        payments  = _fetch_report_payments(cursor, branch_id, start_date, end_date)
+        summary   = _fetch_report_summary(cursor, branch_id, start_date, end_date)
+        branch_admin_name = _fetch_branch_admin_name(cursor, branch_id)
+        cashier_name = session.get("full_name") or session.get("username") or "Authorized Cashier"
+    finally:
+        cursor.close()
+        db.close()
+
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+    from openpyxl.utils import get_column_letter
+    import io as _io
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Financial Report"
+
+    hdr_font  = Font(name="Calibri", bold=True, size=11, color="FFFFFF")
+    hdr_fill  = PatternFill("solid", fgColor="1E3A8A")
+    hdr_align = Alignment(horizontal="center", vertical="center")
+    thin_side = Side(style="thin", color="CBD5E1")
+    thin_bdr  = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
+    center_al = Alignment(horizontal="center", vertical="center")
+    right_al  = Alignment(horizontal="right", vertical="center")
+
+    ws.merge_cells("A1:G1")
+    ws["A1"] = "LICEO DE MAJAYJAY \u2014 FINANCIAL COLLECTION REPORT"
+    ws["A1"].font = Font(name="Calibri", bold=True, size=14, color="1E3A8A")
+    ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
+    ws.row_dimensions[1].height = 26
+
+    range_label = {
+        "today":   f"Today ({start_date})",
+        "weekly":  f"This Week ({start_date} to {end_date})",
+        "monthly": f"This Month ({start_date} to {end_date})",
+        "yearly":  f"This Year ({start_date} to {end_date})",
+        "custom":  f"Custom ({start_date})",
+    }.get(report_range, str(start_date))
+
+    ws.merge_cells("A2:G2")
+    ws["A2"] = f"Period: {range_label}"
+    ws["A2"].font = Font(name="Calibri", italic=True, size=10, color="475569")
+    ws["A2"].alignment = Alignment(horizontal="center")
+
+    ws.merge_cells("A3:G3")
+    ws["A3"] = f"Cashier: {cashier_name}   |   Total Collected: P{float(summary['total_collected']):.2f}   |   Transactions: {summary['transaction_count']}"
+    ws["A3"].font = Font(name="Calibri", bold=True, size=10)
+    ws["A3"].alignment = Alignment(horizontal="center")
+    ws.row_dimensions[3].height = 18
+
+    headers = ["#", "OR Number", "Student Name", "Grade Level", "Payment Method", "Amount", "Date"]
+    ws.append([""] * 7)
+    ws.row_dimensions[4].height = 6
+    ws.append(headers)
+    for col_idx in range(1, 8):
+        cell = ws.cell(row=5, column=col_idx)
+        cell.font      = hdr_font
+        cell.fill      = hdr_fill
+        cell.alignment = hdr_align
+        cell.border    = thin_bdr
+    ws.row_dimensions[5].height = 22
+
+    import pytz as _pytz
+    ph_tz = _pytz.timezone("Asia/Manila")
+    for i, p in enumerate(payments, 1):
+        pd_val = p.get("payment_date")
+        if pd_val and hasattr(pd_val, "astimezone"):
+            pd_val = pd_val.astimezone(ph_tz).strftime("%Y-%m-%d %H:%M")
+        row = [
+            i, p.get("receipt_number", ""), p.get("student_name", ""),
+            p.get("grade_level", ""), str(p.get("payment_method", "")).upper(),
+            float(p.get("amount", 0)), str(pd_val) if pd_val else "",
+        ]
+        ws.append(row)
+        data_row = ws.max_row
+        for col_idx in range(1, 8):
+            cell = ws.cell(row=data_row, column=col_idx)
+            cell.border    = thin_bdr
+            cell.alignment = right_al if col_idx == 6 else center_al
+            cell.font      = Font(name="Calibri", size=10)
+        if i % 2 == 0:
+            alt_fill = PatternFill("solid", fgColor="F8FAFC")
+            for col_idx in range(1, 8):
+                ws.cell(row=data_row, column=col_idx).fill = alt_fill
+
+    for i, w in enumerate([5, 14, 28, 14, 18, 14, 20], 1):
+        ws.column_dimensions[get_column_letter(i)].width = w
+
+    total_row = ws.max_row + 1
+    ws.cell(total_row, 5, "TOTAL").font = Font(name="Calibri", bold=True, size=10)
+    ws.cell(total_row, 5).alignment     = Alignment(horizontal="right")
+    ws.cell(total_row, 6, float(summary["total_collected"])).font = Font(name="Calibri", bold=True, size=10)
+    ws.cell(total_row, 6).alignment     = Alignment(horizontal="right")
+    ws.cell(total_row, 6).number_format = "#,##0.00"
+    for col_idx in range(1, 8):
+        ws.cell(total_row, col_idx).border = thin_bdr
+        ws.cell(total_row, col_idx).fill   = PatternFill("solid", fgColor="EFF6FF")
+
+    ws.append([""] * 7)
+    sig_row = ws.max_row + 2
+    ws.cell(sig_row,   1, "Prepared By:").font        = Font(name="Calibri", bold=True)
+    ws.cell(sig_row,   5, "Approved By:").font         = Font(name="Calibri", bold=True)
+    ws.cell(sig_row+1, 1, cashier_name).font           = Font(name="Calibri", bold=True, underline="single")
+    ws.cell(sig_row+1, 5, branch_admin_name).font      = Font(name="Calibri", bold=True, underline="single")
+    ws.cell(sig_row+2, 1, "Cashier").font              = Font(name="Calibri", italic=True, color="64748B")
+    ws.cell(sig_row+2, 5, "Branch Administrator").font = Font(name="Calibri", italic=True, color="64748B")
+
+    buf = _io.BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+    filename = f"Financial_Report_{report_range}_{start_date}.xlsx"
+    return Response(
+        buf.read(),
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
+
+
+@cashier_bp.route("/cashier/reports/export/pdf")
+def export_reports_pdf():
+    if not _require_cashier():
+        return redirect("/")
+
+    report_range = request.args.get("range", "today")
+    report_date  = request.args.get("date", _get_manila_today().strftime("%Y-%m-%d"))
+    start_date, end_date = _get_report_date_range(report_range, report_date)
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        branch_id = session.get("branch_id")
+        payments  = _fetch_report_payments(cursor, branch_id, start_date, end_date)
+        summary   = _fetch_report_summary(cursor, branch_id, start_date, end_date)
+        branch_admin_name = _fetch_branch_admin_name(cursor, branch_id)
+        cashier_name = session.get("full_name") or session.get("username") or "Authorized Cashier"
+    finally:
+        cursor.close()
+        db.close()
+
+    from reportlab.lib import colors as rl_colors
+    from reportlab.lib.pagesizes import letter
+    from reportlab.lib.units import mm
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, HRFlowable
+    from reportlab.lib.enums import TA_CENTER
+    import io as _io
+
+    buf = _io.BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=letter,
+                            leftMargin=20*mm, rightMargin=20*mm,
+                            topMargin=18*mm, bottomMargin=18*mm)
+
+    styles   = getSampleStyleSheet()
+    navy     = rl_colors.HexColor("#1E3A8A")
+    slate    = rl_colors.HexColor("#475569")
+    light_bg = rl_colors.HexColor("#F8FAFC")
+    border_c = rl_colors.HexColor("#CBD5E1")
+
+    title_st = ParagraphStyle("title", parent=styles["Normal"],
+        fontName="Helvetica-Bold", fontSize=16, textColor=navy,
+        alignment=TA_CENTER, spaceAfter=4)
+    sub_st = ParagraphStyle("sub", parent=styles["Normal"],
+        fontName="Helvetica", fontSize=9, textColor=slate,
+        alignment=TA_CENTER, spaceAfter=2)
+    label_st = ParagraphStyle("label", parent=styles["Normal"],
+        fontName="Helvetica-Bold", fontSize=9, textColor=navy,
+        alignment=TA_CENTER, spaceAfter=10)
+
+    range_label = {
+        "today":   f"Today: {start_date}",
+        "weekly":  f"This Week: {start_date} to {end_date}",
+        "monthly": f"This Month: {start_date} to {end_date}",
+        "yearly":  f"This Year: {start_date} to {end_date}",
+        "custom":  f"Custom Date: {start_date}",
+    }.get(report_range, str(start_date))
+
+    story = [
+        Paragraph("LICEO DE MAJAYJAY", title_st),
+        Paragraph("Financial Collection Report", sub_st),
+        Paragraph(range_label, sub_st),
+        HRFlowable(width="100%", thickness=2, color=navy, spaceAfter=8),
+        Paragraph(
+            f"Cashier: <b>{cashier_name}</b> | "
+            f"Total: <b>P{float(summary['total_collected']):,.2f}</b> | "
+            f"Transactions: <b>{summary['transaction_count']}</b>",
+            label_st
+        ),
+        Spacer(1, 4*mm),
+    ]
+
+    col_headers = ["#", "OR Number", "Student Name", "Grade", "Method", "Amount", "Date"]
+    tbl_data = [col_headers]
+    import pytz as _pytz
+    ph_tz = _pytz.timezone("Asia/Manila")
+    for i, p in enumerate(payments, 1):
+        pd_val = p.get("payment_date")
+        if pd_val and hasattr(pd_val, "astimezone"):
+            pd_val = pd_val.astimezone(ph_tz).strftime("%m/%d/%Y %H:%M")
+        tbl_data.append([
+            str(i), p.get("receipt_number", ""), p.get("student_name", ""),
+            p.get("grade_level", ""), str(p.get("payment_method", "")).upper(),
+            f"P{float(p.get('amount', 0)):,.2f}", str(pd_val) if pd_val else "",
+        ])
+    tbl_data.append(["", "", "", "", "TOTAL",
+                     f"P{float(summary['total_collected']):,.2f}", ""])
+
+    avail_w = letter[0] - 40*mm
+    cw = [0.05*avail_w, 0.12*avail_w, 0.26*avail_w,
+          0.09*avail_w, 0.12*avail_w, 0.12*avail_w, 0.13*avail_w]
+
+    tbl = Table(tbl_data, colWidths=cw, repeatRows=1)
+    tbl.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0), (-1,0), navy),
+        ("TEXTCOLOR",     (0,0), (-1,0), rl_colors.white),
+        ("FONTNAME",      (0,0), (-1,0), "Helvetica-Bold"),
+        ("FONTSIZE",      (0,0), (-1,0), 8),
+        ("ALIGN",         (0,0), (-1,0), "CENTER"),
+        ("VALIGN",        (0,0), (-1,-1), "MIDDLE"),
+        ("ROWBACKGROUNDS",(0,1), (-1,-2), [light_bg, rl_colors.white]),
+        ("FONTNAME",      (0,1), (-1,-1), "Helvetica"),
+        ("FONTSIZE",      (0,1), (-1,-1), 8),
+        ("ALIGN",         (5,1), (5,-1), "RIGHT"),
+        ("BACKGROUND",    (0,-1), (-1,-1), rl_colors.HexColor("#EFF6FF")),
+        ("FONTNAME",      (0,-1), (-1,-1), "Helvetica-Bold"),
+        ("GRID",          (0,0), (-1,-1), 0.5, border_c),
+        ("LINEBELOW",     (0,0), (-1,0), 1.5, navy),
+        ("LINEABOVE",     (0,-1), (-1,-1), 1, navy),
+        ("TOPPADDING",    (0,0), (-1,-1), 5),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 5),
+        ("LEFTPADDING",   (0,0), (-1,-1), 5),
+        ("RIGHTPADDING",  (0,0), (-1,-1), 5),
+    ]))
+    story.append(tbl)
+    story.append(Spacer(1, 18*mm))
+
+    sig_data = [
+        [cashier_name, "", branch_admin_name],
+        ["________________________", "", "________________________"],
+        ["Cashier", "", "Branch Administrator"],
+    ]
+    sig_tbl = Table(sig_data, colWidths=[avail_w*0.4, avail_w*0.2, avail_w*0.4])
+    sig_tbl.setStyle(TableStyle([
+        ("FONTNAME",  (0,0), (-1,0),  "Helvetica-Bold"),
+        ("FONTSIZE",  (0,0), (-1,0),  9),
+        ("ALIGN",     (0,0), (0,-1),  "CENTER"),
+        ("ALIGN",     (2,0), (2,-1),  "CENTER"),
+        ("FONTNAME",  (0,2), (-1,2),  "Helvetica-Oblique"),
+        ("FONTSIZE",  (0,2), (-1,2),  8),
+        ("TEXTCOLOR", (0,2), (-1,2),  slate),
+    ]))
+    story.append(sig_tbl)
+
+    doc.build(story)
+    buf.seek(0)
+    filename = f"Financial_Report_{report_range}_{start_date}.pdf"
+    return Response(
+        buf.read(),
+        mimetype="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"}
+    )
 
 
 @cashier_bp.route("/cashier/search", methods=["GET", "POST"])
