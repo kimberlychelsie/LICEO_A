@@ -503,14 +503,17 @@
             <!-- Single date for Today -->
             <input type="date" name="report_date" id="date-input" class="date-input"
                 value="{{ report_date }}"
+                {% if report_range != 'today' %}disabled{% endif %}
                 style="display: {{ 'block' if report_range == 'today' else 'none' }};">
             <!-- Date range for Custom -->
             <span id="custom-range-wrap" style="display: {{ 'flex' if report_range == 'custom' else 'none' }}; align-items: center; gap: 8px;">
                 <span class="form-label" style="margin:0;">From</span>
                 <input type="date" name="report_date" id="date-from-input" class="date-input"
+                    {% if report_range != 'custom' %}disabled{% endif %}
                     value="{{ report_date }}">
                 <span class="form-label" style="margin:0;">To</span>
                 <input type="date" name="report_date_end" id="date-end-input" class="date-input"
+                    {% if report_range != 'custom' %}disabled{% endif %}
                     value="{{ report_date_end }}">
             </span>
             <button type="submit" class="btn-generate">
@@ -550,9 +553,18 @@
     <script>
     function handleRangeChange(val) {
         var di = document.getElementById('date-input');
+        var df = document.getElementById('date-from-input');
+        var de = document.getElementById('date-end-input');
         var cr = document.getElementById('custom-range-wrap');
+
+        // Show/hide
         di.style.display = (val === 'today') ? 'block' : 'none';
         cr.style.display = (val === 'custom') ? 'flex' : 'none';
+
+        // Enable only the active inputs so duplicates don't get submitted
+        di.disabled = (val !== 'today');
+        df.disabled = (val !== 'custom');
+        de.disabled = (val !== 'custom');
     }
     function exportReport(fmt) {
         var range = document.getElementById('range-select').value;
