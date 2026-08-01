@@ -405,7 +405,7 @@ def view_bill(bill_id):
         ]))
 
         cursor.execute("""
-            SELECT p.*, u.username AS received_by_name
+            SELECT p.*, COALESCE(NULLIF(TRIM(u.full_name), ''), u.username) AS received_by_name
             FROM payments p
             JOIN users u ON p.received_by = u.user_id
             WHERE p.bill_id = %s
