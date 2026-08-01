@@ -3311,6 +3311,7 @@ PERIOD_LABELS = {
     "1st": "1st Term",
     "2nd": "2nd Term",
     "3rd": "3rd Term",
+    "final": "Final Grade"
 }
 
 # DepEd Order No. 8, s. 2015 — Fixed weights per subject category
@@ -3709,7 +3710,8 @@ def class_record(section_id, subject_id):
     user_id   = session.get("user_id")
     branch_id = session.get("branch_id")
     period    = request.args.get("period", "1st")
-    if period not in GRADING_PERIODS:
+    valid_periods = ["1st", "2nd", "3rd", "final"]
+    if period not in valid_periods:
         period = "1st"
 
     db  = get_db_connection()
@@ -3740,17 +3742,62 @@ def class_record(section_id, subject_id):
         """, (subject_id, section_id, year_id))
         context = cur.fetchone()
 
-        # Fetch grade submission request status for this class record
-        cur.execute("""
-            SELECT status, rejection_remarks, submitted_at, registrar_approved_at, admin_approved_at
-            FROM grade_submission_requests
-            WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
-        """, (section_id, subject_id, period, year_id))
-        submission_req = cur.fetchone() or {'status': 'draft', 'rejection_remarks': None}
+        if period == 'final':
+            _, _, records_1st = _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, '1st', year_id)
+            _, _, records_2nd = _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, '2nd', year_id)
+            _, _, records_3rd = _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, '3rd', year_id)
 
-        _, weights, records = _compute_period_grades(
-            cur, user_id, branch_id, section_id, subject_id, period, year_id
-        )
+            map_1st = {r['enrollment_id']: r for r in (records_1st or [])}
+            map_2nd = {r['enrollment_id']: r for r in (records_2nd or [])}
+            map_3rd = {r['enrollment_id']: r for r in (records_3rd or [])}
+
+            cur.execute("""
+                SELECT e.enrollment_id, u.full_name AS student_name
+                FROM enrollments e
+                JOIN users u ON e.student_id = u.user_id
+                WHERE e.section_id = %s AND e.year_id = %s AND e.status = 'enrolled'
+                ORDER BY u.full_name ASC
+            """, (section_id, year_id))
+            students = cur.fetchall() or []
+
+            records = []
+            for s in students:
+                eid = s['enrollment_id']
+                r1 = map_1st.get(eid, {})
+                r2 = map_2nd.get(eid, {})
+                r3 = map_3rd.get(eid, {})
+
+                g1 = r1.get('transmuted_grade')
+                g2 = r2.get('transmuted_grade')
+                g3 = r3.get('transmuted_grade')
+
+                avail = [g for g in [g1, g2, g3] if g is not None]
+                final_avg = round(sum(avail) / len(avail), 2) if avail else None
+
+                records.append({
+                    'enrollment_id': eid,
+                    'student_name': s['student_name'],
+                    'grade_1st': g1,
+                    'grade_2nd': g2,
+                    'grade_3rd': g3,
+                    'final_grade': final_avg,
+                    'is_complete': (len(avail) == 3)
+                })
+
+            weights = None
+            submission_req = {'status': 'summary'}
+        else:
+            # Fetch grade submission request status for this class record
+            cur.execute("""
+                SELECT status, rejection_remarks, submitted_at, registrar_approved_at, admin_approved_at
+                FROM grade_submission_requests
+                WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
+            """, (section_id, subject_id, period, year_id))
+            submission_req = cur.fetchone() or {'status': 'draft', 'rejection_remarks': None}
+
+            _, weights, records = _compute_period_grades(
+                cur, user_id, branch_id, section_id, subject_id, period, year_id
+            )
 
         return render_template("teacher_class_record.html",
             context=context,
@@ -3760,7 +3807,7 @@ def class_record(section_id, subject_id):
             weights=weights,
             period=period,
             submission_req=submission_req,
-            grading_periods=GRADING_PERIODS)
+            grading_periods=['1st', '2nd', '3rd', 'final'])
     finally:
         cur.close()
         db.close()
@@ -3773,7 +3820,8 @@ def class_record_export(section_id, subject_id):
     user_id = session.get("user_id")
     branch_id = session.get("branch_id")
     period = request.args.get("period", "1st")
-    if period not in GRADING_PERIODS:
+    valid_periods = ["1st", "2nd", "3rd", "final"]
+    if period not in valid_periods:
         period = "1st"
 
     db = get_db_connection()
@@ -3805,41 +3853,92 @@ def class_record_export(section_id, subject_id):
             flash("Class context not found.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
 
-        _, weights, records = _compute_period_grades(
-            cur, user_id, branch_id, section_id, subject_id, period, year_id
-        )
+        if period == 'final':
+            _, _, records_1st = _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, '1st', year_id)
+            _, _, records_2nd = _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, '2nd', year_id)
+            _, _, records_3rd = _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, '3rd', year_id)
 
-        summary_rows = []
-        detail_rows = []
-        for idx, r in enumerate(records, start=1):
-            remarks = "PASS" if (r.get("transmuted_grade") or 0) >= 75 else "FAIL"
-            summary_rows.append({
-                "No": idx,
-                "Student Name": r.get("student_name"),
-                "Written Works (WW)": r.get("quiz"),
-                "Performance Tasks (PT)": r.get("pt_score"),
-                "Term Assessment (TA)": r.get("exam"),
-                "Term Grade (Transmuted)": r.get("transmuted_grade"),
-                "Remarks": remarks,
-            })
-            detail_rows.append({
-                "No": idx,
-                "Student Name": r.get("student_name"),
-                "WW Raw": r.get("quiz"),
-                "PT Activity": r.get("activity"),
-                "PT Participation": r.get("participation"),
-                "PT Attendance": r.get("attendance"),
-                "PT Combined": r.get("pt_score"),
-                "QA Raw": r.get("exam"),
-                "Initial Grade": r.get("period_grade"),
-                "Transmuted Grade": r.get("transmuted_grade"),
-                "WW Weight %": weights.get("quiz_pct"),
-                "PT Weight %": weights.get("activity_pct"),
-                "QA Weight %": weights.get("exam_pct"),
-                "Subject": context.get("subject_name"),
-                "Section": f"{context.get('grade_level_name')} - {context.get('section_name')}",
-                "Period": PERIOD_LABELS.get(period, period),
-            })
+            map_1st = {r['enrollment_id']: r for r in (records_1st or [])}
+            map_2nd = {r['enrollment_id']: r for r in (records_2nd or [])}
+            map_3rd = {r['enrollment_id']: r for r in (records_3rd or [])}
+
+            cur.execute("""
+                SELECT e.enrollment_id, u.full_name AS student_name
+                FROM enrollments e
+                JOIN users u ON e.student_id = u.user_id
+                WHERE e.section_id = %s AND e.year_id = %s AND e.status = 'enrolled'
+                ORDER BY u.full_name ASC
+            """, (section_id, year_id))
+            students = cur.fetchall() or []
+
+            summary_rows = []
+            detail_rows = []
+            for idx, s in enumerate(students, start=1):
+                eid = s['enrollment_id']
+                g1 = map_1st.get(eid, {}).get('transmuted_grade')
+                g2 = map_2nd.get(eid, {}).get('transmuted_grade')
+                g3 = map_3rd.get(eid, {}).get('transmuted_grade')
+
+                avail = [g for g in [g1, g2, g3] if g is not None]
+                final_avg = round(sum(avail) / len(avail), 2) if avail else None
+                remarks = "PASS" if (final_avg or 0) >= 75 else "FAIL"
+
+                summary_rows.append({
+                    "No": idx,
+                    "Student Name": s.get("student_name"),
+                    "1st Term Grade": g1,
+                    "2nd Term Grade": g2,
+                    "3rd Term Grade": g3,
+                    "Final Grade": final_avg,
+                    "Remarks": remarks,
+                })
+                detail_rows.append({
+                    "No": idx,
+                    "Student Name": s.get("student_name"),
+                    "1st Term Grade": g1,
+                    "2nd Term Grade": g2,
+                    "3rd Term Grade": g3,
+                    "Final Grade": final_avg,
+                    "Status": "Completed" if len(avail) == 3 else "In Progress",
+                    "Subject": context.get("subject_name"),
+                    "Section": f"{context.get('grade_level_name')} - {context.get('section_name')}",
+                })
+        else:
+            _, weights, records = _compute_period_grades(
+                cur, user_id, branch_id, section_id, subject_id, period, year_id
+            )
+
+            summary_rows = []
+            detail_rows = []
+            for idx, r in enumerate(records, start=1):
+                remarks = "PASS" if (r.get("transmuted_grade") or 0) >= 75 else "FAIL"
+                summary_rows.append({
+                    "No": idx,
+                    "Student Name": r.get("student_name"),
+                    "Written Works (WW)": r.get("quiz"),
+                    "Performance Tasks (PT)": r.get("pt_score"),
+                    "Term Assessment (TA)": r.get("exam"),
+                    "Term Grade (Transmuted)": r.get("transmuted_grade"),
+                    "Remarks": remarks,
+                })
+                detail_rows.append({
+                    "No": idx,
+                    "Student Name": r.get("student_name"),
+                    "WW Raw": r.get("quiz"),
+                    "PT Activity": r.get("activity"),
+                    "PT Participation": r.get("participation"),
+                    "PT Attendance": r.get("attendance"),
+                    "PT Combined": r.get("pt_score"),
+                    "QA Raw": r.get("exam"),
+                    "Initial Grade": r.get("period_grade"),
+                    "Transmuted Grade": r.get("transmuted_grade"),
+                    "WW Weight %": weights.get("quiz_pct"),
+                    "PT Weight %": weights.get("activity_pct"),
+                    "QA Weight %": weights.get("exam_pct"),
+                    "Subject": context.get("subject_name"),
+                    "Section": f"{context.get('grade_level_name')} - {context.get('section_name')}",
+                    "Period": PERIOD_LABELS.get(period, period),
+                })
 
         filename_base = f"class_record_{context.get('subject_name','subject')}_{context.get('section_name','section')}_{period}grading".replace(" ", "_")
 

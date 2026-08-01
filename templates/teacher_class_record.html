@@ -995,6 +995,94 @@
         {% endfor %}
     </div>
 
+    {% if period == 'final' %}
+    <!-- ── Final Grade Summary Header Banner ── -->
+    <div class="deped-banner" style="background: linear-gradient(135deg, #1e3a8a 0%, #0c2461 100%); color:#fff; border:none; margin-bottom: 24px;">
+        <div class="deped-banner-title" style="color:#fff; font-size:1.05rem; font-weight:800;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px; display:inline-block; vertical-align:middle;"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+            Final Grade Summary &mdash; All Terms Overview
+        </div>
+        <div style="font-size:0.86rem; opacity:0.9; margin-top:6px; font-weight:500;">
+            Displays 1st Term, 2nd Term, and 3rd Term transmuted grades along with the computed overall Final Grade for each student.
+        </div>
+    </div>
+
+    {% if records %}
+    <div class="cr-table-wrap">
+        <table class="cr-table">
+            <thead>
+                <tr>
+                    <th style="text-align:left;">Student</th>
+                    <th style="text-align:center;">1st Term</th>
+                    <th style="text-align:center;">2nd Term</th>
+                    <th style="text-align:center;">3rd Term</th>
+                    <th style="text-align:center;">Final Grade</th>
+                    <th style="text-align:center;">Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in records %}
+                <tr>
+                    <td>
+                        <div class="student-cell">
+                            <span class="student-num">{{ loop.index }}</span>
+                            <span class="student-name-text">{{ r.student_name }}</span>
+                        </div>
+                    </td>
+                    <td style="text-align:center;">
+                        {% if r.grade_1st is not none %}
+                            <span style="color:#1d4ed8; font-weight:800; font-size:0.95rem;">{{ "%0.2f" | format(r.grade_1st | float) }}</span>
+                        {% else %}
+                            <span style="color:#94a3b8; font-style:italic;">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:center;">
+                        {% if r.grade_2nd is not none %}
+                            <span style="color:#1d4ed8; font-weight:800; font-size:0.95rem;">{{ "%0.2f" | format(r.grade_2nd | float) }}</span>
+                        {% else %}
+                            <span style="color:#94a3b8; font-style:italic;">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:center;">
+                        {% if r.grade_3rd is not none %}
+                            <span style="color:#1d4ed8; font-weight:800; font-size:0.95rem;">{{ "%0.2f" | format(r.grade_3rd | float) }}</span>
+                        {% else %}
+                            <span style="color:#94a3b8; font-style:italic;">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:center;">
+                        {% if r.final_grade is not none %}
+                            <span class="grade-pill {% if r.final_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}" style="font-size:0.95rem; padding:6px 16px;">
+                                {{ "%0.2f" | format(r.final_grade | float) }}
+                            </span>
+                        {% else %}
+                            <span class="grade-pill" style="background:var(--bg); color:var(--muted); font-style:italic; font-size:0.8rem;">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align:center;">
+                        {% if r.is_complete %}
+                            <span class="edited-badge" style="background:#dcfce7; color:#15803d; border-color:#86efac; font-size:0.75rem; padding:4px 10px;">Completed</span>
+                        {% else %}
+                            <span class="edited-badge" style="background:#fef3c7; color:#b45309; border-color:#fde047; font-size:0.75rem; padding:4px 10px;">In Progress</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="cr-empty">
+        <div class="big-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        </div>
+        <h3>No students found</h3>
+        <p>No enrolled students in this section yet.</p>
+    </div>
+    {% endif %}
+
+    {% else %}
+
     <!-- ── DepEd Grading Info ── -->
     {% if weights %}
     <div class="deped-banner">
@@ -1173,6 +1261,8 @@
         <h3>No students found</h3>
         <p>No enrolled students in this section yet.</p>
     </div>
+    {% endif %}
+
     {% endif %}
 
 </div>
