@@ -260,7 +260,7 @@
             <div class="stat-value" style="color: #16a34a;">₱{{ "{:,.2f}".format(bill.amount_paid) }}</div>
         </div>
         <div class="stat-card" style="border-left: 4px solid {% if bill.balance > 0 %}#dc2626{% else %}#10b981{% endif %};">
-            <div class="stat-label">Current Balance</div>
+            <div class="stat-label">Remaining Balance</div>
             <div class="stat-value" style="color: {% if bill.balance > 0 %}#dc2626{% else %}#10b981{% endif %};">
                 ₱{{ "{:,.2f}".format(bill.balance) }}
             </div>
@@ -306,10 +306,15 @@
         </div>
 
         <aside class="dashboard-sidebar">
-            <!-- Assessment Card -->
+            <!-- Fee Breakdown Card (Collapsible Header) -->
             <div class="glass-card">
-                <div class="card-header">
-                    <h2><i class="fas fa-receipt"></i> Assessment</h2>
+                <div class="card-header" style="cursor: pointer; user-select: none; transition: background 0.2s;" onclick="toggleFeeBreakdown()">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <h2 style="margin: 0; display: flex; align-items: center; gap: 8px; font-weight: 800;">
+                            <i class="fas fa-receipt"></i> Fee Breakdown
+                            <span id="fee-toggle-icon" style="display: inline-block; font-size: 1rem; color: #2563eb; transition: transform 0.3s ease; font-weight: 900; margin-left: 4px;">▼</span>
+                        </h2>
+                    </div>
                     {% if bill.status == 'paid' %}
                     <span class="status-badge status-paid">Paid</span>
                     {% else %}
@@ -317,41 +322,51 @@
                     {% endif %}
                 </div>
                 <div class="card-body">
-                    <div class="receipt-item">
-                        <span class="item-name">Tuition & Fees</span>
-                        <span class="item-val">₱{{ "{:,.2f}".format(bill.tuition_fee) }}</span>
+                    <!-- Always visible summary row (clickable) -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none;" onclick="toggleFeeBreakdown()">
+                        <span style="font-size: 0.85rem; font-weight: 700; color: #475569;">
+                            Remaining Balance
+                        </span>
+                        <span style="font-size: 1.1rem; font-weight: 900; color: var(--bill-primary);">₱{{ "{:,.2f}".format(bill.balance) }}</span>
                     </div>
-                    {% for res in reservation_details %}
-                    <div class="receipt-item" style="flex-wrap: wrap;">
-                        <div style="display: flex; justify-content: space-between; width: 100%;">
-                            <span class="item-name" style="font-size: 0.8rem;">
-                                {{ res.item_name }} (x{{ res.qty }})
-                                {% if res.order_status %}
-                                <span style="font-size:0.65rem; background:#ffedd5; color:#c2410c; padding:2px 6px; border-radius:4px; font-weight:800; margin-left:6px;">{{ res.order_status }}</span>
+
+                    <!-- Collapsible breakdown container -->
+                    <div id="fee-breakdown-panel" style="max-height: 0; overflow: hidden; transition: max-height 0.35s ease-in-out; margin-top: 4px;">
+                        <div style="padding-top: 12px; margin-top: 8px; border-top: 1px dashed #cbd5e1; max-height: 340px; overflow-y: auto; padding-right: 4px;">
+                            <div class="receipt-item">
+                                <span class="item-name">Tuition & Fees</span>
+                                <span class="item-val">₱{{ "{:,.2f}".format(bill.tuition_fee) }}</span>
+                            </div>
+                            {% for res in reservation_details %}
+                            <div class="receipt-item" style="flex-wrap: wrap;">
+                                <div style="display: flex; justify-content: space-between; width: 100%;">
+                                    <span class="item-name" style="font-size: 0.8rem;">
+                                        {{ res.item_name }} (x{{ res.qty }})
+                                        {% if res.order_status %}
+                                        <span style="font-size:0.65rem; background:#ffedd5; color:#c2410c; padding:2px 6px; border-radius:4px; font-weight:800; margin-left:6px;">{{ res.order_status }}</span>
+                                        {% endif %}
+                                    </span>
+                                    <span class="item-val">₱{{ "{:,.2f}".format(res.line_total) }}</span>
+                                </div>
+                                {% if res.pieces and res.pieces|length > 0 %}
+                                <div style="width: 100%; margin-top: 6px; padding: 6px 10px; background: #f8fafc; border-radius: 8px; font-size: 0.72rem; border: 1px solid #e2e8f0;">
+                                    {% for p in res.pieces %}
+                                    <div style="display: flex; justify-content: space-between; padding: 2px 0; color: #475569;">
+                                        <span>• {{ p.item_name }} {% if p.size_label %}({{ p.size_label }}){% endif %}</span>
+                                        <span style="font-weight: 700;">₱{{ "{:,.2f}".format(p.line_total) }}</span>
+                                    </div>
+                                    {% endfor %}
+                                </div>
                                 {% endif %}
-                            </span>
-                            <span class="item-val">₱{{ "{:,.2f}".format(res.line_total) }}</span>
-                        </div>
-                        {% if res.pieces and res.pieces|length > 0 %}
-                        <div style="width: 100%; margin-top: 6px; padding: 6px 10px; background: #f8fafc; border-radius: 8px; font-size: 0.72rem; border: 1px solid #e2e8f0;">
-                            {% for p in res.pieces %}
-                            <div style="display: flex; justify-content: space-between; padding: 2px 0; color: #475569;">
-                                <span>• {{ p.item_name }} {% if p.size_label %}({{ p.size_label }}){% endif %}</span>
-                                <span style="font-weight: 700;">₱{{ "{:,.2f}".format(p.line_total) }}</span>
                             </div>
                             {% endfor %}
+                            
+                            {% if not reservation_details %}
+                                {% if bill.books_fee > 0 %}<div class="receipt-item"><span class="item-name">Books</span><span class="item-val">₱{{ "{:,.2f}".format(bill.books_fee) }}</span></div>{% endif %}
+                                {% if bill.uniform_fee > 0 %}<div class="receipt-item"><span class="item-name">Uniform</span><span class="item-val">₱{{ "{:,.2f}".format(bill.uniform_fee) }}</span></div>{% endif %}
+                            {% endif %}
+                            {% if bill.other_fees > 0 %}<div class="receipt-item"><span class="item-name">Other</span><span class="item-val">₱{{ "{:,.2f}".format(bill.other_fees) }}</span></div>{% endif %}
                         </div>
-                        {% endif %}
-                    </div>
-                    {% endfor %}
-                    
-                    {% if bill.books_fee > 0 %}<div class="receipt-item"><span class="item-name">Books</span><span class="item-val">₱{{ "{:,.2f}".format(bill.books_fee) }}</span></div>{% endif %}
-                    {% if bill.uniform_fee > 0 %}<div class="receipt-item"><span class="item-name">Uniform</span><span class="item-val">₱{{ "{:,.2f}".format(bill.uniform_fee) }}</span></div>{% endif %}
-                    {% if bill.other_fees > 0 %}<div class="receipt-item"><span class="item-name">Other</span><span class="item-val">₱{{ "{:,.2f}".format(bill.other_fees) }}</span></div>{% endif %}
-
-                    <div class="receipt-footer">
-                        <span class="footer-label">Total</span>
-                        <span class="footer-val">₱{{ "{:,.2f}".format(bill.total_amount) }}</span>
                     </div>
                 </div>
             </div>
@@ -366,6 +381,20 @@
             {% endif %}
         </aside>
     </div>
+
+    <script>
+    function toggleFeeBreakdown() {
+        const panel = document.getElementById('fee-breakdown-panel');
+        const icon = document.getElementById('fee-toggle-icon');
+        if (panel.style.maxHeight && panel.style.maxHeight !== '0px') {
+            panel.style.maxHeight = '0px';
+            if (icon) icon.style.transform = 'rotate(0deg)';
+        } else {
+            panel.style.maxHeight = (panel.scrollHeight + 30) + 'px';
+            if (icon) icon.style.transform = 'rotate(180deg)';
+        }
+    }
+    </script>
 
     {% else %}
     <div style="text-align: center; padding: 100px 40px; background: white; border-radius: 20px; border: 1px dashed #e2e8f0;">

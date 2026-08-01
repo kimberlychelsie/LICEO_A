@@ -519,6 +519,31 @@ def child_detail(enrollment_id):
         db.close()
 
 
+@parent_bp.route("/parent/bills")
+def parent_bills():
+    if not _require_parent():
+        return redirect("/")
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT ps.student_id as enrollment_id
+            FROM parent_student ps
+            WHERE ps.parent_id=%s
+            ORDER BY ps.student_id ASC
+        """, (session.get("user_id"),))
+        children = cursor.fetchall()
+        if children:
+            return redirect(url_for("parent.child_bills", enrollment_id=children[0]["enrollment_id"]))
+        else:
+            flash("No student profiles linked to your account yet.", "error")
+            return redirect(url_for("parent.dashboard"))
+    finally:
+        cursor.close()
+        db.close()
+
+
 @parent_bp.route("/parent/child/<int:enrollment_id>/bills")
 def child_bills(enrollment_id):
     if not _require_parent():
@@ -551,6 +576,74 @@ def child_bills(enrollment_id):
         cursor.execute("SELECT * FROM billing WHERE enrollment_id=%s", (enrollment_id,))
         bill = cursor.fetchone()
 
+        if not bill:
+            cursor.execute("""
+                INSERT INTO billing (enrollment_id, tuition_fee, books_fee, uniform_fee, other_fees, total_amount, amount_paid, balance, status)
+                VALUES (%s, 0, 0, 0, 0, 0, 0, 0, 'pending')
+                RETURNING *
+            """, (enrollment_id,))
+            db.commit()
+            bill = cursor.fetchone()
+
+        # Fetch active reservations total (books/materials)
+        cursor.execute("""
+            SELECT COALESCE(SUM(ri.line_total), 0) AS res_total
+            FROM reservation_items ri
+            JOIN reservations r ON r.reservation_id = ri.reservation_id
+            JOIN inventory_items ii ON ii.item_id = ri.item_id
+            WHERE (r.enrollment_id = %s OR r.student_user_id IN (
+                SELECT u.user_id FROM student_accounts sa 
+                JOIN users u ON sa.username = u.username 
+                WHERE sa.enrollment_id = %s
+            ))
+            AND UPPER(COALESCE(r.status, '')) NOT IN ('CANCELLED', 'REJECTED')
+            AND UPPER(COALESCE(ii.category, '')) <> 'UNIFORM'
+        """, (enrollment_id, enrollment_id))
+        active_res_total = Decimal(str(cursor.fetchone()["res_total"] or 0))
+
+        # Fetch active uniform orders total
+        cursor.execute("""
+            SELECT COALESCE(SUM(total_amount), 0) AS uo_total
+            FROM uniform_orders uo
+            WHERE (uo.enrollment_id = %s OR uo.student_user_id IN (
+                SELECT u.user_id FROM student_accounts sa 
+                JOIN users u ON sa.username = u.username 
+                WHERE sa.enrollment_id = %s
+            ))
+            AND UPPER(COALESCE(uo.order_status, '')) NOT IN ('CANCELLED', 'REJECTED')
+        """, (enrollment_id, enrollment_id))
+        active_uo_total = Decimal(str(cursor.fetchone()["uo_total"] or 0))
+
+        if bill:
+            tuition = Decimal(str(bill.get('tuition_fee') or 0))
+            other = Decimal(str(bill.get('other_fees') or 0))
+
+            books = Decimal(str(bill.get('books_fee') or 0)) if active_res_total == Decimal(0) else active_res_total
+            uniform = Decimal(str(bill.get('uniform_fee') or 0)) if active_uo_total == Decimal(0) else active_uo_total
+
+            expected_total = tuition + other + books + uniform
+
+            cursor.execute("SELECT COALESCE(SUM(amount), 0) AS total_paid FROM payments WHERE bill_id = %s", (bill['bill_id'],))
+            total_paid = Decimal(str(cursor.fetchone()["total_paid"] or 0))
+
+            new_balance = max(expected_total - total_paid, Decimal(0))
+            new_status = 'paid' if new_balance <= Decimal(0) and expected_total > Decimal(0) else ('partial' if total_paid > Decimal(0) else 'pending')
+
+            cursor.execute("""
+                UPDATE billing
+                SET books_fee = %s,
+                    uniform_fee = %s,
+                    total_amount = %s,
+                    amount_paid = %s,
+                    balance = %s,
+                    status = %s
+                WHERE bill_id = %s
+            """, (books, uniform, expected_total, total_paid, new_balance, new_status, bill['bill_id']))
+            db.commit()
+
+            cursor.execute("SELECT * FROM billing WHERE bill_id=%s", (bill['bill_id'],))
+            bill = cursor.fetchone()
+
         payments = []
         if bill:
             cursor.execute("""
@@ -562,9 +655,7 @@ def child_bills(enrollment_id):
             """, (bill["bill_id"],))
             payments = cursor.fetchall()
 
-        # Fetch detailed reservations for breakdown
-        reservation_details = []
-        if bill:
+            # Fetch active unpaid reservations for breakdown (books/materials)
             cursor.execute("""
                 SELECT
                     r.reservation_id, ii.item_name, ri.qty, ri.line_total, ii.category
@@ -576,22 +667,23 @@ def child_bills(enrollment_id):
                     JOIN users u ON sa.username = u.username 
                     WHERE sa.enrollment_id = %s
                 )) 
-                AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED')
+                AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED', 'PAID', 'CLAIMED', 'COMPLETED')
                 AND UPPER(COALESCE(ii.category, '')) <> 'UNIFORM'
                 ORDER BY r.reservation_id ASC
             """, (enrollment_id, enrollment_id))
             reservation_details = cursor.fetchall()
 
-            # Include uniform pre-orders in billing breakdown (status matches cashier)
+            # Include unpaid uniform pre-orders in billing breakdown (status matches cashier)
             cursor.execute("""
-                SELECT uo.order_id, uo.order_number, uo.order_status, uo.order_total, uo.created_at
+                SELECT uo.order_id, uo.order_number, uo.order_status, uo.total_amount, uo.created_at
                 FROM uniform_orders uo
-                WHERE uo.enrollment_id = %s
-                   OR uo.student_user_id IN (
-                        SELECT u.user_id FROM student_accounts sa
-                        JOIN users u ON sa.username = u.username
-                        WHERE sa.enrollment_id = %s
-                   )
+                WHERE (uo.enrollment_id = %s OR uo.student_user_id IN (
+                    SELECT u.user_id FROM student_accounts sa
+                    JOIN users u ON sa.username = u.username
+                    WHERE sa.enrollment_id = %s
+                ))
+                AND UPPER(COALESCE(uo.order_status, '')) NOT IN ('CANCELLED', 'REJECTED')
+                AND UPPER(COALESCE(uo.payment_status, '')) NOT IN ('PAID', 'COMPLETED')
                 ORDER BY uo.order_id ASC
             """, (enrollment_id, enrollment_id))
             uo_orders = cursor.fetchall() or []
@@ -664,7 +756,7 @@ def child_bills(enrollment_id):
                     "reservation_id": uo["order_id"],
                     "item_name": f"[{uo['order_number']}] {item_names_str}",
                     "qty": sum(it['quantity'] for it in uoi_items),
-                    "line_total": Decimal(str(uo["order_total"] or 0)),
+                    "line_total": Decimal(str(uo["total_amount"] or 0)),
                     "category": "uniform",
                     "order_status": uo["order_status"],
                     "order_number": uo["order_number"],
