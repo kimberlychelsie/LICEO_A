@@ -607,12 +607,42 @@ def view_bill(bill_id):
         """, (books_sum, uniforms_sum, calc_total, calc_paid, calc_balance, calc_status, bill_id))
         db.commit()
 
+        # Fetch branch admin name (acting as Principal)
+        branch_admin_name = _fetch_branch_admin_name(cursor, session.get("branch_id"))
+
+        # Construct payment itemized breakdown list in Python for safety
+        for p in payments:
+            p_items = []
+            amt_val = float(p["amount"] or 0)
+            if p["target_type"] == "tuition":
+                p_items.append({"desc": "Tuition & Mandatory Fees", "amount": amt_val})
+            elif p["target_type"] == "other":
+                p_items.append({"desc": "Other Fees", "amount": amt_val})
+            elif p["target_type"] == "reservation":
+                desc_str = "Reservation (Books/Materials)"
+                for res in reservation_details:
+                    if res["reservation_id"] == p["target_id"]:
+                        desc_str = res["item_names"]
+                        break
+                p_items.append({"desc": desc_str, "amount": amt_val})
+            elif p["target_type"] == "uniform_order":
+                desc_str = "Uniform Pre-Order"
+                for uo in uniform_order_details:
+                    if uo["order_id"] == p["target_id"]:
+                        desc_str = uo["item_names"]
+                        break
+                p_items.append({"desc": desc_str, "amount": amt_val})
+            else:
+                p_items.append({"desc": p["notes"] or "General Billing Payment", "amount": amt_val})
+            p["breakdown_items"] = p_items
+
         return render_template(
             "cashier_view_bill.html",
             bill=bill,
             payments=payments,
             reservation_details=reservation_details,
             uniform_order_details=uniform_order_details,
+            branch_admin_name=branch_admin_name,
         )
     finally:
         cursor.close()

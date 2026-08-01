@@ -360,20 +360,59 @@
         font-weight: 700;
         word-break: break-all;
     }
-    .thermal-receipt .th-amount-box {
-        background: #0f172a;
-        color: #fff;
-        border-radius: 8px;
-        padding: 12px;
-        text-align: center;
-        margin: 12px 0;
+    .thermal-receipt .th-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 14px 0;
+        font-size: 0.8rem;
     }
-    .thermal-receipt .th-amount-box .th-amount-label { font-size: 0.7rem; opacity: 0.75; text-transform: uppercase; letter-spacing: 0.08em; }
-    .thermal-receipt .th-amount-box .th-amount-val { font-size: 1.65rem; font-weight: 900; margin-top: 2px; }
-    .thermal-receipt .th-thank { font-size: 0.75rem; color: #64748b; text-align: center; margin-top: 8px; }
-    .thermal-receipt .th-sig { text-align: center; margin-top: 18px; }
-    .thermal-receipt .th-sig .th-sig-name { font-weight: 900; font-size: 0.88rem; }
-    .thermal-receipt .th-sig .th-sig-role { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; }
+    .thermal-receipt .th-table th, .thermal-receipt .th-table td {
+        padding: 8px 4px;
+        vertical-align: top;
+        text-align: left;
+    }
+    .thermal-receipt .th-table thead th {
+        border-bottom: 2px solid #0f172a;
+        font-weight: 800;
+        font-size: 0.76rem;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+    }
+    .thermal-receipt .th-table tbody td {
+        border-bottom: 1px dashed #cbd5e1;
+        font-size: 0.78rem;
+    }
+    .thermal-receipt .th-table tfoot th {
+        border-top: 2px solid #0f172a;
+        font-weight: 900;
+        font-size: 0.8rem;
+        padding-top: 10px;
+    }
+    .thermal-receipt .th-thank { font-size: 0.75rem; color: #64748b; text-align: center; margin-top: 12px; }
+    .thermal-receipt .th-sig-container {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        margin-top: 24px;
+    }
+    .thermal-receipt .th-sig-box {
+        text-align: center;
+        flex: 1;
+    }
+    .thermal-receipt .th-sig-box .th-sig-name {
+        font-weight: 900;
+        font-size: 0.82rem;
+        border-bottom: 1px solid #0f172a;
+        padding-bottom: 3px;
+        margin-bottom: 4px;
+        min-height: 18px;
+    }
+    .thermal-receipt .th-sig-box .th-sig-role {
+        font-size: 0.65rem;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
 
     /* Print: show ONLY the thermal receipt, nothing else */
     @media print {
@@ -694,14 +733,15 @@
                                 data-amount="{{ '{:,.2f}'.format(p.amount) }}"
                                 data-method="{{ p.payment_method|upper }}"
                                 data-cashier="{{ p.received_by_name }}"
+                                data-admin="{{ branch_admin_name }}"
                                 data-student="{{ bill.student_name }}"
                                 data-guardian="{{ bill.guardian_name }}"
-                                data-student-id="LDMAJ-{{ '%04d'|format(bill.branch_enrollment_no) }}"
                                 data-grade="{{ bill.grade_level }}"
                                 data-branch="{{ bill.branch_name }}"
                                 data-total="{{ '{:,.2f}'.format(bill.total_amount) }}"
                                 data-paid="{{ '{:,.2f}'.format(bill.amount_paid) }}"
                                 data-balance="{{ '{:,.2f}'.format(bill.balance) }}"
+                                data-items='{{ p.breakdown_items|tojson }}'
                                 onclick="openReceiptModal(this)">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
                                     fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
@@ -752,18 +792,42 @@
             <div class="th-row"><span class="th-label">Pupil's Name:</span><span class="th-val" id="rc-student"></span></div>
             <div class="th-row"><span class="th-label">Grade:</span><span class="th-val" id="rc-grade"></span></div>
             <hr class="th-divider">
-            <div class="th-amount-box">
-                <div class="th-amount-label">Amount Paid</div>
-                <div class="th-amount-val" id="rc-amount"></div>
-            </div>
+            
+            <!-- Breakdown Table -->
+            <table class="th-table">
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">ARTICLES / DESCRIPTION</th>
+                        <th style="text-align: right; width: 85px;">AMOUNT</th>
+                    </tr>
+                </thead>
+                <tbody id="rc-items-body">
+                    <!-- filled dynamically -->
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th style="text-align: left;">TOTAL PAID</th>
+                        <th style="text-align: right;" id="rc-total-paid"></th>
+                    </tr>
+                </tfoot>
+            </table>
+            
             <hr class="th-divider">
             <div class="th-row"><span class="th-label">Total Bill:</span><span class="th-val" id="rc-total"></span></div>
             <div class="th-row"><span class="th-label">Total Paid:</span><span class="th-val" id="rc-paid"></span></div>
             <div class="th-row" style="font-weight:900; color:#1e3a8a;"><span class="th-label">Balance:</span><span class="th-val" id="rc-balance"></span></div>
             <hr class="th-divider-solid">
-            <div class="th-sig">
-                <div class="th-sig-name" id="rc-cashier"></div>
-                <div class="th-sig-role">Authorized Cashier</div>
+            
+            <!-- Signatures Side-by-Side -->
+            <div class="th-sig-container">
+                <div class="th-sig-box">
+                    <div class="th-sig-name" id="rc-cashier"></div>
+                    <div class="th-sig-role">Authorized Cashier</div>
+                </div>
+                <div class="th-sig-box">
+                    <div class="th-sig-name" id="rc-admin"></div>
+                    <div class="th-sig-role">School Principal</div>
+                </div>
             </div>
             <div class="th-thank">Thank you for your payment.<br>This is your official receipt.</div>
         </div>
@@ -778,11 +842,29 @@ function openReceiptModal(btn) {
     document.getElementById('rc-date').textContent     = d.date;
     document.getElementById('rc-student').textContent  = d.student;
     document.getElementById('rc-grade').textContent    = d.grade;
-    document.getElementById('rc-amount').textContent   = '\u20b1' + d.amount;
+    
+    // Dynamically render breakdown table rows
+    var items = JSON.parse(d.items || "[]");
+    var tbody = document.getElementById('rc-items-body');
+    tbody.innerHTML = '';
+    items.forEach(function(item) {
+        var tr = document.createElement('tr');
+        var tdDesc = document.createElement('td');
+        tdDesc.textContent = item.desc;
+        var tdAmt = document.createElement('td');
+        tdAmt.style.textAlign = 'right';
+        tdAmt.textContent = '\u20b1' + parseFloat(item.amount).toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+        tr.appendChild(tdDesc);
+        tr.appendChild(tdAmt);
+        tbody.appendChild(tr);
+    });
+    
+    document.getElementById('rc-total-paid').textContent = '\u20b1' + d.amount;
     document.getElementById('rc-total').textContent    = '\u20b1' + d.total;
     document.getElementById('rc-paid').textContent     = '\u20b1' + d.paid;
     document.getElementById('rc-balance').textContent  = '\u20b1' + d.balance;
     document.getElementById('rc-cashier').textContent  = d.cashier;
+    document.getElementById('rc-admin').textContent    = d.admin || 'School Principal';
     document.getElementById('receiptModal').classList.add('open');
 }
 function closeReceiptModal() {
