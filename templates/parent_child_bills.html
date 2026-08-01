@@ -322,14 +322,26 @@
                         <span class="item-val">₱{{ "{:,.2f}".format(bill.tuition_fee) }}</span>
                     </div>
                     {% for res in reservation_details %}
-                    <div class="receipt-item">
-                        <span class="item-name" style="font-size: 0.8rem;">
-                            {{ res.item_name }} (x{{ res.qty }})
-                            {% if res.order_status %}
-                            <span style="font-size:0.65rem; background:#ffedd5; color:#c2410c; padding:2px 6px; border-radius:4px; font-weight:800; margin-left:6px;">{{ res.order_status }}</span>
-                            {% endif %}
-                        </span>
-                        <span class="item-val">₱{{ "{:,.2f}".format(res.line_total) }}</span>
+                    <div class="receipt-item" style="flex-wrap: wrap;">
+                        <div style="display: flex; justify-content: space-between; width: 100%;">
+                            <span class="item-name" style="font-size: 0.8rem;">
+                                {{ res.item_name }} (x{{ res.qty }})
+                                {% if res.order_status %}
+                                <span style="font-size:0.65rem; background:#ffedd5; color:#c2410c; padding:2px 6px; border-radius:4px; font-weight:800; margin-left:6px;">{{ res.order_status }}</span>
+                                {% endif %}
+                            </span>
+                            <span class="item-val">₱{{ "{:,.2f}".format(res.line_total) }}</span>
+                        </div>
+                        {% if res.pieces and res.pieces|length > 0 %}
+                        <div style="width: 100%; margin-top: 6px; padding: 6px 10px; background: #f8fafc; border-radius: 8px; font-size: 0.72rem; border: 1px solid #e2e8f0;">
+                            {% for p in res.pieces %}
+                            <div style="display: flex; justify-content: space-between; padding: 2px 0; color: #475569;">
+                                <span>• {{ p.item_name }} {% if p.size_label %}({{ p.size_label }}){% endif %}</span>
+                                <span style="font-weight: 700;">₱{{ "{:,.2f}".format(p.line_total) }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
                     </div>
                     {% endfor %}
                     

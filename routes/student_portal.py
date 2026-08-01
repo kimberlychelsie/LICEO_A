@@ -4,9 +4,9 @@ from werkzeug.security import generate_password_hash
 import logging
 import psycopg2.extras
 from cloudinary_helper import upload_file
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import json
-from datetime import timedelta
+import pytz
 from utils.uniform_pricing import DEFAULT_SIZE_PRICE_STEP, parse_size_list, size_price_map, price_for_size
 
 # Setup logging
@@ -507,14 +507,28 @@ def billing():
                         """, (inv_id,))
                         child_pieces = cursor.fetchall()
                         if child_pieces:
+                            pieces_subtotal = 0.0
                             for cp in child_pieces:
-                                cp_price = price_for_size(cp["price"], size_lbl, cp["size_label"], cp.get("size_price_step"))
+                                cp_price = price_for_size(cp["price"], size_lbl, cp["size_label"], 0)
+                                cp_line_total = float(cp_price) * float(item["quantity"])
+                                pieces_subtotal += cp_line_total
                                 pieces_list.append({
                                     "item_name": cp["item_name"],
                                     "size_label": size_lbl,
                                     "unit_price": cp_price,
                                     "quantity": item["quantity"],
-                                    "line_total": float(cp_price) * float(item["quantity"])
+                                    "line_total": cp_line_total
+                                })
+                            item_total = float(item["line_total"] or 0)
+                            size_fee = item_total - pieces_subtotal
+                            if size_fee > 0:
+                                qty = float(item["quantity"] or 1)
+                                pieces_list.append({
+                                    "item_name": f"+ Size Fee ({size_lbl})" if size_lbl else "+ Size Fee",
+                                    "size_label": "",
+                                    "unit_price": size_fee / qty if qty else size_fee,
+                                    "quantity": item["quantity"],
+                                    "line_total": size_fee
                                 })
                         else:
                             pieces_list.append({

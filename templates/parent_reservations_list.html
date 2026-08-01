@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+{% block title %}Order & Reservation History — Parent Portal{% endblock %}
+
+{% block styles %}
+<style>
+    :root {
+        --sd-primary: #1a3a8f;
+        --sd-primary-dark: #142e75;
+        --sd-accent: #10b981;
+        --sd-bg: #f8fafc;
+        --sd-card: #ffffff;
+        --sd-text: #0f172a;
+        --sd-muted: #64748b;
+        --sd-border: #e2e8f0;
+        --sd-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --sd-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
+
+    .sd-container {
+        padding: 40px 32px;
+        max-width: 1500px;
+        margin: 0 auto;
+        font-family: 'Inter', sans-serif;
+    }
+
+    @media (max-width: 1024px) {
+        .sd-container { padding: 32px 20px; }
+    }
+
+    @media (max-width: 768px) {
+        .sd-container { padding: 16px 12px 60px; }
+        .res-hero {
+            padding: 24px 18px;
+            border-radius: 18px;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 16px;
+            text-align: left;
+        }
+        .res-hero-content h1 {
+            font-size: 1.8rem;
+            margin-bottom: 6px;
+        }
+        .res-hero-content p {
+            font-size: 0.9rem;
+        }
+        .res-hero-actions {
+            width: 100%;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+        }
+        .btn-hero {
+            width: 100%;
+            justify-content: center;
+            text-align: center;
+            box-sizing: border-box;
+        }
+        .table-card {
+            border-radius: 16px;
+        }
+        .res-table th, .res-table td {
+            padding: 14px 12px;
+            font-size: 0.85rem;
+        }
+    }
+
+    /* ── Hero Header ── */
+    .res-hero {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1a3a8f 50%, #1e40af 100%);
+        border-radius: 24px;
+        padding: 48px;
+        color: #fff;
+        margin-bottom: 32px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: var(--sd-shadow-lg);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 32px;
+        animation: fadeInDown 0.6s ease-out;
+    }
+
+    .res-hero::before {
+        content: '';
+        position: absolute;
+        top: -100px;
+        right: -100px;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+        border-radius: 50%;
+    }
+
+    .res-hero-content h1 {
+        font-size: 2.6rem;
+        font-weight: 900;
+        margin: 0 0 12px;
+        letter-spacing: -0.04em;
+    }
+
+    .res-hero-content h1 span {
+        color: #f59e0b;
+    }
+
+    .res-hero-content p {
+        margin: 0;
+        font-size: 1.05rem;
+        color: #93c5fd;
+        font-weight: 500;
+    }
+
+    .btn-hero {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 24px;
+        background: rgba(255, 255, 255, 0.15);
+        color: white;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 14px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        text-decoration: none;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        backdrop-filter: blur(8px);
+    }
+
+    .btn-hero:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: translateY(-2px);
+        color: white;
+    }
+
+    /* ── Table Card ── */
+    .table-card {
+        background: var(--sd-card);
+        border-radius: 24px;
+        border: 1px solid var(--sd-border);
+        box-shadow: var(--sd-shadow);
+        overflow: hidden;
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    .table-responsive {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    .res-table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: left;
+    }
+
+    .res-table th {
+        background: #f8fafc;
+        padding: 18px 24px;
+        font-size: 0.78rem;
+        font-weight: 800;
+        color: var(--sd-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 1px solid var(--sd-border);
+    }
+
+    .res-table td {
+        padding: 20px 24px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 0.92rem;
+        color: var(--sd-text);
+        vertical-align: middle;
+    }
+
+    .res-table tbody tr {
+        transition: background 0.2s;
+    }
+
+    .res-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .res-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .res-id {
+        font-family: monospace;
+        font-weight: 800;
+        color: var(--sd-primary);
+    }
+
+    .res-items {
+        font-weight: 700;
+        color: var(--sd-text);
+        max-width: 320px;
+    }
+
+    /* ── Badges ── */
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .status-pre-order, .status-pending, .status-for-ordering {
+        background: #fff7ed;
+        color: #c2410c;
+        border: 1px solid #ffedd5;
+    }
+
+    .status-approved, .status-ready-for-claim, .status-ready {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #dbeafe;
+    }
+
+    .status-claimed, .status-paid, .status-completed {
+        background: #ecfdf5;
+        color: #047857;
+        border: 1px solid #d1fae5;
+    }
+
+    .status-unpaid {
+        background: #fef2f2;
+        color: #b91c1c;
+        border: 1px solid #fee2e2;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .empty-box {
+        text-align: center;
+        padding: 100px 24px;
+        background: white;
+        border-radius: 32px;
+        border: 1px solid var(--sd-border);
+        box-shadow: var(--sd-shadow);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sd-container">
+    <!-- Hero Header -->
+    <header class="res-hero">
+        <div class="res-hero-content">
+            <h1>Order & Reservation <span>History</span></h1>
+            <p>Track books, materials, and uniform pre-orders placed for your children</p>
+        </div>
+        
+        <div class="res-hero-actions" style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end;">
+            <a class="btn-hero" href="{{ url_for('parent.dashboard') }}">
+                <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Dashboard
+            </a>
+            <a class="btn-hero" href="{{ url_for('parent.parent_reserve') }}" style="background: #fff; color: #1a3a8f; border: none;">
+                <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Reserve Items
+            </a>
+        </div>
+    </header>
+
+    {% if rows and rows|length > 0 %}
+    <div class="table-card">
+        <div class="table-responsive">
+            <table class="res-table">
+                <thead>
+                    <tr>
+                        <th>Order Ref</th>
+                        <th>Child / Student</th>
+                        <th>Reserved Items</th>
+                        <th>Date Placed</th>
+                        <th>Status</th>
+                        <th style="text-align: right;">Qty</th>
+                        <th style="text-align: right;">Total Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in rows %}
+                    <tr>
+                        <td class="res-id">
+                            {% if r.ref_type == 'UO' %}
+                                {{ r.order_number or ('UO-' ~ '%04d'|format(r.ref_id|int)) }}
+                            {% else %}
+                                RES-{{ "%04d"|format(r.ref_id|int) }}
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong style="color: var(--sd-primary); display: block;">{{ r.student_name }}</strong>
+                            <span style="font-size: 0.72rem; color: var(--sd-muted); font-weight: 700;">{{ r.grade_level }}</span>
+                        </td>
+                        <td class="res-items">
+                            {{ r.item_names or 'N/A' }}
+                            {% if r.ref_type == 'UO' %}
+                            <div style="font-size:0.7rem; color:var(--sd-muted); font-weight:700; margin-top:4px;">Uniform Pre-Order</div>
+                            {% endif %}
+                        </td>
+                        <td style="font-weight: 600; color: var(--sd-muted);">
+                            {{ r.created_at.strftime('%b %d, %Y') if r.created_at and r.created_at.strftime else r.created_at }}
+                        </td>
+                        <td>
+                            {% set status_slug = (r.status or '')|lower|replace(' ', '-') %}
+                            <span class="badge status-{{ status_slug }}">{{ r.status }}</span>
+                            {% if r.ref_type == 'UO' and r.payment_status %}
+                            <div style="margin-top:6px;">
+                                <span class="badge status-{{ (r.payment_status or '')|lower }}" style="font-size:0.65rem;">{{ r.payment_status }}</span>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right; font-weight: 700;">{{ r.total_qty }}</td>
+                        <td style="text-align: right; font-weight: 900; color: var(--sd-primary);">
+                            ₱{{ "%.2f"|format(r.total_amount|float) }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-box">
+        <div style="font-size: 4rem; margin-bottom: 24px; opacity: 0.2;">🛒</div>
+        <h3 style="font-weight: 900; color: var(--sd-primary); font-size: 1.5rem; margin-bottom: 12px;">No Orders Found</h3>
+        <p style="color: var(--sd-muted); font-size: 1rem; max-width: 450px; margin: 0 auto; line-height: 1.6; font-weight: 500;">No reservations or uniform orders have been placed for your children yet.</p>
+        <div style="margin-top: 32px;">
+            <a href="{{ url_for('parent.parent_reserve') }}" class="btn-hero" style="background: var(--sd-accent); color: white; border: none; padding: 14px 32px;">
+                Reserve Items
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

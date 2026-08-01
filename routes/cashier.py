@@ -527,14 +527,28 @@ def view_bill(bill_id):
                     """, (inv_id,))
                     child_pieces = cursor.fetchall()
                     if child_pieces:
+                        pieces_subtotal = Decimal(0)
                         for cp in child_pieces:
-                            cp_price = price_for_size(cp["price"], size_lbl, cp["size_label"], cp.get("size_price_step"))
+                            cp_price = price_for_size(cp["price"], size_lbl, cp["size_label"], 0)
+                            cp_line_total = Decimal(str(cp_price)) * Decimal(str(item["quantity"]))
+                            pieces_subtotal += cp_line_total
                             pieces_list.append({
                                 "item_name": cp["item_name"],
                                 "size_label": size_lbl,
                                 "unit_price": cp_price,
                                 "quantity": item["quantity"],
-                                "line_total": Decimal(str(cp_price)) * Decimal(str(item["quantity"]))
+                                "line_total": cp_line_total
+                            })
+                        item_total = Decimal(str(item["line_total"] or 0))
+                        size_fee = item_total - pieces_subtotal
+                        if size_fee > Decimal(0):
+                            qty = Decimal(str(item["quantity"] or 1))
+                            pieces_list.append({
+                                "item_name": f"+ Size Fee ({size_lbl})" if size_lbl else "+ Size Fee",
+                                "size_label": "",
+                                "unit_price": size_fee / qty if qty else size_fee,
+                                "quantity": item["quantity"],
+                                "line_total": size_fee
                             })
                     else:
                         pieces_list.append({
@@ -2163,6 +2177,28 @@ def uniform_orders():
         """, (branch_id,))
         stats = cursor.fetchone()
 
+        # Auto-sync parent set prices to sum of child pieces if pieces exist
+        cursor.execute("""
+            UPDATE inventory_items parent
+            SET price = COALESCE((
+                SELECT SUM(child.price)
+                FROM inventory_items child
+                WHERE child.parent_item_id = parent.item_id
+                  AND child.branch_id = parent.branch_id
+                  AND UPPER(child.category) = 'UNIFORM'
+            ), parent.price)
+            WHERE parent.branch_id = %s
+              AND UPPER(parent.category) = 'UNIFORM'
+              AND parent.parent_item_id IS NULL
+              AND EXISTS (
+                  SELECT 1 FROM inventory_items c
+                  WHERE c.parent_item_id = parent.item_id
+                    AND c.branch_id = parent.branch_id
+                    AND UPPER(c.category) = 'UNIFORM'
+              )
+        """, (branch_id,))
+        db.commit()
+
         # Fetch uniform SETS (top-level items) for catalog tab
         cursor.execute("""
             SELECT item_id, category, item_name, grade_level, price, image_url, is_active, size_label,
@@ -2189,7 +2225,7 @@ def uniform_orders():
         for row in catalog_sets:
             row["size_prices"] = size_price_map(row["price"], row["size_label"], row["size_price_step"])
         for row in all_pieces:
-            row["size_prices"] = size_price_map(row["price"], row["size_label"], row["size_price_step"])
+            row["size_prices"] = size_price_map(row["price"], row["size_label"], 0)
 
         # Group pieces by parent_item_id
         pieces_by_set = {}
@@ -2495,6 +2531,25 @@ def uniform_order_items(order_id):
         db.close()
 
 
+def _sync_parent_set_price(cursor, parent_item_id, branch_id):
+    """Auto-calculate parent uniform set base price as the sum of its child pieces."""
+    if not parent_item_id:
+        return
+    cursor.execute("""
+        SELECT COALESCE(SUM(price), 0) AS total_pieces_price, COUNT(*) AS piece_count
+        FROM inventory_items
+        WHERE parent_item_id = %s AND branch_id = %s AND UPPER(category) = 'UNIFORM'
+    """, (int(parent_item_id), branch_id))
+    r = cursor.fetchone()
+    if r and r["piece_count"] > 0:
+        total_price = float(r["total_pieces_price"] or 0)
+        cursor.execute("""
+            UPDATE inventory_items
+            SET price = %s
+            WHERE item_id = %s AND branch_id = %s AND UPPER(category) = 'UNIFORM'
+        """, (total_price, int(parent_item_id), branch_id))
+
+
 @cashier_bp.route("/cashier/uniform-catalog/update-price", methods=["POST"])
 def uniform_catalog_update_price():
     if not _require_cashier():
@@ -2543,6 +2598,10 @@ def uniform_catalog_update_price():
             SET price = %s, size_price_step = %s
             WHERE item_id = %s AND branch_id = %s AND UPPER(category) = 'UNIFORM'
         """, (new_price, size_price_step, item_id, branch_id))
+
+        if is_piece and row["parent_item_id"]:
+            _sync_parent_set_price(cursor, row["parent_item_id"], branch_id)
+
         db.commit()
         return jsonify({"success": True, "message": "Price updated successfully"})
     except Exception as e:
@@ -2669,6 +2728,9 @@ def uniform_catalog_add_piece():
             branch_id, item_name, parent['grade_level'], price_val, size_label,
             int(parent_item_id), step_val
         ))
+
+        _sync_parent_set_price(cursor, int(parent_item_id), branch_id)
+
         db.commit()
         return jsonify({"success": True, "message": "Piece added to set successfully"})
     except Exception as e:
@@ -2704,11 +2766,17 @@ def uniform_catalog_delete_piece():
         if not row["parent_item_id"] and not row["is_set_piece"]:
             return jsonify({"error": "Only individual pieces can be deleted here"}), 400
 
+        parent_id = row["parent_item_id"]
+
         cursor.execute("""
             DELETE FROM inventory_items
             WHERE item_id = %s AND branch_id = %s
               AND (parent_item_id IS NOT NULL OR COALESCE(is_set_piece, FALSE) = TRUE)
         """, (int(item_id), branch_id))
+
+        if parent_id:
+            _sync_parent_set_price(cursor, parent_id, branch_id)
+
         db.commit()
         return jsonify({"success": True, "message": f"Deleted piece: {row['item_name']}"})
     except Exception as e:

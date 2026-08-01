@@ -1596,7 +1596,8 @@ def student_reservation():
 
                 sizes_rows = sorted(sizes_rows, key=lambda x: (get_size_rank(x['size_label']), x['size_label']))
 
-                step = r.get('size_price_step') or DEFAULT_SIZE_PRICE_STEP
+                is_piece_item = bool(r.get('parent_item_id') or r.get('is_set_piece'))
+                step = 0 if is_piece_item else (r.get('size_price_step') or DEFAULT_SIZE_PRICE_STEP)
                 size_labels_ordered = [s['size_label'] for s in sizes_rows] if sizes_rows else parse_size_list(r['size_label'])
                 price_map = size_price_map(r['price'], size_labels_ordered, step) if is_uniform else {}
                 
@@ -1680,7 +1681,8 @@ def student_reservation():
 
                     cursor_tx.execute("""
                         SELECT stock_total, reserved_qty, price, size_label, item_name, category,
-                               COALESCE(size_price_step, 20) AS size_price_step
+                               COALESCE(size_price_step, 20) AS size_price_step,
+                               parent_item_id, COALESCE(is_set_piece, FALSE) AS is_set_piece
                         FROM inventory_items
                         WHERE item_id = %s AND branch_id = %s AND is_active = TRUE
                         FOR UPDATE
@@ -1696,8 +1698,10 @@ def student_reservation():
                         # Pre-order catalog — no stock hold; goes to uniform_orders (not billing yet)
                         if not stored_size:
                             raise Exception(f"Please select a size for: {r['item_name']}")
+                        is_piece_item = bool(r.get('parent_item_id') or r.get('is_set_piece'))
+                        step_to_use = 0 if is_piece_item else r.get('size_price_step')
                         unit_price = price_for_size(
-                            r['price'], stored_size, r['size_label'], r.get('size_price_step')
+                            r['price'], stored_size, r['size_label'], step_to_use
                         )
                         line_total = unit_price * qty
                         uniform_lines.append({

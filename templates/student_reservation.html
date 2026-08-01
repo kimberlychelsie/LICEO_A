@@ -1051,13 +1051,34 @@
                         <p style="color: var(--res-muted);">Try selecting a different category or check back later.</p>
                     </div>
                     {% else %}
-                    {% macro order_controls(it) -%}
+                    {% macro order_controls(it, is_full_set=False, is_piece_in_set=False) -%}
                         <div class="controls-grid">
                             {% if it.category == "UNIFORM" %}
                             <div class="control-group">
                                 <label class="control-label">Size <span style="color:red;">*</span></label>
-                                <select class="size-select size-select-js" name="size_{{ it.item_id }}"
+                                {% if is_piece_in_set %}
+                                <div class="readonly-size-badge" style="background: #f1f5f9; color: #334155; padding: 6px 12px; border-radius: 8px; font-weight: 800; font-size: 0.82rem; display: inline-flex; align-items: center; gap: 6px; border: 1px solid #cbd5e1; height: 38px; box-sizing: border-box;">
+                                    <i class="fas fa-lock" style="font-size: 0.72rem; color: #64748b;"></i>
+                                    Size: <span class="sync-size-text">{% if it.sizes and it.sizes|length > 0 %}{{ it.sizes[0].size_label }}{% else %}XS{% endif %}</span>
+                                </div>
+                                <select class="size-select size-select-js piece-set-size-select" name="size_{{ it.item_id }}"
                                     data-item-id="{{ it.item_id }}" {% if it.available <=0 %}disabled{% endif %}
+                                    onchange="onUniformSizeChange(this)" style="display:none;">
+                                    {% if it.sizes and it.sizes|length > 0 %}
+                                        {% for s in it.sizes %}
+                                        <option value="{{ s.size_label }}" data-price="{{ s.price }}" {% if loop.first %}selected{% endif %}>{{ s.size_label }}</option>
+                                        {% endfor %}
+                                    {% else %}
+                                        <option value="XS" data-price="{{ it.price }}" selected>XS</option>
+                                        <option value="S" data-price="{{ it.price }}">S</option>
+                                        <option value="M" data-price="{{ it.price }}">M</option>
+                                        <option value="L" data-price="{{ it.price }}">L</option>
+                                        <option value="XL" data-price="{{ it.price }}">XL</option>
+                                    {% endif %}
+                                </select>
+                                {% else %}
+                                <select class="size-select size-select-js {% if is_full_set %}full-set-size-select{% endif %}" name="size_{{ it.item_id }}"
+                                    data-item-id="{{ it.item_id }}" {% if is_full_set %}data-full-set="true"{% endif %} {% if it.available <=0 %}disabled{% endif %}
                                     onchange="onUniformSizeChange(this)">
                                     {% if it.sizes and it.sizes|length > 0 %}
                                         {% for s in it.sizes %}
@@ -1075,6 +1096,7 @@
                                         <option value="XL" data-price="{{ it.price }}">XL</option>
                                     {% endif %}
                                 </select>
+                                {% endif %}
                             </div>
                             {% else %}
                             <div></div>
@@ -1083,7 +1105,7 @@
                                 <label class="control-label">Qty</label>
                                 <input type="number" name="qty_{{ it.item_id }}" min="0" max="3" value="0"
                                     class="qty-input" data-item-id="{{ it.item_id }}" data-category="{{ it.category }}"
-                                    data-item-name="{{ it.item_name }}" data-price="{{ it.price }}"
+                                    data-item-name="{{ it.item_name }}" data-price="{{ it.price }}" data-base-price="{{ it.price }}"
                                     {% if it.available <=0 %}disabled{% endif %}
                                     onchange="updateTotal()" onkeyup="updateTotal()">
                             </div>
@@ -1120,20 +1142,28 @@
                                 <div class="set-chevron"><i class="fas fa-chevron-down"></i></div>
                             </button>
                             <div class="set-pieces-panel">
-                                <div class="piece-row">
+                                <div class="piece-row full-set-main-row" style="background:#f8fafc; padding:14px; border-radius:12px; border:1.5px solid var(--res-primary); margin-bottom:12px;">
                                     <div>
-                                        <div class="piece-row-title">Full Set</div>
-                                        <div class="piece-row-sub">Order the complete set · From ₱{{ "{:,.2f}".format(it.price or 0.0) }} · +₱{{ "{:,.0f}".format(it.size_price_step or 20) }}/size</div>
+                                        <div class="piece-row-title" style="font-weight:900; color:var(--res-primary); font-size:1.02rem;">Full Set</div>
+                                        <div class="piece-row-sub">Order complete set · From ₱{{ "{:,.2f}".format(it.price or 0.0) }} · +₱{{ "{:,.0f}".format(it.size_price_step or 20) }}/size</div>
                                     </div>
-                                    {{ order_controls(it) }}
+                                    {{ order_controls(it, is_full_set=True, is_piece_in_set=False) }}
+                                </div>
+                                <div style="font-size:0.75rem; font-weight:800; color:var(--res-muted); text-transform:uppercase; letter-spacing:0.04em; margin:12px 0 8px 4px;">
+                                    <i class="fas fa-box-open" style="color:var(--res-primary);"></i> Included Pieces in this Set:
                                 </div>
                                 {% for p in g.pieces %}
-                                <div class="piece-row">
-                                    <div>
-                                        <div class="piece-row-title">{{ p.item_name }}</div>
-                                        <div class="piece-row-sub">Individual piece · From ₱{{ "{:,.2f}".format(p.price or 0.0) }} · +₱{{ "{:,.0f}".format(p.size_price_step or 20) }}/size</div>
+                                <div class="piece-row" style="padding:10px 14px; background:#ffffff; border-radius:10px; border:1px solid var(--res-border); margin-bottom:6px; display:flex; justify-content:space-between; align-items:center;">
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <span style="color:#16a34a; font-size:1.05rem;"><i class="fas fa-check-circle"></i></span>
+                                        <div>
+                                            <div class="piece-row-title" style="font-weight:700; font-size:0.9rem;">{{ p.item_name }}</div>
+                                            <div class="piece-row-sub" style="font-size:0.75rem; color:var(--res-muted);">Base price: ₱{{ "{:,.2f}".format(p.price or 0.0) }}</div>
+                                        </div>
                                     </div>
-                                    {{ order_controls(p) }}
+                                    <div style="background:#f0fdf4; color:#166534; border:1px solid #bbf7d0; padding:5px 12px; border-radius:20px; font-weight:800; font-size:0.75rem; display:inline-flex; align-items:center; gap:5px;">
+                                        <i class="fas fa-link" style="font-size:0.7rem;"></i> Included in Set
+                                    </div>
                                 </div>
                                 {% endfor %}
                             </div>
@@ -1275,6 +1305,36 @@
         btn.setAttribute('aria-expanded', open ? 'true' : 'false');
     }
 
+    function syncPieceSizesInSet(fullSetSelect) {
+        const card = fullSetSelect.closest('.uniform-set-card');
+        if (!card) return;
+
+        const val = fullSetSelect.value;
+        if (!val) return;
+
+        const pieceSelects = card.querySelectorAll('.size-select-js:not(.full-set-size-select)');
+        pieceSelects.forEach(selectEl => {
+            const matchingOpt = Array.from(selectEl.options).find(opt => opt.value === val);
+            if (matchingOpt) {
+                selectEl.value = val;
+                const row = selectEl.closest('.piece-row') || selectEl.closest('.product-card');
+                const badgeText = row ? row.querySelector('.sync-size-text') : null;
+                if (badgeText) {
+                    badgeText.textContent = val;
+                }
+                const price = parseFloat(matchingOpt.getAttribute('data-price'));
+                const qtyInput = row ? row.querySelector('.qty-input') : null;
+                const priceTag = row ? row.querySelector('.price-tag-js') : null;
+                if (!isNaN(price) && qtyInput) {
+                    qtyInput.setAttribute('data-price', price);
+                    if (priceTag) {
+                        priceTag.textContent = '₱' + price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    }
+                }
+            }
+        });
+    }
+
     function onUniformSizeChange(selectEl) {
         const opt = selectEl.options[selectEl.selectedIndex];
         const price = parseFloat(opt.getAttribute('data-price'));
@@ -1287,6 +1347,11 @@
                 priceTag.textContent = '₱' + price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             }
         }
+
+        if (selectEl.classList.contains('full-set-size-select') || selectEl.getAttribute('data-full-set') === 'true') {
+            syncPieceSizesInSet(selectEl);
+        }
+
         updateTotal();
     }
 
@@ -1308,6 +1373,7 @@
                 let price = parseFloat(input.getAttribute("data-price")) || 0;
 
                 let sizeVal = "";
+                let sizeFee = 0;
                 if (category === "UNIFORM") {
                     const sizeSelect = document.querySelector(`select[name="size_${itemId}"]`);
                     sizeVal = sizeSelect ? sizeSelect.value : "";
@@ -1316,9 +1382,13 @@
                     } else if (sizeSelect) {
                         const opt = sizeSelect.options[sizeSelect.selectedIndex];
                         const sizePrice = parseFloat(opt.getAttribute('data-price'));
+                        const basePrice = parseFloat(input.getAttribute('data-base-price') || input.getAttribute('data-price'));
                         if (!isNaN(sizePrice)) {
                             price = sizePrice;
                             input.setAttribute('data-price', price);
+                            if (sizePrice > basePrice) {
+                                sizeFee = sizePrice - basePrice;
+                            }
                         }
                     }
                 }
@@ -1335,10 +1405,11 @@
                     <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 12px; color: var(--res-text); background: #f8fafc; padding: 10px; border-radius: 12px; border: 1px solid var(--res-border);">
                         <div style="flex: 1;">
                             <div style="font-weight: 800; color: var(--res-primary); margin-bottom: 2px;">${itemName}</div>
-                            <div style="display: flex; align-items: center; gap: 8px;">
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                 <span style="background: var(--res-primary); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">Qty: ${qty}</span>
                                 ${sizeVal ? `<span style="background: #e2e8f0; color: #475569; padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700;">Size: ${sizeVal}</span>` : ''}
                             </div>
+                            ${sizeFee > 0 ? `<div style="font-size: 0.72rem; color: #0284c7; margin-top: 4px; font-weight: 700;"><i class="fas fa-tag"></i> Includes +₱${(sizeFee * qty).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Size Fee (${sizeVal})</div>` : ''}
                         </div>
                         <div style="font-weight: 900; color: var(--res-text); align-self: center;">₱${(qty * price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                     </div>
@@ -1447,6 +1518,7 @@
     });
 
     // Init
+    document.querySelectorAll('.full-set-size-select').forEach(s => syncPieceSizesInSet(s));
     document.querySelectorAll('.size-select-js').forEach(s => onUniformSizeChange(s));
     filterItems();
     updateTotal();

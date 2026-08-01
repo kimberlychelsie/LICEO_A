@@ -4,6 +4,10 @@ from werkzeug.security import generate_password_hash
 import logging
 import psycopg2.extras
 
+from decimal import Decimal
+from datetime import datetime
+from utils.uniform_pricing import price_for_size
+
 # Setup logging
 logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger(__name__)
@@ -187,10 +191,15 @@ def child_detail(enrollment_id):
 
     try:
         cursor.execute("""
-            SELECT ps.*, e.*, br.branch_name, br.location
+            SELECT ps.relationship,
+                   e.*,
+                   br.branch_name, br.location, br.branch_code,
+                   sec.section_name, sy.label AS year_name
             FROM parent_student ps
             JOIN enrollments e ON ps.student_id = e.enrollment_id
             JOIN branches br ON e.branch_id = br.branch_id
+            LEFT JOIN sections sec ON e.section_id = sec.section_id
+            LEFT JOIN school_years sy ON e.year_id = sy.year_id
             WHERE ps.parent_id=%s AND ps.student_id=%s
         """, (session.get("user_id"), enrollment_id))
 
@@ -198,6 +207,19 @@ def child_detail(enrollment_id):
         if not child:
             flash("Child not found or access denied", "error")
             return redirect(url_for("parent.dashboard"))
+
+        fname = child.get("student_first_name") or child.get("first_name") or ""
+        mname = child.get("student_middle_name") or child.get("middle_name") or ""
+        lname = child.get("student_last_name") or child.get("last_name") or ""
+        fullName = " ".join(filter(None, [fname, mname, lname])).strip()
+        child["student_name"] = fullName if fullName else (child.get("full_name") or child.get("name") or "Student")
+
+        br_code = child.get("branch_code") or "LDMAJ"
+        br_no = child.get("branch_enrollment_no") or child.get("enrollment_id") or 1
+        try:
+            child["display_student_id"] = f"{br_code}_{int(br_no):04d}"
+        except (ValueError, TypeError):
+            child["display_student_id"] = f"{br_code}_{br_no}"
 
         cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id=%s", (enrollment_id,))
         documents = cursor.fetchall()
@@ -562,16 +584,8 @@ def child_bills(enrollment_id):
 
             # Include uniform pre-orders in billing breakdown (status matches cashier)
             cursor.execute("""
-                SELECT
-                    uo.order_id AS reservation_id,
-                    uoi.item_name,
-                    uoi.quantity AS qty,
-                    uoi.line_total,
-                    'uniform' AS category,
-                    uo.order_status,
-                    uo.order_number
-                FROM uniform_order_items uoi
-                JOIN uniform_orders uo ON uo.order_id = uoi.order_id
+                SELECT uo.order_id, uo.order_number, uo.order_status, uo.order_total, uo.created_at
+                FROM uniform_orders uo
                 WHERE uo.enrollment_id = %s
                    OR uo.student_user_id IN (
                         SELECT u.user_id FROM student_accounts sa
@@ -580,7 +594,84 @@ def child_bills(enrollment_id):
                    )
                 ORDER BY uo.order_id ASC
             """, (enrollment_id, enrollment_id))
-            reservation_details = list(reservation_details or []) + list(cursor.fetchall() or [])
+            uo_orders = cursor.fetchall() or []
+
+            uo_details = []
+            for uo in uo_orders:
+                cursor.execute("""
+                    SELECT uoi.item_name, uoi.size_label, uoi.unit_price, uoi.quantity, uoi.line_total, uoi.inventory_item_id
+                    FROM uniform_order_items uoi
+                    WHERE uoi.order_id = %s
+                    ORDER BY uoi.item_name ASC
+                """, (uo["order_id"],))
+                uoi_items = cursor.fetchall() or []
+
+                pieces_list = []
+                for item in uoi_items:
+                    inv_id = item.get("inventory_item_id")
+                    size_lbl = item.get("size_label") or ""
+                    if inv_id:
+                        cursor.execute("""
+                            SELECT item_name, price, size_label, COALESCE(size_price_step, 20) AS size_price_step
+                            FROM inventory_items
+                            WHERE parent_item_id = %s AND is_active = TRUE
+                            ORDER BY item_name ASC
+                        """, (inv_id,))
+                        child_pieces = cursor.fetchall()
+                        if child_pieces:
+                            pieces_subtotal = Decimal(0)
+                            for cp in child_pieces:
+                                cp_price = price_for_size(cp["price"], size_lbl, cp["size_label"], 0)
+                                cp_line_total = Decimal(str(cp_price)) * Decimal(str(item["quantity"]))
+                                pieces_subtotal += cp_line_total
+                                pieces_list.append({
+                                    "item_name": cp["item_name"],
+                                    "size_label": size_lbl,
+                                    "unit_price": cp_price,
+                                    "quantity": item["quantity"],
+                                    "line_total": cp_line_total
+                                })
+                            item_total = Decimal(str(item["line_total"] or 0))
+                            size_fee = item_total - pieces_subtotal
+                            if size_fee > Decimal(0):
+                                qty = Decimal(str(item["quantity"] or 1))
+                                pieces_list.append({
+                                    "item_name": f"+ Size Fee ({size_lbl})" if size_lbl else "+ Size Fee",
+                                    "size_label": "",
+                                    "unit_price": size_fee / qty if qty else size_fee,
+                                    "quantity": item["quantity"],
+                                    "line_total": size_fee
+                                })
+                        else:
+                            pieces_list.append({
+                                "item_name": item["item_name"],
+                                "size_label": size_lbl,
+                                "unit_price": Decimal(str(item["unit_price"] or 0)),
+                                "quantity": item["quantity"],
+                                "line_total": Decimal(str(item["line_total"] or 0))
+                            })
+                    else:
+                        pieces_list.append({
+                            "item_name": item["item_name"],
+                            "size_label": size_lbl,
+                            "unit_price": Decimal(str(item["unit_price"] or 0)),
+                            "quantity": item["quantity"],
+                            "line_total": Decimal(str(item["line_total"] or 0))
+                        })
+
+                item_names_str = ", ".join(f"{it['item_name']} ({it['size_label']})" if it.get('size_label') else it['item_name'] for it in uoi_items)
+                uo_details.append({
+                    "reservation_id": uo["order_id"],
+                    "item_name": f"[{uo['order_number']}] {item_names_str}",
+                    "qty": sum(it['quantity'] for it in uoi_items),
+                    "line_total": Decimal(str(uo["order_total"] or 0)),
+                    "category": "uniform",
+                    "order_status": uo["order_status"],
+                    "order_number": uo["order_number"],
+                    "pieces": pieces_list
+                })
+
+            reservation_details = list(reservation_details or []) + uo_details
 
         return render_template(
             "parent_child_bills.html",
@@ -688,6 +779,111 @@ def parent_mark_notifs_read():
     except Exception as e:
         db.rollback()
         return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@parent_bp.route("/parent/reservations", methods=["GET"])
+def parent_reservations_list():
+    if not _require_parent():
+        return redirect("/")
+
+    parent_id = session.get("user_id")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        cursor.execute("""
+            SELECT e.enrollment_id, e.student_first_name, e.student_middle_name,
+                   e.student_last_name, e.grade_level, e.branch_id
+            FROM parent_student ps
+            JOIN enrollments e ON ps.student_id = e.enrollment_id
+            WHERE ps.parent_id = %s
+        """, (parent_id,))
+        children = cursor.fetchall() or []
+
+        child_ids = [c["enrollment_id"] for c in children]
+        rows = []
+
+        if child_ids:
+            cursor.execute("""
+                SELECT
+                    r.reservation_id AS ref_id,
+                    'RES' AS ref_type,
+                    r.status,
+                    r.created_at,
+                    COALESCE(SUM(ri.line_total), 0) AS total_amount,
+                    COALESCE(SUM(ri.qty), 0) AS total_qty,
+                    STRING_AGG(DISTINCT ii.item_name, ', ' ORDER BY ii.item_name) AS item_names,
+                    e.student_first_name, e.student_last_name, e.grade_level
+                FROM reservations r
+                LEFT JOIN reservation_items ri ON ri.reservation_id = r.reservation_id
+                LEFT JOIN inventory_items ii ON ii.item_id = ri.item_id
+                LEFT JOIN enrollments e ON e.enrollment_id = r.enrollment_id
+                WHERE (r.enrollment_id = ANY(%s) OR r.reserved_by_user_id = %s)
+                  AND UPPER(COALESCE(r.status, '')) NOT IN ('CANCELLED', 'REJECTED')
+                  AND EXISTS (
+                      SELECT 1 FROM reservation_items ri2
+                      JOIN inventory_items ii2 ON ii2.item_id = ri2.item_id
+                      WHERE ri2.reservation_id = r.reservation_id
+                        AND UPPER(COALESCE(ii2.category, '')) <> 'UNIFORM'
+                  )
+                GROUP BY r.reservation_id, r.status, r.created_at, e.student_first_name, e.student_last_name, e.grade_level
+                ORDER BY r.created_at DESC
+            """, (child_ids, parent_id))
+            for res in cursor.fetchall() or []:
+                student_name = f"{res.get('student_first_name') or ''} {res.get('student_last_name') or ''}".strip()
+                rows.append({
+                    "ref_id": res["ref_id"],
+                    "ref_type": "RES",
+                    "status": res["status"],
+                    "created_at": res["created_at"],
+                    "total_amount": float(res["total_amount"] or 0),
+                    "total_qty": int(res["total_qty"] or 0),
+                    "item_names": res["item_names"],
+                    "student_name": student_name or "Child",
+                    "grade_level": res.get("grade_level") or "N/A"
+                })
+
+            cursor.execute("""
+                SELECT
+                    uo.order_id AS ref_id,
+                    'UO' AS ref_type,
+                    uo.order_number,
+                    uo.order_status AS status,
+                    uo.payment_status,
+                    uo.created_at,
+                    uo.total_amount,
+                    COALESCE(SUM(uoi.quantity), 0) AS total_qty,
+                    STRING_AGG(DISTINCT uoi.item_name, ', ' ORDER BY uoi.item_name) AS item_names,
+                    e.student_first_name, e.student_last_name, e.grade_level
+                FROM uniform_orders uo
+                LEFT JOIN uniform_order_items uoi ON uoi.order_id = uo.order_id
+                LEFT JOIN enrollments e ON e.enrollment_id = uo.enrollment_id
+                WHERE uo.enrollment_id = ANY(%s) OR uo.created_by_user_id = %s
+                GROUP BY uo.order_id, uo.order_number, uo.order_status, uo.payment_status,
+                         uo.created_at, uo.total_amount, e.student_first_name, e.student_last_name, e.grade_level
+                ORDER BY uo.created_at DESC
+            """, (child_ids, parent_id))
+            for u in cursor.fetchall() or []:
+                student_name = f"{u.get('student_first_name') or ''} {u.get('student_last_name') or ''}".strip()
+                rows.append({
+                    "ref_id": u["ref_id"],
+                    "ref_type": "UO",
+                    "order_number": u.get("order_number"),
+                    "status": u["status"],
+                    "created_at": u["created_at"],
+                    "total_amount": float(u["total_amount"] or 0),
+                    "total_qty": int(u["total_qty"] or 0),
+                    "item_names": u["item_names"],
+                    "payment_status": u.get("payment_status"),
+                    "student_name": student_name or "Child",
+                    "grade_level": u.get("grade_level") or "N/A"
+                })
+
+        rows.sort(key=lambda r: r.get("created_at") or datetime.min, reverse=True)
+        return render_template("parent_reservations_list.html", rows=rows, children=children)
     finally:
         cursor.close()
         db.close()

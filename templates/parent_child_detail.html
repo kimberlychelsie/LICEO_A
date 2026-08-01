@@ -322,9 +322,9 @@
         <div class="hero-details">
             <h2>{{ child.student_name }}</h2>
             <div class="hero-badges">
-                <div class="badge-item"><i class="fas fa-graduation-cap"></i> {{ child.grade_level }}</div>
+                <div class="badge-item"><i class="fas fa-graduation-cap"></i> {{ child.grade_level }}{% if child.section_name %} · {{ child.section_name }}{% endif %}</div>
                 <div class="badge-item"><i class="fas fa-school"></i> {{ child.branch_name }}</div>
-                <div class="badge-item"><i class="fas fa-id-card-alt"></i> ID: {{ child.branch_enrollment_no }}</div>
+                <div class="badge-item"><i class="fas fa-id-card-alt"></i> {{ child.display_student_id or ('LDMAJ_' ~ '%04d'|format(child.branch_enrollment_no|default(child.enrollment_id)|int)) }}</div>
             </div>
         </div>
     </section>
@@ -335,9 +335,11 @@
             <div class="card-title"><i class="fas fa-id-badge"></i> Student Identity</div>
             <div class="card-content">
                 <div class="field-grid">
-                    <div class="field-box"><div class="field-label">Gender</div><div class="field-value">{{ child.gender }}</div></div>
-                    <div class="field-box"><div class="field-label">Birthday</div><div class="field-value">{{ child.dob }}</div></div>
-                    <div class="field-box"><div class="field-label">Mobile</div><div class="field-value">{{ child.contact_number }}</div></div>
+                    <div class="field-box"><div class="field-label">LRN</div><div class="field-value">{{ child.lrn or 'N/A' }}</div></div>
+                    <div class="field-box"><div class="field-label">Gender</div><div class="field-value">{{ child.gender or 'N/A' }}</div></div>
+                    <div class="field-box"><div class="field-label">Birthday</div><div class="field-value">{{ child.dob or child.date_of_birth or 'N/A' }}</div></div>
+                    <div class="field-box"><div class="field-label">Mobile</div><div class="field-value">{{ child.contact_number or child.mobile or 'N/A' }}</div></div>
+                    <div class="field-box"><div class="field-label">Email</div><div class="field-value">{{ child.email or 'N/A' }}</div></div>
                     <div class="field-box"><div class="field-label">Last School</div><div class="field-value">{{ child.previous_school or 'N/A' }}</div></div>
                 </div>
             </div>
@@ -345,10 +347,13 @@
         <div class="info-card">
             <div class="card-title"><i class="fas fa-user-shield"></i> Parent/Guardian</div>
             <div class="card-content">
-                <div class="field-box"><div class="field-label">Primary Guardian</div><div class="field-value">{{ child.guardian_name }}</div></div>
+                <div class="field-box">
+                    <div class="field-label">Primary Guardian</div>
+                    <div class="field-value">{{ child.guardian_name or child.parent_name or child.father_name or child.mother_name or 'Parent / Guardian' }}</div>
+                </div>
                 <div class="field-grid">
-                    <div class="field-box"><div class="field-label">Relation</div><div class="field-value">{{ child.relationship|capitalize }}</div></div>
-                    <div class="field-box"><div class="field-label">Emergency Line</div><div class="field-value">{{ child.guardian_contact }}</div></div>
+                    <div class="field-box"><div class="field-label">Relation</div><div class="field-value">{{ (child.relationship or child.guardian_relationship or 'Guardian')|capitalize }}</div></div>
+                    <div class="field-box"><div class="field-label">Emergency Line</div><div class="field-value">{{ child.guardian_contact or child.emergency_contact or child.father_contact or child.mother_contact or 'N/A' }}</div></div>
                 </div>
             </div>
         </div>
