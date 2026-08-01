@@ -3661,20 +3661,24 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
         if qa_overridden:
             qa_score = _cap_0_100(ov['override_qa'])
 
-        # DepEd auto-computation always runs — never directly overridden
-        period_grade = round(
-            ww_score  * w['ww'] +
-            pt_score  * w['pt'] +
-            qa_score  * w['qa'],
-            2
-        )
-
-        transmuted_grade = _get_deped_transmuted_grade(period_grade)
-        transmutation_band = _get_transmutation_band(period_grade)
-
         has_ww_score = (eid in quiz_scores) or bool(ww_overridden)
         has_pt_score = has_activity or has_participation or has_attendance or bool(pt_overridden)
         has_qa_score = (eid in exam_scores) or bool(qa_overridden)
+        has_any_score = has_ww_score or has_pt_score or has_qa_score
+
+        if has_any_score:
+            period_grade = round(
+                ww_score  * w['ww'] +
+                pt_score  * w['pt'] +
+                qa_score  * w['qa'],
+                2
+            )
+            transmuted_grade = _get_deped_transmuted_grade(period_grade)
+            transmutation_band = _get_transmutation_band(period_grade)
+        else:
+            period_grade = None
+            transmuted_grade = None
+            transmutation_band = None
 
         records.append({
             'enrollment_id':   eid,
@@ -3764,8 +3768,9 @@ def class_record(section_id, subject_id):
                 g2 = r2.get('transmuted_grade')
                 g3 = r3.get('transmuted_grade')
 
+                is_complete = (g1 is not None and g2 is not None and g3 is not None)
                 avail = [g for g in [g1, g2, g3] if g is not None]
-                final_avg = round(sum(avail) / len(avail), 2) if avail else None
+                final_avg = round(sum(avail) / 3, 2) if is_complete else None
 
                 records.append({
                     'enrollment_id': eid,
@@ -3774,7 +3779,7 @@ def class_record(section_id, subject_id):
                     'grade_2nd': g2,
                     'grade_3rd': g3,
                     'final_grade': final_avg,
-                    'is_complete': (len(avail) == 3)
+                    'is_complete': is_complete
                 })
 
             weights = None
