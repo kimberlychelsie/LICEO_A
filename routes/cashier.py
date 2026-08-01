@@ -885,7 +885,7 @@ def print_receipt(payment_id):
         db.close()
 
 
-def _get_report_date_range(report_range, report_date):
+def _get_report_date_range(report_range, report_date, report_date_end=None):
     from datetime import timedelta
     today = _get_manila_today()
     if report_range == "weekly":
@@ -899,6 +899,13 @@ def _get_report_date_range(report_range, report_date):
     elif report_range == "yearly":
         start = today.replace(month=1, day=1)
         end   = today.replace(month=12, day=31)
+    elif report_range == "custom":
+        try:
+            from datetime import date as _date
+            start = _date.fromisoformat(report_date) if report_date else today
+            end = _date.fromisoformat(report_date_end) if report_date_end else start
+        except Exception:
+            start = end = today
     else:
         try:
             from datetime import date as _date
@@ -960,7 +967,8 @@ def reports():
 
     report_range = request.form.get("report_range", "today")
     report_date  = request.form.get("report_date", _get_manila_today().strftime("%Y-%m-%d"))
-    start_date, end_date = _get_report_date_range(report_range, report_date)
+    report_date_end = request.form.get("report_date_end", report_date)
+    start_date, end_date = _get_report_date_range(report_range, report_date, report_date_end)
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -976,6 +984,7 @@ def reports():
             payments=payments,
             summary=summary,
             report_date=report_date,
+            report_date_end=report_date_end,
             report_range=report_range,
             date_start=str(start_date),
             date_end=str(end_date),
@@ -994,7 +1003,8 @@ def export_reports_excel():
 
     report_range = request.args.get("range", "today")
     report_date  = request.args.get("date", _get_manila_today().strftime("%Y-%m-%d"))
-    start_date, end_date = _get_report_date_range(report_range, report_date)
+    report_date_end = request.args.get("date_end", report_date)
+    start_date, end_date = _get_report_date_range(report_range, report_date, report_date_end)
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -1036,7 +1046,7 @@ def export_reports_excel():
         "weekly":  f"This Week ({start_date} to {end_date})",
         "monthly": f"This Month ({start_date} to {end_date})",
         "yearly":  f"This Year ({start_date} to {end_date})",
-        "custom":  f"Custom ({start_date})",
+        "custom":  f"Custom Range ({start_date} to {end_date})",
     }.get(report_range, str(start_date))
 
     ws.merge_cells("A2:G2")
@@ -1125,7 +1135,8 @@ def export_reports_pdf():
 
     report_range = request.args.get("range", "today")
     report_date  = request.args.get("date", _get_manila_today().strftime("%Y-%m-%d"))
-    start_date, end_date = _get_report_date_range(report_range, report_date)
+    report_date_end = request.args.get("date_end", report_date)
+    start_date, end_date = _get_report_date_range(report_range, report_date, report_date_end)
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -1173,7 +1184,7 @@ def export_reports_pdf():
         "weekly":  f"This Week: {start_date} to {end_date}",
         "monthly": f"This Month: {start_date} to {end_date}",
         "yearly":  f"This Year: {start_date} to {end_date}",
-        "custom":  f"Custom Date: {start_date}",
+        "custom":  f"Custom Range: {start_date} to {end_date}",
     }.get(report_range, str(start_date))
 
     story = [
@@ -1321,67 +1332,7 @@ def search():
 
 @cashier_bp.route("/cashier/payment-history", methods=["GET"])
 def payment_history():
-    if not _require_cashier():
-        return redirect("/")
-
-    date_from = request.args.get("date_from", "").strip() or _get_manila_today().replace(day=1).strftime("%Y-%m-%d")
-    date_to = request.args.get("date_to", "").strip() or _get_manila_today().strftime("%Y-%m-%d")
-
-    db = get_db_connection()
-    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-
-    try:
-        cursor.execute("""
-            SELECT
-              p.payment_id,
-              p.receipt_number as reference_number,
-              p.amount,
-              p.payment_method,
-              p.payment_date,
-              e.student_first_name,
-              e.student_middle_name,
-              e.student_last_name,
-              e.grade_level,
-              u.username AS received_by_name
-            FROM payments p
-            JOIN enrollments e ON p.enrollment_id = e.enrollment_id
-            JOIN users u ON p.received_by = u.user_id
-            WHERE p.payment_date::date >= %s AND p.payment_date::date <= %s
-              AND e.branch_id = %s
-            ORDER BY p.payment_date DESC
-        """, (date_from, date_to, session.get("branch_id")))
-        payments = cursor.fetchall()
-
-        for payment in payments:
-            payment["student_name"] = " ".join(filter(None, [
-                payment.get("student_first_name"),
-                payment.get("student_middle_name"),
-                payment.get("student_last_name"),
-            ]))
-
-        cursor.execute("""
-            SELECT
-              COALESCE(SUM(p.amount), 0) AS total_collected
-            FROM payments p
-            JOIN enrollments e ON p.enrollment_id = e.enrollment_id
-            WHERE p.payment_date::date >= %s AND p.payment_date::date <= %s
-              AND e.branch_id = %s
-        """, (date_from, date_to, session.get("branch_id")))
-        summary = cursor.fetchone() or {"total_collected": 0}
-
-        return render_template(
-            "payment_history.html",
-            payments=payments,
-            total_collected=summary["total_collected"],
-            date_from=date_from,
-            date_to=date_to
-        )
-    except Exception as e:
-        flash(f"Error loading payment history: {str(e)}", "error")
-        return redirect(url_for("cashier.dashboard"))
-    finally:
-        cursor.close()
-        db.close()
+    return redirect(url_for("cashier.reports"))
 
 
 # =======================

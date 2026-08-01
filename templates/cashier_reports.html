@@ -498,11 +498,21 @@
                 <option value="weekly" {% if report_range == 'weekly' %}selected{% endif %}>This Week</option>
                 <option value="monthly" {% if report_range == 'monthly' %}selected{% endif %}>This Month</option>
                 <option value="yearly" {% if report_range == 'yearly' %}selected{% endif %}>This Year</option>
-                <option value="custom" {% if report_range == 'custom' %}selected{% endif %}>Custom Date</option>
+                <option value="custom" {% if report_range == 'custom' %}selected{% endif %}>Custom Range</option>
             </select>
+            <!-- Single date for Today -->
             <input type="date" name="report_date" id="date-input" class="date-input"
                 value="{{ report_date }}"
-                style="display: {{ 'block' if report_range in ('today','custom','') else 'none' }};">
+                style="display: {{ 'block' if report_range == 'today' else 'none' }};">
+            <!-- Date range for Custom -->
+            <span id="custom-range-wrap" style="display: {{ 'flex' if report_range == 'custom' else 'none' }}; align-items: center; gap: 8px;">
+                <span class="form-label" style="margin:0;">From</span>
+                <input type="date" name="report_date" id="date-from-input" class="date-input"
+                    value="{{ report_date }}">
+                <span class="form-label" style="margin:0;">To</span>
+                <input type="date" name="report_date_end" id="date-end-input" class="date-input"
+                    value="{{ report_date_end }}">
+            </span>
             <button type="submit" class="btn-generate">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -540,13 +550,19 @@
     <script>
     function handleRangeChange(val) {
         var di = document.getElementById('date-input');
-        di.style.display = (val === 'today' || val === 'custom') ? 'block' : 'none';
+        var cr = document.getElementById('custom-range-wrap');
+        di.style.display = (val === 'today') ? 'block' : 'none';
+        cr.style.display = (val === 'custom') ? 'flex' : 'none';
     }
     function exportReport(fmt) {
         var range = document.getElementById('range-select').value;
-        var date  = document.getElementById('date-input').value;
         var url   = '/cashier/reports/export/' + fmt + '?range=' + range;
-        if (range === 'today' || range === 'custom') url += '&date=' + date;
+        if (range === 'today') {
+            url += '&date=' + document.getElementById('date-input').value;
+        } else if (range === 'custom') {
+            url += '&date=' + document.getElementById('date-from-input').value;
+            url += '&date_end=' + document.getElementById('date-end-input').value;
+        }
         window.location.href = url;
     }
     </script>
