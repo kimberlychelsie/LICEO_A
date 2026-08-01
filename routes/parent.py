@@ -576,15 +576,6 @@ def child_bills(enrollment_id):
         cursor.execute("SELECT * FROM billing WHERE enrollment_id=%s", (enrollment_id,))
         bill = cursor.fetchone()
 
-        if not bill:
-            cursor.execute("""
-                INSERT INTO billing (enrollment_id, tuition_fee, books_fee, uniform_fee, other_fees, total_amount, amount_paid, balance, status)
-                VALUES (%s, 0, 0, 0, 0, 0, 0, 0, 'pending')
-                RETURNING *
-            """, (enrollment_id,))
-            db.commit()
-            bill = cursor.fetchone()
-
         # Fetch active reservations total (books/materials)
         cursor.execute("""
             SELECT COALESCE(SUM(ri.line_total), 0) AS res_total
@@ -643,9 +634,21 @@ def child_bills(enrollment_id):
 
             cursor.execute("SELECT * FROM billing WHERE bill_id=%s", (bill['bill_id'],))
             bill = cursor.fetchone()
+        else:
+            bill = {
+                'bill_id': None,
+                'tuition_fee': 0,
+                'books_fee': active_res_total,
+                'uniform_fee': active_uo_total,
+                'other_fees': 0,
+                'total_amount': active_res_total + active_uo_total,
+                'amount_paid': 0,
+                'balance': active_res_total + active_uo_total,
+                'status': 'pending' if (active_res_total + active_uo_total) > 0 else 'no_bill'
+            }
 
         payments = []
-        if bill:
+        if bill and bill.get('bill_id'):
             cursor.execute("""
                 SELECT p.*, p.receipt_number as reference_number, u.username as received_by_name
                 FROM payments p
