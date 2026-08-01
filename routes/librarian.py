@@ -800,6 +800,8 @@ def releases():
         db.close()
 
     active_tab = request.args.get("tab", "queue")
+    if active_tab not in ["queue", "history"]:
+        active_tab = "queue"
 
     return render_template(
         "librarian_releases.html",
@@ -1031,3 +1033,152 @@ def mark_reservation_claimed(reservation_id):
         db.close()
 
     return redirect(url_for("librarian.releases", tab="queue"))
+
+
+# ─────────────────────────────────────────────────────────────
+#  LIBRARIAN REPORTS
+# ─────────────────────────────────────────────────────────────
+from datetime import date as _date, timedelta as _timedelta
+import pytz as _pytz
+
+def _get_manila_today_lib():
+    ph_tz = _pytz.timezone("Asia/Manila")
+    return _pytz.utc.localize(__import__("datetime").datetime.utcnow()).astimezone(ph_tz).date()
+
+def _lib_report_range(report_range, report_date, report_date_end):
+    today = _get_manila_today_lib()
+    if report_range == "today":
+        try:
+            d = _date.fromisoformat(report_date)
+        except Exception:
+            d = today
+        return d, d
+    elif report_range == "weekly":
+        start = today - _timedelta(days=today.weekday())
+        return start, today
+    elif report_range == "monthly":
+        return today.replace(day=1), today
+    elif report_range == "yearly":
+        return today.replace(month=1, day=1), today
+    elif report_range == "custom":
+        try:
+            start = _date.fromisoformat(report_date)
+        except Exception:
+            start = today
+        try:
+            end = _date.fromisoformat(report_date_end)
+        except Exception:
+            end = today
+        if end < start:
+            end = start
+        return start, end
+    else:
+        return today, today
+
+
+@librarian_bp.route("/librarian/reports", methods=["GET", "POST"])
+def reports():
+    if not _require_librarian():
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("No branch assigned.", "error")
+        return redirect("/")
+
+    today_str = str(_get_manila_today_lib())
+    if request.method == "POST":
+        report_range = request.form.get("report_range", "today")
+        report_date = request.form.get("report_date", today_str)
+        report_date_end = request.form.get("report_date_end", today_str)
+    else:
+        report_range = request.args.get("report_range", "today")
+        report_date = request.args.get("report_date", today_str)
+        report_date_end = request.args.get("report_date_end", today_str)
+
+    start_date, end_date = _lib_report_range(report_range, report_date, report_date_end)
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Summary stats
+        cur.execute("""
+            SELECT
+                COUNT(DISTINCT br.release_id)                         AS total_releases,
+                COALESCE(SUM(bri.qty), 0)                             AS total_books_released,
+                COUNT(DISTINCT CASE WHEN br.enrollment_id IS NOT NULL THEN br.enrollment_id END) AS total_students
+            FROM book_releases br
+            JOIN book_release_items bri ON bri.release_id = br.release_id
+            WHERE br.branch_id = %s
+              AND DATE(br.created_at AT TIME ZONE 'Asia/Manila') BETWEEN %s AND %s
+        """, (branch_id, start_date, end_date))
+        summary = cur.fetchone() or {"total_releases": 0, "total_books_released": 0, "total_students": 0}
+
+        # Per-grade breakdown
+        cur.execute("""
+            SELECT
+                COALESCE(e.grade_level, '—') AS grade,
+                COUNT(DISTINCT br.release_id)  AS releases,
+                COALESCE(SUM(bri.qty), 0)      AS books_released
+            FROM book_releases br
+            JOIN book_release_items bri ON bri.release_id = br.release_id
+            LEFT JOIN enrollments e     ON e.enrollment_id = br.enrollment_id
+            WHERE br.branch_id = %s
+              AND DATE(br.created_at AT TIME ZONE 'Asia/Manila') BETWEEN %s AND %s
+            GROUP BY 1
+            ORDER BY 1
+        """, (branch_id, start_date, end_date))
+        grade_breakdown = cur.fetchall() or []
+
+        # Transaction history
+        cur.execute("""
+            SELECT
+                br.release_id,
+                br.created_at,
+                COALESCE(
+                    CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name),
+                    br.student_name, 'Walk-in'
+                )                                                      AS student_name,
+                COALESCE(e.grade_level, '—')                            AS grade_level,
+                e.branch_enrollment_no,
+                COALESCE(SUM(bri.qty), 0)                              AS qty_released,
+                STRING_AGG(ii.item_name || ' (x' || bri.qty || ')', ', '
+                           ORDER BY ii.item_name)                      AS books_list
+            FROM book_releases br
+            JOIN book_release_items bri ON bri.release_id = br.release_id
+            JOIN inventory_items ii     ON ii.item_id = bri.item_id
+            LEFT JOIN enrollments e     ON e.enrollment_id = br.enrollment_id
+            WHERE br.branch_id = %s
+              AND DATE(br.created_at AT TIME ZONE 'Asia/Manila') BETWEEN %s AND %s
+            GROUP BY br.release_id, br.created_at, br.student_name,
+                     e.student_first_name, e.student_middle_name, e.student_last_name,
+                     e.grade_level, e.branch_enrollment_no
+            ORDER BY br.created_at DESC
+        """, (branch_id, start_date, end_date))
+        transactions = cur.fetchall() or []
+        for t in transactions:
+            if t.get("created_at"):
+                t["created_at"] = _to_manila_naive(t["created_at"])
+
+    except Exception as e:
+        db.rollback()
+        flash(f"Error loading report: {e}", "error")
+        summary = {"total_releases": 0, "total_books_released": 0, "total_students": 0}
+        grade_breakdown = []
+        transactions = []
+    finally:
+        cur.close()
+        db.close()
+
+    return render_template(
+        "librarian_reports.html",
+        summary=summary,
+        grade_breakdown=grade_breakdown,
+        transactions=transactions,
+        report_range=report_range,
+        report_date=str(start_date),
+        report_date_end=str(end_date),
+        start_date=start_date,
+        end_date=end_date,
+        grades=GRADES,
+    )
