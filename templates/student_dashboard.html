@@ -492,68 +492,86 @@
         <div class="sd-grid">
         <div class="sd-col-main">
 
-            <!-- Announcements Card -->
-            <div class="sd-card">
-                <div class="sd-card-header">
-                    <h3>
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                        </svg>
-                        Teacher Announcements
-                    </h3>
-                    <span style="font-size: 0.75rem; font-weight: 600; color: var(--sd-muted);">Recent</span>
-                </div>
-                <div class="ann-list">
-                    {% if not enrolled_in_active_sy %}
-                    <p style="text-align: center; color: var(--sd-muted); font-size: 0.875rem; padding: 20px;">Announcements will be shown once you are enrolled for the active school year.</p>
-                    {% elif teacher_announcements %}
-                    {% for ann in teacher_announcements %}
-                    <div class="ann-item">
-                        <div class="ann-title">{{ ann.title }}</div>
-                        <div class="ann-meta">Posted by {{ ann.display_name }} • {{ ann.created_at.strftime('%b %d,
-                            %I:%M %p') }}</div>
-                        <div class="ann-body">{{ ann.body }}</div>
-                    </div>
-                    {% endfor %}
-                    {% else %}
-                    <p style="text-align: center; color: var(--sd-muted); font-size: 0.875rem; padding: 20px;">No
-                        announcements from your teachers yet.</p>
-                    {% endif %}
-                </div>
-            </div>
-
             <!-- Subjects Card -->
             <div class="sd-card">
-                <div class="sd-card-header">
-                    <h3>
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                <div class="sd-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                         </svg>
                         My Subjects
                     </h3>
+                    {% if subjects_for_grade and subjects_for_grade|length > 4 %}
+                    <span onclick="openSubjectsModal()" style="font-size: 0.8rem; font-weight: 700; color: #2563eb; cursor: pointer; display: flex; align-items: center; gap: 2px; transition: color 0.2s;" onmouseover="this.style.color='#1d4ed8'" onmouseout="this.style.color='#2563eb'">
+                        View All <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </span>
+                    {% endif %}
                 </div>
                 <div class="subject-list">
                     {% if not enrolled_in_active_sy %}
                     <p style="text-align: center; color: var(--sd-muted); font-size: 0.875rem; padding: 20px;">Subjects will appear once you are enrolled for the active school year.</p>
                     {% elif subjects_for_grade %}
                     {% for sub in subjects_for_grade %}
-                    <a href="{{ url_for('student_portal.subject_view', subject_id=sub.subject_id) }}"
-                        class="subject-item">
+                    {% if loop.index <= 4 %}
+                    <a href="{{ url_for('student_portal.subject_view', subject_id=sub.subject_id) }}" class="subject-item">
                         <div class="subject-info">
                             <span class="subject-name">{{ sub.subject_name }}</span>
                             <span class="subject-teacher">Teacher: {{ sub.teacher_full_name or 'Not assigned' }}</span>
                         </div>
-                        <svg xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px; opacity:0.3;"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" style="width:16px; height:16px; opacity:0.3;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
                         </svg>
                     </a>
+                    {% endif %}
+                    {% endfor %}
+                    {% else %}
+                    <p style="text-align: center; color: var(--sd-muted); font-size: 0.875rem; padding: 20px;">No subjects assigned to your section yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Announcements Card -->
+            <div class="sd-card">
+                <div class="sd-card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                    <h3 style="margin: 0; display: flex; align-items: center; gap: 8px;">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" width="20" height="20">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                        Teacher Announcements
+                    </h3>
+                    {% if teacher_announcements and teacher_announcements|length > 3 %}
+                    <span onclick="openAnnouncementsModal()" style="font-size: 0.8rem; font-weight: 700; color: #2563eb; cursor: pointer; display: flex; align-items: center; gap: 2px; transition: color 0.2s;" onmouseover="this.style.color='#1d4ed8'" onmouseout="this.style.color='#2563eb'">
+                        View All <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </span>
+                    {% else %}
+                    <span style="font-size: 0.75rem; font-weight: 600; color: var(--sd-muted);">Recent</span>
+                    {% endif %}
+                </div>
+                <div class="ann-list">
+                    {% if not enrolled_in_active_sy %}
+                    <p style="text-align: center; color: var(--sd-muted); font-size: 0.875rem; padding: 20px;">Announcements will be shown once you are enrolled for the active school year.</p>
+                    {% elif teacher_announcements %}
+                    {% for ann in teacher_announcements %}
+                    {% if loop.index <= 3 %}
+                    <div class="ann-item">
+                        <div class="ann-title">{{ ann.title }}</div>
+                        <div class="ann-meta">Posted by {{ ann.display_name }} • {{ ann.created_at.strftime('%b %d,
+                            %I:%M %p') }}</div>
+                        <div class="ann-body">{{ ann.body }}</div>
+                        {% if ann.attachment %}
+                        <div style="margin-top: 10px;">
+                            <a href="{{ ann.attachment.path }}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; background: #f1f5f9; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; color: #1a3a8f; text-decoration: none; transition: background 0.2s;">
+                                <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg> View Attachment: {{ ann.attachment.name }}
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
                     {% endfor %}
                     {% else %}
                     <p style="text-align: center; color: var(--sd-muted); font-size: 0.875rem; padding: 20px;">No
-                        subjects assigned to your section yet.</p>
+                        announcements from your teachers yet.</p>
                     {% endif %}
                 </div>
             </div>
@@ -635,4 +653,138 @@
     </div>
 
 </div>
+
+<!-- Announcements Modal -->
+<div id="announcementsModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.6); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.3s ease;">
+    <div style="background: white; width: 90%; max-width: 600px; border-radius: 16px; padding: 24px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 20px;">
+            <h2 style="margin: 0; font-size: 1.25rem; color: #1e293b; display: flex; align-items: center; gap: 8px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700;">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: #3b82f6;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                </svg>
+                All Announcements
+            </h2>
+            <button onclick="closeAnnouncementsModal()" style="background: #f1f5f9; border: none; font-size: 1.25rem; color: #64748b; cursor: pointer; transition: all 0.2s; line-height: 1; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;" onmouseover="this.style.background='#e2e8f0'; this.style.color='#0f172a'" onmouseout="this.style.background='#f1f5f9'; this.style.color='#64748b'">&times;</button>
+        </div>
+        
+        <div class="ann-list" style="padding: 0 4px;">
+            {% if teacher_announcements %}
+            {% for ann in teacher_announcements %}
+            <div class="ann-item" style="margin-bottom: 16px; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div class="ann-title" style="font-size: 1.05rem; color: #0f172a;">{{ ann.title }}</div>
+                <div class="ann-meta" style="margin-bottom: 12px;">Posted by {{ ann.display_name }} • {{ ann.created_at.strftime('%b %d, %I:%M %p') }}</div>
+                <div class="ann-body">{{ ann.body }}</div>
+                {% if ann.attachment %}
+                <div style="margin-top: 10px;">
+                    <a href="{{ ann.attachment.path }}" target="_blank" style="display: inline-flex; align-items: center; gap: 6px; background: #f8fafc; border: 1px solid #cbd5e1; padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; color: #1e40af; text-decoration: none; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f8fafc'">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path></svg> View Attachment: {{ ann.attachment.name }}
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <p style="text-align: center; color: var(--sd-muted); font-size: 0.875rem; padding: 20px;">No announcements from your teachers yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Subjects Modal -->
+<div id="subjectsModal" class="modal-overlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(15, 23, 42, 0.6); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px); opacity: 0; transition: opacity 0.3s ease;">
+    <div style="background: white; width: 90%; max-width: 600px; border-radius: 16px; padding: 24px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); transform: scale(0.95); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 20px;">
+            <h2 style="margin: 0; font-size: 1.25rem; color: #1e293b; display: flex; align-items: center; gap: 8px; font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 700;">
+                <svg width="24" height="24" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="color: #3b82f6;">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                </svg>
+                All Subjects
+            </h2>
+            <button onclick="closeSubjectsModal()" style="background: #f1f5f9; border: none; font-size: 1.25rem; color: #64748b; cursor: pointer; transition: all 0.2s; line-height: 1; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;" onmouseover="this.style.background='#e2e8f0'; this.style.color='#0f172a'" onmouseout="this.style.background='#f1f5f9'; this.style.color='#64748b'">&times;</button>
+        </div>
+        
+        <div class="subject-list" style="display: flex; flex-direction: column; gap: 8px;">
+            {% if subjects_for_grade %}
+            {% for sub in subjects_for_grade %}
+            <a href="{{ url_for('student_portal.subject_view', subject_id=sub.subject_id) }}" class="subject-item" style="border: 1px solid #e2e8f0; border-radius: 12px; background: white; padding: 16px; margin: 0; box-shadow: 0 1px 2px rgba(0,0,0,0.05); text-decoration: none; color: inherit; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s;" onmouseover="this.style.borderColor='#cbd5e1'; this.style.boxShadow='0 4px 6px -1px rgba(0,0,0,0.1)'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.boxShadow='0 1px 2px rgba(0,0,0,0.05)'">
+                <div class="subject-info" style="display: flex; flex-direction: column; gap: 4px;">
+                    <span class="subject-name" style="font-weight: 700; color: #0f172a; font-size: 1.05rem;">{{ sub.subject_name }}</span>
+                    <span class="subject-teacher" style="color: #64748b; font-size: 0.85rem;">Teacher: {{ sub.teacher_full_name or 'Not assigned' }}</span>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" style="width:20px; height:20px; color: #94a3b8; transition: transform 0.2s;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+                </svg>
+            </a>
+            {% endfor %}
+            {% else %}
+            <p style="text-align: center; color: var(--sd-muted); font-size: 0.875rem; padding: 20px;">No subjects assigned to your section yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+    // Announcements Modal
+    function openAnnouncementsModal() {
+        const modal = document.getElementById('announcementsModal');
+        modal.style.display = 'flex';
+        
+        // Trigger reflow
+        void modal.offsetWidth;
+        
+        modal.style.opacity = '1';
+        modal.children[0].style.transform = 'scale(1)';
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeAnnouncementsModal() {
+        const modal = document.getElementById('announcementsModal');
+        modal.style.opacity = '0';
+        modal.children[0].style.transform = 'scale(0.95)';
+        
+        setTimeout(() => {
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }, 300);
+    }
+    
+    // Close modal when clicking outside
+    document.getElementById('announcementsModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeAnnouncementsModal();
+        }
+    });
+
+    // Subjects Modal
+    function openSubjectsModal() {
+        const modal = document.getElementById('subjectsModal');
+        modal.style.display = 'flex';
+        
+        // Trigger reflow
+        void modal.offsetWidth;
+        
+        modal.style.opacity = '1';
+        modal.children[0].style.transform = 'scale(1)';
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeSubjectsModal() {
+        const modal = document.getElementById('subjectsModal');
+        modal.style.opacity = '0';
+        modal.children[0].style.transform = 'scale(0.95)';
+        
+        setTimeout(() => {
+            modal.style.display = 'none';
+            document.body.style.overflow = '';
+        }, 300);
+    }
+    
+    // Close modal when clicking outside
+    document.getElementById('subjectsModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeSubjectsModal();
+        }
+    });
+</script>
+
 {% endblock %}

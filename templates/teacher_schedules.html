@@ -1,28 +1,248 @@
 {% extends "base.html" %}
-{% from "_weekly_schedule_grid.html" import render_weekly_schedule %}
 {% block title %}My Schedule{% endblock %}
 
 {% block styles %}
+<!-- FullCalendar CSS -->
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
-    .td-wrap {
-        max-width: 1200px;
+    .fc-wrap {
+        max-width: 1300px;
         margin: 0 auto;
-        padding: 10px 20px 64px;
+        padding: 40px 24px;
         font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     }
+    
+    .fc-card {
+        background: #fff;
+        border-radius: 24px;
+        padding: 32px 40px;
+        box-shadow: 0 15px 40px rgba(15, 23, 42, 0.06);
+    }
+    
+    /* Toolbar Styling */
+    .fc-toolbar {
+        margin-bottom: 24px !important;
+    }
+    .fc-toolbar-title {
+        font-weight: 900 !important;
+        font-size: 1.75rem !important;
+        color: #1e293b;
+        letter-spacing: -0.03em;
+    }
+    
+    /* Navigation Buttons */
+    .fc .fc-button-primary {
+        background-color: #fff !important;
+        border-color: #e2e8f0 !important;
+        color: #64748b !important;
+        font-weight: 700 !important;
+        text-transform: capitalize !important;
+        box-shadow: none !important;
+        padding: 8px 16px !important;
+        transition: all 0.2s ease;
+    }
+    .fc .fc-button-primary:hover {
+        background-color: #f8fafc !important;
+        color: #0f172a !important;
+    }
+    .fc .fc-button-primary:not(:disabled).fc-button-active, 
+    .fc .fc-button-primary:not(:disabled):active {
+        background-color: #1a3a8f !important;
+        border-color: #1a3a8f !important;
+        color: #fff !important;
+    }
+    
+    /* View Toggle Pills */
+    .fc-toolbar-chunk:nth-child(3) .fc-button-group {
+        background: #f1f5f9;
+        padding: 4px;
+        border-radius: 99px;
+    }
+    .fc-toolbar-chunk:nth-child(3) .fc-button {
+        border: none !important;
+        border-radius: 99px !important;
+        background: transparent !important;
+        color: #64748b !important;
+        margin: 0 2px !important;
+    }
+    .fc-toolbar-chunk:nth-child(3) .fc-button.fc-button-active {
+        background: #1a3a8f !important;
+        color: #fff !important;
+        box-shadow: 0 4px 12px rgba(26, 58, 143, 0.2) !important;
+    }
+
+    /* Grid Styling */
+    .fc-theme-standard th {
+        border: none !important;
+        border-bottom: 2px solid #f1f5f9 !important;
+        padding: 16px 0 !important;
+        font-weight: 800;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        color: #64748b;
+        letter-spacing: 0.05em;
+    }
+    .fc-theme-standard td, .fc-theme-standard th {
+        border-color: #f1f5f9 !important;
+    }
+    
+    .fc-timegrid-axis-cushion {
+        font-weight: 700;
+        color: #94a3b8;
+        font-size: 0.85rem;
+    }
+
+    /* Remove FullCalendar's yellow "today" highlight */
+    .fc-theme-standard .fc-day-today {
+        background-color: transparent !important;
+    }
+
+    /* Event Blocks */
+    .fc-event {
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 4px 6px !important;
+        margin: 1px 2px !important;
+        font-family: 'Plus Jakarta Sans', sans-serif !important;
+        box-shadow: 0 4px 12px rgba(2,6,23,0.03);
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        overflow: hidden;
+    }
+    .fc-event:hover {
+        transform: translateY(-2px) scale(1.02);
+        box-shadow: 0 8px 20px rgba(2,6,23,0.08);
+        z-index: 5 !important;
+    }
+    
+    .custom-event-content {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: flex-start;
+        padding-top: 2px;
+        overflow: hidden;
+    }
+    .fc-event-time {
+        font-weight: 800 !important;
+        font-size: 0.8rem;
+        margin-bottom: 2px;
+        opacity: 0.9;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+    .fc-event-title {
+        font-weight: 700;
+        font-size: 0.9rem;
+        line-height: 1.2;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
+    .fc-event-section {
+        font-weight: 600;
+        font-size: 0.75rem;
+        opacity: 0.8;
+        margin-top: 2px;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+        overflow: hidden;
+    }
 </style>
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
 {% endblock %}
 
 {% block content %}
-<div class="td-wrap">
-  {{ render_weekly_schedule(
-      schedules,
-      title="My Schedule",
-      subtitle="Weekly teaching timetable",
-      show_section=true,
-      show_year=true
-  ) }}
+<div class="fc-wrap">
+    <div style="margin-bottom: 32px;">
+        <h1 style="font-weight: 900; font-size: 3rem; color: #1a3a8f; margin: 0; letter-spacing: -0.04em; line-height: 1;">Weekly Schedule</h1>
+        <p style="font-weight: 700; font-size: 1rem; color: #64748b; margin-top: 8px; display: flex; align-items: center; gap: 8px;">
+            <span>Current Term</span>
+            <span style="display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: #cbd5e1;"></span>
+            <span>S.Y. {{ active_year_label }}</span>
+        </p>
+    </div>
+
+    <div class="fc-card">
+        <div id='calendar'></div>
+    </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var calendarEl = document.getElementById('calendar');
+
+    const dayMap = {
+        'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
+        'Thursday': 4, 'Friday': 5, 'Saturday': 6
+    };
+
+    const dayColors = {
+        0: { bg: '#FFEDD5', text: '#C2410C', border: '#EA580C' }, // Sun - Coral
+        1: { bg: '#E0F2FE', text: '#0369A1', border: '#0284C7' }, // Mon - Blue
+        2: { bg: '#D1FAE5', text: '#047857', border: '#059669' }, // Tue - Mint
+        3: { bg: '#FEF3C7', text: '#B45309', border: '#D97706' }, // Wed - Peach
+        4: { bg: '#F3E8FF', text: '#6D28D9', border: '#7C3AED' }, // Thu - Lavender
+        5: { bg: '#FFE4E6', text: '#BE123C', border: '#E11D48' }, // Fri - Rose
+        6: { bg: '#CCFBF1', text: '#0F766E', border: '#0D9488' }  // Sat - Teal
+    };
+
+    let events = [];
+    {% for sched in schedules %}
+        events.push({
+            title: "{{ sched.subject_name | replace('\"', '\\\"') }}",
+            extendedProps: {
+                section: "{{ sched.section_name | replace('\"', '\\\"') }}",
+                room: "{{ sched.room }}"
+            },
+            daysOfWeek: [dayMap["{{ sched.day_of_week }}"]],
+            startTime: "{{ sched.start_time.strftime('%H:%M:%S') if sched.start_time else '00:00:00' }}",
+            endTime: "{{ sched.end_time.strftime('%H:%M:%S') if sched.end_time else '01:00:00' }}",
+            backgroundColor: dayColors[dayMap["{{ sched.day_of_week }}"]].bg,
+            textColor: dayColors[dayMap["{{ sched.day_of_week }}"]].text,
+            borderColor: dayColors[dayMap["{{ sched.day_of_week }}"]].border
+        });
+    {% endfor %}
+
+    var calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        headerToolbar: false,
+        buttonText: {
+            today: 'Today'
+        },
+        slotMinTime: '07:00:00',
+        slotMaxTime: '18:00:00',
+        allDaySlot: false,
+        events: events,
+        height: 'auto',
+        eventMinHeight: 65, // Forces short events to be tall enough to show all text
+        eventTimeFormat: {
+            hour: 'numeric',
+            minute: '2-digit',
+            meridiem: 'narrow',
+            omitZeroMinute: true // e.g. "7a", "1:30p"
+        },
+        eventContent: function(arg) {
+            let timeText = arg.timeText;
+            let titleHtml = arg.event.title;
+            let sectionHtml = arg.event.extendedProps.section;
+            let borderColor = arg.event.borderColor;
+            
+            return {
+                html: `
+                    <div class="custom-event-content" style="border-left: 4px solid ${borderColor}; padding-left: 6px;">
+                        <div class="fc-event-time">${timeText}</div>
+                        <div class="fc-event-title" title="${titleHtml}">${titleHtml}</div>
+                        <div class="fc-event-section" title="${sectionHtml}">${sectionHtml}</div>
+                    </div>
+                `
+            };
+        }
+    });
+
+    calendar.render();
+});
+</script>
 {% endblock %}

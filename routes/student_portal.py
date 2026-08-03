@@ -205,6 +205,20 @@ def dashboard():
                 a = dict(a)
                 prefix = "Ms. " if a.get("gender") == "female" else ("Mr. " if a.get("gender") == "male" else "")
                 a["display_name"] = prefix + (a.get("full_name") or a.get("posted_by") or "Teacher")
+                
+                # Parse attachment if exists
+                a["attachment"] = None
+                if a.get("body") and "[ATTACHMENT|" in a["body"]:
+                    body_text = a["body"]
+                    start_idx = body_text.rfind("[ATTACHMENT|")
+                    if start_idx != -1:
+                        tag_content = body_text[start_idx+12:-1]  # skip [ATTACHMENT| and ]
+                        parts = tag_content.split("|")
+                        if len(parts) == 2:
+                            a["attachment"] = {"path": parts[0], "name": parts[1]}
+                            # Remove the tag from the body
+                            a["body"] = body_text[:start_idx].strip()
+                            
                 teacher_announcements.append(a)
 
             # Subjects — filtered to active SY section

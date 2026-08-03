@@ -29,7 +29,7 @@
     <div class="sch-hero">
       <div class="sch-hero-left">
         <div>
-          <div class="sch-hero-title">{{ title }} <span>Schedule</span></div>
+          <div class="sch-hero-title">{{ title }}</div>
           <div class="sch-hero-sub">
             {{ subtitle }}
             <span class="sch-status-pill">Weekly View</span>
@@ -157,11 +157,6 @@
       line-height: 1.1; 
       color: var(--sch-blue);
     }
-    .sch-hero-title span {
-        background: linear-gradient(135deg, var(--sch-blue), #3b82f6);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
 
     .sch-hero-sub { 
         font-size: 1.1rem; 
@@ -261,11 +256,12 @@
     .sch-block {
       z-index: 5;
       margin: 4px 6px;
-      border-radius: 16px;
+      border-radius: 12px;
       padding: 10px 12px;
-      background: #fff;
-      border: 1px solid rgba(26,58,143,0.1);
-      box-shadow: 0 4px 12px rgba(2,6,23,0.05);
+      background: var(--day-bg, #fff);
+      border: 1px solid var(--day-border, rgba(26,58,143,0.1));
+      border-left: 5px solid var(--day-border, var(--sch-blue));
+      box-shadow: 0 4px 12px rgba(2,6,23,0.03);
       overflow: hidden;
       align-self: stretch;
       display: flex;
@@ -277,31 +273,31 @@
 
     .sch-block:hover {
         transform: scale(1.02);
-        box-shadow: 0 8px 20px rgba(2,6,23,0.1);
+        box-shadow: 0 8px 20px rgba(2,6,23,0.08);
         z-index: 15;
     }
 
     .sch-block-title { 
         font-weight: 800; 
-        color: var(--sch-blue); 
+        color: var(--day-text, var(--sch-blue)); 
         font-size: 13.5px; 
         line-height: 1.2; 
         margin-bottom: 2px;
     }
     
     .sch-block-meta { display: grid; gap: 2px; }
-    .sch-meta-line { font-size: 11px; color: var(--sch-muted); font-weight: 600; }
-    .sch-meta-strong { font-weight: 800; color: var(--sch-text); }
-    .sch-meta-muted { color: var(--sch-muted); opacity: 0.8; }
+    .sch-meta-line { font-size: 11px; color: var(--day-text, var(--sch-muted)); opacity: 0.85; font-weight: 600; }
+    .sch-meta-strong { font-weight: 800; opacity: 1; }
+    .sch-meta-muted { opacity: 0.7; }
 
-    /* ─── Day-column colors ─── */
-    .sch-c1 { border-left: 5px solid #3b82f6; background: linear-gradient(to right, #eff6ff, #fff); }
-    .sch-c2 { border-left: 5px solid #10b981; background: linear-gradient(to right, #ecfdf5, #fff); }
-    .sch-c3 { border-left: 5px solid #f59e0b; background: linear-gradient(to right, #fffbeb, #fff); }
-    .sch-c4 { border-left: 5px solid #8b5cf6; background: linear-gradient(to right, #f5f3ff, #fff); }
-    .sch-c5 { border-left: 5px solid #ef4444; background: linear-gradient(to right, #fef2f2, #fff); }
-    .sch-c6 { border-left: 5px solid #06b6d4; background: linear-gradient(to right, #ecfeff, #fff); }
-    .sch-c7 { border-left: 5px solid #ec4899; background: linear-gradient(to right, #fdf2f8, #fff); }
+    /* ─── Day-column colors (Harmonious Pastels) ─── */
+    .sch-c1 { --day-bg: #E0F2FE; --day-border: #0284C7; --day-text: #0369A1; } /* Mon - Blue */
+    .sch-c2 { --day-bg: #D1FAE5; --day-border: #059669; --day-text: #047857; } /* Tue - Mint */
+    .sch-c3 { --day-bg: #FEF3C7; --day-border: #D97706; --day-text: #B45309; } /* Wed - Peach */
+    .sch-c4 { --day-bg: #F3E8FF; --day-border: #7C3AED; --day-text: #6D28D9; } /* Thu - Lavender */
+    .sch-c5 { --day-bg: #FFE4E6; --day-border: #E11D48; --day-text: #BE123C; } /* Fri - Rose */
+    .sch-c6 { --day-bg: #CCFBF1; --day-border: #0D9488; --day-text: #0F766E; } /* Sat - Teal */
+    .sch-c7 { --day-bg: #FFEDD5; --day-border: #EA580C; --day-text: #C2410C; } /* Sun - Coral */
 
     @media (max-width: 900px) {
       .sch-wrap { --sch-day-col: 160px; }

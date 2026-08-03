@@ -12,6 +12,8 @@ from docx import Document
 from datetime import datetime, timezone
 import pytz
 import shutil
+import uuid
+from werkzeug.utils import secure_filename
 from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
 from openpyxl.utils import get_column_letter
 
@@ -611,6 +613,7 @@ def teacher_dashboard():
     current_class = None
     next_class = None
     pending_attendance = []
+    recent_activities = []
     
     # Filter assignments for today
     today_assignments = [a for a in teacher_assignments if a.get('day_of_week') == today_day]
@@ -641,6 +644,69 @@ def teacher_dashboard():
                     """, (a['subject_id'], user_id))
                     if cur.fetchone()['count'] == 0:
                         pending_attendance.append(a)
+                        
+        # --- Recent Activities Fetch ---
+        try:
+            # 1. Activities
+            cur.execute("""
+                SELECT activity_id AS id, title, category AS type, created_at, subject_id, section_id
+                FROM activities
+                WHERE teacher_id = %s
+                ORDER BY created_at DESC LIMIT 15
+            """, (user_id,))
+            for row in cur.fetchall():
+                recent_activities.append({
+                    'title': row['title'],
+                    'type': (row['type'] or 'Activity').capitalize(),
+                    'created_at': row['created_at'],
+                    'url': f"/teacher/subject/{row['subject_id']}?section={row['section_id']}",
+                    'icon': 'fas fa-edit',
+                    'color_class': 'status-action'
+                })
+                
+            # 2. Exams/Quizzes
+            cur.execute("""
+                SELECT exam_id AS id, title, exam_type AS type, created_at
+                FROM exams
+                WHERE teacher_id = %s
+                ORDER BY created_at DESC LIMIT 15
+            """, (user_id,))
+            for row in cur.fetchall():
+                is_quiz = (str(row['type']).lower() == 'quiz')
+                recent_activities.append({
+                    'title': row['title'],
+                    'type': (row['type'] or 'Exam').capitalize(),
+                    'created_at': row['created_at'],
+                    'url': f"/teacher/quizzes" if is_quiz else f"/teacher/exams",
+                    'icon': 'fas fa-question-circle',
+                    'color_class': 'status-pending'
+                })
+                
+            # 3. Announcements
+            cur.execute("""
+                SELECT announcement_id AS id, title, 'Announcement' AS type, created_at
+                FROM teacher_announcements
+                WHERE teacher_user_id = %s
+                ORDER BY created_at DESC LIMIT 15
+            """, (user_id,))
+            for row in cur.fetchall():
+                recent_activities.append({
+                    'title': row['title'],
+                    'type': row['type'],
+                    'created_at': row['created_at'],
+                    'url': "/teacher/class-announcements",
+                    'icon': 'fas fa-bullhorn',
+                    'color_class': 'status-submitted'
+                })
+                
+            # Sort all by created_at DESC
+            # Filter out any that might have None for created_at just in case
+            recent_activities = [act for act in recent_activities if act.get('created_at')]
+            recent_activities.sort(key=lambda x: x['created_at'], reverse=True)
+            
+        except Exception as e:
+            print("Error fetching recent activities:", e)
+            
     finally:
         cur.close()
         db.close()
@@ -659,7 +725,9 @@ def teacher_dashboard():
         current_day=today_day,
         current_class=current_class,
         next_class=next_class,
-        pending_attendance=pending_attendance
+        pending_attendance=pending_attendance,
+        recent_activities=recent_activities,
+        today_assignments=today_assignments
     )
 
 
@@ -712,6 +780,9 @@ def teacher_class_announcements():
 
     selected_grade = (request.args.get("grade") or teacher_grade or "").strip()
     selected_section = request.args.get("section_id", type=int)
+    if not selected_section and teacher_sections:
+        selected_section = teacher_sections[0]["section_id"]
+        
     announcements = []
 
     db = get_db_connection()
@@ -741,9 +812,34 @@ def teacher_class_announcements():
         cur.execute(query, params)
         raw_ann = cur.fetchall() or []
         
+        import pytz
+        manila_tz = pytz.timezone("Asia/Manila")
+
         for a in raw_ann:
             prefix = "Ms. " if a.get("gender") == "female" else "Mr. " if a.get("gender") == "male" else ""
             a["display_name"] = prefix + (a.get("full_name") or a.get("posted_by") or "Teacher")
+            
+            # Convert UTC time from database to Manila time
+            if a.get("created_at"):
+                dt = a["created_at"]
+                if dt.tzinfo is None:
+                    a["created_at"] = pytz.utc.localize(dt).astimezone(manila_tz)
+                else:
+                    a["created_at"] = dt.astimezone(manila_tz)
+            
+            # Parse attachment if exists
+            a["attachment"] = None
+            if a.get("body") and "[ATTACHMENT|" in a["body"]:
+                body_text = a["body"]
+                start_idx = body_text.rfind("[ATTACHMENT|")
+                if start_idx != -1:
+                    tag_content = body_text[start_idx+12:-1]  # skip [ATTACHMENT| and ]
+                    parts = tag_content.split("|")
+                    if len(parts) == 2:
+                        a["attachment"] = {"path": parts[0], "name": parts[1]}
+                        # Remove the tag from the body
+                        a["body"] = body_text[:start_idx].strip()
+                    
             announcements.append(a)
     finally:
         cur.close()
@@ -857,6 +953,32 @@ def teacher_announce():
     if not grade:
         flash("Please select your grade level first.", "error")
         return redirect(url_for("teacher.teacher_dashboard"))
+
+    # Handle file upload
+    attachment_metadata = ""
+    attachment = request.files.get("attachment")
+    if attachment and attachment.filename:
+        filename = secure_filename(attachment.filename)
+        ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+        if ext in ['jpeg', 'jpg', 'png', 'pdf', 'doc', 'docx']:
+            # Fallback for filenames that are stripped by secure_filename
+            if not filename or filename == ext:
+                filename = f"ann_attach_{uuid.uuid4().hex[:8]}.{ext}"
+            else:
+                filename = f"{uuid.uuid4().hex[:8]}_{filename}"
+            
+            upload_dir = os.path.join(os.getcwd(), "uploads")
+            os.makedirs(upload_dir, exist_ok=True)
+            file_path = os.path.join(upload_dir, filename)
+            attachment.save(file_path)
+            attachment_metadata = f"\n\n[ATTACHMENT|/uploads/{filename}|{attachment.filename}]"
+        else:
+            flash("Invalid file type. Allowed: JPG, PNG, PDF, DOC, DOCX", "error")
+            return redirect(back_url)
+
+    # Append metadata to body if present
+    if attachment_metadata:
+        body = (body + attachment_metadata).strip()
 
     db  = get_db_connection()
     cur = db.cursor()
@@ -1005,6 +1127,28 @@ def teacher_announce_edit(announcement_id):
         flash("Title cannot be empty.", "error")
         return redirect(back_url)
 
+    # Handle file upload
+    new_attachment = request.files.get("attachment")
+    remove_attachment = request.form.get("remove_attachment") == "true"
+    new_attachment_metadata = None
+
+    if new_attachment and new_attachment.filename:
+        filename = secure_filename(new_attachment.filename)
+        ext = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+        if ext in ['jpeg', 'jpg', 'png', 'pdf', 'doc', 'docx']:
+            if not filename or filename == ext:
+                filename = f"ann_attach_{uuid.uuid4().hex[:8]}.{ext}"
+            else:
+                filename = f"{uuid.uuid4().hex[:8]}_{filename}"
+            upload_dir = os.path.join(os.getcwd(), "uploads")
+            os.makedirs(upload_dir, exist_ok=True)
+            file_path = os.path.join(upload_dir, filename)
+            new_attachment.save(file_path)
+            new_attachment_metadata = f"\n\n[ATTACHMENT|/uploads/{filename}|{new_attachment.filename}]"
+        else:
+            flash("Invalid file type. Allowed: JPG, PNG, PDF, DOC, DOCX", "error")
+            return redirect(back_url)
+
     db  = get_db_connection()
     cur = db.cursor()
     try:
@@ -1014,11 +1158,33 @@ def teacher_announce_edit(announcement_id):
             flash("No active school year.", "error")
             return redirect(back_url)
 
+        # Get existing body to preserve attachment if not removed/replaced
+        cur.execute("SELECT body FROM teacher_announcements WHERE announcement_id = %s AND teacher_user_id = %s", (announcement_id, user_id))
+        row = cur.fetchone()
+        if not row:
+            flash("Announcement not found or not yours.", "error")
+            return redirect(back_url)
+        
+        old_body_raw = row[0] or ""
+        old_attachment_tag = ""
+        if "[ATTACHMENT|" in old_body_raw:
+            start_idx = old_body_raw.rfind("[ATTACHMENT|")
+            if start_idx != -1:
+                old_attachment_tag = old_body_raw[start_idx-2:] if old_body_raw[start_idx-2:start_idx] == "\n\n" else old_body_raw[start_idx:]
+        
+        final_attachment_tag = ""
+        if new_attachment_metadata:
+            final_attachment_tag = new_attachment_metadata
+        elif not remove_attachment:
+            final_attachment_tag = old_attachment_tag
+            
+        final_body = (body + final_attachment_tag).strip()
+
         cur.execute("""
             UPDATE teacher_announcements
                SET title = %s, body = %s
              WHERE announcement_id = %s AND teacher_user_id = %s
-        """, (title, body or None, announcement_id, user_id))
+        """, (title, final_body or None, announcement_id, user_id))
         db.commit()
         if cur.rowcount:
             flash("Announcement updated.", "success")
@@ -5546,11 +5712,13 @@ def teacher_schedules():
 
     # -- Find all active years for the branch
     cursor.execute("""
-        SELECT year_id FROM school_years 
+        SELECT year_id, label FROM school_years 
         WHERE is_active = TRUE AND branch_id = %s
         ORDER BY label DESC
     """, (branch_id,))
-    active_years = [row["year_id"] for row in cursor.fetchall()]
+    active_year_rows = cursor.fetchall()
+    active_years = [row["year_id"] for row in active_year_rows]
+    active_year_label = active_year_rows[0]["label"] if active_year_rows else "N/A"
 
     schedules = []
     if active_years:
@@ -5572,7 +5740,7 @@ def teacher_schedules():
 
     cursor.close(); db.close()
 
-    return render_template("teacher_schedules.html", schedules=schedules)
+    return render_template("teacher_schedules.html", schedules=schedules, active_year_label=active_year_label)
 
 # =======================
 
