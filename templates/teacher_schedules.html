@@ -190,7 +190,17 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     let events = [];
+    {% set unique_subjects = [] %}
     {% for sched in schedules %}
+        {% set key = sched.subject_name ~ '|' ~ (sched.section_name or '') %}
+        {% if key not in unique_subjects %}
+            {% set _ = unique_subjects.append(key) %}
+        {% endif %}
+    {% endfor %}
+
+    {% for sched in schedules %}
+        {% set key = sched.subject_name ~ '|' ~ (sched.section_name or '') %}
+        {% set color_idx = unique_subjects.index(key) % 7 %}
         events.push({
             title: "{{ sched.subject_name | replace('\"', '\\\"') }}",
             extendedProps: {
@@ -200,9 +210,9 @@ document.addEventListener('DOMContentLoaded', function() {
             daysOfWeek: [dayMap["{{ sched.day_of_week }}"]],
             startTime: "{{ sched.start_time.strftime('%H:%M:%S') if sched.start_time else '00:00:00' }}",
             endTime: "{{ sched.end_time.strftime('%H:%M:%S') if sched.end_time else '01:00:00' }}",
-            backgroundColor: dayColors[dayMap["{{ sched.day_of_week }}"]].bg,
-            textColor: dayColors[dayMap["{{ sched.day_of_week }}"]].text,
-            borderColor: dayColors[dayMap["{{ sched.day_of_week }}"]].border
+            backgroundColor: dayColors[{{ color_idx }}].bg,
+            textColor: dayColors[{{ color_idx }}].text,
+            borderColor: dayColors[{{ color_idx }}].border
         });
     {% endfor %}
 
@@ -221,8 +231,8 @@ document.addEventListener('DOMContentLoaded', function() {
         eventTimeFormat: {
             hour: 'numeric',
             minute: '2-digit',
-            meridiem: 'narrow',
-            omitZeroMinute: true // e.g. "7a", "1:30p"
+            meridiem: 'short',
+            omitZeroMinute: true // e.g. "7am", "1:30pm"
         },
         eventContent: function(arg) {
             let timeText = arg.timeText;

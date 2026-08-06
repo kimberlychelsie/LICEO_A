@@ -1,11 +1,82 @@
 {% extends "base.html" %}
-{% block title %}{{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }} Questions{% endblock %}
+{% block title %}{{ 'Quiz' if exam.exam_type|lower == 'quiz' else 'Exam' }} Questions{% endblock %}
 {% block content %}
 <style>
-    .container {
-        max-width: 800px;
+    .subj-wrap {
+        max-width: 1200px;
         margin: 0 auto;
-        padding: 24px 20px;
+        padding: 24px 20px 64px;
+    }
+    .subj-hero {
+        background: linear-gradient(135deg, #0f2a6b, #1a3a8f, #2250c8);
+        border-radius: 20px;
+        padding: 28px 32px;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 8px 32px rgba(26, 58, 143, 0.28);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: white;
+    }
+    .tabs-container {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 12px;
+    }
+    .tab-btn {
+        background: transparent;
+        border: none;
+        padding: 10px 20px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #64748b;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: .2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .tab-btn:hover {
+        background: #f1f5f9;
+        color: #334155;
+    }
+    .tab-btn.active {
+        background: #e0e7ff;
+        color: #4338ca;
+    }
+    .tab-content {
+        display: none;
+        animation: fadeIn 0.3s ease-in-out;
+    }
+    .tab-content.active {
+        display: block;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .section-divider {
+        font-size: 11px;
+        font-weight: 800;
+        color: #64748b;
+        margin: 28px 0 16px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        border-bottom: 2px solid #e2e8f0;
+        padding-bottom: 6px;
+    }
+    .btn-hero {
+        background: rgba(255,255,255,0.15);
+        color: #fff;
+        border: 1px solid rgba(255,255,255,0.3);
+    }
+    .btn-hero:hover {
+        background: rgba(255,255,255,0.25);
     }
 
     .card {
@@ -206,52 +277,42 @@
         font-weight: 700;
     }
 </style>
-<div class="container">
-    <div
-        style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
-        <div>
-            <h1 style="margin:0; font-size:20px;">{{ exam.title }}</h1>
-            <div style="font-size:13px; color:#888; margin-top:4px;">
-                {{ exam.subject_name }} · {{ exam.section_name }} · {{ exam.duration_mins }} min ·
-                <span class="badge-{{ exam.status }}">{{ exam.status|capitalize }}</span>
+<div class="subj-wrap">
+    <header class="subj-hero">
+        <div style="z-index:1; width:100%;">
+            <h1 style="font-size:1.7rem; font-weight:900; margin:0 0 6px;">{{ exam.title }} — {{ 'Quiz' if exam.exam_type|lower == 'quiz' else 'Exam' }} Builder</h1>
+            <div style="font-size:0.9rem; color:rgba(255,255,255,0.8);">
+                {{ exam.subject_name }} • {{ exam.section_name }} • {{ exam.duration_mins }} min •
+                <span style="font-weight:700;">● {{ exam.status|capitalize }}</span>
+            </div>
+            
+            <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
+                {% if exam.status == 'draft' %}
+                <form method="POST" action="{{ url_for('teacher.teacher_exam_publish', exam_id=exam.exam_id) }}" onsubmit="return handleBtnLoad(this, 'Creating...');" style="display:inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-success" style="background:#10b981; border:none;">Publish {{ 'Quiz' if exam.exam_type|lower == 'quiz' else 'Exam' }}</button>
+                </form>
+
+                {% endif %}
+                <a href="{{ url_for('teacher.teacher_exam_edit_settings', exam_id=exam.exam_id) }}" class="btn btn-hero" style="padding: 8px 16px; border-radius: 7px; display: inline-flex; align-items: center; font-size: 13px; font-weight: 700; text-decoration: none; transition: .2s;">Edit</a>
+                <a href="{{ url_for('teacher.teacher_exam_results', exam_id=exam.exam_id) }}" class="btn btn-hero" style="padding: 8px 16px; border-radius: 7px; display: inline-flex; align-items: center; font-size: 13px; font-weight: 700; text-decoration: none; transition: .2s;">Results</a>
+                <a href="{{ url_for('teacher.teacher_class_view', subject_id=exam.subject_id, active_tab='quizzes' if exam.exam_type|lower == 'quiz' else 'exams') }}" class="btn btn-hero" style="padding: 8px 16px; border-radius: 7px; display: inline-flex; align-items: center; font-size: 13px; font-weight: 700; text-decoration: none; transition: .2s;">Back</a>
             </div>
         </div>
-        <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            {% if exam.status == 'draft' %}
-            <form method="POST" action="{{ url_for('teacher.teacher_exam_publish', exam_id=exam.exam_id) }}"
-                onsubmit="return handleBtnLoad(this, 'Creating...');">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-success">Create {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam'
-                    }}</button>
-            </form>
-            {% elif exam.status == 'published' %}
-            <form method="POST" action="{{ url_for('teacher.teacher_exam_close', exam_id=exam.exam_id) }}"
-                onsubmit="return confirm('Close this {{ 'quiz' if exam.exam_type == 'quiz' else 'exam' }}?');">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button type="submit" class="btn btn-secondary">Close {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam'
-                    }}</button>
-            </form>
-            {% endif %}
-            <a href="{{ url_for('teacher.teacher_exam_edit_settings', exam_id=exam.exam_id) }}" class="btn btn-primary"
-                style="background:#4b5563;">⚙️ Settings</a>
-            <a href="{{ url_for('teacher.teacher_exam_results', exam_id=exam.exam_id) }}" class="btn btn-warning">📊
-                Results</a>
-            <a href="{{ url_for('teacher.teacher_class_view', subject_id=exam.subject_id, active_tab='quizzes' if exam.exam_type == 'quiz' else 'exams') }}"
-                class="btn btn-secondary">⬅ Back</a>
-        </div>
+    </header>
+
+
+
+    <div class="tabs-container">
+        <button class="tab-btn active" id="btn-tab-creator" onclick="switchTab('creator')">{{ 'Quiz' if exam.exam_type|lower == 'quiz' else 'Exam' }} Creator</button>
+        <button class="tab-btn" id="btn-tab-questions" onclick="switchTab('questions')">Created Questions <span style="background:#4338ca; color:#fff; padding:2px 8px; border-radius:12px; font-size:11px; margin-left:4px;">{{ questions|length }}</span></button>
     </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}{% for cat, msg in messages %}
-    <div style="padding:12px 16px; border-radius:8px; margin-bottom:14px;
-        background:{{ '#d1e7dd' if cat=='success' else '#f8d7da' }};
-        color:{{ '#0f5132' if cat=='success' else '#842029' }};
-        border:1px solid {{ '#badbcc' if cat=='success' else '#f5c2c7' }};">{{ msg }}</div>
-    {% endfor %}{% endif %}{% endwith %}
-
+    <div class="tabs-wrapper">
+        <div id="tab-questions" class="tab-content">
     <!-- Question list -->
     <div class="card">
-        <h2>Questions ({{ questions|length }})</h2>
+        <h2>QUESTION LIST ({{ questions|length }} Questions)</h2>
         {% for q in questions %}
         <div class="q-card">
             <div class="q-num">Q{{ loop.index }} · {{ q.question_type|upper }} · {{ q.points }} pt(s)</div>
@@ -279,24 +340,30 @@
                     q.correct_answer == 'False' %} ✓{% endif %}</span>
             </div>
             {% endif %}
-            <div style="display:flex; gap:8px; margin-top:8px;">
+            <div style="display:flex; gap:8px; margin-top:12px;">
+                <a href="{{ url_for('teacher.teacher_exam_question_edit', exam_id=exam.exam_id, question_id=q.question_id) }}"
+                    class="btn btn-warning" style="padding:6px 12px; font-size:12px; min-width: 65px; text-align: center; justify-content: center;">Edit</a>
                 <form method="POST"
                     action="{{ url_for('teacher.teacher_exam_question_delete', exam_id=exam.exam_id, question_id=q.question_id) }}"
-                    onsubmit="return confirm('Delete this question?');">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    onsubmit="return confirm('Delete this question?');" style="margin: 0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-danger"
-                        style="padding:4px 10px; font-size:12px;">Delete</button>
+                        style="padding:6px 12px; font-size:12px; min-width: 65px; text-align: center; justify-content: center; height: 100%;">Delete</button>
                 </form>
-                <a href="{{ url_for('teacher.teacher_exam_question_edit', exam_id=exam.exam_id, question_id=q.question_id) }}"
-                    class="btn btn-warning" style="padding:4px 10px; font-size:12px;">Edit</a>
             </div>
         </div>
         {% else %}
         <div style="text-align:center; padding:30px; color:#aaa;">No questions yet. Add one below.</div>
         {% endfor %}
     </div>
-    <div class="card" id="inline-builder">
-        <h2>Auto Build (Fill Inline)</h2>
+        </div> <!-- end tab-questions -->
+        
+        <div id="tab-creator" class="tab-content active">
+            <div class="card">
+                <h2 style="font-size: 18px; margin-bottom: 0;">{{ 'QUIZ' if exam.exam_type|lower == 'quiz' else 'EXAM' }} CREATOR & IMPORT TOOL</h2>
+
+                <h3 class="section-divider">--- AUTO BUILD (FILL INLINE) ---</h3>
+                <div id="inline-builder">
 
         <!-- Step 1: choose counts (GET) -->
         <form method="get" id="buildForm" style="display:flex; gap:10px; flex-wrap:wrap; align-items:end;">
@@ -431,8 +498,8 @@
     </div>
 
     <!-- Add question form (only if draft) -->
-    <div class="card">
-        <h2>Add Question</h2>
+    <h3 class="section-divider">--- MANUAL ADD QUESTION ---</h3>
+    <div id="manual-add-builder">
         <form method="POST" id="questionForm" onsubmit="return handleBtnLoad(this, 'Adding...');">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <!-- Type toggle -->
@@ -534,8 +601,8 @@
     </div>
 
     <!-- Add this inside the draft block, alongside the Add Question form -->
-    <div class="card">
-        <h2>Import Questions from File</h2>
+    <h3 class="section-divider">--- IMPORT QUESTIONS FROM FILE ---</h3>
+    <div id="import-builder">
         <form id="importForm" method="POST"
             action="{{ url_for('teacher.teacher_exam_import_questions', exam_id=exam.exam_id) }}"
             enctype="multipart/form-data">
@@ -656,9 +723,22 @@
             </div>
         </div>
     </div>
-</div>
+        </div>
+    </div>
+    </div> <!-- end tab-creator -->
+</div> <!-- end tabs-wrapper -->
 
 <script>
+    function switchTab(tabId) {
+        document.getElementById('tab-creator').classList.remove('active');
+        document.getElementById('tab-questions').classList.remove('active');
+        document.getElementById('btn-tab-creator').classList.remove('active');
+        document.getElementById('btn-tab-questions').classList.remove('active');
+        
+        document.getElementById('tab-' + tabId).classList.add('active');
+        document.getElementById('btn-tab-' + tabId).classList.add('active');
+    }
+
     function setType(type) {
         document.getElementById('question_type').value = type;
 
@@ -754,8 +834,8 @@
 
         // If it's the publish form, we still want the confirm dialog
         if (form.action.includes('/publish')) {
-            const label = "{{ 'quiz' if exam.exam_type == 'quiz' else 'exam' }}";
-            if (!confirm(`Create this ${label}? Students will be able to take it once you make it visible.`)) {
+            const label = "{{ 'quiz' if exam.exam_type|lower == 'quiz' else 'exam' }}";
+            if (!confirm(`Publish this ${label}? Students will be able to take it once you make it visible.`)) {
                 return false;
             }
         }

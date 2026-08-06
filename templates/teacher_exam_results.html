@@ -2,7 +2,62 @@
 {% block title %}{{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }} Results{% endblock %}
 {% block content %}
 <style>
-    .container { max-width:900px; margin:0 auto; padding:24px 20px; }
+    .subj-wrap { max-width: 1200px; margin: 0 auto; padding: 24px 20px 64px; font-family: 'Inter', sans-serif; }
+    
+    /* ── Header Area ── */
+    .subj-hero {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1a3a8f 50%, #1e40af 100%);
+        border-radius: 24px;
+        padding: 32px;
+        color: #fff;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+    }
+
+    .subj-hero::before {
+        content: '';
+        position: absolute;
+        top: -100px;
+        right: -100px;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+        border-radius: 50%;
+    }
+
+    .subj-hero-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 1;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .subj-title-group h1 {
+        font-size: 2rem;
+        font-weight: 800;
+        margin: 0 0 8px;
+        letter-spacing: -0.02em;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .subj-meta-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 0.9375rem;
+        opacity: 0.9;
+        font-weight: 500;
+    }
+
     .badge { font-weight: 700; border-radius: 6px; padding: 5px 10px; font-size: 0.8rem; }
     
     /* ── Modern Switch Design ── */
@@ -73,32 +128,24 @@
     .btn-danger { background:#dc3545; color:#fff; }
     .btn-danger:hover { background:#c82333; }
 </style>
-<div class="container">
-    <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; margin-bottom:20px;">
-        <div>
-            <h1 style="margin:0; font-size:20px; display: flex; align-items: center; gap: 10px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-                {{ exam.title }} — {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }} Results
-            </h1>
-            <div style="font-size:13px; color:#888; margin-top:4px;">
-                {{ exam.subject_name }} · {{ exam.section_name }}
+<div class="subj-wrap">
+    <header class="subj-hero">
+        <div class="subj-hero-top">
+            <div class="subj-title-group">
+                <div class="subj-meta-info" style="margin-bottom: 8px;">
+                    <span>{{ exam.subject_name }}</span>
+                    <span>•</span>
+                    <span>{{ exam.section_name }}</span>
+                </div>
+                <h1>
+                    {{ exam.title }} — {{ 'Quiz' if exam.exam_type == 'quiz' else 'Exam' }} Results
+                </h1>
             </div>
+
         </div>
-        <div style="display: flex; gap: 8px;">
-            <a href="{{ url_for('teacher.teacher_class_view', subject_id=exam.subject_id) }}" class="btn btn-secondary">← Back to Class Details</a>
-            
-            <div style="display: inline-flex; align-items: center; background: #fff; border: 1px solid #dee2e6; border-radius: 8px; padding: 4px; gap: 4px;">
-                <button type="button" class="btn" style="background:#28a745; color:#fff; padding:6px 12px; font-size:12px;" onclick="updateAllPermissions('allow_all')">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    Allow All
-                </button>
-                <button type="button" class="btn" style="background:#dc3545; color:#fff; padding:6px 12px; font-size:12px;" onclick="updateAllPermissions('deselect_all')">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    Deselect All
-                </button>
-            </div>
-        </div>
-    </div>
+    </header>
+
+
 
     <!-- Class Mode Status Bar -->
     <div style="margin-bottom: 20px; display: flex; align-items: center; gap: 12px; background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px 20px; border-radius: 10px;">
@@ -119,6 +166,21 @@
     </div>
 
     <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h2 style="margin: 0; border: none; padding: 0; font-size: 1.1rem; color: #1e293b; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;">STUDENT {{ 'QUIZ' if exam.exam_type == 'quiz' else 'EXAM' }} PERFORMANCE</h2>
+        </div>
+        
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; display: flex; gap: 12px; align-items: center;">
+            <button type="button" class="btn" style="background:#28a745; color:#fff; padding:6px 16px; font-size:13px;" onclick="updateAllPermissions('allow_all')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                Allow All
+            </button>
+            <button type="button" class="btn" style="background:#dc3545; color:#fff; padding:6px 16px; font-size:13px;" onclick="updateAllPermissions('deselect_all')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect></svg>
+                Deselect All
+            </button>
+        </div>
+
         {% if results %}
         <table class="res-table">
             <thead>
@@ -134,7 +196,6 @@
                     </th>
                     <th>Submitted</th>
                     <th style="text-align: center;">Allowed to Take</th>
-                    <th>Extension</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -176,14 +237,7 @@
                         </label>
                     </div>
                 </td>
-                <td>
-                    {% if r.individual_extension %}
-                    <span class="badge" style="background:#e0f2fe; color:#0369a1; border:1px solid #bae6fd; font-size:11px; padding:4px 8px; border-radius:6px; display:inline-flex; align-items:center; gap:4px; font-weight:600;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                        {{ r.individual_extension.strftime('%b %d, %I:%M %p') }}
-                    </span>
-                    {% endif %}
-                </td>
+
 
                 <!-- ── Action buttons ── -->
                 <td style="display:flex; gap:8px;">

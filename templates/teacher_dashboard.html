@@ -430,9 +430,26 @@
     }
     
     @media (max-width: 768px) {
+        .td-wrap { padding: 20px 16px; }
+        .td-greeting { font-size: 2.2rem; }
         .td-header-bar { flex-direction: column; gap: 20px; }
-        .td-header-right { align-items: flex-start; }
+        .td-header-right { align-items: stretch; width: 100%; gap: 16px; }
         .td-datetime { text-align: left; }
+        .td-actions { flex-direction: column; width: 100%; }
+        .btn-action { justify-content: center; width: 100%; }
+        .dropdown-wrapper { width: 100%; }
+        .action-dropdown-menu { width: 100%; right: auto; left: 0; }
+        
+        .summary-grid { grid-template-columns: 1fr; gap: 16px; margin-bottom: 24px; }
+        
+        .dashboard-section { padding: 20px; border-radius: 16px; }
+        .section-header { flex-direction: column; align-items: flex-start; gap: 12px; }
+        .btn-view-all { width: 100%; justify-content: center; }
+        
+        .class-info { flex-direction: column; align-items: flex-start; gap: 8px; }
+        .class-countdown { align-self: flex-start; }
+        
+        .activity-details { flex-direction: column; align-items: flex-start; gap: 6px; }
     }
 </style>
 {% endblock %}
@@ -461,8 +478,17 @@
                         <i class="fas fa-book"></i> Class Record
                     </button>
                     <div id="cr-dropdown" class="action-dropdown-menu">
+                        {% set unique_classes = [] %}
+                        {% set unique_class_keys = [] %}
                         {% if teacher_assignments %}
                             {% for cls in teacher_assignments %}
+                                {% set key = cls.subject_id ~ '-' ~ cls.section_id %}
+                                {% if key not in unique_class_keys %}
+                                    {% set _ = unique_class_keys.append(key) %}
+                                    {% set _ = unique_classes.append(cls) %}
+                                {% endif %}
+                            {% endfor %}
+                            {% for cls in unique_classes %}
                             <a href="/teacher/class-record/{{ cls.section_id }}/{{ cls.subject_id }}" class="dropdown-item">
                                 <span class="dropdown-item-title">{{ cls.subject_name }}</span>
                                 <span class="dropdown-item-sub">{{ cls.grade_level_name }} - {{ cls.section_name }}</span>
@@ -479,8 +505,8 @@
                         <i class="fas fa-upload"></i> Upload Material
                     </button>
                     <div id="um-dropdown" class="action-dropdown-menu">
-                        {% if teacher_assignments %}
-                            {% for cls in teacher_assignments %}
+                        {% if unique_classes %}
+                            {% for cls in unique_classes %}
                             <a href="/teacher/subject/{{ cls.subject_id }}?section={{ cls.section_id }}" class="dropdown-item">
                                 <span class="dropdown-item-title">{{ cls.subject_name }}</span>
                                 <span class="dropdown-item-sub">{{ cls.grade_level_name }} - {{ cls.section_name }}</span>

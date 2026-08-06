@@ -6,9 +6,9 @@
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
     .pi-wrap {
-        max-width: 900px;
+        max-width: 1200px;
         margin: 0 auto;
-        padding: 0 0 56px;
+        padding: 24px 20px 64px;
     }
 
     /* ── Hero ── */
@@ -89,20 +89,16 @@
         transition: all 0.15s;
     }
 
-    .btn-back:hover {
-        background: var(--hover);
-        color: #1a3a8f;
-        transform: translateY(-1px);
-    }
-
-    /* ── Table Container ── */
-    .cr-table-wrap {
-        overflow: hidden;
+    /* ── Class Record Table ── */
+    .unified-card {
+        background: #fff;
         border-radius: 16px;
         border: 1px solid var(--border);
-        background: var(--card);
-        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
-        margin-bottom: 24px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+        overflow: hidden;
+    }
+    .cr-table-wrap {
+        overflow-x: auto;
     }
 
     .score-table {
@@ -190,6 +186,10 @@
         display: flex;
         gap: 12px;
         align-items: center;
+        justify-content: flex-end;
+        padding: 16px 24px;
+        background: #f8fafc;
+        border-top: 1px solid var(--border);
     }
 
     .btn-save {
@@ -246,11 +246,7 @@
 {% block content %}
 <div class="pi-wrap">
     
-    <div class="pi-header-actions">
-        <a href="{{ url_for('teacher.class_record', section_id=section_id, subject_id=subject_id, period=period) }}" class="btn-back">
-            ← Back to Class Record
-        </a>
-    </div>
+
 
     <!-- ── Hero ── -->
     <div class="pi-hero">
@@ -269,37 +265,39 @@
     <form method="POST">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         {% if students %}
-        <div class="cr-table-wrap">
-            <table class="score-table">
-                <thead>
-                    <tr>
-                        <th style="width: 60px; text-align: center;">#</th>
-                        <th>Student Name</th>
-                        <th style="width: 180px;">Attendance Score</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for s in students %}
-                    <tr>
-                        <td style="color:var(--muted); font-size:0.85rem; text-align:center;">{{ loop.index }}</td>
-                        <td style="font-weight:600; color:#1e3a8a;">{{ s.student_name }}</td>
-                        <td>
-                            <div class="score-input-wrap">
-                                <input type="number" name="score_{{ s.enrollment_id }}"
-                                       class="score-input" min="1" max="10" step="1"
-                                       value="{{ [s.score | round(0) | int, 1] | max }}">
-                                <span class="score-input-label">/ 10</span>
-                            </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        <div class="action-bar">
-            <button type="submit" class="btn-save">💾 Save All Scores</button>
-            <a href="{{ url_for('teacher.class_record', section_id=section_id, subject_id=subject_id, period=period) }}"
-               class="btn-cancel">Cancel</a>
+        <div class="unified-card">
+            <div class="cr-table-wrap">
+                <table class="score-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 60px; text-align: center;">#</th>
+                            <th>Student Name</th>
+                            <th style="width: 180px;">Attendance Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for s in students %}
+                        <tr>
+                            <td style="color:var(--muted); font-size:0.85rem; text-align:center;">{{ loop.index }}</td>
+                            <td style="font-weight:600; color:#1e3a8a;">{{ s.student_name }}</td>
+                            <td>
+                                <div class="score-input-wrap">
+                                    <input type="number" name="score_{{ s.enrollment_id }}"
+                                           class="score-input" min="1" max="10" step="1"
+                                           value="{{ [s.score | round(0) | int, 1] | max }}">
+                                    <span class="score-input-label">/ 10</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="action-bar">
+                <a href="{{ url_for('teacher.class_record', section_id=section_id, subject_id=subject_id, period=period) }}"
+                   class="btn-cancel">Cancel</a>
+                <button type="submit" class="btn-save">💾 Save All Scores</button>
+            </div>
         </div>
         {% else %}
         <div class="empty-state">

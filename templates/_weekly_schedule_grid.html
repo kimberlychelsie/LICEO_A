@@ -65,6 +65,15 @@
               {% endfor %}
             {% endfor %}
 
+            {# ── Build unique subject-section list for consistent colors ── #}
+            {% set unique_subjects = [] %}
+            {% for sched in schedules %}
+              {% set key = sched.subject_name ~ '|' ~ (sched.section_name or '') %}
+              {% if key not in unique_subjects %}
+                {% set _ = unique_subjects.append(key) %}
+              {% endif %}
+            {% endfor %}
+
             {# ── Schedule blocks ── #}
             {% for sched in schedules %}
               {% set day_to_col = {
@@ -73,6 +82,10 @@
               {% set col       = day_to_col.get(sched.day_of_week, 1) %}
               {% set row_start = ((sched.start_time.hour - 7) * 2) + (sched.start_time.minute // 30) + 2 %}
               {% set row_end   = ((sched.end_time.hour   - 7) * 2) + (sched.end_time.minute   // 30) + 2 %}
+
+              {# Calculate color index based on subject and section #}
+              {% set key = sched.subject_name ~ '|' ~ (sched.section_name or '') %}
+              {% set color_idx = (unique_subjects.index(key) % 7) + 1 %}
 
               {# 12-hr tooltip label #}
               {% set sh   = sched.start_time.hour %}
@@ -85,7 +98,7 @@
               {% set ea   = 'AM' if eh < 12 else 'PM' %}
               {% set tip  = "%d:%02d %s – %d:%02d %s" % (sh12, sm, sa, eh12, em, ea) %}
 
-              <div class="sch-block sch-c{{ col }}"
+              <div class="sch-block sch-c{{ color_idx }}"
                    style="grid-column:{{ col + 1 }}; grid-row:{{ row_start }} / {{ row_end }};"
                    title="{{ sched.subject_name }} ({{ sched.day_of_week }}, {{ tip }})">
                 <div class="sch-block-title">{{ sched.subject_name }}</div>

@@ -1770,11 +1770,8 @@ def activity_submissions(activity_id):
         ''', (activity['section_id'], activity['branch_id'], year_id))
         students = cur.fetchall()
         for s in students:
-            s["student_name"] = " ".join(filter(None, [
-                s.get("student_first_name"),
-                s.get("student_middle_name"),
-                s.get("student_last_name")
-            ]))
+            first_mid = " ".join(filter(None, [s.get("student_first_name"), s.get("student_middle_name")]))
+            s["student_name"] = f"{s.get('student_last_name')}, {first_mid}" if s.get("student_last_name") else first_mid
         
         # Get all submissions for this activity
         cur.execute('''
@@ -4904,11 +4901,8 @@ def participation_input(section_id, subject_id, period):
         students = cur.fetchall() or []
 
         for s in students:
-            s["student_name"] = " ".join(filter(None, [
-                s.get("student_first_name"),
-                s.get("student_middle_name"),
-                s.get("student_last_name")
-            ]))
+            first_mid = " ".join(filter(None, [s.get("student_first_name"), s.get("student_middle_name")]))
+            s["student_name"] = f"{s.get('student_last_name')}, {first_mid}" if s.get("student_last_name") else first_mid
 
     finally:
         cur.close()
@@ -4997,11 +4991,8 @@ def attendance_input(section_id, subject_id, period):
         """, (subject_id, period, section_id, branch_id, year_id))
         students = cur.fetchall() or []
         for s in students:
-            s["student_name"] = " ".join(filter(None, [
-                s.get("student_first_name"),
-                s.get("student_middle_name"),
-                s.get("student_last_name")
-            ]))
+            first_mid = " ".join(filter(None, [s.get("student_first_name"), s.get("student_middle_name")]))
+            s["student_name"] = f"{s.get('student_last_name')}, {first_mid}" if s.get("student_last_name") else first_mid
 
     finally:
         cur.close()
