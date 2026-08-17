@@ -17,31 +17,53 @@
     }
 
     .report-wrap {
-        padding: 40px;
-        max-width: 1400px;
+        padding: 24px 20px 64px;
+        max-width: 1280px;
         margin: 0 auto;
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
-    /* ── Header ── */
-    .report-header {
+    /* ── Hero Banner ── */
+    .hero-banner {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        border-radius: 20px;
+        padding: 40px;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+        color: #fff;
+        box-shadow: 0 15px 35px -10px rgba(30, 58, 138, 0.2);
+    }
+
+    .hero-content {
         display: flex;
         justify-content: space-between;
-        align-items: flex-end;
-        margin-bottom: 40px;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 20px;
     }
 
-    .header-info h1 {
-        font-size: 2.25rem;
-        font-weight: 800;
-        color: var(--report-text);
-        letter-spacing: -0.02em;
-        margin-bottom: 8px;
+    .hero-content h1 {
+        font-size: 2.5rem;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        margin-bottom: 12px;
+        line-height: 1;
+        margin-top: 0;
     }
 
-    .header-info p {
-        color: var(--report-muted);
+    .hero-content h1 span {
+        color: #34d399;
+        text-shadow: 0 4px 12px rgba(52, 211, 153, 0.3);
+    }
+
+    .hero-content p {
+        font-size: 1rem;
         font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+        max-width: 600px;
+        line-height: 1.5;
+        margin: 0;
     }
 
     /* ── Quick Stats Grid ── */
@@ -212,12 +234,97 @@
         padding: 24px 32px;
         background: #fbfcfe;
         border-bottom: 1px solid var(--report-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
 
     .data-table-header h2 {
         font-size: 1.1rem;
         font-weight: 800;
         color: var(--report-primary);
+        margin: 0;
+    }
+
+    .btn-view-all {
+        font-size: .85rem;
+        font-weight: 700;
+        color: var(--report-primary);
+        background: #e0e7ff;
+        padding: 6px 14px;
+        border-radius: 99px;
+        border: none;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-view-all:hover {
+        background: #c7d2fe;
+        transform: translateY(-1px);
+    }
+
+    /* ── Modal ── */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(15, 23, 42, 0.5);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        backdrop-filter: blur(4px);
+    }
+
+    .modal-content {
+        background: #fff;
+        border-radius: 20px;
+        width: 90%;
+        max-width: 1000px;
+        max-height: 85vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+    }
+
+    .modal-header {
+        padding: 20px 28px;
+        border-bottom: 1px solid var(--report-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        font-size: 1.25rem;
+        color: var(--report-primary);
+        font-weight: 800;
+    }
+
+    .modal-close {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--report-muted);
+        transition: color 0.2s;
+    }
+
+    .modal-close:hover {
+        color: #ef4444;
+        /* danger */
+    }
+
+    .modal-body {
+        padding: 0;
+        overflow-y: auto;
+        flex: 1;
     }
 
     .table-wrapper {
@@ -313,8 +420,18 @@
         }
 
         /* Hide all website navigation & non-printable elements */
-        .sb-sidebar, .sidebar, nav, header, .date-selector-card, .header-info p,
-        .btn-view, th:last-child, td:last-child, .faq-widget, .chat-widget, .no-print,
+        .sb-sidebar,
+        .sidebar,
+        nav,
+        header,
+        .date-selector-card,
+        .header-info p,
+        .btn-view,
+        th:last-child,
+        td:last-child,
+        .faq-widget,
+        .chat-widget,
+        .no-print,
         a[href*="dashboard"] {
             display: none !important;
         }
@@ -458,8 +575,17 @@
         }
     }
 
-    .print-only-header, .print-signatures-block {
+    .print-only-header,
+    .print-signatures-block {
         display: none;
+    }
+    @media (max-width: 768px) {
+        .report-wrap {
+            padding: 12px 10px 40px !important;
+        }
+        .hero-banner {
+            padding: 20px !important;
+        }
     }
 </style>
 {% endblock %}
@@ -467,25 +593,26 @@
 {% block content %}
 <div class="report-wrap">
 
-    <div class="report-header">
+    <div class="report-header print-only-header">
         <div class="header-info">
-            <h1>Daily Financial Report</h1>
-            <p class="no-print">View daily collections and transactions.</p>
+            <h1>Financial Report</h1>
             <div class="print-only-header">
                 <strong>LICEO DE MAJAYJAY</strong> — Financial Collection Report<br>
-                Period: {% if date_start == date_end %}{{ date_start }}{% else %}{{ date_start }} to {{ date_end }}{% endif %}<br>
+                Period: {% if date_start == date_end %}{{ date_start }}{% else %}{{ date_start }} to {{ date_end }}{%
+                endif %}<br>
                 Prepared By: {{ cashier_name }}
             </div>
         </div>
-        <a href="{{ url_for('cashier.dashboard') }}" class="no-print"
-            style="color: var(--report-muted); text-decoration: none; font-weight: 700; display: flex; align-items: center; gap: 6px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="19" y1="12" x2="5" y2="12"></line>
-                <polyline points="12 19 5 12 12 5"></polyline>
-            </svg>
-            Return to Console
-        </a>
+    </div>
+
+    <div class="hero-banner no-print">
+        <div class="hero-content">
+            <div>
+                <h1>Financial <span>Reports</span></h1>
+                <p>View collections and transactions.</p>
+            </div>
+
+        </div>
     </div>
 
     <!-- Controls card: date, range, export -->
@@ -494,27 +621,25 @@
         <div class="controls-row">
             <span class="form-label">Period:</span>
             <select name="report_range" id="range-select" class="range-select" onchange="handleRangeChange(this.value)">
-                <option value="today" {% if report_range == 'today' %}selected{% endif %}>Today</option>
-                <option value="weekly" {% if report_range == 'weekly' %}selected{% endif %}>This Week</option>
-                <option value="monthly" {% if report_range == 'monthly' %}selected{% endif %}>This Month</option>
-                <option value="yearly" {% if report_range == 'yearly' %}selected{% endif %}>This Year</option>
-                <option value="custom" {% if report_range == 'custom' %}selected{% endif %}>Custom Range</option>
+                <option value="today" {% if report_range=='today' %}selected{% endif %}>Today</option>
+                <option value="weekly" {% if report_range=='weekly' %}selected{% endif %}>This Week</option>
+                <option value="monthly" {% if report_range=='monthly' %}selected{% endif %}>This Month</option>
+                <option value="yearly" {% if report_range=='yearly' %}selected{% endif %}>This Year</option>
+                <option value="custom" {% if report_range=='custom' %}selected{% endif %}>Custom Range</option>
             </select>
             <!-- Single date for Today -->
-            <input type="date" name="report_date" id="date-input" class="date-input"
-                value="{{ report_date }}"
-                {% if report_range != 'today' %}disabled{% endif %}
+            <input type="date" name="report_date" id="date-input" class="date-input" value="{{ report_date }}" {% if
+                report_range !='today' %}disabled{% endif %}
                 style="display: {{ 'block' if report_range == 'today' else 'none' }};">
             <!-- Date range for Custom -->
-            <span id="custom-range-wrap" style="display: {{ 'flex' if report_range == 'custom' else 'none' }}; align-items: center; gap: 8px;">
+            <span id="custom-range-wrap"
+                style="display: {{ 'flex' if report_range == 'custom' else 'none' }}; align-items: center; gap: 8px;">
                 <span class="form-label" style="margin:0;">From</span>
-                <input type="date" name="report_date" id="date-from-input" class="date-input"
-                    {% if report_range != 'custom' %}disabled{% endif %}
-                    value="{{ report_date }}">
+                <input type="date" name="report_date" id="date-from-input" class="date-input" {% if report_range
+                    !='custom' %}disabled{% endif %} value="{{ report_date }}">
                 <span class="form-label" style="margin:0;">To</span>
-                <input type="date" name="report_date_end" id="date-end-input" class="date-input"
-                    {% if report_range != 'custom' %}disabled{% endif %}
-                    value="{{ report_date_end }}">
+                <input type="date" name="report_date_end" id="date-end-input" class="date-input" {% if report_range
+                    !='custom' %}disabled{% endif %} value="{{ report_date_end }}">
             </span>
             <button type="submit" class="btn-generate">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none"
@@ -551,32 +676,32 @@
     </form>
 
     <script>
-    function handleRangeChange(val) {
-        var di = document.getElementById('date-input');
-        var df = document.getElementById('date-from-input');
-        var de = document.getElementById('date-end-input');
-        var cr = document.getElementById('custom-range-wrap');
+        function handleRangeChange(val) {
+            var di = document.getElementById('date-input');
+            var df = document.getElementById('date-from-input');
+            var de = document.getElementById('date-end-input');
+            var cr = document.getElementById('custom-range-wrap');
 
-        // Show/hide
-        di.style.display = (val === 'today') ? 'block' : 'none';
-        cr.style.display = (val === 'custom') ? 'flex' : 'none';
+            // Show/hide
+            di.style.display = (val === 'today') ? 'block' : 'none';
+            cr.style.display = (val === 'custom') ? 'flex' : 'none';
 
-        // Enable only the active inputs so duplicates don't get submitted
-        di.disabled = (val !== 'today');
-        df.disabled = (val !== 'custom');
-        de.disabled = (val !== 'custom');
-    }
-    function exportReport(fmt) {
-        var range = document.getElementById('range-select').value;
-        var url   = '/cashier/reports/export/' + fmt + '?range=' + range;
-        if (range === 'today') {
-            url += '&date=' + document.getElementById('date-input').value;
-        } else if (range === 'custom') {
-            url += '&date=' + document.getElementById('date-from-input').value;
-            url += '&date_end=' + document.getElementById('date-end-input').value;
+            // Enable only the active inputs so duplicates don't get submitted
+            di.disabled = (val !== 'today');
+            df.disabled = (val !== 'custom');
+            de.disabled = (val !== 'custom');
         }
-        window.location.href = url;
-    }
+        function exportReport(fmt) {
+            var range = document.getElementById('range-select').value;
+            var url = '/cashier/reports/export/' + fmt + '?range=' + range;
+            if (range === 'today') {
+                url += '&date=' + document.getElementById('date-input').value;
+            } else if (range === 'custom') {
+                url += '&date=' + document.getElementById('date-from-input').value;
+                url += '&date_end=' + document.getElementById('date-end-input').value;
+            }
+            window.location.href = url;
+        }
     </script>
 
     <!-- Summary stats -->
@@ -595,6 +720,14 @@
     <div class="data-card">
         <div class="data-table-header">
             <h2>Transaction History</h2>
+            <button class="btn-view-all no-print"
+                onclick="document.getElementById('viewAllModal').style.display='flex'">
+                View All
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            </button>
         </div>
 
         {% if payments %}
@@ -607,11 +740,11 @@
                         <th>Level</th>
                         <th>Account</th>
                         <th>Collection</th>
-                        <th>Action</th>
+                        <th class="no-print">Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for p in payments %}
+                    {% for p in payments[:5] %}
                     <tr>
                         <td><span class="receipt-pill">{{ p.receipt_number }}</span></td>
                         <td>
@@ -623,8 +756,12 @@
                         <td>LDMAJ_{{ '%04d' | format(p.branch_enrollment_no) }}</td>
                         <td><strong style="color: var(--report-primary);">₱{{ "%.2f"|format(p.amount) }}</strong></td>
                         <td>
-                            <a href="{{ url_for('cashier.print_receipt', payment_id=p.payment_id) }}"
-                                class="btn-view">View OR</a>
+                            <div style="display: flex; gap: 8px;">
+                                <a href="{{ url_for('cashier.print_receipt', payment_id=p.payment_id) }}"
+                                    class="btn-view">View OR</a>
+                                <a href="{{ url_for('cashier.view_bill', bill_id=p.bill_id) }}"
+                                    class="btn-view">View Bill</a>
+                            </div>
                         </td>
                     </tr>
                     {% endfor %}
@@ -662,5 +799,84 @@
         </div>
     </div>
 
+    <!-- View All Modal -->
+    <div class="modal-overlay no-print" id="viewAllModal" onclick="if(event.target === this) this.style.display='none'">
+        <div class="modal-content">
+            <div class="modal-header" style="display: flex; align-items: center; justify-content: space-between;">
+                <h2 style="margin: 0;">All Transactions</h2>
+                <div class="modal-search" style="margin-left: auto; margin-right: 16px;">
+                    <input type="text" id="transactionSearch" placeholder="Search ID, Name, or OR..." 
+                           style="padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 8px; width: 250px; font-family: inherit; font-size: 0.9rem;">
+                </div>
+                <button class="modal-close" onclick="document.getElementById('viewAllModal').style.display='none'">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>OR Number</th>
+                            <th>Student Name</th>
+                            <th>Level</th>
+                            <th>Account</th>
+                            <th>Collection</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in payments %}
+                        <tr>
+                            <td><span class="receipt-pill">{{ p.receipt_number }}</span></td>
+                            <td>
+                                <div style="font-weight: 700; color: var(--report-text);">{{ p.student_name }}</div>
+                                <div style="font-size: 0.75rem; color: var(--report-muted);">{{
+                                    p.payment_date.strftime('%I:%M %p') }}</div>
+                            </td>
+                            <td>{{ p.grade_level }}</td>
+                            <td>LDMAJ_{{ '%04d' | format(p.branch_enrollment_no) }}</td>
+                            <td><strong style="color: var(--report-primary);">₱{{ "%.2f"|format(p.amount) }}</strong>
+                            </td>
+                            <td>
+                                <div style="display: flex; gap: 8px;">
+                                    <a href="{{ url_for('cashier.print_receipt', payment_id=p.payment_id) }}"
+                                        class="btn-view">View OR</a>
+                                    <a href="{{ url_for('cashier.view_bill', bill_id=p.bill_id) }}"
+                                        class="btn-view">View Bill</a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('transactionSearch');
+    if(searchInput) {
+        searchInput.addEventListener('keyup', function() {
+            const filter = this.value.toLowerCase();
+            const rows = document.querySelectorAll('#viewAllModal tbody tr');
+            
+            rows.forEach(row => {
+                const text = row.innerText.toLowerCase();
+                if (text.includes(filter)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    }
+});
+</script>
 {% endblock %}

@@ -1,18 +1,30 @@
 {% extends "base.html" %}
-{% block title %}Approve Class Record — {{ req_info.subject_name }}{% endblock %}
+{% block title %}Approved Record — {{ req_info.subject_name }}{% endblock %}
 
 {% block styles %}
 <style>
-    .cr-wrap { max-width: 1240px; margin: 0 auto; padding-bottom: 48px; }
+    .cr-wrap {
+        padding: 40px 32px;
+        max-width: 1500px;
+        margin: 0 auto;
+        animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 
     /* Hero Header matching topbar blue */
     .cr-hero {
-        background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+        background: linear-gradient(135deg, #1e3a8a 0%, #0c2461 100%);
         border-radius: 20px;
-        padding: 28px 32px;
+        padding: 40px;
         color: #ffffff;
         margin-bottom: 24px;
-        box-shadow: 0 10px 25px -5px rgba(37, 99, 235, 0.25);
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 15px 35px -10px rgba(26, 58, 143, 0.2);
     }
 
     .cr-hero-inner {
@@ -24,20 +36,57 @@
     }
 
     .cr-hero-title {
-        font-size: 1.65rem;
+        font-size: 2.5rem;
         font-weight: 900;
-        margin: 0 0 6px;
-        letter-spacing: -0.02em;
-    }
-
-    .cr-hero-sub {
-        font-size: 0.92rem;
-        color: rgba(255, 255, 255, 0.88);
-        margin: 0;
+        margin: 0 0 12px;
+        letter-spacing: -0.04em;
+        line-height: 1;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
+    }
+    
+    .cr-hero-title span {
+        color: #facc15;
+        text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+    }
+
+    .white-info-card {
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 18px;
+        padding: 20px 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+    }
+    
+    .cr-info-grid {
+        display: flex;
         flex-wrap: wrap;
+        gap: 16px;
+    }
+    .cr-info-item {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-width: 150px;
+    }
+    .cr-info-label {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: #475569;
+        font-weight: 800;
+        margin-bottom: 6px;
+    }
+    .cr-info-value {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #0f172a;
+        padding: 11px 14px;
+        border-radius: 12px;
+        border: 1.5px solid #cbd5e1;
+        background: #f8fafc;
     }
 
     .cr-btn {
@@ -200,21 +249,11 @@
     <!-- Hero Header -->
     <div class="cr-hero">
         <div class="cr-hero-inner">
-            <div>
-                <h1 class="cr-hero-title">Approve Class Record</h1>
-                <p class="cr-hero-sub">
-                    <span><strong>{{ req_info.subject_name }}</strong></span> · 
-                    <span>{{ req_info.grade_level_name }} — {{ req_info.section_name }}</span> · 
-                    <span><strong>{{ req_info.grading_period }} Term</strong></span> · 
-                    <span>Teacher: {{ req_info.teacher_name or 'Teacher' }}</span> · 
-                    <span>Verified by Registrar: {{ req_info.registrar_name or 'Registrar' }}</span>
-                </p>
+            <div style="flex: 1;">
+                <h1 class="cr-hero-title">Approved <span>Record</span></h1>
+
             </div>
-            <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <a href="{{ url_for('branch_admin.branch_admin_grade_approval') }}" class="cr-btn cr-btn-ghost">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                    Back to Grade Approval
-                </a>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start;">
 
                 {% if req_info.status == 'pending_admin' %}
                 <form action="{{ url_for('branch_admin.branch_admin_approve_grade_request', req_id=req_info.id) }}" method="POST" style="display:inline;">
@@ -229,6 +268,31 @@
                     Return to Teacher
                 </button>
                 {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="white-info-card">
+        <div class="cr-info-grid">
+            <div class="cr-info-item">
+                <span class="cr-info-label">Subject</span>
+                <span class="cr-info-value">{{ req_info.subject_name }}</span>
+            </div>
+            <div class="cr-info-item">
+                <span class="cr-info-label">Section</span>
+                <span class="cr-info-value">{{ req_info.grade_level_name }} — {{ req_info.section_name }}</span>
+            </div>
+            <div class="cr-info-item">
+                <span class="cr-info-label">Term</span>
+                <span class="cr-info-value">{{ req_info.grading_period }} Term</span>
+            </div>
+            <div class="cr-info-item">
+                <span class="cr-info-label">Teacher</span>
+                <span class="cr-info-value">{{ req_info.teacher_name or 'Teacher' }}</span>
+            </div>
+            <div class="cr-info-item">
+                <span class="cr-info-label">Verified By</span>
+                <span class="cr-info-value">{{ req_info.registrar_name or 'Registrar' }}</span>
             </div>
         </div>
     </div>

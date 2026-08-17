@@ -3,187 +3,370 @@
 
 {% block styles %}
 <style>
-  .profile-container {
-    max-width: 600px;
-    margin: 0 auto;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 30px;
-    text-align: center;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-  }
-  .profile-avatar-wrapper {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    margin: 0 auto 20px;
-    background: #f1f5f9;
-    border: 3px solid #e2e8f0;
-    overflow: hidden;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 2.5rem;
-    font-weight: 800;
-    color: var(--muted);
-  }
-  .profile-avatar {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-  .profile-name {
-    font-size: 1.6rem;
-    font-weight: 800;
-    color: var(--text);
-    margin-bottom: 5px;
-  }
-  .profile-badge-row {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    margin-bottom: 25px;
-  }
-  .profile-details {
-    text-align: left;
-    background: #f8fafc;
-    border-radius: 10px;
-    padding: 20px;
-    border: 1px solid var(--border);
-  }
-  .detail-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 10px 0;
-    border-bottom: 1px solid #e2e8f0;
-  }
-  .detail-row:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-  }
-  .detail-label {
-    font-size: 0.85rem;
-    font-weight: 700;
-    color: var(--muted);
-  }
-  .detail-value {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--text);
-  }
-  .section-title {
-    text-align: left;
-    font-size: 0.95rem;
-    font-weight: 800;
-    color: var(--text);
-    margin: 25px 0 10px 5px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .profile-notice {
-    font-size: 0.75rem;
-    color: var(--muted);
-    margin-top: 25px;
-  }
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+    :root {
+        --primary: #1a3a8f;
+        --secondary: #3b82f6;
+        --bg-main: #f8fafc;
+        --card-bg: #ffffff;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --border-color: #e2e8f0;
+        --success-bg: #dcfce7;
+        --success-text: #166534;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --radius-md: 0.75rem;
+        --radius-lg: 1rem;
+    }
+
+    body {
+        background-color: var(--bg-main);
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+
+    .container-layout {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 40px 24px;
+        animation: fadeIn 0.4s ease-out;
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .page-header {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 2rem;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .page-title {
+        font-size: 2.2rem;
+        font-weight: 900;
+        color: var(--primary);
+        letter-spacing: -0.02em;
+        margin: 0;
+        line-height: 1.2;
+    }
+
+    .back-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        color: var(--text-muted);
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 0.9rem;
+        margin-bottom: 1.5rem;
+        transition: color 0.2s;
+    }
+    .back-btn:hover {
+        color: var(--primary);
+    }
+
+    .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+
+    .card-header {
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        background: #fcfcfc;
+        font-weight: 700;
+        color: var(--primary);
+        font-size: 1rem;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+
+    /* Header Profile Card */
+    .profile-header-card {
+        display: flex;
+        gap: 2rem;
+        align-items: center;
+    }
+    @media (max-width: 600px) {
+        .profile-header-card { flex-direction: column; text-align: center; }
+    }
+
+    .profile-avatar-wrapper {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: #f1f5f9;
+        border: 3px solid #e2e8f0;
+        overflow: hidden;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: var(--text-muted);
+    }
+    .profile-avatar {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .profile-header-info {
+        flex: 1;
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        width: 100%;
+    }
+    @media (max-width: 600px) {
+        .profile-header-info { flex-direction: column; align-items: center; gap: 1rem; }
+    }
+
+    .profile-name {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--text-main);
+        margin-bottom: 0.25rem;
+    }
+    .profile-sub {
+        font-size: 1rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.375rem 1rem;
+        border-radius: 2rem;
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+    .badge-enrolled { background: var(--success-bg); color: var(--success-text); }
+    .badge-pending { background: #fef08a; color: #854d0e; }
+    
+    .divider {
+        height: 1px;
+        background: var(--border-color);
+        margin: 1.5rem 0;
+    }
+
+    .profile-notice {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+    @media (max-width: 600px) {
+        .profile-notice { justify-content: center; }
+    }
+
+    /* Information Grids */
+    .info-grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+    @media (max-width: 768px) {
+        .info-grid-2 { grid-template-columns: 1fr; }
+    }
+
+    .info-list {
+        display: flex;
+        flex-direction: column;
+        gap: 1rem;
+    }
+    .info-row {
+        display: grid;
+        grid-template-columns: 140px 1fr;
+        gap: 1rem;
+        align-items: baseline;
+    }
+    @media (max-width: 480px) {
+        .info-row { grid-template-columns: 1fr; gap: 0.25rem; }
+    }
+    .info-label {
+        font-size: 0.85rem;
+        color: var(--text-muted);
+        font-weight: 500;
+    }
+    .info-value {
+        font-size: 0.95rem;
+        color: var(--text-main);
+        font-weight: 600;
+    }
+    
+    .bottom-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+    }
+    @media (max-width: 900px) {
+        .bottom-grid { grid-template-columns: 1fr; }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="profile-container">
-  
-  <div class="profile-avatar-wrapper">
-    {% if student.profile_image %}
-    <img src="{% if student.profile_image.startswith('http') %}{{ student.profile_image }}{% elif student.profile_image.startswith('/') %}{{ student.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ student.profile_image) }}{% endif %}" class="profile-avatar" alt="Profile Picture">
-    {% else %}
-    {{ student.student_name[0]|upper }}
-    {% endif %}
-  </div>
+<div class="container-layout">
 
-  <div class="profile-name">{{ student.student_name }}</div>
-  
-  <div class="profile-badge-row">
-    <span class="badge badge-blue">{{ student.grade_level }}</span>
-    <span class="badge {% if student.status == 'enrolled' %}badge-green{% elif student.status == 'approved' %}badge-blue{% else %}badge-yellow{% endif %}">
-      {{ student.status | replace('_', ' ') | title }}
-    </span>
-  </div>
+    <div class="page-header">
+        <h1 class="page-title">Student Profile Details</h1>
+    </div>
 
-  <div class="section-title">🎓 Academic Information</div>
-  <div class="profile-details">
-    <div class="detail-row">
-      <span class="detail-label">Enrollment No.</span>
-      <span class="detail-value">#{{ student.branch_enrollment_no or student.enrollment_id }}</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">LRN</span>
-      <span class="detail-value">{{ student.lrn or '-' }}</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">Section</span>
-      <span class="detail-value">
-        {% if student.section_name %}
-        {{ student.section_name }}
-        {% else %}
-        <span style="color:var(--muted);font-weight:normal;">Unassigned</span>
-        {% endif %}
-      </span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">Branch</span>
-      <span class="detail-value">{{ student.branch_name }}</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">Previous School</span>
-      <span class="detail-value">{{ student.previous_school or '-' }}</span>
-    </div>
-  </div>
+    <!-- Header Card -->
+    <div class="card">
+        <div class="card-body">
+            <div class="profile-header-card">
+                <div class="profile-avatar-wrapper">
+                    {% if student.profile_image %}
+                    <img src="{% if student.profile_image.startswith('http') %}{{ student.profile_image }}{% elif student.profile_image.startswith('/') %}{{ student.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ student.profile_image) }}{% endif %}" class="profile-avatar" alt="Profile Picture">
+                    {% else %}
+                    {{ student.student_name[0]|upper }}
+                    {% endif %}
+                </div>
+                
+                <div class="profile-header-info">
+                    <div>
+                        <div class="profile-name">{{ student.student_name }}</div>
+                        <div class="profile-sub">
+                            {{ student.grade_level }} — {% if student.section_name %}{{ student.section_name }}{% else %}Unassigned{% endif %}
+                        </div>
+                    </div>
+                    <div>
+                        <span class="status-badge {% if student.status == 'enrolled' %}badge-enrolled{% else %}badge-pending{% endif %}">
+                            <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><circle cx="8" cy="8" r="8"/></svg>
+                            {{ student.status | replace('_', ' ') | title }}
+                        </span>
+                    </div>
+                </div>
+            </div>
 
-  <div class="section-title">👤 Personal Information</div>
-  <div class="profile-details">
-    <div class="detail-row">
-      <span class="detail-label">Gender</span>
-      <span class="detail-value">{{ student.gender | title if student.gender else '-' }}</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">Date of Birth</span>
-      <span class="detail-value">{{ student.dob.strftime('%b %d, %Y') if student.dob else '-' }}</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">Contact No.</span>
-      <span class="detail-value">{{ student.contact_number or '-' }}</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">Email</span>
-      <span class="detail-value">{{ student.email or '-' }}</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">Address</span>
-      <span class="detail-value" style="text-align:right;max-width:250px;">{{ student.address or '-' }}</span>
-    </div>
-  </div>
+            <div class="divider"></div>
 
-  <div class="section-title">👨‍👩‍👧 Guardian Information</div>
-  <div class="profile-details">
-    <div class="detail-row">
-      <span class="detail-label">Guardian Name</span>
-      <span class="detail-value">{{ student.guardian_name or '-' }}</span>
+            <div class="profile-notice">
+                <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zM5 8h6a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/></svg>
+                To update your profile picture, please contact the Registrar.
+            </div>
+        </div>
     </div>
-    <div class="detail-row">
-      <span class="detail-label">Guardian Contact</span>
-      <span class="detail-value">{{ student.guardian_contact or '-' }}</span>
-    </div>
-    <div class="detail-row">
-      <span class="detail-label">Guardian Email</span>
-      <span class="detail-value">{{ student.guardian_email or '-' }}</span>
-    </div>
-  </div>
 
-  <div class="profile-notice">
-    🔒 To update your profile picture, please contact the Registrar.
-  </div>
+    <!-- Academic Information -->
+    <div class="card">
+        <div class="card-header">
+            Academic Information
+        </div>
+        <div class="card-body">
+            <div class="info-grid-2">
+                <div class="info-list">
+                    <div class="info-row">
+                        <span class="info-label">Enrollment No.:</span>
+                        <span class="info-value">#{{ student.branch_enrollment_no or student.enrollment_id }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">LRN:</span>
+                        <span class="info-value">{{ student.lrn or '-' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Grade Level:</span>
+                        <span class="info-value">{{ student.grade_level }}</span>
+                    </div>
+                </div>
+                <div class="info-list">
+                    <div class="info-row">
+                        <span class="info-label">Section:</span>
+                        <span class="info-value">{% if student.section_name %}{{ student.section_name }}{% else %}Unassigned{% endif %}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Branch:</span>
+                        <span class="info-value">{{ student.branch_name }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Previous School:</span>
+                        <span class="info-value">{{ student.previous_school or '-' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Split Grid -->
+    <div class="bottom-grid">
+        <!-- Personal Information -->
+        <div class="card" style="margin-bottom: 0;">
+            <div class="card-header">
+                Personal Information
+            </div>
+            <div class="card-body">
+                <div class="info-list">
+                    <div class="info-row">
+                        <span class="info-label">Gender:</span>
+                        <span class="info-value">{{ student.gender | title if student.gender else '-' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Date of Birth:</span>
+                        <span class="info-value">{{ student.dob.strftime('%b %d, %Y') if student.dob else '-' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Contact No.:</span>
+                        <span class="info-value">{{ student.contact_number or '-' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Email:</span>
+                        <span class="info-value">{{ student.email or '-' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Address:</span>
+                        <span class="info-value">{{ student.address or '-' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Guardian Information -->
+        <div class="card" style="margin-bottom: 0;">
+            <div class="card-header">
+                Guardian Information
+            </div>
+            <div class="card-body">
+                <div class="info-list">
+                    <div class="info-row">
+                        <span class="info-label">Guardian Name:</span>
+                        <span class="info-value">{{ student.guardian_name or '-' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Guardian Contact:</span>
+                        <span class="info-value">{{ student.guardian_contact or '-' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Guardian Email:</span>
+                        <span class="info-value">{{ student.guardian_email or '-' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
 </div>
 {% endblock %}

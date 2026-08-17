@@ -307,13 +307,6 @@
             </div>
             
             <div style="display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;">
-                {% if exam.status == 'draft' %}
-                <form method="POST" action="{{ url_for('teacher.teacher_exam_publish', exam_id=exam.exam_id) }}" onsubmit="return handleBtnLoad(this, 'Creating...');" style="display:inline;">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-success" style="background:#10b981; border:none;">Publish {{ 'Quiz' if exam.exam_type|lower == 'quiz' else 'Exam' }}</button>
-                </form>
-
-                {% endif %}
                 <a href="{{ url_for('teacher.teacher_exam_edit_settings', exam_id=exam.exam_id) }}" class="btn btn-hero" style="padding: 8px 16px; border-radius: 7px; display: inline-flex; align-items: center; font-size: 13px; font-weight: 700; text-decoration: none; transition: .2s;">Edit</a>
                 <a href="{{ url_for('teacher.teacher_exam_results', exam_id=exam.exam_id) }}" class="btn btn-hero" style="padding: 8px 16px; border-radius: 7px; display: inline-flex; align-items: center; font-size: 13px; font-weight: 700; text-decoration: none; transition: .2s;">Results</a>
                 <a href="{{ url_for('teacher.teacher_class_view', subject_id=exam.subject_id, active_tab='quizzes' if exam.exam_type|lower == 'quiz' else 'exams') }}" class="btn btn-hero" style="padding: 8px 16px; border-radius: 7px; display: inline-flex; align-items: center; font-size: 13px; font-weight: 700; text-decoration: none; transition: .2s;">Back</a>

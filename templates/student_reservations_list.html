@@ -3,78 +3,60 @@
 
 {% block styles %}
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
     :root {
-        --sd-primary: #1a3a8f;
-        --sd-primary-dark: #142e75;
-        --sd-accent: #10b981;
-        --sd-bg: #f8fafc;
-        --sd-card: #ffffff;
-        --sd-text: #0f172a;
-        --sd-muted: #64748b;
-        --sd-border: #e2e8f0;
-        --sd-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-        --sd-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        --primary: #1a3a8f;
+        --secondary: #3b82f6;
+        --bg-main: #f8fafc;
+        --card-bg: #ffffff;
+        --text-main: #0f172a;
+        --text-muted: #64748b;
+        --border-color: #e2e8f0;
+        --success-bg: #dcfce7;
+        --success-text: #166534;
+        --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+        --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        --radius-md: 0.75rem;
+        --radius-lg: 1rem;
     }
 
-    .sd-container {
-        padding: 40px 32px;
-        max-width: 1500px;
+    body {
+        background-color: var(--bg-main);
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+
+    .container-layout {
+        max-width: 1200px;
         margin: 0 auto;
-        font-family: 'Inter', sans-serif;
-    }
-
-    @media (max-width: 1024px) {
-        .sd-container { padding: 32px 20px; }
+        padding: 16px 32px 40px;
+        animation: fadeIn 0.4s ease-out;
     }
 
     @media (max-width: 768px) {
-        .sd-container { padding: 16px 12px 60px; }
-        .res-hero {
-            padding: 24px 18px;
-            border-radius: 18px;
-            flex-direction: column;
-            align-items: stretch;
-            gap: 16px;
-            text-align: left;
-        }
-        .res-hero-content h1 {
-            font-size: 1.8rem;
-            margin-bottom: 6px;
-        }
-        .res-hero-content p {
-            font-size: 0.9rem;
-        }
-        .res-hero-actions {
-            width: 100%;
-            flex-direction: column !important;
-            align-items: stretch !important;
-            gap: 10px !important;
-        }
-        .btn-hero {
-            width: 100%;
-            justify-content: center;
-            text-align: center;
-            box-sizing: border-box;
-        }
-        .table-card {
-            border-radius: 16px;
-        }
-        .res-table th, .res-table td {
-            padding: 14px 12px;
-            font-size: 0.85rem;
-        }
+        .container-layout { padding: 24px 16px 60px; }
+    }
+
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
     }
 
     /* ── Hero Header ── */
     .res-hero {
         background: linear-gradient(135deg, #1e3a8a 0%, #1a3a8f 50%, #1e40af 100%);
         border-radius: 24px;
-        padding: 48px;
+        padding: 32px;
         color: #fff;
         margin-bottom: 32px;
         position: relative;
         overflow: hidden;
-        box-shadow: var(--sd-shadow-lg);
+        box-shadow: var(--shadow-md);
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -94,11 +76,10 @@
     }
 
     .res-hero-content h1 {
-        font-size: 3rem;
-        font-weight: 900;
-        margin: 0 0 12px;
-        letter-spacing: -0.04em;
-        line-height: 1.1;
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin: 0 0 4px;
+        letter-spacing: -0.01em;
     }
 
     .res-hero-content p {
@@ -128,17 +109,43 @@
         transform: translateY(-2px);
     }
 
-    /* ── Table Card ── */
-    .table-card {
-        background: #fff;
-        border: 1px solid var(--sd-border);
-        border-radius: 24px;
-        overflow: hidden;
-        box-shadow: var(--sd-shadow);
-        animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    @media (max-width: 768px) {
+        .res-hero {
+            padding: 24px 18px;
+            border-radius: 18px;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 16px;
+            text-align: left;
+        }
+        .res-hero-content h1 {
+            font-size: 1.8rem;
+            margin-bottom: 6px;
+        }
+        .res-hero-content p {
+            font-size: 0.9rem;
+        }
+        .btn-hero {
+            width: 100%;
+            justify-content: center;
+            text-align: center;
+            box-sizing: border-box;
+        }
     }
 
-    .table-responsive { overflow-x: auto; }
+
+
+    .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        box-shadow: var(--shadow-sm);
+        overflow: hidden;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+    }
 
     .res-table {
         width: 100%;
@@ -147,82 +154,96 @@
     }
 
     .res-table th {
-        background: #f8fafc;
-        padding: 20px 24px;
+        background: #fcfcfc;
+        padding: 1.25rem 1.5rem;
         text-align: left;
-        font-weight: 800;
-        color: var(--sd-muted);
+        font-weight: 700;
+        color: var(--primary);
         text-transform: uppercase;
-        letter-spacing: 0.08em;
-        font-size: 0.72rem;
-        border-bottom: 2px solid var(--sd-border);
+        letter-spacing: 0.05em;
+        font-size: 0.85rem;
+        border-bottom: 1px solid var(--border-color);
     }
 
     .res-table td {
-        padding: 20px 24px;
-        border-bottom: 1px solid #f1f5f9;
-        color: var(--sd-text);
-        vertical-align: middle;
+        padding: 1.25rem 1.5rem;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--text-main);
+        vertical-align: top;
     }
 
-    .res-table tr:last-child td { border-bottom: none; }
-    .res-table tr:hover { background: #fbfcfe; }
+    .res-table tr:last-child td {
+        border-bottom: none;
+    }
+
+    .res-table tr:hover {
+        background: #fbfcfe;
+    }
 
     .res-id {
-        font-weight: 800;
-        color: var(--sd-primary);
+        font-weight: 700;
+        color: var(--primary);
         font-family: 'JetBrains Mono', monospace;
     }
 
     .res-items {
         font-weight: 600;
-        color: var(--sd-text);
+        color: var(--text-main);
         max-width: 300px;
     }
+    
+    .item-sub {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        font-weight: 600;
+        margin-top: 4px;
+    }
 
-    /* ── Status Badges (same casing as cashier: "For Ordering") ── */
+    .res-date {
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+
+    /* Status Badges */
     .badge {
         padding: 6px 12px;
-        border-radius: 9999px;
+        border-radius: 4px;
         font-size: 0.75rem;
         font-weight: 800;
         letter-spacing: 0.02em;
         display: inline-block;
+        text-transform: uppercase;
     }
 
-    .status-reserved  { background: #fef9c3; color: #713f12; }
-    .status-paid      { background: #dcfce7; color: #15803d; }
-    .status-claimed   { background: #dbeafe; color: #1e40af; }
-    .status-cancelled { background: #fee2e2; color: #991b1b; }
-    .status-for-ordering { background: #ffedd5; color: #c2410c; }
-    .status-ready-for-claim { background: #dbeafe; color: #1d4ed8; }
-    .status-unpaid { background: #fee2e2; color: #991b1b; }
+    .status-reserved  { background: #fef9c3; color: #713f12; border: 1px solid #fde047; }
+    .status-paid      { background: var(--success-bg); color: var(--success-text); border: 1px solid #bbf7d0; }
+    .status-claimed   { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+    .status-cancelled { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .status-for-ordering { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
+    .status-ready-for-claim { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .status-unpaid { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
 
-    /* ── Animations ── */
-    @keyframes fadeInDown {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+    .status-sub {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        margin-top: 6px;
+        text-transform: uppercase;
     }
 
     .empty-box {
         text-align: center;
         padding: 100px 24px;
         background: white;
-        border-radius: 32px;
-        border: 1px solid var(--sd-border);
-        box-shadow: var(--sd-shadow);
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-sm);
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="sd-container">
-    <!-- Hero Header -->
+<div class="container-layout">
     <header class="res-hero">
         <div class="res-hero-content">
             <h1>Order & Reservation <span>History</span></h1>
@@ -230,12 +251,6 @@
         </div>
         
         <div class="res-hero-actions" style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end;">
-            <a class="btn-hero" href="{{ url_for('student_portal.dashboard') }}">
-                <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Dashboard
-            </a>
             <a class="btn-hero" href="{{ url_for('student.student_reservation') }}" style="background: #fff; color: #1a3a8f; border: none;">
                 <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -246,16 +261,16 @@
     </header>
 
     {% if rows and rows|length > 0 %}
-    <div class="table-card">
+    <div class="card">
         <div class="table-responsive">
             <table class="res-table">
                 <thead>
                     <tr>
-                        <th>ID</th>
+                        <th>Order ID</th>
                         <th>Academic Items</th>
-                        <th>Transaction Date</th>
+                        <th>Trans. Date</th>
                         <th>Current Status</th>
-                        <th style="text-align: right;">Quantity</th>
+                        <th style="text-align: center;">Qty</th>
                         <th style="text-align: right;">Total Amount</th>
                     </tr>
                 </thead>
@@ -272,24 +287,24 @@
                         <td class="res-items">
                             {{ r.item_names or 'N/A' }}
                             {% if r.ref_type == 'UO' %}
-                            <div style="font-size:0.7rem; color:var(--sd-muted); font-weight:700; margin-top:4px;">Uniform Pre-Order</div>
+                            <div class="item-sub">Uniform Pre-Order</div>
                             {% endif %}
                         </td>
-                        <td style="font-weight: 600; color: var(--sd-muted);">
+                        <td class="res-date">
                             {{ r.created_at.strftime('%b %d, %Y') if r.created_at and r.created_at.strftime else r.created_at }}
                         </td>
                         <td>
                             {% set status_slug = (r.status or '')|lower|replace(' ', '-') %}
-                            <span class="badge status-{{ status_slug }}">{{ r.status }}</span>
+                            <span class="badge status-{{ status_slug }}">[ {{ r.status }} ]</span>
                             {% if r.ref_type == 'UO' and r.payment_status %}
-                            <div style="margin-top:6px;">
-                                <span class="badge status-{{ (r.payment_status or '')|lower }}" style="font-size:0.65rem;">{{ r.payment_status }}</span>
+                            <div class="status-sub">
+                                STATUS: {{ r.payment_status }}
                             </div>
                             {% endif %}
                         </td>
-                        <td style="text-align: right; font-weight: 700;">{{ r.total_qty }}</td>
-                        <td style="text-align: right; font-weight: 900; color: var(--sd-primary);">
-                            ₱{{ "%.2f"|format(r.total_amount|float) }}
+                        <td style="text-align: center; font-weight: 700;">{{ r.total_qty }}</td>
+                        <td style="text-align: right; font-weight: 700; color: var(--text-main);">
+                            PHP {{ "%.2f"|format(r.total_amount|float) }}
                         </td>
                     </tr>
                     {% endfor %}
@@ -299,11 +314,10 @@
     </div>
     {% else %}
     <div class="empty-box">
-        <div style="font-size: 4rem; margin-bottom: 24px; opacity: 0.2;">🛒</div>
-        <h3 style="font-weight: 900; color: var(--sd-primary); font-size: 1.5rem; margin-bottom: 12px;">No Reservations Found</h3>
-        <p style="color: var(--sd-muted); font-size: 1rem; max-width: 450px; margin: 0 auto; line-height: 1.6; font-weight: 500;">You haven't made any reservations for academic materials yet. Start a new reservation to get your books and uniforms.</p>
+        <h3 style="font-weight: 800; color: var(--primary); font-size: 1.5rem; margin-bottom: 12px;">No Reservations Found</h3>
+        <p style="color: var(--text-muted); font-size: 1rem; max-width: 450px; margin: 0 auto; line-height: 1.6; font-weight: 500;">You haven't made any reservations for academic materials yet. Start a new reservation to get your books and uniforms.</p>
         <div style="margin-top: 32px;">
-            <a href="{{ url_for('student.student_reservation') }}" class="btn-hero" style="background: var(--sd-accent); color: white; border: none; padding: 14px 32px;">
+            <a href="{{ url_for('student.student_reservation') }}" class="btn-action btn-primary" style="padding: 12px 24px;">
                 Start Reservation
             </a>
         </div>

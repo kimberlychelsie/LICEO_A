@@ -11,12 +11,12 @@ new_ma_container = '''<div class="ma-container">
 
     <div class="main-tabs-container" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px;">
         <a href="?role=all_staff" class="main-tab {% if role_filter != 'student' %}active{% endif %}" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; border-radius: 20px; text-decoration: none; border: 2px solid {% if role_filter != 'student' %}var(--ma-primary){% else %}transparent{% endif %}; background: {% if role_filter != 'student' %}rgba(15, 23, 42, 0.05){% else %}var(--ma-card){% endif %}; color: {% if role_filter != 'student' %}var(--ma-primary){% else %}var(--ma-text){% endif %}; box-shadow: var(--ma-shadow); transition: all 0.2s;">
-            <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; letter-spacing: 0.5px;">STAFF MANAGEMENT TAB</div>
-            <div style="font-size: 0.9rem; font-weight: 600; opacity: 0.8;">➕ Create Staff Account</div>
+            <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; letter-spacing: 0.5px;">Faculty Accounts</div>
+            <div style="font-size: 0.9rem; font-weight: 600; opacity: 0.8;"> Create Faculty Account</div>
         </a>
         <a href="?role=student" class="main-tab {% if role_filter == 'student' %}active{% endif %}" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; border-radius: 20px; text-decoration: none; border: 2px solid {% if role_filter == 'student' %}var(--ma-primary){% else %}transparent{% endif %}; background: {% if role_filter == 'student' %}rgba(15, 23, 42, 0.05){% else %}var(--ma-card){% endif %}; color: {% if role_filter == 'student' %}var(--ma-primary){% else %}var(--ma-text){% endif %}; box-shadow: var(--ma-shadow); transition: all 0.2s;">
-            <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; letter-spacing: 0.5px;">STUDENT DIRECTORY TAB</div>
-            <div style="font-size: 0.9rem; font-weight: 600; opacity: 0.8;">🎓 View Student Records</div>
+            <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; letter-spacing: 0.5px;">Student Accounts</div>
+            <div style="font-size: 0.9rem; font-weight: 600; opacity: 0.8;"> View Student Records</div>
         </a>
     </div>
 

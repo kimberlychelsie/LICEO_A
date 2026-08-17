@@ -12,11 +12,57 @@
         --res-glass: rgba(255, 255, 255, 0.9);
     }
 
+    /* ── Reset system UI ── */
+    .sidebar, .topbar, .sb-overlay, .chatbot-container, #chatbot-widget {
+        display: none !important;
+    }
+    .main-wrap {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    body {
+        background: #f8fafc;
+        overflow-x: hidden;
+        box-sizing: border-box;
+    }
+
+    *, *:before, *:after {
+        box-sizing: inherit;
+    }
+
+    /* Fixed Blue Topbar */
+    .custom-topbar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 60px;
+        background: #1e3a8a; /* Deep Blue */
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 30px;
+        z-index: 1000;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .topbar-brand {
+        font-size: 1.4rem;
+        font-weight: 900;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
     .result-container {
-        max-width: 900px;
-        margin: 0 auto;
-        padding: 40px 20px;
+        max-width: 850px;
+        margin: 100px auto 40px auto;
+        padding: 0 20px;
         animation: fadeIn 0.6s ease-out;
+        text-align: center;
     }
 
     @keyframes fadeIn {
@@ -24,97 +70,10 @@
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* ── Header ── */
-    .result-header {
-        text-align: center;
-        margin-bottom: 40px;
-    }
-
-    .result-header h1 {
-        font-size: 2.2rem;
-        font-weight: 900;
-        color: var(--res-navy);
-        letter-spacing: -0.02em;
-        margin-bottom: 8px;
-    }
-
-    .result-header p {
-        color: var(--muted);
-        font-weight: 600;
-        font-size: 1.1rem;
-    }
-
-    /* ── Summary Card ── */
-    .summary-card {
-        background: var(--res-glass);
-        backdrop-filter: blur(10px);
-        border-radius: 32px;
-        padding: 48px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
-        border: 1px solid rgba(255, 255, 255, 0.6);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        text-align: center;
-        margin-bottom: 40px;
-        position: relative;
-        overflow: hidden;
-    }
-
-    .summary-card::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0; height: 8px;
-        background: {% if passed %}var(--res-pass){% else %}var(--res-fail){% endif %};
-    }
-
-    /* Circular Progress */
-    .score-circle {
-        position: relative;
-        width: 180px;
-        height: 180px;
-        border-radius: 50%;
-        background: conic-gradient(
-            {% if passed %}var(--res-pass){% else %}var(--res-fail){% endif %} {{ percentage }}%, 
-            #e2e8f0 {{ percentage }}%
-        );
-        display: flex;
+    .btn-res {
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 24px;
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.05);
-    }
-
-    .score-circle::after {
-        content: '';
-        position: absolute;
-        width: 150px;
-        height: 150px;
-        background: #fff;
-        border-radius: 50%;
-    }
-
-    .score-content {
-        position: relative;
-        z-index: 2;
-        text-align: center;
-    }
-
-    .score-value {
-        font-size: 3.5rem;
-        font-weight: 900;
-        color: var(--res-navy);
-        line-height: 1;
-    }
-
-    .score-total {
-        font-size: 1rem;
-        color: var(--muted);
-        font-weight: 800;
-    }
-
-    .status-badge {
-        padding: 12px 32px;
         border-radius: 999px;
         font-size: 1.1rem;
         font-weight: 900;
@@ -149,199 +108,117 @@
         display: block;
     }
 
-    .stat-item .value {
-        font-size: 1.25rem;
-        font-weight: 800;
-        color: var(--res-navy);
-    }
-
-    /* ── Questions List ── */
-    .breakdown-title {
-        font-size: 1.5rem;
-        font-weight: 800;
-        color: var(--res-navy);
-        margin-bottom: 24px;
-        padding-left: 8px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .question-card {
-        background: #fff;
-        border-radius: 20px;
-        padding: 24px;
-        margin-bottom: 16px;
-        border: 1px solid var(--border);
-        transition: transform 0.2s;
-    }
-
-    .question-card:hover {
-        transform: translateX(4px);
-        border-color: var(--res-navy);
-    }
-
-    .q-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 16px;
-    }
-
-    .q-num {
-        font-weight: 900;
-        color: var(--muted);
-        font-size: 0.9rem;
-    }
-
-    .q-points {
-        font-size: 0.75rem;
-        font-weight: 800;
-        background: #f1f5f9;
-        padding: 4px 10px;
-        border-radius: 6px;
-        color: var(--muted);
-    }
-
-    .q-text {
-        font-size: 1.1rem;
-        font-weight: 700;
-        color: var(--res-navy);
-        margin-bottom: 20px;
-        line-height: 1.4;
-    }
-
-    .ans-box {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 16px;
+    .card-body {
+        padding: 40px;
     }
 
     @media (max-width: 600px) {
-        .ans-box { grid-template-columns: 1fr; }
-    }
-
-    .ans-item {
-        padding: 12px 16px;
-        border-radius: 12px;
-        border: 1px solid var(--border);
-    }
-
-    .ans-item.student.is-correct {
-        background: rgba(16, 185, 129, 0.05);
-        border-color: var(--res-pass);
-    }
-
-    .ans-item.student.is-wrong {
-        background: rgba(239, 68, 68, 0.05);
-        border-color: var(--res-fail);
-    }
-
-    .ans-item.correct {
-        background: rgba(16, 185, 129, 0.1);
-        border-color: var(--res-pass);
-        border-style: dashed;
-    }
-
-    .ans-label {
-        font-size: 0.65rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        margin-bottom: 4px;
-        display: block;
-    }
-
-    .ans-value {
-        font-weight: 700;
-        font-size: 0.95rem;
-    }
-
-    .btn-actions {
-        display: flex;
-        justify-content: center;
-        gap: 16px;
-        margin-top: 40px;
-    }
-
-    .btn-res {
-        padding: 14px 32px;
-        border-radius: 14px;
-        font-weight: 800;
-        text-decoration: none;
-        transition: all 0.2s;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .btn-res-primary {
-        background: var(--res-navy);
-        color: #fff;
-    }
-
-    .btn-res-primary:hover {
-        background: #152e72;
-        transform: translateY(-2px);
-        box-shadow: 0 10px 15px rgba(26, 58, 143, 0.2);
+        .custom-topbar { padding: 0 15px; }
+        .result-container { margin-top: 80px; padding: 0 10px; }
+        .card-body { padding: 24px 15px; }
     }
 </style>
 {% endblock %}
 
 {% block content %}
+<header class="custom-topbar">
+  <div class="topbar-brand">
+    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+    LICEO LMS
+  </div>
+  <a href="{{ url_for('student_portal.dashboard') }}" style="color: #fff; text-decoration: none; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); padding: 6px 16px; border-radius: 999px;">
+    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+    Back to Dashboard
+  </a>
+</header>
+
 <div class="result-container">
-    <div class="result-header">
-        <h1>Exam Summary</h1>
-        <p>{{ result.title }} · {{ result.subject_name }}</p>
-    </div>
-
-    <div class="summary-card">
-        <div class="score-circle">
-            <div class="score-content">
-                <div class="score-value">{{ result.score|round|int }}</div>
-                <div class="score-total">/ {{ result.total_points|round|int }}</div>
+    <div style="background: #fff; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); text-align: center; width: 100%; margin: 0 auto; overflow: hidden;">
+        
+        <!-- Blue Header -->
+        <div style="background: linear-gradient(135deg, #1e3a8a 0%, #1a3a8f 50%, #1e40af 100%); padding: 32px; color: #ffffff; border-bottom: 4px solid #3b82f6; display: flex; justify-content: space-between; align-items: center; text-align: left; border-top-left-radius: 16px; border-top-right-radius: 16px;">
+            <div>
+                <h1 style="font-size: 1.5rem; font-weight: 800; color: #ffffff; margin: 0 0 4px 0; letter-spacing: -0.01em;">Results</h1>
+                <p style="color: #93c5fd; font-weight: 600; font-size: 0.95rem; margin: 0;">{{ result.title }} · {{ result.subject_name }}</p>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                <div style="font-size: 0.8rem; font-weight: 800; color: #ffffff; text-transform: uppercase; background: rgba(255,255,255,0.2); backdrop-filter: blur(12px); padding: 6px 16px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.2);">
+                    [ {{ session.username }} ]
+                </div>
             </div>
         </div>
 
-        <div class="status-badge">
-            {% if passed %}PASSED{% else %}FAILED{% endif %}
+        <div class="card-body">
+            <!-- Animated Loading Circle -->
+        <div style="position: relative; width: 240px; height: 240px; margin: 40px auto 40px auto; display: flex; align-items: center; justify-content: center;">
+            <svg width="240" height="240" style="position: absolute; top:0; left:0; transform: rotate(-90deg);">
+                <circle cx="120" cy="120" r="100" fill="#ffffff"></circle>
+                <circle cx="120" cy="120" r="100" fill="none" stroke="#e2e8f0" stroke-width="20"></circle>
+                <circle id="animated-circle" cx="120" cy="120" r="100" fill="none" stroke="#3b82f6" stroke-width="20" stroke-linecap="round" stroke-dasharray="628.3" stroke-dashoffset="628.3" style="transition: stroke-dashoffset 1.5s ease-in-out;"></circle>
+            </svg>
+            <div class="fade-in-item" style="position: relative; z-index: 10; text-align: center; opacity: 0; transform: translateY(10px); transition: all 0.8s ease-out 0.5s;">
+                <div style="font-size: 3.5rem; font-weight: 900; color: #1e3a8a; line-height: 1;">{{ result.score|round|int }}</div>
+                <div style="font-size: 0.95rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1.5px; margin-top: 8px;">of {{ result.total_points|round|int }}</div>
+            </div>
+        </div>
+        
+        <!-- Metrics -->
+        <div style="display: flex; justify-content: center; gap: 24px; padding: 0 40px; margin-top: -10px;">
+            
+            <!-- Percentage -->
+            <div class="fade-in-item" style="opacity: 0; transform: translateY(10px); transition: all 0.4s ease-out; flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                <div style="font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">PERCENTAGE</div>
+                <div style="font-size: 2rem; font-weight: 900; color: #1e293b; line-height: 1;">{{ percentage|round|int }}%</div>
+            </div>
+
+            <!-- Status -->
+            <div class="fade-in-item" style="opacity: 0; transform: translateY(10px); transition: all 0.4s ease-out; flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02);">
+                <div style="font-size: 0.8rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">STATUS</div>
+                {% if passed %}
+                    <div style="font-size: 1.8rem; font-weight: 900; color: #10b981; line-height: 1; margin-top: 4px;">PASSED</div>
+                {% else %}
+                    <div style="font-size: 1.8rem; font-weight: 900; color: #ef4444; line-height: 1; margin-top: 4px;">FAILED</div>
+                {% endif %}
+            </div>
+
         </div>
 
-        <div class="stats-row">
-            <div class="stat-item">
-                <span class="label">Percentage</span>
-                <div class="value">{{ percentage|round|int }}%</div>
-            </div>
-            <div class="stat-item">
-                <span class="label">Passing Score</span>
-                <div class="value">{{ passing_score|round|int }}%</div>
-            </div>
-            {% if result.status == 'auto_submitted' %}
-            <div class="stat-item">
-                <span class="label">Status</span>
-                <div class="value" style="color: var(--warning); font-size: 0.9rem;">Auto-submitted</div>
+        <!-- Violations / Bubble Badge -->
+        <div style="display: flex; justify-content: center; margin-top: 24px;">
+            {% if result.tab_switches and result.tab_switches > 0 %}
+            <div class="fade-in-item" style="opacity: 0; transform: translateY(10px); transition: all 0.4s ease-out; margin-top: 10px; background: #fef3c7; color: #b45309; padding: 12px 24px; border-radius: 999px; border: 2px solid #fde68a; font-weight: 800; font-size: 0.95rem; display: inline-flex; align-items: center; gap: 8px;">
+                [ ⚠️ {{ result.tab_switches }} Tab Switches Detected ]
             </div>
             {% endif %}
-            {% if result.tab_switches %}
-            <div class="stat-item">
-                <span class="label">Violations</span>
-                <div class="value" style="color: var(--res-fail); font-size: 0.9rem;">{{ result.tab_switches }} Tab Switches</div>
-            </div>
-            {% endif %}
-        </div>
-    </div>
 
-    <div class="btn-actions">
-        {% if result.exam_type == 'quiz' %}
-        <a href="{{ url_for('student_portal.subject_view', subject_id=result.subject_id) }}" class="btn-res btn-res-primary">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-            Back to Quizzes
-        </a>
-        {% else %}
-        <a href="{{ url_for('student_portal.student_exams') }}" class="btn-res btn-res-primary">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-            Back to Exams
-        </a>
-        {% endif %}
+        </div>
+        </div>
     </div>
 </div>
-{% endblock %}
+
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    const targetPercent = {{ percentage|round|int }};
+    const circle = document.getElementById('animated-circle');
+    
+    // 1. Start circle loading animation after a tiny delay
+    setTimeout(() => {
+        // Circumference is 628.3. Target offset is proportional to the remaining empty space.
+        const offset = 628.3 - (628.3 * targetPercent / 100);
+        circle.style.strokeDashoffset = offset;
+    }, 100);
+
+    // 2. Wait for circle animation to finish (1.5s), then fade in items one by one
+    setTimeout(() => {
+        const items = document.querySelectorAll('.fade-in-item');
+        items.forEach((item, index) => {
+            setTimeout(() => {
+                item.style.opacity = '1';
+                item.style.transform = 'translateY(0)';
+            }, index * 300); // 300ms gap between each item fading in
+        });
+    }, 1600); // Wait 1.6s
+});
+</script>
+{% endblock %}

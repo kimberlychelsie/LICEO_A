@@ -906,12 +906,12 @@
 <div class="cr-wrap">
 
     <!-- ── Hero ── -->
-    <div class="cr-hero">
-        <div class="cr-hero-inner">
-            <div>
-                <h1 class="cr-hero-title" style="display: flex; align-items: center; gap: 10px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-                    Class Record
+    <div class="cr-hero" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; margin-bottom: 40px; background: #1a3a8f; padding: 24px 32px; border-radius: 20px; box-shadow: 0 15px 35px rgba(26, 58, 143, 0.15);">
+        <div class="cr-hero-inner" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 24px; width: 100%; flex-wrap: wrap;">
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+                <h1 class="cr-hero-title" style="margin: 0; font-size: 2.2rem; font-weight: 900; color: white; display: flex; align-items: center; gap: 12px; letter-spacing: -0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                    Class <span style="color: #facc15;">Record</span>
                 </h1>
                 <p class="cr-hero-sub">
                     <span>{{ context.subject_name }}</span>
@@ -937,7 +937,7 @@
                     <span>{{ context.grade_level_name }} / {{ context.section_name }}</span>
                 </p>
             </div>
-            <div class="cr-hero-actions">
+            <div class="cr-hero-actions" style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: stretch;">
                 <a href="{{ url_for('teacher.participation_input', section_id=section_id, subject_id=subject_id, period=period) }}" class="cr-btn cr-btn-ghost">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M19 8v2"></path><path d="M19 12h.01"></path></svg>
                     Participation
@@ -954,23 +954,23 @@
 
                 {% if submission_req.status in ['draft', 'rejected', None] %}
                 <form action="{{ url_for('teacher.teacher_submit_grades', section_id=section_id, subject_id=subject_id, period=period) }}"
-                    method="POST" style="display:inline;"
+                    method="POST" style="display: flex; height: 100%;"
                     onsubmit="return confirm('Submit {{ period }} Grading class record to Registrar for review?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="cr-btn cr-btn-solid" style="background:#2563eb; color:#fff;">
+                    <button type="submit" class="cr-btn cr-btn-solid" style="background:#2563eb; color:#fff; width: 100%; height: 100%;">
                         Submit for Review
                     </button>
                 </form>
                 {% elif submission_req.status in ['pending_registrar', 'pending_admin'] %}
-                <div style="display:inline-flex; align-items:center; gap:8px;">
-                    <span class="cr-btn cr-btn-ghost" style="background:rgba(254,243,199,0.25); color:#fef08a; border-color:rgba(254,243,199,0.45); font-weight:700;">
+                <div style="display:flex; flex-direction:column; gap:4px; grid-column: span 2;">
+                    <span class="cr-btn cr-btn-ghost" style="background:rgba(254,243,199,0.25); color:#fef08a; border-color:rgba(254,243,199,0.45); font-weight:700; width: 100%; justify-content: center;">
                         {% if submission_req.status == 'pending_registrar' %}Pending Registrar Review{% else %}Pending Admin Approval{% endif %}
                     </span>
                     <form action="{{ url_for('teacher.teacher_unsubmit_grades', section_id=section_id, subject_id=subject_id, period=period) }}"
-                        method="POST" style="display:inline;"
+                        method="POST" style="display:flex; width: 100%;"
                         onsubmit="return confirm('Cancel submission for {{ period }} Grading and return class record to draft mode so you can make edits?');">
                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="cr-btn cr-btn-ghost" style="background:rgba(239,68,68,0.25); color:#fca5a5; border-color:rgba(239,68,68,0.45); font-weight:700;" title="Cancel submission to make changes">
+                        <button type="submit" class="cr-btn cr-btn-ghost" style="background:rgba(239,68,68,0.25); color:#fca5a5; border-color:rgba(239,68,68,0.45); font-weight:700; width: 100%; justify-content: center;" title="Cancel submission to make changes">
                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:4px;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
                             Cancel Submission
                         </button>
@@ -1246,14 +1246,13 @@
                     </td>
 
                     <td>
-                        <button type="button"
+                        <a href="{{ url_for('teacher.student_score_breakdown', section_id=section_id, subject_id=subject_id, enrollment_id=r.enrollment_id, period=period) }}"
                             class="cr-btn"
-                            style="padding:7px 14px; font-size:0.8rem; font-weight:700; color:#1e3a8a; border:1.5px solid #bfdbfe; background:#eff6ff; border-radius:10px; cursor:pointer; transition:all 0.15s; font-family:'Inter',sans-serif;"
+                            style="padding:7px 14px; font-size:0.8rem; font-weight:700; color:#1e3a8a; border:1.5px solid #bfdbfe; background:#eff6ff; border-radius:10px; cursor:pointer; transition:all 0.15s; font-family:'Inter',sans-serif; text-decoration:none;"
                             onmouseover="this.style.background='#dbeafe'; this.style.borderColor='#93c5fd';"
-                            onmouseout="this.style.background='#eff6ff'; this.style.borderColor='#bfdbfe';"
-                            onclick="openScoreDetails({{ r.enrollment_id }}, {{ section_id }}, {{ subject_id }}, '{{ period }}')">
+                            onmouseout="this.style.background='#eff6ff'; this.style.borderColor='#bfdbfe';">
                             Score Details
-                        </button>
+                        </a>
                     </td>
                 </tr>
                 {% endfor %}
@@ -1274,81 +1273,7 @@
 
 </div>
 
-<!-- ── Score Details Modal ── -->
-<div id="sdOverlay" class="sd-overlay" onclick="sdCloseOnBackdrop(event)">
-    <div class="sd-modal" onclick="event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="sdModalTitle">
 
-        <!-- Header -->
-        <div class="sd-header">
-            <div class="sd-header-left">
-                <div class="sd-header-title" id="sdModalTitle">Score Details</div>
-                <p class="sd-header-sub" id="sdStudentName">Loading...</p>
-            </div>
-            <button class="sd-close-btn" onclick="closeScoreDetails()">Close</button>
-        </div>
-
-        <!-- Lock notice (shown only when submitted) -->
-        <div class="sd-lock-banner" id="sdLockBanner" style="display:none;">
-            <div class="sd-lock-icon">L</div>
-            <div>
-                <strong>Scores are locked for review.</strong>
-                Editing is disabled because this class record has been submitted.
-                If corrections are needed, ask the Registrar to return it for revision.
-            </div>
-        </div>
-
-        <!-- How-it-works instruction banner -->
-        <div class="sd-instructions">
-            <p>
-                <strong>How this works:</strong>
-                Each quiz, activity, and exam score is shown below.
-                Items marked <span style="color:#b91c1c; font-weight:700;">No Score</span> have not been recorded yet — you may enter a score for them.
-                Existing scores can also be corrected here.
-                After saving a score, the computed averages (Written Works, Performance Tasks, Term Assessment)
-                and the final term grade update automatically.
-            </p>
-        </div>
-
-        <!-- Grade summary strip -->
-        <div class="sd-grade-bar">
-            <div class="sd-grade-cell">
-                <div class="sd-grade-label">Written Works</div>
-                <div class="sd-grade-val ww-color" id="sdWwAvg">—</div>
-            </div>
-            <div class="sd-grade-cell">
-                <div class="sd-grade-label">Performance Tasks</div>
-                <div class="sd-grade-val pt-color" id="sdPtAvg">—</div>
-            </div>
-            <div class="sd-grade-cell">
-                <div class="sd-grade-label">Term Assessment</div>
-                <div class="sd-grade-val qa-color" id="sdQaAvg">—</div>
-            </div>
-            <div class="sd-grade-cell">
-                <div class="sd-grade-label">Term Grade</div>
-                <div id="sdFinalGrade" class="sd-grade-val final-color">—</div>
-            </div>
-        </div>
-
-        <!-- Score sections -->
-        <div id="sdBody">
-            <!-- Filled dynamically by JS -->
-            <div style="padding:40px; text-align:center; color:#94a3b8;">Loading scores...</div>
-        </div>
-
-        <!-- Bottom bar: final grade prominent -->
-        <div class="sd-final-bar">
-            <div>
-                <div class="sd-final-label">Computed Term Grade</div>
-                <div class="sd-final-note" id="sdFinalNote">Based on DepEd K-12 transmutation formula</div>
-            </div>
-            <div style="text-align:right;">
-                <div class="sd-final-grade" id="sdFinalGrade2">—</div>
-                <div id="sdPassFail" style="margin-top:2px;"></div>
-            </div>
-        </div>
-
-    </div>
-</div>
 
 <script>
 // ── DepEd Transmutation Table ─────────────────────────────────────────────────

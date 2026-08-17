@@ -1,0 +1,259 @@
+{% extends "base.html" %}
+{% block title %}Score Details — {{ student_name }}{% endblock %}
+
+{% block styles %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+    .sd-wrap { 
+        max-width: 1300px; 
+        margin: 0 auto; 
+        padding: 40px 24px; 
+        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    }
+    
+    .sd-card {
+        background: #fff;
+        border-radius: 24px;
+        padding: 32px 40px;
+        box-shadow: 0 15px 40px rgba(15, 23, 42, 0.06);
+        border: 1px solid #e2e8f0;
+    }
+    .sd-lock-banner {
+        background: #fef2f2;
+        border: 1px solid #fca5a5;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        color: #991b1b;
+        font-size: 0.85rem;
+    }
+
+    /* ── Component Section ── */
+    .sd-section {
+        margin-bottom: 40px;
+        padding-left: 20px;
+        border-left: 4px solid #e2e8f0;
+    }
+    .sd-section.ww { border-left-color: #2563eb; }
+    .sd-section.pt { border-left-color: #16a34a; }
+    .sd-section.qa { border-left-color: #d97706; }
+    
+    .sd-section-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ww-color { color: #2563eb; }
+    .pt-color { color: #16a34a; }
+    .qa-color { color: #d97706; }
+
+    /* ── Form List ── */
+    .form-list {
+        display: flex;
+        flex-direction: column;
+        margin-top: 16px;
+    }
+
+    .form-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px dashed #e2e8f0;
+    }
+    
+    .form-item:last-child {
+        border-bottom: none;
+    }
+
+    .form-label {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #334155;
+    }
+    .form-label span {
+        font-weight: 500;
+        font-size: 0.75rem;
+        color: #94a3b8;
+        margin-left: 6px;
+    }
+
+    .sd-input {
+        padding: 12px 16px;
+        border-radius: 10px;
+        border: 1.5px solid #e2e8f0;
+        font-family: inherit;
+        font-weight: 700;
+        font-size: 0.95rem;
+        background: #fcfcfc;
+        transition: all 0.2s;
+        width: 120px;
+        text-align: right;
+    }
+    .sd-input:focus {
+        outline: none;
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+    }
+    .sd-input:disabled {
+        background: #f1f5f9;
+        color: #94a3b8;
+    }
+
+    /* ── Bottom Actions ── */
+    .sd-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 32px;
+        padding: 24px;
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        border-radius: 16px;
+    }
+
+    .btn {
+        padding: 12px 24px;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s;
+        border: none;
+        text-decoration: none;
+        display: inline-block;
+    }
+    
+    .btn-cancel {
+        background: #e2e8f0;
+        color: #475569;
+    }
+    .btn-cancel:hover { background: #cbd5e1; }
+    
+    .btn-save {
+        background: #2563eb;
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(37,99,235,0.25);
+    }
+    .btn-save:hover { background: #1d4ed8; transform: translateY(-2px); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sd-wrap">
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; background: #1a3a8f; padding: 24px 32px; border-radius: 20px; box-shadow: 0 15px 35px rgba(26, 58, 143, 0.15);">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+            <h1 style="margin: 0; font-size: 2.2rem; font-weight: 900; color: white; display: flex; align-items: center; gap: 12px; letter-spacing: -0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.1);">Score <span style="color: #facc15;">Details</span></h1>
+            <p style="margin: 0; font-size: 0.85rem; font-weight: 600; color: rgba(255, 255, 255, 0.9); display: flex; align-items: center; gap: 8px;">
+                <span>{{ student_name }}</span>
+                <span style="display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: rgba(255, 255, 255, 0.5);"></span>
+                <span>{{ period }} Grading</span>
+            </p>
+        </div>
+    </div>
+
+    {% if is_locked %}
+    <div class="sd-lock-banner">
+        <strong>Scores are locked.</strong> You cannot edit scores because the class record has been submitted for review.
+    </div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('teacher.student_score_breakdown', section_id=section_id, subject_id=subject_id, enrollment_id=enrollment_id, period=period) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="sd-card">
+        <!-- Written Works -->
+        <div class="sd-section ww">
+            <h3 class="sd-section-title ww-color">Written Works ({{ weights.ww_pct }}%)</h3>
+            <div class="form-list">
+                {% for q in quizzes %}
+                <div class="form-item">
+                    <label class="form-label">{{ q.title }} <span>(Quiz)</span></label>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="number" step="1" class="sd-input" name="exam_{{ q.exam_id }}" value="{{ q.score|int if q.has_result else '' }}" min="0" max="{{ q.total }}" required {{ 'disabled' if is_locked else '' }}>
+                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">/ {{ q.total|int }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+                {% for m in monthly %}
+                <div class="form-item">
+                    <label class="form-label">{{ m.title }} <span>(Monthly)</span></label>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="number" step="1" class="sd-input" name="exam_{{ m.exam_id }}" value="{{ m.score|int if m.has_result else '' }}" min="0" max="{{ m.total }}" required {{ 'disabled' if is_locked else '' }}>
+                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">/ {{ m.total|int }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% if not quizzes and not monthly %}
+            <p style="color:#94a3b8; font-style:italic; margin-top:16px;">No Written Works</p>
+            {% endif %}
+        </div>
+
+        <!-- Performance Tasks -->
+        <div class="sd-section pt">
+            <h3 class="sd-section-title pt-color">Performance Tasks ({{ weights.pt_pct }}%)</h3>
+            <div class="form-list">
+                {% for a in activities %}
+                <div class="form-item">
+                    <label class="form-label">{{ a.title }} <span>(Activity)</span></label>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="number" step="1" class="sd-input" name="act_{{ a.activity_id }}" value="{{ a.score|int if a.has_result else '' }}" min="0" max="{{ a.total }}" required {{ 'disabled' if is_locked else '' }}>
+                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">/ {{ a.total|int }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+                <div class="form-item">
+                    <label class="form-label">Participation</label>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="number" step="1" class="sd-input" name="participation" value="{{ participation.score|int if participation.has_result else '' }}" min="0" max="10" required {{ 'disabled' if is_locked else '' }}>
+                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">/ 10</span>
+                    </div>
+                </div>
+                <div class="form-item">
+                    <label class="form-label">Attendance</label>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="number" step="1" class="sd-input" name="attendance" value="{{ attendance.score|int if attendance.has_result else '' }}" min="0" max="10" required {{ 'disabled' if is_locked else '' }}>
+                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">/ 10</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Term Assessment -->
+        <div class="sd-section qa">
+            <h3 class="sd-section-title qa-color">Term Assessment ({{ weights.qa_pct }}%)</h3>
+            <div class="form-list">
+                {% for p in periodical %}
+                <div class="form-item">
+                    <label class="form-label">{{ p.title }} <span>(Exam)</span></label>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <input type="number" step="1" class="sd-input" name="exam_{{ p.exam_id }}" value="{{ p.score|int if p.has_result else '' }}" min="0" max="{{ p.total }}" required {{ 'disabled' if is_locked else '' }}>
+                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">/ {{ p.total|int }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% if not periodical %}
+            <p style="color:#94a3b8; font-style:italic; margin-top:16px;">No Term Assessment</p>
+            {% endif %}
+        </div>
+
+            <div class="sd-actions">
+                <a href="{{ url_for('teacher.class_record', section_id=section_id, subject_id=subject_id, period=period) }}" class="btn btn-cancel">Cancel</a>
+                {% if not is_locked %}
+                <button type="submit" class="btn btn-save">Save Scores</button>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}

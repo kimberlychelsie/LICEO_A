@@ -32,8 +32,13 @@
     }
 
     @keyframes fadeIn {
-        from { opacity: 0; }
-        to { opacity: 1; }
+        from {
+            opacity: 0;
+        }
+
+        to {
+            opacity: 1;
+        }
     }
 
     /* ── Slim Blue Header ── */
@@ -64,13 +69,14 @@
 
     .header-main h1 {
         margin: 0;
-        font-size: 1.8rem;
+        font-size: 2.2rem;
         font-weight: 900;
         color: white;
         display: flex;
         align-items: center;
         gap: 12px;
-        letter-spacing: -0.03em;
+        letter-spacing: -0.01em;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
 
     .header-sub {
@@ -100,7 +106,7 @@
     /* ── Dashboard Grid Layout ── */
     .dashboard-main-grid {
         display: grid;
-        grid-template-columns: 1fr 350px;
+        grid-template-columns: 1fr;
         gap: 32px;
         align-items: flex-start;
     }
@@ -123,7 +129,7 @@
         border: 1px solid var(--par-border);
         border-radius: var(--par-radius);
         padding: 24px;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
     }
 
     .sidebar-card h2 {
@@ -226,13 +232,13 @@
         border: 1px solid var(--par-border);
         border-radius: var(--par-radius);
         overflow: hidden;
-        box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
         transition: transform 0.3s ease;
     }
 
     .child-card:hover {
         transform: translateY(-4px);
-        box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.05);
     }
 
     .card-header-styled {
@@ -377,13 +383,21 @@
         border-radius: 8px;
     }
 
-    .status-enrolled { background: #dcfce7; color: #166534; }
-    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-enrolled {
+        background: #dcfce7;
+        color: #166534;
+    }
+
+    .status-pending {
+        background: #fef3c7;
+        color: #92400e;
+    }
 
     @media (max-width: 600px) {
         .card-actions {
             grid-template-columns: 1fr;
         }
+
         .info-group {
             grid-template-columns: 1fr;
         }
@@ -395,9 +409,12 @@
 <div class="par-container">
     <header class="dashboard-header">
         <div class="header-main">
-            <p style="font-size: 0.85rem; font-weight: 600; opacity: 0.8; margin: 0 0 4px 0;">Welcome back,</p>
-            <h1><i class="fas fa-users-cog"></i> Parent Dashboard</h1>
-            <div class="header-sub">Connected to <strong>{{ children | length }} student profiles</strong></div>
+            <h1>Parent <span style="color: var(--par-gold);">Dashboard</span></h1>
+        </div>
+        <div>
+            <span style="font-size: 0.95rem; font-weight: 700; color: #fff; background: rgba(255,255,255,0.2); padding: 10px 20px; border-radius: 20px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.15);">
+                Connected to {{ children | length }} student profile{% if children|length != 1 %}s{% endif %}
+            </span>
         </div>
     </header>
 
@@ -434,20 +451,24 @@
 
                         <div class="bill-section">
                             <span class="bill-title"><i class="fas fa-wallet"></i> Remaining Balance</span>
-                            <span class="bill-price" style="color: {% if child.balance and child.balance > 0 %}#dc2626{% else %}#16a34a{% endif %};">
+                            <span class="bill-price"
+                                style="color: {% if child.balance and child.balance > 0 %}#dc2626{% else %}#16a34a{% endif %};">
                                 ₱{{ "{:,.2f}".format(child.balance or 0) if child.bill_id else '0.00' }}
                             </span>
                         </div>
 
                         <div class="card-actions">
-                            <a href="{{ url_for('parent.child_detail', enrollment_id=child.enrollment_id) }}" class="btn-action btn-outline">
+                            <a href="{{ url_for('parent.child_detail', enrollment_id=child.enrollment_id) }}"
+                                class="btn-action btn-outline">
                                 <i class="fas fa-user-graduate"></i> View Profile
                             </a>
-                            <a href="{{ url_for('parent.child_bills', enrollment_id=child.enrollment_id) }}" class="btn-action btn-primary-solid">
+                            <a href="{{ url_for('parent.child_bills', enrollment_id=child.enrollment_id) }}"
+                                class="btn-action btn-primary-solid">
                                 <i class="fas fa-receipt"></i> Billing
                             </a>
                             {% if is_branch_active_status %}
-                            <a href="{{ url_for('parent.child_reserve', enrollment_id=child.enrollment_id) }}" class="btn-action btn-gold">
+                            <a href="{{ url_for('parent.child_reserve', enrollment_id=child.enrollment_id) }}"
+                                class="btn-action btn-gold">
                                 <i class="fas fa-shopping-cart"></i> Reserve
                             </a>
                             {% endif %}
@@ -457,34 +478,18 @@
                 {% endfor %}
             </div>
             {% else %}
-            <div class="empty-card" style="text-align: center; padding: 80px; background: white; border-radius: 20px; border: 1px dashed var(--par-border);">
-                <i class="fas fa-user-clock" style="font-size: 3rem; color: var(--par-primary-soft); margin-bottom: 20px;"></i>
+            <div class="empty-card"
+                style="text-align: center; padding: 80px; background: white; border-radius: 20px; border: 1px dashed var(--par-border);">
+                <i class="fas fa-user-clock"
+                    style="font-size: 3rem; color: var(--par-primary-soft); margin-bottom: 20px;"></i>
                 <h2>Welcome to the Portal</h2>
-                <p>No student records are linked to your account yet. Please contact the Registrar to link your student profile.</p>
+                <p>No student records are linked to your account yet. Please contact the Registrar to link your student
+                    profile.</p>
             </div>
             {% endif %}
         </div>
 
-        <!-- Sidebar (Right) -->
-        <aside class="dashboard-sidebar">
-            <!-- Profile Card -->
-            <div class="sidebar-card">
-                <h2><i class="fas fa-user-circle"></i> Parent Account</h2>
-                <div class="parent-mini-profile">
-                    <div class="parent-avatar">
-                        {{ session.get('full_name', 'P')[0]|upper }}
-                    </div>
-                    <div class="parent-info">
-                        <h4>{{ session.get('full_name', 'Parent User') }}</h4>
-                        <p>{{ session.get('email', 'No email set') }}</p>
-                    </div>
-                </div>
-                <div class="system-badge">
-                    <span class="system-label">Active School Year</span>
-                    <span class="system-value">{{ active_school_year or '2025-2026' }}</span>
-            </div>
 
-        </aside>
     </div>
 </div>
 {% endblock %}

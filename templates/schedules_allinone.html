@@ -38,41 +38,43 @@
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* ── Premium welcome-header ── */
-    .welcome-header {
+    /* ── Hero Banner ── */
+    .hero-banner {
         background: linear-gradient(135deg, #1e3a8a 0%, #0c2461 100%);
-        border-radius: 24px;
-        padding: 32px 40px;
-        color: white;
+        border-radius: 20px;
+        padding: 40px;
         margin-bottom: 24px;
-        box-shadow: 0 10px 30px rgba(30, 58, 138, 0.2);
         position: relative;
         overflow: hidden;
+        color: #fff;
+        box-shadow: 0 15px 35px -10px rgba(26, 58, 143, 0.2);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 20px;
     }
-
-    .welcome-header h1 {
-        font-size: 2.2rem;
+    .hero-content h1 {
+        font-size: 2.5rem;
         font-weight: 900;
-        margin: 0;
-        margin-bottom: 8px;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.04em;
+        margin-bottom: 12px;
+        line-height: 1;
         display: flex;
         align-items: center;
-        gap: 12px;
+        gap: 8px;
     }
-
-    .welcome-header p {
+    .hero-content h1 span {
+        color: #facc15;
+        text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+    }
+    .hero-content p {
         font-size: 1rem;
-        opacity: 0.9;
         font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+        max-width: 600px;
+        line-height: 1.5;
         margin: 0;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-    }
-
-    .welcome-header svg {
-        opacity: 0.9;
     }
 
     /* ── Action Form Card ── */
@@ -249,6 +251,29 @@
         text-decoration: none;
     }
 
+    @media (max-width: 768px) {
+        .sch-container {
+            padding: 16px 12px;
+        }
+        .hero-banner {
+            padding: 24px 20px;
+        }
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+        .table-toolbar {
+            flex-direction: column;
+            align-items: stretch;
+            padding: 16px;
+        }
+        .header-actions {
+            width: 100%;
+        }
+        .header-actions .btn-create {
+            width: 100%;
+            justify-content: center;
+        }
+    }
     .btn-edit:hover { background: var(--sch-blue-light); color: var(--sch-blue); border-color: var(--sch-blue); }
     .btn-delete:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
 
@@ -347,22 +372,23 @@
 <div class="sch-container">
     <!-- Premium Header -->
     <!-- Premium Header -->
-    <header style="margin-bottom: 32px; display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 20px;">
-        <div>
-            <h1 style="font-size: 2.8rem; font-weight: 900; color: #1e40af; letter-spacing: -1.5px; margin: 0; line-height: 1.1;">Class Schedules</h1>
+    <div class="hero-banner">
+        <div class="hero-content">
+            <h1>Class <span>Schedules</span></h1>
+            <p>Manage and organize subject schedules for all sections.</p>
         </div>
-        <div class="header-actions">
+        <div class="header-actions" style="display: flex; align-items: center;">
             {% if show_archived %}
-            <a href="{{ url_for('registrar.list_and_add_schedules') }}" class="btn-create" style="background: #f1f5f9; color: #1e40af; border: 1px solid #cbd5e1; text-decoration: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+            <a href="{{ url_for('registrar.list_and_add_schedules') }}" class="btn-create" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.2); text-decoration: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
                 <i class="fas fa-arrow-left"></i> Back to Active
             </a>
             {% else %}
-            <a href="{{ url_for('registrar.list_and_add_schedules', show_archived='true') }}" class="btn-create" style="background: #f1f5f9; color: #1e40af; border: 1px solid #cbd5e1; text-decoration: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+            <a href="{{ url_for('registrar.list_and_add_schedules', show_archived='true') }}" class="btn-create" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.2); text-decoration: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
                 <i class="fas fa-archive"></i> View Archived
             </a>
             {% endif %}
         </div>
-    </header>
+    </div>
 
     <!-- Quick Add Form -->
     <!-- Add Form: Hidden when viewing archived -->

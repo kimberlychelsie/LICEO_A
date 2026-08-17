@@ -567,36 +567,44 @@ def teacher_dashboard():
                 else:
                     stats["no_reservation"] += 1
 
-            year_id = _get_active_school_year(cur, branch_id)
-            # ── Announcements for this grade ──
-            cur.execute("""
-    SELECT a.announcement_id, a.title, a.body,
-           a.created_at, u.username AS posted_by,
-           u.full_name, u.gender
-    FROM teacher_announcements a
-    JOIN users u ON u.user_id = a.teacher_user_id
-    WHERE a.branch_id   = %(branch_id)s
-      AND (
-          a.grade_level ILIKE %(grade_full)s
-          OR a.grade_level ILIKE %(grade_short)s
-      )
-    ORDER BY a.created_at DESC
-""", {
-    "branch_id":   branch_id,
-    "grade_full":  grade_full,
-    "grade_short": grade_short,
-})
-            raw_ann = cur.fetchall() or []
+            # ── Announcements logic moved outside this block ──
 
-            # Build display name: "Ms. Joy Cruz" or "Mr. Juan dela Cruz"
-            announcements = []
+
+        # ── Fetch All Relevant Announcements ──
+        assigned_sections = {str(a['section_id']) for a in teacher_assignments}
+        assigned_grades = {a['grade_level_name'] for a in teacher_assignments}
+        
+        conditions = []
+        params = {"branch_id": branch_id}
+        
+        for i, grade in enumerate(assigned_grades):
+            g_full, g_short = _normalize_grade(grade)
+            conditions.append(f"(a.grade_level ILIKE %(gf_{i})s OR a.grade_level ILIKE %(gs_{i})s)")
+            params[f"gf_{i}"] = g_full
+            params[f"gs_{i}"] = g_short
+            
+        for i, sec_id in enumerate(assigned_sections):
+            conditions.append(f"a.grade_level LIKE %(sec_{i})s")
+            params[f"sec_{i}"] = f"%:{sec_id}"
+            
+        announcements = []
+        if conditions:
+            where_clause = " OR ".join(conditions)
+            cur.execute(f"""
+                SELECT a.announcement_id, a.title, a.body,
+                       a.created_at, u.username AS posted_by,
+                       u.full_name, u.gender
+                FROM teacher_announcements a
+                JOIN users u ON u.user_id = a.teacher_user_id
+                WHERE a.branch_id = %(branch_id)s
+                  AND ({where_clause})
+                ORDER BY a.created_at DESC
+            """, params)
+            raw_ann = cur.fetchall() or []
+            
             for a in raw_ann:
                 a = dict(a)
-                prefix = ""
-                if a.get("gender") == "female":
-                    prefix = "Ms. "
-                elif a.get("gender") == "male":
-                    prefix = "Mr. "
+                prefix = "Ms. " if a.get("gender") == "female" else "Mr. " if a.get("gender") == "male" else ""
                 a["display_name"] = prefix + (a.get("full_name") or a.get("posted_by") or "Teacher")
                 announcements.append(a)
 
@@ -615,8 +623,17 @@ def teacher_dashboard():
     pending_attendance = []
     recent_activities = []
     
-    # Filter assignments for today
-    today_assignments = [a for a in teacher_assignments if a.get('day_of_week') == today_day]
+    # Filter assignments for today that haven't ended yet
+    today_assignments = []
+    for a in teacher_assignments:
+        if a.get('day_of_week') == today_day:
+            if a.get('end_time'):
+                et = a['end_time'].strftime('%H:%M:%S')
+                if et >= current_time_str:
+                    today_assignments.append(a)
+            else:
+                # If no end time is specified, keep it by default
+                today_assignments.append(a)
     
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -707,6 +724,22 @@ def teacher_dashboard():
         except Exception as e:
             print("Error fetching recent activities:", e)
             
+        # --- Fetch Total Students for the Teacher ---
+        try:
+            cur.execute("""
+                SELECT COUNT(DISTINCT e.enrollment_id) as count
+                FROM enrollments e
+                JOIN section_teachers st ON e.section_id = st.section_id
+                WHERE st.teacher_id = %s
+                  AND e.status IN ('approved', 'enrolled', 'completed')
+                  AND e.year_id = %s
+            """, (user_id, year_id))
+            row = cur.fetchone()
+            total_my_students = row['count'] if row else 0
+        except Exception as e:
+            print("Error fetching total students:", e)
+            total_my_students = 0
+            
     finally:
         cur.close()
         db.close()
@@ -727,7 +760,8 @@ def teacher_dashboard():
         next_class=next_class,
         pending_attendance=pending_attendance,
         recent_activities=recent_activities,
-        today_assignments=today_assignments
+        today_assignments=today_assignments,
+        total_my_students=total_my_students
     )
 
 
@@ -4228,16 +4262,16 @@ def class_record_export(section_id, subject_id):
 # ── Per-Student Score Breakdown Route ────────────────────────────────────────
 
 @teacher_bp.route(
-    "/teacher/class-record/<int:section_id>/<int:subject_id>/student-scores/<int:enrollment_id>"
+    "/teacher/class-record/<int:section_id>/<int:subject_id>/student-scores/<int:enrollment_id>",
+    methods=["GET", "POST"]
 )
 def student_score_breakdown(section_id, subject_id, enrollment_id):
-    """AJAX: Return all individual quiz, monthly exam, activity, participation,
-    attendance, and periodical exam scores for one student in a grading period.
-    Used by the per-student Score Details modal in the class record page.
+    """Render a dedicated page for a student's individual scores in a grading period,
+    and handle bulk save of all updated scores.
     """
-    from flask import jsonify
     if not _require_teacher():
-        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        flash("Unauthorized", "error")
+        return redirect(url_for('teacher.teacher_dashboard'))
 
     user_id   = session.get('user_id')
     branch_id = session.get('branch_id')
@@ -4451,29 +4485,91 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
             pt_components.append(min(100.0, attendance['score'] * 10))
         pt_avg = round(sum(pt_components) / len(pt_components), 2) if pt_components else None
 
-        return jsonify({
-            'success':          True,
-            'student_name':     student_name,
-            'enrollment_id':    enrollment_id,
-            'is_locked':        is_locked,
-            'submission_status': submission_status,
-            'weights':          weights,
-            'quizzes':          quizzes,
-            'monthly':          monthly,
-            'activities':       activities,
-            'participation':    participation,
-            'attendance':       attendance,
-            'periodical':       periodical,
-            'ww_avg':           ww_avg,
-            'pt_avg':           pt_avg,
-            'qa_avg':           qa_avg,
-            'ww_overridden':    ov and ov['override_ww'] is not None,
-            'pt_overridden':    ov and ov['override_pt'] is not None,
-            'qa_overridden':    ov and ov['override_qa'] is not None,
-            'override_note':    ov['override_note'] if ov else None,
-        })
+        if request.method == "POST":
+            if is_locked:
+                flash("Cannot modify scores because the class record is locked for review.", "error")
+                return redirect(url_for('teacher.student_score_breakdown', section_id=section_id, subject_id=subject_id, enrollment_id=enrollment_id, period=period))
+            
+            # Process bulk save
+            for key, val_str in request.form.items():
+                val_str = val_str.strip()
+                if not val_str:
+                    continue
+                try:
+                    val = float(val_str)
+                except ValueError:
+                    continue
+                
+                if key.startswith('exam_'):
+                    ex_id = int(key.split('_')[1])
+                    cur.execute("""
+                        INSERT INTO exam_results (exam_id, enrollment_id, score, status, total_points, submitted_at)
+                        VALUES (%s, %s, %s, 'submitted', (SELECT COALESCE(SUM(points), 100) FROM exam_questions WHERE exam_id=%s), NOW())
+                        ON CONFLICT (exam_id, enrollment_id) 
+                        DO UPDATE SET score = EXCLUDED.score, status = 'submitted'
+                    """, (ex_id, enrollment_id, val, ex_id))
+                elif key.startswith('act_'):
+                    act_id = int(key.split('_')[1])
+                    # Ensure submission exists
+                    cur.execute("""
+                        INSERT INTO activity_submissions (activity_id, enrollment_id, status)
+                        VALUES (%s, %s, 'submitted')
+                        ON CONFLICT (activity_id, enrollment_id) DO NOTHING
+                        RETURNING submission_id
+                    """, (act_id, enrollment_id))
+                    sub_row = cur.fetchone()
+                    if not sub_row:
+                        cur.execute("SELECT submission_id FROM activity_submissions WHERE activity_id=%s AND enrollment_id=%s", (act_id, enrollment_id))
+                        sub_row = cur.fetchone()
+                    
+                    if sub_row:
+                        cur.execute("""
+                            INSERT INTO activity_grades (submission_id, activity_id, raw_score)
+                            VALUES (%s, %s, %s)
+                            ON CONFLICT (submission_id, activity_id) 
+                            DO UPDATE SET raw_score = EXCLUDED.raw_score
+                        """, (sub_row['submission_id'], act_id, val))
+                elif key == 'participation':
+                    cur.execute("""
+                        INSERT INTO participation_scores (subject_id, grading_period, enrollment_id, score)
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (subject_id, grading_period, enrollment_id)
+                        DO UPDATE SET score = EXCLUDED.score
+                    """, (subject_id, period, enrollment_id, val))
+                elif key == 'attendance':
+                    cur.execute("""
+                        INSERT INTO attendance_scores (subject_id, grading_period, enrollment_id, score)
+                        VALUES (%s, %s, %s, %s)
+                        ON CONFLICT (subject_id, grading_period, enrollment_id)
+                        DO UPDATE SET score = EXCLUDED.score
+                    """, (subject_id, period, enrollment_id, val))
+            
+            db.commit()
+            flash("Scores successfully updated.", "success")
+            return redirect(url_for('teacher.class_record', section_id=section_id, subject_id=subject_id, period=period))
+
+        return render_template('teacher_score_details.html',
+            section_id=section_id,
+            subject_id=subject_id,
+            enrollment_id=enrollment_id,
+            student_name=student_name,
+            period=period,
+            is_locked=is_locked,
+            submission_status=submission_status,
+            weights=weights,
+            quizzes=quizzes,
+            monthly=monthly,
+            activities=activities,
+            participation=participation,
+            attendance=attendance,
+            periodical=periodical,
+            ww_avg=ww_avg,
+            pt_avg=pt_avg,
+            qa_avg=qa_avg
+        )
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 500
+        flash(f"Error: {e}", "error")
+        return redirect(url_for('teacher.class_record', section_id=section_id, subject_id=subject_id, period=period))
     finally:
         cur.close()
         db.close()

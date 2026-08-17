@@ -20,37 +20,41 @@
         margin: 0 auto;
     }
 
-    /* ── Premium Welcome Header ── */
-    .registry-welcome {
+    /* ── Hero Banner ── */
+    .hero-banner {
         background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
-        border-radius: 24px;
-        padding: 32px 40px;
-        color: white;
+        border-radius: 20px;
+        padding: 40px;
         margin-bottom: 32px;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 20px 40px -10px rgba(26, 58, 143, 0.25);
+        color: #fff;
+        box-shadow: 0 15px 35px -10px rgba(26, 58, 143, 0.2);
     }
 
-    .registry-welcome::after {
-        content: '';
-        position: absolute;
-        top: -50px;
-        right: -50px;
-        width: 250px;
-        height: 250px;
-        background: radial-gradient(circle, rgba(250, 204, 21, 0.2) 0%, transparent 70%);
-        border-radius: 50%;
-    }
-
-    .registry-welcome h1 {
-        font-size: 1.8rem;
-        font-weight: 850;
-        margin-bottom: 8px;
-        letter-spacing: -0.03em;
+    .hero-content h1 {
+        font-size: 2.5rem;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        margin-bottom: 12px;
+        line-height: 1;
         display: flex;
         align-items: center;
-        gap: 16px;
+        justify-content: space-between;
+    }
+
+    .hero-content h1 span {
+        color: var(--ma-gold);
+        text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+    }
+
+    .hero-content p {
+        font-size: 1rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+        max-width: 600px;
+        line-height: 1.5;
+        margin: 0;
     }
 
     /* ── Action Cards ── */
@@ -81,11 +85,13 @@
         align-items: start;
         margin-bottom: 32px;
     }
+
     @media (max-width: 1024px) {
         .branch-layout-grid {
             grid-template-columns: 1fr;
         }
     }
+
     .bsl-expand-btn {
         display: flex;
         align-items: center;
@@ -102,12 +108,14 @@
         transition: all 0.2s ease;
         flex-shrink: 0;
     }
+
     .bsl-expand-btn:hover {
         background: var(--ma-primary);
         color: #fff;
         border-color: var(--ma-primary);
         transform: scale(1.08);
     }
+
     .entry-grid {
         display: grid;
         grid-template-columns: repeat(2, 1fr);
@@ -299,6 +307,17 @@
         bottom: 100%;
         margin-top: 0;
         margin-bottom: 8px;
+    }
+
+    .action-dropdown.show {
+        display: block;
+    }
+
+    .action-dropdown.drop-up {
+        top: auto;
+        bottom: 100%;
+        margin-top: 0;
+        margin-bottom: 8px;
         box-shadow: 0 -10px 15px -3px rgba(0, 0, 0, 0.1);
     }
 
@@ -336,6 +355,7 @@
         align-items: center;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
     }
+
     .stat-value {
         font-size: 2rem;
         font-weight: 900;
@@ -343,6 +363,7 @@
         line-height: 1;
         margin-bottom: 8px;
     }
+
     .stat-label {
         font-size: 0.8rem;
         font-weight: 800;
@@ -366,18 +387,31 @@
         transition: all 0.2s;
         font-size: 0.95rem;
     }
+
     .page-btn:hover:not(:disabled) {
         background: #f1f5f9;
         color: #3b82f6;
     }
+
     .page-btn.active {
         background: #3b82f6;
         color: white;
         box-shadow: 0 4px 10px rgba(59, 130, 246, 0.4);
     }
+
     .page-btn:disabled {
         color: #cbd5e1;
         cursor: not-allowed;
+    }
+
+    @media (max-width: 768px) {
+        .br-container {
+            padding: 16px 12px;
+        }
+
+        .hero-banner {
+            padding: 24px 16px;
+        }
     }
 </style>
 
@@ -388,74 +422,81 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
 <div class="br-container">
-    <div class="registry-welcome">
-        <h1>Branch Management</h1>
-    </div>
-
-    <!-- 1. COLLAPSIBLE ADD BRANCH -->
-    <div class="modern-card" style="padding: 0; margin-bottom: 24px; border: 2px dashed #cbd5e1; cursor: pointer; transition: all 0.2s; background: #f8fafc;" onclick="toggleCreateBranchForm()" id="addBranchHeader">
-        <div style="padding: 20px; display: flex; justify-content: center; align-items: center; gap: 12px; color: var(--ma-primary);">
-            <i class="fas fa-plus-circle" style="font-size: 1.2rem; color: var(--ma-gold);"></i>
-            <h2 style="margin: 0; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.05em;">Add New Branch (Click to expand)</h2>
-            <i class="fas fa-chevron-down" id="addBranchChevron" style="transition: transform 0.3s;"></i>
+    <div class="hero-banner">
+        <div class="hero-content"
+            style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 20px;">
+            <div>
+                <h1 style="margin-bottom: 8px;">
+                    <div style="display: flex; gap: 8px;">Manage <span>Branches</span></div>
+                </h1>
+                <p style="margin: 0;">Add and manage school branches.</p>
+            </div>
+            <div>
+                <button onclick="toggleCreateBranchForm()" class="btn-prem btn-gold"
+                    style="font-size: 0.95rem; padding: 12px 24px; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 800;">
+                    <i class="fas fa-plus-circle"></i> Add New Branch
+                </button>
+            </div>
         </div>
     </div>
 
     <div id="createBranchFormContainer" style="display: none; margin-bottom: 24px;">
-    <!-- Create New Branch -->
-    <div class="modern-card" style="padding: 24px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-            <h2 style="margin: 0;"><i class="fas fa-plus-circle" style="color: var(--ma-gold);"></i> Create Branch</h2>
+        <!-- Create New Branch -->
+        <div class="modern-card" style="padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <h2 style="margin: 0;"><i class="fas fa-plus-circle" style="color: var(--ma-gold);"></i> Create Branch
+                </h2>
+            </div>
+            <form method="POST" action="{{ url_for('super_admin.super_admin_branches') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px;">
+                    <!-- Row 1: Admin Name -->
+                    <div class="form-node">
+                        <label>Admin First Name</label>
+                        <input type="text" name="admin_first_name" placeholder="e.g. Jocelyn" required>
+                    </div>
+                    <div class="form-node">
+                        <label>Admin Middle Name (Optional)</label>
+                        <input type="text" name="admin_middle_name" placeholder="e.g. Marie">
+                    </div>
+                    <div class="form-node">
+                        <label>Admin Last Name</label>
+                        <input type="text" name="admin_last_name" placeholder="e.g. Ramirez" required>
+                    </div>
+
+                    <!-- Row 2: Branch Details -->
+                    <div class="form-node">
+                        <label>Branch Name</label>
+                        <input type="text" name="branch_name" placeholder="e.g. Liceo de Majayjay" required>
+                    </div>
+                    <div class="form-node">
+                        <label>Branch Code</label>
+                        <input type="text" name="branch_code" placeholder="e.g. LDMAJ"
+                            style="text-transform: uppercase;" required>
+                    </div>
+                    <div class="form-node">
+                        <label>Location (Town Name)</label>
+                        <input type="text" name="location" placeholder="e.g. Majayjay" required>
+                    </div>
+
+                    <!-- Row 3: Additional Details -->
+                    <div class="form-node">
+                        <label>Gender</label>
+                        <select name="gender" required>
+                            <option value="Male" selected>Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
+                    <div class="form-node">
+                        <label>Admin Email</label>
+                        <input type="email" name="admin_email" placeholder="admin@liceo.edu.ph" required>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:flex-end;">
+                    <button type="submit" class="btn-prem btn-gold">Add Branch & Admin</button>
+                </div>
+            </form>
         </div>
-        <form method="POST" action="{{ url_for('super_admin.super_admin_branches') }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px;">
-                <!-- Row 1: Admin Name -->
-                <div class="form-node">
-                    <label>Admin First Name</label>
-                    <input type="text" name="admin_first_name" placeholder="e.g. Jocelyn" required>
-                </div>
-                <div class="form-node">
-                    <label>Admin Middle Name (Optional)</label>
-                    <input type="text" name="admin_middle_name" placeholder="e.g. Marie">
-                </div>
-                <div class="form-node">
-                    <label>Admin Last Name</label>
-                    <input type="text" name="admin_last_name" placeholder="e.g. Ramirez" required>
-                </div>
-
-                <!-- Row 2: Branch Details -->
-                <div class="form-node">
-                    <label>Branch Name</label>
-                    <input type="text" name="branch_name" placeholder="e.g. Liceo de Majayjay" required>
-                </div>
-                <div class="form-node">
-                    <label>Branch Code</label>
-                    <input type="text" name="branch_code" placeholder="e.g. LDMAJ" style="text-transform: uppercase;" required>
-                </div>
-                <div class="form-node">
-                    <label>Location (Town Name)</label>
-                    <input type="text" name="location" placeholder="e.g. Majayjay" required>
-                </div>
-
-                <!-- Row 3: Additional Details -->
-                <div class="form-node">
-                    <label>Gender</label>
-                    <select name="gender" required>
-                        <option value="Male" selected>Male</option>
-                        <option value="Female">Female</option>
-                    </select>
-                </div>
-                <div class="form-node">
-                    <label>Admin Email</label>
-                    <input type="email" name="admin_email" placeholder="admin@liceo.edu.ph" required>
-                </div>
-            </div>
-            <div style="display:flex; justify-content:flex-end;">
-                <button type="submit" class="btn-prem btn-gold">Add Branch & Admin</button>
-            </div>
-        </form>
-    </div>
     </div>
 
     <!-- 3. BRANCH LIST -->
@@ -479,7 +520,6 @@
                         <th>Location</th>
                         <th>Branch Code</th>
                         <th>Admin Details</th>
-                        <th>Status</th>
                         <th style="width: 200px; text-align: right; padding-right: 32px;">Actions</th>
                     </tr>
                 </thead>
@@ -499,21 +539,15 @@
                         <td>
                             <div style="font-weight: 850;">
                                 {% if b.admin_last_name %}
-                                    {{ b.admin_last_name }}, {{ b.admin_first_name }}{% if b.admin_middle_name %} {{ b.admin_middle_name[0] }}.{% endif %}
+                                {{ b.admin_last_name }}, {{ b.admin_first_name }}{% if b.admin_middle_name %} {{
+                                b.admin_middle_name[0] }}.{% endif %}
                                 {% elif b.admin_full_name %}
-                                    {{ b.admin_full_name }}
+                                {{ b.admin_full_name }}
                                 {% else %}
-                                    None
+                                None
                                 {% endif %}
                             </div>
                             <div style="font-size: 0.75rem; color: var(--ma-muted);">{{ b.admin_email }}</div>
-                        </td>
-                        <td>
-                            {% if b.is_active %}
-                            <span class="badge-prem status-active"><i class="fas fa-signal"></i> ACTIVE</span>
-                            {% else %}
-                            <span class="badge-prem status-standby"><i class="fas fa-power-off"></i> INACTIVE</span>
-                            {% endif %}
                         </td>
                         <td style="text-align: right; padding-right: 32px;">
                             <div class="action-menu">
@@ -543,14 +577,7 @@
                                             <i class="fas fa-key"></i> Reset Password
                                         </button>
                                     </form>
-                                    <form method="POST" action="/super-admin/branch/{{ b.branch_id }}/toggle-status"
-                                        style="display:contents;">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                        <button type="submit" class="action-item {% if b.is_active %}danger{% endif %}"
-                                            onclick="return confirm('Change status?')">
-                                            {% if b.is_active %}Deactivate{% else %}Activate{% endif %}
-                                        </button>
-                                    </form>
+
                                 </div>
                             </div>
                         </td>
@@ -559,12 +586,15 @@
                 </tbody>
             </table>
             <!-- Pagination Controls -->
-            <div id="paginationControls" style="display: flex; justify-content: center; align-items: center; padding: 24px; gap: 8px; border-top: 1px solid var(--ma-border);">
-                <button type="button" class="page-btn" id="prevPageBtn" onclick="changePage(-1)"><i class="fas fa-chevron-left"></i></button>
+            <div id="paginationControls"
+                style="display: flex; justify-content: center; align-items: center; padding: 24px; gap: 8px; border-top: 1px solid var(--ma-border);">
+                <button type="button" class="page-btn" id="prevPageBtn" onclick="changePage(-1)"><i
+                        class="fas fa-chevron-left"></i></button>
                 <div id="pageNumbers" style="display: flex; gap: 4px; align-items: center;">
                     <!-- JS will inject page numbers here -->
                 </div>
-                <button type="button" class="page-btn" id="nextPageBtn" onclick="changePage(1)"><i class="fas fa-chevron-right"></i></button>
+                <button type="button" class="page-btn" id="nextPageBtn" onclick="changePage(1)"><i
+                        class="fas fa-chevron-right"></i></button>
             </div>
         </div>
     </div>
@@ -575,50 +605,65 @@
     <div class="glass-modal" style="max-width: 600px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
             <h2 style="font-weight: 900; color: var(--ma-primary); margin: 0;">Edit Branch</h2>
-            <button type="button" onclick="closeEditBranch()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b;"><i class="fas fa-times"></i></button>
+            <button type="button" onclick="closeEditBranch()"
+                style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b;"><i
+                    class="fas fa-times"></i></button>
         </div>
         <form id="editBranchForm" method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            
-            <h4 style="margin-bottom: 12px; color: #475569; font-weight: 700; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Branch Details</h4>
+
+            <h4
+                style="margin-bottom: 12px; color: #475569; font-weight: 700; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                Branch Details</h4>
             <div class="entry-grid" style="grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px;">
                 <div class="form-node" style="grid-column: span 2;">
                     <label>Branch Name</label>
-                    <input type="text" name="branch_name" id="editBranchName" oninput="checkEditBranchChanges()" required />
+                    <input type="text" name="branch_name" id="editBranchName" oninput="checkEditBranchChanges()"
+                        required />
                 </div>
                 <div class="form-node">
                     <label>Branch Code</label>
-                    <input type="text" name="branch_code" id="editBranchCode" oninput="checkEditBranchChanges()" required style="text-transform: uppercase;" />
+                    <input type="text" name="branch_code" id="editBranchCode" oninput="checkEditBranchChanges()"
+                        required style="text-transform: uppercase;" />
                 </div>
                 <div class="form-node">
                     <label>Location</label>
-                    <input type="text" name="location" id="editBranchLocation" oninput="checkEditBranchChanges()" required />
+                    <input type="text" name="location" id="editBranchLocation" oninput="checkEditBranchChanges()"
+                        required />
                 </div>
             </div>
 
-            <h4 style="margin-bottom: 12px; color: #475569; font-weight: 700; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Admin Details</h4>
+            <h4
+                style="margin-bottom: 12px; color: #475569; font-weight: 700; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">
+                Admin Details</h4>
             <div class="entry-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
                 <div class="form-node">
                     <label>First Name</label>
-                    <input type="text" name="admin_first_name" id="editAdminFirstName" oninput="checkEditBranchChanges()" required />
+                    <input type="text" name="admin_first_name" id="editAdminFirstName"
+                        oninput="checkEditBranchChanges()" required />
                 </div>
                 <div class="form-node">
                     <label>Last Name</label>
-                    <input type="text" name="admin_last_name" id="editAdminLastName" oninput="checkEditBranchChanges()" required />
+                    <input type="text" name="admin_last_name" id="editAdminLastName" oninput="checkEditBranchChanges()"
+                        required />
                 </div>
                 <div class="form-node">
                     <label>Middle Name (Optional)</label>
-                    <input type="text" name="admin_middle_name" id="editAdminMiddleName" oninput="checkEditBranchChanges()" />
+                    <input type="text" name="admin_middle_name" id="editAdminMiddleName"
+                        oninput="checkEditBranchChanges()" />
                 </div>
                 <div class="form-node">
                     <label>Admin Email</label>
-                    <input type="email" name="admin_email" id="editAdminEmail" oninput="checkEditBranchChanges()" required />
+                    <input type="email" name="admin_email" id="editAdminEmail" oninput="checkEditBranchChanges()"
+                        required />
                 </div>
             </div>
-            
+
             <div style="display: flex; gap: 12px; margin-top: 32px; justify-content: flex-end;">
-                <button type="button" onclick="closeEditBranch()" class="btn-prem" style="background: #f1f5f9; color: #64748b; padding: 12px 24px;">Cancel</button>
-                <button type="submit" id="editSubmitBtn" class="btn-prem btn-gold" style="padding: 12px 32px; min-width: 150px;">Update</button>
+                <button type="button" onclick="closeEditBranch()" class="btn-prem"
+                    style="background: #f1f5f9; color: #64748b; padding: 12px 24px;">Cancel</button>
+                <button type="submit" id="editSubmitBtn" class="btn-prem btn-gold"
+                    style="padding: 12px 32px; min-width: 150px;">Update</button>
             </div>
         </form>
     </div>
@@ -644,8 +689,8 @@
                 <div class="entry-grid" style="grid-template-columns: 1fr; gap: 12px;">
                     <div class="form-node"><label>First Name</label><input type="text" name="new_admin_first_name"
                             id="newAdminFirstNameInput" /></div>
-                    <div class="form-node"><label>Middle Name (Optional)</label><input type="text" name="new_admin_middle_name"
-                            id="newAdminMiddleNameInput" /></div>
+                    <div class="form-node"><label>Middle Name (Optional)</label><input type="text"
+                            name="new_admin_middle_name" id="newAdminMiddleNameInput" /></div>
                     <div class="form-node"><label>Last Name</label><input type="text" name="new_admin_last_name"
                             id="newAdminLastNameInput" /></div>
                     <div class="form-node"><label>Gender</label><select name="new_gender" id="newGenderInput">
@@ -768,6 +813,7 @@
     };
 
     function initGlobalMap() {
+        if (!document.getElementById('globalNetworkMap')) return;
         const map = L.map('globalNetworkMap').setView([14.2, 121.35], 11);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap'
@@ -775,13 +821,13 @@
 
         const branches = [
             {% for b in branches %}
-            {
-                name: "{{ b.branch_name|e }}",
-                location: "{{ b.location|lower|e }}",
+    {
+        name: "{{ b.branch_name|e }}",
+            location: "{{ b.location|lower|e }}",
                 admin: "{{ b.admin_full_name|e }}",
-                active: {{ 'true' if b.is_active else 'false' }}
-            },
-            {% endfor %}
+                    active: {{ 'true' if b.is_active else 'false' }}
+    },
+    {% endfor %}
         ];
 
     branches.forEach(b => {
@@ -825,7 +871,7 @@
         document.getElementById('editAdminLastName').value = lastName || '';
         document.getElementById('editAdminEmail').value = email;
         document.getElementById('editBranchForm').action = '/super-admin/branches/' + id + '/edit';
-        
+
         initialEditData = {
             name: name,
             code: code,
@@ -835,9 +881,9 @@
             lastName: lastName || '',
             email: email
         };
-        
+
         checkEditBranchChanges();
-        
+
         document.getElementById('editBranchModal').style.display = 'flex';
     }
 
@@ -854,9 +900,9 @@
             lastName: document.getElementById('editAdminLastName').value,
             email: document.getElementById('editAdminEmail').value
         };
-        
+
         const hasChanges = Object.keys(initialEditData).some(key => initialEditData[key] !== currentData[key]);
-        
+
         btn.disabled = !hasChanges;
         btn.style.opacity = hasChanges ? '1' : '0.5';
         btn.style.cursor = hasChanges ? 'pointer' : 'not-allowed';
@@ -993,10 +1039,10 @@
 
     function renderTable() {
         const query = document.getElementById('branchSearch').value.toLowerCase();
-        
+
         filteredRows = tableRows.filter(row => row.innerText.toLowerCase().includes(query));
         const totalPages = Math.ceil(filteredRows.length / itemsPerPage) || 1;
-        
+
         if (currentPage > totalPages) currentPage = totalPages;
         if (currentPage < 1) currentPage = 1;
 
@@ -1012,10 +1058,10 @@
     function renderPagination(totalPages) {
         const pageNumbers = document.getElementById('pageNumbers');
         pageNumbers.innerHTML = '';
-        
+
         let startPage = Math.max(1, currentPage - 2);
         let endPage = Math.min(totalPages, currentPage + 2);
-        
+
         if (currentPage <= 3) endPage = Math.min(totalPages, 5);
         if (currentPage >= totalPages - 2) startPage = Math.max(1, totalPages - 4);
 
@@ -1060,13 +1106,10 @@
 
     function toggleCreateBranchForm() {
         const container = document.getElementById('createBranchFormContainer');
-        const chevron = document.getElementById('addBranchChevron');
         if (container.style.display === 'none') {
             container.style.display = 'block';
-            chevron.style.transform = 'rotate(180deg)';
         } else {
             container.style.display = 'none';
-            chevron.style.transform = 'rotate(0deg)';
         }
     }
 </script>

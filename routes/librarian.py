@@ -146,7 +146,13 @@ def dashboard():
                             'Unknown'
                         ) AS full_name,
                         r.status,
-                        r.created_at
+                        r.created_at,
+                        (
+                            SELECT STRING_AGG(ii.item_name || ' (x' || ri.qty || ')', ', ')
+                            FROM reservation_items ri
+                            JOIN inventory_items ii ON ri.item_id = ii.item_id
+                            WHERE ri.reservation_id = r.reservation_id AND UPPER(ii.category) = 'BOOK'
+                        ) AS reserved_books
                     FROM reservations r
                     LEFT JOIN users u ON u.user_id = r.student_user_id
                     LEFT JOIN student_accounts sa ON sa.username = u.username
@@ -686,28 +692,14 @@ def releases():
             flash("Release recorded successfully!", "success")
             return redirect(url_for("librarian.releases"))
 
-        # Get recent releases (include student_grade for UI filter)
-        cur.execute(f"""
-            SELECT
-                br.release_id,
-                br.created_at,
-                e.branch_enrollment_no,
-                br.student_name,
-                e.grade_level AS student_grade,
-                bri.qty,
-                bri.unit_price,
-                (ii.grade_level || ' — ' || COALESCE(ii.publisher,'') || ' | ' || ii.item_name) AS book_display
-            FROM book_releases br
-            JOIN book_release_items bri ON bri.release_id = br.release_id
-            JOIN inventory_items ii     ON ii.item_id = bri.item_id
-            LEFT JOIN enrollments e     ON e.enrollment_id = br.enrollment_id
-            WHERE br.branch_id = %s
-            ORDER BY br.created_at DESC
-        """, (branch_id,))
-        releases_rows = cur.fetchall() or []
-        for rr in releases_rows:
-            if rr.get("created_at"):
-                rr["created_at"] = _to_manila_naive(rr["created_at"])
+        # Pagination setup
+        page = 1
+        try:
+            page = int(request.args.get("page", 1))
+        except ValueError:
+            page = 1
+        limit = 10
+        offset = (page - 1) * limit
 
         # ── Reservation rows for Student Queue tab ──
         cur.execute("""
@@ -776,17 +768,51 @@ def releases():
                 END,
                 r.created_at DESC
         """, (branch_id,))
-        reservation_rows = cur.fetchall() or []
-        for row in reservation_rows:
+        all_reservations = cur.fetchall() or []
+        
+        # Paginate reservation rows for queue
+        total_queue = len(all_reservations)
+        total_queue_pages = (total_queue + limit - 1) // limit
+        reservation_rows = all_reservations[offset:offset+limit]
+
+        for row in all_reservations:
             if row.get("created_at"):
                 row["created_at"] = _to_manila_naive(row["created_at"])
 
         # Status counts
         status_counts = {"PAID": 0, "RESERVED": 0, "CLAIMED": 0, "CANCELLED": 0}
-        for row in reservation_rows:
+        for row in all_reservations:
             s = (row.get("status") or "").upper()
             if s in status_counts:
                 status_counts[s] += 1
+
+        # Get recent releases
+        cur.execute(f"""
+            SELECT
+                br.release_id,
+                br.created_at,
+                e.branch_enrollment_no,
+                br.student_name,
+                e.grade_level AS student_grade,
+                bri.qty,
+                bri.unit_price,
+                (ii.grade_level || ' — ' || COALESCE(ii.publisher,'') || ' | ' || ii.item_name) AS book_display
+            FROM book_releases br
+            JOIN book_release_items bri ON bri.release_id = br.release_id
+            JOIN inventory_items ii     ON ii.item_id = bri.item_id
+            LEFT JOIN enrollments e     ON e.enrollment_id = br.enrollment_id
+            WHERE br.branch_id = %s
+            ORDER BY br.created_at DESC
+        """, (branch_id,))
+        all_releases = cur.fetchall() or []
+
+        total_history = len(all_releases)
+        total_history_pages = (total_history + limit - 1) // limit
+        releases_rows = all_releases[offset:offset+limit]
+
+        for rr in all_releases:
+            if rr.get("created_at"):
+                rr["created_at"] = _to_manila_naive(rr["created_at"])
 
     except Exception as e:
         db.rollback()
@@ -794,6 +820,9 @@ def releases():
         books = []
         releases_rows = []
         reservation_rows = []
+        total_queue_pages = 0
+        total_history_pages = 0
+        page = 1
         status_counts = {"PAID": 0, "RESERVED": 0, "CLAIMED": 0, "CANCELLED": 0}
     finally:
         cur.close()
@@ -812,6 +841,9 @@ def releases():
         grades=GRADES,
         grade_filter=grade_filter,
         active_tab=active_tab,
+        page=page,
+        total_queue_pages=total_queue_pages,
+        total_history_pages=total_history_pages,
     )
 
 
@@ -1060,6 +1092,8 @@ def _lib_report_range(report_range, report_date, report_date_end):
         return today.replace(day=1), today
     elif report_range == "yearly":
         return today.replace(month=1, day=1), today
+    elif report_range == "all_time":
+        return _date(2000, 1, 1), today
     elif report_range == "custom":
         try:
             start = _date.fromisoformat(report_date)
@@ -1088,11 +1122,11 @@ def reports():
 
     today_str = str(_get_manila_today_lib())
     if request.method == "POST":
-        report_range = request.form.get("report_range", "today")
+        report_range = request.form.get("report_range", "all_time")
         report_date = request.form.get("report_date", today_str)
         report_date_end = request.form.get("report_date_end", today_str)
     else:
-        report_range = request.args.get("report_range", "today")
+        report_range = request.args.get("report_range", "all_time")
         report_date = request.args.get("report_date", today_str)
         report_date_end = request.args.get("report_date_end", today_str)
 
@@ -1265,38 +1299,15 @@ def lib_export_reports_excel():
     ws["A1"].alignment = Alignment(horizontal="center", vertical="center")
     ws.row_dimensions[1].height = 26
 
-    range_label = {
-        "today":   f"Today ({start_date})",
-        "weekly":  f"This Week ({start_date} to {end_date})",
-        "monthly": f"This Month ({start_date} to {end_date})",
-        "yearly":  f"This Year ({start_date} to {end_date})",
-        "custom":  f"Custom Range ({start_date} to {end_date})",
-    }.get(report_range, str(start_date))
-
-    ws.merge_cells(f"A2:{get_column_letter(NCOLS)}2")
-    ws["A2"] = f"Period: {range_label}"
-    ws["A2"].font      = Font(name="Calibri", italic=True, size=10, color="475569")
-    ws["A2"].alignment = Alignment(horizontal="center")
-
-    ws.merge_cells(f"A3:{get_column_letter(NCOLS)}3")
-    ws["A3"] = (
-        f"Total Releases: {summary['total_releases']}   |   "
-        f"Books Released: {summary['total_books_released']}   |   "
-        f"Students Served: {summary['total_students']}"
-    )
-    ws["A3"].font      = Font(name="Calibri", bold=True, size=10)
-    ws["A3"].alignment = Alignment(horizontal="center")
-    ws.row_dimensions[3].height = 18
-
     headers = ["Date", "Student Name", "Grade", "Account", "Qty", "Books"]
     ws.append([""] * NCOLS)
-    ws.row_dimensions[4].height = 6
+    ws.row_dimensions[2].height = 6
     ws.append(headers)
     for col_idx in range(1, NCOLS + 1):
-        cell = ws.cell(row=5, column=col_idx)
+        cell = ws.cell(row=3, column=col_idx)
         cell.font = hdr_font; cell.fill = hdr_fill
         cell.alignment = hdr_align; cell.border = thin_bdr
-    ws.row_dimensions[5].height = 22
+    ws.row_dimensions[3].height = 22
 
     ph_tz = _pytz.timezone("Asia/Manila")
     for i, t in enumerate(transactions, 1):
@@ -1422,25 +1433,10 @@ def lib_export_reports_pdf():
         fontName="Helvetica-Bold", fontSize=9, textColor=navy,
         alignment=TA_CENTER, spaceAfter=10)
 
-    range_label = {
-        "today":   f"Today: {start_date}",
-        "weekly":  f"This Week: {start_date} to {end_date}",
-        "monthly": f"This Month: {start_date} to {end_date}",
-        "yearly":  f"This Year: {start_date} to {end_date}",
-        "custom":  f"Custom Range: {start_date} to {end_date}",
-    }.get(report_range, str(start_date))
-
     story = [
         Paragraph("LICEO DE MAJAYJAY", title_st),
         Paragraph("Library Release Report", sub_st),
-        Paragraph(range_label, sub_st),
         HRFlowable(width="100%", thickness=2, color=navy, spaceAfter=8),
-        Paragraph(
-            f"Total Releases: <b>{summary['total_releases']}</b> | "
-            f"Books Released: <b>{summary['total_books_released']}</b> | "
-            f"Students Served: <b>{summary['total_students']}</b>",
-            label_st
-        ),
         Spacer(1, 4*mm),
     ]
 

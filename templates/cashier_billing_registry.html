@@ -679,7 +679,7 @@
                         </td>
                         <td style="text-align:right;">
                             <div style="display:flex; gap:8px; justify-content:flex-end; align-items:center;">
-                                {% if not e.bill_id %}
+                                {% if not e.bill_id or e.tuition_fee == 0 %}
                                 {% if is_branch_active_status %}
                                 <a href="/cashier/create-bill/{{ e.enrollment_id }}" class="btn-create"
                                     style="display: flex; align-items: center; gap: 4px;">
@@ -692,7 +692,9 @@
                                     Create Bill
                                 </a>
                                 {% endif %}
-                                {% else %}
+                                {% endif %}
+                                
+                                {% if e.bill_id %}
                                 <a href="/cashier/bill/{{ e.bill_id }}" class="btn-action-text btn-view-bill"
                                     title="View Statement">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
@@ -703,7 +705,6 @@
                                     </svg>
                                     View Bill
                                 </a>
-
                                 {% endif %}
                             </div>
                         </td>

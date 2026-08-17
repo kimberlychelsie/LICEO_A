@@ -36,20 +36,17 @@
     .welcome-header h1 {
         font-size: 2.2rem;
         font-weight: 900;
-        margin-bottom: 8px;
+        margin: 0 0 12px 0;
         letter-spacing: -0.02em;
-        display: flex;
-        align-items: center;
-        gap: 12px;
+        line-height: 1;
     }
 
     .welcome-header p {
         font-size: 1rem;
         opacity: 0.9;
         font-weight: 500;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+        margin: 0;
+        line-height: 1.5;
     }
 
     /* ── Tabs ── */
@@ -351,13 +348,19 @@
     }
 
     .acct-ok {
+        background: #ecfdf5;
         color: #059669;
-        font-weight: 800;
-        font-size: 0.85rem;
+        font-weight: 700;
+        font-size: 0.75rem;
         display: inline-flex;
         align-items: center;
-        gap: 8px;
-        padding: 4px 0;
+        gap: 6px;
+        padding: 8px 12px;
+        border-radius: 8px;
+        border: 1px solid #a7f3d0;
+        width: 100%;
+        max-width: 200px;
+        justify-content: center;
     }
 
     .acct-ok svg {
@@ -366,47 +369,52 @@
 
     /* ── Registrar Specific Buttons ── */
     .btn-registrar {
-        background: #1e3a8a;
-        color: #fff;
-        padding: 10px 18px;
-        border-radius: 12px;
+        background: #eff6ff;
+        color: #1d4ed8;
+        padding: 8px 12px;
+        border-radius: 8px;
         font-weight: 700;
-        font-size: 0.82rem;
-        border: none;
+        font-size: 0.75rem;
+        border: 1px solid #bfdbfe;
         cursor: pointer;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 10px;
-        transition: all 0.2s ease;
-        box-shadow: 0 4px 6px -1px rgba(30, 58, 138, 0.15);
-        min-width: 190px;
+        gap: 8px;
+        transition: all 0.15s ease;
+        width: 100%;
+        max-width: 200px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
 
     .btn-registrar:hover {
-        background: #172554;
-        transform: translateY(-1px);
-        box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.25);
+        background: #dbeafe;
+        color: #1e40af;
+        border-color: #93c5fd;
     }
 
     .btn-registrar-sec {
-        background: #334155;
-        box-shadow: 0 4px 6px -1px rgba(51, 65, 85, 0.15);
+        background: #f8fafc;
+        color: #475569;
+        border-color: #e2e8f0;
     }
 
     .btn-registrar-sec:hover {
-        background: #1e293b;
-        box-shadow: 0 10px 15px -3px rgba(51, 65, 85, 0.25);
+        background: #f1f5f9;
+        color: #334155;
+        border-color: #cbd5e1;
     }
 
     .btn-registrar-warn {
-        background: #f59e0b;
-        box-shadow: 0 4px 6px -1px rgba(245, 158, 11, 0.15);
+        background: #fffbeb;
+        color: #b45309;
+        border-color: #fde68a;
     }
 
     .btn-registrar-warn:hover {
-        background: #d97706;
-        box-shadow: 0 10px 15px -3px rgba(245, 158, 11, 0.25);
+        background: #fef3c7;
+        color: #92400e;
+        border-color: #fcd34d;
     }
 
     .empty-row td {
@@ -701,37 +709,18 @@
 {% block content %}
 
 <div class="reg-container">
-    <div class="welcome-header">
-        <h1>
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                <circle cx="9" cy="7" r="4"></circle>
-                <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-            </svg>
-            Enrollments
-        </h1>
-        <p>Review and manage student admission requests</p>
-    </div>
-    <!-- School Year Switcher -->
-    <div class="card" style="margin-bottom: 14px;">
-        <div class="card-header">
-            <span>Viewing School Year</span>
-            {% if not can_modify %}
-            <span class="badge" style="background:#fff7ed;border-color:#fed7aa;color:#9a3412;">
-                Archive Mode (read-only)
-            </span>
-            {% else %}
-            <span class="badge badge-approved">Active Year (editable)</span>
-            {% endif %}
+    <div class="welcome-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+        <div>
+            <h1>
+                Enrollment <span style="color: #facc15; text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);">Application</span>
+            </h1>
+            <p>Review and manage student admission requests</p>
         </div>
-        <div style="padding: 12px 16px;">
-            <form method="get" action="/registrar/enrollments" class="filter-bar" style="margin:0;">
+        <div style="background: rgba(255, 255, 255, 0.15); padding: 8px; border-radius: 12px; backdrop-filter: blur(8px); border: 1px solid rgba(255,255,255,0.1);">
+            <form method="get" action="/registrar/enrollments" style="margin:0;">
                 <input type="hidden" name="q_new" value="{{ q_new }}">
                 <input type="hidden" name="q_enrolled" value="{{ q_enrolled }}">
-                <label>School Year</label>
-                <select name="year_id" onchange="this.form.submit()">
+                <select name="year_id" onchange="this.form.submit()" style="padding: 8px 12px; border-radius: 8px; border: none; background: rgba(255, 255, 255, 0.95); color: #1e293b; font-weight: 700; font-family: inherit; cursor: pointer; outline: none; width: 100%; min-width: 200px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
                     {% for sy in all_school_years %}
                     <option value="{{ sy.year_id }}" {% if sy.year_id==selected_year_id %}selected{% endif %}>
                         {{ sy.label }}{% if sy.is_active %} (Active){% endif %}
@@ -773,41 +762,35 @@
     <!-- ═══ TAB: NEW ENROLLMENTS ═══ -->
     <div class="tab-panel active" id="tab-new">
 
-        <!-- Filter Card for New Enrollments -->
-        <div class="card"
-            style="margin-bottom: 20px; padding: 16px 20px; border-radius: 12px; background: #f8fafc; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-            <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
-                <div style="display: flex; flex-direction: column; gap: 6px;">
-                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Grade Level</label>
-                    <select id="newGradeFilter" onchange="filterNew()"
-                        style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #fff; min-width: 140px; cursor: pointer;">
-                        <option value="">-- All Grades --</option>
-                        {% for g in grade_levels %}
-                        <option value="{{ g | lower }}">{{ g }}</option>
-                        {% endfor %}
-                    </select>
+        <div class="card">
+            <div class="card-header" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span>New / Transferee Enrollment Applications</span>
+                    <span class="muted-note" id="newCount" style="font-weight: 500; font-size: 0.85rem; padding: 4px 10px; background: #f1f5f9; border-radius: 20px;">{{ new_enrollments | length }} applications</span>
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
-                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Search Student</label>
-                    <div style="display: flex; gap: 8px;">
+                
+                <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; font-weight: 500;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-size: 0.8rem; color: var(--muted); margin: 0;">Grade:</label>
+                        <select id="newGradeFilter" onchange="filterNew()"
+                            style="padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #fff; cursor: pointer; min-width: 130px;">
+                            <option value="">-- All --</option>
+                            {% for g in grade_levels %}
+                            <option value="{{ g | lower }}">{{ g }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 6px;">
                         <input type="text" id="newSearch" placeholder="Search name or ID..." value="{{ q_new }}"
                             onkeydown="if(event.key==='Enter') doSearch('new')"
-                            style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 100%; max-width: 400px;">
+                            style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 220px;">
                         <button type="button" onclick="doSearch('new')" class="btn-registrar"
-                            style="min-width: auto; padding: 0 16px;">
+                            style="padding: 6px 14px; font-size: 0.85rem; border-radius: 8px;">
                             Search
                         </button>
                     </div>
-                    <div class="muted-note" style="font-size: 10px; margin-top: 2px;">Searches across all {{ total_new
-                        }} records</div>
                 </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">
-                <span>New / Transferee Enrollment Applications</span>
-                <span class="muted-note" id="newCount">{{ new_enrollments | length }} applications</span>
             </div>
             <div style="overflow:auto;">
                 <table id="newEnrollTable">
@@ -815,7 +798,6 @@
                         <th>Student ID</th>
                         <th>Student Name</th>
                         <th>Grade Level</th>
-                        <th>Status</th>
                         <th>Actions</th>
                     </tr>
 
@@ -837,16 +819,6 @@
                         <td>{{ enrollment.grade_level }}</td>
 
                         <td>
-                            {% if enrollment.status == 'approved' %}
-                            <span class="badge badge-approved">Approved</span>
-                            {% elif enrollment.status == 'rejected' %}
-                            <span class="badge badge-rejected">Rejected</span>
-                            {% else %}
-                            <span class="badge badge-pending">Pending</span>
-                            {% endif %}
-                        </td>
-
-                        <td>
                             {% if enrollment.status == 'pending' %}
                             {% if is_branch_active_status and can_modify %}
                             <button type="button" class="btn btn-primary btn-sm"
@@ -862,12 +834,8 @@
                     <tr id="new-details-{{ enrollment.enrollment_id }}" class="new-details-row" style="display:none;">
                         <td colspan="5" style="background:#f8fafc; padding:0;">
                             <div style="padding:16px 18px; border-top:1px solid var(--border);">
-                                <div
-                                    style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;">
+                                <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px;">
                                     <div style="font-weight:900; color:#1e293b;">Student Details</div>
-                                    <button type="button" class="btn btn-sm"
-                                        onclick="toggleNewDetails('{{ enrollment.enrollment_id }}')"
-                                        style="background:#f1f5f9; color:#475569; border:1px solid var(--border);">Hide</button>
                                 </div>
 
                                 <form method="post" action="/registrar/enrollment/{{ enrollment.enrollment_id }}"
@@ -1584,51 +1552,46 @@
         {% endif %}
         {% endif %}
 
-        <!-- Filter Card Enrolled -->
-        <div class="card"
-            style="margin-bottom: 20px; padding: 16px 20px; border-radius: 12px; background: #f8fafc; border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-            <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
-                <div style="display: flex; flex-direction: column; gap: 6px;">
-                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Grade Level</label>
-                    <select id="gradeFilter" onchange="filterEnrolled()"
-                        style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #fff; min-width: 140px; cursor: pointer;">
-                        <option value="">-- All Grades --</option>
-                        {% for g in grade_levels %}
-                        <option value="{{ g | lower }}">{{ g }}</option>
-                        {% endfor %}
-                    </select>
+        <div class="card">
+            <div class="card-header" style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span>Enrolled Students</span>
+                    <span class="muted-note" id="enrolledCount" style="font-weight: 500; font-size: 0.85rem; padding: 4px 10px; background: #f1f5f9; border-radius: 20px;">{{ enrolled_students | length }} students</span>
                 </div>
-                <div style="display: flex; flex-direction: column; gap: 6px;">
-                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Section</label>
-                    <select id="sectionFilter" onchange="filterEnrolled()"
-                        style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #fff; min-width: 160px; cursor: pointer;">
-                        <option value="">-- All Sections --</option>
-                        {% for s in section_options %}
-                        <option value="{{ s.section_name | lower }}">{{ s.section_name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 6px; flex: 1;">
-                    <label style="font-size: 0.8rem; font-weight: 700; color: var(--muted);">Search Student</label>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="text" id="enrolledSearch" placeholder="Search name or ID..."
-                            value="{{ q_enrolled }}" onkeydown="if(event.key==='Enter') doSearch('enrolled')"
-                            style="padding: 8px 12px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 100%; max-width: 400px;">
+                
+                <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; font-weight: 500;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-size: 0.8rem; color: var(--muted); margin: 0;">Grade:</label>
+                        <select id="gradeFilter" onchange="filterEnrolled()"
+                            style="padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #fff; cursor: pointer; min-width: 110px;">
+                            <option value="">-- All --</option>
+                            {% for g in grade_levels %}
+                            <option value="{{ g | lower }}">{{ g }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label style="font-size: 0.8rem; color: var(--muted); margin: 0;">Section:</label>
+                        <select id="sectionFilter" onchange="filterEnrolled()"
+                            style="padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; background: #fff; cursor: pointer; min-width: 110px;">
+                            <option value="">-- All --</option>
+                            {% for s in section_options %}
+                            <option value="{{ s.section_name | lower }}">{{ s.section_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 6px;">
+                        <input type="text" id="enrolledSearch" placeholder="Search name or ID..." value="{{ q_enrolled }}"
+                            onkeydown="if(event.key==='Enter') doSearch('enrolled')"
+                            style="padding: 6px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 0.85rem; width: 180px;">
                         <button type="button" onclick="doSearch('enrolled')" class="btn-registrar"
-                            style="min-width: auto; padding: 0 16px;">
+                            style="padding: 6px 14px; font-size: 0.85rem; border-radius: 8px;">
                             Search
                         </button>
                     </div>
-                    <div class="muted-note" style="font-size: 10px; margin-top: 2px;">Searches across all {{
-                        total_enrolled }} records</div>
                 </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">
-                <span>Enrolled Students</span>
-                <span class="muted-note" id="enrolledCount">{{ enrolled_students | length }} students</span>
             </div>
             <div style="overflow:auto;">
                 <table id="enrolledTable">
@@ -1637,7 +1600,6 @@
                         <th>Student Name</th>
                         <th>Grade Level</th>
                         <th>Section</th>
-                        <th>Status</th>
                         <th>Actions</th>
                     </tr>
                     {% for e in enrolled_students %}
@@ -1663,15 +1625,6 @@
                             Section #{{ e.section_id }}
                             {% else %}
                             <span style="color:#f59e0b; font-weight:700;">Not assigned</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if e.status == 'open_for_enrollment' %}
-                            <span class="badge badge-open">Re-Enrollment Open</span>
-                            {% elif e.status == 'approved' %}
-                            <span class="badge badge-approved">Approved</span>
-                            {% else %}
-                            <span class="badge badge-enrolled">Enrolled</span>
                             {% endif %}
                         </td>
                         <td>

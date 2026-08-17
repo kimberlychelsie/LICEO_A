@@ -139,14 +139,21 @@ def billing_registry():
         sql_grade_filter = "" if grade_filter.lower() == "all" else grade_filter
 
         query = """
-            SELECT e.*, b.bill_id, b.balance, b.status AS bill_status,
-                   b.total_amount, b.amount_paid,
-                   sa.username
+            SELECT e.*, b.bill_id, b.status AS bill_status,
+                   COALESCE(b.tuition_fee, 0) AS tuition_fee,
+                   COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = b.bill_id AND target_type IN ('tuition', 'general')), 0) AS tuition_paid,
+                   COALESCE(b.total_amount, 0) AS total_amount_db,
+                   COALESCE(b.amount_paid, 0) AS amount_paid_db,
+                   COALESCE(b.balance, 0) AS balance_db,
+                   sa.username,
+                   br.branch_name
             FROM enrollments e
             LEFT JOIN billing b
               ON e.enrollment_id = b.enrollment_id
             LEFT JOIN student_accounts sa
               ON e.enrollment_id = sa.enrollment_id
+            LEFT JOIN branches br
+              ON e.branch_id = br.branch_id
             WHERE e.branch_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled')
         """
         params = [session.get("branch_id"), active_year_id]
@@ -160,20 +167,20 @@ def billing_registry():
             params += [f"%{search_q}%", f"%{search_q}%"]
 
         if status_filter == "no_bill":
-            query += " AND b.bill_id IS NULL"
+            query += " AND (b.bill_id IS NULL OR b.tuition_fee = 0 OR b.tuition_fee IS NULL)"
         elif status_filter == "paid":
-            query += " AND b.status = 'paid'"
+            query += " AND b.tuition_fee > 0 AND COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = b.bill_id AND target_type IN ('tuition', 'general')), 0) >= b.tuition_fee"
         elif status_filter == "partial":
-            query += " AND b.status = 'partial'"
+            query += " AND b.tuition_fee > 0 AND COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = b.bill_id AND target_type IN ('tuition', 'general')), 0) > 0 AND COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = b.bill_id AND target_type IN ('tuition', 'general')), 0) < b.tuition_fee"
         elif status_filter == "pending":
-            query += " AND b.status = 'pending'"
+            query += " AND b.tuition_fee > 0 AND COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = b.bill_id AND target_type IN ('tuition', 'general')), 0) = 0"
 
         query += """
             ORDER BY
               CASE
-                WHEN b.bill_id IS NULL THEN 0
-                WHEN b.status = 'pending' THEN 1
-                WHEN b.status = 'partial' THEN 2
+                WHEN b.bill_id IS NULL OR b.tuition_fee = 0 OR b.tuition_fee IS NULL THEN 0
+                WHEN b.tuition_fee > 0 AND COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = b.bill_id AND target_type IN ('tuition', 'general')), 0) = 0 THEN 1
+                WHEN b.tuition_fee > 0 AND COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = b.bill_id AND target_type IN ('tuition', 'general')), 0) > 0 AND COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = b.bill_id AND target_type IN ('tuition', 'general')), 0) < b.tuition_fee THEN 2
                 ELSE 3
               END,
               e.student_last_name ASC,
@@ -189,6 +196,25 @@ def billing_registry():
                 e.get("student_middle_name"),
                 e.get("student_last_name"),
             ]))
+            
+            t_fee = e["tuition_fee"] or Decimal("0")
+            t_paid = e["tuition_paid"] or Decimal("0")
+            t_balance = max(Decimal("0"), t_fee - t_paid)
+            e["tuition_balance"] = t_balance
+            
+            if not e["bill_id"] or t_fee == 0:
+                e["tuition_status"] = "no_bill"
+            elif t_balance <= 0:
+                e["tuition_status"] = "paid"
+            elif t_paid > 0:
+                e["tuition_status"] = "partial"
+            else:
+                e["tuition_status"] = "pending"
+
+            # Directly use the synced billing totals from the database to avoid split-brain discrepancies
+            e["total_amount"] = float(e.get("total_amount_db") or 0)
+            e["amount_paid"] = float(e.get("amount_paid_db") or 0)
+            e["balance"] = float(e.get("balance_db") or 0)
 
         # Grade levels for filter dropdown
         cursor.execute("""
@@ -199,10 +225,10 @@ def billing_registry():
         grade_levels = [r["grade_level"] for r in cursor.fetchall()]
 
         # Summary stats
-        paid_count    = sum(1 for e in enrollments if e["bill_status"] == "paid")
-        partial_count = sum(1 for e in enrollments if e["bill_status"] == "partial")
-        pending_count = sum(1 for e in enrollments if e["bill_status"] == "pending")
-        no_bill_count = sum(1 for e in enrollments if not e["bill_id"])
+        paid_count    = sum(1 for e in enrollments if e["tuition_status"] == "paid")
+        partial_count = sum(1 for e in enrollments if e["tuition_status"] == "partial")
+        pending_count = sum(1 for e in enrollments if e["tuition_status"] == "pending")
+        no_bill_count = sum(1 for e in enrollments if e["tuition_status"] == "no_bill")
 
         is_branch_active_status = is_branch_active(session.get("branch_id"))
 
@@ -253,8 +279,9 @@ def create_bill(enrollment_id):
         existing_bill = cursor.fetchone()
 
         if existing_bill:
-            flash("Bill already exists for this enrollment", "warning")
-            return redirect(url_for("cashier.view_bill", bill_id=existing_bill["bill_id"]))
+            if existing_bill.get("tuition_fee", 0) > 0:
+                flash("Bill already exists for this enrollment", "warning")
+                return redirect(url_for("cashier.view_bill", bill_id=existing_bill["bill_id"]))
 
         # Fetching reservations (both student and parent initiated)
         cursor.execute("""
@@ -293,6 +320,12 @@ def create_bill(enrollment_id):
                 uniforms.append({"uniform_type": item["item_name"], "size": item["size_label"] or "N/A", "quantity": item["qty"]})
                 uniform_total += Decimal(str(item["line_total"] or "0"))
 
+        if existing_bill:
+            if existing_bill.get("books_fee", 0) > 0:
+                books_total = Decimal(str(existing_bill["books_fee"]))
+            if existing_bill.get("uniform_fee", 0) > 0:
+                uniform_total = Decimal(str(existing_bill["uniform_fee"]))
+
         # Legacy items (no price info directly attached, keeping for display)
         cursor.execute("SELECT * FROM enrollment_books WHERE enrollment_id = %s", (enrollment_id,))
         for b in cursor.fetchall():
@@ -314,28 +347,60 @@ def create_bill(enrollment_id):
             total_amount = tuition_fee + books_fee + uniform_fee + other_fees
 
             try:
-                cursor.execute("""
-                    INSERT INTO billing
-                      (enrollment_id, branch_id, year_id, tuition_fee, books_fee, uniform_fee, other_fees,
-                       total_amount, amount_paid, balance, status, created_by)
-                    VALUES
-                      (%s, %s, %s, %s, %s, %s, %s,
-                       %s, %s, %s, 'pending', %s)
-                    RETURNING bill_id
-                """, (
-                    enrollment_id,
-                    session.get("branch_id"),
-                    enrollment["year_id"],
-                    tuition_fee,
-                    books_fee,
-                    uniform_fee,
-                    other_fees,
-                    total_amount,
-                    0,
-                    total_amount,
-                    session.get("user_id")
-                ))
-                bill_id = cursor.fetchone()["bill_id"]
+                if existing_bill:
+                    # Update existing billing record
+                    new_balance = total_amount - Decimal(str(existing_bill.get("amount_paid", 0)))
+                    new_status = 'paid' if new_balance <= 0 else ('partial' if Decimal(str(existing_bill.get("amount_paid", 0))) > 0 else 'pending')
+
+                    cursor.execute("""
+                        UPDATE billing
+                        SET tuition_fee = %s,
+                            books_fee = %s,
+                            uniform_fee = %s,
+                            other_fees = %s,
+                            total_amount = %s,
+                            balance = %s,
+                            status = %s,
+                            created_by = %s,
+                            updated_at = NOW()
+                        WHERE bill_id = %s
+                    """, (
+                        tuition_fee,
+                        books_fee,
+                        uniform_fee,
+                        other_fees,
+                        total_amount,
+                        new_balance,
+                        new_status,
+                        session.get("user_id"),
+                        existing_bill["bill_id"]
+                    ))
+                    bill_id = existing_bill["bill_id"]
+                else:
+                    # Insert new billing record
+                    cursor.execute("""
+                        INSERT INTO billing
+                          (enrollment_id, branch_id, year_id, tuition_fee, books_fee, uniform_fee, other_fees,
+                           total_amount, amount_paid, balance, status, created_by)
+                        VALUES
+                          (%s, %s, %s, %s, %s, %s, %s,
+                           %s, %s, %s, 'pending', %s)
+                        RETURNING bill_id
+                    """, (
+                        enrollment_id,
+                        session.get("branch_id"),
+                        enrollment["year_id"],
+                        tuition_fee,
+                        books_fee,
+                        uniform_fee,
+                        other_fees,
+                        total_amount,
+                        0,
+                        total_amount,
+                        session.get("user_id")
+                    ))
+                    bill_id = cursor.fetchone()["bill_id"]
+                
                 db.commit()
 
                 flash(f"Bill created successfully! Total: ₱{total_amount:,.2f}", "success")
@@ -353,6 +418,76 @@ def create_bill(enrollment_id):
             books_total=books_total,
             uniform_total=uniform_total
         )
+    finally:
+        cursor.close()
+        db.close()
+
+
+@cashier_bp.route("/cashier/api/create-tuition-bill/<int:enrollment_id>", methods=["POST"])
+def create_tuition_bill_api(enrollment_id):
+    if not _require_cashier():
+        return jsonify({"success": False, "error": "Unauthorized"}), 403
+
+    if not is_branch_active(session.get("branch_id")):
+        return jsonify({"success": False, "error": "Branch is deactivated"}), 400
+
+    data = request.get_json()
+    tuition_fee = Decimal(str(data.get("tuition_fee", 0) or 0))
+    payment_amount = Decimal(str(data.get("payment_amount", 0) or 0))
+
+    if tuition_fee <= 0:
+        return jsonify({"success": False, "error": "Invalid tuition amount"}), 400
+    if payment_amount < 0 or payment_amount > tuition_fee:
+        return jsonify({"success": False, "error": "Invalid payment amount"}), 400
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        # Check enrollment
+        cursor.execute("SELECT year_id FROM enrollments WHERE enrollment_id = %s AND branch_id = %s", (enrollment_id, session.get("branch_id")))
+        enrollment = cursor.fetchone()
+        if not enrollment:
+            return jsonify({"success": False, "error": "Enrollment not found"}), 404
+
+        # Check existing bill
+        cursor.execute("SELECT bill_id FROM billing WHERE enrollment_id = %s", (enrollment_id,))
+        if cursor.fetchone():
+            return jsonify({"success": False, "error": "Bill already exists"}), 400
+
+        # Insert billing (Tuition only)
+        cursor.execute("""
+            INSERT INTO billing
+                (enrollment_id, branch_id, year_id, tuition_fee, books_fee, uniform_fee, other_fees,
+                 total_amount, amount_paid, balance, status, created_by)
+            VALUES
+                (%s, %s, %s, %s, 0, 0, 0, %s, 0, %s, 'pending', %s)
+            RETURNING bill_id
+        """, (enrollment_id, session.get("branch_id"), enrollment["year_id"], tuition_fee, tuition_fee, tuition_fee, session.get("user_id")))
+        bill_id = cursor.fetchone()["bill_id"]
+
+        # Process payment if any
+        if payment_amount > 0:
+            new_balance = tuition_fee - payment_amount
+            new_status = 'paid' if new_balance <= 0 else 'partial'
+
+            cursor.execute("""
+                UPDATE billing SET amount_paid = amount_paid + %s, balance = %s, status = %s WHERE bill_id = %s
+            """, (payment_amount, new_balance, new_status, bill_id))
+
+            import uuid
+            receipt_no = f"OR-{datetime.now().strftime('%Y%m%d')}-{str(uuid.uuid4())[:6].upper()}"
+
+            cursor.execute("""
+                INSERT INTO payments (bill_id, amount, payment_date, received_by, receipt_no, target_type, target_name)
+                VALUES (%s, %s, NOW(), %s, %s, 'tuition', 'Tuition & Mandatory Fees')
+            """, (bill_id, payment_amount, session.get("user_id"), receipt_no))
+
+        db.commit()
+        return jsonify({"success": True, "bill_id": bill_id})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"success": False, "error": str(e)}), 500
     finally:
         cursor.close()
         db.close()
@@ -405,39 +540,18 @@ def view_bill(bill_id):
         ]))
 
         cursor.execute("""
-            SELECT p.*, COALESCE(NULLIF(TRIM(u.full_name), ''), u.username) AS received_by_name
+            SELECT p.*, u.username as received_by_name
             FROM payments p
-            JOIN users u ON p.received_by = u.user_id
+            LEFT JOIN users u ON p.received_by = u.user_id
             WHERE p.bill_id = %s
             ORDER BY p.payment_date DESC
         """, (bill_id,))
         payments = cursor.fetchall()
 
-        cursor.execute("SELECT SUM(amount) AS sum_amount FROM payments WHERE bill_id = %s AND target_type = 'tuition'", (bill_id,))
-        tuition_paid = cursor.fetchone()["sum_amount"] or Decimal(0)
-        
-        cursor.execute("SELECT SUM(amount) AS sum_amount FROM payments WHERE bill_id = %s AND target_type = 'other'", (bill_id,))
-        other_paid = cursor.fetchone()["sum_amount"] or Decimal(0)
-
-        cursor.execute("SELECT SUM(amount) AS sum_amount FROM payments WHERE bill_id = %s AND target_type = 'general'", (bill_id,))
-        general_paid = cursor.fetchone()["sum_amount"] or Decimal(0)
-
-        tuition_balance = bill["tuition_fee"] - tuition_paid
-        if general_paid > 0:
-            deduct = min(tuition_balance, general_paid)
-            tuition_balance -= deduct
-            general_paid -= deduct
-            
-        other_balance = bill["other_fees"] - other_paid
-        if general_paid > 0:
-            deduct = min(other_balance, general_paid)
-            other_balance -= deduct
-            general_paid -= deduct
-
-        bill["tuition_balance"] = max(Decimal(0), tuition_balance)
-        bill["other_balance"] = max(Decimal(0), other_balance)
+        # (Old tuition and other paid queries removed - now calculated via unified pool distribution)
 
         # Fetch grouped reservations for breakdown (books/materials only — uniforms via UO)
+        # We need ALL non-cancelled items to reconstruct payment history breakdown
         cursor.execute("""
             SELECT
                 r.reservation_id, 
@@ -448,28 +562,22 @@ def view_bill(bill_id):
             FROM reservation_items ri
             JOIN reservations r ON r.reservation_id = ri.reservation_id
             JOIN inventory_items ii ON ri.item_id = ii.item_id
-            WHERE (r.enrollment_id = %s OR r.student_user_id IN (
-                SELECT u.user_id FROM student_accounts sa 
-                JOIN users u ON sa.username = u.username 
-                WHERE sa.enrollment_id = %s
-            )) 
-            AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED')
+            WHERE (
+                (r.enrollment_id = %s OR r.student_user_id IN (
+                    SELECT u.user_id FROM student_accounts sa 
+                    JOIN users u ON sa.username = u.username 
+                    WHERE sa.enrollment_id = %s
+                ))
+                AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED')
+            )
             AND UPPER(COALESCE(ii.category, '')) <> 'UNIFORM'
             GROUP BY r.reservation_id, r.status
             HAVING COUNT(*) FILTER (WHERE UPPER(COALESCE(ii.category, '')) <> 'UNIFORM') > 0
             ORDER BY r.reservation_id ASC
         """, (bill["enrollment_id"], bill["enrollment_id"]))
         reservation_details = cursor.fetchall()
-        
-        for res in reservation_details:
-            res_bal = res["reservation_total"] - res["paid_amount"]
-            if general_paid > 0:
-                deduct = min(res_bal, general_paid)
-                res_bal -= deduct
-                general_paid -= deduct
-            res["balance"] = max(Decimal(0), res_bal)
 
-        # Uniform pre-orders linked to this bill (itemized like reservations)
+        # Uniform pre-orders: ALL non-cancelled orders directly linked to this bill
         cursor.execute("""
             SELECT
                 uo.order_id,
@@ -490,20 +598,16 @@ def view_bill(bill_id):
                 ), 0) AS paid_amount
             FROM uniform_orders uo
             JOIN uniform_order_items uoi ON uoi.order_id = uo.order_id
-            WHERE uo.bill_id = %s
-               OR (uo.enrollment_id = %s AND uo.order_status IN ('Ready for Claim', 'Claimed'))
+            WHERE (uo.bill_id = %s OR uo.enrollment_id = %s)
+              AND LOWER(uo.order_status) != 'cancelled'
             GROUP BY uo.order_id, uo.order_number, uo.order_status, uo.payment_status, uo.total_amount
             ORDER BY uo.order_id ASC
         """, (bill_id, bill["enrollment_id"]))
         uniform_order_details = cursor.fetchall() or []
 
         for uo in uniform_order_details:
-            uo_bal = Decimal(str(uo["order_total"] or 0)) - Decimal(str(uo["paid_amount"] or 0))
-            if general_paid > 0:
-                deduct = min(uo_bal, general_paid)
-                uo_bal -= deduct
-                general_paid -= deduct
-            uo["balance"] = max(Decimal(0), uo_bal)
+            # (Individual balance calculations removed - now calculated via unified pool distribution)
+
 
             # Query itemized set piece breakdown for expanding UI
             cursor.execute("""
@@ -568,17 +672,87 @@ def view_bill(bill_id):
                     })
             uo["pieces"] = pieces_list
 
-        # Recalculate true Total Fee, Paid Amount, and Balance across entire bill
-        books_sum = sum(Decimal(str(r["reservation_total"] or 0)) for r in reservation_details)
-        uniforms_sum = sum(Decimal(str(u["order_total"] or 0)) for u in uniform_order_details)
+        # Unified Chronological Sequential Deduction Algorithm
+        # 1. First, apply any direct target payments
+        for uo in uniform_order_details:
+            uo["total"] = Decimal(str(uo["order_total"] or 0))
+            uo["direct_paid"] = Decimal(str(uo.get("paid_amount") or 0))
+            uo["balance"] = max(Decimal(0), uo["total"] - uo["direct_paid"])
 
-        calc_tuition = Decimal(str(bill.get("tuition_fee") or 0))
-        calc_other = Decimal(str(bill.get("other_fees") or 0))
-        calc_total = calc_tuition + calc_other + books_sum + uniforms_sum
+        for res in reservation_details:
+            res["total"] = Decimal(str(res["reservation_total"] or 0))
+            res["direct_paid"] = Decimal(str(res.get("paid_amount") or 0))
+            res["balance"] = max(Decimal(0), res["total"] - res["direct_paid"])
+
+        # 2. Sum up the general pool (payments that don't have a specific reservation/uniform target)
+        cursor.execute("""
+            SELECT COALESCE(SUM(amount), 0) AS general_paid 
+            FROM payments 
+            WHERE bill_id = %s AND (target_type IS NULL OR target_type IN ('general', 'tuition', 'other'))
+        """, (bill_id,))
+        pool = cursor.fetchone()["general_paid"] or Decimal(0)
+
+        # 3. Distribute general pool sequentially
+        t_fee = Decimal(str(bill.get("tuition_fee") or 0))
+        t_allocated = min(t_fee, pool)
+        pool -= t_allocated
+        bill["tuition_balance"] = max(Decimal(0), t_fee - t_allocated)
+        bill["tuition_paid"] = t_allocated
+
+        o_fee = Decimal(str(bill.get("other_fees") or 0))
+        o_allocated = min(o_fee, pool)
+        pool -= o_allocated
+        bill["other_balance"] = max(Decimal(0), o_fee - o_allocated)
+
+        # Distribute remaining pool to Uniforms
+        for uo in uniform_order_details:
+            if pool > 0 and uo["balance"] > 0:
+                allocated = min(uo["balance"], pool)
+                pool -= allocated
+                uo["balance"] -= allocated
+            
+            # Sync Paid status if balance reached 0
+            if uo["balance"] <= 0 and uo.get("payment_status") != "Paid":
+                cursor.execute("UPDATE uniform_orders SET payment_status = 'Paid', updated_at = NOW() WHERE order_id = %s", (uo["order_id"],))
+                uo["payment_status"] = "Paid"
+            elif uo["balance"] > 0 and uo.get("payment_status") == "Paid":
+                cursor.execute("UPDATE uniform_orders SET payment_status = 'Unpaid', updated_at = NOW() WHERE order_id = %s", (uo["order_id"],))
+                uo["payment_status"] = "Unpaid"
+
+        # Distribute remaining pool to Reservations
+        for res in reservation_details:
+            if pool > 0 and res["balance"] > 0:
+                allocated = min(res["balance"], pool)
+                pool -= allocated
+                res["balance"] -= allocated
+                
+            # Sync Paid status if balance reached 0
+            if res["balance"] <= 0 and res.get("status") != "PAID":
+                cursor.execute("UPDATE reservations SET status = 'PAID' WHERE reservation_id = %s", (res["reservation_id"],))
+                res["status"] = "PAID"
+            elif res["balance"] > 0 and res.get("status") == "PAID":
+                cursor.execute("UPDATE reservations SET status = 'RESERVED' WHERE reservation_id = %s", (res["reservation_id"],))
+                res["status"] = "RESERVED"
+                
+        db.commit()
+
+
+        # Calculate display values:
+        # Total Fee = sum of all unpaid item balances + amount already paid
+        # This avoids counting old paid uniforms multiple times
+        items_outstanding = (
+            bill.get("tuition_balance", Decimal(0)) +
+            bill.get("other_balance", Decimal(0)) +
+            sum(uo.get("balance", Decimal(0)) for uo in uniform_order_details) +
+            sum(res.get("balance", Decimal(0)) for res in reservation_details)
+        )
 
         cursor.execute("SELECT COALESCE(SUM(amount), 0) AS total_paid FROM payments WHERE bill_id = %s", (bill_id,))
         calc_paid = cursor.fetchone()["total_paid"] or Decimal(0)
-        calc_balance = max(Decimal(0), calc_total - calc_paid)
+
+        # Total = what was paid + what is still outstanding
+        calc_total = calc_paid + items_outstanding
+        calc_balance = items_outstanding
 
         if calc_balance <= 0 and calc_total > 0:
             calc_status = "paid"
@@ -587,54 +761,135 @@ def view_bill(bill_id):
         else:
             calc_status = "pending"
 
-        bill["books_fee"] = books_sum
-        bill["uniform_fee"] = uniforms_sum
         bill["total_amount"] = calc_total
         bill["amount_paid"] = calc_paid
         bill["balance"] = calc_balance
         bill["status"] = calc_status
 
-        # Persist synced totals to DB so Billing Registry & Student/Parent portal match 100%
+        # Persist to DB (only amount_paid, balance, status — not total which can vary)
         cursor.execute("""
             UPDATE billing
-            SET books_fee = %s,
-                uniform_fee = %s,
-                total_amount = %s,
-                amount_paid = %s,
+            SET amount_paid = %s,
                 balance = %s,
                 status = %s
             WHERE bill_id = %s
-        """, (books_sum, uniforms_sum, calc_total, calc_paid, calc_balance, calc_status, bill_id))
+        """, (calc_paid, calc_balance, calc_status, bill_id))
         db.commit()
 
         # Fetch branch admin name (acting as Principal)
         branch_admin_name = _fetch_branch_admin_name(cursor, session.get("branch_id"))
 
-        # Construct payment itemized breakdown list in Python for safety
-        for p in payments:
-            p_items = []
-            amt_val = float(p["amount"] or 0)
+        # Chronologically allocate payments to fees (Tuition -> Other -> Uniforms -> Books)
+        # We start with the original amounts:
+        rem_tuition = Decimal(str(bill.get("tuition_fee") or 0))
+        rem_other = Decimal(str(bill.get("other_fees") or 0))
+        
+        # Sort uniform orders by ID ascending to match view_bill order
+        uo_list = []
+        for uo in uniform_order_details:
+            uo_list.append({
+                "order_id": uo["order_id"],
+                "item_names": uo["item_names"],
+                "rem": Decimal(str(uo["order_total"] or 0))
+            })
+            
+        # Sort reservations by ID ascending
+        res_list = []
+        for res in reservation_details:
+            res_list.append({
+                "reservation_id": res["reservation_id"],
+                "item_names": res["item_names"],
+                "rem": Decimal(str(res["reservation_total"] or 0))
+            })
+            
+        # Chronological payments list
+        chrono_payments = sorted(payments, key=lambda x: x["payment_date"])
+        
+        for p in chrono_payments:
+            p_amount = Decimal(str(p["amount"] or 0))
+            p_breakdown = []
+            
+            # 1. If tuition payment
             if p["target_type"] == "tuition":
-                p_items.append({"desc": "Tuition & Mandatory Fees", "amount": amt_val})
+                allocated = min(rem_tuition, p_amount)
+                rem_tuition -= allocated
+                p_breakdown.append({"desc": "Tuition & Mandatory Fees", "amount": float(allocated)})
+                
+            # 2. If other payment
             elif p["target_type"] == "other":
-                p_items.append({"desc": "Other Fees", "amount": amt_val})
+                allocated = min(rem_other, p_amount)
+                rem_other -= allocated
+                p_breakdown.append({"desc": "Other Fees", "amount": float(allocated)})
+                
+            # 3. If specific reservation payment
             elif p["target_type"] == "reservation":
-                desc_str = "Reservation (Books/Materials)"
-                for res in reservation_details:
+                # Find reservation in res_list
+                for res in res_list:
                     if res["reservation_id"] == p["target_id"]:
-                        desc_str = res["item_names"]
+                        allocated = min(res["rem"], p_amount)
+                        res["rem"] -= allocated
+                        p_breakdown.append({"desc": f"Book: {res['item_names']}", "amount": float(allocated)})
                         break
-                p_items.append({"desc": desc_str, "amount": amt_val})
+                else:
+                    p_breakdown.append({"desc": "Book Reservation", "amount": float(p_amount)})
+                    
+            # 4. If specific uniform order payment
             elif p["target_type"] == "uniform_order":
-                desc_str = "Uniform Pre-Order"
-                for uo in uniform_order_details:
+                # Find uniform order in uo_list
+                for uo in uo_list:
                     if uo["order_id"] == p["target_id"]:
-                        desc_str = uo["item_names"]
+                        allocated = min(uo["rem"], p_amount)
+                        uo["rem"] -= allocated
+                        p_breakdown.append({"desc": f"Uniform: {uo['item_names']}", "amount": float(allocated)})
                         break
-                p_items.append({"desc": desc_str, "amount": amt_val})
+                else:
+                    p_breakdown.append({"desc": "Uniform Order", "amount": float(p_amount)})
+                    
+            # 5. If general payment: distribute sequentially
             else:
-                p_items.append({"desc": p["notes"] or "General Billing Payment", "amount": amt_val})
-            p["breakdown_items"] = p_items
+                rem_p = p_amount
+                
+                # Deduct from tuition first
+                if rem_p > 0 and rem_tuition > 0:
+                    allocated = min(rem_tuition, rem_p)
+                    rem_tuition -= allocated
+                    rem_p -= allocated
+                    p_breakdown.append({"desc": "Tuition & Mandatory Fees", "amount": float(allocated)})
+                    
+                # Deduct from other second
+                if rem_p > 0 and rem_other > 0:
+                    allocated = min(rem_other, rem_p)
+                    rem_other -= allocated
+                    rem_p -= allocated
+                    p_breakdown.append({"desc": "Other Fees", "amount": float(allocated)})
+                    
+                # Deduct from uniforms third
+                if rem_p > 0:
+                    for uo in uo_list:
+                        if uo["rem"] > 0:
+                            allocated = min(uo["rem"], rem_p)
+                            uo["rem"] -= allocated
+                            rem_p -= allocated
+                            p_breakdown.append({"desc": f"Uniform: {uo['item_names']}", "amount": float(allocated)})
+                            if rem_p <= 0:
+                                break
+                                
+                # Deduct from reservations last
+                if rem_p > 0:
+                    for res in res_list:
+                        if res["rem"] > 0:
+                            allocated = min(res["rem"], rem_p)
+                            res["rem"] -= allocated
+                            rem_p -= allocated
+                            p_breakdown.append({"desc": f"Book: {res['item_names']}", "amount": float(allocated)})
+                            if rem_p <= 0:
+                                break
+                                
+                # Any leftover goes to general
+                if rem_p > 0:
+                    p_breakdown.append({"desc": "General Excess Payment", "amount": float(rem_p)})
+                    
+            p["breakdown_items"] = p_breakdown
 
         return render_template(
             "cashier_view_bill.html",
@@ -699,11 +954,13 @@ def process_payment(bill_id):
 
             if amount <= 0:
                 flash("Payment amount must be greater than zero", "error")
+                return redirect(url_for("cashier.view_bill", bill_id=bill_id))
             elif amount > Decimal(str(bill["balance"])):
                 flash(
                     f"Payment amount (₱{amount:,.2f}) exceeds balance (₱{Decimal(str(bill['balance'])):,.2f})",
                     "error"
                 )
+                return redirect(url_for("cashier.view_bill", bill_id=bill_id))
             else:
                 try:
                     receipt_number = generate_receipt_number()
@@ -774,31 +1031,6 @@ def process_payment(bill_id):
 
                     if new_balance == 0:
                         new_status = "paid"
-                        # Auto-mark active book/material reservations only — never revive CANCELLED
-                        # and never touch uniform-only rows (those live in uniform_orders).
-                        cursor.execute("""
-                            UPDATE reservations r
-                            SET status = 'PAID'
-                            WHERE (
-                                r.enrollment_id = %s OR r.student_user_id IN (
-                                    SELECT u.user_id FROM student_accounts sa
-                                    JOIN users u ON sa.username = u.username
-                                    WHERE sa.enrollment_id = %s
-                                )
-                            )
-                            AND UPPER(COALESCE(r.status, '')) NOT IN ('CANCELLED', 'REJECTED')
-                            AND EXISTS (
-                                SELECT 1 FROM reservation_items ri
-                                JOIN inventory_items ii ON ii.item_id = ri.item_id
-                                WHERE ri.reservation_id = r.reservation_id
-                                  AND UPPER(COALESCE(ii.category, '')) <> 'UNIFORM'
-                            )
-                        """, (bill["enrollment_id"], bill["enrollment_id"]))
-                        cursor.execute("""
-                            UPDATE uniform_orders
-                            SET payment_status = 'Paid', updated_at = NOW()
-                            WHERE bill_id = %s OR enrollment_id = %s
-                        """, (bill_id, bill["enrollment_id"]))
                     else:
                         new_status = "partial"
 
@@ -810,12 +1042,72 @@ def process_payment(bill_id):
 
                     db.commit()
 
+                    # Fetch receipt data for the response
+                    cursor.execute("""
+                        SELECT
+                            p.*,
+                            e.student_first_name, e.student_middle_name, e.student_last_name,
+                            e.guardian_first_name, e.guardian_middle_name, e.guardian_last_name,
+                            e.grade_level, e.branch_enrollment_no,
+                            b.total_amount AS bill_total, b.amount_paid AS bill_paid, b.balance AS bill_balance,
+                            br.branch_name, br.location,
+                            COALESCE(NULLIF(TRIM(u.full_name), ''), u.username) AS received_by_name
+                        FROM payments p
+                        JOIN billing b ON p.bill_id = b.bill_id
+                        JOIN enrollments e ON p.enrollment_id = e.enrollment_id
+                        JOIN branches br ON e.branch_id = br.branch_id
+                        JOIN users u ON p.received_by = u.user_id
+                        WHERE p.payment_id = %s
+                    """, (payment_id,))
+                    receipt = cursor.fetchone()
+
+                    receipt_student = " ".join(filter(None, [
+                        receipt.get("student_first_name"),
+                        receipt.get("student_middle_name"),
+                        receipt.get("student_last_name"),
+                    ]))
+                    receipt_guardian = " ".join(filter(None, [
+                        receipt.get("guardian_first_name"),
+                        receipt.get("guardian_middle_name"),
+                        receipt.get("guardian_last_name"),
+                    ]))
+                    receipt_date = _to_manila_naive(receipt.get("payment_date"))
+
+                    # If AJAX request, return JSON
+                    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                        from flask import jsonify
+                        return jsonify({
+                            "success": True,
+                            "receipt": {
+                                "payment_id": payment_id,
+                                "receipt_number": receipt_number,
+                                "payment_date": receipt_date.strftime("%B %d, %Y | %I:%M %p") if receipt_date else "",
+                                "amount": float(amount),
+                                "payment_method": payment_method.upper(),
+                                "student_name": receipt_student,
+                                "guardian_name": receipt_guardian,
+                                "grade_level": receipt.get("grade_level", ""),
+                                "enrollment_no": receipt.get("branch_enrollment_no", ""),
+                                "branch_name": receipt.get("branch_name", ""),
+                                "branch_location": receipt.get("location", ""),
+                                "bill_total": float(receipt.get("bill_total") or 0),
+                                "bill_paid": float(receipt.get("bill_paid") or 0),
+                                "bill_balance": float(receipt.get("bill_balance") or 0),
+                                "received_by": receipt.get("received_by_name", ""),
+                                "notes": notes,
+                            }
+                        })
+
                     flash(f"Payment recorded successfully! Receipt: {receipt_number}", "success")
                     return redirect(url_for("cashier.print_receipt", payment_id=payment_id))
 
                 except Exception as e:
                     db.rollback()
+                    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                        from flask import jsonify
+                        return jsonify({"success": False, "error": str(e)}), 500
                     flash(f"Failed to process payment: {str(e)}", "error")
+                    return redirect(url_for("cashier.view_bill", bill_id=bill_id))
 
         target_type = request.args.get("target_type", "general")
         target_id = request.args.get("target_id", "")
@@ -918,7 +1210,7 @@ def _get_report_date_range(report_range, report_date, report_date_end=None):
 
 def _fetch_report_payments(cursor, branch_id, start_date, end_date):
     cursor.execute("""
-        SELECT p.payment_id, p.receipt_number, p.amount, p.payment_method, p.payment_date,
+        SELECT p.payment_id, p.receipt_number, p.amount, p.payment_method, p.payment_date, p.bill_id,
                e.student_first_name, e.student_middle_name, e.student_last_name,
                e.grade_level, e.branch_enrollment_no,
                COALESCE(NULLIF(TRIM(u.full_name),''), u.username) AS received_by_name
@@ -1042,7 +1334,7 @@ def export_reports_excel():
     ws.row_dimensions[1].height = 26
 
     range_label = {
-        "today":   f"Today ({start_date})",
+        "today":   f"{start_date}",
         "weekly":  f"This Week ({start_date} to {end_date})",
         "monthly": f"This Month ({start_date} to {end_date})",
         "yearly":  f"This Year ({start_date} to {end_date})",
@@ -1055,10 +1347,7 @@ def export_reports_excel():
     ws["A2"].alignment = Alignment(horizontal="center")
 
     ws.merge_cells("A3:G3")
-    ws["A3"] = f"Cashier: {cashier_name}   |   Total Collected: P{float(summary['total_collected']):.2f}   |   Transactions: {summary['transaction_count']}"
-    ws["A3"].font = Font(name="Calibri", bold=True, size=10)
-    ws["A3"].alignment = Alignment(horizontal="center")
-    ws.row_dimensions[3].height = 18
+    ws.row_dimensions[3].height = 8
 
     headers = ["#", "OR Number", "Student Name", "Grade Level", "Payment Method", "Amount", "Date"]
     ws.append([""] * 7)
@@ -1112,10 +1401,12 @@ def export_reports_excel():
     sig_row = ws.max_row + 2
     ws.cell(sig_row,   1, "Prepared By:").font        = Font(name="Calibri", bold=True)
     ws.cell(sig_row,   5, "Approved By:").font         = Font(name="Calibri", bold=True)
-    ws.cell(sig_row+1, 1, cashier_name).font           = Font(name="Calibri", bold=True, underline="single")
-    ws.cell(sig_row+1, 5, branch_admin_name).font      = Font(name="Calibri", bold=True, underline="single")
-    ws.cell(sig_row+2, 1, "Cashier").font              = Font(name="Calibri", italic=True, color="64748B")
-    ws.cell(sig_row+2, 5, "Branch Administrator").font = Font(name="Calibri", italic=True, color="64748B")
+    ws.cell(sig_row+1, 1, "________________________").font = Font(name="Calibri", bold=True)
+    ws.cell(sig_row+1, 5, "________________________").font = Font(name="Calibri", bold=True)
+    ws.cell(sig_row+2, 1, cashier_name).font           = Font(name="Calibri", bold=True)
+    ws.cell(sig_row+2, 5, branch_admin_name).font      = Font(name="Calibri", bold=True)
+    ws.cell(sig_row+3, 1, "Cashier").font              = Font(name="Calibri", italic=True, color="64748B")
+    ws.cell(sig_row+3, 5, "Branch Administrator").font = Font(name="Calibri", italic=True, color="64748B")
 
     buf = _io.BytesIO()
     wb.save(buf)
@@ -1180,7 +1471,7 @@ def export_reports_pdf():
         alignment=TA_CENTER, spaceAfter=10)
 
     range_label = {
-        "today":   f"Today: {start_date}",
+        "today":   f"{start_date}",
         "weekly":  f"This Week: {start_date} to {end_date}",
         "monthly": f"This Month: {start_date} to {end_date}",
         "yearly":  f"This Year: {start_date} to {end_date}",
@@ -1192,12 +1483,6 @@ def export_reports_pdf():
         Paragraph("Financial Collection Report", sub_st),
         Paragraph(range_label, sub_st),
         HRFlowable(width="100%", thickness=2, color=navy, spaceAfter=8),
-        Paragraph(
-            f"Cashier: <b>{cashier_name}</b> | "
-            f"Total: <b>P{float(summary['total_collected']):,.2f}</b> | "
-            f"Transactions: <b>{summary['transaction_count']}</b>",
-            label_st
-        ),
         Spacer(1, 4*mm),
     ]
 
@@ -1247,16 +1532,19 @@ def export_reports_pdf():
     story.append(Spacer(1, 18*mm))
 
     sig_data = [
-        [cashier_name, "", branch_admin_name],
         ["________________________", "", "________________________"],
+        [cashier_name, "", branch_admin_name],
         ["Cashier", "", "Branch Administrator"],
     ]
     sig_tbl = Table(sig_data, colWidths=[avail_w*0.4, avail_w*0.2, avail_w*0.4])
     sig_tbl.setStyle(TableStyle([
-        ("FONTNAME",  (0,0), (-1,0),  "Helvetica-Bold"),
-        ("FONTSIZE",  (0,0), (-1,0),  9),
-        ("ALIGN",     (0,0), (0,-1),  "CENTER"),
-        ("ALIGN",     (2,0), (2,-1),  "CENTER"),
+        ("ALIGN",     (0,0), (-1,-1), "CENTER"),
+        ("BOTTOMPADDING", (0,0), (-1,0), 0),
+        ("TOPPADDING", (0,1), (-1,1), 2),
+        ("BOTTOMPADDING", (0,1), (-1,1), 0),
+        ("TOPPADDING", (0,2), (-1,2), 2),
+        ("FONTNAME",  (0,1), (-1,1),  "Helvetica-Bold"),
+        ("FONTSIZE",  (0,1), (-1,1),  9),
         ("FONTNAME",  (0,2), (-1,2),  "Helvetica-Oblique"),
         ("FONTSIZE",  (0,2), (-1,2),  8),
         ("TEXTCOLOR", (0,2), (-1,2),  slate),
@@ -1330,9 +1618,7 @@ def search():
     return render_template("cashier_search.html", results=results, search_query=search_query)
 
 
-@cashier_bp.route("/cashier/payment-history", methods=["GET"])
-def payment_history():
-    return redirect(url_for("cashier.reports"))
+
 
 
 # =======================
@@ -1349,8 +1635,8 @@ def _normalize_category(raw: str | None) -> str | None:
     return None
 
 
-@cashier_bp.route("/cashier/reservations")
-def cashier_reservations():
+@cashier_bp.route("/cashier/orders/books")
+def orders_books():
     if not _require_cashier():
         return redirect(url_for("auth.login"))
 
@@ -1442,7 +1728,7 @@ def cashier_reservations():
     return render_template("cashier_reservations.html", rows=rows)
 
 
-@cashier_bp.route("/cashier/reservations/<int:reservation_id>")
+@cashier_bp.route("/cashier/orders/books/<int:reservation_id>")
 def cashier_reservation_view(reservation_id):
     if not _require_cashier():
         return redirect(url_for("auth.login"))
@@ -1596,7 +1882,7 @@ def cashier_reservation_view(reservation_id):
     )
 
 
-@cashier_bp.route("/cashier/reservations/<int:reservation_id>/mark-paid", methods=["POST"])
+@cashier_bp.route("/cashier/orders/books/<int:reservation_id>/mark-paid", methods=["POST"])
 def cashier_mark_paid(reservation_id):
     if not _require_cashier():
         return redirect(url_for("auth.login"))
@@ -1632,7 +1918,7 @@ def cashier_mark_paid(reservation_id):
     return redirect(url_for("cashier.cashier_reservation_view", reservation_id=reservation_id))
 
 
-@cashier_bp.route("/cashier/reservations/<int:reservation_id>/mark-claimed", methods=["POST"])
+@cashier_bp.route("/cashier/orders/books/<int:reservation_id>/mark-claimed", methods=["POST"])
 def cashier_mark_claimed(reservation_id):
     if not _require_cashier():
         return redirect(url_for("auth.login"))
@@ -1710,7 +1996,7 @@ def cashier_mark_claimed(reservation_id):
     return redirect(url_for("cashier.cashier_reservation_view", reservation_id=reservation_id))
 
 
-@cashier_bp.route("/cashier/reservations/<int:reservation_id>/cancel", methods=["POST"])
+@cashier_bp.route("/cashier/orders/books/<int:reservation_id>/cancel", methods=["POST"])
 def cashier_cancel_reservation(reservation_id):
     if not _require_cashier():
         return redirect(url_for("auth.login"))
@@ -1824,7 +2110,7 @@ def cashier_cancel_reservation(reservation_id):
     return redirect(url_for("cashier.cashier_reservation_view", reservation_id=reservation_id))
 
 
-@cashier_bp.route("/cashier/reservations/<int:reservation_id>/receipt")
+@cashier_bp.route("/cashier/orders/books/<int:reservation_id>/receipt")
 def reservation_receipt(reservation_id):
     if not _require_cashier():
         return redirect(url_for("auth.login"))
@@ -1932,7 +2218,7 @@ def reservation_receipt(reservation_id):
 # CSV EXPORT ROUTES
 # =======================
 
-@cashier_bp.route("/cashier/reservations/export")
+@cashier_bp.route("/cashier/orders/books/export")
 def export_reservations_excel():
     """Export ALL reservations for this branch as a styled Excel file."""
     if not _require_cashier():
@@ -2113,7 +2399,7 @@ def export_reservations_excel():
     )
 
 
-@cashier_bp.route("/cashier/reservations/<int:reservation_id>/export")
+@cashier_bp.route("/cashier/orders/books/<int:reservation_id>/export")
 def export_reservation_detail_excel(reservation_id):
     """Export a single reservation as a styled Excel file."""
     if not _require_cashier():
@@ -2376,8 +2662,8 @@ def unpaid_report():
 
 
 
-@cashier_bp.route("/cashier/uniform-orders")
-def uniform_orders():
+@cashier_bp.route("/cashier/orders/uniforms")
+def orders_uniforms():
     if not _require_cashier():
         return redirect(url_for("auth.login"))
 
@@ -2473,6 +2759,30 @@ def uniform_orders():
         """, (branch_id,))
         stats = cursor.fetchone()
 
+
+        return render_template(
+            "cashier_uniform_orders.html",
+            orders=orders,
+            stats=stats,
+            status_filter=status_filter,
+            grade_filter=grade_filter,
+            grade_levels=grade_levels,
+            search=search
+        )
+    finally:
+        cursor.close()
+        db.close()
+
+
+@cashier_bp.route("/cashier/uniform-catalog")
+def uniform_catalog():
+    if not _require_cashier():
+        return redirect(url_for("auth.login"))
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
         # Auto-sync parent set prices to sum of child pieces if pieces exist
         cursor.execute("""
             UPDATE inventory_items parent
@@ -2532,13 +2842,7 @@ def uniform_orders():
             pieces_by_set[pid].append(p)
 
         return render_template(
-            "cashier_uniform_orders.html",
-            orders=orders,
-            stats=stats,
-            status_filter=status_filter,
-            grade_filter=grade_filter,
-            grade_levels=grade_levels,
-            search=search,
+            "cashier_uniform_catalog.html",
             catalog_sets=catalog_sets,
             pieces_by_set=pieces_by_set
         )
@@ -2594,7 +2898,7 @@ def cashier_sidebar_badges():
         db.close()
 
 
-@cashier_bp.route("/cashier/uniform-orders/<int:order_id>/mark-onsite", methods=["POST"])
+@cashier_bp.route("/cashier/orders/uniforms/<int:order_id>/mark-onsite", methods=["POST"])
 def uniform_mark_onsite(order_id):
     if not _require_cashier():
         return jsonify({"error": "Unauthorized"}), 403
@@ -2715,7 +3019,7 @@ def uniform_mark_onsite(order_id):
         db.close()
 
 
-@cashier_bp.route("/cashier/uniform-orders/<int:order_id>/process-claim", methods=["POST"])
+@cashier_bp.route("/cashier/orders/uniforms/<int:order_id>/process-claim", methods=["POST"])
 def uniform_process_claim(order_id):
     if not _require_cashier():
         return jsonify({"error": "Unauthorized"}), 403
@@ -2791,7 +3095,7 @@ def uniform_process_claim(order_id):
         db.close()
 
 
-@cashier_bp.route("/cashier/uniform-orders/<int:order_id>/items")
+@cashier_bp.route("/cashier/orders/uniforms/<int:order_id>/items")
 def uniform_order_items(order_id):
     if not _require_cashier():
         return jsonify({"error": "Unauthorized"}), 403

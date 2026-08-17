@@ -19,110 +19,102 @@
         margin: 0 auto;
     }
 
-    /* ── Premium Welcome Header ── */
-    .premium-welcome {
+    /* ── Hero Banner ── */
+    .hero-banner {
         background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
-        border-radius: 24px;
-        padding: 32px 40px;
-        color: white;
-        margin-bottom: 32px;
+        border-radius: 20px;
+        padding: 40px;
+        margin-bottom: 24px;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 20px 40px -10px rgba(26, 58, 143, 0.25);
+        color: #fff;
+        box-shadow: 0 15px 35px -10px rgba(26, 58, 143, 0.2);
     }
 
-    .premium-welcome::after {
-        content: '';
-        position: absolute;
-        top: -50px;
-        right: -50px;
-        width: 250px;
-        height: 250px;
-        background: radial-gradient(circle, rgba(250, 204, 21, 0.2) 0%, transparent 70%);
-        border-radius: 50%;
-    }
-
-    .premium-welcome h1 {
-        font-size: 1.8rem;
-        font-weight: 850;
-        margin-bottom: 8px;
-        letter-spacing: -0.03em;
+    .hero-content h1 {
+        font-size: 2.5rem;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        margin-bottom: 12px;
+        line-height: 1;
         display: flex;
         align-items: center;
-        gap: 16px;
+        justify-content: space-between;
     }
 
-    .status-line {
-        display: flex;
-        align-items: center;
-        gap: 10px;
+    .hero-content h1 span {
+        color: var(--ma-gold);
+        text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+    }
+
+    .hero-content p {
+        font-size: 1rem;
         font-weight: 500;
-        opacity: 0.9;
+        color: rgba(255, 255, 255, 0.9);
+        max-width: 600px;
+        line-height: 1.5;
     }
 
-    .pulse-dot {
-        width: 10px;
-        height: 10px;
-        background: var(--ma-gold);
-        border-radius: 50%;
-        box-shadow: 0 0 10px var(--ma-gold);
-    }
-
-    /* ── Top Branch Performance ── */
-    .shortcut-grid {
+    /* ── Quick Actions Grid ── */
+    .qa-grid-4 {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-        gap: 20px;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
         margin-bottom: 24px;
     }
 
-    .action-card {
+    .action-tile {
         background: var(--ma-card);
-        border: 1px solid var(--ma-border);
+        border: none;
         border-radius: 20px;
-        padding: 18px 24px;
+        padding: 24px;
+        text-align: center;
         text-decoration: none;
+        color: var(--ma-primary);
+        font-weight: 800;
+        font-size: 0.95rem;
         transition: all 0.3s ease;
         display: flex;
+        flex-direction: column;
         align-items: center;
-        gap: 16px;
+        gap: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
     }
 
-    .action-card:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.06);
-        border-color: var(--ma-gold);
-    }
-
-    .action-icon {
-        width: 48px;
-        height: 48px;
-        border-radius: 12px;
+    .action-tile .tile-icon {
+        font-size: 2rem;
+        width: 56px;
+        height: 56px;
+        background: #f8fafc;
+        color: var(--ma-primary);
+        border-radius: 16px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 1.25rem;
-        flex-shrink: 0;
+        transition: transform 0.3s ease;
     }
 
-    .action-info h3 {
-        font-size: 1rem;
-        font-weight: 800;
-        color: var(--ma-primary);
-        margin: 0;
+    .action-tile:hover {
+        background: var(--ma-primary);
+        color: #fff;
+        transform: scale(1.03);
     }
 
-    .action-info p {
-        font-size: 0.8rem;
-        color: var(--ma-muted);
-        margin: 2px 0 0;
-        line-height: 1.3;
+    .action-tile:hover .tile-icon {
+        transform: rotate(10deg);
+        background: rgba(255, 255, 255, 0.15);
+        color: #fff;
+    }
+
+    .action-tile svg {
+        width: 24px;
+        height: 24px;
     }
 
     /* ── Main Dashboard Grid ── */
     .main-dash-grid {
         display: grid;
-        grid-template-columns: 1fr 320px;
+        grid-template-columns: 1fr 1fr;
         gap: 20px;
         margin-bottom: 20px;
     }
@@ -555,20 +547,86 @@
             grid-template-columns: repeat(2, 1fr);
         }
     }
+
+    @media (max-width: 768px) {
+        .sa-container {
+            padding: 16px 12px;
+        }
+        .hero-banner {
+            padding: 24px 16px;
+        }
+    }
 </style>
 
 <div class="sa-container">
     <!-- Header -->
-    <div class="premium-welcome">
-        <h1>Welcome, Super Admin</h1>
+    <div class="hero-banner">
+        <div class="hero-content">
+            <h1>
+                <div style="display: flex; gap: 8px;">Super Admin <span>Dashboard</span></div>
+                <span
+                    style="font-size: 1rem; font-weight: 600; color: #fff; background: rgba(255,255,255,0.2); padding: 6px 16px; border-radius: 20px; text-shadow: none;">SY:
+                    {{ active_school_year }}</span>
+            </h1>
+            <p>Track and monitor all branch operations.</p>
+        </div>
     </div>
 
+    <!-- Quick Actions -->
+    <div class="qa-grid-4">
+        <a href="{{ url_for('super_admin.super_admin_branches') }}" class="action-tile">
+            <div class="tile-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="16" height="20" x="4" y="2" rx="2" />
+                    <path d="M9 22v-4h6v4" />
+                    <path d="M8 6h.01" />
+                    <path d="M16 6h.01" />
+                    <path d="M8 10h.01" />
+                    <path d="M16 10h.01" />
+                    <path d="M8 14h.01" />
+                    <path d="M16 14h.01" />
+                </svg>
+            </div>
+            <span>Manage Branches</span>
+        </a>
+        <a href="{{ url_for('super_admin.superadmin_school_years') }}" class="action-tile">
+            <div class="tile-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+            </div>
+            <span>School Years</span>
+        </a>
+        <a href="{{ url_for('super_admin.superadmin_faqs') }}" class="action-tile">
+            <div class="tile-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
+                </svg>
+            </div>
+            <span>Manage FAQs</span>
+        </a>
+        <a href="/change-password" class="action-tile">
+            <div class="tile-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+            </div>
+            <span>Change Password</span>
+        </a>
+    </div>
 
-
-    <!-- ═══ MAIN: Branch Status List (left) + Quick Actions (right) ═══ -->
+    <!-- ═══ MAIN: Branch Status List & Enrollment By Branch ═══ -->
     <div class="main-dash-grid">
 
-        <!-- LEFT COLUMN -->
+        <!-- LEFT COLUMN: Branch Status List -->
         <div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;">
 
             <!-- Compact Branch Status List -->
@@ -637,6 +695,10 @@
             </div>
 
             <!-- Branch Enrollment Distribution -->
+        </div> <!-- End LEFT COLUMN wrapper -->
+
+        <!-- RIGHT COLUMN: Enrollment By Branch -->
+        <div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;">
             <div class="content-card" style="padding: 16px 20px;">
                 <div class="bsl-header">
                     <h2
@@ -702,96 +764,6 @@
                 </div>
             </div>
 
-        </div> <!-- End LEFT COLUMN wrapper -->
-
-        <!-- RIGHT COLUMN -->
-        <div style="display: flex; flex-direction: column; gap: 20px; align-self: start;">
-            <!-- Quick Actions -->
-            <div class="content-card">
-                <h2
-                    style="font-size:1.1rem; font-weight:800; color:var(--ma-primary); margin-bottom:18px; display:flex; align-items:center; gap:10px;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-                    </svg>
-                    Quick Actions
-                </h2>
-                <div class="qa-grid">
-                    <a href="{{ url_for('super_admin.super_admin_branches') }}" class="qa-btn">
-                        <div class="qa-icon" style="background:#eff6ff; color:#2563eb;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <rect width="16" height="20" x="4" y="2" rx="2" />
-                                <path d="M9 22v-4h6v4" />
-                                <path d="M8 6h.01" />
-                                <path d="M16 6h.01" />
-                                <path d="M8 10h.01" />
-                                <path d="M16 10h.01" />
-                                <path d="M8 14h.01" />
-                                <path d="M16 14h.01" />
-                            </svg>
-                        </div>
-                        <span>Manage Branches</span>
-                    </a>
-                    <a href="{{ url_for('super_admin.superadmin_school_years') }}" class="qa-btn">
-                        <div class="qa-icon" style="background:#eff6ff; color:#2563eb;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-                                <line x1="16" y1="2" x2="16" y2="6" />
-                                <line x1="8" y1="2" x2="8" y2="6" />
-                                <line x1="3" y1="10" x2="21" y2="10" />
-                            </svg>
-                        </div>
-                        <span>School Years</span>
-                    </a>
-
-                    <a href="{{ url_for('super_admin.superadmin_faqs') }}" class="qa-btn">
-                        <div class="qa-icon" style="background:#eff6ff; color:#2563eb;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-                            </svg>
-                        </div>
-                        <span>Manage FAQs</span>
-                    </a>
-                    <a href="/change-password" class="qa-btn">
-                        <div class="qa-icon" style="background:#eff6ff; color:#2563eb;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round">
-                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-                                <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                            </svg>
-                        </div>
-                        <span>Change Password</span>
-                    </a>
-                </div>
-            </div>
-
-            <!-- Active School Year Display -->
-            <div class="content-card"
-                style="text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 26px 20px; background: linear-gradient(145deg, #ffffff 0%, #eff6ff 100%);">
-                <div
-                    style="width: 44px; height: 44px; border-radius: 50%; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center; margin-bottom: 12px; box-shadow: 0 4px 10px rgba(37,99,235,0.15);">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                        <line x1="16" y1="2" x2="16" y2="6" />
-                        <line x1="8" y1="2" x2="8" y2="6" />
-                        <line x1="3" y1="10" x2="21" y2="10" />
-                    </svg>
-                </div>
-                <h3
-                    style="margin: 0; font-size: 0.75rem; color: #2563eb; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 800;">
-                    Active School Year</h3>
-                <div style="font-size: 1.4rem; font-weight: 900; color: var(--ma-primary); margin-top: 5px;">{{
-                    active_school_year }}</div>
-            </div>
-
         </div> <!-- End RIGHT COLUMN wrapper -->
     </div>
 
@@ -812,7 +784,7 @@
                     <line x1="3" y1="12" x2="3.01" y2="12" />
                     <line x1="3" y1="18" x2="3.01" y2="18" />
                 </svg>
-                All Branch Status List
+                All branches
                 <span style="font-size: 0.8rem; font-weight: 500; color: var(--ma-muted); margin-left: 4px;">({{
                     branch_health | length }} branches)</span>
             </h2>
@@ -833,12 +805,10 @@
                     <thead>
                         <tr>
                             <th>Branch Name</th>
-                            <th>Admin Identity</th>
+                            <th>Admin Name</th>
                             <th>Total Students</th>
-                            <th>Pending</th>
-                            <th>Attendance Rate</th>
-                            <th>Last Active</th>
-                            <th>Status</th>
+                            <th>Pending Enrollees</th>
+                            <th>Total Faculty</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -859,33 +829,7 @@
                                 <span class="badge-pill bg-light-amber">{{ b.pending_count }} PENDING</span>
                                 {% else %}<span style="color: #aaa;">None</span>{% endif %}
                             </td>
-                            <td>
-                                <div
-                                    style="font-weight: 800; font-size: 1rem; color: {% if b.attendance_rate >= 90 %}#16a34a{% elif b.attendance_rate >= 75 %}#d97706{% else %}#dc2626{% endif %};">
-                                    {{ b.attendance_rate | round | int if b.attendance_rate % 1 == 0 else
-                                    b.attendance_rate }}%
-                                </div>
-                                <div
-                                    style="width: 80px; height: 6px; background: #e2e8f0; border-radius: 3px; margin-top: 4px; overflow: hidden;">
-                                    <div
-                                        style="width: {{ b.attendance_rate }}%; height: 100%; background: {% if b.attendance_rate >= 90 %}#16a34a{% elif b.attendance_rate >= 75 %}#facc15{% else %}#ef4444{% endif %};">
-                                    </div>
-                                </div>
-                            </td>
-                            <td>
-                                {% if b.last_active %}
-                                <div style="font-size: 0.8rem; font-weight: 600; color: #1e40af;">{{
-                                    b.last_active.strftime('%b %d, %I:%M %p') }}</div>
-                                {% else %}<span style="color: #94a3b8; font-size: 0.75rem;">Never Active</span>{% endif
-                                %}
-                            </td>
-                            <td>
-                                {% if b.is_active %}
-                                <span class="badge-pill bg-light-green">Active</span>
-                                {% else %}
-                                <span class="badge-pill bg-light-amber">Inactive</span>
-                                {% endif %}
-                            </td>
+                            <td>{{ b.total_faculty }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>

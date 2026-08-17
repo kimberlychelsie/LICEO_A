@@ -44,44 +44,41 @@
         }
     }
 
-    /* ── Premium Header ── */
-    .premium-header {
-        margin-bottom: 48px;
+    /* ── Hero Banner ── */
+    .hero-banner {
+        background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
+        border-radius: 20px;
+        padding: 40px;
+        margin-bottom: 24px;
         position: relative;
+        overflow: hidden;
+        color: #fff;
+        box-shadow: 0 15px 35px -10px rgba(26, 58, 143, 0.2);
     }
 
-    .premium-header h1 {
-        font-size: 3rem;
+    .hero-content h1 {
+        font-size: 2.5rem;
         font-weight: 900;
         letter-spacing: -0.04em;
+        margin-bottom: 12px;
         line-height: 1;
-        margin-bottom: 8px;
-        color: var(--ma-primary);
-    }
-
-    .premium-header h1 span {
-        background: linear-gradient(135deg, var(--ma-primary), #3b82f6);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    .premium-header p {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: var(--ma-muted);
         display: flex;
         align-items: center;
-        gap: 12px;
+        justify-content: space-between;
     }
 
-    .premium-header p .date-pill {
-        background: #f1f5f9;
-        color: var(--ma-primary);
-        padding: 4px 14px;
-        border-radius: 99px;
-        font-size: 0.85rem;
-        font-weight: 800;
-        border: 1px solid var(--ma-glass-border);
+    .hero-content h1 span {
+        color: var(--ma-gold);
+        text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+    }
+
+    .hero-content p {
+        font-size: 1rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+        max-width: 600px;
+        line-height: 1.5;
+        margin: 0;
     }
 
     .modern-card {
@@ -336,20 +333,31 @@
         -webkit-overflow-scrolling: touch;
         border-radius: 0 0 28px 28px;
     }
+
+    @media (max-width: 768px) {
+        .ma-container {
+            padding: 16px 12px;
+        }
+
+        .hero-banner {
+            padding: 24px 20px;
+        }
+
+        .form-grid {
+            grid-template-columns: 1fr;
+        }
+    }
 </style>
 
 <div class="ma-container">
-    <header class="premium-header"
-        style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
-        <div>
-            <h1>Manage <span>Term Dates</span></h1>
-            <p>Set the official start and end dates for each term period.</p>
+    <div class="hero-banner">
+        <div class="hero-content">
+            <h1>
+                <div style="display: flex; gap: 8px;">Academic <span>Dates</span></div>
+            </h1>
+            <p>Set Term periods for S.Y. {{ session.get('active_sy_label', '2026-2027') }}</p>
         </div>
-        <div class="date-pill"
-            style="font-size: 1rem; padding: 10px 24px; background: #fff; border: 2px solid var(--ma-glass-border); box-shadow: var(--ma-shadow); color: var(--ma-primary); font-weight: 900; border-radius: 16px;">
-            [ S.Y. {{ session.get('active_sy_label', '2026-2027') }} ]
-        </div>
-    </header>
+    </div>
 
     <div style="max-width: 1200px; margin: 0 auto;">
         <form method="POST" id="grading-form">

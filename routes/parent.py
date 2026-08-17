@@ -592,17 +592,13 @@ def child_bills(enrollment_id):
         """, (enrollment_id, enrollment_id))
         active_res_total = Decimal(str(cursor.fetchone()["res_total"] or 0))
 
-        # Fetch active uniform orders total
+        # Fetch active uniform orders total (matching cashier logic)
         cursor.execute("""
             SELECT COALESCE(SUM(total_amount), 0) AS uo_total
             FROM uniform_orders uo
-            WHERE (uo.enrollment_id = %s OR uo.student_user_id IN (
-                SELECT u.user_id FROM student_accounts sa 
-                JOIN users u ON sa.username = u.username 
-                WHERE sa.enrollment_id = %s
-            ))
-            AND UPPER(COALESCE(uo.order_status, '')) NOT IN ('CANCELLED', 'REJECTED')
-        """, (enrollment_id, enrollment_id))
+            WHERE uo.bill_id = %s
+               OR (uo.enrollment_id = %s AND LOWER(uo.order_status) != 'cancelled')
+        """, (bill['bill_id'] if bill else None, enrollment_id))
         active_uo_total = Decimal(str(cursor.fetchone()["uo_total"] or 0))
 
         if bill:
@@ -670,7 +666,7 @@ def child_bills(enrollment_id):
                     JOIN users u ON sa.username = u.username 
                     WHERE sa.enrollment_id = %s
                 )) 
-                AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED', 'PAID', 'CLAIMED', 'COMPLETED')
+                AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED')
                 AND UPPER(COALESCE(ii.category, '')) <> 'UNIFORM'
                 ORDER BY r.reservation_id ASC
             """, (enrollment_id, enrollment_id))
@@ -686,7 +682,6 @@ def child_bills(enrollment_id):
                     WHERE sa.enrollment_id = %s
                 ))
                 AND UPPER(COALESCE(uo.order_status, '')) NOT IN ('CANCELLED', 'REJECTED')
-                AND UPPER(COALESCE(uo.payment_status, '')) NOT IN ('PAID', 'COMPLETED')
                 ORDER BY uo.order_id ASC
             """, (enrollment_id, enrollment_id))
             uo_orders = cursor.fetchall() or []
@@ -767,6 +762,90 @@ def child_bills(enrollment_id):
                 })
 
             reservation_details = list(reservation_details or []) + uo_details
+
+        # Chronologically allocate payments to fees (Tuition -> Other -> Uniforms -> Books)
+        rem_tuition = Decimal(str(bill.get("tuition_fee") or 0)) if bill else Decimal(0)
+        rem_other = Decimal(str(bill.get("other_fees") or 0)) if bill else Decimal(0)
+
+        uo_list = []
+        for uo in uo_details:
+            uo_list.append({
+                "order_id": uo["reservation_id"],
+                "item_names": uo["item_name"],
+                "rem": Decimal(str(uo["line_total"] or 0))
+            })
+
+        res_list = []
+        for res in (reservation_details or []):
+            if res not in uo_details:  # ensure it's a book/material
+                res_list.append({
+                    "reservation_id": res["reservation_id"],
+                    "item_names": res["item_name"],
+                    "rem": Decimal(str(res["line_total"] or 0))
+                })
+
+        chrono_payments = sorted(payments, key=lambda x: x["payment_date"])
+        for p in chrono_payments:
+            p_amount = Decimal(str(p["amount"] or 0))
+            p_breakdown = []
+            
+            if p["target_type"] == "tuition":
+                allocated = min(rem_tuition, p_amount)
+                rem_tuition -= allocated
+                p_breakdown.append({"desc": "Tuition & Mandatory Fees", "amount": float(allocated)})
+            elif p["target_type"] == "other":
+                allocated = min(rem_other, p_amount)
+                rem_other -= allocated
+                p_breakdown.append({"desc": "Other Fees", "amount": float(allocated)})
+            elif p["target_type"] == "reservation":
+                for r_item in res_list:
+                    if r_item["reservation_id"] == p["target_id"]:
+                        allocated = min(r_item["rem"], p_amount)
+                        r_item["rem"] -= allocated
+                        p_breakdown.append({"desc": f"Book: {r_item['item_names']}", "amount": float(allocated)})
+                        break
+                else:
+                    p_breakdown.append({"desc": "Book Reservation", "amount": float(p_amount)})
+            elif p["target_type"] == "uniform_order":
+                for u_item in uo_list:
+                    if u_item["order_id"] == p["target_id"]:
+                        allocated = min(u_item["rem"], p_amount)
+                        u_item["rem"] -= allocated
+                        p_breakdown.append({"desc": f"Uniform: {u_item['item_names']}", "amount": float(allocated)})
+                        break
+                else:
+                    p_breakdown.append({"desc": "Uniform Order", "amount": float(p_amount)})
+            else:
+                rem_p = p_amount
+                if rem_p > 0 and rem_tuition > 0:
+                    allocated = min(rem_tuition, rem_p)
+                    rem_tuition -= allocated
+                    rem_p -= allocated
+                    p_breakdown.append({"desc": "Tuition & Mandatory Fees", "amount": float(allocated)})
+                if rem_p > 0 and rem_other > 0:
+                    allocated = min(rem_other, rem_p)
+                    rem_other -= allocated
+                    rem_p -= allocated
+                    p_breakdown.append({"desc": "Other Fees", "amount": float(allocated)})
+                if rem_p > 0:
+                    for u_item in uo_list:
+                        if u_item["rem"] > 0:
+                            allocated = min(u_item["rem"], rem_p)
+                            u_item["rem"] -= allocated
+                            rem_p -= allocated
+                            p_breakdown.append({"desc": f"Uniform: {u_item['item_names']}", "amount": float(allocated)})
+                            if rem_p <= 0: break
+                if rem_p > 0:
+                    for r_item in res_list:
+                        if r_item["rem"] > 0:
+                            allocated = min(r_item["rem"], rem_p)
+                            r_item["rem"] -= allocated
+                            rem_p -= allocated
+                            p_breakdown.append({"desc": f"Book: {r_item['item_names']}", "amount": float(allocated)})
+                            if rem_p <= 0: break
+                if rem_p > 0:
+                    p_breakdown.append({"desc": "General Excess Payment", "amount": float(rem_p)})
+            p["breakdown_items"] = p_breakdown
 
         return render_template(
             "parent_child_bills.html",

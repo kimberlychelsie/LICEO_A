@@ -26,17 +26,22 @@
 
   <div class="sch-wrap" data-sch>
     {# ── Hero bar ── #}
+    {% if title or subtitle %}
     <div class="sch-hero">
       <div class="sch-hero-left">
         <div>
+          {% if title %}
           <div class="sch-hero-title">{{ title }}</div>
+          {% endif %}
+          {% if subtitle %}
           <div class="sch-hero-sub">
             {{ subtitle }}
-            <span class="sch-status-pill">Weekly View</span>
           </div>
+          {% endif %}
         </div>
       </div>
     </div>
+    {% endif %}
 
     {% if schedules and schedules|length > 0 %}
       <div class="sch-grid-shell">
@@ -146,7 +151,7 @@
       --sch-shadow:   0 10px 30px rgba(2,6,23,0.08);
       --sch-time-col: 90px;
       --sch-day-col:  200px;
-      --sch-row:      48px;
+      --sch-row:      64px;
       margin-top: 10px;
       font-family: 'Inter', sans-serif;
     }
@@ -268,20 +273,25 @@
     /* ─── Schedule blocks ─── */
     .sch-block {
       z-index: 5;
-      margin: 4px 6px;
-      border-radius: 12px;
-      padding: 10px 12px;
+      margin: 2px 4px;
+      border-radius: 8px;
+      padding: 6px 8px;
       background: var(--day-bg, #fff);
       border: 1px solid var(--day-border, rgba(26,58,143,0.1));
-      border-left: 5px solid var(--day-border, var(--sch-blue));
-      box-shadow: 0 4px 12px rgba(2,6,23,0.03);
-      overflow: hidden;
+      border-left: 4px solid var(--day-border, var(--sch-blue));
+      box-shadow: 0 2px 8px rgba(2,6,23,0.04);
+      overflow-y: auto;
+      scrollbar-width: none; /* Firefox */
       align-self: stretch;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: flex-start;
       transition: all 0.2s ease;
       cursor: default;
+    }
+    
+    .sch-block::-webkit-scrollbar {
+        display: none;
     }
 
     .sch-block:hover {
@@ -321,7 +331,7 @@
     @media (max-width: 640px) {
       .sch-wrap { 
         --sch-day-col: 140px; 
-        --sch-row: 56px; 
+        --sch-row: 64px; 
         --sch-time-col: 80px;
       }
       .sch-hero { text-align: center; justify-content: center; padding: 24px 0 8px; }

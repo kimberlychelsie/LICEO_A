@@ -567,31 +567,32 @@
 <div class="subj-wrap">
 
     <!-- ── Hero ── -->
-    <div class="subj-hero">
-        <div class="subj-hero-inner">
-            <div>
-                <h1>{{ class_info.subject_name }}</h1>
-                <div style="color:rgba(255,255,255,0.7); font-size:0.9rem; margin-top:4px;">
-                    <select id="section-filter" onchange="changeSection(this.value)" class="section-select">
+    <div class="subj-hero" style="margin-bottom: 24px; background: #1a3a8f; padding: 24px 32px; border-radius: 20px; box-shadow: 0 15px 35px rgba(26, 58, 143, 0.15);">
+        <div class="subj-hero-inner" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; width: 100%;">
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+                <h1 style="margin: 0; font-size: 2.2rem; font-weight: 900; color: white; display: flex; align-items: center; gap: 12px; letter-spacing: -0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.1);">{{ class_info.subject_name }}</h1>
+                <div style="color: rgba(255, 255, 255, 0.9); font-size: 0.9rem; font-weight: 600; display: flex; align-items: center; gap: 8px;">
+                    <select id="section-filter" onchange="changeSection(this.value)" class="section-select" style="padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.2); background: rgba(255, 255, 255, 0.1); color: white; font-weight: 700; font-family: inherit; outline: none; cursor: pointer; appearance: none; -webkit-appearance: none;">
                         {% for sec in sections %}
-                        <option value="{{ sec.section_id }}" {% if sec.section_id==active_section_id %}selected{% endif
-                            %}>
+                        <option style="color: #1e293b;" value="{{ sec.section_id }}" {% if sec.section_id==active_section_id %}selected{% endif %}>
                             {{ sec.grade_level_name }} — {{ sec.section_name }}
                         </option>
                         {% endfor %}
                     </select>
                 </div>
             </div>
-            <button type="button" onclick="openClasslist()" class="btn-manage-cl" style="text-decoration:none; border:none; cursor:pointer;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="9" cy="7" r="4"></circle>
-                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-                Classlist
-            </button>
+            <div>
+                <button type="button" onclick="openClasslist()" class="btn-manage-cl" style="background: rgba(255, 255, 255, 0.1); color: white; padding: 10px 20px; border-radius: 12px; font-weight: 700; border: 1px solid rgba(255, 255, 255, 0.2); transition: all 0.2s ease; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; position: relative; z-index: 10;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="9" cy="7" r="4"></circle>
+                        <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                    </svg>
+                    Classlist
+                </button>
+            </div>
         </div>
     </div>
 
@@ -754,7 +755,6 @@
                         <th>Duration</th>
                         <th>Scheduled</th>
                         <th>Questions</th>
-                        <th>Attempts</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -775,7 +775,6 @@
                             {% endif %}
                         </td>
                         <td>{{ q.question_count }}</td>
-                        <td>{{ q.attempt_count }}</td>
                         <td><span class="badge badge-{{ q.status|lower }}">{{ q.status|capitalize }}</span></td>
                         <td style="white-space:nowrap;">
                             <div style="display:flex; align-items:center; gap:5px;">
@@ -883,7 +882,6 @@
                         <th>Duration</th>
                         <th>Scheduled</th>
                         <th>Questions</th>
-                        <th>Attempts</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -911,7 +909,6 @@
                             {% endif %}
                         </td>
                         <td>{{ e.question_count }}</td>
-                        <td>{{ e.attempt_count }}</td>
                         <td><span class="badge badge-{{ e.status|lower }}">{{ e.status|capitalize }}</span></td>
                         <td style="white-space:nowrap;">
                             <div style="display:flex; align-items:center; gap:5px;">

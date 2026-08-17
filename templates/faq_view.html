@@ -58,14 +58,20 @@
     }
 
     .header-main h1 {
-        margin: 0;
-        font-size: 1.8rem;
+        margin: 0 0 12px 0;
+        font-size: 2.2rem;
         font-weight: 900;
         color: white;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        letter-spacing: -0.03em;
+        letter-spacing: -0.04em;
+        line-height: 1;
+    }
+
+    .header-sub {
+        font-size: 1rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+        line-height: 1.5;
+        margin: 0;
     }
 
     .btn-nav {
@@ -235,6 +241,34 @@
             top: 0;
         }
     }
+    .faq-pagination {
+        display: flex;
+        justify-content: center;
+        gap: 8px;
+        margin-top: 24px;
+    }
+
+    .faq-page-btn {
+        padding: 8px 16px;
+        border: 1px solid var(--par-border);
+        border-radius: 8px;
+        background: white;
+        color: var(--par-text);
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .faq-page-btn:hover {
+        background: var(--par-primary-soft);
+        color: var(--par-primary);
+    }
+
+    .faq-page-btn.active {
+        background: var(--par-primary);
+        color: white;
+        border-color: var(--par-primary);
+    }
 </style>
 {% endblock %}
 
@@ -243,8 +277,9 @@
     <!-- Slim Blue Header -->
     <header class="dashboard-header">
         <div class="header-main">
-            <p style="font-size: 0.85rem; font-weight: 600; opacity: 0.8; margin: 0 0 4px 0;">Help & Support</p>
-            <h1><i class="fas fa-question-circle"></i> Knowledge Base</h1>
+
+            <h1><i class="fas fa-question-circle"></i> View <span
+                    style="color: var(--par-gold); text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);">FAQs</span></h1>
             <div class="header-sub">Common questions and branch-specific guides</div>
         </div>
     </header>
@@ -276,7 +311,7 @@
             {% if general_faqs %}
             <section id="general" class="faq-section">
                 <h2><i class="fas fa-info-circle"></i> General Information</h2>
-                <div class="faq-wrapper">
+                <div class="faq-wrapper" id="general-faqs-wrapper">
                     {% for faq in general_faqs %}
                     <div class="faq-item">
                         <button class="faq-question">
@@ -291,13 +326,14 @@
                     </div>
                     {% endfor %}
                 </div>
+                <div class="faq-pagination" id="general-pagination"></div>
             </section>
             {% endif %}
 
             {% if branch_faqs %}
             <section id="branch" class="faq-section">
                 <h2><i class="fas fa-school"></i> Specific Branch FAQs</h2>
-                <div class="faq-wrapper">
+                <div class="faq-wrapper" id="branch-faqs-wrapper">
                     {% for faq in branch_faqs %}
                     <div class="faq-item">
                         <button class="faq-question">
@@ -312,6 +348,7 @@
                     </div>
                     {% endfor %}
                 </div>
+                <div class="faq-pagination" id="branch-pagination"></div>
             </section>
             {% endif %}
 
@@ -385,6 +422,60 @@
                 }
             });
         });
+
+        // ── Pagination Logic ──
+        const ITEMS_PER_PAGE = 5;
+
+        function initPagination(wrapperId, paginationId) {
+            const wrapper = document.getElementById(wrapperId);
+            const paginationContainer = document.getElementById(paginationId);
+            if (!wrapper || !paginationContainer) return;
+
+            const items = wrapper.querySelectorAll('.faq-item');
+            if (items.length === 0) return;
+
+            const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE);
+            let currentPage = 1;
+
+            function renderPage(page) {
+                currentPage = page;
+                
+                // Hide all first
+                items.forEach((item, index) => {
+                    item.classList.remove('active');
+                    item.querySelector('.faq-answer').style.maxHeight = null; // collapse
+                    item.style.display = 'none';
+                });
+
+                // Show only for current page
+                const start = (page - 1) * ITEMS_PER_PAGE;
+                const end = start + ITEMS_PER_PAGE;
+                
+                for (let i = start; i < end && i < items.length; i++) {
+                    items[i].style.display = 'block';
+                }
+
+                renderControls();
+            }
+
+            function renderControls() {
+                paginationContainer.innerHTML = '';
+                if (totalPages <= 1) return;
+
+                for (let i = 1; i <= totalPages; i++) {
+                    const btn = document.createElement('button');
+                    btn.className = 'faq-page-btn' + (i === currentPage ? ' active' : '');
+                    btn.textContent = i;
+                    btn.addEventListener('click', () => renderPage(i));
+                    paginationContainer.appendChild(btn);
+                }
+            }
+
+            renderPage(1);
+        }
+
+        initPagination('general-faqs-wrapper', 'general-pagination');
+        initPagination('branch-faqs-wrapper', 'branch-pagination');
     });
 </script>
 {% endblock %}

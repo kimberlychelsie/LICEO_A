@@ -99,6 +99,7 @@ def super_admin_dashboard():
                 {login_col} AS last_active,
                 COALESCE(e_all.cnt, 0)     AS total_students,
                 COALESCE(e_pend.cnt, 0)    AS pending_count,
+                COALESCE(fac.cnt, 0)       AS total_faculty,
                 COALESCE(att.rate, 0)      AS attendance_rate
             FROM branches b
             LEFT JOIN users u ON u.branch_id = b.branch_id AND u.role = 'branch_admin'
@@ -112,6 +113,11 @@ def super_admin_dashboard():
                 FROM enrollments WHERE status = 'pending'
                 GROUP BY branch_id
             ) e_pend ON e_pend.branch_id = b.branch_id
+            LEFT JOIN (
+                SELECT branch_id, COUNT(*) AS cnt
+                FROM users WHERE role = 'teacher'
+                GROUP BY branch_id
+            ) fac ON fac.branch_id = b.branch_id
             LEFT JOIN (
                 SELECT branch_id,
                        ROUND( (SUM(CASE WHEN status IN ('P', 'L', 'H', 'E') THEN 1 ELSE 0 END)::numeric / NULLIF(COUNT(*), 0)::numeric) * 100, 1) as rate
@@ -132,7 +138,7 @@ def super_admin_dashboard():
         # ── Active School Year ──
         cursor.execute("SELECT label FROM school_years WHERE is_active = TRUE LIMIT 1")
         sy_row = cursor.fetchone()
-        active_school_year = sy_row["label"] if sy_row else "No Active SY"
+        active_school_year = (sy_row[0] if isinstance(sy_row, tuple) else sy_row["label"]) if sy_row else "No Active SY"
 
         # ── Branch Enrollment Distribution ──
         cursor.execute("""
@@ -330,8 +336,12 @@ def super_admin_branches():
         # Fetch retired admins for transfer pool
         cursor.execute("SELECT user_id, full_name, username, branch_id FROM users WHERE role = 'retired_admin'")
         retired_admins_pool = cursor.fetchall()
+        
+        cursor.execute("SELECT label FROM school_years WHERE is_active = TRUE LIMIT 1")
+        sy_row = cursor.fetchone()
+        active_school_year = (sy_row[0] if isinstance(sy_row, tuple) else sy_row["label"]) if sy_row else "No Active SY"
 
-        return render_template("superadmin_branches.html", branches=branches, retired_admins_pool=retired_admins_pool)
+        return render_template("superadmin_branches.html", branches=branches, retired_admins_pool=retired_admins_pool, active_school_year=active_school_year)
 
     except Exception as e:
         logger.error(f"Error fetching branches: {str(e)}")
@@ -805,6 +815,10 @@ def superadmin_faqs():
         faqs = cur.fetchall() or []
         total_items = faqs[0][3] if faqs else 0
         total_pages = (total_items + per_page - 1) // per_page
+        
+        cur.execute("SELECT label FROM school_years WHERE is_active = TRUE LIMIT 1")
+        sy_row = cur.fetchone()
+        active_school_year = (sy_row[0] if isinstance(sy_row, tuple) else sy_row["label"]) if sy_row else "No Active SY"
 
         return render_template(
             "superadmin_faqs.html", 
@@ -812,7 +826,8 @@ def superadmin_faqs():
             message=message, 
             error=error,
             page=page,
-            total_pages=total_pages
+            total_pages=total_pages,
+            active_school_year=active_school_year
         )
 
     finally:
@@ -915,10 +930,14 @@ def superadmin_school_years():
     """)
     unique_years = cursor.fetchall()
     
+    cursor.execute("SELECT label FROM school_years WHERE is_active = TRUE LIMIT 1")
+    sy_row = cursor.fetchone()
+    active_school_year = (sy_row[0] if isinstance(sy_row, tuple) else sy_row["label"]) if sy_row else "No Active SY"
+    
     cursor.close()
     db.close()
 
-    return render_template("superadmin_school_years.html", unique_years=unique_years)
+    return render_template("superadmin_school_years.html", unique_years=unique_years, active_school_year=active_school_year)
 
 @super_admin_bp.route("/superadmin/school-years/activate", methods=["POST"])
 def superadmin_set_active_year():

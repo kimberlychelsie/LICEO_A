@@ -1,6 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Bill Statement - #{{ bill.branch_enrollment_no }}{% endblock %}
-
+{% block title %}Bill Statement - #{{ bill.branch_enrollment_no }}{% endblock %}
+
 {% block styles %}
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
@@ -24,7 +24,7 @@
     }
 
     .bill-container {
-        max-width: 1000px;
+        max-width: 1340px;
         margin: 0 auto;
         padding: 32px 20px 64px;
     }
@@ -415,6 +415,42 @@
     }
 
     /* Print: show ONLY the thermal receipt, nothing else */
+
+    /* ─── Payment Modal (matching uniform_orders pattern) ─── */
+    .modal-backdrop {
+        position: fixed; inset: 0; background: rgba(0,0,0,.5); backdrop-filter: blur(4px); z-index: 5000;
+        display: none; align-items: center; justify-content: center; padding: 16px;
+        pointer-events: none;
+    }
+    .modal-backdrop.open {
+        display: flex;
+        pointer-events: auto;
+    }
+    .modal-box {
+        background: #fff; border-radius: 24px; padding: 32px; max-width: 480px; width: 100%;
+        box-shadow: 0 24px 64px rgba(0,0,0,.15); animation: popIn .2s ease-out;
+        position: relative; z-index: 1;
+        max-height: min(90vh, 640px); overflow-y: auto;
+    }
+    @keyframes popIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-title { font-size: 1.2rem; font-weight: 800; color: var(--cashier-text, #0f172a); margin-bottom: 6px; }
+    .modal-sub { font-size: 0.875rem; color: var(--cashier-muted, #64748b); margin-bottom: 16px; font-weight: 600; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--cashier-text, #0f172a); margin-bottom: 6px; }
+    .form-group input, .form-group select {
+        width: 100%; padding: 10px 14px; border: 1.5px solid var(--cashier-border, #e2e8f0); border-radius: 10px;
+        font-family: inherit; font-size: 0.875rem; outline: none;
+    }
+    .form-group input:focus { border-color: var(--cashier-primary, #1a3a8f); }
+    .modal-actions { display: flex; gap: 12px; margin-top: 20px; }
+    .modal-actions button { flex: 1; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 0.9rem; border: none; cursor: pointer; font-family: inherit; }
+    .btn-cancel-modal { background: #f1f5f9; color: var(--cashier-muted, #64748b); }
+    .btn-save-modal { background: var(--cashier-primary, #1a3a8f); color: #fff; }
+    .btn-preset { padding: 8px; background: #fff; border: 1.5px solid var(--cashier-border, #e2e8f0); border-radius: 8px; font-family: inherit; font-weight: 700; font-size: 0.8rem; color: var(--cashier-primary, #1a3a8f); cursor: pointer; }
+    .btn-preset:hover { border-color: var(--cashier-primary, #1a3a8f); background: #f8fafc; }
+    .btn-preset-full { background: #ecfdf5; border-color: #10b981; color: #047857; }
+    .btn-preset-full:hover { background: #d1fae5; }
+
     @media print {
         @page {
             size: 80mm auto;
@@ -481,9 +517,9 @@
             print-color-adjust: exact !important;
         }
     }
-</style>
-{% endblock %}
-
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="bill-container">
 
@@ -593,29 +629,33 @@
             <tbody>
                 {% if bill.tuition_balance > 0 %}
                 <tr>
-                    <td>Tuition & Mandatory Fees</td>
+                    <td>
+                        <strong>Tuition & Mandatory Fees</strong>
+                        <div style="font-size:0.7rem; color:var(--cashier-muted); font-weight:700; margin-top:2px;">
+                            Base Tuition Fee: ₱{{ "{:,.2f}".format(bill.tuition_fee) }}
+                        </div>
+                    </td>
                     <td style="text-align: right;">₱{{ "{:,.2f}".format(bill.tuition_balance) }}</td>
                     <td style="text-align: right;">
-                        <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=tuition&target_amount={{ bill.tuition_balance }}&target_name=Tuition"
-                            style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; text-decoration: none; font-weight: 700; display: inline-block;">Pay
-                            Item</a>
+                        <button type="button" class="btn-pay-modal" data-target-type="tuition" data-target-amount="{{ bill.tuition_balance }}" data-target-name="Tuition" style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; border: none; font-weight: 700; cursor: pointer;">Pay Item</button>
                     </td>
                 </tr>
                 {% endif %}
 
                 {% for res in reservation_details %}
-                {% if res.balance > 0 and res.status != 'PAID' %}
+                {% if res.balance > 0 %}
                 <tr>
                     <td style="font-size: 0.9rem;">
                         <span style="color: var(--cashier-muted); font-family: monospace;">[RES-{{
                             "%04d"|format(res.reservation_id) }}]</span>
-                        {{ res.item_names }}
+                        <strong>{{ res.item_names or "Book/Material Reservation" }}</strong>
+                        <div style="font-size:0.7rem; color:var(--cashier-muted); font-weight:700; margin-top:2px;">
+                            Books & Materials · Price: ₱{{ "{:,.2f}".format(res.reservation_total) }}
+                        </div>
                     </td>
                     <td style="text-align: right;">₱{{ "{:,.2f}".format(res.balance) }}</td>
                     <td style="text-align: right;">
-                        <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=reservation&target_id={{ res.reservation_id }}&target_amount={{ res.balance }}&target_name=Reservation%20%23{{ res.reservation_id }}"
-                            style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; text-decoration: none; font-weight: 700; display: inline-block;">Pay
-                            Item</a>
+                        <button type="button" class="btn-pay-modal" data-target-type="reservation" data-target-id="{{ res.reservation_id }}" data-target-amount="{{ res.balance }}" data-target-name="Reservation #{{ res.reservation_id }}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; border: none; font-weight: 700; cursor: pointer;">Pay Item</button>
                     </td>
                 </tr>
                 {% endif %}
@@ -643,6 +683,11 @@
                         {% if uo.pieces and uo.pieces|length > 0 %}
                         <div id="uo-pieces-{{ uo.order_id }}" style="display: none; margin-top: 10px; padding: 10px 14px; background: #f8fafc; border-radius: 10px; border: 1px solid var(--cashier-border);">
                             <div style="font-size: 0.68rem; font-weight: 800; color: var(--cashier-muted); text-transform: uppercase; margin-bottom: 6px; letter-spacing: 0.04em;">Set Piece Price Breakdown</div>
+                            <div style="font-size: 0.72rem; color: #1e3a8a; font-weight: 700; margin-bottom: 8px; background: #eff6ff; padding: 6px 10px; border-radius: 6px; display: inline-block;">
+                                Total Order: ₱{{ "{:,.2f}".format(uo.order_total) }} &nbsp;|&nbsp; 
+                                Paid: ₱{{ "{:,.2f}".format(uo.order_total - uo.balance) }} &nbsp;|&nbsp; 
+                                Balance: ₱{{ "{:,.2f}".format(uo.balance) }}
+                            </div>
                             {% for p in uo.pieces %}
                             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; padding: 4px 0; border-bottom: 1px dashed #e2e8f0;">
                                 <span style="color: var(--cashier-text); font-weight: 600;">
@@ -656,9 +701,7 @@
                     </td>
                     <td style="text-align: right; vertical-align: top; padding-top: 16px;">₱{{ "{:,.2f}".format(uo.balance) }}</td>
                     <td style="text-align: right; vertical-align: top; padding-top: 16px;">
-                        <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=uniform_order&target_id={{ uo.order_id }}&target_amount={{ uo.balance }}&target_name={{ uo.item_names|urlencode }}"
-                            style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; text-decoration: none; font-weight: 700; display: inline-block;">Pay
-                            Item</a>
+                        <button type="button" class="btn-pay-modal" data-target-type="uniform_order" data-target-id="{{ uo.order_id }}" data-target-amount="{{ uo.balance }}" data-target-name="{{ uo.item_names }}" style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; border: none; font-weight: 700; cursor: pointer;">Pay Item</button>
                     </td>
                 </tr>
                 {% endif %}
@@ -669,9 +712,7 @@
                     <td>Miscellaneous / Other Charges</td>
                     <td style="text-align: right;">₱{{ "{:,.2f}".format(bill.other_balance) }}</td>
                     <td style="text-align: right;">
-                        <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=other&target_amount={{ bill.other_balance }}&target_name=Miscellaneous"
-                            style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; text-decoration: none; font-weight: 700; display: inline-block;">Pay
-                            Item</a>
+                        <button type="button" class="btn-pay-modal" data-target-type="other" data-target-amount="{{ bill.other_balance }}" data-target-name="Miscellaneous" style="padding: 6px 12px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-primary); color: white; border: none; font-weight: 700; cursor: pointer;">Pay Item</button>
                     </td>
                 </tr>
                 {% endif %}
@@ -681,10 +722,7 @@
                     <td style="text-align: right; color: var(--cashier-primary); font-weight: 900;">₱{{
                         "{:,.2f}".format(bill.balance) }}</td>
                     <td style="text-align: right;">
-                        <a href="/cashier/process-payment/{{ bill.bill_id }}?target_type=general&target_amount={{ bill.balance }}&target_name=Full+Remaining+Balance"
-                            style="padding: 6px 14px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-success); color: white; text-decoration: none; font-weight: 800; display: inline-block; white-space: nowrap;">
-                            Pay Balance
-                        </a>
+                        <button type="button" class="btn-pay-modal" data-target-type="general" data-target-amount="{{ bill.balance }}" data-target-name="Full Remaining Balance" style="padding: 6px 14px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-success); color: white; border: none; font-weight: 800; cursor: pointer; white-space: nowrap;">Pay Balance</button>
                     </td>
                 </tr>
             </tbody>
@@ -714,6 +752,7 @@
                         <th>Receipt No.</th>
                         <th>Transaction Date</th>
                         <th>Amount</th>
+                        <th>Payment For</th>
                         <th>Processed By</th>
                         <th style="text-align: right;">Action</th>
                     </tr>
@@ -724,6 +763,55 @@
                         <td><span style="color: var(--cashier-muted);">{{ p.receipt_number }}</span></td>
                         <td>{{ p.payment_date.strftime('%Y-%m-%d %I:%M %p') }}</td>
                         <td><span style="color: var(--cashier-success);">₱{{ "{:,.2f}".format(p.amount) }}</span></td>
+                        <td>
+                            {% if p.breakdown_items and p.breakdown_items|length > 1 %}
+                                <div style="display: inline-flex; align-items: center; gap: 6px;">
+                                    {% if p.target_type == 'uniform_order' %}
+                                        <span class="badge" style="background: rgba(26, 58, 143, 0.1); color: var(--cashier-primary);">Uniform</span>
+                                    {% elif p.target_type == 'reservation' %}
+                                        <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #b45309;">Book</span>
+                                    {% elif p.target_type == 'tuition' %}
+                                        <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--cashier-success);">Tuition</span>
+                                    {% else %}
+                                        <span class="badge" style="background: rgba(100, 116, 139, 0.1); color: var(--cashier-muted);">General</span>
+                                    {% endif %}
+                                    <a href="javascript:void(0)" onclick="togglePaymentBreakdown({{ p.payment_id }})" style="font-size: 0.72rem; color: var(--cashier-accent); font-weight: 700; text-decoration: none; display: inline-flex; align-items: center; gap: 2px;">
+                                        <span>Details</span>
+                                        <svg id="p-chev-{{ p.payment_id }}" xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="transition: transform 0.2s;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                    </a>
+                                </div>
+                                <div id="p-breakdown-{{ p.payment_id }}" style="display: none; margin-top: 8px; border-left: 2px solid var(--cashier-border); padding-left: 8px;">
+                                    {% for item in p.breakdown_items %}
+                                        <div style="margin-bottom: 4px; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.75rem;">
+                                            {% if 'Tuition' in item.desc %}
+                                                <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--cashier-success); font-size: 0.65rem; padding: 1px 4px;">Tuition</span>
+                                            {% elif 'Uniform' in item.desc %}
+                                                <span class="badge" style="background: rgba(26, 58, 143, 0.1); color: var(--cashier-primary); font-size: 0.65rem; padding: 1px 4px;">Uniform</span>
+                                            {% elif 'Book' in item.desc or 'Reservation' in item.desc %}
+                                                <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #b45309; font-size: 0.65rem; padding: 1px 4px;">Book</span>
+                                            {% else %}
+                                                <span class="badge" style="background: rgba(100, 116, 139, 0.1); color: var(--cashier-muted); font-size: 0.65rem; padding: 1px 4px;">{{ item.desc }}</span>
+                                            {% endif %}
+                                            <span style="font-weight: 600; color: var(--cashier-text);">₱{{ "{:,.2f}".format(item.amount) }}</span>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% elif p.breakdown_items and p.breakdown_items|length == 1 %}
+                                {% set item = p.breakdown_items[0] %}
+                                <div style="display: inline-flex; align-items: center; gap: 6px;">
+                                    {% if 'Tuition' in item.desc %}
+                                        <span class="badge" style="background: rgba(16, 185, 129, 0.1); color: var(--cashier-success);">Tuition</span>
+                                    {% elif 'Uniform' in item.desc %}
+                                        <span class="badge" style="background: rgba(26, 58, 143, 0.1); color: var(--cashier-primary);">Uniform</span>
+                                    {% elif 'Book' in item.desc or 'Reservation' in item.desc %}
+                                        <span class="badge" style="background: rgba(245, 158, 11, 0.1); color: #b45309;">Book</span>
+                                    {% else %}
+                                        <span class="badge" style="background: rgba(100, 116, 139, 0.1); color: var(--cashier-muted);">{{ item.desc }}</span>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <span class="badge" style="background: rgba(100, 116, 139, 0.1); color: var(--cashier-muted);">{{ p.target_type|replace('_', ' ')|title }}</span>
+                            {% endif %}
                         </td>
                         <td>{{ p.received_by_name }}</td>
                         <td style="text-align: right;">
@@ -869,6 +957,10 @@ function openReceiptModal(btn) {
 }
 function closeReceiptModal() {
     document.getElementById('receiptModal').classList.remove('open');
+    if (window._receiptFromAjax) {
+        window._receiptFromAjax = false;
+        window.location.reload();
+    }
 }
 function printReceipt() {
     window.print();
@@ -890,4 +982,174 @@ function toggleUoPieces(orderId) {
     }
 }
 </script>
+
+<!-- Payment Modal -->
+<div class="modal-backdrop" id="paymentModal">
+    <div class="modal-box">
+        <div class="modal-title">Process Payment</div>
+        <div class="modal-sub" id="modalTargetName">-</div>
+
+        <form id="paymentForm" action="/cashier/process-payment/{{ bill.bill_id }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="target_type" id="modalTargetType" value="general">
+            <input type="hidden" name="target_id" id="modalTargetId" value="">
+
+            <div class="form-group">
+                <label>Payment Amount (₱) *</label>
+                <input type="number" id="modalAmountInput" name="amount" required step="0.01" min="0.01" placeholder="0.00"
+                    style="font-size: 1.15rem; font-weight: 800;"
+                    onkeydown="if(event.key==='-' || event.key==='+') return false;"
+                    oninput="if(this.value.includes('.')){ let p = this.value.split('.'); if(p[1].length > 2) this.value = p[0] + '.' + p[1].substring(0,2); }">
+                
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px;" id="modalPresets">
+                    <button type="button" class="btn-preset" onclick="document.getElementById('modalAmountInput').value = '500'">₱500</button>
+                    <button type="button" class="btn-preset" onclick="document.getElementById('modalAmountInput').value = '1000'">₱1,000</button>
+                    <button type="button" class="btn-preset" onclick="document.getElementById('modalAmountInput').value = '2000'">₱2,000</button>
+                    <button type="button" class="btn-preset btn-preset-full" onclick="document.getElementById('modalAmountInput').value = document.getElementById('modalAmountInput').getAttribute('max')">FULL</button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Payment Method</label>
+                <div style="padding: 10px 14px; border: 1.5px solid var(--cashier-border, #e2e8f0); border-radius: 10px; background: #f8fafc; color: #94a3b8; display: flex; align-items: center; gap: 8px; font-size: 0.875rem;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line></svg>
+                    Cash
+                </div>
+                <input type="hidden" name="payment_method" value="cash">
+            </div>
+
+            <div class="form-group">
+                <label>Notes & Remarks (Optional)</label>
+                <textarea name="notes" rows="2" placeholder="e.g. Reference No. or Payor name..." style="width: 100%; padding: 10px 14px; border: 1.5px solid var(--cashier-border, #e2e8f0); border-radius: 10px; font-family: inherit; font-size: 0.875rem; resize: none; outline: none;"></textarea>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel-modal" onclick="closePayModal()">Cancel</button>
+                <button type="submit" class="btn-save-modal" style="background: var(--cashier-success, #10b981);">Confirm Payment</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    function closePayModal() {
+        const el = document.getElementById('paymentModal');
+        if (el) el.classList.remove('open');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const modal = document.getElementById('paymentModal');
+        const form = document.getElementById('paymentForm');
+        const typeInput = document.getElementById('modalTargetType');
+        const idInput = document.getElementById('modalTargetId');
+        const amountInput = document.getElementById('modalAmountInput');
+        const nameDisplay = document.getElementById('modalTargetName');
+        const presets = document.getElementById('modalPresets');
+
+        document.querySelectorAll('.btn-pay-modal').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const targetType = btn.getAttribute('data-target-type');
+                const targetId = btn.getAttribute('data-target-id') || '';
+                const targetAmount = parseFloat(btn.getAttribute('data-target-amount'));
+                const targetName = btn.getAttribute('data-target-name');
+
+                typeInput.value = targetType;
+                idInput.value = targetId;
+                nameDisplay.textContent = targetName;
+                amountInput.value = targetAmount.toFixed(2);
+                amountInput.setAttribute('max', targetAmount.toFixed(2));
+
+                if (targetType === 'reservation' || targetType === 'uniform_order') {
+                    amountInput.setAttribute('readonly', 'true');
+                    amountInput.style.background = '#f8fafc';
+                    amountInput.style.cursor = 'not-allowed';
+                    presets.style.display = 'none';
+                } else {
+                    amountInput.removeAttribute('readonly');
+                    amountInput.style.background = '';
+                    amountInput.style.cursor = '';
+                    presets.style.display = 'grid';
+                }
+
+                modal.classList.add('open');
+            });
+        });
+
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closePayModal();
+        });
+
+        // AJAX form submission
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const val = parseFloat(amountInput.value);
+            const max = parseFloat(amountInput.getAttribute('max'));
+            if (val > max) {
+                alert(`Amount cannot exceed ₱${max.toFixed(2)}`);
+                return;
+            }
+
+            const submitBtn = form.querySelector('button[type="submit"]');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Processing...';
+
+            try {
+                const formData = new FormData(form);
+                const resp = await fetch(form.action, {
+                    method: 'POST',
+                    body: formData,
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const data = await resp.json();
+
+                if (data.success) {
+                    closePayModal();
+                    
+                    // Reuse the existing thermal receipt modal
+                    const r = data.receipt;
+                    const fmtN = (n) => Number(n).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+                    const fakeBtn = document.createElement('button');
+                    fakeBtn.dataset.branch = r.branch_name;
+                    fakeBtn.dataset.receipt = r.receipt_number;
+                    fakeBtn.dataset.date = r.payment_date;
+                    fakeBtn.dataset.student = r.student_name;
+                    fakeBtn.dataset.grade = r.grade_level;
+                    fakeBtn.dataset.amount = fmtN(r.amount);
+                    fakeBtn.dataset.total = fmtN(r.bill_total);
+                    fakeBtn.dataset.paid = fmtN(r.bill_paid);
+                    fakeBtn.dataset.balance = fmtN(r.bill_balance);
+                    fakeBtn.dataset.cashier = r.received_by;
+                    fakeBtn.dataset.admin = '{{ branch_admin_name }}';
+                    const items = [{ desc: nameDisplay.textContent || 'Payment', amount: r.amount }];
+                    fakeBtn.dataset.items = JSON.stringify(items);
+                    
+                    openReceiptModal(fakeBtn);
+                    window._receiptFromAjax = true;
+                } else {
+                    alert('Payment failed: ' + (data.error || 'Unknown error'));
+                }
+            } catch (err) {
+                alert('Payment failed: ' + err.message);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Confirm Payment';
+            }
+        });
+    });
+
+    window.togglePaymentBreakdown = function(pid) {
+        const block = document.getElementById('p-breakdown-' + pid);
+        const chev = document.getElementById('p-chev-' + pid);
+        if (block.style.display === 'none') {
+            block.style.display = 'block';
+            if (chev) chev.style.transform = 'rotate(180deg)';
+        } else {
+            block.style.display = 'none';
+            if (chev) chev.style.transform = 'rotate(0deg)';
+        }
+    };
+</script>
+
 {% endblock %}

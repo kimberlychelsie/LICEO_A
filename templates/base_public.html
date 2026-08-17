@@ -16,7 +16,8 @@
     </title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@700;800;900&display=swap"
         rel="stylesheet">
 
     <style>
@@ -45,7 +46,10 @@
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-        }        html, body {
+        }
+
+        html,
+        body {
             max-width: 100vw;
             overflow-x: hidden;
             width: 100%;
@@ -53,7 +57,7 @@
 
         /* ══ TOP NAVBAR ══ */
         .pub-nav {
-            background: linear-gradient(135deg, var(--nav) 0%, var(--nav2) 100%);
+            background: #0c2461;
             padding: 0 32px;
             display: flex;
             align-items: center;
@@ -89,7 +93,7 @@
             align-items: center;
             justify-content: center;
             flex-shrink: 0;
-            box-shadow: 0 0 0 2px rgba(255,255,255,0.2);
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.2);
         }
 
         .pub-brand-icon img {
@@ -126,16 +130,19 @@
         .pub-nav-links {
             display: flex;
             align-items: center;
-            gap: 2px;
+            justify-content: center;
+            gap: 6px;
             flex: 1;
         }
 
         .pub-link {
-            color: rgba(255, 255, 255, .82);
+            color: rgba(255, 255, 255, .9);
             text-decoration: none;
-            font-weight: 600;
-            font-size: 0.88rem;
-            padding: 7px 14px;
+            font-family: 'Playfair Display', Georgia, serif;
+            font-weight: 800;
+            font-size: 1.1rem;
+            letter-spacing: 0.02em;
+            padding: 8px 20px;
             border-radius: 8px;
             transition: background 0.15s, color 0.15s;
             white-space: nowrap;
@@ -159,21 +166,25 @@
         }
 
         .pub-btn-login {
-            background: var(--nav-accent);
-            color: #fff;
+            background: #c9a227;
+            color: #0c2461;
             border: none;
-            padding: 8px 20px;
-            border-radius: 99px;
-            font-weight: 700;
-            font-size: 0.88rem;
+            padding: 8px 26px;
+            border-radius: 14px;
+            font-family: 'Playfair Display', Georgia, serif;
+            font-weight: 800;
+            font-size: 1.05rem;
+            letter-spacing: 0.02em;
             text-decoration: none;
-            transition: background 0.15s, transform 0.15s;
+            transition: background 0.15s, transform 0.15s, box-shadow 0.15s;
             cursor: pointer;
+            box-shadow: 0 4px 12px rgba(201, 162, 39, 0.3);
         }
 
         .pub-btn-login:hover {
-            background: var(--btnHover);
-            transform: translateY(-1px);
+            background: #b48a12;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(201, 162, 39, 0.45);
         }
 
         .pub-btn-outline {
@@ -193,6 +204,154 @@
             color: #fff;
         }
 
+        /* ══ FLASH TOASTS ══ */
+        .flash-toast-container {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            pointer-events: none;
+        }
+
+        .flash-toast {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            padding: 16px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 300px;
+            max-width: 400px;
+            pointer-events: auto;
+            border-left: 5px solid transparent;
+            animation: slideInToast 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .flash-toast.toast-hide {
+            animation: fadeOutToast 0.4s ease forwards;
+        }
+
+        .flash-toast.success {
+            border-color: #10b981;
+        }
+
+        .flash-toast.success .toast-icon {
+            color: #10b981;
+            background: #ecfdf5;
+        }
+
+        .flash-toast.error,
+        .flash-toast.danger {
+            border-color: #ef4444;
+        }
+
+        .flash-toast.error .toast-icon,
+        .flash-toast.danger .toast-icon {
+            color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .flash-toast.warning {
+            border-color: #f59e0b;
+        }
+
+        .flash-toast.warning .toast-icon {
+            color: #f59e0b;
+            background: #fffbeb;
+        }
+
+        .flash-toast.info {
+            border-color: #3b82f6;
+        }
+
+        .flash-toast.info .toast-icon {
+            color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .toast-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+        }
+
+        .toast-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .toast-message {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #0f172a;
+            line-height: 1.4;
+        }
+
+        .toast-close-btn {
+            background: transparent;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .toast-close-btn:hover {
+            background: #f1f5f9;
+            color: #475569;
+        }
+
+        @keyframes slideInToast {
+            from {
+                opacity: 0;
+                transform: translateX(50px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes fadeOutToast {
+            from {
+                opacity: 1;
+                transform: translateX(0);
+            }
+
+            to {
+                opacity: 0;
+                transform: translateX(50px);
+                visibility: hidden;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .flash-toast-container {
+                bottom: 16px;
+                right: 16px;
+                left: 16px;
+            }
+
+            .flash-toast {
+                width: 100%;
+                max-width: none;
+            }
+        }
+
         /* Responsive Mobile Styles for Public Header */
         @media (max-width: 900px) {
             .pub-nav {
@@ -201,13 +360,17 @@
                 position: sticky;
                 top: 0;
             }
+
             .pub-mobile-toggle {
                 display: flex;
                 margin-left: auto;
             }
-            .pub-nav-links, .pub-nav-right {
+
+            .pub-nav-links,
+            .pub-nav-right {
                 width: 100%;
             }
+
             .pub-nav-menu {
                 position: absolute;
                 top: 62px;
@@ -223,25 +386,30 @@
                 display: none;
                 z-index: 999;
             }
+
             .pub-nav.mobile-open .pub-nav-menu {
                 display: flex;
                 animation: slideDownNav 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
             }
+
             @keyframes slideDownNav {
                 from {
                     opacity: 0;
                     transform: translateY(-8px);
                 }
+
                 to {
                     opacity: 1;
                     transform: translateY(0);
                 }
             }
+
             .pub-nav-links {
                 flex-direction: column;
                 align-items: stretch;
                 gap: 6px;
             }
+
             .pub-nav-right {
                 flex-direction: column;
                 align-items: stretch;
@@ -249,20 +417,28 @@
                 padding-top: 12px;
                 border-top: 1px solid rgba(255, 255, 255, 0.12);
             }
+
             .pub-link {
                 padding: 12px 16px;
                 border-radius: 10px;
                 font-size: 0.95rem;
                 background: rgba(255, 255, 255, 0.04);
             }
-            .pub-link.active, .pub-link:hover {
+
+            .pub-link.active,
+            .pub-link:hover {
                 background: rgba(255, 255, 255, 0.14);
             }
-            .pub-btn-outline, .pub-logout, .pub-user-badge {
+
+            .pub-btn-outline,
+            .pub-logout,
+            .pub-user-badge,
+            .pub-btn-login {
                 width: 100%;
                 justify-content: center;
                 text-align: center;
             }
+
             .pub-content {
                 padding: 16px 14px 60px;
             }
@@ -284,7 +460,8 @@
         </a>
 
         <button class="pub-mobile-toggle" onclick="togglePublicNav()" aria-label="Toggle Navigation Menu">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <line x1="3" y1="12" x2="21" y2="12"></line>
                 <line x1="3" y1="6" x2="21" y2="6"></line>
                 <line x1="3" y1="18" x2="21" y2="18"></line>
@@ -293,11 +470,13 @@
 
         <div class="pub-nav-menu" id="pubNavMenu">
             <div class="pub-nav-links">
-                <a class="pub-link {% if request.path == '/' %}active{% endif %}" href="/" onclick="closePublicNav()">Home</a>
+                <a class="pub-link {% if request.path == '/' %}active{% endif %}" href="/"
+                    onclick="closePublicNav()">Home</a>
                 <a class="pub-link" href="/#about" onclick="smoothTo(event,'about'); closePublicNav();">About</a>
-                <a class="pub-link" href="/#branches" onclick="smoothTo(event,'branches'); closePublicNav();">Enroll</a>
-                <a class="pub-link" href="/#campus-map" onclick="smoothTo(event,'campus-map'); closePublicNav();">Location</a>
-                <a class="pub-link" href="/track" onclick="closePublicNav()">Track Status</a>
+                <a class="pub-link" href="/?enroll=1"
+                    onclick="if(window.location.pathname === '/' && typeof openEnrollModal === 'function'){event.preventDefault(); openEnrollModal(); closePublicNav();}">Enroll</a>
+                <a class="pub-link {% if request.path == '/track' %}active{% endif %}" href="/track"
+                    onclick="closePublicNav()">Track Status</a>
                 <a class="pub-link" href="/#faq" onclick="smoothTo(event,'faq'); closePublicNav();">FAQ</a>
             </div>
 
@@ -322,9 +501,17 @@
                 } %}
                 <a class="pub-btn-outline" href="{{ role_map.get(session.get('role'), '/') }}">Go to Dashboard</a>
                 <a class="pub-logout" href="/logout" onclick="return confirm('Are you sure you want to logout?');">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                        style="vertical-align: middle; margin-right: 4px;">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <polyline points="16 17 21 12 16 7"></polyline>
+                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
                     Logout
                 </a>
+                {% else %}
+                <a class="pub-btn-login" href="/login">Log In</a>
                 {% endif %}
             </div>
         </div>
@@ -338,20 +525,46 @@
         <div class="flash-toast {{ category }}" role="alert">
             <div class="toast-icon">
                 {% if category == 'success' %}
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                    <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
                 {% elif category == 'error' %}
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="12"></line>
+                    <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                </svg>
                 {% elif category == 'warning' %}
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z">
+                    </path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                </svg>
                 {% else %}
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
                 {% endif %}
             </div>
             <div class="toast-content">
                 <span class="toast-message">{{ msg }}</span>
             </div>
-            <button class="toast-close-btn" onclick="this.parentElement.classList.add('toast-hide'); setTimeout(() => this.parentElement.remove(), 400);" aria-label="Close">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            <button class="toast-close-btn"
+                onclick="this.parentElement.classList.add('toast-hide'); setTimeout(() => this.parentElement.remove(), 400);"
+                aria-label="Close">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
             </button>
         </div>
         {% endfor %}

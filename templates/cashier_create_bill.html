@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Create Bill - #{{ enrollment.branch_enrollment_no }}{% endblock %}
+{% block title %}Generate Bill - #{{ enrollment.branch_enrollment_no }}{% endblock %}
 
 {% block styles %}
 <style>
@@ -24,9 +24,52 @@
     }
 
     .create-bill-container {
-        max-width: 900px;
+        max-width: 1340px;
         margin: 0 auto;
-        padding: 32px 20px 64px;
+        padding: 28px 20px 64px;
+    }
+
+    /* ── Hero Banner ── */
+    .hero-banner {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        border-radius: 20px;
+        padding: 40px;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+        color: #fff;
+        box-shadow: 0 15px 35px -10px rgba(30, 58, 138, 0.2);
+    }
+
+    .hero-content {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .hero-content h1 {
+        font-size: 2.5rem;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        margin-bottom: 12px;
+        line-height: 1;
+        margin-top: 0;
+    }
+
+    .hero-content h1 span {
+        color: #34d399;
+        text-shadow: 0 4px 12px rgba(52, 211, 153, 0.3);
+    }
+
+    .hero-content p {
+        font-size: 1rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+        max-width: 600px;
+        line-height: 1.5;
+        margin: 0;
     }
 
     .premium-card {
@@ -37,15 +80,7 @@
         box-shadow: var(--cashier-shadow);
     }
 
-    .page-title {
-        font-size: 1.75rem;
-        font-weight: 800;
-        color: var(--cashier-primary);
-        margin-bottom: 32px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
+
 
     /* ── Info Bar ── */
     .student-bar {
@@ -91,20 +126,26 @@
     }
 
     .form-label {
-        font-size: 0.85rem;
-        font-weight: 700;
-        color: var(--cashier-text);
+        display: block;
+        font-size: .78rem;
+        font-weight: 800;
+        color: var(--cashier-muted);
+        text-transform: uppercase;
+        letter-spacing: .05em;
+        margin-bottom: 8px;
     }
 
     .form-input {
-        padding: 14px 16px;
+        padding: 13px 16px;
         border-radius: 12px;
-        border: 1px solid var(--cashier-border);
+        border: 1.5px solid var(--cashier-border);
         font-family: inherit;
-        font-weight: 700;
-        font-size: 1rem;
-        background: #fbfcfe;
+        font-weight: 600;
+        font-size: .95rem;
+        background: #fcfcfc;
         transition: all 0.2s;
+        box-sizing: border-box;
+        width: 100%;
     }
 
     .form-input:focus {
@@ -115,34 +156,48 @@
     }
 
     .reserved-items-well {
-        background: #f0f9ff;
-        border: 1px solid #bae6fd;
-        border-radius: 12px;
-        padding: 12px 16px;
-        margin-bottom: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
+        padding-left: 16px;
+        border-left: 4px solid var(--cashier-accent);
+    }
+
+    .reserved-items-well strong {
         font-size: 0.85rem;
+        color: var(--cashier-primary);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
 
     .reserved-items-well ul {
         list-style: none;
-        margin-top: 8px;
-        color: #0369a1;
+        margin: 0;
+        padding: 0;
+        font-size: 0.95rem;
+        color: var(--cashier-text);
         font-weight: 600;
+    }
+
+    .reserved-items-well ul li {
+        margin-bottom: 6px;
     }
 
     /* ── Total Well ── */
     .total-well {
-        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-        color: #fff;
-        padding: 32px;
-        border-radius: 20px;
-        text-align: center;
+        background: #fbfcfe;
+        border: 1px solid var(--cashier-border);
+        border-radius: 16px;
+        padding: 24px 32px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         margin: 40px 0;
-        box-shadow: 0 10px 15px -3px rgba(30, 58, 138, 0.2);
     }
 
-    .total-well .lbl { font-size: 0.85rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.9; }
-    .total-well .amt { font-size: 3rem; font-weight: 900; margin-top: 8px; }
+    .total-well .lbl { font-size: 1.1rem; font-weight: 800; color: var(--cashier-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .total-well .amt { font-size: 2.8rem; font-weight: 900; color: var(--cashier-primary); margin: 0; }
 
     /* ── Actions ── */
     .action-flex {
@@ -152,29 +207,39 @@
 
     .btn-create {
         flex: 2;
-        padding: 16px;
+        padding: 13px 28px;
         border-radius: 12px;
         background: var(--cashier-success);
         color: #fff;
         border: none;
+        font-family: inherit;
         font-weight: 800;
-        font-size: 1rem;
+        font-size: .95rem;
         cursor: pointer;
         box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
         transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
     }
 
-    .btn-create:hover { background: #059669; transform: translateY(-2px); }
+    .btn-create:hover { background: #059669; transform: translateY(-2px); box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3); }
 
     .btn-cancel {
         flex: 1;
-        padding: 16px;
+        padding: 13px 28px;
         border-radius: 12px;
         background: #f1f5f9;
         color: var(--cashier-muted);
         text-decoration: none;
+        font-family: inherit;
         font-weight: 800;
+        font-size: .95rem;
         text-align: center;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
         transition: all 0.2s;
     }
 
@@ -201,8 +266,16 @@
 
 {% block content %}
 <div class="create-bill-container">
+    <div class="hero-banner">
+        <div class="hero-content">
+            <div>
+                <h1>Generate <span>Bill</span></h1>
+                <p>Create billing statement for <strong>{{ enrollment.student_first_name }} {{ enrollment.student_last_name }}</strong></p>
+            </div>
+        </div>
+    </div>
+
     <div class="premium-card">
-        <h1 class="page-title"> Create Billing Statement</h1>
 
         <div class="student-bar">
             <div class="bar-item">
@@ -280,9 +353,9 @@
             <div class="fee-section">
                 <h3> Uniforms</h3>
                 {% if uniforms %}
-                <div class="reserved-items-well" style="background: #fdf2f8; border-color: #fbcfe8;">
-                    <strong style="color: #9d174d;">Reserved Apparel Found:</strong>
-                    <ul style="color: #9d174d;">
+                <div class="reserved-items-well" style="border-left-color: #ec4899;">
+                    <strong style="color: #db2777;">Reserved Apparel Found:</strong>
+                    <ul>
                         {% for uniform in uniforms %}
                         <li>• {{ uniform.uniform_type }} - Size {{ uniform.size }} (x{{ uniform.quantity }})</li>
                         {% endfor %}
@@ -305,7 +378,7 @@
             </div>
 
             <div class="action-flex">
-                <button type="submit" class="btn-create"> Issue Billing Statement</button>
+                <button type="submit" class="btn-create"> Generate Bill</button>
                 <a href="/cashier" class="btn-cancel">Cancel</a>
             </div>
         </form>

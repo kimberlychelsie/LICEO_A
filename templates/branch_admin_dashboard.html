@@ -42,27 +42,41 @@
         }
     }
 
-    /* ── Premium Header ── */
-    .premium-header {
-        margin-bottom: 40px;
+    /* ── Hero Banner ── */
+    .hero-banner {
+        background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
+        border-radius: 20px;
+        padding: 40px;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+        color: #fff;
+        box-shadow: 0 15px 35px -10px rgba(26, 58, 143, 0.2);
     }
 
-    .premium-header h1 {
-        font-size: 2.4rem;
+    .hero-content h1 {
+        font-size: 2.5rem;
         font-weight: 900;
         letter-spacing: -0.04em;
-        line-height: 1;
         margin-bottom: 12px;
-        color: var(--ma-primary);
-    }
-
-    .premium-header p {
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: var(--ma-muted);
+        line-height: 1;
         display: flex;
         align-items: center;
-        gap: 12px;
+        justify-content: space-between;
+    }
+
+    .hero-content h1 span {
+        color: var(--ma-gold);
+        text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+    }
+
+    .hero-content p {
+        font-size: 1rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+        max-width: 600px;
+        line-height: 1.5;
+        margin: 0;
     }
 
     /* ── Two Column Layout ── */
@@ -115,20 +129,12 @@
         border-radius: 20px;
         padding: 24px;
         display: flex;
-        align-items: center;
-        gap: 20px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
-    }
-
-    .metric-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: 16px;
-        background: #f8fafc;
-        display: flex;
+        flex-direction: column;
         align-items: center;
         justify-content: center;
-        font-size: 1.8rem;
+        text-align: center;
+        gap: 8px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
     }
 
     .metric-info .val {
@@ -262,20 +268,85 @@
     .quick-btn i {
         color: var(--ma-gold);
     }
+
+    @media (max-width: 768px) {
+        .ma-container {
+            padding: 16px 12px;
+        }
+
+        .hero-banner {
+            padding: 24px 20px;
+        }
+
+        .metrics-row {
+            grid-template-columns: 1fr;
+        }
+
+        .quick-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    /* ── Modal ── */
+    .glass-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.7);
+        backdrop-filter: blur(8px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+
+    .glass-overlay.visible {
+        display: flex;
+        opacity: 1;
+    }
+
+    .glass-modal {
+        background: white;
+        width: 100%;
+        max-width: 500px;
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        position: relative;
+    }
+
+    .modal-close {
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        border: none;
+        background: none;
+        font-size: 1.5rem;
+        color: var(--ma-muted);
+        cursor: pointer;
+        transition: color 0.2s;
+    }
+
+    .modal-close:hover {
+        color: var(--ma-primary);
+    }
 </style>
 
 <!-- Font Awesome -->
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
 <div class="ma-container">
-    <!-- Header matching the format -->
-    <header class="premium-header">
-        <h1>Welcome, {% if session.get('gender') == 'Male' %}Mr.{% elif session.get('gender') == 'Female' %}Ms.{% endif
-            %} {{ session.get('full_name', 'Administrator') }}</h1>
-        <p>
-            {{ session.get('branch_name', 'Liceo LMS') }} • S.Y. {{ session.get('active_sy_label', '2026-2027') }}
-        </p>
-    </header>
+    <!-- Header -->
+    <div class="hero-banner">
+        <div class="hero-content">
+            <h1>
+                <div style="display: flex; gap: 8px;">Admin <span>Dashboard</span></div>
+            </h1>
+            <p>{{ session.get('branch_name', 'Liceo LMS') }} • S.Y. {{ session.get('active_sy_label', '2026-2027') }}
+            </p>
+        </div>
+    </div>
 
     <div class="dashboard-layout">
         <!-- LEFT COLUMN -->
@@ -283,18 +354,12 @@
             <!-- Metrics Row -->
             <div class="metrics-row">
                 <div class="metric-box">
-                    <div class="metric-icon" style="color: #1a3a8f;">
-                        <i class="fas fa-users-cog"></i>
-                    </div>
                     <div class="metric-info">
                         <div class="val">{{ metrics.total_staff }}</div>
                         <div class="label">Faculty Accounts</div>
                     </div>
                 </div>
                 <div class="metric-box">
-                    <div class="metric-icon" style="color: #10b981;">
-                        <i class="fas fa-user-graduate"></i>
-                    </div>
                     <div class="metric-info">
                         <div class="val">{{ metrics.total_students or 0 }}</div>
                         <div class="label">Student Accounts</div>
@@ -302,52 +367,12 @@
                 </div>
             </div>
 
-            <!-- Grade Review & Approvals -->
-            <div class="panel-card">
-                <div class="panel-title">
-                    <i class="fas fa-check-double" style="color: var(--ma-gold);"></i> Grade Review & Approvals
-                </div>
-                <div class="placeholder-box">
-                    <i class="fas fa-code" style="font-size: 2rem; margin-bottom: 12px; color: #cbd5e1;"></i>
-                    <h4 style="margin: 0 0 8px 0; color: var(--ma-primary);">Developer Placeholder Container</h4>
-                    <p style="margin: 0; font-size: 0.9rem;">[ Grade submission preview / table box ]<br>(For
-                        Admin/Principal review before public)</p>
-                </div>
-            </div>
 
-            <!-- Enrollment Application Status -->
-            <div class="panel-card">
-                <div class="panel-title">
-                    <i class="fas fa-chart-pie" style="color: var(--ma-gold);"></i> Enrollment Application Status
-                </div>
-                <div style="height: 300px; width: 100%;">
-                    <canvas id="statusChart"></canvas>
-                </div>
-            </div>
-        </div>
-
-        <!-- RIGHT COLUMN -->
-        <div class="col-right">
-            <!-- Action Needed -->
-            <div class="panel-card">
-                <div class="panel-title" style="color: #dc2626;">
-                    <i class="fas fa-exclamation-circle" style="color: #dc2626;"></i> Action Needed
-                </div>
-                <div class="action-list">
-                    <div class="action-item">
-                        <div class="action-text">
-                            <i class="fas fa-user-clock"></i> {{ metrics.pending_reservations|default(0) }} Pending
-                            Student Approvals
-                        </div>
-                        <a href="/branch-admin/manage-accounts?role=student" class="action-btn">Review Requests</a>
-                    </div>
-                </div>
-            </div>
 
             <!-- Academic Calendar Terms -->
             <div class="panel-card">
                 <div class="panel-title">
-                    <i class="fas fa-calendar-alt" style="color: var(--ma-gold);"></i> Academic Calendar Terms
+                    Academic Calendar
                 </div>
                 <div class="term-list">
                     {% for p, label in [('1st', '1st Term'), ('2nd', '2nd Term'), ('3rd', '3rd Term')] %}
@@ -366,44 +391,122 @@
                 </div>
             </div>
 
+            <!-- Enrollment Application Status -->
+            <div class="panel-card">
+                <div class="panel-title">
+                    Enrollment Application Status
+                </div>
+                <div style="height: 300px; width: 100%;">
+                    <canvas id="statusChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="col-right">
+            <!-- Action Needed -->
+            <div class="panel-card">
+                <div class="panel-title" style="color: #dc2626;">
+                    Action Needed
+                </div>
+                <div class="action-list">
+                    <div class="action-item">
+                        <div class="action-text">
+                            {{ metrics.pending_reservations|default(0) }} Pending
+                            Student Approvals
+                        </div>
+                        <a href="/branch-admin/manage-accounts?role=student" class="action-btn">Review Requests</a>
+                    </div>
+                </div>
+            </div>
+
+
             <!-- Quick Actions -->
             <div class="panel-card">
                 <div class="panel-title">
-                    <i class="fas fa-bolt" style="color: var(--ma-gold);"></i> Quick Actions
+                    Quick Actions
                 </div>
                 <div class="quick-grid">
                     <a href="/branch-admin/broadcast-station" class="quick-btn">
-                        <i class="fas fa-broadcast-tower"></i> Broadcast Station
+                        Admin Announcements
                     </a>
                     <a href="/branch-admin/manage-accounts" class="quick-btn">
-                        <i class="fas fa-users-cog"></i> Manage Accounts
+                        Manage Accounts
                     </a>
                     <a href="/branch_admin/add_year" class="quick-btn">
-                        <i class="fas fa-calendar-alt"></i> Academic Calendar
+                        Academic Calendar
                     </a>
                     <a href="/branch-admin/manage-accounts?role=teacher" class="quick-btn">
-                        <i class="fas fa-chalkboard-teacher"></i> Manage Teachers
+                        Manage Teachers
                     </a>
-                    <a href="/branch-admin/sections" class="quick-btn">
-                        <i class="fas fa-clock"></i> Schedules
+                    <a href="/branch-admin/schedules" class="quick-btn">
+                        Schedules
                     </a>
-                    <a href="/branch-admin/subjects" class="quick-btn">
-                        <i class="fas fa-book"></i> Academic Management
+                    <a href="javascript:void(0)" onclick="toggleAcadModal()" class="quick-btn">
+                        Academic Management
                     </a>
-                    <a href="/branch-admin/faqs" class="quick-btn"
-                        style="grid-column: span 2; justify-content: center;">
-                        <i class="fas fa-question-circle"></i> Manage FAQs
+                    <a href="/branch-admin/grade-approval" class="quick-btn">
+                        Grade Approvals
+                    </a>
+                    <a href="/branch-admin/faqs" class="quick-btn">
+                        Manage FAQs
                     </a>
                 </div>
             </div>
+
+
         </div>
     </div>
 </div>
 
+<!-- Academic Management Modal -->
+<div class="glass-overlay" id="acadModalOverlay">
+    <div class="glass-modal">
+        <button class="modal-close" onclick="toggleAcadModal()"></button>
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div
+                style="width: 56px; height: 56px; background: rgba(26, 58, 143, 0.1); color: var(--ma-primary); border-radius: 16px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 16px;">
+                </div>
+            <h2 style="margin: 0; font-size: 1.5rem; font-weight: 900; color: var(--ma-primary);">Academic Management
+            </h2>
+            <p style="margin: 8px 0 0; color: var(--ma-muted); font-size: 0.9rem;">Select an action below</p>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            <a href="/branch-admin/grade-levels" class="quick-btn"
+                style="background: #f8fafc; border: 1px solid var(--ma-border);">
+                Grade Levels
+            </a>
+            <a href="/branch-admin/sections" class="quick-btn"
+                style="background: #f8fafc; border: 1px solid var(--ma-border);">
+                Sections
+            </a>
+            <a href="/branch-admin/subjects" class="quick-btn"
+                style="background: #f8fafc; border: 1px solid var(--ma-border);">
+                Subjects
+            </a>
+            <a href="/branch-admin/assign-students" class="quick-btn"
+                style="background: #f8fafc; border: 1px solid var(--ma-border);">
+                Assign Students
+            </a>
+        </div>
+    </div>
+</div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
 
 <script>
+    function toggleAcadModal() {
+        const modal = document.getElementById('acadModalOverlay');
+        if (modal.classList.contains('visible')) {
+            modal.classList.remove('visible');
+            setTimeout(() => modal.style.display = 'none', 300);
+        } else {
+            modal.style.display = 'flex';
+            setTimeout(() => modal.classList.add('visible'), 10);
+        }
+    }
+
     // Chart.js Configuration
     Chart.register(ChartDataLabels);
 

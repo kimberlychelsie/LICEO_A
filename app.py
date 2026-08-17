@@ -641,6 +641,31 @@ def inject_teacher_notifications():
     return dict(teacher_global_notifs=[], teacher_unread_count=0)
 
 @app.context_processor
+def inject_parent_children():
+    if session.get('role') == 'parent' and session.get('user_id'):
+        from db import get_db_connection
+        import psycopg2.extras
+        db = get_db_connection()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            cursor.execute("""
+                SELECT ps.student_id as enrollment_id, e.student_first_name, e.student_last_name
+                FROM parent_student ps
+                JOIN enrollments e ON ps.student_id = e.enrollment_id
+                WHERE ps.parent_id = %s
+            """, (session['user_id'],))
+            children = cursor.fetchall()
+            for c in children:
+                c['student_name'] = f"{c.get('student_first_name','')} {c.get('student_last_name','')}".strip()
+            return dict(parent_global_children=children)
+        except Exception as e:
+            print(f"Error in Parent context processor: {e}")
+        finally:
+            cursor.close()
+            db.close()
+    return dict(parent_global_children=[])
+
+@app.context_processor
 def inject_librarian_notifications():
     if session.get('role') == 'librarian':
         branch_id = session.get('branch_id')

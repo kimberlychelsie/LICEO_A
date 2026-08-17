@@ -3,6 +3,8 @@
 
 {% block styles %}
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+    
     :root {
         --lib-primary:  #1e3a8a;
         --lib-accent:   #3b82f6;
@@ -17,27 +19,72 @@
     }
 
     .report-wrap {
-        padding: 40px;
         max-width: 1400px;
         margin: 0 auto;
+        padding: 32px 24px 80px;
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
-    /* Header */
-    .report-header {
+    /* ── Page header ── */
+    .page-header {
+        background: linear-gradient(135deg, var(--lib-primary) 0%, #1d4ed8 60%, var(--lib-accent) 100%);
+        border-radius: 14px;
+        padding: 32px 36px;
+        margin-bottom: 24px;
         display: flex;
-        justify-content: space-between;
-        align-items: flex-end;
-        margin-bottom: 36px;
+        align-items: center;
+        gap: 20px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(30, 58, 138, 0.2);
     }
-    .header-info h1 {
-        font-size: 2rem;
+
+    .page-header::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 90% 50%, rgba(245, 158, 11, 0.15) 0%, transparent 65%);
+        pointer-events: none;
+    }
+
+    .ph-text h1 {
+        font-family: 'Outfit', sans-serif;
+        font-size: 2.25rem;
         font-weight: 800;
-        color: var(--lib-text);
+        color: #fff;
         letter-spacing: -0.02em;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-transform: uppercase;
     }
-    .header-info p { color: var(--lib-muted); font-weight: 500; }
+
+    .ph-text h1 span {
+        color: #facc15;
+        text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+    }
+
+    .ph-text p {
+        font-size: 1rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+        max-width: 600px;
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    @media (max-width: 768px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+            padding: 24px;
+        }
+        .ph-text h1 { font-size: 1.75rem; }
+    }
+    @media (max-width: 480px) {
+        .ph-text h1 { font-size: 1.5rem; }
+    }
 
     /* Filter card */
     .date-selector-card {
@@ -151,6 +198,48 @@
         font-size: 11px; font-weight: 800;
         padding: 3px 10px; border-radius: 99px;
     }
+    
+    .section-card-header {
+        justify-content: space-between;
+    }
+    .header-title-wrap {
+        display: flex; align-items: center; gap: 10px;
+    }
+
+    /* Modals */
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+    @keyframes slideUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .modal-overlay {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15,23,42,0.6); backdrop-filter: blur(4px);
+        display: none; align-items: center; justify-content: center; z-index: 99999;
+        animation: fadeIn 0.2s ease-out;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-content {
+        background: #fff; width: 90%; max-width: 900px; max-height: 85vh; border-radius: 20px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.2); display: flex; flex-direction: column; overflow: hidden;
+        animation: slideUp 0.3s ease-out;
+        position: relative; margin: auto;
+    }
+    .modal-header {
+        padding: 20px 24px; border-bottom: 1px solid var(--lib-border);
+        display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-header h2 { font-size: 1.1rem; font-weight: 800; color: var(--lib-text); margin: 0; }
+    .close-modal {
+        background: none; border: none; font-size: 24px; color: var(--lib-muted); cursor: pointer;
+        transition: color .2s;
+    }
+    .close-modal:hover { color: #dc2626; }
+    .modal-body {
+        padding: 24px; overflow-y: auto; flex: 1;
+    }
 
     /* Empty state */
     .empty-state {
@@ -169,14 +258,12 @@
 <div class="report-wrap">
 
     <!-- Header -->
-    <div class="report-header">
-        <div class="header-info">
-            <h1>Library Release Report</h1>
+    <div class="page-header">
+        <div class="ph-text">
+            <h1>Book <span>Reports</span></h1>
             <p>Book release activity and statistics.</p>
         </div>
-        <a href="{{ url_for('librarian.dashboard') }}" style="font-size:13px;font-weight:700;color:var(--lib-muted);text-decoration:none;">
-            ← Return to Dashboard
-        </a>
+
     </div>
 
     <!-- Filter controls -->
@@ -189,6 +276,7 @@
                 <option value="weekly"  {% if report_range == 'weekly'  %}selected{% endif %}>This Week</option>
                 <option value="monthly" {% if report_range == 'monthly' %}selected{% endif %}>This Month</option>
                 <option value="yearly"  {% if report_range == 'yearly'  %}selected{% endif %}>This Year</option>
+                <option value="all_time"{% if report_range == 'all_time'%}selected{% endif %}>All Time</option>
                 <option value="custom"  {% if report_range == 'custom'  %}selected{% endif %}>Custom Range</option>
             </select>
 
@@ -267,12 +355,19 @@
     <!-- Per-grade breakdown -->
     <div class="section-card">
         <div class="section-card-header">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                stroke="var(--lib-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
-                <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
-            </svg>
-            <h2>Books Released by Grade</h2>
+            <div class="header-title-wrap">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--lib-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
+                    <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
+                </svg>
+                <h2>Books Released by Grade</h2>
+            </div>
+            {% if grade_breakdown %}
+            <button type="button" onclick="openModal('gradeModal')" style="background:none; border:none; color:var(--lib-accent); font-weight:800; font-size:12px; cursor:pointer; text-transform:uppercase; letter-spacing:0.5px;">
+                View All <span style="font-size:14px; margin-left:4px;">&rsaquo;</span>
+            </button>
+            {% endif %}
         </div>
         <div style="overflow-x:auto;">
             {% if grade_breakdown %}
@@ -285,7 +380,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for row in grade_breakdown %}
+                    {% for row in grade_breakdown[:5] %}
                     <tr>
                         <td><span class="badge-grade">{{ row.grade }}</span></td>
                         <td style="text-align:center; font-weight:700;">{{ row.releases }}</td>
@@ -310,12 +405,19 @@
     <!-- Transaction history -->
     <div class="section-card">
         <div class="section-card-header">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                stroke="var(--lib-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
-                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
-            </svg>
-            <h2>Release Transaction History</h2>
+            <div class="header-title-wrap">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                    stroke="var(--lib-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>
+                    <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                </svg>
+                <h2>Release Transaction History</h2>
+            </div>
+            {% if transactions %}
+            <button type="button" onclick="openModal('txModal')" style="background:none; border:none; color:var(--lib-accent); font-weight:800; font-size:12px; cursor:pointer; text-transform:uppercase; letter-spacing:0.5px;">
+                View All <span style="font-size:14px; margin-left:4px;">&rsaquo;</span>
+            </button>
+            {% endif %}
         </div>
         <div style="overflow-x:auto;">
             {% if transactions %}
@@ -331,7 +433,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    {% for t in transactions %}
+                    {% for t in transactions[:5] %}
                     <tr>
                         <td style="color:var(--lib-muted); font-size:12px; white-space:nowrap;">
                             {{ t.created_at.strftime('%b %d, %Y') if t.created_at else '—' }}<br>
@@ -367,7 +469,97 @@
 
 </div>
 
+<!-- Grade Modal -->
+<div class="modal-overlay" id="gradeModal" onclick="if(event.target===this) closeModal('gradeModal')">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 style="display:flex;align-items:center;gap:10px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--lib-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+                Books Released by Grade
+            </h2>
+            <button class="close-modal" onclick="closeModal('gradeModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <table class="rpt-table">
+                <thead>
+                    <tr>
+                        <th>Grade Level</th>
+                        <th style="text-align:center;">Releases</th>
+                        <th style="text-align:center;">Books Released</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in grade_breakdown %}
+                    <tr>
+                        <td><span class="badge-grade">{{ row.grade }}</span></td>
+                        <td style="text-align:center; font-weight:700;">{{ row.releases }}</td>
+                        <td style="text-align:center; font-weight:700; color:var(--lib-accent);">{{ row.books_released }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Transaction Modal -->
+<div class="modal-overlay" id="txModal" onclick="if(event.target===this) closeModal('txModal')">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 style="display:flex;align-items:center;gap:10px;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--lib-accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                Release Transaction History
+            </h2>
+            <button class="close-modal" onclick="closeModal('txModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <table class="rpt-table">
+                <thead>
+                    <tr>
+                        <th>Date & Time</th>
+                        <th>Student</th>
+                        <th>Grade</th>
+                        <th>Account</th>
+                        <th style="text-align:center;">Qty</th>
+                        <th>Books</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for t in transactions %}
+                    <tr>
+                        <td style="color:var(--lib-muted); font-size:12px; white-space:nowrap;">
+                            {{ t.created_at.strftime('%b %d, %Y') if t.created_at else '—' }}<br>
+                            <span style="font-size:11px;">{{ t.created_at.strftime('%I:%M %p') if t.created_at else '' }}</span>
+                        </td>
+                        <td style="font-weight:700;">{{ t.student_name or '—' }}</td>
+                        <td><span class="badge-grade">{{ t.grade_level }}</span></td>
+                        <td style="font-size:12px; color:var(--lib-muted);">
+                            {% if t.branch_enrollment_no %}
+                                LDMAJ_{{ '%04d' | format(t.branch_enrollment_no) }}
+                            {% else %}—{% endif %}
+                        </td>
+                        <td style="text-align:center; font-weight:800; color:var(--lib-accent);">{{ t.qty_released }}</td>
+                        <td style="font-size:12px; color:var(--lib-muted); max-width:300px; white-space:normal; line-height:1.5;">
+                            {{ t.books_list or '—' }}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <script>
+function openModal(id) {
+    document.getElementById(id).classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+    document.body.style.overflow = '';
+}
+
 function handleRangeChange(val) {
     var di = document.getElementById('date-input');
     var df = document.getElementById('date-from-input');

@@ -1,0 +1,790 @@
+{% extends "base.html" %}
+{% block title %}Uniform Catalog{% endblock %}
+{% block page_title %}{% endblock %}
+
+{% block styles %}
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+    :root {
+        --u-primary: #1e3a8a;
+        --u-accent: #3b82f6;
+        --u-success: #10b981;
+        --u-warning: #f59e0b;
+        --u-danger: #ef4444;
+        --u-claimed: #8b5cf6;
+        --u-bg: #f8fafc;
+        --u-card: #ffffff;
+        --u-text: #0f172a;
+        --u-muted: #64748b;
+        --u-border: #e2e8f0;
+    }
+
+    body { background: var(--u-bg); font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+
+    .uo-container { max-width: 1280px; margin: 0 auto; padding: 24px 20px 64px; }
+
+    .page-header {
+        display: flex; align-items: center; justify-content: space-between;
+        flex-wrap: wrap; gap: 16px; margin-bottom: 20px;
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        padding: 32px 40px;
+        border-radius: 20px;
+        color: #ffffff;
+        box-shadow: 0 4px 20px rgba(37, 99, 235, 0.15);
+    }
+    .page-header h1 {
+        font-size: 2.2rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em;
+        margin: 0;
+    }
+    .page-header h1 span {
+        color: #34d399; /* Bright green for contrast on blue */
+    }
+    .page-header p { color: rgba(255, 255, 255, 0.9); margin-top: 8px; font-size: 0.95rem; font-weight: 500; }
+
+    .page-header .btn-add-item {
+        background: #ffffff;
+        color: var(--u-primary);
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    .page-header .btn-add-item:hover {
+        background: #f8fafc;
+        transform: translateY(-1px);
+    }
+
+    /* Main Section Navigation Tabs */
+    .main-nav-tabs {
+        display: flex; gap: 12px; margin-bottom: 28px; border-bottom: 2px solid var(--u-border);
+        padding-bottom: 4px;
+    }
+    .main-tab {
+        padding: 12px 24px; font-size: 0.95rem; font-weight: 800; color: var(--u-muted);
+        background: transparent; border: none; border-bottom: 3px solid transparent;
+        cursor: pointer; transition: all .15s; display: flex; align-items: center; gap: 8px;
+    }
+    .main-tab.active {
+        color: var(--u-primary); border-bottom-color: var(--u-primary);
+    }
+    .main-tab:hover:not(.active) { color: var(--u-accent); }
+
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; }
+
+    /* Stats Grid */
+    .stats-grid {
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 28px;
+    }
+    @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 480px) { .stats-grid { grid-template-columns: 1fr; } }
+
+    .stat-card {
+        background: var(--u-card); border: 1px solid var(--u-border);
+        border-radius: 20px; padding: 20px 24px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        display: flex; align-items: center; gap: 16px;
+    }
+    .stat-icon {
+        width: 48px; height: 48px; border-radius: 14px;
+        display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .stat-icon svg { width: 22px; height: 22px; }
+    .stat-icon.blue { background: rgba(59,130,246,.12); color: #3b82f6; }
+    .stat-icon.orange { background: rgba(245,158,11,.12); color: #f59e0b; }
+    .stat-icon.green { background: rgba(16,185,129,.12); color: #10b981; }
+    .stat-icon.purple { background: rgba(139,92,246,.12); color: #8b5cf6; }
+    .stat-label { font-size: 0.75rem; color: var(--u-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+    .stat-value { font-size: 1.9rem; font-weight: 800; color: var(--u-text); line-height: 1.1; }
+
+    /* Filters */
+    .filter-bar {
+        background: var(--u-card); border: 1px solid var(--u-border);
+        border-radius: 16px; padding: 20px 24px;
+        display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+        margin-bottom: 20px;
+    }
+    .filter-bar input[type="text"] {
+        flex: 1; min-width: 200px; padding: 10px 14px;
+        border: 1.5px solid var(--u-border); border-radius: 10px;
+        font-family: inherit; font-size: 0.875rem; outline: none;
+        transition: border-color .2s;
+    }
+    .filter-bar input[type="text"]:focus { border-color: var(--u-accent); }
+    .status-tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+    .stab {
+        padding: 8px 18px; border-radius: 10px; font-size: 0.8rem; font-weight: 700;
+        border: 1.5px solid var(--u-border); background: var(--u-bg);
+        color: var(--u-muted); cursor: pointer; text-decoration: none; transition: all .15s;
+    }
+    .stab.active, .stab:hover { background: var(--u-primary); color: #fff; border-color: var(--u-primary); }
+
+    /* Table Cards */
+    .table-card {
+        background: var(--u-card); border: 1px solid var(--u-border);
+        border-radius: 20px; overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+    .table-wrap { overflow-x: auto; }
+    .uo-table { width: 100%; border-collapse: collapse; min-width: 800px; background: #ffffff; }
+    .uo-table thead { background: #ffffff; }
+    .uo-table th {
+        padding: 18px 24px; text-align: left; font-size: 0.72rem; font-weight: 800;
+        text-transform: uppercase; letter-spacing: .05em; color: var(--u-muted);
+        border-bottom: 2px solid var(--u-border);
+    }
+    .uo-table td { padding: 18px 24px; border-bottom: 1px solid var(--u-border); font-size: 0.875rem; vertical-align: middle; }
+    .uo-table tr:last-child td { border-bottom: none; }
+    .uo-table tr:hover td { background: #f8fafc; }
+
+    .student-name { font-weight: 700; color: var(--u-text); }
+    .sub-text { font-size: 0.78rem; color: var(--u-muted); font-weight: 600; }
+    .grade-pill {
+        display: inline-block; padding: 4px 12px; border-radius: 30px;
+        font-size: 0.72rem; font-weight: 700; background: #f1f5f9; color: var(--u-muted);
+    }
+    .amount { font-weight: 800; color: var(--u-text); }
+
+    .badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 5px 12px; border-radius: 30px; font-size: 0.72rem; font-weight: 700;
+    }
+    .badge-for-ordering { background: rgba(245,158,11,.12); color: #d97706; }
+    .badge-ready { background: rgba(59,130,246,.12); color: #2563eb; }
+    .badge-claimed { background: rgba(139,92,246,.12); color: #7c3aed; }
+    .badge-paid { background: rgba(16,185,129,.12); color: #059669; }
+    .badge-unpaid { background: rgba(239,68,68,.1); color: #dc2626; }
+
+    .badge-creator {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 3px 8px; border-radius: 6px; font-size: 0.72rem; font-weight: 700; margin-top: 4px;
+    }
+    .badge-creator-parent { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .badge-creator-student { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+
+    .btn-onsite {
+        padding: 8px 16px; border-radius: 10px; font-size: 0.78rem; font-weight: 700;
+        background: var(--u-primary); color: #fff; border: none; cursor: pointer; transition: all .15s;
+    }
+    .btn-onsite:hover { background: #172554; }
+    .btn-claim {
+        padding: 8px 16px; border-radius: 10px; font-size: 0.78rem; font-weight: 700;
+        background: var(--u-success); color: #fff; border: none; cursor: pointer; transition: all .15s;
+    }
+    .btn-claim:hover { background: #059669; }
+    .btn-view {
+        padding: 8px 16px; border-radius: 10px; font-size: 0.78rem; font-weight: 700;
+        background: transparent; color: var(--u-primary); border: 1.5px solid var(--u-primary);
+        cursor: pointer; transition: all .15s;
+    }
+    .btn-view:hover { background: var(--u-primary); color: #fff; }
+    .btn-delete-piece {
+        padding: 8px 16px; border-radius: 10px; font-size: 0.78rem; font-weight: 700;
+        background: transparent; color: #dc2626; border: 1.5px solid #fecaca;
+        cursor: pointer; transition: all .15s;
+    }
+    .btn-delete-piece:hover { background: #fef2f2; border-color: #dc2626; }
+    .btn-add-item {
+        padding: 10px 20px; border-radius: 12px; font-size: 0.85rem; font-weight: 800;
+        background: var(--u-primary); color: #fff; border: none; cursor: pointer; transition: all .15s;
+    }
+    .btn-add-item:hover { background: #172554; }
+
+    .set-row {
+        background: #ffffff;
+        cursor: pointer;
+        user-select: none;
+        transition: background .15s;
+    }
+    .set-row:hover { background: #f8fafc; }
+    .set-row.open { background: #f8fafc; }
+    .set-toggle-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: transparent;
+        color: var(--u-muted);
+        transition: all .2s;
+        flex-shrink: 0;
+    }
+    .set-row:hover .set-toggle-icon { background: #f1f5f9; }
+    .set-row.open .set-toggle-icon { transform: rotate(180deg); background: var(--u-primary); color: #fff; border-radius: 8px; }
+    .set-toggle-icon.no-pieces {
+        visibility: hidden;
+        pointer-events: none;
+    }
+    .piece-row {
+        display: none;
+        background: #fafbff;
+        border-left: 3px solid var(--u-accent);
+    }
+    .piece-row.visible { display: table-row; }
+    .piece-count-hint {
+        display: block;
+        font-size: 0.7rem;
+        color: var(--u-muted);
+        font-weight: 600;
+        margin-top: 2px;
+    }
+    .grade-select-wrap {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+    .grade-select-wrap label {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: var(--u-muted);
+        text-transform: uppercase;
+        letter-spacing: .03em;
+        white-space: nowrap;
+    }
+    .grade-select {
+        min-width: 220px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 1.5px solid var(--u-border);
+        background: #fff;
+        font-size: 0.88rem;
+        font-weight: 700;
+        color: var(--u-text);
+        font-family: inherit;
+        cursor: pointer;
+    }
+    .grade-select:focus {
+        outline: none;
+        border-color: var(--u-primary);
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+    #btnAddUniformSet { display: none; }
+    body.uo-tab-catalog #btnAddUniformSet { display: inline-flex; }
+
+    .action-group { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    .empty-state { text-align: center; padding: 64px 24px; color: var(--u-muted); }
+    .empty-state svg { opacity: 0.25; margin-bottom: 12px; }
+    .empty-state p { font-size: 0.95rem; font-weight: 600; }
+
+    /* Modal Styling — above topbar/sidebar (1100–1200) */
+    .modal-backdrop {
+        position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 5000;
+        display: none; align-items: center; justify-content: center; padding: 16px;
+        pointer-events: none;
+    }
+    .modal-backdrop.open {
+        display: flex;
+        pointer-events: auto;
+    }
+    .modal-box {
+        background: #fff; border-radius: 24px; padding: 32px; max-width: 480px; width: 100%;
+        box-shadow: 0 24px 64px rgba(0,0,0,.15); animation: popIn .2s ease-out;
+        position: relative; z-index: 1;
+        max-height: min(90vh, 640px); overflow-y: auto;
+    }
+    .btn-view, .btn-onsite, .btn-claim {
+        position: relative;
+        z-index: 2;
+        pointer-events: auto;
+    }
+    @keyframes popIn { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-title { font-size: 1.2rem; font-weight: 800; color: var(--u-text); margin-bottom: 6px; }
+    .modal-sub { font-size: 0.875rem; color: var(--u-muted); margin-bottom: 16px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--u-text); margin-bottom: 6px; }
+    .form-group input, .form-group select {
+        width: 100%; padding: 10px 14px; border: 1.5px solid var(--u-border); border-radius: 10px;
+        font-family: inherit; font-size: 0.875rem; outline: none;
+    }
+    .modal-actions { display: flex; gap: 12px; margin-top: 20px; }
+    .modal-actions button { flex: 1; padding: 14px; border-radius: 12px; font-weight: 700; font-size: 0.9rem; border: none; cursor: pointer; }
+    .btn-cancel-modal { background: #f1f5f9; color: var(--u-muted); }
+    .btn-save-modal { background: var(--u-primary); color: #fff; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="uo-container">
+
+    <div class="page-header">
+        <div>
+            <h1>Uniform <span>Catalog</span></h1>
+            <p>Manage available uniform sets, pieces, sizes, and pricing.</p>
+        </div>
+        <button class="btn-action btn-add-item" onclick="openAddModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Add Uniform Set
+        </button>
+    </div>
+        <button class="btn-add-item" id="btnAddUniformSet" onclick="openAddModal()">+ Add Uniform Set</button>
+    </div>
+
+    <!-- Main Navigation Tabs -->
+    
+
+    <!-- TAB 1: PRE-ORDERS TRACKING -->
+    <!-- TAB 2: UNIFORM CATALOG & PRICING (Sets + Pieces grouped) -->
+    <div id="pane-catalog">
+        <div class="table-card">
+            <div class="table-wrap">
+                <table class="uo-table">
+                    <thead>
+                        <tr>
+                            <th>Uniform Set / Piece</th>
+                            <th>Grade Range</th>
+                            <th>Available Sizes</th>
+                            <th>Unit Price</th>
+                            <th>Type</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for s in catalog_sets %}
+                    {% set pieces = pieces_by_set.get(s.item_id, []) %}
+                    {# SET ROW — click to expand pieces #}
+                    <tr class="set-row {% if pieces|length == 0 %}no-expand{% endif %}" data-set-id="{{ s.item_id }}" onclick="{% if pieces|length > 0 %}toggleCatalogSet({{ s.item_id }}){% endif %}">
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 14px;">
+                                <span class="set-toggle-icon {% if pieces|length == 0 %}no-pieces{% endif %}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+                                </span>
+                                {% if s.image_url %}
+                                <div style="width: 44px; height: 44px; border-radius: 12px; overflow: hidden; border: 1px solid var(--u-border);">
+                                    <img src="{{ s.image_url }}" alt="{{ s.item_name }}" style="width: 100%; height: 100%; object-fit: cover;">
+                                </div>
+                                {% else %}
+                                <div style="width: 44px; height: 44px; border-radius: 12px; background: #dbeafe; display: flex; align-items: center; justify-content: center; color: var(--u-primary);">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>
+                                </div>
+                                {% endif %}
+                                <div>
+                                    <strong style="color: var(--u-primary); font-size: 1rem;">{{ s.item_name }}</strong>
+                                    <span style="display:block; font-size:0.72rem; color: var(--u-accent); font-weight:700; text-transform:uppercase; letter-spacing:.04em;">Uniform Set</span>
+                                    <span class="piece-count-hint">
+                                        {% if pieces|length > 0 %}
+                                        {{ pieces|length }} piece{{ 's' if pieces|length != 1 else '' }} · click to expand
+                                        {% else %}
+                                        No pieces yet · click + Add Piece
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="grade-pill">{{ s.grade_level or 'All Grades' }}</span></td>
+                        <td><span style="font-size:0.8rem; font-weight:700; color:var(--u-muted);">{{ s.size_label or 'XS, S, M, L, XL, XXL, XXXL' }}</span></td>
+                        <td>
+                            <span class="amount" style="color: var(--u-primary); font-size: 1.05rem;">₱{{ "%.2f"|format(s.price or 0) }}</span>
+                            <span style="font-size:0.7rem; color:var(--u-muted); display:block;">Base (smallest) · +₱{{ "%.0f"|format(s.size_price_step or 20) }}/size</span>
+                        </td>
+                        <td><span class="badge badge-ready">SET</span></td>
+                        <td>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;" onclick="event.stopPropagation()">
+                                <button class="btn-view" onclick="openPriceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}', '{{ '%.2f'|format(s.price or 0) }}', '{{ '%.0f'|format(s.size_price_step or 20) }}', false)">Edit Price</button>
+                                {% if pieces|length >= 2 %}
+                                <button class="btn-onsite" style="padding:6px 12px; font-size:0.74rem; background:#94a3b8; cursor:not-allowed;" disabled title="Maximum 2 pieces reached for this set">+ Add Piece (Max 2 Reached)</button>
+                                {% else %}
+                                <button class="btn-onsite" style="padding:6px 12px; font-size:0.74rem;" onclick="openAddPieceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}', {{ pieces|length }})">+ Add Piece</button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {# PIECE ROWS — hidden until set is expanded #}
+                    {% for p in pieces %}
+                    <tr class="piece-row" data-parent-set="{{ s.item_id }}">
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 14px; padding-left: 48px;">
+                                <div style="width: 6px; height: 6px; border-radius: 50%; background: var(--u-accent); flex-shrink:0;"></div>
+                                <div>
+                                    <span style="color: var(--u-text); font-weight:700; font-size:0.9rem;">{{ p.item_name }}</span>
+                                    <span style="display:block; font-size:0.7rem; color:var(--u-muted);">Individual Piece — can be ordered separately</span>
+                                </div>
+                            </div>
+                        </td>
+                        <td><span class="grade-pill">{{ p.grade_level or '—' }}</span></td>
+                        <td><span style="font-size:0.8rem; font-weight:700; color:var(--u-muted);">{{ p.size_label or 'XS, S, M, L, XL, XXL, XXXL' }}</span></td>
+                        <td>
+                            <span class="amount">₱{{ "%.2f"|format(p.price or 0) }}</span>
+                            <span style="font-size:0.7rem; color:var(--u-muted); display:block;">Base</span>
+                        </td>
+                        <td><span class="badge badge-for-ordering">PIECE</span></td>
+                        <td>
+                            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                                <button class="btn-view" onclick="openPriceModal({{ p.item_id }}, '{{ p.item_name|replace("'","\'")|safe }}', '{{ '%.2f'|format(p.price or 0) }}', '{{ '%.0f'|format(p.size_price_step or 20) }}', true)">Edit Price</button>
+                                <button class="btn-delete-piece" onclick="deletePiece({{ p.item_id }}, '{{ p.item_name|replace("'","\'")|safe }}', {{ s.item_id }})">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <p>No uniform catalog sets configured yet.</p>
+                                <button class="btn-add-item" style="margin-top:12px;" onclick="openAddModal()">+ Add First Uniform Set</button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+
+<!-- Edit Price Modal -->
+<div class="modal-backdrop" id="priceModal">
+    <div class="modal-box">
+        <div class="modal-title">Edit Price</div>
+        <div class="modal-sub" id="priceModalSub"></div>
+        <form id="priceForm">
+            <input type="hidden" id="priceItemId">
+            <div class="form-group">
+                <label>Base Price — smallest size (₱)</label>
+                <input type="text" inputmode="decimal" id="priceInput" required placeholder="0.00" onkeydown="filterPriceKeys(event)" oninput="sanitizePriceInput(this)">
+                <small style="color:#2563eb; font-size:0.75rem; font-weight:600; display:block; margin-top:4px;" id="priceMaxHint">
+                    Piece: Max 3 digits (₱999.99) • Set: Max 4 digits (₱9,999.99)
+                </small>
+            </div>
+            <div class="form-group">
+                <label>Add per next size (₱)</label>
+                <input type="text" id="priceStepInput" value="20" readonly style="background:#f1f5f9; color:#475569; cursor:not-allowed; font-weight:700;">
+                <small style="color:#64748b; font-size:0.75rem;">Standard fixed increment: ₱20.00 per larger size</small>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel-modal" onclick="closeModal('priceModal')">Cancel</button>
+                <button type="submit" class="btn-save-modal">Update Price</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Uniform SET Modal -->
+<div class="modal-backdrop" id="addModal">
+    <div class="modal-box">
+        <div class="modal-title">Add Uniform Set</div>
+        <div class="modal-sub">Create a new uniform set (e.g. JHS Boys Uniform Set). Max 4 digits (up to ₱9,999.99).</div>
+        <form id="addForm">
+            <div class="form-group">
+                <label>Set Name</label>
+                <input type="text" id="addName" required placeholder="e.g. JHS Boys Uniform Set, SHS Girls Uniform Set">
+            </div>
+            <div class="form-group">
+                <label>Grade Level</label>
+                <select id="addGrade" required style="width: 100%; padding: 10px; border: 1px solid var(--sd-border); border-radius: 8px; font-size: 0.95rem; background: #f8fafc; color: #334155;">
+                    <option value="" disabled selected>Select Grade Level</option>
+                    <option value="Pre-Elementary">Pre-Elementary (Nursery, Kinder)</option>
+                    <option value="Elementary">Elementary (Grade 1-6)</option>
+                    <option value="JHS">JHS (Grade 7-10)</option>
+                    <option value="SHS">SHS (Grade 11-12)</option>
+                    <option value="All Grades">All Grades (Pre-Elem to SHS)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Base Set Price — smallest size (₱) <span style="color:#dc2626; font-size:0.75rem;">(Max 4 digits: ₱9,999.99)</span></label>
+                <input type="text" inputmode="decimal" id="addPrice" data-is-piece="0" placeholder="0.00" onkeydown="filterPriceKeys(event)" oninput="sanitizePriceInput(this)">
+            </div>
+            <div class="form-group">
+                <label>Add per next size (₱)</label>
+                <input type="text" id="addPriceStep" value="20" readonly style="background:#f1f5f9; color:#475569; cursor:not-allowed; font-weight:700;">
+                <small style="color:#64748b; font-size:0.75rem;">Standard fixed increment: ₱20.00 per larger size</small>
+            </div>
+            <div class="form-group">
+                <label>Available Sizes (comma separated)</label>
+                <input type="text" id="addSizes" value="XS, S, M, L, XL, XXL, XXXL">
+            </div>
+            <div class="form-group">
+                <label>Image URL (Optional)</label>
+                <input type="url" id="addImage" placeholder="https://...">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel-modal" onclick="closeModal('addModal')">Cancel</button>
+                <button type="submit" class="btn-save-modal">Save Uniform Set</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Add Piece Modal -->
+<div class="modal-backdrop" id="addPieceModal">
+    <div class="modal-box">
+        <div class="modal-title">Add Piece to Set</div>
+        <div class="modal-sub" id="addPieceModalSub"></div>
+        <form id="addPieceForm">
+            <input type="hidden" id="pieceParentId">
+            <div class="form-group">
+                <label>Piece Name</label>
+                <input type="text" id="pieceName" required placeholder="e.g. Polo, Pants, Blouse, Skirt, PE Shirt">
+            </div>
+            <div class="form-group">
+                <label>Base Piece Price — smallest size (₱) <span style="color:#dc2626; font-size:0.75rem;">(Max 3 digits: ₱999.99)</span></label>
+                <input type="text" inputmode="decimal" id="piecePrice" data-is-piece="1" required placeholder="0.00" onkeydown="filterPriceKeys(event)" oninput="sanitizePriceInput(this)">
+            </div>
+            <div class="form-group">
+                <label>Add per next size (₱)</label>
+                <input type="text" id="piecePriceStep" value="20" readonly style="background:#f1f5f9; color:#475569; cursor:not-allowed; font-weight:700;">
+                <small style="color:#64748b; font-size:0.75rem;">Standard fixed increment: ₱20.00 per larger size</small>
+            </div>
+            <div class="form-group">
+                <label>Available Sizes (comma separated)</label>
+                <input type="text" id="pieceSizes" value="XS, S, M, L, XL, XXL, XXXL">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel-modal" onclick="closeModal('addPieceModal')">Cancel</button>
+                <button type="submit" class="btn-save-modal">Add Piece</button>
+            </div>
+        </form>
+    </div>
+</div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function toggleCatalogSet(setId) {
+        const row = document.querySelector(`.set-row[data-set-id="${setId}"]`);
+        if (!row) return;
+        row.classList.toggle('open');
+        document.querySelectorAll(`.piece-row[data-parent-set="${setId}"]`).forEach(el => {
+            el.classList.toggle('visible');
+        });
+        
+        // Optional: save state to session storage
+        try {
+            let opened = JSON.parse(sessionStorage.getItem('uo_open_sets') || '[]');
+            if (row.classList.contains('open')) {
+                if (!opened.includes(setId)) opened.push(setId);
+            } else {
+                opened = opened.filter(id => id !== setId);
+            }
+            sessionStorage.setItem('uo_open_sets', JSON.stringify(opened));
+        } catch(e) {}
+    }
+
+    // Auto-open previously opened sets
+    document.addEventListener("DOMContentLoaded", function() {
+        try {
+            let opened = JSON.parse(sessionStorage.getItem('uo_open_sets') || '[]');
+            opened.forEach(setId => {
+                const row = document.querySelector(`.set-row[data-set-id="${setId}"]`);
+                if (row) {
+                    row.classList.add('open');
+                    document.querySelectorAll(`.piece-row[data-parent-set="${setId}"]`).forEach(el => {
+                        el.classList.add('visible');
+                    });
+                }
+            });
+        } catch(e) {}
+    });
+
+    function reloadStayOnCatalog(openSetId) {
+        if (openSetId) {
+            try {
+                let opened = JSON.parse(sessionStorage.getItem('uo_open_sets') || '[]');
+                if (!opened.includes(openSetId)) opened.push(openSetId);
+                sessionStorage.setItem('uo_open_sets', JSON.stringify(opened));
+            } catch (e) {}
+        }
+        location.reload();
+    }
+
+    function closeModal(id) {
+        const el = document.getElementById(id);
+        if (el) el.classList.remove('open');
+    }
+
+
+    function filterPriceKeys(e) {
+        // Block 'e', 'E', '+', '-'
+        if (['e', 'E', '+', '-'].includes(e.key)) {
+            e.preventDefault();
+            return;
+        }
+    }
+
+    function sanitizePriceInput(inputEl) {
+        let isPiece = inputEl.getAttribute('data-is-piece') === '1' || inputEl.id === 'piecePrice';
+        let maxDigits = isPiece ? 3 : 4;
+        let maxVal = isPiece ? 999.99 : 9999.99;
+
+        let val = inputEl.value || '';
+
+        // Strip non-digits and non-decimals
+        val = val.replace(/[^0-9.]/g, '');
+
+        // Allow at most one decimal point
+        const parts = val.split('.');
+        if (parts.length > 2) {
+            val = parts[0] + '.' + parts.slice(1).join('');
+        }
+
+        let [integerPart, decimalPart] = val.split('.');
+
+        // Strip excess leading zeros if integer > 1 digit (e.g. 0005 -> 5, 00 -> 0)
+        if (integerPart && integerPart.length > 1 && integerPart.startsWith('0')) {
+            integerPart = integerPart.replace(/^0+/, '') || '0';
+        }
+
+        // Limit integer part length (3 digits for piece, 4 digits for set)
+        if (integerPart && integerPart.length > maxDigits) {
+            integerPart = integerPart.slice(0, maxDigits);
+        }
+
+        // Limit decimal part length to 2 digits
+        if (decimalPart !== undefined) {
+            decimalPart = decimalPart.slice(0, 2);
+            val = integerPart + '.' + decimalPart;
+        } else {
+            val = integerPart;
+        }
+
+        // Enforce upper limit bound
+        const num = parseFloat(val);
+        if (!isNaN(num) && num > maxVal) {
+            val = String(maxVal);
+        }
+
+        inputEl.value = val;
+    }
+
+    function openPriceModal(itemId, itemName, currentPrice, priceStep, isPiece) {
+        document.getElementById('priceItemId').value = itemId;
+        document.getElementById('priceModalSub').textContent = itemName + (isPiece ? ' (Piece)' : ' (Set)');
+        
+        const priceInput = document.getElementById('priceInput');
+        priceInput.value = currentPrice;
+        const maxVal = isPiece ? '999.99' : '9999.99';
+        priceInput.setAttribute('max', maxVal);
+        priceInput.setAttribute('data-is-piece', isPiece ? '1' : '0');
+
+        const hintEl = document.getElementById('priceMaxHint');
+        if (hintEl) {
+            hintEl.textContent = isPiece
+                ? 'Piece price limit: Max 3 digits (up to ₱999.99)'
+                : 'Full set price limit: Max 4 digits (up to ₱9,999.99)';
+        }
+
+        document.getElementById('priceStepInput').value = '20';
+        document.getElementById('priceModal').classList.add('open');
+    }
+
+    function openAddModal() {
+        try { sessionStorage.setItem('uo_active_tab', 'catalog'); } catch (e) {}
+        document.getElementById('addPriceStep').value = '20';
+        document.getElementById('addModal').classList.add('open');
+    }
+
+    document.getElementById('priceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const itemId = document.getElementById('priceItemId').value;
+        const priceInput = document.getElementById('priceInput');
+        const isPiece = priceInput.getAttribute('data-is-piece') === '1';
+        const maxAllowed = isPiece ? 999.99 : 9999.99;
+        const newPrice = parseFloat(priceInput.value || 0);
+
+        if (newPrice > maxAllowed) {
+            alert('Price cannot exceed ₱' + maxAllowed.toLocaleString() + ' (' + (isPiece ? 'max 3 digits for piece' : 'max 4 digits for set') + ').');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('item_id', itemId);
+        formData.append('new_price', newPrice);
+        formData.append('size_price_step', document.getElementById('priceStepInput').value);
+
+        fetch('/cashier/uniform-catalog/update-price', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) { closeModal('priceModal'); reloadStayOnCatalog(); }
+                else { alert('Error: ' + data.error); }
+            });
+    });
+
+    document.getElementById('addForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const priceVal = parseFloat(document.getElementById('addPrice').value || 0);
+        if (priceVal > 9999.99) {
+            alert('Full set price cannot exceed ₱9,999.99 (max 4 digits).');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('item_name', document.getElementById('addName').value);
+        formData.append('grade_level', document.getElementById('addGrade').value);
+        formData.append('price', priceVal);
+        formData.append('size_price_step', document.getElementById('addPriceStep').value);
+        formData.append('size_label', document.getElementById('addSizes').value);
+        formData.append('image_url', document.getElementById('addImage').value);
+
+        fetch('/cashier/uniform-catalog/add', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) { closeModal('addModal'); reloadStayOnCatalog(); }
+                else { alert('Error: ' + data.error); }
+            });
+    });
+
+    function openAddPieceModal(parentItemId, parentName, existingCount) {
+        if (existingCount !== undefined && existingCount >= 2) {
+            alert('This uniform set already has the maximum 2 pieces allowed (e.g. Polo and Pants). You cannot add more pieces.');
+            return;
+        }
+        try {
+            sessionStorage.setItem('uo_active_tab', 'catalog');
+            let opened = JSON.parse(sessionStorage.getItem('uo_open_sets') || '[]');
+            if (opened.indexOf(parentItemId) === -1) opened.push(parentItemId);
+            sessionStorage.setItem('uo_open_sets', JSON.stringify(opened));
+        } catch (e) {}
+        document.getElementById('pieceParentId').value = parentItemId;
+        document.getElementById('piecePriceStep').value = '20';
+        document.getElementById('addPieceModalSub').textContent = 'Adding piece under: ' + parentName + ' (Max 3 digits: ₱999.99)';
+        document.getElementById('addPieceModal').classList.add('open');
+    }
+
+    document.getElementById('addPieceForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const priceVal = parseFloat(document.getElementById('piecePrice').value || 0);
+        if (priceVal > 999.99) {
+            alert('Individual piece price cannot exceed ₱999.99 (max 3 digits).');
+            return;
+        }
+
+        const parentId = document.getElementById('pieceParentId').value;
+        const formData = new FormData();
+        formData.append('parent_item_id', parentId);
+        formData.append('item_name', document.getElementById('pieceName').value);
+        formData.append('price', priceVal);
+        formData.append('size_price_step', document.getElementById('piecePriceStep').value);
+        formData.append('size_label', document.getElementById('pieceSizes').value);
+
+        fetch('/cashier/uniform-catalog/add-piece', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    closeModal('addPieceModal');
+                    reloadStayOnCatalog(parseInt(parentId, 10));
+                } else { alert('Error: ' + data.error); }
+            });
+    });
+
+    function deletePiece(itemId, itemName, parentSetId) {
+        if (!confirm('Delete piece "' + itemName + '"? This cannot be undone.')) return;
+        const formData = new FormData();
+        formData.append('item_id', itemId);
+        fetch('/cashier/uniform-catalog/delete-piece', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) reloadStayOnCatalog(parentSetId);
+                else alert('Error: ' + (data.error || 'Failed to delete'));
+            })
+            .catch(() => alert('Failed to delete piece.'));
+    }
+
+    document.querySelectorAll('.modal-backdrop').forEach(m => {
+        m.addEventListener('click', function (e) { if (e.target === this) closeModal(this.id); });
+    });
+</script>
+{% endblock %}
+

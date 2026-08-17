@@ -5,15 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Official Receipt - {{ payment.receipt_number }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <style>
         :root {
             --receipt-bg: #fff;
-            --receipt-text: #0f172a;
-            --receipt-muted: #64748b;
-            --receipt-accent: #1e3a8a;
-            --receipt-border: #e2e8f0;
+            --receipt-text: #000;
+            --primary: #1e3a8a;
+            --accent: #3b82f6;
         }
 
         * {
@@ -25,248 +23,111 @@
         body {
             font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
             background: #f1f5f9;
-            color: var(--receipt-text);
+            color: #0f172a;
             padding: 40px 20px;
-            line-height: 1.5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
-        .no-print {
+        /* Modern Page Header - Not Printed */
+        .page-header {
             max-width: 800px;
-            margin: 0 auto 24px;
+            width: 100%;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            border-radius: 20px;
+            padding: 32px 40px;
+            margin-bottom: 24px;
+            color: #fff;
+            box-shadow: 0 15px 35px -10px rgba(30, 58, 138, 0.2);
             display: flex;
-            justify-content: center;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .header-text h1 {
+            font-size: 2rem;
+            font-weight: 900;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            margin-bottom: 8px;
+        }
+
+        .header-text p {
+            font-size: 0.95rem;
+            font-weight: 500;
+            opacity: 0.9;
+        }
+
+        .action-buttons {
+            display: flex;
             gap: 12px;
         }
 
         .btn {
-            padding: 12px 24px;
+            padding: 12px 20px;
             border-radius: 12px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 0.95rem;
             font-weight: 700;
             text-decoration: none;
             cursor: pointer;
             border: none;
             transition: all 0.2s;
-            font-size: 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .btn-print {
-            background: var(--receipt-accent);
-            color: #fff;
-            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
+            background: #fff;
+            color: var(--primary);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
         .btn-print:hover {
-            transform: translateY(-1px);
-            background: #1e40af;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
         }
 
         .btn-back {
-            background: #fff;
-            color: var(--receipt-muted);
-            border: 1px solid var(--receipt-border);
-        }
-
-        .receipt-container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: var(--receipt-bg);
-            border-radius: 24px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            position: relative;
-        }
-
-        /* ── Receipt Header ── */
-        .receipt-header {
-            padding: 48px 48px 32px;
-            text-align: center;
-            border-bottom: 1px solid var(--receipt-border);
-        }
-
-        .brand-name {
-            font-size: 1.75rem;
-            font-weight: 800;
-            color: var(--receipt-accent);
-            letter-spacing: -0.02em;
-        }
-
-        .brand-sub {
-            font-size: 0.9rem;
-            color: var(--receipt-muted);
-            font-weight: 600;
-            margin-top: 4px;
-        }
-
-        .receipt-label {
-            margin-top: 24px;
-            display: inline-block;
-            padding: 6px 16px;
-            background: #f1f5f9;
-            border-radius: 999px;
-            font-size: 0.75rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--receipt-accent);
-        }
-
-        /* ── OR Number Banner ── */
-        .or-banner {
-            background: #f8fafc;
-            padding: 20px;
-            text-align: center;
-            border-bottom: 1px solid var(--receipt-border);
-        }
-
-        .or-number {
-            font-size: 1.25rem;
-            font-weight: 800;
-            color: var(--receipt-accent);
-        }
-
-        /* ── Info Grid ── */
-        .info-grid {
-            padding: 48px;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 40px;
-        }
-
-        .info-group {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        .info-item {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-        }
-
-        .info-item .label {
-            font-size: 0.7rem;
-            font-weight: 800;
-            color: var(--receipt-muted);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-
-        .info-item .value {
-            font-size: 1rem;
-            font-weight: 700;
-        }
-
-        /* ── Amount Area ── */
-        .amount-highlight {
-            margin: 0 48px 48px;
-            padding: 32px;
-            background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
-            border-radius: 20px;
+            background: rgba(255,255,255,0.15);
             color: #fff;
-            text-align: center;
+            border: 1px solid rgba(255,255,255,0.3);
         }
 
-        .amount-highlight .label {
-            font-size: 0.85rem;
-            font-weight: 700;
-            opacity: 0.9;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
+        .btn-back:hover {
+            background: rgba(255,255,255,0.25);
         }
 
-        .amount-highlight .val {
-            font-size: 3rem;
-            font-weight: 900;
-            margin-top: 8px;
+        /* Classic Receipt Container */
+        .receipt-container {
+            width: 100%;
+            max-width: 800px;
+            background: var(--receipt-bg);
+            padding: 40px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 14px;
+            line-height: 1.2;
+            color: var(--receipt-text);
+            white-space: pre-wrap; /* to handle raw text layout easily */
         }
 
-        /* ── Summary Table ── */
-        .summary-table {
-            margin: 0 48px 48px;
-            border-radius: 16px;
-            border: 1px solid var(--receipt-border);
-            overflow: hidden;
-        }
-
-        .summary-row {
-            display: flex;
-            justify-content: space-between;
-            padding: 16px 24px;
-            border-bottom: 1px solid var(--receipt-border);
-        }
-
-        .summary-row:last-child {
-            border-bottom: none;
-        }
-
-        .summary-row .lbl {
-            font-weight: 600;
-            color: var(--receipt-muted);
-        }
-
-        .summary-row .val {
-            font-weight: 800;
-        }
-
-        /* ── Footer ── */
-        .receipt-footer {
-            padding: 48px;
-            text-align: center;
-            border-top: 1px solid var(--receipt-border);
-            background: #fbfcfe;
-        }
-
-        .signature-box {
-            margin-top: 48px;
-            display: inline-block;
-            border-top: 2px solid var(--receipt-text);
-            padding-top: 8px;
-            min-width: 240px;
-        }
-
-        .sig-name {
-            font-weight: 800;
-            font-size: 1rem;
-        }
-
-        .sig-title {
-            font-size: 0.75rem;
-            color: var(--receipt-muted);
-            font-weight: 700;
-            text-transform: uppercase;
-        }
+        .text-center { text-align: center; }
 
         @media print {
-            .no-print {
-                display: none;
-            }
-
-            body {
-                background: #fff;
-                padding: 0;
-                color: #000;
-            }
-
-            .receipt-container {
-                box-shadow: none;
-                border: 1px solid #000;
-                border-radius: 0;
-                max-width: 100%;
-            }
-
-            .amount-highlight {
-                background: #f1f5f9 !important;
-                color: #000 !important;
-                border: 2px solid #000 !important;
-            }
-
-            .brand-name {
-                color: #000 !important;
-            }
-
-            .receipt-label {
-                border: 1px solid #000;
+            .no-print { display: none !important; }
+            body { background: #fff; padding: 0; display: block; }
+            .receipt-container { 
+                box-shadow: none; 
+                padding: 0; 
+                width: 100%; 
+                max-width: 100%; 
+                font-size: 12px; 
+                margin: 0;
             }
         }
     </style>
@@ -274,103 +135,63 @@
 
 <body>
 
-    <div class="no-print">
-        <button onclick="window.print()" class="btn btn-print">🖨️ Print Receipt</button>
-        <a href="/cashier/bill/{{ payment.bill_id }}" class="btn btn-back">← Back to Bills</a>
+    <div class="page-header no-print">
+        <div class="header-text">
+            <h1>Payment Receipt</h1>
+            <p>Transaction ID: {{ payment.receipt_number }}</p>
+        </div>
+        <div class="action-buttons">
+            <a href="/cashier/bill/{{ payment.bill_id }}" class="btn btn-back">← Back to Bills</a>
+            <button onclick="window.print()" class="btn btn-print">🖨️ Print Receipt</button>
+        </div>
     </div>
 
     <div class="receipt-container">
-        <!-- Header -->
-        <div class="receipt-header">
-            <div class="brand-name">{{ payment.branch_name }}</div>
-            <div class="brand-sub">{{ payment.location }}</div>
-            <div class="receipt-label">Official Electronic Receipt</div>
+        <div style="margin: 0 auto; width: 520px; max-width: 100%;">
+<div class="text-center">============================================================
+{{ payment.branch_name|upper }}
+{{ payment.location }}
+OFFICIAL ELECTRONIC RECEIPT
+============================================================</div>
+
+ RECEIPT DETAILS
+ ───────────────────────────────────────────────────────────
+  OR Number       : {{ payment.receipt_number }}
+  Date & Time  : {{ payment.payment_date.strftime('%B %d, %Y | %I:%M %p') }}
+  Payer Name   : {{ payment.guardian_name }}
+  Payment Mode : {{ payment.payment_method|title }}
+
+ STUDENT INFORMATION
+ ───────────────────────────────────────────────────────────
+  Student Name    : {{ payment.student_name }}
+  Enrollment No.  : {{ payment.branch_enrollment_no or "N/A" }}
+  Academic Level  : {% set level = (payment.grade_level or '')|string %}{% set level_lower = level|lower %}{{ level if level_lower[:5] == 'grade' else (level) }}
+{% if payment.notes %}
+ TRANSACTION NOTES
+ ───────────────────────────────────────────────────────────
+  {{ payment.notes }}
+{% endif %}
+ PAYMENT SUMMARY
+ ───────────────────────────────────────────────────────────
+  Total Tuition Fee          : ₱ {{ "{:,.2f}".format(payment.total_amount).rjust(11) }}
+  Previous Payments          : ₱ {{ "{:,.2f}".format(payment.amount_paid - payment.amount).rjust(11) }}
+  Previous Outstanding       : ₱ {{ "{:,.2f}".format(payment.balance + payment.amount).rjust(11) }}
+  Payment Received           : ₱ {{ "{:,.2f}".format(payment.amount).rjust(11) }}
+  ----------------------------------------------------------
+  Total Paid To Date         : ₱ {{ "{:,.2f}".format(payment.amount_paid).rjust(11) }}
+  Remaining Balance          : ₱ {{ "{:,.2f}".format(payment.balance).rjust(11) }}
+============================================================
+<div class="text-center">
+[ AUTHORIZED SIGNATURE ]
+{{ payment.received_by_name }}
+Authorized Cashier
+
+------------------------------------------------------------
+Thank you for your transaction! This document
+serves as an official confirmation of payment.
+============================================================</div>
         </div>
-
-        <!-- OR Number -->
-        <div class="or-banner">
-            <div class="or-number">OR #{{ payment.receipt_number }}</div>
-        </div>
-
-        <!-- Details -->
-        <div class="info-grid">
-            <div class="info-group">
-                <div class="info-item">
-                    <span class="label">Date & Time Issued</span>
-                    <span class="value">{{ payment.payment_date.strftime('%B %d, %Y - %I:%M %p') }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="label"> Name</span>
-                    <span class="value">{{ payment.guardian_name }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="label">Transaction Mode</span>
-                    <span class="value" style="text-transform: uppercase;">{{ payment.payment_method }}</span>
-                </div>
-            </div>
-            <div class="info-group">
-                <div class="info-item">
-                    <span class="label">Student Name</span>
-                    <span class="value">{{ payment.student_name }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="label">Student ID</span>
-                    <span class="value">LDMAJ-{{ "%04d"|format(payment.branch_enrollment_no) }}</span>
-                </div>
-                <div class="info-item">
-                    <span class="label">Academic Level</span>
-                    {% set level = (payment.grade_level or '')|string %}
-                    {% set level_lower = level|lower %}
-                    <span class="value">{{ level if level_lower[:5] == 'grade' else (level) }}</span>
-                </div>
-            </div>
-        </div>
-
-        {% if payment.notes %}
-        <div style="padding: 0 48px 32px;">
-            <div style="font-size: 0.7rem; font-weight: 800; color: var(--receipt-muted); text-transform: uppercase;">
-                Transaction Notes</div>
-            <div style="font-style: italic; font-size: 0.9rem;">"{{ payment.notes }}"</div>
-        </div>
-        {% endif %}
-
-        <!-- Amount Paid -->
-        <div class="amount-highlight">
-            <div class="label">Total Amount Paid</div>
-            <div class="val">₱{{ "%.2f"|format(payment.amount) }}</div>
-        </div>
-
-        <div style="padding: 0 48px; border-bottom: 1px dashed var(--receipt-border); margin-bottom: 32px;"></div>
-
-        <!-- Billing Summary -->
-        <div class="summary-table">
-            <div class="summary-row">
-                <span class="lbl">Previous Balance</span>
-                <span class="val">₱{{ "%.2f"|format(payment.total_amount) }}</span>
-            </div>
-            <div class="summary-row" style="background: #fbfcfe;">
-                <span class="lbl">Total Payments (to date)</span>
-                <span class="val">₱{{ "%.2f"|format(payment.amount_paid) }}</span>
-            </div>
-            <div class="summary-row">
-                <span class="lbl" style="color: var(--receipt-accent);">Remaining Balance</span>
-                <span class="val" style="color: var(--receipt-accent);">₱{{ "%.2f"|format(payment.balance) }}</span>
-            </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="receipt-footer">
-            <p style="font-size: 0.85rem; font-weight: 600;">Thank you for your transaction.</p>
-            <p style="font-size: 0.75rem; color: var(--receipt-muted); margin-top: 4px;">This document serves as an
-                official confirmation of payment.</p>
-
-            <div class="signature-box">
-                <div class="sig-name">{{ payment.received_by_name }}</div>
-                <div class="sig-title">Authorized Cashier</div>
-            </div>
-        </div>
-    </div>
+</div>
 
 </body>
-
 </html>

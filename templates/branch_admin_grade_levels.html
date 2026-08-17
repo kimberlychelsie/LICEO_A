@@ -30,39 +30,46 @@
         /* Replaced by premium welcome */
     }
 
-    .premium-welcome {
+    /* ── Hero Banner ── */
+    .hero-banner {
         background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
-        border-radius: 24px;
+        border-radius: 20px;
         padding: 40px;
-        color: white;
-        margin-bottom: 32px;
-        box-shadow: 0 10px 30px rgba(26, 58, 143, 0.2);
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+        color: #fff;
+        box-shadow: 0 15px 35px -10px rgba(26, 58, 143, 0.2);
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 20px;
     }
 
-    .premium-welcome h1 {
-        font-size: 2.2rem;
-        font-weight: 800;
-        margin-bottom: 8px;
-        letter-spacing: -0.02em;
-        color: white;
-        margin: 0;
-    }
-
-    .status-line {
+    .hero-content h1 {
+        font-size: 2.5rem;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        margin-bottom: 12px;
+        line-height: 1;
         display: flex;
         align-items: center;
-        gap: 10px;
-        font-weight: 500;
-        opacity: 0.9;
-        font-size: 0.9rem;
+        gap: 8px;
     }
 
-    .pulse-dot {
-        width: 10px;
-        height: 10px;
-        background: var(--ma-gold);
-        border-radius: 50%;
-        box-shadow: 0 0 10px var(--ma-gold);
+    .hero-content h1 span {
+        color: var(--ma-gold);
+        text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+    }
+
+    .hero-content p {
+        font-size: 1rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+        max-width: 600px;
+        line-height: 1.5;
+        margin: 0;
     }
 
     /* Cards */
@@ -106,6 +113,7 @@
         border-radius: 12px;
         font-size: 0.95rem;
         transition: all 0.3s ease;
+        box-sizing: border-box;
     }
 
     .form-control:focus {
@@ -120,12 +128,44 @@
         border-radius: 12px;
         font-weight: 700;
         font-size: 0.9rem;
-        transition: all 0.3s ease;
+        cursor: pointer;
+        transition: all 0.3s;
         border: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Assign-Students Style Action Button */
+    .save-row-btn {
+        padding: 8px 16px;
+        border-radius: 10px;
+        border: none;
+        background: var(--ma-primary);
+        color: white;
+        font-weight: 700;
+        font-size: 0.8rem;
         cursor: pointer;
         display: inline-flex;
         align-items: center;
-        justify-content: center;
+        gap: 6px;
+        transition: opacity 0.2s;
+    }
+
+    .save-row-btn:hover {
+        opacity: 0.9;
+    }
+
+    .save-row-btn.unarchive {
+        background: #15803d;
+    }
+
+    .save-row-btn.archive,
+    .save-row-btn.delete {
+        background: #ff0000;
+    }
+
+    .btn-gold {
         gap: 8px;
     }
 
@@ -221,21 +261,15 @@
 
     @media (max-width: 768px) {
         .ba-container {
-            padding: 12px 8px;
+            padding: 16px 12px;
         }
 
-        .premium-welcome {
-            padding: 16px;
-            border-radius: 16px;
-            margin-bottom: 20px;
+        .hero-banner {
+            padding: 24px 20px;
         }
 
-        .premium-welcome h1 {
-            font-size: 1.3rem;
-        }
-
-        .status-line {
-            font-size: 0.7rem;
+        .hero-content h1 {
+            font-size: 1.8rem;
         }
 
         .modern-card {
@@ -319,8 +353,8 @@
     }
 
     @media (max-width: 480px) {
-        .premium-welcome h1 {
-            font-size: 1.1rem;
+        .hero-content h1 {
+            font-size: 1.5rem;
         }
     }
 
@@ -339,30 +373,25 @@
 
 <div class="ba-container">
 
-    <header style="margin-bottom: 32px;">
-        <h1
-            style="font-size: 2.8rem; font-weight: 900; color: #1e40af; letter-spacing: -1.5px; margin: 0; line-height: 1.1;">
-            Grade Level Registry</h1>
-    </header>
+    <div class="hero-banner">
+        <div class="hero-content">
+            <h1>Grade <span>Level</span></h1>
+            <p>Available grade levels for this branch.</p>
+        </div>
+        {% if is_branch_active_status %}
+        <div class="header-actions" style="display: flex; align-items: center;">
+            <button onclick="toggleCreateGradeForm()" class="btn-prem btn-gold"
+                style="font-weight: 800; border-radius: 12px; font-size: 0.9rem;">
+                <i class="fas fa-plus-circle"></i> Add Grade Level
+            </button>
+        </div>
+        {% endif %}
+    </div>
 
     <div class="single-col" style="display: flex; flex-direction: column; gap: 32px;">
         <!-- Add Form -->
         {% if is_branch_active_status %}
-        <div class="col-form" style="max-width: 600px; width: 100%; margin: 0 auto;">
-            <!-- Collapsible Add Header -->
-            <div class="modern-card"
-                style="padding: 0; margin-bottom: 24px; border: 2px dashed #cbd5e1; cursor: pointer; transition: all 0.2s; background: #f8fafc;"
-                onclick="toggleCreateGradeForm()" id="addGradeHeader">
-                <div
-                    style="padding: 20px; display: flex; justify-content: center; align-items: center; gap: 12px; color: var(--ma-primary);">
-                    <i class="fas fa-plus-circle" style="font-size: 1.2rem; color: var(--ma-gold);"></i>
-                    <h2
-                        style="margin: 0; font-size: 1.1rem; text-transform: uppercase; letter-spacing: 0.05em; display: inline-block;">
-                        ADD NEW GRADE LEVEL (CLICK TO EXPAND)</h2>
-                    <i class="fas fa-chevron-down" id="addGradeChevron" style="transition: transform 0.3s;"></i>
-                </div>
-            </div>
-
+        <div class="col-form">
             <!-- Add Form Container -->
             <div id="createGradeFormContainer" style="display: none;">
                 <div class="modern-card">
@@ -398,7 +427,7 @@
         <!-- Table -->
         <div class="col-table">
             <div class="modern-card">
-                <h2>List of Existing Grade Level</h2>
+                <h2>List of Grade Level</h2>
                 {% if grades %}
                 <div class="table-responsive">
                     <table class="vault-table">
@@ -420,13 +449,11 @@
                                 </td>
                                 <td data-label="Actions" style="text-align: right; white-space: nowrap;">
                                     <div style="display: flex; gap: 8px; justify-content: flex-end;">
-                                        <button class="btn-prem btn-primary"
-                                            style="padding: 6px 16px; font-size: 0.8rem;"
+                                        <button class="save-row-btn"
                                             onclick='openEditModal({{ g[0] }}, {{ g[2] }}, {{ g[1]|tojson }})'>
                                             <i class="fas fa-edit"></i> Edit
                                         </button>
-                                        <button class="btn-prem btn-danger"
-                                            style="padding: 6px 16px; font-size: 0.8rem;"
+                                        <button class="save-row-btn delete"
                                             onclick="confirmGradeDelete({{ g[0] }}, '{{ g[1]|e }}')">
                                             <i class="fas fa-trash"></i> Delete
                                         </button>
@@ -491,8 +518,8 @@
             </div>
 
             <div style="display:flex; justify-content:flex-end; gap:12px; margin-top: 32px;">
-                <button type="button" class="btn-prem btn-secondary" onclick="closeEditModal()">Dismiss</button>
-                <button type="submit" class="btn-prem btn-gold" id="editSubmitBtn" disabled>Commit Changes</button>
+                <button type="button" class="btn-prem btn-secondary" onclick="closeEditModal()">Cancel</button>
+                <button type="submit" class="btn-prem btn-gold" id="editSubmitBtn" disabled>Save</button>
             </div>
         </form>
     </div>
@@ -501,13 +528,10 @@
 <script>
     function toggleCreateGradeForm() {
         const container = document.getElementById('createGradeFormContainer');
-        const chevron = document.getElementById('addGradeChevron');
         if (container.style.display === 'none') {
             container.style.display = 'block';
-            chevron.style.transform = 'rotate(180deg)';
         } else {
             container.style.display = 'none';
-            chevron.style.transform = 'rotate(0deg)';
         }
     }
 

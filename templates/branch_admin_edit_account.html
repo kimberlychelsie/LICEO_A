@@ -154,15 +154,11 @@
 
 {% block content %}
 <div class="edit-container">
-    <div class="edit-header">
-        <h1>Edit Account</h1>
-        <p>Update account information for <strong>{{ user.full_name }}</strong></p>
+    <div class="edit-header" style="margin-bottom: 24px; text-align: left;">
+        <h1 style="color: var(--ma-primary); font-size: 2rem; font-weight: 900; margin: 0;">Edit Account</h1>
     </div>
 
-    <div class="premium-card">
-        <div style="text-align: center;">
-            <div class="role-badge">{{ user.role }} Account</div>
-        </div>
+    <div class="premium-card" style="padding-top: 24px;">
 
         <form method="post" action="{{ url_for('branch_admin.branch_admin_edit_account', user_id=user.user_id, role=request.args.get('role', 'registrar')) }}">
     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -209,41 +205,6 @@
         </form>
     </div>
 
-    <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role=request.args.get('role', 'registrar')) }}" class="btn-cancel">
-        ← Back to Accounts
-    </a>
+    </div>
 </div>
-{% endblock %}
-
-{% block scripts %}
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const editForm = document.querySelector('form');
-    const submitBtn = document.getElementById('submitBtn');
-    
-    if (!editForm || !submitBtn) return;
-
-    // Capture initial state
-    const getFormData = () => {
-        const data = new FormData(editForm);
-        const obj = {};
-        data.forEach((value, key) => { obj[key] = value; });
-        return JSON.stringify(obj);
-    };
-
-    const initialData = getFormData();
-    submitBtn.disabled = true;
-    submitBtn.style.opacity = '0.5';
-    submitBtn.style.cursor = 'not-allowed';
-
-    editForm.addEventListener('input', () => {
-        const currentData = getFormData();
-        const hasChanged = currentData !== initialData;
-        
-        submitBtn.disabled = !hasChanged;
-        submitBtn.style.opacity = hasChanged ? '1' : '0.5';
-        submitBtn.style.cursor = hasChanged ? 'pointer' : 'not-allowed';
-    });
-});
-</script>
 {% endblock %}

@@ -50,17 +50,17 @@
     .welcome-header h1 {
         font-size: 2.2rem;
         font-weight: 900;
-        margin-bottom: 8px;
+        margin: 0 0 12px 0;
         letter-spacing: -0.02em;
+        line-height: 1;
     }
 
     .welcome-header p {
         font-size: 1rem;
         opacity: 0.9;
         font-weight: 500;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+        margin: 0;
+        line-height: 1.5;
     }
 
     .status-line {
@@ -153,9 +153,7 @@
 
     /* ── Main Layout Split ── */
     .dash-split {
-        display: grid;
-        grid-template-columns: 1fr 420px;
-        gap: 24px;
+        display: block; /* Changed from grid since Quick Actions moved */
     }
 
     .pane {
@@ -176,42 +174,58 @@
         gap: 12px;
     }
 
-    /* ── Quick Actions (In Pane) ── */
-    .action-stack {
+    /* ── Quick Actions (Redesigned) ── */
+    .qa-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-top: 24px;
+        margin-bottom: 24px;
+    }
+
+    .qa-card {
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 24px 16px;
+        text-align: center;
+        text-decoration: none;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+        border: 1px solid rgba(0, 0, 0, 0.04);
+        transition: transform 0.2s, box-shadow 0.2s;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        align-items: center;
+        justify-content: center;
     }
 
-    .card-action {
-        background: #f8fafc;
-        border: 1px solid var(--reg-border);
-        border-radius: 18px;
-        padding: 16px 20px;
-        text-decoration: none;
-        transition: all 0.3s ease;
+    .qa-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+    }
+
+    .qa-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        background: #f1f5f9;
+        color: #1e3a8a;
         display: flex;
         align-items: center;
-        gap: 16px;
+        justify-content: center;
+        margin-bottom: 16px;
     }
 
-    .card-action:hover {
-        transform: translateX(8px);
-        background: white;
-        border-color: var(--reg-gold);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    .qa-icon svg {
+        width: 24px;
+        height: 24px;
+        stroke-width: 2;
     }
 
-    .icon-box {
-        width: 44px; height: 44px;
-        border-radius: 12px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.25rem;
-        flex-shrink: 0;
+    .qa-title {
+        color: #1e3a8a;
+        font-weight: 800;
+        font-size: 0.95rem;
     }
-
-    .card-info h3 { font-size: 0.9rem; font-weight: 800; color: var(--reg-primary); margin: 0; }
-    .card-info p { font-size: 0.75rem; color: var(--reg-muted); margin: 2px 0 0; }
 
     /* ── Graph ── */
     .chart-box {
@@ -252,8 +266,7 @@
             font-size: 1.8rem !important;
         }
         .dash-split { 
-            grid-template-columns: 1fr !important;
-            gap: 16px !important;
+            display: block !important;
         }
         .pane {
             padding: 20px !important;
@@ -262,6 +275,9 @@
             grid-template-columns: 1fr !important;
             gap: 12px !important;
         }
+        .qa-grid {
+            grid-template-columns: repeat(2, 1fr) !important;
+        }
     }
 </style>
 {% endblock %}
@@ -269,178 +285,141 @@
 {% block content %}
 <div class="reg-container">
     <div class="welcome-header">
-        <h1>Registrar Home</h1>
-        <p>
-            <span class="pulse-dot"></span>
-            Overview of current enrollments and students
-        </p>
+        <h1>
+            Registrar <span style="color: #facc15; text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);">Dashboard</span>
+        </h1>
+        <p>Overview of current enrollments and students</p>
     </div>
 
-    <!-- Top Alert Banner (Previously Sidebar) -->
+    {% if no_section_count > 0 %}
+    <!-- Top Alert Banner -->
     <div class="alert-banner-grid">
-        <div class="alert-card">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <span style="font-weight: 800; color: var(--reg-primary); font-size: 0.95rem;">Portal Status</span>
-                {% if reenrollment_open %}
-                <span style="background:#dcfce7; color:#166534; padding:6px 12px; border-radius:12px; font-size:0.75rem; font-weight:800;">OPEN</span>
-                {% else %}
-                <span style="background:#fee2e2; color:#991b1b; padding:6px 12px; border-radius:12px; font-size:0.75rem; font-weight:800;">LOCKED</span>
-                {% endif %}
-            </div>
-            <p style="font-size: 0.85rem; color: var(--reg-muted); margin: 0; line-height: 1.5;">
-                Old students {{ 'can' if reenrollment_open else 'cannot' }} enroll right now.
-            </p>
-        </div>
-
-        {% if no_section_count > 0 %}
         <div class="alert-card" style="border-left: 4px solid #f59e0b;">
             <h4 style="margin:0 0 8px; color:#92400e; font-size: 0.9rem;"><i class="fas fa-exclamation-triangle"></i> Action Needed</h4>
             <p style="margin:0; font-size: 0.82rem; color: #a16207; line-height: 1.5;">
                 {{ no_section_count }} students need to be assigned to a section.
             </p>
         </div>
-        {% endif %}
     </div>
+    {% endif %}
 
-    <!-- Stats pills -->
-    <div class="stats-row">
-        <div class="stat-pill" style="--accent-color: #3b82f6;">
-            <div class="stat-val">{{ pending_count }}</div>
-            <div class="stat-lab">Pending</div>
-        </div>
-        <div class="stat-pill" style="--accent-color: #10b981;">
-            <div class="stat-val">{{ enrolled_count }}</div>
-            <div class="stat-lab">Total Enrolled</div>
-        </div>
-        <div class="stat-pill" style="--accent-color: #f59e0b;">
-            <div class="stat-val">{{ no_section_count }}</div>
-            <div class="stat-lab">No Section</div>
-        </div>
-        <div class="stat-pill" style="--accent-color: #ef4444;">
-            <div class="stat-val">{{ reenroll_count }}</div>
-            <div class="stat-lab">Re-enrollment</div>
-        </div>
-    </div>
 
-    <!-- Main Dashboard Split -->
-    <div class="dash-split">
-        <!-- Main Graph (Left) -->
-        <div class="pane" style="text-align: center;">
-            <h2 class="pane-title"><i class="fas fa-chart-pie"></i> Enrollment Stats</h2>
-            <div class="chart-box">
-                <canvas id="enrollmentChart"></canvas>
-                <div class="chart-center">
-                    <div class="center-num" id="activeCount">{{ enrolled_count }}</div>
-                    <div class="center-txt" id="activeLabel">Total Students</div>
-                </div>
+
+    <!-- Quick Actions (New Design) -->
+    <div class="qa-grid">
+        <a href="/registrar/enrollments" class="qa-card">
+            <div class="qa-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
             </div>
-            <div id="mainLegend" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px;"></div>
+            <div class="qa-title">Enrollments</div>
+        </a>
+        <a href="/registrar/students-by-grade" class="qa-card">
+            <div class="qa-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+            </div>
+            <div class="qa-title">Student List</div>
+        </a>
+        <a href="/registrar/profile-pictures" class="qa-card">
+            <div class="qa-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+            </div>
+            <div class="qa-title">Student Photos</div>
+        </a>
+        <a href="/registrar/schedules" class="qa-card">
+            <div class="qa-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+            </div>
+            <div class="qa-title">View Schedules</div>
+        </a>
+    </div>
+
+    <!-- Bottom Tables Container -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-top: 24px;">
+        <div class="card" style="padding: 24px; background: #fff; border-radius: var(--reg-radius); box-shadow: var(--reg-shadow); border: 1px solid var(--reg-border);">
+            <div style="padding-bottom: 16px; border-bottom: 1px solid var(--reg-border); margin-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 800;">Recent Applications</h3>
+            </div>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #f8fafc;">
+                            <th style="padding: 12px; text-align: left; font-size: 0.85rem; color: var(--reg-muted); font-weight: 700; border-bottom: 2px solid var(--reg-border);">Student</th>
+                            <th style="padding: 12px; text-align: left; font-size: 0.85rem; color: var(--reg-muted); font-weight: 700; border-bottom: 2px solid var(--reg-border);">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pending in recent_pending %}
+                        <tr style="border-bottom: 1px solid var(--reg-border);">
+                            <td style="padding: 12px; font-size: 0.85rem; color: #1e293b; font-weight: 600;">
+                                {{ pending.student_name }}
+                                <div style="font-size: 0.75rem; color: var(--reg-muted); font-weight: 400;">
+                                    Grade: {{ pending.grade_level }}
+                                </div>
+                            </td>
+                            <td style="padding: 12px;">
+                                <a href="/registrar/enrollments" style="font-size: 0.8rem; color: #3b82f6; text-decoration: none; font-weight: 700; background: #eff6ff; padding: 4px 10px; border-radius: 6px;">View</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="2" style="padding: 24px 12px; text-align: center; color: var(--reg-muted); font-weight: 600; font-size: 0.9rem;">No recent applications</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        <!-- Quick Actions (Right - Previously Top) -->
-        <div class="pane">
-            <h2 class="pane-title"><i class="fas fa-bolt"></i> Quick Actions</h2>
-            <div class="action-stack">
-                <a href="/registrar/enrollments" class="card-action">
-                    <div class="icon-box" style="background: #eff6ff; color: #2563eb;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                    </div>
-                    <div class="card-info">
-                        <h3>Enrollments</h3>
-                        <p>Manage list and approvals.</p>
-                    </div>
-                </a>
-                <a href="/registrar/students-by-grade" class="card-action">
-                    <div class="icon-box" style="background: #f0fdf4; color: #166534;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
-                    </div>
-                    <div class="card-info">
-                        <h3>Student List</h3>
-                        <p>View students by grade.</p>
-                    </div>
-                </a>
-                <a href="/registrar/profile-pictures" class="card-action">
-                    <div class="icon-box" style="background: #fff1f2; color: #be123c;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
-                    </div>
-                    <div class="card-info">
-                        <h3>Student Photos</h3>
-                        <p>Verify profile pictures.</p>
-                    </div>
-                </a>
-                <a href="/registrar/schedules" class="card-action">
-                    <div class="icon-box" style="background: #fefce8; color: #a16207;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-                    </div>
-                    <div class="card-info">
-                        <h3>View Schedules</h3>
-                        <p>Check class times.</p>
-                    </div>
-                </a>
+        <div class="card" style="padding: 24px; background: #fff; border-radius: var(--reg-radius); box-shadow: var(--reg-shadow); border: 1px solid var(--reg-border);">
+            <div style="padding-bottom: 16px; border-bottom: 1px solid var(--reg-border); margin-bottom: 16px;">
+                <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 800;">Enrollment Overview</h3>
+            </div>
+            <div style="height: 300px; width: 100%; display: flex; justify-content: center; align-items: center;">
+                <canvas id="enrollmentPieGraph"></canvas>
             </div>
         </div>
     </div>
 </div>
-{% endblock %}
 
-{% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-document.addEventListener("DOMContentLoaded", function() {
-    const rawData = {{ enrollment_by_grade | tojson | safe }};
-    const totalEnrollment = {{ enrolled_count }};
-    const countEl = document.getElementById('activeCount');
-    const labelEl = document.getElementById('activeLabel');
-    const legendEl = document.getElementById('mainLegend');
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('enrollmentPieGraph').getContext('2d');
+        const pendingCount = parseInt('{{ pending_count }}', 10) || 0;
+        const enrolledCount = parseInt('{{ enrolled_count }}', 10) || 0;
 
-    const colors = ['#1a3a8f', '#facc15', '#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ec4899', '#8b5cf6', '#14b8a6', '#f97316'];
-    const labels = rawData.map(item => item.grade_level || 'Unknown');
-    const dataValues = rawData.map(item => item.student_count);
-    const bgColors = labels.map((_, i) => colors[i % colors.length]);
-
-    labels.forEach((l, i) => {
-        const item = document.createElement('div');
-        item.style.display = 'flex'; item.style.alignItems = 'center'; item.style.gap = '8px';
-        item.style.fontSize = '0.75rem'; item.style.fontWeight = '700'; item.style.color = '#64748b';
-        item.innerHTML = `<span style="width:8px; height:8px; background:${bgColors[i]}; border-radius:3px;"></span> ${l}`;
-        legendEl.appendChild(item);
-    });
-
-    const ctx = document.getElementById('enrollmentChart').getContext('2d');
-    const chart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: dataValues,
-                backgroundColor: bgColors,
-                borderWidth: 5,
-                borderColor: '#ffffff',
-                hoverOffset: 15
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            cutout: '78%',
-            plugins: {
-                legend: { display: false },
-                tooltip: { enabled: false }
+        new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Pending', 'Total Enrolled'],
+                datasets: [{
+                    data: [pendingCount, enrolledCount],
+                    backgroundColor: [
+                        '#facc15', // Theme yellow/warning for pending
+                        '#1a3a8f'  // Theme primary for enrolled
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#ffffff'
+                }]
             },
-            onHover: (event, activeElements) => {
-                if (activeElements.length > 0) {
-                    const idx = activeElements[0].index;
-                    countEl.innerText = chart.data.datasets[0].data[idx];
-                    labelEl.innerText = chart.data.labels[idx];
-                    countEl.style.color = chart.data.datasets[0].backgroundColor[idx];
-                } else {
-                    countEl.innerText = totalEnrollment;
-                    labelEl.innerText = 'Total Students';
-                    countEl.style.color = 'var(--reg-primary)';
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            font: {
+                                family: "'Plus Jakarta Sans', sans-serif",
+                                size: 13,
+                                weight: '600'
+                            },
+                            padding: 20
+                        }
+                    }
                 }
             }
-        }
+        });
     });
-});
 </script>
 {% endblock %}

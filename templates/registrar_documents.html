@@ -20,15 +20,39 @@
   }
 
   /* ── Layout ─────────────────────────────── */
-  .docs-page { max-width: 1200px; margin: 0 auto; padding: 2rem 1.5rem; }
+  .docs-page { max-width: 1200px; margin: 0 auto; padding: 0 20px 64px; }
 
   /* ── Page header ────────────────────────── */
-  .page-header {
-    display: flex; align-items: flex-start; justify-content: space-between;
-    gap: 1rem; flex-wrap: wrap; margin-bottom: 1.75rem;
+  .welcome-header {
+      background: linear-gradient(135deg, #1a3a8f 0%, #0c2461 100%);
+      border-radius: 24px;
+      padding: 32px 40px;
+      color: white;
+      margin-bottom: 24px;
+      box-shadow: 0 10px 30px rgba(26, 58, 143, 0.2);
+      position: relative;
+      overflow: hidden;
   }
-  .page-header h1 { font-size: 1.6rem; font-weight: 700; color: var(--text); margin: 0; }
-  .page-header p  { font-size: .875rem; color: var(--text-muted); margin: .25rem 0 0; }
+  .welcome-header h1 {
+      font-size: 2.2rem;
+      font-weight: 900;
+      margin-bottom: 8px;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: white;
+      margin-top: 0;
+  }
+  .welcome-header p {
+      font-size: 1rem;
+      opacity: 0.9;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0;
+  }
 
   /* ── Stats cards ────────────────────────── */
   .stats-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
@@ -43,9 +67,9 @@
 
   /* ── Filter bar ─────────────────────────── */
   .filter-bar {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 1.1rem 1.25rem;
-    box-shadow: var(--shadow); margin-bottom: 1.5rem;
+    background: var(--surface);
+    padding: 1.1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
     display: flex; gap: .75rem; flex-wrap: wrap; align-items: flex-end;
   }
   .filter-group { display: flex; flex-direction: column; gap: .35rem; flex: 1; min-width: 140px; }
@@ -77,18 +101,22 @@
   .btn-clear:hover { background: var(--surface2); color: var(--text); }
 
   /* ── Student cards ──────────────────────── */
-  .students-list { display: flex; flex-direction: column; gap: 1.25rem; }
-
+  .students-list { display: flex; flex-direction: column; }
   .student-card {
-    background: var(--surface); border: 1px solid var(--border);
-    border-radius: var(--radius); box-shadow: var(--shadow);
+    background: var(--surface); 
+    border-bottom: 1px solid var(--border);
     overflow: hidden;
+  }
+  .student-card:last-child {
+    border-bottom: none;
   }
   .student-card-header {
     display: flex; align-items: center; gap: 1rem;
-    padding: 1rem 1.25rem; background: var(--surface2);
-    border-bottom: 1px solid var(--border);
+    padding: 1.25rem 1.5rem; background: var(--surface);
     cursor: pointer; user-select: none;
+  }
+  .student-card-header:hover {
+    background: var(--surface2);
   }
   .student-avatar {
     width: 42px; height: 42px; border-radius: 50%;
@@ -118,7 +146,9 @@
   /* ── Docs grid ──────────────────────────── */
   .docs-grid {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 1rem; padding: 1.25rem;
+    gap: 1rem; padding: 1.25rem 1.5rem;
+    background: var(--surface2);
+    border-top: 1px solid var(--border);
   }
 
   .doc-item {
@@ -173,7 +203,6 @@
   .empty-state {
     text-align: center; padding: 4rem 2rem;
     color: var(--text-muted); background: var(--surface);
-    border: 1px solid var(--border); border-radius: var(--radius);
   }
   .empty-state svg { width: 56px; height: 56px; opacity: .4; margin-bottom: 1rem; }
   .empty-state h3 { font-size: 1.1rem; font-weight: 600; color: var(--text); margin-bottom: .4rem; }
@@ -216,19 +245,23 @@
 
 <div class="docs-page">
   <!-- Header -->
-  <div class="page-header">
-    <div>
+  <div class="welcome-header">
+    <!-- Decorative circles -->
+    <div style="position: absolute; top: -50%; right: -10%; width: 300px; height: 300px; background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0) 70%); border-radius: 50%;"></div>
+    <div style="position: absolute; bottom: -50%; right: 10%; width: 200px; height: 200px; background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 70%); border-radius: 50%;"></div>
+    
+    <div style="position: relative; z-index: 1;">
       <h1>
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-          style="vertical-align:middle; margin-right:.4rem;">
-          <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
-          <polyline points="14 2 14 8 20 8"/>
-          <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
-          <line x1="10" y1="9" x2="8" y2="9"/>
-        </svg>
-        Enrollment Documents
-      </h1>
+      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+        style="vertical-align:middle; margin-right:.4rem;">
+        <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+        <line x1="10" y1="9" x2="8" y2="9"/>
+      </svg>
+      Enrollment <span style="color: #eab308; text-shadow: 0 4px 12px rgba(234, 179, 8, 0.3);">Documents</span>
+    </h1>
       <p>View and manage all documents submitted by students during enrollment.</p>
     </div>
   </div>
@@ -245,7 +278,8 @@
     </div>
   </div>
 
-  <!-- Filters -->
+  <!-- Filters & Students list -->
+  <div class="registry-card" style="background: white; border-radius: 16px; border: 1px solid var(--border); box-shadow: var(--shadow); overflow: hidden; margin-bottom: 2rem;">
   <form method="GET" action="/registrar/documents">
     <div class="filter-bar">
       <div class="filter-group" style="flex:2; min-width:200px;">
@@ -285,9 +319,7 @@
         </svg>
         Search
       </button>
-      {% if search_q or doc_type_f or grade_f %}
-      <a href="/registrar/documents{% if year_f %}?year_id={{ year_f }}{% endif %}" class="btn-clear">✕ Clear</a>
-      {% endif %}
+
     </div>
   </form>
 
@@ -385,7 +417,17 @@
     </div>
     {% endfor %}
   </div>
-
+  <!-- Pagination Container -->
+  <div id="paginationContainer" style="padding: 16px 24px; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; background: #fff;">
+      <div style="font-size: 0.85rem; color: var(--text-muted);">
+          Showing <span id="pageStart">1</span> to <span id="pageEnd">10</span> of <span id="pageTotal">{{ students_with_docs|length }}</span> entries
+      </div>
+      <div style="display: flex; gap: 8px;">
+          <button onclick="prevPage()" id="btnPrev" style="padding: 6px 12px; border: 1px solid var(--border); background: #fff; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">Previous</button>
+          <button onclick="nextPage()" id="btnNext" style="padding: 6px 12px; border: 1px solid var(--border); background: #fff; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">Next</button>
+      </div>
+  </div>
+  
   {% else %}
   <div class="empty-state">
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
@@ -396,6 +438,7 @@
     <p>No enrollment documents match your current filters.</p>
   </div>
   {% endif %}
+  </div>
 </div>
 
 <!-- Preview Modal -->
@@ -418,6 +461,79 @@
 </div>
 
 <script>
+
+  /* ── Pagination ─── */
+  const itemsPerPage = 10;
+  let currentPage = 1;
+  
+  function updatePagination() {
+      const allCards = Array.from(document.querySelectorAll('.student-card'));
+      const totalItems = allCards.length;
+      
+      const pagContainer = document.getElementById('paginationContainer');
+      if (!pagContainer) return;
+      
+      if (totalItems <= itemsPerPage) {
+          // Keep it visible so user knows pagination exists, buttons will be disabled
+          pagContainer.style.display = 'flex';
+      } else {
+          pagContainer.style.display = 'flex';
+      }
+      
+      const totalPages = Math.ceil(totalItems / itemsPerPage);
+      if (currentPage > totalPages) currentPage = totalPages;
+      if (currentPage < 1) currentPage = 1;
+      
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+      
+      allCards.forEach((card, index) => {
+          if (index >= startIndex && index < endIndex) {
+              card.style.display = 'flex';
+              // Make sure to preserve flex direction if it has one, 
+              // but student-card usually has display flex or block.
+              // Wait, in CSS student-card might not be flex. We will just use '' to restore CSS default.
+              card.style.display = ''; 
+          } else {
+              card.style.display = 'none';
+          }
+      });
+      
+      document.getElementById('pageStart').textContent = totalItems === 0 ? 0 : startIndex + 1;
+      document.getElementById('pageEnd').textContent = endIndex;
+      document.getElementById('pageTotal').textContent = totalItems;
+      
+      const btnPrev = document.getElementById('btnPrev');
+      const btnNext = document.getElementById('btnNext');
+      
+      if (currentPage === 1) {
+          btnPrev.disabled = true;
+          btnPrev.style.opacity = '0.5';
+          btnPrev.style.cursor = 'not-allowed';
+      } else {
+          btnPrev.disabled = false;
+          btnPrev.style.opacity = '1';
+          btnPrev.style.cursor = 'pointer';
+      }
+      
+      if (currentPage === totalPages || totalPages === 0) {
+          btnNext.disabled = true;
+          btnNext.style.opacity = '0.5';
+          btnNext.style.cursor = 'not-allowed';
+      } else {
+          btnNext.disabled = false;
+          btnNext.style.opacity = '1';
+          btnNext.style.cursor = 'pointer';
+      }
+  }
+  
+  function nextPage() { currentPage++; updatePagination(); }
+  function prevPage() { if (currentPage > 1) { currentPage--; updatePagination(); } }
+  
+  document.addEventListener('DOMContentLoaded', () => {
+      updatePagination();
+  });
+
   /* ── Card toggle ─── */
   function toggleCard(id) {
     const card = document.getElementById(id);
@@ -426,7 +542,7 @@
     body.style.display = body.style.display === 'none' ? 'block' : 'none';
   }
 
-  /* Open first card by default */
+  /* Open first card by default - DISABLED as per request
   document.addEventListener('DOMContentLoaded', () => {
     const firstCard = document.querySelector('.student-card');
     if (firstCard) {
@@ -436,6 +552,7 @@
       if (body) body.style.display = 'block';
     }
   });
+  */
 
   /* ── Preview modal ─── */
   function openPreview(url, title, isPdf) {

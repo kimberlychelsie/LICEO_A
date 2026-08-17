@@ -9,29 +9,41 @@
         font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
-    .registry-welcome {
-        background: linear-gradient(135deg, #1a3a8f, #0f256e);
+    /* ── Hero Banner ── */
+    .hero-banner {
+        background: linear-gradient(135deg, #1a3a8f 0%, #0c2461 100%);
+        border-radius: 20px;
         padding: 40px;
-        border-radius: 16px;
-        color: #ffffff;
         margin-bottom: 32px;
-        box-shadow: 0 10px 25px -5px rgba(26, 58, 143, 0.4);
+        position: relative;
+        overflow: hidden;
+        color: #fff;
+        box-shadow: 0 15px 35px -10px rgba(26, 58, 143, 0.2);
     }
 
-    .registry-welcome h1 {
+    .hero-content h1 {
         font-size: 2.5rem;
         font-weight: 900;
-        margin: 0 0 10px 0;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.04em;
+        margin-bottom: 12px;
+        line-height: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
     }
 
-    .registry-welcome p {
-        font-size: 1.05rem;
-        color: #cbd5e1;
-        margin: 0;
+    .hero-content h1 span {
+        color: #facc15;
+        text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+    }
+
+    .hero-content p {
+        font-size: 1rem;
         font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
         max-width: 600px;
         line-height: 1.5;
+        margin: 0;
     }
 
     .modern-card {
@@ -103,32 +115,50 @@
         box-shadow: 0 8px 16px rgba(250, 204, 21, 0.4);
     }
 
+    :root {
+        --ma-primary: #1a3a8f;
+        --ma-gold: #facc15;
+        --ma-bg: #f8fafc;
+        --ma-card: #ffffff;
+        --ma-border: rgba(26, 58, 143, 0.1);
+        --ma-text: #0f172a;
+        --ma-muted: #64748b;
+        --ma-accent: #3b82f6;
+        --ma-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    }
+
     /* Vault Table */
     .vault-wrapper {
+        border-radius: 20px;
         overflow-x: auto;
+        border: 1px solid var(--ma-border);
+        min-height: 250px;
     }
 
     .vault-table {
         width: 100%;
-        border-collapse: separate;
-        border-spacing: 0;
+        min-width: 1000px;
+        border-collapse: collapse;
+        background: white;
     }
 
-    .vault-table th {
+    .vault-table thead th {
         background: #f8fafc;
-        padding: 16px;
-        text-align: left;
+        padding: 16px 20px;
         font-size: 0.75rem;
         font-weight: 800;
-        color: #64748b;
         text-transform: uppercase;
         letter-spacing: 0.05em;
-        border-bottom: 2px solid #e2e8f0;
+        color: var(--ma-muted);
+        border-bottom: 1px solid var(--ma-border);
+        text-align: left;
     }
 
-    .vault-table td {
-        padding: 20px 16px;
+    .vault-table tbody td {
+        padding: 18px 20px;
         border-bottom: 1px solid #f1f5f9;
+        font-size: 0.95rem;
+        color: var(--ma-text);
         vertical-align: middle;
     }
 
@@ -198,45 +228,71 @@
         flex: 1;
         min-width: 400px;
     }
+
+    .sa-container {
+        max-width: 1400px; 
+        margin: 0 auto; 
+        padding: 32px 24px;
+    }
+
+    @media (max-width: 768px) {
+        .sa-container {
+            padding: 16px 12px;
+        }
+        .hero-banner {
+            padding: 24px 16px;
+        }
+    }
 </style>
 
-<div class="sa-container" style="max-width: 1400px; margin: 0 auto; padding: 32px 24px;">
+<div class="sa-container">
 
     <!-- Header -->
-    <div class="registry-welcome">
-        <h1>School Year Management</h1>
-
-    </div>
-
-
-    <div class="two-col">
-        <!-- Form Card -->
-        <div class="col-form">
-            <div class="modern-card">
-                <h2 style="margin: 0 0 20px 0; color: #1e293b; font-weight: 800; font-size: 1.25rem;">
-                    <i class="fas fa-calendar-plus" style="color: #1a3a8f; margin-right: 8px;"></i> Create School Year
-                </h2>
-                <form method="post" action="{{ url_for('super_admin.superadmin_school_years') }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <div class="form-node">
-                        <label for="label">School Year Name</label>
-                        <input type="text" name="label" id="label" placeholder="e.g. SY 2025-2026" required>
-                    </div>
-                    <div style="display:flex; justify-content:flex-end;">
-                        <button type="submit" class="btn-prem btn-gold" style="width: 100%; justify-content: center;">
-                            <i class="fas fa-broadcast-tower"></i> Add School Year
-                        </button>
-                    </div>
-                </form>
+    <div class="hero-banner">
+        <div class="hero-content" style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 20px;">
+            <div>
+                <h1 style="margin-bottom: 8px;">
+                    <div style="display: flex; gap: 8px;">Manage School <span>Year</span></div>
+                </h1>
+                <p style="margin: 0;">Manage school years for all branches.</p>
+            </div>
+            <div>
+                <button onclick="toggleCreateSYForm()" class="btn-prem btn-gold" style="font-size: 0.95rem; padding: 12px 24px; border: none; cursor: pointer; display: flex; align-items: center; gap: 8px; font-weight: 800;">
+                    <i class="fas fa-plus-circle"></i> Add New School Year
+                </button>
             </div>
         </div>
+    </div>
 
+    <div id="createSYFormContainer" style="display: none; margin-bottom: 24px;">
+        <div class="modern-card" style="padding: 24px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                <h2 style="margin: 0; color: #1e293b; font-weight: 800; font-size: 1.25rem;">
+                    <i class="fas fa-calendar-plus" style="color: #1a3a8f; margin-right: 8px;"></i> Create School Year
+                </h2>
+            </div>
+            <form method="post" action="{{ url_for('super_admin.superadmin_school_years') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-node" style="margin-bottom: 24px;">
+                    <label for="label">School Year Name</label>
+                    <input type="text" name="label" id="label" placeholder="e.g. SY 2025-2026" required>
+                </div>
+                <div style="display:flex; justify-content:flex-end;">
+                    <button type="submit" class="btn-prem btn-gold" style="padding: 12px 24px;">
+                        <i class="fas fa-broadcast-tower"></i> Add School Year
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div>
         <!-- Table Card -->
-        <div class="col-table">
+        <div>
             <div class="modern-card" style="padding:0; overflow:hidden;">
                 <div style="padding: 24px 32px; border-bottom: 1px solid #e2e8f0;">
                     <h2 style="margin:0; color: #1e293b; font-weight: 800; font-size: 1.25rem;">
-                        <i class="fas fa-globe" style="color: #facc15; margin-right: 8px;"></i> School Year List
+                        <i class="fas fa-globe" style="color: #facc15; margin-right: 8px;"></i> List of School Years
                     </h2>
                 </div>
                 <div class="vault-wrapper">
@@ -260,28 +316,33 @@
                                     {% if is_active %}
                                     <span class="badge-prem status-active"><i class="fas fa-signal"></i> ACTIVE</span>
                                     {% else %}
-                                    <span class="badge-prem status-standby"><i class="fas fa-power-off"></i> INACTIVE</span>
+                                    <span class="badge-prem status-standby"><i class="fas fa-power-off"></i>
+                                        INACTIVE</span>
                                     {% endif %}
                                 </td>
                                 <td style="text-align:right; padding-right: 32px;">
                                     {% if not is_active %}
-                                    <form method="post" action="{{ url_for('super_admin.superadmin_set_active_year') }}" style="display:inline;" 
-                                          onsubmit="return confirm('CRITICAL ACTION: Are you sure you want to ACTIVATE {{ year_label }} GLOBALLY? This will update the current academic year for ALL branches immediately.');">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                         <input type="hidden" name="label" value="{{ year_label }}">
-                                         <button type="submit" class="btn-prem" style="padding: 8px 16px; background: #facc15; color: #1a3a8f; font-size: 0.8rem;">
-                                             <i class="fas fa-bolt"></i> ACTIVATE
-                                         </button>
-                                     </form>
+                                    <form method="post" action="{{ url_for('super_admin.superadmin_set_active_year') }}"
+                                        style="display:inline;"
+                                        onsubmit="return confirm('CRITICAL ACTION: Are you sure you want to ACTIVATE {{ year_label }} GLOBALLY? This will update the current academic year for ALL branches immediately.');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="label" value="{{ year_label }}">
+                                        <button type="submit" class="btn-prem"
+                                            style="padding: 8px 16px; background: #facc15; color: #1a3a8f; font-size: 0.8rem;">
+                                            <i class="fas fa-bolt"></i> ACTIVATE
+                                        </button>
+                                    </form>
                                     {% else %}
-                                    <span style="font-size: 0.8rem; font-weight: 700; color: #94a3b8;"><i class="fas fa-check"></i> Active</span>
+                                    <span style="font-size: 0.8rem; font-weight: 700; color: #94a3b8;"><i
+                                            class="fas fa-check"></i> Active</span>
                                     {% endif %}
                                 </td>
                             </tr>
                             {% else %}
                             <tr>
                                 <td colspan="3" style="text-align:center; padding: 40px; color:#94a3b8;">
-                                    <i class="fas fa-calendar-times" style="font-size: 2.5rem; margin-bottom: 16px; display: block; color: #cbd5e1;"></i>
+                                    <i class="fas fa-calendar-times"
+                                        style="font-size: 2.5rem; margin-bottom: 16px; display: block; color: #cbd5e1;"></i>
                                     <span style="font-weight: 700;">No school years avalable yet.</span>
                                 </td>
                             </tr>
@@ -293,4 +354,15 @@
         </div>
     </div>
 </div>
+
+<script>
+function toggleCreateSYForm() {
+    const formContainer = document.getElementById('createSYFormContainer');
+    if (formContainer.style.display === 'none') {
+        formContainer.style.display = 'block';
+    } else {
+        formContainer.style.display = 'none';
+    }
+}
+</script>
 {% endblock %}

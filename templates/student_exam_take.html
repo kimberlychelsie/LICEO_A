@@ -15,6 +15,11 @@
   body {
     background: #f8fafc;
     overflow-x: hidden;
+    box-sizing: border-box;
+  }
+  
+  *, *:before, *:after {
+    box-sizing: inherit;
   }
 
   /* Fixed Blue Topbar */
@@ -53,88 +58,67 @@
     margin-right: auto;
   }
 
-  /* Left Side: Exam Details & Instructions */
-  .exam-sidebar {
-    width: 320px;
-    flex-shrink: 0;
-  }
 
-  .details-card {
-    background: #fff;
-    border-radius: 16px;
-    padding: 24px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
-    position: sticky;
-    top: 84px;
-  }
-
-  .details-title {
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: #1e293b;
-    margin-bottom: 12px;
-    border-bottom: 2px solid #eff6ff;
-    padding-bottom: 10px;
-  }
-
-  .details-item {
-    margin-bottom: 15px;
-    font-size: 0.88rem;
-  }
-
-  .details-label {
-    color: #64748b;
-    font-weight: 600;
-    display: block;
-    margin-bottom: 2px;
-  }
-
-  .details-value {
-    color: #1e3a8a;
-    font-weight: 700;
-  }
-
-  .instruction-box {
-    margin-top: 20px;
-    background: #f0f9ff;
-    border: 1px solid #bae6fd;
-    padding: 15px;
-    border-radius: 12px;
-    color: #0369a1;
-    font-size: 0.85rem;
-    line-height: 1.5;
-  }
-
-  /* Right Side: Questions */
+  /* Main Content Area */
   .exam-content {
     flex: 1;
     max-width: 850px;
+    width: 100%;
+    margin: 0 auto;
   }
 
-  /* ── Sticky timer bar (inside content) ── */
-  .exam-topbar {
-    background: #ffffff;
-    color: #1e293b;
-    border-radius: 16px;
-    padding: 16px 24px;
+  /* ── Hero Header ── */
+  .exam-hero {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1a3a8f 50%, #1e40af 100%);
+    border-radius: 24px;
+    padding: 32px;
+    color: #fff;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    gap: 20px;
+    flex-wrap: wrap;
+    animation: fadeInDown 0.6s ease-out;
   }
 
-  .timer-pill {
-    background: #fee2e2;
-    color: #dc2626;
-    border-radius: 999px;
-    padding: 8px 24px;
+  .exam-hero::before {
+    content: '';
+    position: absolute;
+    top: -100px;
+    right: -100px;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+    border-radius: 50%;
+  }
+
+  .exam-hero-content h1 {
     font-size: 1.5rem;
-    font-weight: 900;
-    font-family: monospace;
-    border: 2px solid #fecaca;
+    font-weight: 800;
+    margin: 0;
+    letter-spacing: -0.01em;
+    z-index: 1;
+    position: relative;
+  }
+
+  .ay-bubble {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(12px);
+    padding: 8px 20px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    font-weight: 800;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+    z-index: 1;
+    position: relative;
+    color: #ffffff;
   }
 
   /* Progress bar styles */
@@ -175,69 +159,71 @@
     font-size: 1rem; font-weight: 700; cursor: pointer; transition: all 0.2s;
   }
   .next-btn:hover { background: #1e40af; transform: translateY(-2px); box-shadow: 0 4px 12px rgba(30,58,138,0.3); }
+  .next-btn:disabled { background: #94a3b8; cursor: not-allowed; transform: none; box-shadow: none; }
+
+  @keyframes spin { 100% { transform: rotate(360deg); } }
 
   .question-section { display: none; }
+
+  @media (max-width: 768px) {
+    .exam-container {
+      flex-direction: column;
+      padding: 16px 12px;
+      margin-top: 60px;
+      gap: 16px;
+      box-sizing: border-box;
+      width: 100%;
+    }
+
+    .exam-content {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    
+    .custom-topbar {
+      padding: 0 15px;
+      box-sizing: border-box;
+    }
+
+    .q-card {
+      padding: 20px 16px;
+      box-sizing: border-box;
+      width: 100%;
+    }
+    
+    .q-card-header {
+      flex-direction: column !important;
+      align-items: flex-start !important;
+      gap: 12px;
+    }
+  }
 </style>
 
 <!-- Custom Blue Topbar -->
-<header class="custom-topbar">
+<header class="custom-topbar" style="display:flex; justify-content:space-between; align-items:center;">
   <div class="topbar-brand">
     <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
     LICEO LMS
   </div>
+  <div style="display:flex; align-items:center; gap:20px;">
+    <a href="{{ url_for('student_portal.student_profile') }}" style="color: #fff; text-decoration: none; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); padding: 6px 16px; border-radius: 999px;">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+      Profile
+    </a>
+  </div>
 </header>
 
 <div class="exam-container">
-  <!-- Left Side: Exam Details -->
-  <aside class="exam-sidebar">
-    <div class="details-card">
-      <div class="details-title">Exam Details</div>
-      
-      <div class="details-item">
-        <span class="details-label">Title</span>
-        <span class="details-value">{{ exam.title }}</span>
-      </div>
-      
-      <div class="details-item">
-        <span class="details-label">Subject</span>
-        <span class="details-value">{{ exam.subject_name }}</span>
-      </div>
-      
-      <div class="details-item">
-        <span class="details-label">Type</span>
-        <span class="details-value" style="text-transform: capitalize;">{{ exam.exam_type }}</span>
-      </div>
-
-      <div class="details-item">
-        <span class="details-label">Total Questions</span>
-        <span class="details-value">{{ questions|length }} Items</span>
-      </div>
-
-      <div class="instruction-box">
-        <strong>Instructions:</strong><br>
-        Answer each question carefully. Note that you cannot go back to previous questions once you click "Next". Your progress is automatically saved.
-      </div>
-    </div>
-  </aside>
-
-  <!-- Right Side: Exam Content -->
+  <!-- Exam Content -->
   <main class="exam-content">
-    <!-- Timer & Progress -->
-    <div class="exam-topbar">
-      <div style="flex: 1; margin-right: 20px;">
-        <div class="progress-bar-wrap">
-          <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
-        </div>
-        <div style="font-size: 0.75rem; color: #64748b; margin-top: 8px; font-weight: 700;">
-          Answered: <span id="answeredQuestions">0</span> / {{ questions|length }}
-        </div>
+    <!-- Exam Title & Timer Header -->
+    <div class="exam-hero">
+      <div class="exam-hero-content">
+        <h1>{{ exam.title }}</h1>
       </div>
-      <div class="timer-pill" id="timerBox">--:--</div>
-    </div>
-
-    <!-- Tab switch warning -->
-    <div class="tab-warning" id="tabWarning" style="display:none; background:#fee2e2; color:#b91c1c; padding:12px; border-radius:12px; margin-bottom:15px; font-weight:700; border:1px solid #fecaca;">
-      ⚠️ Tab switch detected! This has been recorded. (Switches: <strong id="tabCount">0</strong>)
+      <div id="timerBox" class="ay-bubble">
+        🕒 Time Left: --:--
+      </div>
     </div>
 
     <form method="POST" id="examForm">
@@ -249,16 +235,21 @@
     {% set mcq_questions = questions | selectattr("question_type", "equalto", "mcq") | list %}
     {% set tf_questions = questions | selectattr("question_type", "equalto", "truefalse") | list %}
     {% set match_questions = questions | selectattr("question_type", "equalto", "matching") | list %}
+    {% set global_index = namespace(value=0) %}
 
     <!-- MCQ Section -->
     <div id="section-mc" class="question-section">
-      <div class="section-label">📝 Multiple Choice</div>
-      <div class="progress-indicator" id="mc-progress"></div>
       {% for q in mcq_questions %}
+      {% set global_index.value = global_index.value + 1 %}
       <div class="q-card" id="mc-q{{ loop.index0 }}" style="display:none;">
-        <div class="q-meta">
-          <span class="q-num-badge">Question {{ loop.index }} of {{ mcq_questions|length }}</span>
-          <span class="q-pts-badge">{{ q.points }} pt(s)</span>
+        <div class="q-card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
+          <div style="display:flex; gap:10px; align-items:center;">
+            <span style="background: #e2e8f0; color: #475569; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">MULTIPLE CHOICE</span>
+            <span style="background: #fef3c7; color: #b45309; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.5px;">{{ q.points }} PT</span>
+          </div>
+          <div style="font-weight: 700; color: #64748b; font-size: 0.9rem;">
+            Question {{ global_index.value }} of {{ questions|length }}
+          </div>
         </div>
         <div class="q-text">{{ q.question_text }}</div>
         {% if q.choices %}
@@ -275,34 +266,40 @@
         {% endif %}
         {# --- Here is the logic for the MCQ last question --- #}
         {% set is_mcq_last = loop.last and (tf_questions|length == 0 and match_questions|length == 0) %}
-        <button
-          type="{% if is_mcq_last %}submit{% else %}button{% endif %}"
-          class="next-btn submit-btn"
-          {% if not is_mcq_last %}onclick="nextMC()"{% endif %}
-        >
-          {% if loop.last %}
-            {% if tf_questions|length > 0 or match_questions|length > 0 %}
-              Next Section →
+        <div class="q-footer" style="border-top: 2px solid #f1f5f9; padding-top: 16px; margin-top: 24px; display: flex; justify-content: flex-end;">
+          <button
+            type="{% if is_mcq_last %}submit{% else %}button{% endif %}"
+            class="next-btn submit-btn"
+            {% if not is_mcq_last %}onclick="nextMC()"{% endif %}
+          >
+            {% if loop.last %}
+              {% if tf_questions|length > 0 or match_questions|length > 0 %}
+                Next Section →
+              {% else %}
+                ✅ Submit
+              {% endif %}
             {% else %}
-              ✅ Submit
+              Next →
             {% endif %}
-          {% else %}
-            Next →
-          {% endif %}
-        </button>
+          </button>
+        </div>
       </div>
       {% endfor %}
     </div>
   
     <!-- True/False Section -->
     <div id="section-tf" class="question-section">
-      <div class="section-label">✅ True or False</div>
-      <div class="progress-indicator" id="tf-progress"></div>
       {% for q in tf_questions %}
+      {% set global_index.value = global_index.value + 1 %}
       <div class="q-card" id="tf-q{{ loop.index0 }}" style="display:none;">
-        <div class="q-meta">
-          <span class="q-num-badge">Question {{ loop.index }} of {{ tf_questions|length }}</span>
-          <span class="q-pts-badge">{{ q.points }} pt(s)</span>
+        <div class="q-card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
+          <div style="display:flex; gap:10px; align-items:center;">
+            <span style="background: #e2e8f0; color: #475569; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">TRUE OR FALSE</span>
+            <span style="background: #fef3c7; color: #b45309; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.5px;">{{ q.points }} PT</span>
+          </div>
+          <div style="font-weight: 700; color: #64748b; font-size: 0.9rem;">
+            Question {{ global_index.value }} of {{ questions|length }}
+          </div>
         </div>
         <div class="q-text">{{ q.question_text }}</div>
         <div class="choices-grid">
@@ -319,34 +316,40 @@
         </div>
         {# --- Here is the logic for the TF last question --- #}
         {% set is_tf_last = loop.last and match_questions|length == 0 %}
-        <button
-          type="{% if is_tf_last %}submit{% else %}button{% endif %}"
-          class="next-btn submit-btn"
-          {% if not is_tf_last %}onclick="nextTF()"{% endif %}
-        >
-          {% if loop.last %}
-            {% if match_questions|length > 0 %}
-              Next Section →
+        <div class="q-footer" style="border-top: 2px solid #f1f5f9; padding-top: 16px; margin-top: 24px; display: flex; justify-content: flex-end;">
+          <button
+            type="{% if is_tf_last %}submit{% else %}button{% endif %}"
+            class="next-btn submit-btn"
+            {% if not is_tf_last %}onclick="nextTF()"{% endif %}
+          >
+            {% if loop.last %}
+              {% if match_questions|length > 0 %}
+                Next Section →
+              {% else %}
+                ✅ Submit
+              {% endif %}
             {% else %}
-              ✅ Submit
+              Next →
             {% endif %}
-          {% else %}
-            Next →
-          {% endif %}
-        </button>
+          </button>
+        </div>
       </div>
       {% endfor %}
     </div>
   
     <!-- Matching Section -->
     <div id="section-match" class="question-section">
-      <div class="section-label">🔗 Matching Type</div>
-      <div class="progress-indicator" id="match-progress"></div>
       {% for q in match_questions %}
+      {% set global_index.value = global_index.value + 1 %}
       <div class="q-card" id="match-q{{ loop.index0 }}" style="display:none;">
-        <div class="q-meta">
-          <span class="q-num-badge">Question {{ loop.index }} of {{ match_questions|length }}</span>
-          <span class="q-pts-badge">{{ q.points }} pt(s)</span>
+        <div class="q-card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
+          <div style="display:flex; gap:10px; align-items:center;">
+            <span style="background: #e2e8f0; color: #475569; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">MATCHING</span>
+            <span style="background: #fef3c7; color: #b45309; padding: 4px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 800; letter-spacing: 0.5px;">{{ q.points }} PT</span>
+          </div>
+          <div style="font-weight: 700; color: #64748b; font-size: 0.9rem;">
+            Question {{ global_index.value }} of {{ questions|length }}
+          </div>
         </div>
         <div class="q-text">{{ q.question_text }}</div>
         {% if q.choices and q.choices.options %}
@@ -363,17 +366,19 @@
         {% endif %}
         {# --- Here is the logic for Matching last question --- #}
         {% set is_match_last = loop.last %}
-        <button
-          type="{% if is_match_last %}submit{% else %}button{% endif %}"
-          class="next-btn submit-btn"
-          {% if not is_match_last %}onclick="nextMatch()"{% endif %}
-        >
-          {% if loop.last %}
-            ✅ Submit
-          {% else %}
-            Next →
-          {% endif %}
-        </button>
+        <div class="q-footer" style="border-top: 2px solid #f1f5f9; padding-top: 16px; margin-top: 24px; display: flex; justify-content: flex-end;">
+          <button
+            type="{% if is_match_last %}submit{% else %}button{% endif %}"
+            class="next-btn submit-btn"
+            {% if not is_match_last %}onclick="nextMatch()"{% endif %}
+          >
+            {% if loop.last %}
+              ✅ Submit
+            {% else %}
+              Next →
+            {% endif %}
+          </button>
+        </div>
       </div>
       {% endfor %}
     </div>
@@ -399,13 +404,13 @@
     }
 
     function updateTimer() {
-        timerEl.textContent = formatTime(remaining);
+        timerEl.textContent = '🕒 Time Left: ' + formatTime(remaining);
         if (remaining <= 0) {
-            timerEl.className = 'timer-pill danger';
-            timerEl.textContent = '00:00';
+            timerEl.style.color = '#fca5a5'; // Light red on blue background
+            timerEl.textContent = '🕒 Time Left: 00:00';
             autoSubmit(); return;
         }
-        timerEl.className = remaining <= 120 ? 'timer-pill danger' : remaining <= 300 ? 'timer-pill warn' : 'timer-pill';
+        timerEl.style.color = remaining <= 120 ? '#fca5a5' : remaining <= 300 ? '#fde047' : '#ffffff';
         remaining--;
         setTimeout(updateTimer, 1000);
     }
@@ -445,7 +450,7 @@
 
         if (timerEl) {
             timerEl.textContent = '⏱ Submitting...';
-            timerEl.className = 'timer-pill danger';
+            timerEl.style.color = '#dc2626';
         }
 
         if (submitTypeInput) submitTypeInput.value = 'auto';
@@ -459,20 +464,33 @@
 
     updateTimer();
 
-    // ── Answered counter + bar ──
+    // ── Answered counter ──
     let answeredCount = 0;
-    const answeredEl  = document.getElementById('answeredQuestions');
-    const fillEl      = document.getElementById('progressFill');
 
     function updateProgress() {
-        answeredEl.textContent = answeredCount;
-        fillEl.style.width = (total > 0 ? (answeredCount / total * 100) : 0) + '%';
+        // Progress bar removed per UI request, but we keep this function signature 
+        // if anything else calls it (answeredCount is tracked for final confirmation dialog).
     }
 
     function saveAnswer(name, answer) {
         // Extract question ID from name (e.g. "answer_123" -> 123)
         const questionId = name.replace('answer_', '');
         
+        const inputEl = document.querySelector(`[name="${name}"]`);
+        let btn = null;
+        let originalHTML = "";
+        if (inputEl) {
+            const card = inputEl.closest('.q-card');
+            if (card) {
+                btn = card.querySelector('.next-btn');
+                if (btn) {
+                    originalHTML = btn.innerHTML;
+                    btn.innerHTML = '<span style="display:inline-block; animation: spin 1s linear infinite; margin-right:6px;">↻</span> Saving...';
+                    btn.disabled = true;
+                }
+            }
+        }
+
         // Save to localStorage (legacy fallback)
         lsSet('ans_' + name, answer);
         if (!lsGet('answered_' + name)) {
@@ -481,22 +499,32 @@
             updateProgress();
         }
 
-        // 🚀 NEW: Save to Server via AJAX
-        fetch('/student/exams/save-answer', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                result_id: {{ result_id | int }},
-                question_id: questionId,
-                answer: answer
-            })
-        })
-        .then(res => res.json())
-        .then(data => {
+        // 🚀 NEW: Save to Server via AJAX with a minimum 500ms delay so the loading is visible
+        const minDelay = new Promise(resolve => setTimeout(resolve, 500));
+
+        Promise.all([
+            fetch('/student/exams/save-answer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    result_id: {{ result_id | int }},
+                    question_id: questionId,
+                    answer: answer
+                })
+            }).then(res => res.json()),
+            minDelay
+        ])
+        .then(([data]) => {
             if (data.ok) console.log(`Answer saved for Q${questionId}`);
             else console.error("Failed to save answer:", data.msg);
         })
-        .catch(err => console.error("Network error saving answer:", err));
+        .catch(err => console.error("Network error saving answer:", err))
+        .finally(() => {
+            if (btn) {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
+        });
     }
     window.saveAnswer = saveAnswer;
 
@@ -611,15 +639,12 @@
     // Detects: tab switches, Alt+Tab, clicking other
     // windows, minimizing, mobile app switches
     // ══════════════════════════════════════════════════
-    const tabWarning     = document.getElementById('tabWarning');
-    const tabCountEl     = document.getElementById('tabCount');
     const resultId       = {{ result_id | int }};
     let tabSwitchCount   = {{ current_tab_switches | int }};
     let trackingActive   = false;
     let lastSwitchTime   = 0;  // Debounce timestamp
 
     document.getElementById('tabSwitchInput').value = tabSwitchCount;
-    tabCountEl.textContent = tabSwitchCount;
 
     // Wait 2s before tracking to prevent false positives on page load
     setTimeout(() => { trackingActive = true; }, 2000);
@@ -634,7 +659,6 @@
 
         tabSwitchCount++;
         document.getElementById('tabSwitchInput').value = tabSwitchCount;
-        tabCountEl.textContent = tabSwitchCount;
 
         // Send to server
         fetch('/student/exams/tab-switch', {
@@ -644,9 +668,41 @@
         }).catch(() => {}); // Silently fail if offline
     }
 
-    function showWarningBanner() {
-        tabWarning.style.display = 'block';
-        setTimeout(() => { tabWarning.style.display = 'none'; }, 5000);
+    function showTabSwitchToast(count) {
+        const toastId = 'tabSwitchToast';
+        let toast = document.getElementById(toastId);
+        if (toast) toast.remove(); 
+
+        toast = document.createElement('div');
+        toast.id = toastId;
+        toast.style.position = 'fixed';
+        toast.style.top = '20px';
+        toast.style.right = '20px';
+        toast.style.background = '#fef2f2';
+        toast.style.color = '#b91c1c';
+        toast.style.padding = '16px 24px';
+        toast.style.borderRadius = '12px';
+        toast.style.border = '1px solid #fecaca';
+        toast.style.boxShadow = '0 10px 25px rgba(0,0,0,0.1)';
+        toast.style.fontWeight = '700';
+        toast.style.zIndex = '999999';
+        toast.style.transition = 'opacity 0.3s, transform 0.3s';
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-20px)';
+        toast.innerHTML = `⚠️ Tab switch detected! (Switches: ${count})`;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0)';
+        }, 10);
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(-20px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
     }
 
     // Method 1: visibilitychange (tab switches, mobile app switches)
@@ -654,7 +710,7 @@
         if (document.visibilityState === "hidden") {
             recordSwitch();
         } else if (document.visibilityState === "visible") {
-            showWarningBanner();
+            if (tabSwitchCount > 0) showTabSwitchToast(tabSwitchCount);
         }
     });
 
@@ -665,7 +721,7 @@
 
     window.addEventListener("focus", function() {
         if (tabSwitchCount > 0) {
-            showWarningBanner();
+            showTabSwitchToast(tabSwitchCount);
         }
     });
 
@@ -702,7 +758,7 @@
         // Confirmation dialog
         const unanswered = total - answeredCount;
         let msg = `Are you sure you want to submit?\n\n`;
-        msg += `✅ Answered: ${answeredCount} / ${total}\n`;
+        msg += `✅ Answered: ${answeredCount} of ${total}\n`;
         if (unanswered > 0) {
             msg += `⚠️ Unanswered: ${unanswered}\n\n`;
             msg += `Unanswered questions will be marked as incorrect.`;

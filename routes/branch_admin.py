@@ -164,7 +164,8 @@ def dashboard():
         'total_teachers': 0,
         'total_staff': 0,
         'grade_stats': [],
-        'status_stats': []
+        'status_stats': [],
+        'terms': {}
     }
 
     db = get_db_connection()
@@ -230,11 +231,21 @@ def dashboard():
                 GROUP BY status
             """, (b_id, year_id))
             metrics['status_stats'] = cursor.fetchall() or []
+            
+            # Academic Calendar Terms
+            cursor.execute("""
+                SELECT period_name, start_date, end_date
+                FROM grading_period_ranges
+                WHERE branch_id = %s AND year_id = %s
+            """, (b_id, year_id))
+            ranges_raw = cursor.fetchall() or []
+            metrics['terms'] = {r['period_name']: r for r in ranges_raw}
         else:
             metrics['total_enrolled'] = 0
             metrics['pending_reservations'] = 0
             metrics['grade_stats'] = []
             metrics['status_stats'] = []
+            metrics['terms'] = {}
 
         # Teachers and Staff are not year-bound right now unless requested
         cursor.execute("SELECT COUNT(*) FROM users WHERE role='teacher' AND COALESCE(status, 'active')='active' AND branch_id=%s", (b_id,))
@@ -250,6 +261,22 @@ def dashboard():
         # ✅ Map total_enrolled to total_students for template
         metrics['total_students'] = metrics['total_enrolled']
         
+        # ✅ Fetch recent grade approval requests
+        if year_id:
+            cursor.execute("""
+                SELECT r.id, r.status, r.grading_period, s.section_name, sub.name AS subject_name, r.submitted_at, u.full_name as teacher_name
+                FROM grade_submission_requests r
+                JOIN sections s ON r.section_id = s.section_id
+                JOIN subjects sub ON r.subject_id = sub.subject_id
+                LEFT JOIN users u ON r.submitted_by = u.user_id
+                WHERE r.branch_id = %s AND r.year_id = %s
+                ORDER BY r.submitted_at DESC
+                LIMIT 5
+            """, (b_id, year_id))
+            recent_grade_requests = cursor.fetchall() or []
+        else:
+            recent_grade_requests = []
+            
     except Exception as e:
         print(f"Error loading dashboard metrics: {e}")
     finally:
@@ -260,7 +287,8 @@ def dashboard():
         "branch_admin_dashboard.html",
         announcements_list=announcements_list,
         grades=grades,
-        metrics=metrics
+        metrics=metrics,
+        recent_grade_requests=recent_grade_requests
     )
 
 @branch_admin_bp.route("/branch-admin/broadcast-station", methods=["GET", "POST"])
@@ -2728,17 +2756,38 @@ def branch_admin_grade_approval():
         cur.execute("SELECT id, name FROM grade_levels ORDER BY display_order, id")
         grade_levels = cur.fetchall() or []
 
-        # Default Grade Level filter to Nursery if not selected
+        # Get selected filters
         selected_grade_id = request.args.get("grade_level_id", type=int)
+        selected_section_id = request.args.get("section_id", type=int)
+        selected_period = request.args.get("period")
+
+        # Auto-select based on pending requests if filters are not provided
+        if not selected_grade_id or not selected_period:
+            cur.execute("""
+                SELECT s.grade_level_id, r.grading_period 
+                FROM grade_submission_requests r
+                JOIN sections s ON r.section_id = s.section_id
+                WHERE r.branch_id = %s AND r.year_id = %s AND r.status = 'pending_admin'
+                ORDER BY r.submitted_at DESC LIMIT 1
+            """, (branch_id, year_id))
+            pending_req = cur.fetchone()
+
+            if pending_req:
+                if not selected_grade_id:
+                    selected_grade_id = pending_req['grade_level_id']
+                if not selected_period:
+                    selected_period = pending_req['grading_period']
+
+        # Fallback to Nursery and 1st period
         if not selected_grade_id:
             nursery = next((g for g in grade_levels if "nursery" in g["name"].lower()), None)
             if nursery:
                 selected_grade_id = nursery["id"]
             elif grade_levels:
                 selected_grade_id = grade_levels[0]["id"]
-
-        selected_section_id = request.args.get("section_id", type=int)
-        selected_period = request.args.get("period", "1st")
+                
+        if not selected_period:
+            selected_period = "1st"
 
         # Fetch sections for selected grade level
         cur.execute("""

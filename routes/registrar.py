@@ -168,6 +168,34 @@ def registrar_home():
         """, (branch_id, active_year_id))
         enrollment_by_grade = cursor.fetchall()
 
+        # ✅ Recent Documents (Grouped by Student)
+        cursor.execute("""
+            SELECT e.enrollment_id, e.student_first_name, e.student_last_name, e.branch_enrollment_no, MAX(d.doc_id) as max_doc_id
+            FROM enrollment_documents d
+            JOIN enrollments e ON d.enrollment_id = e.enrollment_id
+            WHERE e.branch_id = %s AND e.year_id = %s
+            GROUP BY e.enrollment_id, e.student_first_name, e.student_last_name, e.branch_enrollment_no
+            ORDER BY max_doc_id DESC
+            LIMIT 5
+        """, (branch_id, active_year_id))
+        recent_documents = cursor.fetchall()
+
+        # ✅ Recent Grade Reviews
+        cursor.execute("""
+            SELECT r.id, r.status, sub.name AS subject_name,
+                   g.name AS grade_level_name, s.section_name,
+                   u.full_name AS teacher_name, r.rejection_remarks
+            FROM grade_submission_requests r
+            JOIN subjects sub ON r.subject_id = sub.subject_id
+            JOIN sections s ON r.section_id = s.section_id
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            LEFT JOIN users u ON r.submitted_by = u.user_id
+            WHERE r.branch_id = %s AND r.year_id = %s
+            ORDER BY r.submitted_at DESC
+            LIMIT 5
+        """, (branch_id, active_year_id))
+        recent_grade_reviews = cursor.fetchall()
+
         return render_template(
             "registrar_home.html",
             pending_count    = stats["pending_count"],
@@ -177,6 +205,8 @@ def registrar_home():
             no_account_count = no_account_count,
             recent_pending   = recent_pending,
             enrollment_by_grade = enrollment_by_grade,
+            recent_documents = recent_documents,
+            recent_grade_reviews = recent_grade_reviews,
         )
     finally:
         cursor.close()
@@ -756,7 +786,7 @@ def registrar_documents():
                 e.student_first_name ILIKE %s OR
                 e.student_last_name  ILIKE %s OR
                 e.student_middle_name ILIKE %s OR
-                e.branch_enrollment_no ILIKE %s
+                e.branch_enrollment_no::text ILIKE %s
             )"""
             like = f"%{search_q}%"
             params += [like, like, like, like]
@@ -1476,6 +1506,11 @@ def registrar_profile_pictures():
             """, (branch_id,))
             all_sections = cursor.fetchall()
 
+            # Get active school year
+            cursor.execute("SELECT year_id FROM school_years WHERE branch_id=%s AND is_active=TRUE LIMIT 1", (branch_id,))
+            active_year_row = cursor.fetchone()
+            active_year_id = active_year_row["year_id"] if active_year_row else None
+
             query = """
                 SELECT e.enrollment_id, e.branch_enrollment_no, e.student_first_name,
                 e.student_middle_name,
@@ -1486,6 +1521,10 @@ def registrar_profile_pictures():
                 WHERE e.branch_id = %s AND e.status IN ('enrolled', 'approved', 'open_for_enrollment', 'completed')
             """
             params = [branch_id]
+            
+            if active_year_id:
+                query += " AND e.year_id = %s"
+                params.append(active_year_id)
             
             # ... (rest of filtering logic)
             if grade_filter:
@@ -1640,7 +1679,7 @@ def registrar_students_by_grade():
         """
         params = [branch_id, year_filter]
 
-        if grade_filter:
+        if grade_filter and grade_filter != 'all':
             query += " AND e.grade_level = %s"
             params.append(grade_filter)
             if section_filter:
@@ -1649,7 +1688,7 @@ def registrar_students_by_grade():
 
         query += """
             GROUP BY e.enrollment_id, s.section_name, sa.username
-            ORDER BY e.grade_level ASC, s.section_name ASC NULLS LAST,  e.student_last_name ASC,
+            ORDER BY (SELECT MIN(id) FROM grade_levels WHERE name = e.grade_level) ASC, s.section_name ASC NULLS LAST, e.student_last_name ASC,
     e.student_first_name ASC,
     e.student_middle_name ASC
         """
@@ -1704,8 +1743,10 @@ def registrar_students_by_grade_update(enrollment_id):
     db = get_db_connection()
     cursor = db.cursor()
     try:
-        # Fields to update based on the inline form
         fields = [
+    "student_first_name",
+    "student_middle_name",
+    "student_last_name",
     "gender",
     "dob",
     "lrn",
@@ -1752,6 +1793,20 @@ def registrar_students_by_grade_update(enrollment_id):
             sql = f"UPDATE enrollments SET {', '.join(sets)} WHERE enrollment_id = %s AND branch_id = %s"
             
             cursor.execute(sql, final_vals)
+
+            # Sync email to users & student_accounts tables so forgot-password uses the updated email
+            new_email = request.form.get("email")
+            if new_email is not None:
+                new_email_val = new_email.strip() or None
+                cursor.execute("""
+                    UPDATE users SET email = %s
+                    WHERE enrollment_id = %s
+                """, (new_email_val, enrollment_id))
+                cursor.execute("""
+                    UPDATE student_accounts SET email = %s
+                    WHERE enrollment_id = %s
+                """, (new_email_val, enrollment_id))
+
             db.commit()
             flash("Student details updated successfully!", "success")
             
@@ -3946,17 +4001,38 @@ def registrar_grade_review():
         cur.execute("SELECT id, name FROM grade_levels ORDER BY display_order, id")
         grade_levels = cur.fetchall() or []
 
-        # Default Grade Level filter to Nursery if not selected
+        # Get selected filters
         selected_grade_id = request.args.get("grade_level_id", type=int)
+        selected_section_id = request.args.get("section_id", type=int)
+        selected_period = request.args.get("period")
+
+        # Auto-select based on pending requests if filters are not provided
+        if not selected_grade_id or not selected_period:
+            cur.execute("""
+                SELECT s.grade_level_id, r.grading_period 
+                FROM grade_submission_requests r
+                JOIN sections s ON r.section_id = s.section_id
+                WHERE r.branch_id = %s AND r.year_id = %s AND r.status = 'pending_registrar'
+                ORDER BY r.submitted_at DESC LIMIT 1
+            """, (branch_id, year_id))
+            pending_req = cur.fetchone()
+
+            if pending_req:
+                if not selected_grade_id:
+                    selected_grade_id = pending_req['grade_level_id']
+                if not selected_period:
+                    selected_period = pending_req['grading_period']
+
+        # Fallback to Nursery and 1st period
         if not selected_grade_id:
             nursery = next((g for g in grade_levels if "nursery" in g["name"].lower()), None)
             if nursery:
                 selected_grade_id = nursery["id"]
             elif grade_levels:
                 selected_grade_id = grade_levels[0]["id"]
-
-        selected_section_id = request.args.get("section_id", type=int)
-        selected_period = request.args.get("period", "1st")
+                
+        if not selected_period:
+            selected_period = "1st"
 
         # Fetch sections for selected grade level
         cur.execute("""
