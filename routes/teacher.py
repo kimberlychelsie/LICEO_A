@@ -3797,15 +3797,15 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
     for row in cur.fetchall():
         participation_scores[row['enrollment_id']] = float(row['score'] or 0)
 
-    # Attendance scores (from attendance_scores table — 1-10 rating by teacher)
-    attendance_scores = {}  # raw 1-10 values for display
+    # Attendance scores (from attendance_scores table)
+    attendance_scores = {}  # dict of {enrollment_id: (score, total_days)}
     cur.execute("""
-        SELECT enrollment_id, score
+        SELECT enrollment_id, score, COALESCE(total_days, 10) AS total_days
         FROM attendance_scores
         WHERE subject_id = %s AND grading_period = %s
     """, (subject_id, period))
     for row in cur.fetchall():
-        attendance_scores[row['enrollment_id']] = float(row['score'] or 0)
+        attendance_scores[row['enrollment_id']] = (float(row['score'] or 0), int(row['total_days'] or 10))
 
     def _cap_0_100(value):
         return max(0.0, min(100.0, float(value or 0)))
@@ -3830,11 +3830,13 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
         ww_score  = _cap_0_100(quiz_scores.get(eid, 0))          # Written Works (Quiz + Monthly Exam)
         qa_score  = _cap_0_100(exam_scores.get(eid, 0))          # Quarterly Assessment (Periodical Exam)
         act_score = _cap_0_100(activity_scores.get(eid, 0))
-        # Participation & Attendance: stored as 1-10, ×10 converts to 0-100 for grading
+        # Participation & Attendance
         par_raw   = participation_scores.get(eid, None)   # raw 1-10 (or None if not entered)
-        att_raw   = attendance_scores.get(eid, None)      # raw 1-10 (or None if not entered)
+        att_data  = attendance_scores.get(eid, None)      # (score, total_days) or None
+        att_raw   = att_data[0] if att_data else None
+        att_total = att_data[1] if att_data else 10
         par_score = _cap_0_100((par_raw or 0) * 10)      # scaled to 0-100 for PT
-        att_score = _cap_0_100((att_raw or 0) * 10)      # scaled to 0-100 for PT
+        att_score = _cap_0_100(((att_raw or 0) / att_total) * 100) if att_raw is not None else 0.0
 
         # Performance Tasks = average of all available: Activity, Participation, Attendance
         has_activity      = eid in activity_scores
@@ -3883,7 +3885,8 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
             'quiz':            round(ww_score, 2),          # WW (Quiz + Monthly Exam)
             'activity':        round(act_score, 2),
             'participation':   round(par_raw or 0, 1),      # raw 1-10 for display
-            'attendance':      round(att_raw or 0, 1),      # raw 1-10 for display
+            'attendance':      round(att_raw or 0, 1),      # raw attendance score for display
+            'attendance_total': att_total,                  # raw attendance total days for display
             'has_activity':    has_activity,
             'has_participation': has_participation,
             'has_attendance':  has_attendance,
@@ -4438,13 +4441,13 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
         }
 
         cur.execute("""
-            SELECT score FROM attendance_scores
+            SELECT score, COALESCE(total_days, 10) as total_days FROM attendance_scores
             WHERE subject_id=%s AND grading_period=%s AND enrollment_id=%s
         """, (subject_id, period, enrollment_id))
         att_row = cur.fetchone()
         attendance = {
             'score': float(att_row['score']) if att_row and att_row['score'] is not None else None,
-            'max':   10,
+            'max':   int(att_row['total_days']) if att_row and att_row['total_days'] is not None else 10,
             'has_result': att_row is not None and att_row['score'] is not None,
         }
 
@@ -4537,12 +4540,17 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
                         DO UPDATE SET score = EXCLUDED.score
                     """, (subject_id, period, enrollment_id, val))
                 elif key == 'attendance':
+                    # Get existing total days if any
+                    cur.execute("SELECT COALESCE(total_days, 10) as total_days FROM attendance_scores WHERE subject_id=%s AND grading_period=%s AND section_id=%s LIMIT 1", (subject_id, period, section_id))
+                    td_row = cur.fetchone()
+                    total_days = td_row['total_days'] if td_row else 10
+
                     cur.execute("""
-                        INSERT INTO attendance_scores (subject_id, grading_period, enrollment_id, score)
-                        VALUES (%s, %s, %s, %s)
+                        INSERT INTO attendance_scores (subject_id, grading_period, enrollment_id, score, teacher_id, section_id, total_days)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
                         ON CONFLICT (subject_id, grading_period, enrollment_id)
                         DO UPDATE SET score = EXCLUDED.score
-                    """, (subject_id, period, enrollment_id, val))
+                    """, (subject_id, period, enrollment_id, val, user_id, section_id, total_days))
             
             db.commit()
             flash("Scores successfully updated.", "success")
@@ -5051,32 +5059,76 @@ def attendance_input(section_id, subject_id, period):
         ctx = cur.fetchone()
 
         if request.method == "POST":
-            scores = request.form.to_dict()
-            for key, val in scores.items():
-                if key.startswith("score_"):
-                    try:
-                        eid   = int(key.split("_", 1)[1])
-                        # Accept 1-10 rating; clamp to valid range
-                        score = max(1.0, min(10.0, float(val or 1)))
-                        cur.execute("""
-                            INSERT INTO attendance_scores
-                                (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, updated_at)
-                            VALUES (%s,%s,%s,%s,%s,%s,NOW())
-                            ON CONFLICT (enrollment_id, subject_id, grading_period)
-                            DO UPDATE SET score=EXCLUDED.score, updated_at=NOW()
-                        """, (user_id, eid, section_id, subject_id, period, score))
-                    except (ValueError, IndexError):
-                        continue
-            db.commit()
-            flash("Attendance scores saved!", "success")
-            return redirect(url_for("teacher.class_record",
-                                    section_id=section_id,
-                                    subject_id=subject_id,
-                                    period=period))
+            action = request.form.get("action", "save_scores")
+
+            if action == "save_days":
+                # ── Save only the Total School Days setting ──
+                total_days = int(request.form.get("total_days", 10))
+                if total_days < 1:
+                    total_days = 10
+                cur.execute("""
+                    INSERT INTO attendance_scores (teacher_id, enrollment_id, section_id, subject_id, grading_period, total_days, updated_at)
+                    SELECT %s, e.enrollment_id, %s, %s, %s, %s, NOW()
+                    FROM enrollments e
+                    WHERE e.section_id = %s
+                    ON CONFLICT (enrollment_id, subject_id, grading_period)
+                    DO UPDATE SET total_days = EXCLUDED.total_days, updated_at = NOW()
+                """, (user_id, section_id, subject_id, period, total_days, section_id))
+                db.commit()
+                flash("Total school days updated!", "success")
+                return redirect(url_for("teacher.attendance_input",
+                                        section_id=section_id,
+                                        subject_id=subject_id,
+                                        period=period))
+
+            else:
+                # ── Save individual attendance scores ──
+                # Read current total_days from DB so scores stay consistent
+                cur.execute("""
+                    SELECT COALESCE(total_days, 10) AS total_days
+                    FROM attendance_scores
+                    WHERE subject_id = %s AND grading_period = %s AND section_id = %s
+                    LIMIT 1
+                """, (subject_id, period, section_id))
+                td_row = cur.fetchone()
+                total_days = td_row["total_days"] if td_row else 10
+
+                scores = request.form.to_dict()
+                for key, val in scores.items():
+                    if key.startswith("score_"):
+                        try:
+                            eid   = int(key.split("_", 1)[1])
+                            score = max(1.0, min(float(total_days), float(val or 1)))
+                            cur.execute("""
+                                INSERT INTO attendance_scores
+                                    (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, total_days, updated_at)
+                                VALUES (%s,%s,%s,%s,%s,%s,%s,NOW())
+                                ON CONFLICT (enrollment_id, subject_id, grading_period)
+                                DO UPDATE SET score=EXCLUDED.score, updated_at=NOW()
+                            """, (user_id, eid, section_id, subject_id, period, score, total_days))
+                        except (ValueError, IndexError):
+                            continue
+                db.commit()
+                flash("Attendance scores saved!", "success")
+                return redirect(url_for("teacher.attendance_input",
+                                        section_id=section_id,
+                                        subject_id=subject_id,
+                                        period=period))
+
+        # Query existing total_days config
+        cur.execute("""
+            SELECT COALESCE(total_days, 10) AS total_days
+            FROM attendance_scores
+            WHERE subject_id = %s AND grading_period = %s AND section_id = %s
+            LIMIT 1
+        """, (subject_id, period, section_id))
+        td_row = cur.fetchone()
+        total_days = td_row["total_days"] if td_row else 10
 
         cur.execute("""
             SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name,
-                   COALESCE(att.score, 0) AS score
+                   COALESCE(att.score, 0) AS score,
+                   COALESCE(att.total_days, 10) AS total_days
             FROM enrollments e
             JOIN sections s ON e.section_id = s.section_id
             LEFT JOIN attendance_scores att
@@ -5097,7 +5149,7 @@ def attendance_input(section_id, subject_id, period):
     return render_template("teacher_attendance_input.html",
                            ctx=ctx, students=students,
                            section_id=section_id, subject_id=subject_id,
-                           period=period)
+                           period=period, total_days=total_days)
 
 # ── API for Teacher Sidebar Classlist ─────────────────────
 @teacher_bp.route("/api/teacher/sections")

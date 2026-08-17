@@ -1220,7 +1220,7 @@
                         <div class="pt-breakdown">
                             {% if r.has_activity %}Act: {{ "%0.1f" | format(r.activity|float) }}{% endif %}
                             {% if r.has_participation %} · Par: {{ r.participation | int }}/10{% endif %}
-                            {% if r.has_attendance %} · Att: {{ r.attendance | int }}/10{% endif %}
+                            {% if r.has_attendance %} · Att: {{ r.attendance | int }}/{{ r.attendance_total | default(10) | int }}{% endif %}
                         </div>
                     </td>
 
@@ -1697,7 +1697,7 @@ function sdLiveRecompute() {
         }
     });
     if (data.participation?.has_result) ptComponents.push(Math.min(100, data.participation.score * 10));
-    if (data.attendance?.has_result)    ptComponents.push(Math.min(100, data.attendance.score * 10));
+    if (data.attendance?.has_result)    ptComponents.push(Math.min(100, (data.attendance.score / (data.attendance.total || 10)) * 100));
     const ptAvg = ptComponents.length > 0 ? ptComponents.reduce((a,b) => a+b, 0) / ptComponents.length : null;
 
     sdUpdateSummaryBar(wwAvg, ptAvg, qaAvg, _sdWeights);
@@ -1832,7 +1832,7 @@ async function sdSaveRow(rowKey, colorClass, examId, activityId, maxScore) {
                 }
             });
             if (data.participation?.has_result) ptComponents.push(Math.min(100, data.participation.score * 10));
-            if (data.attendance?.has_result)    ptComponents.push(Math.min(100, data.attendance.score * 10));
+            if (data.attendance?.has_result)    ptComponents.push(Math.min(100, (data.attendance.score / (data.attendance.total || 10)) * 100));
             if (ptComponents.length > 0)
                 payload.pt = ptComponents.reduce((a,b) => a+b, 0) / ptComponents.length;
         }

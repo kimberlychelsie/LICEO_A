@@ -69,6 +69,8 @@ def get_db_connection():
             att_cols = [r[0] for r in cur.fetchall()]
             if 'teacher_id' not in att_cols:
                 cur.execute("ALTER TABLE attendance_scores ADD COLUMN teacher_id INTEGER")
+            if 'total_days' not in att_cols:
+                cur.execute("ALTER TABLE attendance_scores ADD COLUMN total_days INTEGER DEFAULT 10")
             
             # Add unique constraint uq_attendance if missing
             cur.execute("""
