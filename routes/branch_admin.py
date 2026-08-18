@@ -470,12 +470,15 @@ def branch_admin_faq_add():
         return redirect("/")
 
     branch_id = session.get("branch_id")
+    category = (request.form.get("category") or "General").strip()
     question = (request.form.get("question") or "").strip()
     answer = (request.form.get("answer") or "").strip()
 
     if not question or not answer:
         flash("Question and Answer are required.", "error")
         return redirect("/branch-admin/faqs")
+
+    formatted_question = f"{category}|{question}"
 
     db = get_db_connection()
     cursor = db.cursor()
@@ -501,12 +504,15 @@ def branch_admin_faq_edit(faq_id):
         return redirect("/")
 
     branch_id = session.get("branch_id")
+    category = (request.form.get("category") or "General").strip()
     question = (request.form.get("question") or "").strip()
     answer = (request.form.get("answer") or "").strip()
 
     if not question or not answer:
         flash("Question and Answer are required.", "error")
         return redirect("/branch-admin/faqs")
+
+    formatted_question = f"{category}|{question}"
 
     db = get_db_connection()
     cursor = db.cursor()
