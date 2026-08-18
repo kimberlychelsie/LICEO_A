@@ -540,7 +540,7 @@ def view_bill(bill_id):
         ]))
 
         cursor.execute("""
-            SELECT p.*, COALESCE(NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''), u.username) as received_by_name
+            SELECT p.*, u.username as received_by_name
             FROM payments p
             LEFT JOIN users u ON p.received_by = u.user_id
             WHERE p.bill_id = %s
@@ -1245,7 +1245,7 @@ def _fetch_report_summary(cursor, branch_id, start_date, end_date):
 
 def _fetch_branch_admin_name(cursor, branch_id):
     cursor.execute("""
-        SELECT COALESCE(NULLIF(TRIM(CONCAT_WS(' ', first_name, last_name)), ''), username) AS admin_name
+        SELECT COALESCE(NULLIF(TRIM(full_name), ''), username) AS admin_name
         FROM users WHERE branch_id = %s AND role = 'branch_admin' LIMIT 1
     """, (branch_id,))
     row = cursor.fetchone()
