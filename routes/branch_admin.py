@@ -483,7 +483,7 @@ def branch_admin_faq_add():
         cursor.execute("""
             INSERT INTO chatbot_faqs (question, answer, branch_id)
             VALUES (%s, %s, %s)
-        """, (question, answer, branch_id))
+        """, (formatted_question, answer, branch_id))
         db.commit()
         flash("FAQ added successfully!", "success")
     except Exception:
@@ -515,7 +515,7 @@ def branch_admin_faq_edit(faq_id):
             UPDATE chatbot_faqs
             SET question=%s, answer=%s
             WHERE id=%s AND branch_id=%s
-        """, (question, answer, faq_id, branch_id))
+        """, (formatted_question, answer, faq_id, branch_id))
         db.commit()
         flash("FAQ updated successfully!", "success")
     except Exception:
