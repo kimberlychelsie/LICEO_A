@@ -137,6 +137,18 @@
         color: #475569;
     }
     .btn-cancel:hover { background: #cbd5e1; }
+    .btn-save:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+.btn-save:disabled:hover {
+    background: #2563eb;
+    transform: none;
+    box-shadow: none;
+}
     
     .btn-save {
         background: #2563eb;
@@ -144,6 +156,28 @@
         box-shadow: 0 4px 12px rgba(37,99,235,0.25);
     }
     .btn-save:hover { background: #1d4ed8; transform: translateY(-2px); }
+    .btn-zero {
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid #f59e0b;
+    background: #fffbeb;
+    color: #b45309;
+    font-size: 0.75rem;
+    font-weight: 800;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.btn-zero:hover {
+    background: #fef3c7;
+    border-color: #d97706;
+}
+
+.btn-zero:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
 </style>
 {% endblock %}
 
@@ -178,8 +212,32 @@
                 <div class="form-item">
                     <label class="form-label">{{ q.title }} <span>(Quiz)</span></label>
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <input type="number" step="1" class="sd-input" name="exam_{{ q.exam_id }}" value="{{ q.score|int if q.has_result else '' }}" min="0" max="{{ q.total }}" required {{ 'disabled' if is_locked else '' }}>
-                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">/ {{ q.total|int }}</span>
+
+                        <input
+                            type="number"
+                            step="1"
+                            class="sd-input score-field"
+                            name="exam_{{ q.exam_id }}"
+                            value="{{ q.score|int if q.has_result else '' }}"
+                            min="0"
+                            max="{{ q.total }}"
+                            required
+                            {{ 'disabled' if is_locked else '' }}
+                        >
+                    
+                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">
+                            / {{ q.total|int }}
+                        </span>
+                    
+                        {% if not q.has_result and not is_locked %}
+                        <button
+                            type="button"
+                            class="btn-zero"
+                            onclick="setScoreZero(this)">
+                            Set to 0
+                        </button>
+                        {% endif %}
+                    
                     </div>
                 </div>
                 {% endfor %}
@@ -187,8 +245,32 @@
                 <div class="form-item">
                     <label class="form-label">{{ m.title }} <span>(Monthly)</span></label>
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <input type="number" step="1" class="sd-input" name="exam_{{ m.exam_id }}" value="{{ m.score|int if m.has_result else '' }}" min="0" max="{{ m.total }}" required {{ 'disabled' if is_locked else '' }}>
-                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">/ {{ m.total|int }}</span>
+
+                        <input
+                            type="number"
+                            step="1"
+                            class="sd-input score-field"
+                            name="exam_{{ m.exam_id }}"
+                            value="{{ m.score|int if m.has_result else '' }}"
+                            min="0"
+                            max="{{ m.total }}"
+                            required
+                            {{ 'disabled' if is_locked else '' }}
+                        >
+                    
+                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">
+                            / {{ m.total|int }}
+                        </span>
+                    
+                        {% if not m.has_result and not is_locked %}
+                        <button
+                            type="button"
+                            class="btn-zero"
+                            onclick="setScoreZero(this)">
+                            Set to 0
+                        </button>
+                        {% endif %}
+                    
                     </div>
                 </div>
                 {% endfor %}
@@ -206,16 +288,56 @@
                 <div class="form-item">
                     <label class="form-label">{{ a.title }} <span>(Activity)</span></label>
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <input type="number" step="1" class="sd-input" name="act_{{ a.activity_id }}" value="{{ a.score|int if a.has_result else '' }}" min="0" max="{{ a.total }}" required {{ 'disabled' if is_locked else '' }}>
-                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">/ {{ a.total|int }}</span>
+
+                        <input
+                            type="number"
+                            step="1"
+                            class="sd-input score-field"
+                            name="act_{{ a.activity_id }}"
+                            value="{{ a.score|int if a.has_result else '' }}"
+                            min="0"
+                            max="{{ a.total }}"
+                            required
+                            {{ 'disabled' if is_locked else '' }}
+                        >
+                    
+                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">
+                            / {{ a.total|int }}
+                        </span>
+                    
+                        {% if not a.has_result and not is_locked %}
+                        <button
+                            type="button"
+                            class="btn-zero"
+                            onclick="setScoreZero(this)">
+                            Set to 0
+                        </button>
+                        {% endif %}
+                    
                     </div>
                 </div>
                 {% endfor %}
                 <div class="form-item">
                     <label class="form-label">Participation</label>
+                
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <input type="number" step="1" class="sd-input" name="participation" value="{{ participation.score|int if participation.has_result else '' }}" min="0" max="10" required {{ 'disabled' if is_locked else '' }}>
-                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">/ 10</span>
+                
+                        <input
+                            type="number"
+                            step="1"
+                            class="sd-input"
+                            name="participation"
+                            value="{{ participation.score|int if participation.has_result else '' }}"
+                            min="0"
+                            max="{{ participation.max }}"
+                            required
+                            {{ 'disabled' if is_locked else '' }}
+                        >
+                
+                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">
+                            / {{ participation.max|int }}
+                        </span>
+                
                     </div>
                 </div>
                 <div class="form-item">
@@ -237,8 +359,32 @@
                 <div class="form-item">
                     <label class="form-label">{{ p.title }} <span>(Exam)</span></label>
                     <div style="display:flex; align-items:center; gap:8px;">
-                        <input type="number" step="1" class="sd-input" name="exam_{{ p.exam_id }}" value="{{ p.score|int if p.has_result else '' }}" min="0" max="{{ p.total }}" required {{ 'disabled' if is_locked else '' }}>
-                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">/ {{ p.total|int }}</span>
+
+                        <input
+                            type="number"
+                            step="1"
+                            class="sd-input score-field"
+                            name="exam_{{ p.exam_id }}"
+                            value="{{ p.score|int if p.has_result else '' }}"
+                            min="0"
+                            max="{{ p.total }}"
+                            required
+                            {{ 'disabled' if is_locked else '' }}
+                        >
+                    
+                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">
+                            / {{ p.total|int }}
+                        </span>
+                    
+                        {% if not p.has_result and not is_locked %}
+                        <button
+                            type="button"
+                            class="btn-zero"
+                            onclick="setScoreZero(this)">
+                            Set to 0
+                        </button>
+                        {% endif %}
+                    
                     </div>
                 </div>
                 {% endfor %}
@@ -248,13 +394,212 @@
             {% endif %}
         </div>
 
-            <div class="sd-actions">
-                <a href="{{ url_for('teacher.class_record', section_id=section_id, subject_id=subject_id, period=period) }}" class="btn btn-cancel">Cancel</a>
-                {% if not is_locked %}
-                <button type="submit" class="btn btn-save">Save Scores</button>
-                {% endif %}
-            </div>
+        <div class="sd-actions">
+            <a href="{{ url_for(
+                'teacher.class_record',
+                section_id=section_id,
+                subject_id=subject_id,
+                period=period
+            ) }}"
+               class="btn btn-cancel">
+                Cancel
+            </a>
+        
+            {% if not is_locked %}
+        
+            <button
+                type="button"
+                id="btnSetAllZero"
+                class="btn-zero"
+                onclick="setAllMissingZero()"
+            >
+                Set All Missing to 0
+            </button>
+        
+            <button
+                type="submit"
+                id="btnSaveScores"
+                class="btn btn-save"
+                disabled
+            >
+                Save Scores
+            </button>
+        
+            {% endif %}
+        </div>
         </div>
     </form>
 </div>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+    
+        const form = document.querySelector('.sd-card').closest('form');
+        const saveButton = document.getElementById('btnSaveScores');
+        const setAllButton = document.getElementById('btnSetAllZero');
+    
+        if (!form || !saveButton) return;
+    
+        // ALL editable score inputs
+        // Includes Quiz, Activity, Participation,
+        // Attendance, Monthly and Periodical
+        const allInputs = form.querySelectorAll(
+            'input[type="number"]:not(:disabled)'
+        );
+    
+        // Only assessments that are allowed to use "Set to 0"
+        // Quiz, Monthly, Activity, Periodical
+        const assessmentInputs = form.querySelectorAll(
+            '.score-field:not(:disabled)'
+        );
+    
+    
+        // ==========================================
+        // STORE ORIGINAL VALUES
+        // ==========================================
+        allInputs.forEach(input => {
+            input.dataset.originalValue = input.value;
+        });
+    
+    
+        // ==========================================
+        // CHECK FOR CHANGES
+        // ==========================================
+        function checkForChanges() {
+    
+            let hasChanges = false;
+    
+            allInputs.forEach(input => {
+    
+                if (input.value !== input.dataset.originalValue) {
+                    hasChanges = true;
+                }
+    
+            });
+    
+            saveButton.disabled = !hasChanges;
+        }
+    
+    
+        // ==========================================
+        // CHECK IF THERE ARE MISSING ASSESSMENTS
+        // ==========================================
+        function checkMissingScores() {
+    
+            if (!setAllButton) return;
+    
+            let hasMissing = false;
+    
+            assessmentInputs.forEach(input => {
+    
+                if (input.value.trim() === '') {
+                    hasMissing = true;
+                }
+    
+            });
+    
+            setAllButton.disabled = !hasMissing;
+        }
+    
+    
+        // ==========================================
+        // NORMAL INPUT CHANGES
+        // ==========================================
+        allInputs.forEach(input => {
+    
+            input.addEventListener('input', function () {
+                checkForChanges();
+                checkMissingScores();
+            });
+    
+            input.addEventListener('change', function () {
+                checkForChanges();
+                checkMissingScores();
+            });
+    
+        });
+    
+    
+        // ==========================================
+        // INDIVIDUAL SET TO ZERO
+        // ==========================================
+        window.setScoreZero = function(button) {
+    
+            const row = button.closest('.form-item');
+            const input = row.querySelector('.score-field');
+    
+            if (!input) return;
+    
+            const confirmed = confirm(
+                'Set this missing score to 0? ' +
+                'This means the student will receive zero for this item.'
+            );
+    
+            if (!confirmed) return;
+    
+            input.value = '0';
+    
+            button.style.display = 'none';
+    
+            checkForChanges();
+            checkMissingScores();
+    
+            input.focus();
+        };
+    
+    
+        // ==========================================
+        // SET ALL MISSING ASSESSMENTS TO ZERO
+        // ==========================================
+        window.setAllMissingZero = function() {
+    
+            const missingInputs = Array.from(
+                assessmentInputs
+            ).filter(input => input.value.trim() === '');
+    
+            if (missingInputs.length === 0) {
+                return;
+            }
+    
+            const confirmed = confirm(
+                `Set all ${missingInputs.length} missing assessment score(s) to 0?\n\n` +
+                `This will only affect missing Quiz, Monthly Exam, Activity, ` +
+                `and Periodical Exam scores.\n\n` +
+                `Participation and Attendance will NOT be changed.`
+            );
+    
+            if (!confirmed) return;
+    
+    
+            missingInputs.forEach(input => {
+    
+                input.value = '0';
+    
+                // Hide individual Set to 0 button
+                const row = input.closest('.form-item');
+    
+                if (row) {
+    
+                    const zeroButton =
+                        row.querySelector('.btn-zero');
+    
+                    if (zeroButton) {
+                        zeroButton.style.display = 'none';
+                    }
+    
+                }
+    
+            });
+    
+    
+            checkForChanges();
+            checkMissingScores();
+        };
+    
+    
+        // Initial state
+        checkForChanges();
+        checkMissingScores();
+    
+    });
+    </script>
 {% endblock %}
