@@ -440,7 +440,7 @@ def branch_admin_faqs():
     cursor = db.cursor()
     try:
         cursor.execute("""
-            SELECT id, question, answer
+            SELECT id, question, answer, branch_id
             FROM chatbot_faqs
             WHERE branch_id IS NULL
             ORDER BY id ASC
@@ -448,7 +448,7 @@ def branch_admin_faqs():
         general_faqs = cursor.fetchall() or []
 
         cursor.execute("""
-            SELECT id, question, answer
+            SELECT id, question, answer, branch_id
             FROM chatbot_faqs
             WHERE branch_id = %s
             ORDER BY id ASC
@@ -520,7 +520,7 @@ def branch_admin_faq_edit(faq_id):
         cursor.execute("""
             UPDATE chatbot_faqs
             SET question=%s, answer=%s
-            WHERE id=%s AND branch_id=%s
+            WHERE id=%s AND (branch_id=%s OR branch_id IS NULL)
         """, (formatted_question, answer, faq_id, branch_id))
         db.commit()
         flash("FAQ updated successfully!", "success")
@@ -545,7 +545,7 @@ def branch_admin_faq_delete(faq_id):
     try:
         cursor.execute("""
             DELETE FROM chatbot_faqs
-            WHERE id=%s AND branch_id=%s
+            WHERE id=%s AND (branch_id=%s OR branch_id IS NULL)
         """, (faq_id, branch_id))
         db.commit()
         flash("FAQ deleted.", "success")
