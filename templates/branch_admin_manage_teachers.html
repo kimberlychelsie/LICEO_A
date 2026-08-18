@@ -20,37 +20,37 @@
 
   /* ── Hero Banner ── */
   .hero-banner {
-      background: linear-gradient(135deg, var(--p) 0%, #0c2461 100%);
-      border-radius: 20px;
-      padding: 40px;
-      margin-bottom: 24px;
-      position: relative;
-      overflow: hidden;
-      color: #fff;
-      box-shadow: 0 15px 35px -10px rgba(26, 58, 143, 0.2);
+    background: linear-gradient(135deg, var(--p) 0%, #0c2461 100%);
+    border-radius: 20px;
+    padding: 40px;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+    color: #fff;
+    box-shadow: 0 15px 35px -10px rgba(26, 58, 143, 0.2);
   }
 
   .hero-content h1 {
-      font-size: 2.5rem;
-      font-weight: 900;
-      letter-spacing: -0.04em;
-      margin-bottom: 12px;
-      line-height: 1;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+    font-size: 2.5rem;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    margin-bottom: 12px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
   }
 
   .hero-content h1 span {
-      color: #facc15;
-      text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+    color: #facc15;
+    text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
   }
 
   .hero-content p {
-      font-size: 1rem;
-      font-weight: 500;
-      color: rgba(255, 255, 255, 0.9);
-      max-width: 600px;
+    font-size: 1rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    max-width: 600px;
   }
 
   body {
@@ -1331,594 +1331,582 @@
 
 {% block content %}
 <div class="ma-container">
-    <div class="hero-banner">
-        <div class="hero-content">
-            <h1>
-                <div style="display: flex; gap: 8px;">Manage <span>Accounts</span></div>
-            </h1>
-            <p>Manage school accounts and user access for {{ session.get('branch_name', 'Liceo LMS') }}</p>
-        </div>
+  <div class="hero-banner">
+    <div class="hero-content">
+      <h1>
+        <div style="display: flex; gap: 8px;">Manage <span>Accounts</span></div>
+      </h1>
+      <p>Manage school accounts and user access for {{ session.get('branch_name', 'Liceo LMS') }}</p>
     </div>
+  </div>
 
-    <div class="main-tabs-container"
-      style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px;">
-      <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role='all_staff') }}" class="main-tab active"
-        style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; border-radius: 20px; text-decoration: none; border: 2px solid var(--ma-primary); background: rgba(15, 23, 42, 0.05); color: var(--ma-primary); box-shadow: var(--ma-shadow); transition: all 0.2s;">
-        <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; letter-spacing: 0.5px;">Faculty Accounts</div>
-        <div style="font-size: 0.9rem; font-weight: 600; opacity: 0.8;">Create Faculty Account</div>
-      </a>
-      <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role='student') }}" class="main-tab"
-        style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; border-radius: 20px; text-decoration: none; border: 2px solid transparent; background: var(--ma-card); color: var(--ma-text); box-shadow: var(--ma-shadow); transition: all 0.2s;">
-        <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; letter-spacing: 0.5px;"> Student Account</div>
-        <div style="font-size: 0.9rem; font-weight: 600; opacity: 0.8;">View Student Records</div>
-      </a>
+  <div class="main-tabs-container"
+    style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px;">
+    <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role='all_staff') }}" class="main-tab active"
+      style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; border-radius: 20px; text-decoration: none; border: 2px solid var(--ma-primary); background: rgba(15, 23, 42, 0.05); color: var(--ma-primary); box-shadow: var(--ma-shadow); transition: all 0.2s;">
+      <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; letter-spacing: 0.5px;">Faculty Accounts
+      </div>
+      <div style="font-size: 0.9rem; font-weight: 600; opacity: 0.8;">Create Faculty Account</div>
+    </a>
+    <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role='student') }}" class="main-tab"
+      style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; border-radius: 20px; text-decoration: none; border: 2px solid transparent; background: var(--ma-card); color: var(--ma-text); box-shadow: var(--ma-shadow); transition: all 0.2s;">
+      <div style="font-weight: 800; font-size: 1.1rem; margin-bottom: 8px; letter-spacing: 0.5px;"> Student Account
+      </div>
+      <div style="font-size: 0.9rem; font-weight: 600; opacity: 0.8;">View Student Records</div>
+    </a>
+  </div>
+
+  <!-- Create Account Section -->
+  {% if not filter_search %}
+  <div class="data-card" style="margin-bottom: 32px;">
+    <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 24px; color: var(--ma-primary);">Create New
+      Faculty Account</h2>
+    <form method="post" action="/branch-admin/manage-teachers" id="teacher-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="role" value="teacher">
+
+      <div class="form-group" style="margin-bottom: 24px;">
+        <label style="font-weight: 700; margin-bottom: 12px; display: block; color: var(--ma-text);">Select
+          Role:</label>
+        <div
+          style="display: flex; gap: 24px; flex-wrap: wrap; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid var(--ma-border);">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;"
+            onchange="window.location.href='/branch-admin/manage-accounts?role=registrar';">
+            <input type="radio" name="role_redirect" value="registrar"
+              style="width: 18px; height: 18px; accent-color: var(--ma-primary);"> Registrar
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;"
+            onchange="window.location.href='/branch-admin/manage-accounts?role=cashier';">
+            <input type="radio" name="role_redirect" value="cashier"
+              style="width: 18px; height: 18px; accent-color: var(--ma-primary);"> Cashier
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;"
+            onchange="window.location.href='/branch-admin/manage-accounts?role=librarian';">
+            <input type="radio" name="role_redirect" value="librarian"
+              style="width: 18px; height: 18px; accent-color: var(--ma-primary);"> Librarian
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;">
+            <input type="radio" name="role_redirect" value="teacher" checked required
+              style="width: 18px; height: 18px; accent-color: var(--ma-primary);"> Teacher
+          </label>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>First Name</label>
+          <input type="text" class="form-control" name="first_name" placeholder="E.g. Alexander" required
+            oninput="this.value = this.value.replace(/[0-9]/g, '')">
+        </div>
+        <div class="form-group">
+          <label>Middle Name (Optional)</label>
+          <input type="text" class="form-control" name="middle_name" placeholder="E.g. Pierce"
+            oninput="this.value = this.value.replace(/[0-9]/g, '')">
+        </div>
+        <div class="form-group">
+          <label>Last Name</label>
+          <input type="text" class="form-control" name="last_name" placeholder="E.g. Mercer" required
+            oninput="this.value = this.value.replace(/[0-9]/g, '')">
+        </div>
+        <div class="form-group">
+          <label>Gender Profile</label>
+          <select class="form-control" name="gender" required>
+            <option value="">Select Gender</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Academic Grade Level</label>
+          <select class="form-control" name="grade_level" required>
+            <option value="">Select Level</option>
+            {% for g in grades %}
+            <option value="{{ g.id }}">{{ g.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group" style="flex: 2;">
+          <label>Email Address</label>
+          <input class="form-control" name="email" type="email" placeholder="example@domain.com" required>
+        </div>
+
+        <div class="form-group" style="align-self: flex-end;">
+          <button class="btn-elegant btn-primary-ma" type="submit" style="width: 100%; height: 46px; font-weight: 700;">
+            <span>➕ Create Account</span>
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+  {% endif %}
+
+  <!-- Controls Wrapper: Navigation & Search -->
+  <div class="controls-wrapper">
+    <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 24px; color: var(--ma-primary);">USER DIRECTORY
+    </h2>
+
+    <form method="get" class="search-registry-bar" id="filter-form" style="margin-bottom: 24px;">
+      <div class="form-group" style="flex: 2; min-width: 300px;">
+        <label>Find teacher</label>
+        <div style="position: relative;">
+          <input type="text" name="search" class="form-control" placeholder="Type part of a name or username..."
+            value="{{ filter_search }}" style="padding-left: 16px;">
+        </div>
+      </div>
+
+      <div class="form-group" style="display: flex; gap: 8px;">
+        <button type="submit" class="btn-elegant btn-primary-ma" style="width: 64px; padding: 0;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
+        <a href="/branch-admin/manage-teachers/archive" class="btn-elegant"
+          style="background: #ffffff; border: 1.5px solid var(--ma-border); color: var(--ma-muted); text-decoration: none; padding: 0 20px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor"
+            stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"
+            style="margin-right: 8px;">
+            <rect width="20" height="5" x="2" y="3" rx="1"></rect>
+            <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
+            <path d="M10 12h4"></path>
+          </svg>
+          Archived Teachers
+        </a>
+      </div>
+    </form>
+
+    <div class="nav-tabs-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 0;">
+      <div
+        style="font-weight: 700; font-size: 0.95rem; color: var(--ma-muted); align-self: center; margin-right: 12px;">
+        Filter by Role:</div>
+      <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role='all_staff') }}" class="nav-tab">All
+        Staff</a>
+      <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role='registrar') }}"
+        class="nav-tab">Registrars</a>
+      <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role='cashier') }}" class="nav-tab">Cashiers</a>
+      <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role='librarian') }}"
+        class="nav-tab">Librarians</a>
+      <a href="/branch-admin/manage-teachers" class="nav-tab active">Teachers</a>
     </div>
+  </div>
 
-    <!-- Create Account Section -->
-    {% if not filter_search %}
-    <div class="data-card" style="margin-bottom: 32px;">
-      <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 24px; color: var(--ma-primary);">Create New
-        Faculty Account</h2>
-      <form method="post" action="/branch-admin/manage-teachers" id="teacher-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <input type="hidden" name="role" value="teacher">
+  <!-- Table -->
+  <div class="table-wrap">
 
-        <div class="form-group" style="margin-bottom: 24px;">
-          <label style="font-weight: 700; margin-bottom: 12px; display: block; color: var(--ma-text);">Select
-            Role:</label>
-          <div
-            style="display: flex; gap: 24px; flex-wrap: wrap; background: #f8fafc; padding: 16px; border-radius: 12px; border: 1px solid var(--ma-border);">
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;"
-              onchange="window.location.href='/branch-admin/manage-accounts?role=registrar';">
-              <input type="radio" name="role_redirect" value="registrar"
-                style="width: 18px; height: 18px; accent-color: var(--ma-primary);"> Registrar
-            </label>
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;"
-              onchange="window.location.href='/branch-admin/manage-accounts?role=cashier';">
-              <input type="radio" name="role_redirect" value="cashier"
-                style="width: 18px; height: 18px; accent-color: var(--ma-primary);"> Cashier
-            </label>
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;"
-              onchange="window.location.href='/branch-admin/manage-accounts?role=librarian';">
-              <input type="radio" name="role_redirect" value="librarian"
-                style="width: 18px; height: 18px; accent-color: var(--ma-primary);"> Librarian
-            </label>
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600;">
-              <input type="radio" name="role_redirect" value="teacher" checked required
-                style="width: 18px; height: 18px; accent-color: var(--ma-primary);"> Teacher
-            </label>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>First Name</label>
-            <input type="text" class="form-control" name="first_name" placeholder="E.g. Alexander" required
-              oninput="this.value = this.value.replace(/[0-9]/g, '')">
-          </div>
-          <div class="form-group">
-            <label>Middle Name (Optional)</label>
-            <input type="text" class="form-control" name="middle_name" placeholder="E.g. Pierce"
-              oninput="this.value = this.value.replace(/[0-9]/g, '')">
-          </div>
-          <div class="form-group">
-            <label>Last Name</label>
-            <input type="text" class="form-control" name="last_name" placeholder="E.g. Mercer" required
-              oninput="this.value = this.value.replace(/[0-9]/g, '')">
-          </div>
-          <div class="form-group">
-            <label>Gender Profile</label>
-            <select class="form-control" name="gender" required>
-              <option value="">Select Gender</option>
-              <option value="female">Female</option>
-              <option value="male">Male</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label>Academic Grade Level</label>
-            <select class="form-control" name="grade_level" required>
-              <option value="">Select Level</option>
-              {% for g in grades %}
-              <option value="{{ g.id }}">{{ g.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="form-group" style="flex: 2;">
-            <label>Email Address</label>
-            <input class="form-control" name="email" type="email" placeholder="example@domain.com" required>
-          </div>
-
-          <div class="form-group" style="align-self: flex-end;">
-            <button class="btn-elegant btn-primary-ma" type="submit"
-              style="width: 100%; height: 46px; font-weight: 700;">
-              <span>➕ Create Account</span>
-            </button>
-          </div>
-        </div>
-      </form>
+    {% if teachers %}
+    <p class="field-hint teacher-list-tip">Tip: open <strong>Manage</strong> on a row, then <strong>Assign
+        teacher</strong> to link subjects and sections.</p>
+    <div class="table-scroll-inner">
+      <table class="mt">
+        <thead>
+            <th>Teacher</th>
+            <th>Role</th>
+            <th>Advisory Class</th>
+            <th>Subject Loads</th>
+            <th style="text-align:right;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in teachers %}
+          <tr>
+            <td>
+              <div style="display:flex; align-items:center; gap:14px;">
+                <div class="avatar">{{ (t.full_name or 'T')[0]|upper }}</div>
+                <div>
+                  <div class="uname">{{ t.full_name or '—' }}</div>
+                  <div class="uemail">{{ t.email or t.username }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              {% if t.advisory_section and t.assigned_sections %}
+              <span class="badge badge-advisory">Adviser & Subject</span>
+              {% elif t.advisory_section %}
+              <span class="badge badge-advisory">Adviser</span>
+              {% elif t.assigned_sections %}
+              <span class="badge badge-subject">Subject Teacher</span>
+              {% else %}
+              <span class="badge badge-inactive" style="background:#f1f5f9; color:var(--mu);">Unassigned</span>
+              {% endif %}
+            </td>
+            <td style="font-size:.88rem; color:var(--tx); font-weight:600;">
+              {% if t.advisory_section %}
+              <span style="color:var(--p); font-weight:800;">{{ t.advisory_section }}</span>
+              {% else %}
+              <span style="color:var(--mu);">—</span>
+              {% endif %}
+            </td>
+            <td style="font-size:.85rem; color:var(--mu);">
+              {{ t.assigned_sections or '—' }}
+            </td>
+            <td style="text-align:right;">
+              {% if is_branch_active_status %}
+              <div class="manage-wrap" data-mw-id="{{ t.user_id }}">
+                <button type="button" class="btn-manage" onclick="toggleManage(event, {{ t.user_id }})"
+                  aria-expanded="false" aria-haspopup="true">
+                  Manage
+                  <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="pointer-events: none;">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+                <div class="manage-menu" role="menu">
+                  <button type="button" role="menuitem" onclick="manageAssign({{ t.user_id }})">Assign
+                    teacher</button>
+                  <button type="button" role="menuitem" onclick="manageEdit({{ t.user_id }})">Edit teacher</button>
+                  <hr>
+                  <span class="muted">Account</span>
+                  <form method="POST" action="/branch-admin/manage-teachers/{{ t.user_id }}/toggle" style="margin:0;"
+                    onsubmit="return confirm('Turn this login off or back on?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="manage-menu-form-btn" role="menuitem">{{ 'Pause login' if t.status ==
+                      'active' else 'Allow login again' }}</button>
+                  </form>
+                  <form method="POST" action="/branch-admin/manage-teachers/{{ t.user_id }}/archive" style="margin:0;"
+                    onsubmit="return confirm('Archive this teacher? They will leave the main list, login will be paused, and class links cleared. You can delete the account permanently from the Archive page.');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="manage-menu-form-btn warn-action" role="menuitem">Archive</button>
+                  </form>
+                </div>
+              </div>
+              {% else %}
+              <span class="field-hint" style="margin:0;">—</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+      <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="none" stroke="currentColor"
+        stroke-width="1.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+      </svg>
+      <p>No teachers match this tab or search. Try the other tab or clear the search box.</p>
     </div>
     {% endif %}
-
-    <!-- Controls Wrapper: Navigation & Search -->
-    <div class="controls-wrapper">
-      <h2 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 24px; color: var(--ma-primary);">USER DIRECTORY
-      </h2>
-
-      <form method="get" class="search-registry-bar" id="filter-form" style="margin-bottom: 24px;">
-        <div class="form-group" style="flex: 2; min-width: 300px;">
-          <label>Find teacher</label>
-          <div style="position: relative;">
-            <input type="text" name="search" class="form-control" placeholder="Type part of a name or username..."
-              value="{{ filter_search }}" style="padding-left: 16px;">
-          </div>
-        </div>
-
-        <div class="form-group" style="display: flex; gap: 8px;">
-          <button type="submit" class="btn-elegant btn-primary-ma" style="width: 64px; padding: 0;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="11" cy="11" r="8"></circle>
-              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-            </svg>
-          </button>
-          <a href="/branch-admin/manage-teachers/archive" class="btn-elegant"
-            style="background: #ffffff; border: 1.5px solid var(--ma-border); color: var(--ma-muted); text-decoration: none; padding: 0 20px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" stroke="currentColor"
-              stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"
-              style="margin-right: 8px;">
-              <rect width="20" height="5" x="2" y="3" rx="1"></rect>
-              <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"></path>
-              <path d="M10 12h4"></path>
-            </svg>
-            Archived Teachers
-          </a>
-        </div>
-      </form>
-
-      <div class="nav-tabs-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 0;">
-        <div
-          style="font-weight: 700; font-size: 0.95rem; color: var(--ma-muted); align-self: center; margin-right: 12px;">
-          Filter by Role:</div>
-        <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role='all_staff') }}" class="nav-tab">All
-          Staff</a>
-        <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role='registrar') }}"
-          class="nav-tab">Registrars</a>
-        <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role='cashier') }}"
-          class="nav-tab">Cashiers</a>
-        <a href="{{ url_for('branch_admin.branch_admin_manage_accounts', role='librarian') }}"
-          class="nav-tab">Librarians</a>
-        <a href="/branch-admin/manage-teachers" class="nav-tab active">Teachers</a>
-      </div>
-    </div>
-
-    <!-- Table -->
-    <div class="table-wrap">
-
-      {% if teachers %}
-      <p class="field-hint teacher-list-tip">Tip: open <strong>Manage</strong> on a row, then <strong>Assign
-          teacher</strong> to link subjects and sections.</p>
-      <div class="table-scroll-inner">
-        <table class="mt">
-          <thead>
-            <tr>
-              <th>Teacher</th>
-              <th>Role</th>
-              <th>Advisory Class</th>
-              <th>Subject Loads</th>
-              <th>Account</th>
-              <th style="text-align:right;">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for t in teachers %}
-            <tr>
-              <td>
-                <div style="display:flex; align-items:center; gap:14px;">
-                  <div class="avatar">{{ (t.full_name or 'T')[0]|upper }}</div>
-                  <div>
-                    <div class="uname">{{ t.full_name or '—' }}</div>
-                    <div class="uemail">{{ t.email or t.username }}</div>
-                  </div>
-                </div>
-              </td>
-              <td>
-                {% if t.advisory_section and t.assigned_sections %}
-                <span class="badge badge-advisory">Adviser & Subject</span>
-                {% elif t.advisory_section %}
-                <span class="badge badge-advisory">Adviser</span>
-                {% elif t.assigned_sections %}
-                <span class="badge badge-subject">Subject Teacher</span>
-                {% else %}
-                <span class="badge badge-inactive" style="background:#f1f5f9; color:var(--mu);">Unassigned</span>
-                {% endif %}
-              </td>
-              <td style="font-size:.88rem; color:var(--tx); font-weight:600;">
-                {% if t.advisory_section %}
-                <span style="color:var(--p); font-weight:800;">{{ t.advisory_section }}</span>
-                {% else %}
-                <span style="color:var(--mu);">—</span>
-                {% endif %}
-              </td>
-              <td style="font-size:.85rem; color:var(--mu);">
-                {{ t.assigned_sections or '—' }}
-              </td>
-              <td>
-                <span class="badge {{ 'badge-active' if t.status == 'active' else 'badge-inactive' }}">
-                  {{ 'Active' if t.status == 'active' else 'Paused' }}
-                </span>
-              </td>
-              <td style="text-align:right;">
-                {% if is_branch_active_status %}
-                <div class="manage-wrap" data-mw-id="{{ t.user_id }}">
-                  <button type="button" class="btn-manage" onclick="toggleManage(event, {{ t.user_id }})"
-                    aria-expanded="false" aria-haspopup="true">
-                    Manage
-                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                      <polyline points="6 9 12 15 18 9" />
-                    </svg>
-                  </button>
-                  <div class="manage-menu" role="menu">
-                    <button type="button" role="menuitem" onclick="manageAssign({{ t.user_id }})">Assign
-                      teacher</button>
-                    <button type="button" role="menuitem" onclick="manageEdit({{ t.user_id }})">Edit teacher</button>
-                    <hr>
-                    <span class="muted">Account</span>
-                    <form method="POST" action="/branch-admin/manage-teachers/{{ t.user_id }}/toggle" style="margin:0;"
-                      onsubmit="return confirm('Turn this login off or back on?');">
-                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                      <button type="submit" class="manage-menu-form-btn" role="menuitem">{{ 'Pause login' if t.status ==
-                        'active' else 'Allow login again' }}</button>
-                    </form>
-                    <form method="POST" action="/branch-admin/manage-teachers/{{ t.user_id }}/archive" style="margin:0;"
-                      onsubmit="return confirm('Archive this teacher? They will leave the main list, login will be paused, and class links cleared. You can delete the account permanently from the Archive page.');">
-                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                      <button type="submit" class="manage-menu-form-btn warn-action" role="menuitem">Archive</button>
-                    </form>
-                  </div>
-                </div>
-                {% else %}
-                <span class="field-hint" style="margin:0;">—</span>
-                {% endif %}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-      </div>
-      {% else %}
-      <div class="empty-state">
-        <svg xmlns="http://www.w3.org/2000/svg" width="56" height="56" fill="none" stroke="currentColor"
-          stroke-width="1.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-        </svg>
-        <p>No teachers match this tab or search. Try the other tab or clear the search box.</p>
-      </div>
-      {% endif %}
-    </div>
-
   </div>
 
-  <!-- ════ ASSIGN MODAL ════ -->
-  <div id="assignModalOverlay"
-    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); z-index:9999; align-items:center; justify-content:center; padding: 20px; backdrop-filter: blur(4px);">
-    <div
-      style="background:#fff; width:100%; max-width:860px; max-height:88vh; border-radius:24px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
-      <!-- Header -->
-      <div style="padding:24px 32px; display:flex; justify-content:space-between; align-items:center; background:#fff;">
-        <div>
-          <h2 style="margin:0; font-size:1.5rem; font-weight:800; color:var(--tx); letter-spacing:-0.02em;">Link classes
-          </h2>
-          <p style="margin:4px 0 0; font-size:.9rem; color:var(--mu);">Assigning roles to: <strong id="modalTeacherName"
-              style="color:var(--p);"></strong></p>
-        </div>
-        <button type="button" onclick="closeAssignModal()"
-          style="background:#f1f5f9; border:none; width:36px; height:36px; border-radius:50%; font-size:1.2rem; color:var(--mu); cursor:pointer; display:flex; align-items:center; justify-content:center; transition: background 0.2s;">&times;</button>
-      </div>
+</div>
 
-      <!-- Tabs Header -->
-      <div style="display:flex; border-bottom:1px solid #e2e8f0; background:#f8fafc; padding: 0 32px;">
-        <button id="tabBtnAdvisory" type="button" onclick="switchAssignTab('advisory')"
-          style="padding:16px 24px; background:transparent; border:none; border-bottom:3px solid var(--a); color:var(--a); font-weight:800; cursor:pointer; font-size:.95rem; margin-right: 12px; transition: color 0.2s;">Advisory
-          Class</button>
-        <button id="tabBtnSubjects" type="button" onclick="switchAssignTab('subjects')"
-          style="padding:16px 24px; background:transparent; border:none; border-bottom:3px solid transparent; color:var(--mu); font-weight:700; cursor:pointer; font-size:.95rem; transition: color 0.2s;">Subject
-          Loads</button>
+<!-- ════ ASSIGN MODAL ════ -->
+<div id="assignModalOverlay"
+  style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); z-index:9999; align-items:center; justify-content:center; padding: 20px; backdrop-filter: blur(4px);">
+  <div
+    style="background:#fff; width:100%; max-width:860px; max-height:88vh; border-radius:24px; display:flex; flex-direction:column; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);">
+    <!-- Header -->
+    <div style="padding:24px 32px; display:flex; justify-content:space-between; align-items:center; background:#fff;">
+      <div>
+        <h2 style="margin:0; font-size:1.5rem; font-weight:800; color:var(--tx); letter-spacing:-0.02em;">Link classes
+        </h2>
+        <p style="margin:4px 0 0; font-size:.9rem; color:var(--mu);">Assigning roles to: <strong id="modalTeacherName"
+            style="color:var(--p);"></strong></p>
       </div>
+      <button type="button" onclick="closeAssignModal()"
+        style="background:#f1f5f9; border:none; width:36px; height:36px; border-radius:50%; font-size:1.2rem; color:var(--mu); cursor:pointer; display:flex; align-items:center; justify-content:center; transition: background 0.2s;">&times;</button>
+    </div>
 
-      <!-- Tab 1: Advisory Class -->
-      <div id="tabContentAdvisory"
-        style="flex:1; overflow-y:auto; background:#fcfcfc; padding:24px 32px; display:block;">
-        <p style="margin-top:0; font-size:.9rem; color:var(--mu); margin-bottom:16px;">Select the section this teacher
-          will advise (or choose None). They can only advise one section.</p>
-        <div id="modalAdvisoryBody">
-          <div style="text-align:center; padding:40px; color:var(--mu); font-weight:600;">Loading…</div>
-        </div>
-      </div>
+    <!-- Tabs Header -->
+    <div style="display:flex; border-bottom:1px solid #e2e8f0; background:#f8fafc; padding: 0 32px;">
+      <button id="tabBtnAdvisory" type="button" onclick="switchAssignTab('advisory')"
+        style="padding:16px 24px; background:transparent; border:none; border-bottom:3px solid var(--a); color:var(--a); font-weight:800; cursor:pointer; font-size:.95rem; margin-right: 12px; transition: color 0.2s;">Advisory
+        Class</button>
+      <button id="tabBtnSubjects" type="button" onclick="switchAssignTab('subjects')"
+        style="padding:16px 24px; background:transparent; border:none; border-bottom:3px solid transparent; color:var(--mu); font-weight:700; cursor:pointer; font-size:.95rem; transition: color 0.2s;">Subject
+        Loads</button>
+    </div>
 
-      <!-- Tab 2: Subject Loads -->
-      <div id="tabContentSubjects"
-        style="flex:1; overflow-y:auto; background:#fcfcfc; display:none; flex-direction:column;">
-        <div
-          style="padding:16px 32px; background:#fff; border-bottom:1px solid var(--bd); display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
-          <div style="font-weight:700; font-size:.9rem; color:var(--p);">
-            <span id="selCountBadge"
-              style="background:var(--p); color:#fff; padding:3px 10px; border-radius:12px; font-size:.75rem; margin-right:8px; display:none;">0
-              picked</span>
-            Tick the subject slots this teacher should handle.
-          </div>
-          <div style="display:flex; gap:8px;">
-            <button onclick="selectAllSubjects()" type="button"
-              style="padding:6px 12px; border-radius:8px; border:1px solid var(--bd); background:#f8fafc; cursor:pointer; font-size:.75rem; font-weight:700;">Pick
-              all</button>
-            <button onclick="deselectAllSubjects()" type="button"
-              style="padding:6px 12px; border-radius:8px; border:1px solid var(--bd); background:#f8fafc; cursor:pointer; font-size:.75rem; font-weight:700;">Clear</button>
-          </div>
-        </div>
-        <div id="modalSubjectsBody" style="padding:24px 32px; flex:1; overflow-y:auto;">
-          <div style="text-align:center; padding:40px; color:var(--mu); font-weight:600;">Loading…</div>
-        </div>
-      </div>
-
-      <!-- Footer -->
-      <div
-        style="padding:20px 32px; border-top:1px solid var(--bd); background:#fff; display:flex; justify-content:flex-end; gap:12px;">
-        <button onclick="closeAssignModal()" type="button"
-          style="padding:10px 20px; border-radius:10px; border:1px solid var(--bd); background:#fff; cursor:pointer; font-weight:700;">Close</button>
-        <button id="modalSaveBtn" type="button" onclick="submitModalAssignment()" disabled
-          style="padding:10px 24px; border-radius:10px; border:none; background:var(--p); color:#fff; cursor:pointer; font-weight:800; display:flex; gap:8px; align-items:center;">
-          Save Subject Loads
-        </button>
+    <!-- Tab 1: Advisory Class -->
+    <div id="tabContentAdvisory" style="flex:1; overflow-y:auto; background:#fcfcfc; padding:24px 32px; display:block;">
+      <p style="margin-top:0; font-size:.9rem; color:var(--mu); margin-bottom:16px;">Select the section this teacher
+        will advise (or choose None). They can only advise one section.</p>
+      <div id="modalAdvisoryBody">
+        <div style="text-align:center; padding:40px; color:var(--mu); font-weight:600;">Loading…</div>
       </div>
     </div>
-  </div>
 
-  <!-- Edit teacher modal -->
-  <div id="editTeacherOverlay"
-    style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.6); z-index:10000; align-items:center; justify-content:center; padding:20px; backdrop-filter: blur(4px);"
-    onclick="if(event.target===this)closeEditModal()">
-    <div
-      style="background:#fff; width:100%; max-width:560px; max-height:92vh; border-radius:24px; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); display:flex; flex-direction:column;"
-      onclick="event.stopPropagation()">
+    <!-- Tab 2: Subject Loads -->
+    <div id="tabContentSubjects"
+      style="flex:1; overflow-y:auto; background:#fcfcfc; display:none; flex-direction:column;">
       <div
-        style="padding:24px 32px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; background:#fff;">
-        <div>
-          <h2 style="margin:0; font-size:1.4rem; font-weight:800; color:var(--tx); letter-spacing:-0.02em;">Edit teacher
-          </h2>
-          <p class="field-hint" style="margin:4px 0 0; font-size:.9rem;">Update name, gender, and email. Username stays
-            the same.</p>
+        style="padding:16px 32px; background:#fff; border-bottom:1px solid var(--bd); display:flex; justify-content:space-between; align-items:center; flex-shrink:0;">
+        <div style="font-weight:700; font-size:.9rem; color:var(--p);">
+          <span id="selCountBadge"
+            style="background:var(--p); color:#fff; padding:3px 10px; border-radius:12px; font-size:.75rem; margin-right:8px; display:none;">0
+            picked</span>
+          Tick the subject slots this teacher should handle.
         </div>
+        <div style="display:flex; gap:8px;">
+          <button onclick="selectAllSubjects()" type="button"
+            style="padding:6px 12px; border-radius:8px; border:1px solid var(--bd); background:#f8fafc; cursor:pointer; font-size:.75rem; font-weight:700;">Pick
+            all</button>
+          <button onclick="deselectAllSubjects()" type="button"
+            style="padding:6px 12px; border-radius:8px; border:1px solid var(--bd); background:#f8fafc; cursor:pointer; font-size:.75rem; font-weight:700;">Clear</button>
+        </div>
+      </div>
+      <div id="modalSubjectsBody" style="padding:24px 32px; flex:1; overflow-y:auto;">
+        <div style="text-align:center; padding:40px; color:var(--mu); font-weight:600;">Loading…</div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div
+      style="padding:20px 32px; border-top:1px solid var(--bd); background:#fff; display:flex; justify-content:flex-end; gap:12px;">
+      <button onclick="closeAssignModal()" type="button"
+        style="padding:10px 20px; border-radius:10px; border:1px solid var(--bd); background:#fff; cursor:pointer; font-weight:700;">Close</button>
+      <button id="modalSaveBtn" type="button" onclick="submitModalAssignment()" disabled
+        style="padding:10px 24px; border-radius:10px; border:none; background:var(--p); color:#fff; cursor:pointer; font-weight:800; display:flex; gap:8px; align-items:center;">
+        Save Subject Loads
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit teacher modal -->
+<div id="editTeacherOverlay"
+  style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.6); z-index:10000; align-items:center; justify-content:center; padding:20px; backdrop-filter: blur(4px);"
+  onclick="if(event.target===this)closeEditModal()">
+  <div
+    style="background:#fff; width:100%; max-width:560px; max-height:92vh; border-radius:24px; overflow:hidden; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); display:flex; flex-direction:column;"
+    onclick="event.stopPropagation()">
+    <div
+      style="padding:24px 32px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; background:#fff;">
+      <div>
+        <h2 style="margin:0; font-size:1.4rem; font-weight:800; color:var(--tx); letter-spacing:-0.02em;">Edit teacher
+        </h2>
+        <p class="field-hint" style="margin:4px 0 0; font-size:.9rem;">Update name, gender, and email. Username stays
+          the same.</p>
+      </div>
+      <button type="button" onclick="closeEditModal()"
+        style="background:#f1f5f9; border:none; width:36px; height:36px; border-radius:50%; font-size:1.2rem; color:var(--mu); cursor:pointer; display:flex; align-items:center; justify-content:center; transition: background 0.2s;">&times;</button>
+    </div>
+    <form id="edit-teacher-form" method="POST" action="#" style="padding:32px; overflow-y:auto;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <p class="field-hint" style="margin:0 0 12px;">Login: <strong id="edit-username-display"></strong></p>
+      <div class="frow">
+        <div class="fg">
+          <label>First name *</label>
+          <input type="text" class="fc" name="first_name" id="edit_first_name" required
+            oninput="this.value=this.value.replace(/[0-9]/g,'')">
+        </div>
+        <div class="fg">
+          <label>Middle name (Optional)</label>
+          <input type="text" class="fc" name="middle_name" id="edit_middle_name"
+            oninput="this.value=this.value.replace(/[0-9]/g,'')">
+        </div>
+        <div class="fg">
+          <label>Last name *</label>
+          <input type="text" class="fc" name="last_name" id="edit_last_name" required
+            oninput="this.value=this.value.replace(/[0-9]/g,'')">
+        </div>
+        <div class="fg">
+          <label>Gender *</label>
+          <select class="fc" name="gender" id="edit_gender" required>
+            <option value="">Choose…</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label>Email *</label>
+          <input type="email" class="fc" name="email" id="edit_email" required>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
         <button type="button" onclick="closeEditModal()"
-          style="background:#f1f5f9; border:none; width:36px; height:36px; border-radius:50%; font-size:1.2rem; color:var(--mu); cursor:pointer; display:flex; align-items:center; justify-content:center; transition: background 0.2s;">&times;</button>
+          style="padding:10px 18px; border-radius:10px; border:1px solid var(--bd); background:#fff; cursor:pointer; font-weight:700;">Cancel</button>
+        <button type="submit" class="btn-primary" style="margin:0;">Save changes</button>
       </div>
-      <form id="edit-teacher-form" method="POST" action="#" style="padding:32px; overflow-y:auto;">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <p class="field-hint" style="margin:0 0 12px;">Login: <strong id="edit-username-display"></strong></p>
-        <div class="frow">
-          <div class="fg">
-            <label>First name *</label>
-            <input type="text" class="fc" name="first_name" id="edit_first_name" required
-              oninput="this.value=this.value.replace(/[0-9]/g,'')">
-          </div>
-          <div class="fg">
-            <label>Middle name (Optional)</label>
-            <input type="text" class="fc" name="middle_name" id="edit_middle_name"
-              oninput="this.value=this.value.replace(/[0-9]/g,'')">
-          </div>
-          <div class="fg">
-            <label>Last name *</label>
-            <input type="text" class="fc" name="last_name" id="edit_last_name" required
-              oninput="this.value=this.value.replace(/[0-9]/g,'')">
-          </div>
-          <div class="fg">
-            <label>Gender *</label>
-            <select class="fc" name="gender" id="edit_gender" required>
-              <option value="">Choose…</option>
-              <option value="female">Female</option>
-              <option value="male">Male</option>
-            </select>
-          </div>
-          <div class="fg">
-            <label>Email *</label>
-            <input type="email" class="fc" name="email" id="edit_email" required>
-          </div>
-        </div>
-
-        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:20px;">
-          <button type="button" onclick="closeEditModal()"
-            style="padding:10px 18px; border-radius:10px; border:1px solid var(--bd); background:#fff; cursor:pointer; font-weight:700;">Cancel</button>
-          <button type="submit" class="btn-primary" style="margin:0;">Save changes</button>
-        </div>
-      </form>
-    </div>
+    </form>
   </div>
+</div>
 
-  <script>
-    const TEACHER_ROWS = {
-{% for t in teachers %}
-    { { t.user_id } }: {
-      {
-        {
-          'user_id': t.user_id,
-            'username': t.username or '',
-              'first_name': t.first_name or '',
-                'middle_name': t.middle_name or '',
-                  'last_name': t.last_name or '',
-                    'full_name': t.full_name or '',
-                      'email': t.email or '',
-                        'gender': (t.gender or '')| lower,
-                          'status': t.status or 'active'
-        }| tojson
-      }
-    } {% if not loop.last %}, {% endif %}
+<script>
+  const TEACHER_ROWS = {
+    {% for t in teachers %}
+    "{{ t.user_id }}": {{ {
+      'user_id': t.user_id,
+      'username': t.username or '',
+      'first_name': t.first_name or '',
+      'middle_name': t.middle_name or '',
+      'last_name': t.last_name or '',
+      'full_name': t.full_name or '',
+      'email': t.email or '',
+      'gender': (t.gender or '')|lower,
+      'status': t.status or 'active'
+    }|tojson }}{% if not loop.last %},{% endif %}
     {% endfor %}
-};
+  };
 
-    function closeAllManage() {
-      document.querySelectorAll('.manage-wrap.is-open').forEach(w => {
-        w.classList.remove('is-open');
-        const b = w.querySelector('.btn-manage');
-        if (b) b.setAttribute('aria-expanded', 'false');
-      });
-    }
+  function closeAllManage() {
+    document.querySelectorAll('.manage-wrap.is-open').forEach(w => {
+      w.classList.remove('is-open');
+      const b = w.querySelector('.btn-manage');
+      if (b) b.setAttribute('aria-expanded', 'false');
+    });
+  }
 
-    function toggleManage(ev, id) {
-      ev.stopPropagation();
-      const wrap = document.querySelector('.manage-wrap[data-mw-id="' + id + '"]');
-      if (!wrap) return;
-      const open = wrap.classList.contains('is-open');
-      closeAllManage();
-      if (!open) {
-        // Check if close to bottom
-        const rect = wrap.getBoundingClientRect();
-        if (window.innerHeight - rect.bottom < 200) {
-          wrap.classList.add('is-upwards');
-        } else {
-          wrap.classList.remove('is-upwards');
-        }
-        wrap.classList.add('is-open');
-        wrap.querySelector('.btn-manage').setAttribute('aria-expanded', 'true');
+  function toggleManage(ev, id) {
+    ev.stopPropagation();
+    const wrap = document.querySelector('.manage-wrap[data-mw-id="' + id + '"]');
+    if (!wrap) return;
+    const open = wrap.classList.contains('is-open');
+    closeAllManage();
+    if (!open) {
+      // Check if close to bottom
+      const rect = wrap.getBoundingClientRect();
+      if (window.innerHeight - rect.bottom < 200) {
+        wrap.classList.add('is-upwards');
+      } else {
+        wrap.classList.remove('is-upwards');
       }
+      wrap.classList.add('is-open');
+      wrap.querySelector('.btn-manage').setAttribute('aria-expanded', 'true');
+    }
+  }
+
+  function manageAssign(id) {
+    closeAllManage();
+    const row = TEACHER_ROWS[id];
+    if (row) openAssignModal(id, row.full_name || '');
+  }
+
+  function manageEdit(id) {
+    closeAllManage();
+    const row = TEACHER_ROWS[id];
+    if (!row) return;
+    const f = document.getElementById('edit-teacher-form');
+    f.action = '/branch-admin/manage-teachers/' + id + '/edit';
+    document.getElementById('edit-username-display').textContent = row.username || '—';
+    document.getElementById('edit_first_name').value = row.first_name || '';
+    document.getElementById('edit_middle_name').value = row.middle_name || '';
+    document.getElementById('edit_last_name').value = row.last_name || '';
+    document.getElementById('edit_email').value = row.email || '';
+    document.getElementById('edit_gender').value = row.gender === 'male' || row.gender === 'female' ? row.gender : '';
+    document.getElementById('editTeacherOverlay').style.display = 'flex';
+  }
+
+  function closeEditModal() {
+    document.getElementById('editTeacherOverlay').style.display = 'none';
+  }
+
+  document.addEventListener('click', function () { closeAllManage(); });
+  document.querySelectorAll('.manage-wrap').forEach(w => {
+    w.addEventListener('click', function (e) { e.stopPropagation(); });
+  });
+
+  // ── ASSIGN MODAL ──
+
+  let modalTeacherId = null;
+  let allModalSubjects = [];
+  let allModalSections = [];
+  let initialAdvisorySection = null;
+  let selectedAdvisorySection = null;
+
+  function switchAssignTab(tab) {
+    const btnAdv = document.getElementById('tabBtnAdvisory');
+    const btnSub = document.getElementById('tabBtnSubjects');
+    const conAdv = document.getElementById('tabContentAdvisory');
+    const conSub = document.getElementById('tabContentSubjects');
+
+    if (tab === 'advisory') {
+      btnAdv.style.background = 'transparent'; btnAdv.style.color = 'var(--a)'; btnAdv.style.fontWeight = '800'; btnAdv.style.borderBottomColor = 'var(--a)';
+      btnSub.style.background = 'transparent'; btnSub.style.color = 'var(--mu)'; btnSub.style.fontWeight = '700'; btnSub.style.borderBottomColor = 'transparent';
+      conAdv.style.display = 'block';
+      conSub.style.display = 'none';
+    } else {
+      btnSub.style.background = 'transparent'; btnSub.style.color = 'var(--a)'; btnSub.style.fontWeight = '800'; btnSub.style.borderBottomColor = 'var(--a)';
+      btnAdv.style.background = 'transparent'; btnAdv.style.color = 'var(--mu)'; btnAdv.style.fontWeight = '700'; btnAdv.style.borderBottomColor = 'transparent';
+      conSub.style.display = 'flex';
+      conAdv.style.display = 'none';
+    }
+  }
+
+  function openAssignModal(tid, tname) {
+    modalTeacherId = tid;
+    document.getElementById('modalTeacherName').textContent = tname || '';
+    document.getElementById('assignModalOverlay').style.display = 'flex';
+    document.getElementById('modalSubjectsBody').innerHTML = '<div style="text-align:center; padding:40px; color:var(--mu);">Loading…</div>';
+    document.getElementById('modalAdvisoryBody').innerHTML = '<div style="text-align:center; padding:40px; color:var(--mu);">Loading…</div>';
+    document.getElementById('selCountBadge').style.display = 'none';
+    const saveBtn = document.getElementById('modalSaveBtn');
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Save Subject Loads';
+
+    initialAdvisorySection = null;
+    selectedAdvisorySection = null;
+    switchAssignTab('advisory');
+
+    fetch(`/branch-admin/api/get-all-subjects/${tid}`)
+      .then(r => {
+        if (!r.ok) throw new Error('Could not load subjects');
+        return r.json();
+      })
+      .then(data => {
+        if (data.error) throw new Error(data.error);
+        if (data.success === false) throw new Error(data.message || 'Could not load subjects');
+        allModalSubjects = data.subjects || [];
+        allModalSections = data.sections || [];
+        renderModalSubjects();
+        renderModalSections();
+        updateModalCount();
+      })
+      .catch(err => {
+        const errHtml = '<div style="text-align:center; padding:40px; color:var(--err); font-weight:600;">' + (err.message || 'Something went wrong') + '</div>';
+        document.getElementById('modalSubjectsBody').innerHTML = errHtml;
+        document.getElementById('modalAdvisoryBody').innerHTML = errHtml;
+      });
+  }
+
+  function closeAssignModal() {
+    document.getElementById('assignModalOverlay').style.display = 'none';
+  }
+
+  function renderModalSubjects() {
+    const container = document.getElementById('modalSubjectsBody');
+    if (allModalSubjects.length === 0) {
+      container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--mu); font-weight:600;">No open slots match this teacher yet. Check schedules and subjects for the active school year.</div>';
+      return;
     }
 
-    function manageAssign(id) {
-      closeAllManage();
-      const row = TEACHER_ROWS[id];
-      if (row) openAssignModal(id, row.full_name || '');
-    }
-
-    function manageEdit(id) {
-      closeAllManage();
-      const row = TEACHER_ROWS[id];
-      if (!row) return;
-      const f = document.getElementById('edit-teacher-form');
-      f.action = '/branch-admin/manage-teachers/' + id + '/edit';
-      document.getElementById('edit-username-display').textContent = row.username || '—';
-      document.getElementById('edit_first_name').value = row.first_name || '';
-      document.getElementById('edit_middle_name').value = row.middle_name || '';
-      document.getElementById('edit_last_name').value = row.last_name || '';
-      document.getElementById('edit_email').value = row.email || '';
-      document.getElementById('edit_gender').value = row.gender === 'male' || row.gender === 'female' ? row.gender : '';
-      document.getElementById('editTeacherOverlay').style.display = 'flex';
-    }
-
-    function closeEditModal() {
-      document.getElementById('editTeacherOverlay').style.display = 'none';
-    }
-
-    document.addEventListener('click', function () { closeAllManage(); });
-    document.querySelectorAll('.manage-wrap').forEach(w => {
-      w.addEventListener('click', function (e) { e.stopPropagation(); });
+    const grouped = {};
+    allModalSubjects.forEach(s => {
+      if (!grouped[s.grade_level_name]) grouped[s.grade_level_name] = [];
+      grouped[s.grade_level_name].push(s);
     });
 
-    // ── ASSIGN MODAL ──
+    let html = '';
+    Object.keys(grouped).forEach(grade => {
+      html += `<div style="font-size:.8rem; font-weight:800; color:var(--mu); text-transform:uppercase; margin:20px 0 10px; border-bottom:1px solid var(--bd); padding-bottom:6px;">${grade}</div>`;
+      html += '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:12px;">';
+      grouped[grade].forEach(s => {
+        let isSelf = s.is_assigned_to_this_teacher;
+        let hasOtherTeacher = s.current_teacher_name && !isSelf;
+        let disabled = (isSelf || hasOtherTeacher) ? 'disabled' : '';
+        let checked = isSelf ? 'checked' : '';
 
-    let modalTeacherId = null;
-    let allModalSubjects = [];
-    let allModalSections = [];
-    let initialAdvisorySection = null;
-    let selectedAdvisorySection = null;
+        let borderStyle = isSelf
+          ? 'border-color:var(--a); background:#eff6ff; cursor:default;'
+          : (hasOtherTeacher
+            ? 'border-color:#cbd5e1; background:#f8fafc; opacity:0.6; cursor:not-allowed;'
+            : 'border-color:var(--bd); background:#fff; cursor:pointer;');
 
-    function switchAssignTab(tab) {
-      const btnAdv = document.getElementById('tabBtnAdvisory');
-      const btnSub = document.getElementById('tabBtnSubjects');
-      const conAdv = document.getElementById('tabContentAdvisory');
-      const conSub = document.getElementById('tabContentSubjects');
+        let badgeHtml = isSelf
+          ? '<span style="font-size:.65rem; background:#dbeafe; color:#1e40af; padding:2px 6px; border-radius:6px; font-weight:800;">Already yours</span>'
+          : (hasOtherTeacher
+            ? `<span style="font-size:.65rem; background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:6px; font-weight:800;">With ${String(s.current_teacher_name).split(' ')[0]}</span>`
+            : '<span style="font-size:.65rem; background:#f1f5f9; color:var(--mu); padding:2px 6px; border-radius:6px; font-weight:800;">Open</span>');
 
-      if (tab === 'advisory') {
-        btnAdv.style.background = 'transparent'; btnAdv.style.color = 'var(--a)'; btnAdv.style.fontWeight = '800'; btnAdv.style.borderBottomColor = 'var(--a)';
-        btnSub.style.background = 'transparent'; btnSub.style.color = 'var(--mu)'; btnSub.style.fontWeight = '700'; btnSub.style.borderBottomColor = 'transparent';
-        conAdv.style.display = 'block';
-        conSub.style.display = 'none';
-      } else {
-        btnSub.style.background = 'transparent'; btnSub.style.color = 'var(--a)'; btnSub.style.fontWeight = '800'; btnSub.style.borderBottomColor = 'var(--a)';
-        btnAdv.style.background = 'transparent'; btnAdv.style.color = 'var(--mu)'; btnAdv.style.fontWeight = '700'; btnAdv.style.borderBottomColor = 'transparent';
-        conSub.style.display = 'flex';
-        conAdv.style.display = 'none';
-      }
-    }
-
-    function openAssignModal(tid, tname) {
-      modalTeacherId = tid;
-      document.getElementById('modalTeacherName').textContent = tname || '';
-      document.getElementById('assignModalOverlay').style.display = 'flex';
-      document.getElementById('modalSubjectsBody').innerHTML = '<div style="text-align:center; padding:40px; color:var(--mu);">Loading…</div>';
-      document.getElementById('modalAdvisoryBody').innerHTML = '<div style="text-align:center; padding:40px; color:var(--mu);">Loading…</div>';
-      document.getElementById('selCountBadge').style.display = 'none';
-      const saveBtn = document.getElementById('modalSaveBtn');
-      saveBtn.disabled = true;
-      saveBtn.textContent = 'Save Subject Loads';
-
-      initialAdvisorySection = null;
-      selectedAdvisorySection = null;
-      switchAssignTab('advisory');
-
-      fetch(`/branch-admin/api/get-all-subjects/${tid}`)
-        .then(r => {
-          if (!r.ok) throw new Error('Could not load subjects');
-          return r.json();
-        })
-        .then(data => {
-          if (data.error) throw new Error(data.error);
-          if (data.success === false) throw new Error(data.message || 'Could not load subjects');
-          allModalSubjects = data.subjects || [];
-          allModalSections = data.sections || [];
-          renderModalSubjects();
-          renderModalSections();
-          updateModalCount();
-        })
-        .catch(err => {
-          const errHtml = '<div style="text-align:center; padding:40px; color:var(--err); font-weight:600;">' + (err.message || 'Something went wrong') + '</div>';
-          document.getElementById('modalSubjectsBody').innerHTML = errHtml;
-          document.getElementById('modalAdvisoryBody').innerHTML = errHtml;
-        });
-    }
-
-    function closeAssignModal() {
-      document.getElementById('assignModalOverlay').style.display = 'none';
-    }
-
-    function renderModalSubjects() {
-      const container = document.getElementById('modalSubjectsBody');
-      if (allModalSubjects.length === 0) {
-        container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--mu); font-weight:600;">No open slots match this teacher yet. Check schedules and subjects for the active school year.</div>';
-        return;
-      }
-
-      const grouped = {};
-      allModalSubjects.forEach(s => {
-        if (!grouped[s.grade_level_name]) grouped[s.grade_level_name] = [];
-        grouped[s.grade_level_name].push(s);
-      });
-
-      let html = '';
-      Object.keys(grouped).forEach(grade => {
-        html += `<div style="font-size:.8rem; font-weight:800; color:var(--mu); text-transform:uppercase; margin:20px 0 10px; border-bottom:1px solid var(--bd); padding-bottom:6px;">${grade}</div>`;
-        html += '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:12px;">';
-        grouped[grade].forEach(s => {
-          let isSelf = s.is_assigned_to_this_teacher;
-          let hasOtherTeacher = s.current_teacher_name && !isSelf;
-          let disabled = (isSelf || hasOtherTeacher) ? 'disabled' : '';
-          let checked = isSelf ? 'checked' : '';
-
-          let borderStyle = isSelf
-            ? 'border-color:var(--a); background:#eff6ff; cursor:default;'
-            : (hasOtherTeacher
-              ? 'border-color:#cbd5e1; background:#f8fafc; opacity:0.6; cursor:not-allowed;'
-              : 'border-color:var(--bd); background:#fff; cursor:pointer;');
-
-          let badgeHtml = isSelf
-            ? '<span style="font-size:.65rem; background:#dbeafe; color:#1e40af; padding:2px 6px; border-radius:6px; font-weight:800;">Already yours</span>'
-            : (hasOtherTeacher
-              ? `<span style="font-size:.65rem; background:#fee2e2; color:#991b1b; padding:2px 6px; border-radius:6px; font-weight:800;">With ${String(s.current_teacher_name).split(' ')[0]}</span>`
-              : '<span style="font-size:.65rem; background:#f1f5f9; color:var(--mu); padding:2px 6px; border-radius:6px; font-weight:800;">Open</span>');
-
-          html += `
+        html += `
         <label id="mitem_${s.assignment_id}" style="display:flex; flex-direction:column; padding:14px; border-radius:14px; border:2px solid transparent; ${borderStyle} transition:all .2s;">
           <input type="checkbox" class="mod-sub-cb" value="${s.assignment_id}" ${disabled} ${checked} style="display:none;" onchange="updateModalCount(this)">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
@@ -1927,150 +1915,150 @@
           </div>
           <div style="font-weight:700; color:var(--tx); font-size:.9rem;">${s.subject_name}</div>
         </label>`;
-        });
-        html += '</div>';
       });
-      container.innerHTML = html;
+      html += '</div>';
+    });
+    container.innerHTML = html;
+  }
+
+  function renderModalSections() {
+    const container = document.getElementById('modalAdvisoryBody');
+    if (allModalSections.length === 0) {
+      container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--mu); font-weight:600;">No sections available for advisory.</div>';
+      return;
     }
 
-    function renderModalSections() {
-      const container = document.getElementById('modalAdvisoryBody');
-      if (allModalSections.length === 0) {
-        container.innerHTML = '<div style="text-align:center; padding:40px; color:var(--mu); font-weight:600;">No sections available for advisory.</div>';
-        return;
-      }
-
-      let html = `<label style="display:flex; align-items:center; gap:12px; padding:16px; border:2px solid var(--bd); border-radius:12px; margin-bottom:12px; cursor:pointer; background:#fff;" id="adv_none">
+    let html = `<label style="display:flex; align-items:center; gap:12px; padding:16px; border:2px solid var(--bd); border-radius:12px; margin-bottom:12px; cursor:pointer; background:#fff;" id="adv_none">
       <input type="radio" name="advisory_sec" value="" onchange="selectAdvisory('')" style="width:18px; height:18px; accent-color:var(--a);">
       <div style="font-weight:700; color:var(--tx);">None (Subject Teacher Only)</div>
   </label>`;
 
-      const grouped = {};
-      allModalSections.forEach(s => {
-        if (!grouped[s.grade_level_name]) grouped[s.grade_level_name] = [];
-        grouped[s.grade_level_name].push(s);
-      });
+    const grouped = {};
+    allModalSections.forEach(s => {
+      if (!grouped[s.grade_level_name]) grouped[s.grade_level_name] = [];
+      grouped[s.grade_level_name].push(s);
+    });
 
-      Object.keys(grouped).forEach(grade => {
-        html += `<div style="font-size:.8rem; font-weight:800; color:var(--mu); text-transform:uppercase; margin:20px 0 10px; border-bottom:1px solid var(--bd); padding-bottom:6px;">${grade}</div>`;
-        grouped[grade].forEach(s => {
-          let isMyAdvisory = s.is_my_advisory;
-          if (isMyAdvisory) initialAdvisorySection = s.section_id.toString();
-          let hasOtherAdviser = s.adviser_id && !isMyAdvisory;
+    Object.keys(grouped).forEach(grade => {
+      html += `<div style="font-size:.8rem; font-weight:800; color:var(--mu); text-transform:uppercase; margin:20px 0 10px; border-bottom:1px solid var(--bd); padding-bottom:6px;">${grade}</div>`;
+      grouped[grade].forEach(s => {
+        let isMyAdvisory = s.is_my_advisory;
+        if (isMyAdvisory) initialAdvisorySection = s.section_id.toString();
+        let hasOtherAdviser = s.adviser_id && !isMyAdvisory;
 
-          let badgeHtml = isMyAdvisory
-            ? '<span style="font-size:.65rem; background:#dbeafe; color:#1e40af; padding:2px 6px; border-radius:6px; font-weight:800;">Current</span>'
-            : (hasOtherAdviser ? `<span style="font-size:.65rem; background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:6px; font-weight:800;">Adviser: ${String(s.adviser_name).split(' ')[0]}</span>` : '<span style="font-size:.65rem; background:#f1f5f9; color:var(--mu); padding:2px 6px; border-radius:6px; font-weight:800;">Available</span>');
+        let badgeHtml = isMyAdvisory
+          ? '<span style="font-size:.65rem; background:#dbeafe; color:#1e40af; padding:2px 6px; border-radius:6px; font-weight:800;">Current</span>'
+          : (hasOtherAdviser ? `<span style="font-size:.65rem; background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:6px; font-weight:800;">Adviser: ${String(s.adviser_name).split(' ')[0]}</span>` : '<span style="font-size:.65rem; background:#f1f5f9; color:var(--mu); padding:2px 6px; border-radius:6px; font-weight:800;">Available</span>');
 
-          let disabled = hasOtherAdviser ? 'disabled' : '';
-          let opacity = hasOtherAdviser ? 'opacity:0.6;' : '';
-          let checked = isMyAdvisory ? 'checked' : '';
+        let disabled = hasOtherAdviser ? 'disabled' : '';
+        let opacity = hasOtherAdviser ? 'opacity:0.6;' : '';
+        let checked = isMyAdvisory ? 'checked' : '';
 
-          html += `<label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border:2px solid var(--bd); border-radius:12px; margin-bottom:8px; background:#fff; cursor:${hasOtherAdviser ? 'not-allowed' : 'pointer'}; transition:all 0.2s; ${opacity}" id="adv_${s.section_id}">
+        html += `<label style="display:flex; align-items:center; justify-content:space-between; padding:14px 16px; border:2px solid var(--bd); border-radius:12px; margin-bottom:8px; background:#fff; cursor:${hasOtherAdviser ? 'not-allowed' : 'pointer'}; transition:all 0.2s; ${opacity}" id="adv_${s.section_id}">
           <div style="display:flex; align-items:center; gap:12px;">
             <input type="radio" name="advisory_sec" value="${s.section_id}" ${disabled} ${checked} onchange="selectAdvisory('${s.section_id}')" style="width:18px; height:18px; accent-color:var(--a);">
             <div style="font-weight:700; color:var(--tx); font-size:.95rem;">${s.section_name}</div>
           </div>
           ${badgeHtml}
       </label>`;
-        });
-      });
-
-      if (initialAdvisorySection === null) {
-        initialAdvisorySection = ""; // Meaning None
-      }
-      selectedAdvisorySection = initialAdvisorySection;
-
-      container.innerHTML = html;
-
-      if (selectedAdvisorySection === "") {
-        const noneRadio = container.querySelector('input[value=""]');
-        if (noneRadio) noneRadio.checked = true;
-      }
-
-      highlightAdvisory();
-    }
-
-    function selectAdvisory(val) {
-      selectedAdvisorySection = val;
-      highlightAdvisory();
-      updateModalCount();
-    }
-
-    function highlightAdvisory() {
-      document.querySelectorAll('input[name="advisory_sec"]').forEach(rad => {
-        const parent = rad.closest('label');
-        if (rad.checked) {
-          parent.style.borderColor = 'var(--a)';
-          parent.style.background = '#eff6ff';
-        } else {
-          parent.style.borderColor = 'var(--bd)';
-          parent.style.background = '#fff';
-        }
-      });
-    }
-
-    function updateModalCount(el) {
-      if (el && el.classList && el.classList.contains('mod-sub-cb')) {
-        const parent = document.getElementById('mitem_' + el.value);
-        if (parent) {
-          if (el.checked) { parent.style.borderColor = 'var(--a)'; parent.style.background = '#eff6ff'; }
-          else { parent.style.borderColor = 'var(--bd)'; parent.style.background = '#fff'; }
-        }
-      }
-
-      const count = document.querySelectorAll('.mod-sub-cb:checked:not([disabled])').length;
-      const badge = document.getElementById('selCountBadge');
-      badge.textContent = count + ' picked';
-      badge.style.display = count > 0 ? 'inline-block' : 'none';
-
-      const advChanged = (selectedAdvisorySection !== initialAdvisorySection);
-      document.getElementById('modalSaveBtn').disabled = (count === 0 && !advChanged);
-    }
-
-    function selectAllSubjects() {
-      document.querySelectorAll('.mod-sub-cb:not([disabled])').forEach(cb => { cb.checked = true; updateModalCount(cb); });
-    }
-    function deselectAllSubjects() {
-      document.querySelectorAll('.mod-sub-cb:not([disabled])').forEach(cb => { cb.checked = false; updateModalCount(cb); });
-    }
-
-    function submitModalAssignment() {
-      const ids = Array.from(document.querySelectorAll('.mod-sub-cb:checked:not([disabled])')).map(c => parseInt(c.value, 10));
-      const advId = selectedAdvisorySection ? parseInt(selectedAdvisorySection, 10) : null;
-      const btn = document.getElementById('modalSaveBtn');
-      btn.disabled = true;
-      btn.textContent = 'Saving…';
-
-      fetch('/branch-admin/assign-teachers-bulk', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          teacher_id: parseInt(modalTeacherId, 10),
-          assignment_ids: ids,
-          advisory_section_id: advId
-        })
-      }).then(r => r.json()).then(d => {
-        if (d.success) location.reload();
-        else { alert(d.message || 'Could not save'); btn.disabled = false; btn.textContent = 'Save Subject Loads'; }
-      }).catch(() => {
-        alert('Could not save. Check your connection and try again.');
-        btn.disabled = false;
-        btn.textContent = 'Save Subject Loads';
-      });
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-      const uBtn = document.getElementById('btn-copy-user');
-      const pBtn = document.getElementById('btn-copy-pass');
-      if (uBtn) uBtn.addEventListener('click', function () {
-        const t = document.getElementById('cred-username-text');
-        if (t && navigator.clipboard) navigator.clipboard.writeText(t.textContent).then(function () { uBtn.textContent = 'Copied!'; setTimeout(function () { uBtn.textContent = 'Copy username'; }, 2000); });
-      });
-      if (pBtn) pBtn.addEventListener('click', function () {
-        const t = document.getElementById('cred-password-text');
-        if (t && navigator.clipboard) navigator.clipboard.writeText(t.textContent).then(function () { pBtn.textContent = 'Copied!'; setTimeout(function () { pBtn.textContent = 'Copy password'; }, 2000); });
       });
     });
-  </script>
-  {% endblock %}
+
+    if (initialAdvisorySection === null) {
+      initialAdvisorySection = ""; // Meaning None
+    }
+    selectedAdvisorySection = initialAdvisorySection;
+
+    container.innerHTML = html;
+
+    if (selectedAdvisorySection === "") {
+      const noneRadio = container.querySelector('input[value=""]');
+      if (noneRadio) noneRadio.checked = true;
+    }
+
+    highlightAdvisory();
+  }
+
+  function selectAdvisory(val) {
+    selectedAdvisorySection = val;
+    highlightAdvisory();
+    updateModalCount();
+  }
+
+  function highlightAdvisory() {
+    document.querySelectorAll('input[name="advisory_sec"]').forEach(rad => {
+      const parent = rad.closest('label');
+      if (rad.checked) {
+        parent.style.borderColor = 'var(--a)';
+        parent.style.background = '#eff6ff';
+      } else {
+        parent.style.borderColor = 'var(--bd)';
+        parent.style.background = '#fff';
+      }
+    });
+  }
+
+  function updateModalCount(el) {
+    if (el && el.classList && el.classList.contains('mod-sub-cb')) {
+      const parent = document.getElementById('mitem_' + el.value);
+      if (parent) {
+        if (el.checked) { parent.style.borderColor = 'var(--a)'; parent.style.background = '#eff6ff'; }
+        else { parent.style.borderColor = 'var(--bd)'; parent.style.background = '#fff'; }
+      }
+    }
+
+    const count = document.querySelectorAll('.mod-sub-cb:checked:not([disabled])').length;
+    const badge = document.getElementById('selCountBadge');
+    badge.textContent = count + ' picked';
+    badge.style.display = count > 0 ? 'inline-block' : 'none';
+
+    const advChanged = (selectedAdvisorySection !== initialAdvisorySection);
+    document.getElementById('modalSaveBtn').disabled = (count === 0 && !advChanged);
+  }
+
+  function selectAllSubjects() {
+    document.querySelectorAll('.mod-sub-cb:not([disabled])').forEach(cb => { cb.checked = true; updateModalCount(cb); });
+  }
+  function deselectAllSubjects() {
+    document.querySelectorAll('.mod-sub-cb:not([disabled])').forEach(cb => { cb.checked = false; updateModalCount(cb); });
+  }
+
+  function submitModalAssignment() {
+    const ids = Array.from(document.querySelectorAll('.mod-sub-cb:checked:not([disabled])')).map(c => parseInt(c.value, 10));
+    const advId = selectedAdvisorySection ? parseInt(selectedAdvisorySection, 10) : null;
+    const btn = document.getElementById('modalSaveBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    fetch('/branch-admin/assign-teachers-bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        teacher_id: parseInt(modalTeacherId, 10),
+        assignment_ids: ids,
+        advisory_section_id: advId
+      })
+    }).then(r => r.json()).then(d => {
+      if (d.success) location.reload();
+      else { alert(d.message || 'Could not save'); btn.disabled = false; btn.textContent = 'Save Subject Loads'; }
+    }).catch(() => {
+      alert('Could not save. Check your connection and try again.');
+      btn.disabled = false;
+      btn.textContent = 'Save Subject Loads';
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    const uBtn = document.getElementById('btn-copy-user');
+    const pBtn = document.getElementById('btn-copy-pass');
+    if (uBtn) uBtn.addEventListener('click', function () {
+      const t = document.getElementById('cred-username-text');
+      if (t && navigator.clipboard) navigator.clipboard.writeText(t.textContent).then(function () { uBtn.textContent = 'Copied!'; setTimeout(function () { uBtn.textContent = 'Copy username'; }, 2000); });
+    });
+    if (pBtn) pBtn.addEventListener('click', function () {
+      const t = document.getElementById('cred-password-text');
+      if (t && navigator.clipboard) navigator.clipboard.writeText(t.textContent).then(function () { pBtn.textContent = 'Copied!'; setTimeout(function () { pBtn.textContent = 'Copy password'; }, 2000); });
+    });
+  });
+</script>
+{% endblock %}
