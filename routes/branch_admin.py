@@ -702,14 +702,18 @@ def branch_admin_manage_accounts():
                 flash("User created successfully!", "success")
                 role_filter = role
 
-        # Fetch section options for filtering
+        # Fetch section options for filtering — current viewed school year only
+        year_id = _get_viewed_year_id(cursor, branch_id)
+
         cursor.execute("""
-            SELECT s.section_id, s.section_name, g.name as grade_level_name 
-            FROM sections s 
-            JOIN grade_levels g ON s.grade_level_id = g.id 
-            WHERE s.branch_id = %s 
+            SELECT s.section_id, s.section_name, g.name AS grade_level_name
+            FROM sections s
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            WHERE s.branch_id = %s
+            AND s.year_id = %s
             ORDER BY g.display_order, s.section_name
-        """, (branch_id,))
+        """, (branch_id, year_id))
+
         section_options = cursor.fetchall() or []
 
         # Fetch accounts based on role
@@ -756,13 +760,8 @@ def branch_admin_manage_accounts():
                 params.extend([f"%{filter_search}%", f"%{filter_search}%"])
             cursor.execute(query, tuple(params))
         else:
-            if role_filter == "all_staff":
-                query_role_cond = "u.role IN ('registrar', 'cashier', 'librarian', 'teacher')"
-                params = [branch_id]
-            else:
-                query_role_cond = "u.role = %s"
-                params = [branch_id, role_filter]
-                
+            query_role_cond = "u.role IN ('registrar', 'cashier', 'librarian', 'teacher')"
+            params = [branch_id]
             query = f"""
                 SELECT
                     u.user_id, u.username, u.role, u.full_name, u.gender,
@@ -1047,14 +1046,17 @@ def get_filtered_accounts_api():
         
         accounts = cursor.fetchall() or []
         
-        # Also return section options for this branch
+        # Also return section options for the current viewed school year only
+        year_id = _get_viewed_year_id(cursor, branch_id)
+
         cursor.execute("""
-            SELECT s.section_id, s.section_name, g.name as grade_level_name, g.id as grade_level_id
-            FROM sections s 
-            JOIN grade_levels g ON s.grade_level_id = g.id 
-            WHERE s.branch_id = %s 
+            SELECT s.section_id, s.section_name, g.name AS grade_level_name, g.id AS grade_level_id
+            FROM sections s
+            JOIN grade_levels g ON s.grade_level_id = g.id
+            WHERE s.branch_id = %s
+              AND s.year_id = %s
             ORDER BY g.display_order, s.section_name
-        """, (branch_id,))
+        """, (branch_id, year_id))
         section_options = cursor.fetchall() or []
 
         return jsonify({

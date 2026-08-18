@@ -562,7 +562,7 @@
     </thead>
     <tbody>
         {% for a in user_list %}
-        <tr>
+        <tr class="staff-row" data-role="{{ a.role }}">
             <td>
                 <div class="user-profile-cell">
                     <div class="user-avatar text-white"
@@ -570,7 +570,14 @@
                         {{ (a.full_name or 'U')[0]|upper }}
                     </div>
                     <div class="user-info">
-                        <div class="user-name">{{ a.full_name or "Unnamed User" }}</div>
+                        <div class="user-name">
+                            {{ a.full_name or "Unnamed User" }}
+                            {% if a.role != 'student' %}
+                            <span style="font-size: 0.75rem; background: var(--ma-primary-light); color: var(--ma-primary); padding: 2px 6px; border-radius: 4px; margin-left: 8px; text-transform: capitalize; font-weight: 800;">
+                                {{ a.role }}
+                            </span>
+                            {% endif %}
+                        </div>
                         <div class="user-email">
                             <span>{{ a.email or 'No email recorded' }}</span>
                             {% if a.sections %}
@@ -757,93 +764,94 @@
     </div>
     {% endif %}
 
-    <!-- Controls Wrapper: Navigation & Search -->
-    <div class="controls-wrapper">
+        <!-- Master Container for Search & Table -->
+        <div class="master-container" style="background: var(--ma-card); border: 1px solid var(--ma-border); border-radius: 24px; box-shadow: var(--ma-shadow); overflow: hidden; margin-bottom: 32px;">
 
+            <!-- Controls Wrapper: Navigation & Search -->
+            <div class="controls-wrapper" style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; align-items: flex-end; margin: 0; padding: 24px; border: none; background: transparent; border-bottom: 1px solid var(--ma-border); border-radius: 0;">
 
-        <form method="get" class="search-registry-bar" id="filter-form" style="margin-bottom: 24px;">
-            <input type="hidden" name="role" value="{{ role_filter }}">
-            <div class="form-group" style="flex: 2; min-width: 300px;">
-                <label>Search Accounts</label>
-                <div style="position: relative;">
-                    <input type="text" name="search" class="form-control"
-                        placeholder="Filter by name, ID or username..." value="{{ filter_search }}"
-                        style="padding-left: 16px;">
+            <form method="get" class="search-registry-bar" id="filter-form" style="flex: 1; min-width: 300px; display: flex; gap: 16px; align-items: flex-end; margin: 0; background: transparent; padding: 0; border: none; box-shadow: none;">
+                <input type="hidden" name="role" value="{{ role_filter }}">
+                
+                <div class="form-group" style="flex: 1; margin: 0; max-width: 500px;">
+                    <label style="font-weight: 700; font-size: 0.85rem; color: var(--ma-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block;">Search Accounts</label>
+                    <div style="display: flex; width: 100%; align-items: stretch;">
+                        <input type="text" name="search" class="form-control"
+                            placeholder="Filter by name, ID or username..." value="{{ filter_search }}"
+                            style="padding: 0 16px; border-top-right-radius: 0; border-bottom-right-radius: 0; flex: 1; margin: 0; height: 46px;">
+                        <button type="submit" class="btn-elegant btn-primary-ma" style="border-radius: 0 8px 8px 0; padding: 0 20px; border: none; height: 46px; margin: 0; display: flex; align-items: center; justify-content: center;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="11" cy="11" r="8"></circle>
+                                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
-            </div>
-            {% if role_filter in ['student', 'teacher'] %}
-            <div class="form-group">
-                <label>Grade Level</label>
-                <select name="grade" class="form-control" onchange="this.form.submit()">
-                    <option value="">All Levels</option>
-                    {% if role_filter == 'student' %}
-                    {% set unique_grades = [] %}
-                    {% for s in section_options %}{% if s.grade_level_name not in unique_grades %}{% set _ =
-                    unique_grades.append(s.grade_level_name) %}{% endif %}{% endfor %}
-                    {% for gname in unique_grades|sort %}
-                    <option value="{{ gname }}" {% if filter_grade==gname %}selected{% endif %}>{{ gname }}</option>
-                    {% endfor %}
+
+                {% if role_filter in ['student', 'teacher'] %}
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-weight: 700; font-size: 0.85rem; color: var(--ma-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block;">Grade Level</label>
+                    <select name="grade" class="form-control" onchange="this.form.submit()" style="height: 46px; padding: 0 16px;">
+                        <option value="">All Levels</option>
+                        {% if role_filter == 'student' %}
+                        {% set unique_grades = [] %}
+                        {% for s in section_options %}{% if s.grade_level_name not in unique_grades %}{% set _ =
+                        unique_grades.append(s.grade_level_name) %}{% endif %}{% endfor %}
+                        {% for gname in unique_grades|sort %}
+                        <option value="{{ gname }}" {% if filter_grade==gname %}selected{% endif %}>{{ gname }}</option>
+                        {% endfor %}
+                        {% else %}
+                        {% for g in grades %}
+                        <option value="{{ g.id }}" {% if filter_grade==g.id|string %}selected{% endif %}>{{ g.name }}
+                        </option>
+                        {% endfor %}
+                        {% endif %}
+                    </select>
+                </div>
+                <div class="form-group" style="margin: 0;">
+                    <label style="font-weight: 700; font-size: 0.85rem; color: var(--ma-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block;">Section</label>
+                    <select name="section" class="form-control" onchange="this.form.submit()" style="height: 46px; padding: 0 16px;">
+                        <option value="">All Sections</option>
+                        {% for s in section_options %}
+                        <option value="{{ s.section_id }}" {% if filter_section==s.section_id|string %}selected{% endif %}>
+                            {{ s.grade_level_name }} - {{ s.section_name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin: 0; display: flex; align-items: flex-end;">
+                    {% if view_mode == 'grouped' %}
+                    <a href="?role={{ role_filter }}" class="btn-elegant"
+                        style="background: #ffffff; border: 1.5px solid var(--ma-border); color: var(--ma-muted); text-decoration: none; padding: 0 20px; height: 46px; display: flex; align-items: center; justify-content: center;">Default
+                        View</a>
                     {% else %}
-                    {% for g in grades %}
-                    <option value="{{ g.id }}" {% if filter_grade==g.id|string %}selected{% endif %}>{{ g.name }}
-                    </option>
-                    {% endfor %}
+                    <a href="?role={{ role_filter }}&view=grouped" class="btn-elegant"
+                        style="background: #f1f5f9; color: var(--ma-primary); text-decoration: none; padding: 0 20px; height: 46px; display: flex; align-items: center; justify-content: center;">Group
+                        View</a>
                     {% endif %}
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Section</label>
-                <select name="section" class="form-control" onchange="this.form.submit()">
-                    <option value="">All Sections</option>
-                    {% for s in section_options %}
-                    <option value="{{ s.section_id }}" {% if filter_section==s.section_id|string %}selected{% endif %}>
-                        {{ s.grade_level_name }} - {{ s.section_name }}
-                    </option>
-                    {% endfor %}
+                </div>
+                {% endif %}
+            </form>
+
+            {% if role_filter != 'student' %}
+            <div style="display: flex; align-items: center; background: #f8fafc; padding: 6px 12px 6px 20px; border-radius: 12px; border: 1.5px solid var(--ma-border); height: fit-content;">
+                <div style="font-weight: 700; font-size: 0.95rem; color: var(--ma-muted); margin-right: 12px; white-space: nowrap;">Filter by Role:</div>
+                <select id="staffRoleFilter" class="form-control" style="width: auto; min-width: 160px; font-weight: 600; padding: 0 16px; height: 42px; border-radius: 8px; border: 1px solid var(--ma-border); background: #fff; cursor: pointer; margin: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.02);" onchange="filterStaffTable()">
+                    <option value="all">All Staff</option>
+                    <option value="registrar" {% if role_filter == 'registrar' %}selected{% endif %}>Registrars</option>
+                    <option value="cashier" {% if role_filter == 'cashier' %}selected{% endif %}>Cashiers</option>
+                    <option value="librarian" {% if role_filter == 'librarian' %}selected{% endif %}>Librarians</option>
+                    <option value="teacher" {% if role_filter == 'teacher' %}selected{% endif %}>Teachers</option>
                 </select>
             </div>
             {% endif %}
-            <div class="form-group" style="display: flex; gap: 8px;">
-                <button type="submit" class="btn-elegant btn-primary-ma" style="width: 64px; padding: 0;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="11" cy="11" r="8"></circle>
-                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                    </svg>
-                </button>
-                {% if role_filter in ['student', 'teacher'] %}
-                {% if view_mode == 'grouped' %}
-                <a href="?role={{ role_filter }}" class="btn-elegant"
-                    style="background: #ffffff; border: 1.5px solid var(--ma-border); color: var(--ma-muted); text-decoration: none; padding: 0 20px;">Default
-                    View</a>
-                {% else %}
-                <a href="?role={{ role_filter }}&view=grouped" class="btn-elegant"
-                    style="background: #f1f5f9; color: var(--ma-primary); text-decoration: none; padding: 0 20px;">Group
-                    View</a>
-                {% endif %}
-                {% endif %}
-            </div>
-        </form>
 
-        {% if role_filter != 'student' %}
-        <div class="nav-tabs-container" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 0;">
-            <div
-                style="font-weight: 700; font-size: 0.95rem; color: var(--ma-muted); align-self: center; margin-right: 12px;">
-                Filter by Role:</div>
-            <a href="?role=all_staff" class="nav-tab {% if role_filter == 'all_staff' %}active{% endif %}">All Staff</a>
-            <a href="?role=registrar"
-                class="nav-tab {% if role_filter == 'registrar' %}active{% endif %}">Registrars</a>
-            <a href="?role=cashier" class="nav-tab {% if role_filter == 'cashier' %}active{% endif %}">Cashiers</a>
-            <a href="?role=librarian"
-                class="nav-tab {% if role_filter == 'librarian' %}active{% endif %}">Librarians</a>
-            <a href="/branch-admin/manage-teachers"
-                class="nav-tab {% if role_filter == 'teacher' %}active{% endif %}">Teachers</a>
         </div>
-        {% endif %}
-    </div>
 
     <!-- Results Table -->
-    <div class="table-mount">
+    <div class="table-mount" style="border: none; background: transparent; box-shadow: none; border-radius: 0; margin: 0;">
         {% if accounts %}
         <div style="overflow-x: auto;">
             {% if view_mode == 'grouped' %}
@@ -883,6 +891,7 @@
         </div>
         {% endif %}
     </div>
+</div>
 </div>
 
 <div class="glass-overlay" id="editModalOverlay">
@@ -956,6 +965,27 @@
     function closeEditModal() {
         document.getElementById('editModalOverlay').classList.remove('visible');
     }
+
+    // Filter staff table based on dropdown
+    function filterStaffTable() {
+        const filter = document.getElementById('staffRoleFilter');
+        if (!filter) return;
+        const selectedRole = filter.value;
+        const rows = document.querySelectorAll('.staff-row');
+        
+        rows.forEach(row => {
+            if (selectedRole === 'all' || row.dataset.role === selectedRole) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // Initialize filter on load in case the select element has a pre-selected value
+    document.addEventListener("DOMContentLoaded", function() {
+        filterStaffTable();
+    });
 </script>
 
 {% endblock %}
