@@ -1,6 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Bill Statement - #{{ bill.branch_enrollment_no }}{% endblock %}
-
+{% block title %}Bill Statement - #{{ bill.branch_enrollment_no }}{% endblock %}
+{% block page_title %}Cashier{% endblock %}
+
 {% block styles %}
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
@@ -24,9 +25,44 @@
     }
 
     .bill-container {
-        max-width: 1340px;
+        max-width: 1280px;
         margin: 0 auto;
-        padding: 32px 20px 64px;
+        padding: 24px 20px 64px;
+    }
+
+
+
+    /* ── Hero Banner ── */
+    .hero-banner {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        border-radius: 20px;
+        padding: 40px;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+        color: #fff;
+        box-shadow: 0 15px 35px -10px rgba(30, 58, 138, 0.2);
+    }
+    
+    .hero-content h1 {
+        font-size: 2.5rem;
+        font-weight: 900;
+        letter-spacing: -0.04em;
+        margin-bottom: 12px;
+        line-height: 1;
+    }
+    
+    .hero-content h1 span {
+        color: #34d399;
+        text-shadow: 0 4px 12px rgba(52, 211, 153, 0.3);
+    }
+    
+    .hero-content p {
+        font-size: 1rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+        max-width: 600px;
+        line-height: 1.5;
     }
 
     /* ── Statement Header ── */
@@ -56,32 +92,71 @@
         margin-bottom: 24px;
     }
 
-    .info-grid {
+    /* ── Student Information Sheet ── */
+    .student-info-sheet {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        grid-template-columns: 1fr 2fr;
         gap: 24px;
-        margin-bottom: 32px;
-        padding-bottom: 32px;
+        margin-bottom: 24px;
+        padding-bottom: 24px;
         border-bottom: 1px solid var(--cashier-border);
+        align-items: center;
     }
-
-    .info-item {
+    @media (max-width: 768px) {
+        .student-info-sheet {
+            grid-template-columns: 1fr;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+    }
+    .sis-left {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        border-right: 2px solid var(--cashier-primary);
+        padding-right: 24px;
+    }
+    @media (max-width: 768px) {
+        .sis-left {
+            border-right: none;
+            padding-right: 0;
+            border-bottom: 2px solid var(--cashier-primary);
+            padding-bottom: 16px;
+        }
+    }
+    .sis-photo {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        background: var(--cashier-primary);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.2rem;
+        font-weight: 800;
+        flex-shrink: 0;
+    }
+    .sis-right {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+    .sis-field {
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 4px;
     }
-
-    .info-label {
+    .sis-label {
         font-size: 0.75rem;
         font-weight: 700;
         color: var(--cashier-muted);
         text-transform: uppercase;
         letter-spacing: 0.05em;
     }
-
-    .info-value {
-        font-size: 1rem;
-        font-weight: 700;
+    .sis-value {
+        font-size: 1.15rem;
+        font-weight: 800;
         color: var(--cashier-text);
     }
 
@@ -523,73 +598,48 @@
 {% block content %}
 <div class="bill-container">
 
-    <div class="statement-header">
-        <h1 class="statement-title" style="display: flex; align-items: center; gap: 10px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <polyline points="10 9 9 9 8 9"></polyline>
-            </svg>
-            Billing Statement
-        </h1>
-        <div style="text-align: right;">
-            {% if bill.status == 'paid' %}
-            <span
-                style="background: #ecfdf5; color: #065f46; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 0.75rem; border: 1px solid #a7f3d0; display: inline-flex; align-items: center; gap: 6px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-                PAID
-            </span>
-            {% elif bill.status == 'partial' %}
-            <span
-                style="background: #fffbeb; color: #92400e; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 0.75rem; border: 1px solid #fde68a; display: inline-flex; align-items: center; gap: 6px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-                PARTIALLY PAID
-            </span>
-            {% else %}
-            <span
-                style="background: #fef2f2; color: #991b1b; padding: 8px 16px; border-radius: 999px; font-weight: 800; font-size: 0.75rem; border: 1px solid #fecaca; display: inline-flex; align-items: center; gap: 6px;">
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-                PAYMENT DUE
-            </span>
-            {% endif %}
+    <!-- Hero Banner -->
+    <div class="hero-banner">
+        <div class="hero-content">
+            <h1>Bill <span>Statement</span></h1>
+            <p>Review and process payment for this bill.</p>
         </div>
     </div>
 
+
+
     <div class="bill-card">
-        <div class="info-grid">
-            <div class="info-item">
-                <span class="info-label">Statement ID</span>
-                <span class="info-value">#BILL-{{ bill.bill_id }}</span>
+        <h3 style="font-size: 1.1rem; font-weight: 800; color: var(--cashier-primary); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; text-transform: uppercase; letter-spacing: 0.05em;">
+            Student Profile
+        </h3>
+        <div class="student-info-sheet">
+            <!-- Left Column -->
+            <div class="sis-left">
+                <div class="sis-photo">{{ bill.student_name[0]|upper }}</div>
+                <div class="sis-field">
+                    <span class="sis-label">Student Name</span>
+                    <span class="sis-value">{{ bill.student_name }}</span>
+                </div>
             </div>
-            <div class="info-item">
-                <span class="info-label">Student Name</span>
-                <span class="info-value">{{ bill.student_name }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Academic Level</span>
-                <span class="info-value">{{ bill.grade_level }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Guardian</span>
-                <span class="info-value">{{ bill.guardian_name }}</span>
-            </div>
-            <div class="info-item">
-                <span class="info-label">Branch</span>
-                <span class="info-value">{{ bill.branch_name }}</span>
+            
+            <!-- Right Column -->
+            <div class="sis-right">
+                <div class="sis-field">
+                    <span class="sis-label">Academic Level</span>
+                    <span class="sis-value">{{ bill.grade_level }}</span>
+                </div>
+                <div class="sis-field">
+                    <span class="sis-label">Guardian</span>
+                    <span class="sis-value">{{ bill.guardian_name }}</span>
+                </div>
+                <div class="sis-field">
+                    <span class="sis-label">Branch</span>
+                    <span class="sis-value">{{ bill.branch_name }}</span>
+                </div>
+                <div class="sis-field">
+                    <span class="sis-label">Statement ID</span>
+                    <span class="sis-value" style="color: var(--cashier-primary);">#BILL-{{ bill.bill_id }}</span>
+                </div>
             </div>
         </div>
 
@@ -735,13 +785,8 @@
         {% endif %}
     </div>
 
-    <div class="history-section">
-        <h3 style="display: flex; align-items: center; gap: 10px;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="12" y1="1" x2="12" y2="23"></line>
-                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-            </svg>
+    <div class="bill-card history-section">
+        <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--cashier-primary); margin-bottom: 20px;">
             Payment History
         </h3>
         {% if payments %}
@@ -816,6 +861,7 @@
                         <td>{{ p.received_by_name }}</td>
                         <td style="text-align: right;">
                             <button type="button" class="btn-print"
+                                style="padding: 6px 14px; font-size: 0.75rem; border-radius: 6px; background: var(--cashier-success); color: white; border: none; font-weight: 800; cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; justify-content: center;"
                                 data-receipt="{{ p.receipt_number }}"
                                 data-date="{{ p.payment_date.strftime('%B %d, %Y - %I:%M %p') }}"
                                 data-amount="{{ '{:,.2f}'.format(p.amount) }}"

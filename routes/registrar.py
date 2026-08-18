@@ -229,6 +229,10 @@ def registrar_enrollments():
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        cursor.execute("SELECT branch_code FROM branches WHERE branch_id = %s", (branch_id,))
+        b_res = cursor.fetchone()
+        branch_code = b_res["branch_code"] if b_res and b_res.get("branch_code") else "LDMAJ"
+
         # --- ACTIVE YEAR (for safe actions) ---
         cursor.execute("""
             SELECT year_id
@@ -581,6 +585,7 @@ def registrar_enrollments():
             # SEARCH QUERIES
             q_new=q_new,
             q_enrolled=q_enrolled,
+            branch_code=branch_code,
         )
     except Exception as e:
         db.rollback()

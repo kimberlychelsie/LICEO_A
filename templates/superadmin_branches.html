@@ -177,38 +177,72 @@
         box-shadow: 0 8px 16px rgba(250, 204, 21, 0.4);
     }
 
-    /* ── Vault Table ── */
+    /* ── Premium Vault Table ── */
     .vault-wrapper {
         border-radius: 20px;
         overflow-x: auto;
-        border: 1px solid var(--ma-border);
-        min-height: 250px;
+        border: 1px solid rgba(226, 232, 240, 0.8);
+        background: #ffffff;
+        box-shadow: 0 10px 30px -10px rgba(15, 23, 42, 0.05);
+        margin-top: 16px;
     }
 
     .vault-table {
         width: 100%;
-        min-width: 1000px;
-        border-collapse: collapse;
-        background: white;
+        min-width: 1050px;
+        border-collapse: separate;
+        border-spacing: 0;
     }
 
     .vault-table thead th {
         background: #f8fafc;
-        padding: 16px 20px;
+        padding: 20px 24px;
         font-size: 0.75rem;
         font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--ma-muted);
-        border-bottom: 1px solid var(--ma-border);
+        letter-spacing: 0.08em;
+        color: #64748b;
+        border-bottom: 2px solid #f1f5f9;
         text-align: left;
+        white-space: nowrap;
+    }
+
+    .vault-table tbody tr {
+        transition: all 0.2s ease;
+    }
+
+    .vault-table tbody tr:hover {
+        background: #f8fafc;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.02);
     }
 
     .vault-table tbody td {
-        padding: 18px 20px;
+        padding: 20px 24px;
         border-bottom: 1px solid #f1f5f9;
         font-size: 0.95rem;
         vertical-align: middle;
+        color: #334155;
+    }
+    
+    .vault-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    /* ── User Avatar ── */
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--ma-primary), #0c2461);
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 0.9rem;
+        box-shadow: 0 4px 10px rgba(26, 58, 143, 0.2);
+        flex-shrink: 0;
     }
 
     .badge-prem {
@@ -501,13 +535,15 @@
 
     <!-- 3. BRANCH LIST -->
     <div class="modern-card" style="padding:0;">
-        <div
-            style="padding: 24px; display: flex; align-items:center; justify-content: space-between; flex-wrap: wrap; gap: 20px;">
-            <h2 style="margin:0; display:flex; align-items:center; gap: 10px;">
-                Branch List
-            </h2>
-            <input type="text" id="branchSearch" placeholder="Search branch..."
-                style="padding: 10px 16px; border: 1px solid var(--ma-border); border-radius: 12px; width: 250px;">
+        <div style="padding: 24px 32px; display: flex; align-items:center; justify-content: space-between; flex-wrap: wrap; gap: 20px; border-bottom: 1px solid #f1f5f9;">
+            <h2 style="margin: 0; font-size: 1.4rem; font-weight: 900; color: var(--ma-primary);">Branch List</h2>
+            <div style="position: relative; width: 320px;">
+                <i class="fas fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                <input type="text" id="branchSearch" placeholder="Search branch or location..."
+                    style="width: 100%; padding: 12px 16px 12px 42px; border: 1px solid #e2e8f0; border-radius: 99px; font-size: 0.9rem; background: #f8fafc; color: #334155; transition: all 0.3s ease; outline: none; box-sizing: border-box;"
+                    onfocus="this.style.background='#ffffff'; this.style.borderColor='var(--ma-primary)'; this.style.boxShadow='0 0 0 3px rgba(26, 58, 143, 0.1)';"
+                    onblur="this.style.background='#f8fafc'; this.style.borderColor='#e2e8f0'; this.style.boxShadow='none';">
+            </div>
         </div>
 
         <div class="vault-wrapper">
@@ -526,28 +562,51 @@
                 <tbody>
                     {% for b in branches %}
                     <tr>
-                        <td style="text-align: center; font-weight: 900; color: var(--ma-muted);">{{ b.branch_id }}</td>
-                        <td style="text-align: center; color: var(--ma-primary); font-weight: 800;">{{ b.admin_username
-                            or 'PENDING' }}</td>
-                        <td>
-                            <div style="font-weight: 850; color: var(--ma-primary);">{{ b.branch_name }}</div>
+                        <td style="text-align: center; font-weight: 900; color: #94a3b8; font-size: 1.1rem;">#{{ b.branch_id }}</td>
+                        <td style="text-align: center;">
+                            {% if b.admin_username %}
+                            <span style="background: #eff6ff; color: #2563eb; padding: 6px 12px; border-radius: 99px; font-weight: 800; font-size: 0.8rem; display: inline-block;">
+                                @{{ b.admin_username }}
+                            </span>
+                            {% else %}
+                            <span style="background: #fef2f2; color: #ef4444; padding: 6px 12px; border-radius: 99px; font-weight: 800; font-size: 0.8rem; display: inline-block;">
+                                PENDING
+                            </span>
+                            {% endif %}
                         </td>
-                        <td><i class="fas fa-map-marker-alt" style="color: var(--ma-gold);"></i> {{ b.location }}</td>
-                        <td><code
-                                style="background: rgba(26, 58, 143, 0.05); color: var(--ma-primary); padding: 4px 8px; border-radius: 8px;">{{ b.branch_code }}</code>
+                        <td>
+                            <div style="font-weight: 900; color: var(--ma-primary); font-size: 1.05rem; letter-spacing: -0.01em;">{{ b.branch_name }}</div>
                         </td>
                         <td>
-                            <div style="font-weight: 850;">
-                                {% if b.admin_last_name %}
-                                {{ b.admin_last_name }}, {{ b.admin_first_name }}{% if b.admin_middle_name %} {{
-                                b.admin_middle_name[0] }}.{% endif %}
-                                {% elif b.admin_full_name %}
-                                {{ b.admin_full_name }}
-                                {% else %}
-                                None
-                                {% endif %}
+                            <div style="display: flex; align-items: center; gap: 8px; color: #475569; font-weight: 500;">
+                                <div style="background: #fffbeb; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                    <i class="fas fa-map-marker-alt" style="color: var(--ma-gold); font-size: 0.8rem;"></i>
+                                </div>
+                                <span>{{ b.location }}</span>
                             </div>
-                            <div style="font-size: 0.75rem; color: var(--ma-muted);">{{ b.admin_email }}</div>
+                        </td>
+                        <td>
+                            <div style="background: #f8fafc; color: #475569; padding: 6px 12px; border-radius: 8px; font-weight: 800; font-family: monospace; display: inline-block; border: 1px solid #e2e8f0; letter-spacing: 0.05em;">
+                                {{ b.branch_code }}
+                            </div>
+                        </td>
+                        <td>
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                {% set initial = b.admin_first_name[0] if b.admin_first_name else '?' %}
+                                <div class="user-avatar">{{ initial|upper }}</div>
+                                <div>
+                                    <div style="font-weight: 800; color: var(--ma-primary);">
+                                        {% if b.admin_last_name %}
+                                        {{ b.admin_first_name }} {{ b.admin_last_name }}
+                                        {% elif b.admin_full_name %}
+                                        {{ b.admin_full_name }}
+                                        {% else %}
+                                        No Principal Assigned
+                                        {% endif %}
+                                    </div>
+                                    <div style="font-size: 0.8rem; color: #64748b; font-weight: 600; margin-top: 2px;">{{ b.admin_email }}</div>
+                                </div>
+                            </div>
                         </td>
                         <td style="text-align: right; padding-right: 32px;">
                             <div class="action-menu">
@@ -560,6 +619,9 @@
                                         <i class="fas fa-edit"></i> Edit Details
                                     </button>
                                     {% if b.admin_username %}
+                                    <button type="button" class="action-item" onclick="openTransferModal('{{ b.branch_id }}','{{ b.branch_name|e }}')">
+                                        <i class="fas fa-exchange-alt"></i> Reassign Principal
+                                    </button>
                                     <form method="POST" action="/super-admin/branch/{{ b.branch_id }}/remove-principal"
                                         style="display:contents;">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -568,7 +630,6 @@
                                             <i class="fas fa-user-minus"></i> Remove Principal
                                         </button>
                                     </form>
-                                    {% endif %}
                                     <form method="POST" action="/super-admin/branch/{{ b.branch_id }}/reset-password"
                                         style="display:contents;">
                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -577,6 +638,11 @@
                                             <i class="fas fa-key"></i> Reset Password
                                         </button>
                                     </form>
+                                    {% else %}
+                                    <button type="button" class="action-item" onclick="openTransferModal('{{ b.branch_id }}','{{ b.branch_name|e }}')">
+                                        <i class="fas fa-user-plus"></i> Assign Principal
+                                    </button>
+                                    {% endif %}
 
                                 </div>
                             </div>
@@ -671,66 +737,51 @@
 
 <!-- Replace Admin Modal -->
 <div id="transferAdminModal" class="glass-overlay">
-    <div class="glass-modal" style="max-width: 450px;">
-        <h2 id="transferBranchName" style="font-weight: 900; color: var(--ma-primary); text-align: center;">Assign
-            Branch Principal</h2>
+    <div class="glass-modal" style="max-width: 600px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <h2 id="transferBranchName" style="font-weight: 900; color: var(--ma-primary); margin: 0;">Assign Branch Principal</h2>
+            <button type="button" onclick="closeTransferModal()"
+                style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b;"><i
+                    class="fas fa-times"></i></button>
+        </div>
         <form id="transferAdminForm" method="post">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div
-                style="display: flex; gap: 8px; margin: 24px 0; background: #f1f5f9; padding: 4px; border-radius: 12px;">
-                <button type="button" id="modeNewBtn" onclick="setReplacementMode('new')" class="btn-prem"
-                    style="flex: 1; font-size: 0.75rem;">New Admin</button>
-                <button type="button" id="modeTransferBtn" onclick="setReplacementMode('transfer')" class="btn-prem"
-                    style="flex: 1; font-size: 0.75rem;">Transfer Existing</button>
-            </div>
-            <input type="hidden" name="replacement_mode" id="replacementMode" value="new">
+            <input type="hidden" name="replacement_mode" value="new">
 
             <div id="newAdminFields">
-                <div class="entry-grid" style="grid-template-columns: 1fr; gap: 12px;">
-                    <div class="form-node"><label>First Name</label><input type="text" name="new_admin_first_name"
-                            id="newAdminFirstNameInput" /></div>
-                    <div class="form-node"><label>Middle Name (Optional)</label><input type="text"
-                            name="new_admin_middle_name" id="newAdminMiddleNameInput" /></div>
-                    <div class="form-node"><label>Last Name</label><input type="text" name="new_admin_last_name"
-                            id="newAdminLastNameInput" /></div>
-                    <div class="form-node"><label>Gender</label><select name="new_gender" id="newGenderInput">
+                <h4 style="margin-bottom: 12px; color: #475569; font-weight: 700; font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">New Principal Details</h4>
+                <div class="entry-grid" style="grid-template-columns: 1fr 1fr; gap: 16px;">
+                    <div class="form-node">
+                        <label>First Name</label>
+                        <input type="text" name="new_admin_first_name" required />
+                    </div>
+                    <div class="form-node">
+                        <label>Last Name</label>
+                        <input type="text" name="new_admin_last_name" required />
+                    </div>
+                    <div class="form-node">
+                        <label>Middle Name (Optional)</label>
+                        <input type="text" name="new_admin_middle_name" />
+                    </div>
+                    <div class="form-node">
+                        <label>Gender</label>
+                        <select name="new_gender" required>
                             <option value="Male">Male</option>
                             <option value="Female">Female</option>
-                        </select></div>
-                    <div class="form-node"><label>Email</label><input type="email" name="new_admin_email"
-                            id="newEmailInput" /></div>
-                </div>
-
-                <div
-                    style="margin-top: 16px; background: #f8fafc; border: 1px dashed #cbd5e1; padding: 12px 16px; border-radius: 12px; display: flex; align-items: center; gap: 12px;">
-                    <input type="checkbox" name="move_to_faculty" id="moveToFaculty"
-                        style="width: 18px; height: 18px; cursor: pointer;">
-                    <div style="display: flex; flex-direction: column;">
-                        <label for="moveToFaculty"
-                            style="font-size: 0.85rem; font-weight: 800; color: var(--ma-primary); cursor: pointer; margin: 0;">
-                            Assign current Principal to Faculty
-                        </label>
-                        <span style="font-size: 0.75rem; color: var(--ma-muted);">If unchecked, they will be archived as
-                            retired admin.</span>
+                        </select>
+                    </div>
+                    <div class="form-node" style="grid-column: span 2;">
+                        <label>Email</label>
+                        <input type="email" name="new_admin_email" required />
                     </div>
                 </div>
             </div>
 
-            <div id="transferAdminFields" style="display: none;">
-                <div class="form-node">
-                    <label>Select Admin</label>
-                    <select name="transfer_user_id" id="transferSelectInput">
-                        {% for ra in retired_admins_pool %}<option value="{{ ra.user_id }}">{{ ra.full_name }} (@{{
-                            ra.username }})</option>{% endfor %}
-                    </select>
-                </div>
-            </div>
-
-            <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <div style="display: flex; gap: 12px; margin-top: 32px; justify-content: flex-end;">
                 <button type="button" onclick="closeTransferModal()" class="btn-prem"
-                    style="flex: 1; background: #f1f5f9;">Cancel</button>
-                <button type="submit" id="transferSubmitBtn" class="btn-prem"
-                    style="flex: 2; background: var(--ma-primary); color: white;">Confirm</button>
+                    style="background: #f1f5f9; color: #64748b; padding: 12px 24px;">Cancel</button>
+                <button type="submit" class="btn-prem btn-gold"
+                    style="padding: 12px 32px; min-width: 150px;">Confirm</button>
             </div>
         </form>
     </div>
@@ -911,100 +962,13 @@
     function closeEditBranch() { document.getElementById('editBranchModal').style.display = 'none'; }
 
     function openTransferModal(id, name) {
-        document.getElementById('transferBranchName').innerText = name;
+        document.getElementById('transferBranchName').innerText = "Assign to " + name;
         document.getElementById('transferAdminForm').action =
             '/super-admin/branches/' + id + '/replace-admin';
 
         document.getElementById('transferAdminModal').style.display = 'flex';
-
-        setReplacementMode('new');
     }
     function closeTransferModal() { document.getElementById('transferAdminModal').style.display = 'none'; }
-
-    function setReplacementMode(mode) {
-
-        const modeInput = document.getElementById('replacementMode');
-
-        const newFields = document.getElementById('newAdminFields');
-        const transferFields = document.getElementById('transferAdminFields');
-
-        const newBtn = document.getElementById('modeNewBtn');
-        const transferBtn = document.getElementById('modeTransferBtn');
-
-        const submitBtn = document.getElementById('transferSubmitBtn');
-
-        // Inputs
-        const newFirstName = document.getElementById('newAdminFirstNameInput');
-        const newMiddleName = document.getElementById('newAdminMiddleNameInput');
-        const newLastName = document.getElementById('newAdminLastNameInput');
-        const newGender = document.getElementById('newGenderInput');
-        const newEmail = document.getElementById('newEmailInput');
-
-        const transferSelect = document.getElementById('transferSelectInput');
-
-        modeInput.value = mode;
-
-        if (mode === 'new') {
-
-            newFields.style.display = 'block';
-            transferFields.style.display = 'none';
-
-            // ENABLE NEW ADMIN INPUTS
-            newFirstName.disabled = false;
-            newMiddleName.disabled = false;
-            newLastName.disabled = false;
-            newGender.disabled = false;
-            newEmail.disabled = false;
-
-            // REQUIRED
-            newFirstName.required = true;
-            newLastName.required = true;
-            newGender.required = true;
-            newEmail.required = true;
-
-            // DISABLE TRANSFER SELECT
-            transferSelect.disabled = true;
-            transferSelect.required = false;
-
-            newBtn.style.background = '#1a3a8f';
-            newBtn.style.color = 'white';
-
-            transferBtn.style.background = 'transparent';
-            transferBtn.style.color = '#64748b';
-
-            submitBtn.innerText = 'Replace with New';
-
-        } else {
-
-            newFields.style.display = 'none';
-            transferFields.style.display = 'block';
-
-            // DISABLE NEW ADMIN INPUTS
-            newFirstName.disabled = true;
-            newMiddleName.disabled = true;
-            newLastName.disabled = true;
-            newGender.disabled = true;
-            newEmail.disabled = true;
-
-            // REMOVE REQUIRED
-            newFirstName.required = false;
-            newLastName.required = false;
-            newGender.required = false;
-            newEmail.required = false;
-
-            // ENABLE TRANSFER SELECT
-            transferSelect.disabled = false;
-            transferSelect.required = true;
-
-            transferBtn.style.background = '#1a3a8f';
-            transferBtn.style.color = 'white';
-
-            newBtn.style.background = 'transparent';
-            newBtn.style.color = '#64748b';
-
-            submitBtn.innerText = 'Transfer & Replace';
-        }
-    }
 
     function toggleActionMenu(btn, event) {
         event.stopPropagation();

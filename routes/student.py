@@ -659,6 +659,7 @@ def enroll(branch_id):
             return redirect(url_for("student.enrollment_success", branch_id=branch_id, enrollment_id=enrollment_id))
 
         # ── GET: Render form ──
+        import datetime
         return render_template(
             "student_enroll.html",
             branch=branch,
@@ -666,7 +667,8 @@ def enroll(branch_id):
             school_years=school_years,  # ✅ pass school years to template
             message=None,
             duplicate_blocked=False,
-            duplicate_reason=None
+            duplicate_reason=None,
+            today_date=datetime.date.today().strftime('%Y-%m-%d')
         )
 
     finally:

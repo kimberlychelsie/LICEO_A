@@ -566,8 +566,8 @@
                             <div class="c3">
                                 <div class="field">
                                     <label>Enrollment Date <span class="req">*</span></label>
-                                    <input type="date" id="enroll_date" name="enroll_date" required />
-                                    <small>Must be today's date</small>
+                                    <input type="date" id="enroll_date" name="enroll_date" required readonly style="background-color: #f1f5f9; cursor: not-allowed;" value="{{ today_date }}" />
+                                    <small>Defaults to today</small>
                                 </div>
                             </div>
                             <div class="c3">
@@ -792,21 +792,21 @@
 
                             <div class="c6">
                                 <div class="field">
-                                    <label>Father's Contact <span class="req">*</span></label>
+                                    <label>Father's Contact</label>
                                     <input type="tel"
                                         name="father_contact"
                                         pattern="^09\d{9}$"
                                         minlength="11"
                                         maxlength="11"
-                                        placeholder="09xxxxxxxxx" required
+                                        placeholder="09xxxxxxxxx"
                                         inputmode="numeric"
                                         oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
                                 </div>
                             </div>
                             <div class="c6">
                                 <div class="field">
-                                    <label>Father's Occupation <span class="req">*</span></label>
-                                    <input type="text" name="father_occupation" placeholder="e.g., Farmer" required maxlength="100"
+                                    <label>Father's Occupation</label>
+                                    <input type="text" name="father_occupation" placeholder="e.g., Farmer" maxlength="100"
                                         oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')" />
                                 </div>
                             </div>
@@ -834,21 +834,21 @@
 
                             <div class="c6">
                                 <div class="field">
-                                    <label>Mother's Contact <span class="req">*</span></label>
+                                    <label>Mother's Contact</label>
                                     <input type="tel"
                                             name="mother_contact"
                                             pattern="^09\d{9}$"
                                             minlength="11"
                                             maxlength="11"
-                                            placeholder="09xxxxxxxxx" required
+                                            placeholder="09xxxxxxxxx"
                                             inputmode="numeric"
                                             oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
                                 </div>
                             </div>
                             <div class="c6">
                                 <div class="field">
-                                    <label>Mother's Occupation <span class="req">*</span></label>
-                                    <input type="text" name="mother_occupation" placeholder="e.g., Housewife" required maxlength="100"
+                                    <label>Mother's Occupation</label>
+                                    <input type="text" name="mother_occupation" placeholder="e.g., Housewife" maxlength="100"
                                         oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')" />
                                 </div>
                             </div>
@@ -940,45 +940,45 @@
 
                              <div class="c6">
                                  <div class="field">
-                                     <label>PSA Birth Certificate <span class="req">*</span></label>
+                                     <label>PSA Birth Certificate</label>
                                      <input type="file" name="psa_birth_cert"
-                                         accept=".pdf,.jpg,.jpeg,.png" required />
+                                         accept=".pdf,.jpg,.jpeg,.png" />
                                      <small>Photocopy / Original</small>
                                  </div>
                              </div>
  
                              <div class="c6">
                                  <div class="field">
-                                     <label>Baptismal Certificate <span class="req">*</span></label>
+                                     <label>Baptismal Certificate</label>
                                      <input type="file" name="baptismal_cert"
-                                         accept=".pdf,.jpg,.jpeg,.png" required />
+                                         accept=".pdf,.jpg,.jpeg,.png" />
                                      <small>Photocopy / Original</small>
                                  </div>
                              </div>
  
                              <div class="c6">
                                  <div class="field">
-                                     <label>Card / Form 138 <span class="req">*</span></label>
+                                     <label>Card / Form 138</label>
                                      <input type="file" name="form_138"
-                                         accept=".pdf,.jpg,.jpeg,.png" required />
+                                         accept=".pdf,.jpg,.jpeg,.png" />
                                      <small>Latest report card</small>
                                  </div>
                              </div>
  
                              <div class="c6">
                                  <div class="field">
-                                     <label>Good Moral Certificate <span class="req">*</span></label>
+                                     <label>Good Moral Certificate</label>
                                      <input type="file" name="good_moral"
-                                         accept=".pdf,.jpg,.jpeg,.png" required />
+                                         accept=".pdf,.jpg,.jpeg,.png" />
                                      <small>Certificate from previous school</small>
                                  </div>
                              </div>
  
                              <div class="c6">
                                  <div class="field">
-                                     <label>Form 137 <span class="req">*</span></label>
+                                     <label>Form 137</label>
                                      <input type="file" name="form_137"
-                                         accept=".pdf,.jpg,.jpeg,.png" required />
+                                         accept=".pdf,.jpg,.jpeg,.png" />
                                      <small>Permanent record / cumulative form</small>
                                  </div>
                              </div>
@@ -1457,6 +1457,21 @@
         const maxDate = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
         dobInput.setAttribute('max', maxDate.toISOString().split('T')[0]);
     }
+    
+    // Hide loading overlay when user clicks the browser's Back button
+    window.addEventListener('pageshow', function(event) {
+        if (event.persisted) {
+            var overlay = document.getElementById('loadingOverlay');
+            if (overlay) overlay.style.display = 'none';
+            var submitBtn = document.getElementById('submitBtn');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.innerText = 'Submit Enrollment';
+                submitBtn.style.opacity = '1';
+                submitBtn.style.cursor = 'pointer';
+            }
+        }
+    });
 </script>
 
 </body>

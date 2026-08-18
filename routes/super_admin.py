@@ -469,18 +469,11 @@ def super_admin_replace_admin(branch_id):
         branch_name = branch["branch_name"]
         branch_code = branch["branch_code"]
 
-        # 2. Handle current admin(s) transition (Retire or Faculty)
-        move_to_faculty = request.form.get("move_to_faculty") == "on"
-        if move_to_faculty:
-            cursor.execute("""
-                UPDATE users SET role = 'teacher', status = 'active'
-                WHERE branch_id = %s AND role = 'branch_admin'
-            """, (branch_id,))
-        else:
-            cursor.execute("""
-                UPDATE users SET status = 'inactive', role = 'retired_admin'
-                WHERE branch_id = %s AND role = 'branch_admin'
-            """, (branch_id,))
+        # 2. Handle current admin(s) transition (Retire to retired_admin)
+        cursor.execute("""
+            UPDATE users SET status = 'inactive', role = 'retired_admin'
+            WHERE branch_id = %s AND role = 'branch_admin'
+        """, (branch_id,))
 
         if replacement_mode == "new":
             # 3a. Create NEW admin account
@@ -781,13 +774,15 @@ def superadmin_faqs():
 
     try:
         if request.method == "POST":
+            category = request.form.get("category", "General").strip()
             question = request.form.get("question", "").strip()
             answer   = request.form.get("answer", "").strip()
             if question and answer:
                 try:
+                    formatted_question = f"{category}|{question}"
                     cur.execute(
                         "INSERT INTO chatbot_faqs (question, answer, branch_id) VALUES (%s, %s, NULL)",
-                        (question, answer)
+                        (formatted_question, answer)
                     )
                     db.commit()
                     message = "General FAQ added successfully!"
@@ -862,6 +857,7 @@ def superadmin_faq_delete(faq_id):
 def superadmin_faq_edit(faq_id):
     if session.get("role") != "super_admin":
         return redirect(url_for("auth.login"))
+    category = request.form.get("category", "General").strip()
     question = request.form.get("question", "").strip()
     answer   = request.form.get("answer", "").strip()
     if not question or not answer:
@@ -870,9 +866,10 @@ def superadmin_faq_edit(faq_id):
     db  = get_db_connection()
     cur = db.cursor()
     try:
+        formatted_question = f"{category}|{question}"
         cur.execute(
             "UPDATE chatbot_faqs SET question=%s, answer=%s WHERE id=%s AND branch_id IS NULL",
-            (question, answer, faq_id)
+            (formatted_question, answer, faq_id)
         )
         db.commit()
         flash("FAQ updated.", "success")

@@ -171,7 +171,19 @@ def api_faqs():
             """)
 
         rows = cur.fetchall() or []
-        return jsonify([{"question": r[0], "answer": r[1]} for r in rows])
+        
+        parsed_faqs = []
+        for r in rows:
+            q = r[0]
+            ans = r[1]
+            if '|' in q:
+                cat, actual_q = q.split('|', 1)
+            else:
+                cat = "General"
+                actual_q = q
+            parsed_faqs.append({"category": cat, "question": actual_q, "answer": ans})
+
+        return jsonify(parsed_faqs)
 
     except Exception:
         # wag app.logger dito kasi blueprint file; safe return empty
