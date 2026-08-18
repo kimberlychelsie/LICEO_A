@@ -3787,15 +3787,25 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
     if range_row:
         total_school_days = _count_school_days(cur, branch_id, year_id, range_row["start_date"], range_row["end_date"])
 
-    # Participation scores (from participation_scores table — 1-10 rating by teacher)
-    participation_scores = {}  # raw 1-10 values for display
+    # Participation scores
+# {enrollment_id: (score, max_score)}
+    participation_scores = {}
+
     cur.execute("""
-        SELECT enrollment_id, score
-        FROM participation_scores
-        WHERE subject_id = %s AND grading_period = %s
-    """, (subject_id, period))
+            SELECT
+                enrollment_id,
+                score,
+                COALESCE(max_score, 10) AS max_score
+    FROM participation_scores
+    WHERE subject_id = %s
+      AND grading_period = %s
+        """, (subject_id, period))
+
     for row in cur.fetchall():
-        participation_scores[row['enrollment_id']] = float(row['score'] or 0)
+        participation_scores[row['enrollment_id']] = (
+            float(row['score'] or 0),
+            float(row['max_score'] or 10)
+        )
 
     # Attendance scores (from attendance_scores table)
     attendance_scores = {}  # dict of {enrollment_id: (score, total_days)}
@@ -3831,12 +3841,30 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
         qa_score  = _cap_0_100(exam_scores.get(eid, 0))          # Quarterly Assessment (Periodical Exam)
         act_score = _cap_0_100(activity_scores.get(eid, 0))
         # Participation & Attendance
-        par_raw   = participation_scores.get(eid, None)   # raw 1-10 (or None if not entered)
-        att_data  = attendance_scores.get(eid, None)      # (score, total_days) or None
-        att_raw   = att_data[0] if att_data else None
+        # Participation
+        par_data = participation_scores.get(eid, None)
+
+        par_raw = par_data[0] if par_data else None
+        par_total = par_data[1] if par_data else 10
+
+# Attendance
+        att_data = attendance_scores.get(eid, None)
+
+        att_raw = att_data[0] if att_data else None
         att_total = att_data[1] if att_data else 10
-        par_score = _cap_0_100((par_raw or 0) * 10)      # scaled to 0-100 for PT
-        att_score = _cap_0_100(((att_raw or 0) / att_total) * 100) if att_raw is not None else 0.0
+
+# Convert raw scores into percentages
+        par_score = (
+            _cap_0_100((par_raw / par_total) * 100)
+            if par_raw is not None and par_total > 0
+            else 0.0
+        )
+
+        att_score = (
+            _cap_0_100((att_raw / att_total) * 100)
+            if att_raw is not None and att_total > 0
+            else 0.0
+        )
 
         # Performance Tasks = average of all available: Activity, Participation, Attendance
         has_activity      = eid in activity_scores
@@ -3884,9 +3912,11 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
             'student_name':    s['student_name'],
             'quiz':            round(ww_score, 2),          # WW (Quiz + Monthly Exam)
             'activity':        round(act_score, 2),
-            'participation':   round(par_raw or 0, 1),      # raw 1-10 for display
-            'attendance':      round(att_raw or 0, 1),      # raw attendance score for display
-            'attendance_total': att_total,                  # raw attendance total days for display
+            'participation': round(par_raw or 0, 1),
+'participation_total': round(par_total, 1),
+
+'attendance': round(att_raw or 0, 1),
+'attendance_total': att_total,               # raw attendance total days for display
             'has_activity':    has_activity,
             'has_participation': has_participation,
             'has_attendance':  has_attendance,
@@ -4428,16 +4458,34 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
                 'has_result':  row['score'] is not None,
             })
 
-        # ── Participation & Attendance (1-10 scale) ───────────────────────────
+        # ── Participation ─────────────────────────────────────────────────────
         cur.execute("""
-            SELECT score FROM participation_scores
-            WHERE subject_id=%s AND grading_period=%s AND enrollment_id=%s
+            SELECT
+                score,
+                COALESCE(max_score, 10) AS max_score
+            FROM participation_scores
+            WHERE subject_id = %s
+            AND grading_period = %s
+            AND enrollment_id = %s
         """, (subject_id, period, enrollment_id))
+
         par_row = cur.fetchone()
+
         participation = {
-            'score': float(par_row['score']) if par_row and par_row['score'] is not None else None,
-            'max':   10,
-            'has_result': par_row is not None and par_row['score'] is not None,
+            'score': (
+                float(par_row['score'])
+                if par_row and par_row['score'] is not None
+                else None
+            ),
+            'max': (
+                float(par_row['max_score'])
+                if par_row and par_row['max_score'] is not None
+                else 10
+            ),
+            'has_result': (
+                par_row is not None
+                and par_row['score'] is not None
+            ),
         }
 
         cur.execute("""
@@ -4483,9 +4531,19 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
             if item['score'] is not None:
                 pt_components.append(_pct(item['score'], item['total']))
         if participation['has_result']:
-            pt_components.append(min(100.0, participation['score'] * 10))
+            pt_components.append(
+                _pct(
+                    participation['score'],
+                    participation['max']
+                )
+            )
         if attendance['has_result']:
-            pt_components.append(min(100.0, attendance['score'] * 10))
+            pt_components.append(
+                _pct(
+                    attendance['score'],
+                    attendance['max']
+                )
+            )
         pt_avg = round(sum(pt_components) / len(pt_components), 2) if pt_components else None
 
         if request.method == "POST":
@@ -4533,12 +4591,56 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
                             DO UPDATE SET raw_score = EXCLUDED.raw_score
                         """, (sub_row['submission_id'], act_id, val))
                 elif key == 'participation':
+
                     cur.execute("""
-                        INSERT INTO participation_scores (subject_id, grading_period, enrollment_id, score)
-                        VALUES (%s, %s, %s, %s)
-                        ON CONFLICT (subject_id, grading_period, enrollment_id)
-                        DO UPDATE SET score = EXCLUDED.score
-                    """, (subject_id, period, enrollment_id, val))
+                        SELECT COALESCE(max_score, 10) AS max_score
+                        FROM participation_scores
+                        WHERE subject_id = %s
+                          AND grading_period = %s
+                          AND enrollment_id = %s
+                        LIMIT 1
+                    """, (
+                        subject_id,
+                        period,
+                       enrollment_id
+                    ))
+
+                    par_max_row = cur.fetchone()
+
+                    participation_max = (
+                        float(par_max_row["max_score"])
+                        if par_max_row
+                        else 10
+                    )
+
+                    val = max(0, min(participation_max, val))
+
+                    cur.execute("""
+                        INSERT INTO participation_scores
+                            (
+                                subject_id,
+                                grading_period,
+                                enrollment_id,
+                                score,
+                               max_score
+                            )
+                        VALUES (%s, %s, %s, %s, %s)
+
+                        ON CONFLICT (
+                            subject_id,
+                            grading_period,
+                            enrollment_id
+                        )
+
+                        DO UPDATE SET
+                            score = EXCLUDED.score
+                    """, (
+                        subject_id,
+                        period,
+                        enrollment_id,
+                        val,
+                        participation_max
+                    ))
                 elif key == 'attendance':
                     # Get existing total days if any
                     cur.execute("SELECT COALESCE(total_days, 10) as total_days FROM attendance_scores WHERE subject_id=%s AND grading_period=%s AND section_id=%s LIMIT 1", (subject_id, period, section_id))
@@ -4928,94 +5030,348 @@ def teacher_post_grades(section_id, subject_id, period):
         db.close()
     return redirect(url_for("teacher.class_record", section_id=section_id, subject_id=subject_id, period=period))
 
-@teacher_bp.route("/teacher/participation/<int:section_id>/<int:subject_id>/<period>", methods=["GET", "POST"])
+@teacher_bp.route(
+    "/teacher/participation/<int:section_id>/<int:subject_id>/<period>",
+    methods=["GET", "POST"]
+)
 def participation_input(section_id, subject_id, period):
     if not _require_teacher():
         return redirect("/")
-    user_id   = session.get("user_id")
+
+    user_id = session.get("user_id")
     branch_id = session.get("branch_id")
+
     if period not in GRADING_PERIODS:
         flash("Invalid grading period.", "error")
         return redirect(url_for("teacher.grading_weights"))
 
-    db  = get_db_connection()
+    db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
     try:
         year_id = _get_active_school_year(cur, branch_id)
+
         if not year_id:
             flash("No active school year.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
 
-        # Verify ownership in current year
+        # Verify teacher owns this class
         cur.execute("""
             SELECT 1
             FROM section_teachers st
             JOIN sections s ON st.section_id = s.section_id
-            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s AND s.year_id=%s
+            WHERE st.teacher_id = %s
+              AND st.section_id = %s
+              AND st.subject_id = %s
+              AND s.year_id = %s
         """, (user_id, section_id, subject_id, year_id))
+
         if not cur.fetchone():
             flash("Unauthorized.", "error")
             return redirect(url_for("teacher.teacher_dashboard"))
 
-        # Context info for current year
+        # Class / subject info
         cur.execute("""
-            SELECT s.section_name, sub.name AS subject_name
+            SELECT
+                s.section_name,
+                sub.name AS subject_name
             FROM sections s
             JOIN subjects sub ON sub.subject_id = %s
-            WHERE s.section_id=%s AND s.year_id=%s
+            WHERE s.section_id = %s
+              AND s.year_id = %s
         """, (subject_id, section_id, year_id))
+
         ctx = cur.fetchone()
 
+        # =========================================
+        # POST
+        # =========================================
         if request.method == "POST":
-            scores = request.form.to_dict()
-            for key, val in scores.items():
-                if key.startswith("score_"):
+
+            action = request.form.get("action", "save_scores")
+
+            # =====================================
+            # SAVE MAXIMUM PARTICIPATION SCORE
+            # =====================================
+            if action == "save_max":
+
+                try:
+                    max_score = float(
+                        request.form.get("max_score", 10)
+                    )
+                except (TypeError, ValueError):
+                    max_score = 10
+
+                if max_score < 1:
+                    max_score = 10
+
+                cur.execute("""
+                    INSERT INTO participation_scores
+                        (
+                            teacher_id,
+                            enrollment_id,
+                            section_id,
+                            subject_id,
+                            grading_period,
+                            max_score,
+                            updated_at
+                        )
+                    SELECT
+                        %s,
+                        e.enrollment_id,
+                        %s,
+                        %s,
+                        %s,
+                        %s,
+                        NOW()
+                    FROM enrollments e
+
+                    WHERE e.section_id = %s
+                      AND e.branch_id = %s
+                      AND e.year_id = %s
+                      AND e.status IN (
+                          'approved',
+                          'enrolled',
+                          'open_for_enrollment',
+                          'completed'
+                      )
+
+                    ON CONFLICT (
+                        enrollment_id,
+                        subject_id,
+                        grading_period
+                    )
+
+                    DO UPDATE SET
+                        max_score = EXCLUDED.max_score,
+                        updated_at = NOW()
+
+                """, (
+                    user_id,
+                    section_id,
+                    subject_id,
+                    period,
+                    max_score,
+                    section_id,
+                    branch_id,
+                    year_id
+                ))
+
+                db.commit()
+
+                flash(
+                    "Maximum participation score updated!",
+                    "success"
+                )
+
+                return redirect(url_for(
+                    "teacher.participation_input",
+                    section_id=section_id,
+                    subject_id=subject_id,
+                    period=period
+                ))
+
+            # =====================================
+            # SAVE STUDENT SCORES
+            # =====================================
+            else:
+
+                # Get saved maximum score
+                cur.execute("""
+                    SELECT COALESCE(max_score, 10) AS max_score
+                    FROM participation_scores
+                    WHERE subject_id = %s
+                      AND grading_period = %s
+                      AND section_id = %s
+                    LIMIT 1
+                """, (
+                    subject_id,
+                    period,
+                    section_id
+                ))
+
+                max_row = cur.fetchone()
+
+                max_score = (
+                    float(max_row["max_score"])
+                    if max_row
+                    else 10
+                )
+
+                scores = request.form.to_dict()
+
+                for key, val in scores.items():
+
+                    if not key.startswith("score_"):
+                        continue
+
                     try:
-                        eid   = int(key.split("_", 1)[1])
-                        # Accept 1-10 rating; clamp to valid range
-                        score = max(1.0, min(10.0, float(val or 1)))
+                        enrollment_id = int(
+                            key.split("_", 1)[1]
+                        )
+
+                        score = float(val or 0)
+
+                        # prevent negative score
+                        score = max(0, score)
+
+                        # prevent exceeding maximum
+                        score = min(max_score, score)
+
                         cur.execute("""
                             INSERT INTO participation_scores
-                                (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, updated_at)
-                            VALUES (%s,%s,%s,%s,%s,%s,NOW())
-                            ON CONFLICT (enrollment_id, subject_id, grading_period)
-                            DO UPDATE SET score=EXCLUDED.score, updated_at=NOW()
-                        """, (user_id, eid, section_id, subject_id, period, score))
+                                (
+                                    teacher_id,
+                                    enrollment_id,
+                                    section_id,
+                                    subject_id,
+                                    grading_period,
+                                    score,
+                                    max_score,
+                                    updated_at
+                                )
+
+                            VALUES (
+                                %s,%s,%s,%s,%s,%s,%s,NOW()
+                            )
+
+                            ON CONFLICT (
+                                enrollment_id,
+                                subject_id,
+                                grading_period
+                            )
+
+                            DO UPDATE SET
+                                score = EXCLUDED.score,
+                                max_score = EXCLUDED.max_score,
+                                updated_at = NOW()
+
+                        """, (
+                            user_id,
+                            enrollment_id,
+                            section_id,
+                            subject_id,
+                            period,
+                            score,
+                            max_score
+                        ))
+
                     except (ValueError, IndexError):
                         continue
-            db.commit()
-            flash("Participation scores saved!", "success")
-            return redirect(url_for("teacher.class_record",
-                                    section_id=section_id,
-                                    subject_id=subject_id,
-                                    period=period))
 
-        # GET — load current year students + scores
+                db.commit()
+
+                flash(
+                    "Participation scores saved!",
+                    "success"
+                )
+
+                return redirect(url_for(
+                    "teacher.participation_input",
+                    section_id=section_id,
+                    subject_id=subject_id,
+                    period=period
+                ))
+
+        # =========================================
+        # GET CURRENT MAX SCORE
+        # =========================================
+
         cur.execute("""
-            SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name,
-                   COALESCE(ps.score, 0) AS score
+            SELECT COALESCE(max_score, 10) AS max_score
+            FROM participation_scores
+            WHERE subject_id = %s
+              AND grading_period = %s
+              AND section_id = %s
+            LIMIT 1
+        """, (
+            subject_id,
+            period,
+            section_id
+        ))
+
+        max_row = cur.fetchone()
+
+        max_score = (
+            float(max_row["max_score"])
+            if max_row
+            else 10
+        )
+
+        # =========================================
+        # GET STUDENTS
+        # =========================================
+
+        cur.execute("""
+            SELECT
+                e.enrollment_id,
+                e.student_first_name,
+                e.student_middle_name,
+                e.student_last_name,
+
+                COALESCE(ps.score, 0) AS score
+
             FROM enrollments e
-            JOIN sections s ON e.section_id = s.section_id
+
+            JOIN sections s
+                ON e.section_id = s.section_id
+
             LEFT JOIN participation_scores ps
                 ON ps.enrollment_id = e.enrollment_id
-               AND ps.subject_id = %s AND ps.grading_period = %s
-            WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-            ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
-        """, (subject_id, period, section_id, branch_id, year_id))
+               AND ps.subject_id = %s
+               AND ps.grading_period = %s
+
+            WHERE e.section_id = %s
+              AND e.branch_id = %s
+              AND s.year_id = %s
+              AND e.status IN (
+                  'approved',
+                  'enrolled',
+                  'open_for_enrollment',
+                  'completed'
+              )
+
+            ORDER BY
+                e.student_last_name,
+                e.student_first_name,
+                e.student_middle_name
+
+        """, (
+            subject_id,
+            period,
+            section_id,
+            branch_id,
+            year_id
+        ))
+
         students = cur.fetchall() or []
 
         for s in students:
-            first_mid = " ".join(filter(None, [s.get("student_first_name"), s.get("student_middle_name")]))
-            s["student_name"] = f"{s.get('student_last_name')}, {first_mid}" if s.get("student_last_name") else first_mid
+
+            first_mid = " ".join(filter(None, [
+                s.get("student_first_name"),
+                s.get("student_middle_name")
+            ]))
+
+            s["student_name"] = (
+                f"{s.get('student_last_name')}, {first_mid}"
+                if s.get("student_last_name")
+                else first_mid
+            )
 
     finally:
         cur.close()
         db.close()
 
-    return render_template("teacher_participation_input.html",
-                           ctx=ctx, students=students,
-                           section_id=section_id, subject_id=subject_id,
-                           period=period)
+    return render_template(
+        "teacher_participation_input.html",
+        ctx=ctx,
+        students=students,
+        section_id=section_id,
+        subject_id=subject_id,
+        period=period,
+        max_score=max_score
+    )
 
 
 # ── Attendance Scores ─────────────────────────────────────────────────────────

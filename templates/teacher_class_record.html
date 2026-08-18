@@ -1219,7 +1219,9 @@
                         </div>
                         <div class="pt-breakdown">
                             {% if r.has_activity %}Act: {{ "%0.1f" | format(r.activity|float) }}{% endif %}
-                            {% if r.has_participation %} · Par: {{ r.participation | int }}/10{% endif %}
+                            {% if r.has_participation %}
+                                · Par: {{ r.participation | int }}/{{ r.participation_total | default(10) | int }}
+                            {% endif %}
                             {% if r.has_attendance %} · Att: {{ r.attendance | int }}/{{ r.attendance_total | default(10) | int }}{% endif %}
                         </div>
                     </td>
