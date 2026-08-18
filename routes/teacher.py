@@ -1921,9 +1921,14 @@ def grade_submission(submission_id):
     try:
         # Check permissions and get context
         cur.execute('''
-            SELECT sub.activity_id, sub.student_id, a.max_score, a.teacher_id
+            SELECT sub.activity_id, sub.enrollment_id, sub.student_id, a.max_score, a.teacher_id,
+                   COALESCE(u_direct.user_id, u_account.user_id, sub.student_id) AS notification_student_id
             FROM activity_submissions sub
             JOIN activities a ON sub.activity_id = a.activity_id
+            LEFT JOIN enrollments e ON e.enrollment_id = sub.enrollment_id
+            LEFT JOIN users u_direct ON u_direct.user_id = e.user_id
+            LEFT JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
+            LEFT JOIN users u_account ON u_account.username = sa.username
             WHERE sub.submission_id = %s
         ''', (submission_id,))
         sub = cur.fetchone()
@@ -1966,10 +1971,11 @@ def grade_submission(submission_id):
         cur.execute("SELECT title FROM activities WHERE activity_id = %s", (sub['activity_id'],))
         act_title = (cur.fetchone() or {}).get('title', 'Activity')
         
-        cur.execute("""
-            INSERT INTO student_notifications (student_id, title, message, link)
-            VALUES (%s, %s, %s, %s)
-        """, (sub['student_id'], "Activity Graded", f"Your submission for '{act_title}' has been graded.", f"/student/activities/{sub['activity_id']}"))
+        if sub.get('notification_student_id'):
+            cur.execute("""
+                INSERT INTO student_notifications (student_id, title, message, link)
+                VALUES (%s, %s, %s, %s)
+            """, (sub['notification_student_id'], "Activity Graded", f"Your submission for '{act_title}' has been graded.", f"/student/activities/{sub['activity_id']}"))
         
         db.commit()
 
@@ -1985,18 +1991,50 @@ def grade_submission(submission_id):
 @teacher_bp.route("/teacher/activities/submissions/<int:submission_id>/allow_resubmit", methods=["POST"])
 def allow_resubmission(submission_id):
     if not _require_teacher(): return redirect("/")
-    
+
+    user_id = session.get("user_id")
+
     db = get_db_connection()
-    cur = db.cursor()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
     try:
-        # Verify ownership inside? It's fine for simple access.
-        cur.execute("UPDATE activity_submissions SET allow_resubmit = TRUE WHERE submission_id = %s", (submission_id,))
+        cur.execute("""
+            SELECT sub.submission_id, sub.activity_id, a.teacher_id
+            FROM activity_submissions sub
+            JOIN activities a ON a.activity_id = sub.activity_id
+            WHERE sub.submission_id = %s
+        """, (submission_id,))
+        submission = cur.fetchone()
+
+        if not submission or submission["teacher_id"] != user_id:
+            flash("Unauthorized or submission not found.", "error")
+            return redirect(request.referrer)
+
+        cur.execute("""
+            DELETE FROM activity_grades
+            WHERE submission_id = %s
+        """, (submission_id,))
+
+        cur.execute("""
+            UPDATE activity_submissions
+            SET allow_resubmit = TRUE,
+                status = 'Submitted',
+                graded_at = NULL,
+                graded_by = NULL
+            WHERE submission_id = %s
+        """, (submission_id,))
+
         db.commit()
-        flash("Resubmission explicitly allowed for this student.", "success")
+        flash("Resubmission allowed. Previous grade has been cleared.", "success")
+
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not allow resubmission: {str(e)}", "error")
+
     finally:
         cur.close()
         db.close()
-        
+
     return redirect(request.referrer)
 
 # ══════════════════════════════════════════
@@ -4563,96 +4601,224 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
                 
                 if key.startswith('exam_'):
                     ex_id = int(key.split('_')[1])
-                    cur.execute("""
-                        INSERT INTO exam_results (exam_id, enrollment_id, score, status, total_points, submitted_at)
-                        VALUES (%s, %s, %s, 'submitted', (SELECT COALESCE(SUM(points), 100) FROM exam_questions WHERE exam_id=%s), NOW())
-                        ON CONFLICT (exam_id, enrollment_id) 
-                        DO UPDATE SET score = EXCLUDED.score, status = 'submitted'
-                    """, (ex_id, enrollment_id, val, ex_id))
-                elif key.startswith('act_'):
-                    act_id = int(key.split('_')[1])
-                    # Ensure submission exists
-                    cur.execute("""
-                        INSERT INTO activity_submissions (activity_id, enrollment_id, status)
-                        VALUES (%s, %s, 'submitted')
-                        ON CONFLICT (activity_id, enrollment_id) DO NOTHING
-                        RETURNING submission_id
-                    """, (act_id, enrollment_id))
-                    sub_row = cur.fetchone()
-                    if not sub_row:
-                        cur.execute("SELECT submission_id FROM activity_submissions WHERE activity_id=%s AND enrollment_id=%s", (act_id, enrollment_id))
-                        sub_row = cur.fetchone()
-                    
-                    if sub_row:
-                        cur.execute("""
-                            INSERT INTO activity_grades (submission_id, activity_id, raw_score)
-                            VALUES (%s, %s, %s)
-                            ON CONFLICT (submission_id, activity_id) 
-                            DO UPDATE SET raw_score = EXCLUDED.raw_score
-                        """, (sub_row['submission_id'], act_id, val))
-                elif key == 'participation':
 
+    # Check if student already has an exam result
                     cur.execute("""
-                        SELECT COALESCE(max_score, 10) AS max_score
-                        FROM participation_scores
-                        WHERE subject_id = %s
-                          AND grading_period = %s
-                          AND enrollment_id = %s
-                        LIMIT 1
-                    """, (
-                        subject_id,
-                        period,
-                       enrollment_id
+        SELECT result_id
+        FROM exam_results
+        WHERE exam_id = %s
+          AND enrollment_id = %s
+        ORDER BY result_id DESC
+        LIMIT 1
+    """, (
+                        ex_id,
+                        enrollment_id
                     ))
 
-                    par_max_row = cur.fetchone()
+                    existing_result = cur.fetchone()
+
+                    if existing_result:
+
+        # Existing attempt/result → update score
+                        cur.execute("""
+            UPDATE exam_results
+            SET
+                score = %s,
+                status = 'submitted',
+                total_points = (
+                    SELECT COALESCE(SUM(points), 100)
+                    FROM exam_questions
+                    WHERE exam_id = %s
+                ),
+                submitted_at = NOW()
+            WHERE result_id = %s
+        """, (
+                            val,
+                            ex_id,
+                            existing_result['result_id']
+                        ))
+
+                    else:
+
+        # No attempt/result → create one
+                        cur.execute("""
+            INSERT INTO exam_results (
+                exam_id,
+                enrollment_id,
+                score,
+                status,
+                total_points,
+                submitted_at
+            )
+            VALUES (
+                %s,
+                %s,
+                %s,
+                'submitted',
+                (
+                    SELECT COALESCE(SUM(points), 100)
+                    FROM exam_questions
+                    WHERE exam_id = %s
+                ),
+                NOW()
+            )
+        """, (
+                            ex_id,
+                            enrollment_id,
+                            val,
+                            ex_id
+                        ))
+                elif key.startswith('act_'):
+                    act_id = int(key.split('_')[1])
+
+    # ── Check if the student already has a submission ──
+                    cur.execute("""
+        SELECT submission_id
+        FROM activity_submissions
+        WHERE activity_id = %s
+          AND enrollment_id = %s
+        ORDER BY submission_id DESC
+        LIMIT 1
+    """, (
+                        act_id,
+                        enrollment_id
+                    ))
+
+                    sub_row = cur.fetchone()
+
+    # ── No submission yet: create one ──
+    # Needed when teacher manually sets a missing activity to 0.
+                    if not sub_row:
+                        cur.execute("""
+                            INSERT INTO activity_submissions (activity_id, enrollment_id, student_id, status)
+                            SELECT %s, e.enrollment_id, COALESCE(u_direct.user_id, u_account.user_id), 'submitted'
+                            FROM enrollments e
+                            LEFT JOIN users u_direct ON u_direct.user_id = e.user_id
+                            LEFT JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
+                            LEFT JOIN users u_account ON u_account.username = sa.username
+                            WHERE e.enrollment_id = %s
+                            RETURNING submission_id
+                        """, (act_id, enrollment_id))
+
+                        sub_row = cur.fetchone()
+
+                    if sub_row:
+                        submission_id = sub_row['submission_id']
+
+        # ── Check if this submission already has a grade ──
+                        cur.execute("""
+            SELECT grade_id
+            FROM activity_grades
+            WHERE submission_id = %s
+              AND activity_id = %s
+            ORDER BY grade_id DESC
+            LIMIT 1
+        """, (
+                        submission_id,
+                            act_id
+                        ))
+
+                        existing_grade = cur.fetchone()
+
+                        cur.execute("SELECT COALESCE(max_score, 100) AS max_score FROM activities WHERE activity_id=%s", (act_id,))
+                        act_row = cur.fetchone()
+                        activity_max = float(act_row['max_score']) if act_row else 100
+                        val = max(0, min(activity_max, val))
+                        percentage = (val / activity_max) * 100 if activity_max > 0 else 0
+
+                        if existing_grade:
+                            cur.execute("""
+                                UPDATE activity_grades
+                                SET raw_score=%s, max_score=%s, percentage=%s, updated_at=NOW()
+                                WHERE grade_id=%s
+                            """, (val, activity_max, percentage, existing_grade['grade_id']))
+                        else:
+                            cur.execute("""
+                                INSERT INTO activity_grades (submission_id, activity_id, raw_score, max_score, percentage)
+                                VALUES (%s, %s, %s, %s, %s)
+                            """, (submission_id, act_id, val, activity_max, percentage))
+
+                elif key == 'participation':
+
+    # Get the configured maximum participation score
+                    cur.execute("""
+        SELECT COALESCE(max_score, 10) AS max_score
+        FROM participation_scores
+        WHERE enrollment_id = %s
+          AND subject_id = %s
+          AND grading_period = %s
+        LIMIT 1
+    """, (
+        enrollment_id,
+        subject_id,
+        period
+    ))
+
+                    par_row = cur.fetchone()
 
                     participation_max = (
-                        float(par_max_row["max_score"])
-                        if par_max_row
+                        float(par_row["max_score"])
+                        if par_row
                         else 10
                     )
 
-                    val = max(0, min(participation_max, val))
+    # Prevent score below 0 or above maximum
+                    val = max(
+                        0,
+                        min(participation_max, val)
+                    )
 
                     cur.execute("""
-                        INSERT INTO participation_scores
-                            (
-                                subject_id,
-                                grading_period,
-                                enrollment_id,
-                                score,
-                               max_score
-                            )
-                        VALUES (%s, %s, %s, %s, %s)
+        INSERT INTO participation_scores (
+            teacher_id,
+            enrollment_id,
+            section_id,
+            subject_id,
+            grading_period,
+            score,
+            max_score,
+            updated_at
+        )
+        VALUES (
+            %s, %s, %s, %s, %s, %s, %s, NOW()
+        )
 
-                        ON CONFLICT (
-                            subject_id,
-                            grading_period,
-                            enrollment_id
-                        )
+        ON CONFLICT (
+            enrollment_id,
+            subject_id,
+            grading_period
+        )
 
-                        DO UPDATE SET
-                            score = EXCLUDED.score
-                    """, (
-                        subject_id,
-                        period,
-                        enrollment_id,
-                        val,
-                        participation_max
-                    ))
+        DO UPDATE SET
+            score = EXCLUDED.score,
+            max_score = EXCLUDED.max_score,
+            teacher_id = EXCLUDED.teacher_id,
+            section_id = EXCLUDED.section_id,
+            updated_at = NOW()
+    """, (
+        user_id,
+        enrollment_id,
+        section_id,
+        subject_id,
+        period,
+        val,
+        participation_max
+                        ))
                 elif key == 'attendance':
                     # Get existing total days if any
-                    cur.execute("SELECT COALESCE(total_days, 10) as total_days FROM attendance_scores WHERE subject_id=%s AND grading_period=%s AND section_id=%s LIMIT 1", (subject_id, period, section_id))
+                    cur.execute("SELECT COALESCE(total_days, 10) AS total_days FROM attendance_scores WHERE subject_id=%s AND grading_period=%s AND section_id=%s LIMIT 1", (subject_id, period, section_id))
                     td_row = cur.fetchone()
-                    total_days = td_row['total_days'] if td_row else 10
+                    total_days = float(td_row['total_days']) if td_row else 10
+
+                    # Prevent attendance score below 0 or above total days
+                    val = max(0, min(total_days, val))
 
                     cur.execute("""
-                        INSERT INTO attendance_scores (subject_id, grading_period, enrollment_id, score, teacher_id, section_id, total_days)
-                        VALUES (%s, %s, %s, %s, %s, %s, %s)
-                        ON CONFLICT (subject_id, grading_period, enrollment_id)
-                        DO UPDATE SET score = EXCLUDED.score
-                    """, (subject_id, period, enrollment_id, val, user_id, section_id, total_days))
+                        INSERT INTO attendance_scores (teacher_id, enrollment_id, section_id, subject_id, grading_period, score, total_days, updated_at)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
+                        ON CONFLICT (enrollment_id, subject_id, grading_period)
+                        DO UPDATE SET score = EXCLUDED.score, total_days = EXCLUDED.total_days, teacher_id = EXCLUDED.teacher_id, section_id = EXCLUDED.section_id, updated_at = NOW()
+                    """, (user_id, enrollment_id, section_id, subject_id, period, val, total_days))
             
             db.commit()
             flash("Scores successfully updated.", "success")
@@ -4687,130 +4853,373 @@ def student_score_breakdown(section_id, subject_id, enrollment_id):
 
 # ── Grade Override Routes ─────────────────────────────────────────────────────
 
-@teacher_bp.route("/teacher/class-record/<int:section_id>/<int:subject_id>/override", methods=["POST"])
-def save_grade_override(section_id, subject_id):
-    """AJAX: Save teacher manual WW/PT/QA component score overrides for a student.
-    The transmuted grade is always re-computed server-side from the (possibly-overridden) values.
-    """
-    from flask import jsonify
+@teacher_bp.route(
+    "/teacher/class-record/<int:section_id>/<int:subject_id>/mark-missing-zero",
+    methods=["POST"]
+)
+def mark_missing_score_zero(section_id, subject_id):
     if not _require_teacher():
-        return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+        return jsonify({
+            "success": False,
+            "error": "Unauthorized"
+        }), 403
 
-    user_id   = session.get('user_id')
-    branch_id = session.get('branch_id')
+    user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
 
-    data          = request.get_json(force=True) or {}
-    enrollment_id = data.get('enrollment_id')
-    period        = data.get('period', '1st')
-    new_ww        = data.get('ww')    # None means "don't override this component"
-    new_pt        = data.get('pt')
-    new_qa        = data.get('qa')
-    note          = data.get('note', '').strip() or None
-    reset_field   = data.get('reset')  # 'ww'|'pt'|'qa'|'all' — resets that component
+    data = request.get_json(force=True) or {}
+
+    enrollment_id = data.get("enrollment_id")
+    period = data.get("period")
+    item_type = data.get("item_type")
+    item_id = data.get("item_id")
 
     if period not in GRADING_PERIODS:
-        return jsonify({'success': False, 'error': 'Invalid period'}), 400
+        return jsonify({
+            "success": False,
+            "error": "Invalid grading period"
+        }), 400
 
-    db  = get_db_connection()
-    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    db = get_db_connection()
+    cur = db.cursor(
+        cursor_factory=psycopg2.extras.RealDictCursor
+    )
+
     try:
-        year_id = _get_active_school_year(cur, branch_id)
+        year_id = _get_active_school_year(
+            cur,
+            branch_id
+        )
+
         if not year_id:
-            return jsonify({'success': False, 'error': 'No active school year'}), 400
+            return jsonify({
+                "success": False,
+                "error": "No active school year"
+            }), 400
 
-        # Verify teacher owns this assignment
+        # Verify teacher owns class
         cur.execute("""
-            SELECT 1 FROM section_teachers st
-            JOIN sections s ON st.section_id = s.section_id
-            WHERE st.teacher_id=%s AND st.section_id=%s AND st.subject_id=%s AND s.year_id=%s
-        """, (user_id, section_id, subject_id, year_id))
+            SELECT 1
+            FROM section_teachers st
+            JOIN sections s
+                ON st.section_id = s.section_id
+            WHERE st.teacher_id = %s
+              AND st.section_id = %s
+              AND st.subject_id = %s
+              AND s.year_id = %s
+        """, (
+            user_id,
+            section_id,
+            subject_id,
+            year_id
+        ))
+
         if not cur.fetchone():
-            return jsonify({'success': False, 'error': 'Unauthorized'}), 403
+            return jsonify({
+                "success": False,
+                "error": "Unauthorized"
+            }), 403
 
-        # Lock grade edits if submission request is pending review or approved/posted
+        # Prevent changes when record is locked
         cur.execute("""
-            SELECT status FROM grade_submission_requests
-            WHERE section_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
-        """, (section_id, subject_id, period, year_id))
-        sub_req = cur.fetchone()
-        if sub_req and sub_req['status'] in ['pending_registrar', 'pending_admin', 'approved_for_posting', 'posted']:
-            return jsonify({'success': False, 'error': 'Class record is currently locked for review or already approved/posted.'}), 403
+            SELECT status
+            FROM grade_submission_requests
+            WHERE section_id = %s
+              AND subject_id = %s
+              AND grading_period = %s
+              AND year_id = %s
+        """, (
+            section_id,
+            subject_id,
+            period,
+            year_id
+        ))
 
-        # Handle field reset: set that column to NULL
-        if reset_field:
-            if reset_field == 'all':
+        req = cur.fetchone()
+
+        if req and req["status"] in [
+            "pending_registrar",
+            "pending_admin",
+            "approved_for_posting",
+            "posted"
+        ]:
+            return jsonify({
+                "success": False,
+                "error": "Class record is locked."
+            }), 403
+
+        # =========================================
+        # QUIZ / MONTHLY EXAM / PERIODICAL EXAM
+        # =========================================
+        if item_type == "exam":
+
+            cur.execute("""
+                SELECT
+                    e.exam_id,
+                    COALESCE(
+                        SUM(q.points),
+                        100
+                    ) AS total_points
+                FROM exams e
+
+                LEFT JOIN exam_questions q
+                    ON q.exam_id = e.exam_id
+
+                WHERE e.exam_id = %s
+                  AND e.section_id = %s
+                  AND e.subject_id = %s
+                  AND e.grading_period = %s
+
+                GROUP BY e.exam_id
+            """, (
+                item_id,
+                section_id,
+                subject_id,
+                period
+            ))
+
+            exam = cur.fetchone()
+
+            if not exam:
+                return jsonify({
+                    "success": False,
+                    "error": "Assessment not found"
+                }), 404
+
+            total_points = float(
+                exam["total_points"] or 100
+            )
+
+            cur.execute("""
+                INSERT INTO exam_results
+                    (
+                        exam_id,
+                        enrollment_id,
+                        score,
+                        status,
+                        total_points,
+                        submitted_at
+                    )
+
+                VALUES (
+                    %s,
+                    %s,
+                    0,
+                    'submitted',
+                    %s,
+                    NOW()
+                )
+
+                ON CONFLICT (
+                    exam_id,
+                    enrollment_id
+                )
+
+                DO UPDATE SET
+                    score = 0,
+                    status = 'submitted',
+                    total_points = EXCLUDED.total_points,
+                    submitted_at = NOW()
+            """, (
+                item_id,
+                enrollment_id,
+                total_points
+            ))
+        # =========================================
+        # ACTIVITY
+        # =========================================
+        elif item_type == "activity":
+
+            # Get activity and maximum score
+            cur.execute("""
+                SELECT
+                    activity_id,
+                    COALESCE(max_score, 100) AS max_score
+                FROM activities
+                WHERE activity_id = %s
+                  AND section_id = %s
+                  AND subject_id = %s
+                  AND grading_period = %s
+            """, (
+                item_id,
+                section_id,
+                subject_id,
+                period
+            ))
+
+            activity = cur.fetchone()
+
+            if not activity:
+                return jsonify({
+                    "success": False,
+                    "error": "Activity not found"
+                }), 404
+
+            activity_max = float(activity["max_score"] or 100)
+
+            # Get the student's actual user_id
+            cur.execute("""
+                SELECT
+                    COALESCE(
+                        u_direct.user_id,
+                        u_account.user_id
+                    ) AS student_user_id
+                FROM enrollments e
+
+                LEFT JOIN users u_direct
+                    ON u_direct.user_id = e.user_id
+
+                LEFT JOIN student_accounts sa
+                    ON sa.enrollment_id = e.enrollment_id
+
+                LEFT JOIN users u_account
+                    ON u_account.username = sa.username
+
+                WHERE e.enrollment_id = %s
+                LIMIT 1
+            """, (
+                enrollment_id,
+            ))
+
+            student_row = cur.fetchone()
+
+            student_user_id = (
+                student_row["student_user_id"]
+                if student_row
+                else None
+            )
+
+            # Check first if submission already exists
+            cur.execute("""
+                SELECT submission_id
+                FROM activity_submissions
+                WHERE activity_id = %s
+                  AND enrollment_id = %s
+                ORDER BY submission_id DESC
+                LIMIT 1
+            """, (
+                item_id,
+                enrollment_id
+            ))
+
+            submission = cur.fetchone()
+
+            # No submission yet -> create one
+            if not submission:
                 cur.execute("""
-                    DELETE FROM grade_overrides
-                    WHERE enrollment_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
-                """, (enrollment_id, subject_id, period, year_id))
-            else:
-                col = {'ww': 'override_ww', 'pt': 'override_pt', 'qa': 'override_qa'}.get(reset_field)
-                if col:
-                    cur.execute(f"""
-                        UPDATE grade_overrides
-                        SET {col} = NULL, overridden_at = NOW(), overridden_by = %s
-                        WHERE enrollment_id=%s AND subject_id=%s AND grading_period=%s AND year_id=%s
-                    """, (user_id, enrollment_id, subject_id, period, year_id))
-        else:
-            # Upsert the manual override values that were provided
-            def _to_numeric(v):
-                try:
-                    x = float(v)
-                    return max(0.0, min(100.0, x))
-                except (TypeError, ValueError):
-                    return None
-
-            ww_val = _to_numeric(new_ww)
-            pt_val = _to_numeric(new_pt)
-            qa_val = _to_numeric(new_qa)
-
-            # Only upsert if at least one component is being set
-            if any(v is not None for v in (ww_val, pt_val, qa_val)):
-                cur.execute("""
-                    INSERT INTO grade_overrides
-                        (enrollment_id, section_id, subject_id, grading_period, year_id,
-                         override_ww, override_pt, override_qa, override_note,
-                         overridden_by, overridden_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
-                    ON CONFLICT (enrollment_id, subject_id, grading_period, year_id)
-                    DO UPDATE SET
-                        override_ww  = CASE WHEN %s IS NOT NULL THEN %s ELSE grade_overrides.override_ww END,
-                        override_pt  = CASE WHEN %s IS NOT NULL THEN %s ELSE grade_overrides.override_pt END,
-                        override_qa  = CASE WHEN %s IS NOT NULL THEN %s ELSE grade_overrides.override_qa END,
-                        override_note = COALESCE(%s, grade_overrides.override_note),
-                        overridden_by = %s,
-                        overridden_at = NOW()
+                    INSERT INTO activity_submissions (
+                        activity_id,
+                        enrollment_id,
+                        student_id,
+                        status
+                    )
+                    VALUES (
+                        %s,
+                        %s,
+                        %s,
+                        'submitted'
+                    )
+                    RETURNING submission_id
                 """, (
-                    enrollment_id, section_id, subject_id, period, year_id,
-                    ww_val, pt_val, qa_val, note, user_id,
-                    ww_val, ww_val, pt_val, pt_val, qa_val, qa_val, note, user_id
+                    item_id,
+                    enrollment_id,
+                    student_user_id
                 ))
+
+                submission = cur.fetchone()
+
+            else:
+                # Existing submission:
+                # make sure student_id is populated if previously NULL
+                cur.execute("""
+                    UPDATE activity_submissions
+                    SET
+                        student_id = COALESCE(
+                            student_id,
+                            %s
+                        ),
+                        status = 'submitted'
+                    WHERE submission_id = %s
+                """, (
+                    student_user_id,
+                    submission["submission_id"]
+                ))
+
+            # Create/update the zero grade
+            if submission:
+                cur.execute("""
+                    SELECT grade_id
+                    FROM activity_grades
+                    WHERE submission_id = %s
+                      AND activity_id = %s
+                    ORDER BY grade_id DESC
+                    LIMIT 1
+                """, (
+                    submission["submission_id"],
+                    item_id
+                ))
+
+                existing_grade = cur.fetchone()
+
+                if existing_grade:
+                    cur.execute("""
+                        UPDATE activity_grades
+                        SET
+                            raw_score = 0,
+                            max_score = %s,
+                            percentage = 0,
+                            updated_at = NOW()
+                        WHERE grade_id = %s
+                    """, (
+                        activity_max,
+                        existing_grade["grade_id"]
+                    ))
+
+                else:
+                    cur.execute("""
+                        INSERT INTO activity_grades (
+                            submission_id,
+                            activity_id,
+                            student_id,
+                            raw_score,
+                            max_score,
+                            percentage
+                        )
+                        VALUES (
+                            %s,
+                            %s,
+                            %s,
+                            0,
+                            %s,
+                            0
+                        )
+                    """, (
+                        submission["submission_id"],
+                        item_id,
+                        student_user_id,
+                        activity_max
+                    ))
+
+        else:
+            return jsonify({
+                "success": False,
+                "error": "Invalid item type"
+            }), 400
 
         db.commit()
 
-        # Re-compute the grade from scratch to return the updated values
-        _, weights, records = _compute_period_grades(
-            cur, user_id, branch_id, section_id, subject_id, period, year_id
-        )
-        updated = next((r for r in records if r['enrollment_id'] == enrollment_id), None)
-        if not updated:
-            return jsonify({'success': False, 'error': 'Student not found'}), 404
-
         return jsonify({
-            'success':          True,
-            'ww':               updated['quiz'],
-            'pt':               updated['pt_score'],
-            'qa':               updated['exam'],
-            'initial_grade':    updated['period_grade'],
-            'transmuted_grade': updated['transmuted_grade'],
-            'band':             updated['transmutation_band'],
-            'ww_overridden':    updated['ww_overridden'],
-            'pt_overridden':    updated['pt_overridden'],
-            'qa_overridden':    updated['qa_overridden'],
+            "success": True
         })
+
     except Exception as e:
         db.rollback()
-        return jsonify({'success': False, 'error': str(e)}), 500
+
+        return jsonify({
+            "success": False,
+            "error": str(e)
+        }), 500
+
     finally:
         cur.close()
         db.close()
@@ -5667,18 +6076,26 @@ def teacher_reschedule():
         if not cur.fetchone():
             return jsonify({"error": "Unauthorized item access or item not found."}), 403
 
-        # 2. Verify student enrollment in this branch AND YEAR
+        # 2. Verify student enrollment and resolve actual student user_id
         cur.execute("""
-            SELECT user_id FROM enrollments e
+            SELECT COALESCE(u_direct.user_id, u_account.user_id) AS student_id
+            FROM enrollments e
             JOIN sections s ON e.section_id = s.section_id
+            LEFT JOIN users u_direct ON u_direct.user_id = e.user_id
+            LEFT JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
+            LEFT JOIN users u_account ON u_account.username = sa.username
             WHERE e.enrollment_id = %s AND e.branch_id = %s AND s.year_id = %s
+            LIMIT 1
         """, (enrollment_id, branch_id, year_id))
 
         student_row = cur.fetchone()
         if not student_row:
             return jsonify({"error": "Invalid student or branch/year mismatch."}), 403
 
-        student_id = student_row[0]  # This can be None, which is fine
+        student_id = student_row[0]
+
+        if not student_id:
+            return jsonify({"error": "Student account could not be resolved."}), 400
 
         # 3. Upsert individual_extensions, add year_id filter/column!
         cur.execute("""

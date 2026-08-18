@@ -445,8 +445,7 @@
                             {% if sub.grade_id %}
                             <div style="font-weight: 800; color: var(--sub-navy);">{{ sub.raw_score|round(1) }} / {{
                                 activity.max_score }}</div>
-                            <div style="font-size: 0.75rem; color: #15803d; font-weight: 700;">{{
-                                sub.percentage|round|int }}%</div>
+                            <div style="font-size: 0.75rem; color: #15803d; font-weight: 700;">{{ (sub.percentage or 0)|round|int }}%</div>
                             {% else %}
                             <span style="color: var(--sub-muted);">—</span>
                             {% endif %}
@@ -492,10 +491,12 @@
                                 </button>
                                 <form
                                     action="{{ url_for('teacher.allow_resubmission', submission_id=sub.submission_id) }}"
-                                    method="POST" style="margin:0;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    method="POST" style="margin:0;"
+                                    onsubmit="return confirm('Are you sure you want to allow this student to resubmit this activity?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="action-btn btn-resched" {% if sub.allow_resubmit
-                                        %}disabled title="Already allowed" {% endif %} style="padding: 8px;">
+                                        %}disabled title="Resubmission already allowed" {% else
+                                        %}title="Allow Resubmission" {% endif %} style="padding: 8px;">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"
                                             stroke-linecap="round" stroke-linejoin="round">
