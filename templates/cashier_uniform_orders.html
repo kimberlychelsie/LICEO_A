@@ -632,9 +632,7 @@
     .btn-view,
     .btn-onsite,
     .btn-claim {
-        position: relative;
-        z-index: 2;
-        pointer-events: auto;
+        /* Removed position relative and z-index 2 as it breaks clickability in table rows */
     }
 
     @keyframes popIn {
@@ -1170,10 +1168,10 @@
         (function liveUniformTracking() {
             let lastSig = [
                 {{ stats.for_ordering or 0 }},
-            {{ stats.ready or 0 }},
-        { { stats.claimed or 0 } },
-        { { stats.total or 0 } }
-        ].join('|');
+                {{ stats.ready or 0 }},
+                {{ stats.claimed or 0 }},
+                {{ stats.total or 0 }}
+            ].join('|');
         setInterval(function () {
             const pre = document.getElementById('pane-preorders');
             if (!pre || !pre.classList.contains('active')) return;
