@@ -446,6 +446,30 @@
         .hero-banner {
             padding: 24px 16px;
         }
+
+        .hero-content h1 {
+            font-size: 1.5rem;
+            white-space: normal;
+            word-break: break-word;
+        }
+
+        .form-grid {
+            grid-template-columns: 1fr;
+            gap: 16px;
+        }
+    }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 24px;
+        margin-bottom: 24px;
+    }
+    
+    @media (min-width: 769px) and (max-width: 1024px) {
+        .form-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
     }
 </style>
 
@@ -483,7 +507,7 @@
             </div>
             <form method="POST" action="{{ url_for('super_admin.super_admin_branches') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-bottom: 24px;">
+                <div class="form-grid">
                     <!-- Row 1: Admin Name -->
                     <div class="form-node">
                         <label>Admin First Name</label>
@@ -556,7 +580,7 @@
                         <th>Location</th>
                         <th>Branch Code</th>
                         <th>Admin Details</th>
-                        <th style="width: 200px; text-align: right; padding-right: 32px;">Actions</th>
+                        <th style="width: 100px; text-align: center;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -608,7 +632,7 @@
                                 </div>
                             </div>
                         </td>
-                        <td style="text-align: right; padding-right: 32px;">
+                        <td style="text-align: center;">
                             <div class="action-menu">
                                 <button type="button" class="action-btn" onclick="toggleActionMenu(this, event)">
                                     <i class="fas fa-ellipsis-v"></i>
@@ -974,15 +998,28 @@
         event.stopPropagation();
         const dropdown = btn.nextElementSibling;
         const container = btn.closest('.vault-wrapper');
+        const currentRow = btn.closest('tr');
 
         document.querySelectorAll('.action-dropdown').forEach(d => {
-            if (d !== dropdown) d.classList.remove('show');
+            if (d !== dropdown) {
+                d.classList.remove('show');
+                let row = d.closest('tr');
+                if (row) {
+                    row.style.zIndex = 'auto';
+                    row.style.position = 'static';
+                }
+            }
         });
 
         dropdown.classList.remove('drop-up'); // Reset first
         dropdown.classList.toggle('show');
 
         if (dropdown.classList.contains('show')) {
+            if (currentRow) {
+                currentRow.style.position = 'relative';
+                currentRow.style.zIndex = '9999';
+            }
+            
             const rect = dropdown.getBoundingClientRect();
             const viewportHeight = window.innerHeight;
             const containerRect = container ? container.getBoundingClientRect() : null;
@@ -991,9 +1028,24 @@
             if (rect.bottom > viewportHeight || (containerRect && rect.bottom > containerRect.bottom - 10)) {
                 dropdown.classList.add('drop-up');
             }
+        } else {
+            if (currentRow) {
+                currentRow.style.zIndex = 'auto';
+                currentRow.style.position = 'static';
+            }
         }
     }
-    document.addEventListener('click', () => { document.querySelectorAll('.action-dropdown').forEach(d => d.classList.remove('show')); });
+    
+    document.addEventListener('click', () => { 
+        document.querySelectorAll('.action-dropdown').forEach(d => {
+            d.classList.remove('show');
+            let row = d.closest('tr');
+            if (row) {
+                row.style.zIndex = 'auto';
+                row.style.position = 'static';
+            }
+        }); 
+    });
 
     // Branch List Pagination & Search
     let currentPage = 1;
