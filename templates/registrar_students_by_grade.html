@@ -661,40 +661,70 @@
                                         </select>
                                     </div>
 
-                                    <h5 style="font-size: 0.8rem; font-weight: 800; color: var(--reg-muted); text-transform: uppercase; margin: 16px 0 10px;">Verification Documents</h5>
-                                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                                        {% if s.documents and s.documents|length > 0 %}
-                                        {% for doc in s.documents %}
-                                        {% set ext = doc.file_path.split('.')[-1] | lower %}
-                                        <a href="javascript:void(0)" onclick="openPreview('{{ doc.file_path }}', '{{ doc.document_type|replace('_', ' ')|title }}')" class="btn btn-outline"
-                                            style="justify-content: flex-start; padding: 10px; font-size: 0.8rem; gap: 8px;">
-                                            {% if ext == 'pdf' %}
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                                                <polyline points="14 2 14 8 20 8"></polyline>
-                                                <line x1="16" y1="13" x2="8" y2="13"></line>
-                                                <line x1="16" y1="17" x2="8" y2="17"></line>
-                                                <polyline points="10 9 9 9 8 9"></polyline>
-                                            </svg>
+                                    {% set required_docs = ['PSA Birth Certificate', 'Baptismal Certificate', 'Form 138', 'Good Moral Certificate', 'Form 137'] %}
+                                    {% set doc_count = namespace(value=0) %}
+
+                                    <div style="display:flex; align-items:center; justify-content:space-between; margin:16px 0 10px;">
+                                        <h5 style="font-size:0.8rem; font-weight:800; color:var(--reg-muted); text-transform:uppercase; margin:0;">Verification Documents</h5>
+                                    </div>
+
+                                    <div style="display:flex; flex-direction:column; gap:8px;">
+                                        {% for required_doc in required_docs %}
+                                            {% set found = namespace(doc=None) %}
+
+                                            {% for doc in s.documents or [] %}
+                                                {% if doc.document_type == required_doc %}
+                                                    {% set found.doc = doc %}
+                                                {% endif %}
+                                            {% endfor %}
+
+                                            {% if found.doc %}
+                                                {% set doc_count.value = doc_count.value + 1 %}
+                                                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:10px;">
+                                                    <div style="display:flex; align-items:center; gap:9px; min-width:0;">
+                                                        <div style="width:30px; height:30px; border-radius:8px; background:#2563eb; color:white; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                                <path d="M20 6L9 17l-5-5"></path>
+                                                            </svg>
+                                                        </div>
+                                                        <div style="min-width:0;">
+                                                            <div style="font-size:0.8rem; font-weight:800; color:#1e40af;">{{ required_doc }}</div>
+                                                            <div style="font-size:0.68rem; font-weight:700; color:#3b82f6;">Submitted</div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div style="display:flex; gap:6px; flex-shrink:0;">
+                                                        <button type="button" onclick="openPreview('{{ found.doc.file_path }}', '{{ required_doc }}')" style="border:1px solid #93c5fd; background:white; color:#1d4ed8; border-radius:7px; padding:6px 9px; font-size:0.7rem; font-weight:800; cursor:pointer;">View</button>
+                                                        <input type="file" id="doc-{{ s.enrollment_id }}-{{ loop.index }}" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="uploadRegistrarDocument({{ s.enrollment_id }}, '{{ required_doc }}', this)">
+                                                        <button type="button" onclick="document.getElementById('doc-{{ s.enrollment_id }}-{{ loop.index }}').click()" style="border:1px solid #93c5fd; background:white; color:#1d4ed8; border-radius:7px; padding:6px 9px; font-size:0.7rem; font-weight:800; cursor:pointer;">Replace</button>
+                                                    </div>
+                                                </div>
                                             {% else %}
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round">
-                                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                                                <circle cx="8.5" cy="8.5" r="1.5"></circle>
-                                                <polyline points="21 15 16 10 5 21"></polyline>
-                                            </svg>
+                                                <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 12px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px;">
+                                                    <div style="display:flex; align-items:center; gap:9px; min-width:0;">
+                                                        <div style="width:30px; height:30px; border-radius:8px; background:#e2e8f0; color:#94a3b8; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                                                                <polyline points="14 2 14 8 20 8"></polyline>
+                                                            </svg>
+                                                        </div>
+                                                        <div>
+                                                            <div style="font-size:0.8rem; font-weight:800; color:#64748b;">{{ required_doc }}</div>
+                                                            <div style="font-size:0.68rem; font-weight:700; color:#94a3b8;">Missing</div>
+                                                        </div>
+                                                    </div>
+
+                                                    <div style="flex-shrink:0;">
+                                                        <input type="file" id="doc-{{ s.enrollment_id }}-{{ loop.index }}" accept=".pdf,.jpg,.jpeg,.png" style="display:none;" onchange="uploadRegistrarDocument({{ s.enrollment_id }}, '{{ required_doc }}', this)">
+                                                        <button type="button" onclick="document.getElementById('doc-{{ s.enrollment_id }}-{{ loop.index }}').click()" style="border:1px solid #cbd5e1; background:white; color:#475569; border-radius:7px; padding:6px 10px; font-size:0.7rem; font-weight:800; cursor:pointer;">Upload</button>
+                                                    </div>
+                                                </div>
                                             {% endif %}
-                                            {{ doc.document_type|replace('_', ' ')|title }}
-                                        </a>
                                         {% endfor %}
-                                        {% else %}
-                                        <div
-                                            style="padding: 16px; background: #f8fafc; border-radius: 12px; font-size: 0.8rem; color: var(--reg-muted); text-align: center;">
-                                            Archive empty for this profile.</div>
-                                        {% endif %}
+
+                                        <div style="display:flex; justify-content:flex-end; margin-top:3px; font-size:0.72rem; font-weight:800; color:{% if doc_count.value == 5 %}#16a34a{% else %}#64748b{% endif %};">
+                                            {{ doc_count.value }} / 5 Submitted
+                                        </div>
                                     </div>
                                 </div>
                                 </div>
@@ -902,7 +932,7 @@
     function checkChanges(id) {
         const form = document.querySelector(`#details-${id} form`);
         const btn = document.getElementById(`save-btn-${id}`);
-        const inputs = form.querySelectorAll('input, select, textarea');
+        const inputs = form.querySelectorAll('input:not([type="file"]), select, textarea');
         let changed = false;
         inputs.forEach(i => {
             if (i.type === 'checkbox' || i.type === 'radio') { if (i.checked !== i.defaultChecked) changed = true; }
@@ -1268,5 +1298,55 @@
         const maxDate = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
         input.setAttribute('max', maxDate.toISOString().split('T')[0]);
     });
+    async function uploadRegistrarDocument(enrollmentId, docType, input) {
+        const file = input.files[0];
+        if (!file) return;
+
+        const allowed = ['pdf', 'jpg', 'jpeg', 'png'];
+        const ext = file.name.split('.').pop().toLowerCase();
+
+        if (!allowed.includes(ext)) {
+            alert('Only PDF, JPG, JPEG, and PNG files are allowed.');
+            input.value = '';
+            return;
+        }
+
+        if (file.size > 10 * 1024 * 1024) {
+            alert('Maximum file size is 10MB.');
+            input.value = '';
+            return;
+        }
+
+        if (!confirm(`Upload ${docType} for this student?`)) {
+            input.value = '';
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('csrf_token', '{{ csrf_token() }}');
+        formData.append('doc_type', docType);
+        formData.append('document', file);
+
+        try {
+            const response = await fetch(`/registrar/students-by-grade/document/${enrollmentId}`, {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                alert(data.error || 'Document upload failed.');
+                input.value = '';
+                return;
+            }
+
+            window.location.reload();
+
+        } catch (error) {
+            alert('Document upload failed. Please try again.');
+            input.value = '';
+        }
+    }
 </script>
 {% endblock %}

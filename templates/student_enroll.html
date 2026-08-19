@@ -525,6 +525,15 @@
                     {% endif %}
                 </div>
             </div>
+            {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, msg in messages %}
+            <div class="flash {{ 'success' if category == 'success' else 'error' }}">
+                {{ msg }}
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
 
             {% if message %}
             <div class="flash error">{{ message }}</div>

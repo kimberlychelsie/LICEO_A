@@ -11,6 +11,8 @@ from flask import abort
 import re
 from datetime import datetime
 import pytz
+from werkzeug.utils import secure_filename
+from cloudinary_helper import upload_enrollment_document
 
 # Setup logging
 logging.basicConfig(level=logging.ERROR)
@@ -1824,6 +1826,79 @@ def registrar_students_by_grade_update(enrollment_id):
         db.close()
         
     return redirect(request.referrer or "/registrar/students-by-grade")
+
+
+@registrar_bp.route("/registrar/students-by-grade/document/<int:enrollment_id>", methods=["POST"])
+def registrar_upload_student_document(enrollment_id):
+    if session.get("role") != "registrar":
+        return jsonify({"success": False, "error": "Unauthorized"}), 403
+
+    branch_id = session.get("branch_id")
+    doc_type = (request.form.get("doc_type") or "").strip()
+    fileobj = request.files.get("document")
+
+    allowed_doc_types = {
+        "PSA Birth Certificate",
+        "Baptismal Certificate",
+        "Form 138",
+        "Good Moral Certificate",
+        "Form 137"
+    }
+
+    if doc_type not in allowed_doc_types:
+        return jsonify({"success": False, "error": "Invalid document type."}), 400
+
+    if not fileobj or not fileobj.filename:
+        return jsonify({"success": False, "error": "Please select a document."}), 400
+
+    ext = fileobj.filename.rsplit(".", 1)[-1].lower() if "." in fileobj.filename else ""
+    if ext not in {"pdf", "jpg", "jpeg", "png"}:
+        return jsonify({"success": False, "error": "Only PDF, JPG, JPEG, and PNG files are allowed."}), 400
+
+    fileobj.seek(0, 2)
+    file_size = fileobj.tell()
+    fileobj.seek(0)
+
+    if file_size > 10 * 1024 * 1024:
+        return jsonify({"success": False, "error": "Maximum file size is 10MB."}), 400
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        cursor.execute("""
+            SELECT enrollment_id
+            FROM enrollments
+            WHERE enrollment_id = %s AND branch_id = %s
+        """, (enrollment_id, branch_id))
+
+        if not cursor.fetchone():
+            return jsonify({"success": False, "error": "Student not found."}), 404
+
+        original_name = secure_filename(fileobj.filename)
+        file_url = upload_enrollment_document(fileobj)
+
+        cursor.execute("""
+            DELETE FROM enrollment_documents
+            WHERE enrollment_id = %s AND doc_type = %s
+        """, (enrollment_id, doc_type))
+
+        cursor.execute("""
+            INSERT INTO enrollment_documents (enrollment_id, file_name, file_path, doc_type)
+            VALUES (%s, %s, %s, %s)
+        """, (enrollment_id, original_name, file_url, doc_type))
+
+        db.commit()
+        return jsonify({"success": True, "message": f"{doc_type} uploaded successfully."})
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Registrar document upload error: {str(e)}")
+        return jsonify({"success": False, "error": "Could not upload the document."}), 500
+
+    finally:
+        cursor.close()
+        db.close()
 
 from datetime import datetime, time
 

@@ -13,15 +13,18 @@ from urllib.parse import urlencode
 werkzeug.urls.url_encode = urlencode
 from routes import init_routes
 from db import is_branch_active, get_db_connection
-from extensions import limiter
 from routes.teacher import _get_active_school_year
 from flask import send_from_directory, make_response
 import psycopg2.extras
 from extensions import limiter, csrf
-
+from flask_wtf.csrf import CSRFError
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "liceo_secret_key_dev")
+
+#Allow long forms such as student enrollment to stay open longer
+app.config["WTF_CSRF_TIME_LIMIT"] = 14400
+
 limiter.init_app(app)
 csrf.init_app(app)
 app.jinja_env.add_extension('jinja2.ext.loopcontrols')
@@ -178,6 +181,21 @@ def check_branch_active_status():
                 session.clear()
                 flash("This branch is currently deactivated. Access is restricted.", "error")
                 return redirect(url_for('auth.login'))
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(error):
+    if request.path.startswith("/branch/") and "enroll" in request.path:
+        flash(
+            "Your enrollment was NOT submitted because the form session expired. Please refresh the page, review your information, and submit again.",
+            "error"
+        )
+        return redirect(request.path)
+
+    return render_template(
+        "error_page.html",
+        title="Form session expired",
+        message="Your form session has expired. Please go back, refresh the page, and try again."
+    ), 400
 
 @app.errorhandler(413)
 def request_entity_too_large(error):
