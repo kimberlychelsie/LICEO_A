@@ -2540,19 +2540,50 @@ def branch_admin_manage_teachers():
                 flash("This branch has no short code yet. Ask admin to set branch code first.", "error")
                 return redirect("/branch-admin/manage-teachers")
 
+            cursor.execute("SELECT branch_code FROM branches WHERE branch_id=%s", (branch_id,))
+            b_row = cursor.fetchone()
+            branch_code = ((b_row['branch_code'] or "") if b_row else "").strip().upper()
+
+            if not branch_code:
+                flash("This branch has no short code yet. Ask admin to set branch code first.", "error")
+                return redirect("/branch-admin/manage-teachers")
+
+            # Prevent duplicate teacher account using the same email in this branch
+            cursor.execute("""
+                SELECT user_id, username, full_name
+                FROM users
+                WHERE branch_id = %s
+                  AND role = 'teacher'
+                  AND LOWER(TRIM(email)) = LOWER(TRIM(%s))
+                  AND COALESCE(is_archived, FALSE) = FALSE
+                LIMIT 1
+            """, (branch_id, user_email))
+
+            existing_teacher = cursor.fetchone()
+
+            if existing_teacher:
+                flash(
+                    f"Teacher account already exists for this email: "
+                    f"{existing_teacher['full_name']} ({existing_teacher['username']}).",
+                    "error"
+                )
+                return redirect("/branch-admin/manage-teachers")
+
             full_name = f"{first_name} {middle_name} {last_name}".strip().replace("  ", " ")
             base_username = f"{branch_code}_Teacher"
 
             username = base_username
             suffix_counter = 2
+
             while True:
                 cursor.execute("SELECT 1 FROM users WHERE username=%s", (username,))
                 if not cursor.fetchone():
                     break
+
                 username = f"{base_username}_{suffix_counter}"
                 suffix_counter += 1
 
-            temp_password   = generate_password()
+            temp_password = generate_password()
             hashed_password = generate_password_hash(temp_password)
 
             cursor.execute("""
@@ -2561,15 +2592,29 @@ def branch_admin_manage_teachers():
                      first_name, middle_name, last_name, full_name, gender, email)
                 VALUES (%s, %s, %s, 'teacher', TRUE, %s, %s, %s, %s, %s, %s)
                 RETURNING user_id
-            """, (branch_id, username, hashed_password,
-                  first_name, middle_name or None, last_name, full_name, gender, user_email))
+            """, (
+                branch_id,
+                username,
+                hashed_password,
+                first_name,
+                middle_name or None,
+                last_name,
+                full_name,
+                gender,
+                user_email
+            ))
+
             new_user_id = cursor.fetchone()['user_id']
 
             db.commit()
-            created_user = {"username": username, "password": temp_password}
+            created_user = {
+                "username": username,
+                "password": temp_password
+            }
 
             if user_email:
                 subject_line = "Your Teacher Account — Liceo LMS"
+
                 body = f"""Hello {full_name},
 
 Your teacher account has been created by the Registrar.
@@ -2581,9 +2626,13 @@ Login URL: https://www.liceo-lms.com/
 Please log in and change your password immediately.
 
 -- The Liceo LMS Team"""
+
                 try:
                     send_email(user_email, subject_line, body)
-                    flash(f"Account created. Login details were emailed to {user_email}.", "success")
+                    flash(
+                        f"Account created. Login details were emailed to {user_email}.",
+                        "success"
+                    )
                 except Exception as mail_err:
                     flash(
                         f"Account created, but the email could not be sent ({mail_err}). "
