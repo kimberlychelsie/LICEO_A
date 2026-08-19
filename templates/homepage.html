@@ -260,6 +260,11 @@
       max-width: 100%;
       text-align: center;
     }
+
+    .hp-hero-shape {
+      width: 100%;
+      border-radius: 0;
+    }
   }
 
   .hp-hero p {
@@ -1526,24 +1531,97 @@
       letter-spacing: 0.1em;
     }
 
-    /* Gallery */
-    .abl-gallery {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-    }
-
-    .abl-gallery img {
+    /* Infinite Horizontal Carousel */
+    .carousel-container {
       width: 100%;
-      aspect-ratio: 4/3;
-      object-fit: cover;
-      border-radius: 12px;
-      box-shadow: 0 6px 20px rgba(12, 36, 97, 0.08);
-      transition: transform 0.4s;
+      max-width: 400px;
+      height: 120px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      margin-top: 40px;
+      margin-bottom: 20px;
+      margin-left: 0;
+      position: relative;
+      background: transparent;
     }
 
-    .abl-gallery img:hover {
-      transform: translateY(-4px);
+    .carousel-container::before,
+    .carousel-container::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      width: 100px;
+      height: 100%;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .carousel-container::before {
+      left: 0;
+      background: linear-gradient(to right, #ffffff 10%, rgba(255,255,255,0) 100%);
+    }
+    .carousel-container::after {
+      right: 0;
+      background: linear-gradient(to left, #ffffff 10%, rgba(255,255,255,0) 100%);
+    }
+
+    .carousel-track {
+      display: flex;
+      width: calc(120px * 40); /* 20 items * 2 * 120px = 4800px */
+      animation: slide-horizontal 30s linear infinite;
+    }
+
+    .carousel-track:hover {
+      animation-play-state: paused;
+    }
+
+    .carousel-item {
+      width: 120px;
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 15px;
+      flex-shrink: 0;
+    }
+
+    .carousel-item img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      transition: transform 0.3s;
+      border: 2px solid #fff;
+    }
+
+    .carousel-item img:hover {
+      transform: scale(1.15);
+      cursor: pointer;
+    }
+
+    @keyframes slide-horizontal {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(calc(-120px * 20)); } /* Slide by width of 20 items */
+    }
+
+    @media (max-width: 768px) {
+      .carousel-container {
+        height: 90px;
+      }
+      .carousel-item {
+        width: 90px;
+        height: 90px;
+        padding: 10px;
+      }
+      .carousel-track {
+        width: calc(90px * 40);
+      }
+      @keyframes slide-horizontal {
+        0% { transform: translateX(0); }
+        100% { transform: translateX(calc(-90px * 20)); }
+      }
     }
 
     /* RIGHT column */
@@ -1664,21 +1742,62 @@
             <div class="abl-stat-lbl">Campuses in<br>Laguna</div>
           </div>
         </div>
-        <div class="abl-gallery">
-          <img src="{{ url_for('static', filename='img/school_hero_bg.png') }}" alt="Campus 1">
-          <img src="{{ url_for('static', filename='img/premium_blue_hero.png') }}" alt="Campus 2">
-          <img src="{{ url_for('static', filename='img/liceo_about.png') }}" alt="Campus 3">
+        <div class="carousel-container">
+          <div class="carousel-track">
+            <!-- First Set -->
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/ICCSCalamba.jpg') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/ICCSStaCruz.jpg') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeBay.jpg') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeCabuyaoLogo.png') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeCalambaLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeCalauanLogo.png') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeCavintiLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeLiliwLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeLosBañosLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeLuisianaLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeMajayjayLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeMamatidLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodePaeteLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodePagsanjanLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodePakilLogo.png') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodePilaLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeSanAntonioLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeSanPabloLogo.jpg') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeSanPedroLogo.jpg') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeVictoriaLogo.png') }}" alt="Logo"></div>
+            <!-- Duplicated Set for Infinite Loop -->
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/ICCSCalamba.jpg') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/ICCSStaCruz.jpg') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeBay.jpg') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeCabuyaoLogo.png') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeCalambaLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeCalauanLogo.png') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeCavintiLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeLiliwLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeLosBañosLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeLuisianaLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeMajayjayLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeMamatidLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodePaeteLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodePagsanjanLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodePakilLogo.png') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodePilaLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeSanAntonioLogo.webp') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeSanPabloLogo.jpg') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeSanPedroLogo.jpg') }}" alt="Logo"></div>
+            <div class="carousel-item"><img src="{{ url_for('static', filename='img/LiceodeVictoriaLogo.png') }}" alt="Logo"></div>
+          </div>
         </div>
       </div>
       <!-- RIGHT: Video + Community -->
       <div>
-        <div class="abl-video-card">
-          <img src="{{ url_for('static', filename='img/liceo_about.png') }}" alt="Campus Tour">
+        <a href="https://youtu.be/GgCKisbA8jc?si=roIr58jHf-58ytre" target="_blank" class="abl-video-card" style="display: block; text-decoration: none;">
+          <img src="{{ url_for('static', filename='img/liceo_about.png') }}" alt="SPDCSS Hymnn">
           <div class="abl-vid-overlay">
             <div class="abl-play-btn"><i class="fas fa-play" style="margin-left:5px;"></i></div>
-            <div class="abl-vid-lbl">Watch Campus Tour</div>
+            <div class="abl-vid-lbl">Watch SPDCSS Hymnn</div>
           </div>
-        </div>
+        </a>
         <h3 class="abl-community-heading">Our Community</h3>
         <p class="abl-community-desc">
           Liceo welcomes students of all backgrounds who seek academic excellence, spiritual growth, and strong
@@ -1847,13 +1966,7 @@
       <div class="hpf-sub">San Pablo Diocesan Catholic Schools System</div>
     </div>
   </div>
-  <div class="hpf-links">
-    <a href="/">Home</a>
-    <a href="javascript:void(0)" onclick="openEnrollModal()">Enroll</a>
-    <a href="/track">Track Status</a>
-    <a href="/#faq">FAQ</a>
-    <a href="/login">Login</a>
-  </div>
+
   <div class="hpf-copy">&copy; 2026 Liceo LMS. All rights reserved.</div>
 </footer>
 

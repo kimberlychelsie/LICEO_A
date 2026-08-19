@@ -2108,6 +2108,14 @@
             {% set active_notifs = teacher_global_notifs %}
             {% endif %}
 
+            {% if session.get('role') == 'registrar' and no_section_count and no_section_count > 0 %}
+            <a href="/registrar/students-by-grade" class="notif-item notif-unread">
+              <div class="notif-item-title" style="color: #92400e;"><i class="fas fa-exclamation-triangle"></i> Action Needed</div>
+              <div class="notif-item-msg" style="color: #a16207;">{{ no_section_count }} students need to be assigned to a section.</div>
+              <div class="notif-item-time" style="color: #b45309;">System Alert</div>
+            </a>
+            {% endif %}
+
             {% for n in active_notifs %}
             <a href="{{ n.link or '#' }}" class="notif-item {% if not n.is_read %}notif-unread{% endif %}">
               <div class="notif-item-title">{{ n.title }}</div>
