@@ -3,11 +3,13 @@ import threading
 from email.message import EmailMessage
 import os
 from dotenv import load_dotenv
+import time
 
 load_dotenv()
 
 def _send_email_core(to_email, subject, body, html_body=None):
-    """Internal function to handle the actual SMTP connection."""
+    start = time.time()
+
     smtp_host = os.getenv('MAIL_SERVER', 'smtp.hostinger.com')
     smtp_port = int(os.getenv('MAIL_PORT', 465))
     smtp_user = os.getenv('MAIL_USERNAME')
@@ -24,23 +26,25 @@ def _send_email_core(to_email, subject, body, html_body=None):
         if html_body:
             msg.add_alternative(html_body, subtype='html')
 
-        # Use TLS for port 587
         if smtp_port == 587:
-            with smtplib.SMTP(smtp_host, smtp_port) as smtp:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as smtp:
                 smtp.starttls()
                 smtp.login(smtp_user, smtp_pass)
                 smtp.send_message(msg)
-        else:  # Use SSL for port 465
-            with smtplib.SMTP_SSL(smtp_host, smtp_port) as smtp:
+        else:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15) as smtp:
                 smtp.login(smtp_user, smtp_pass)
                 smtp.send_message(msg)
 
-        print(f"✅ EMAIL SENT to {to_email}")
+        elapsed = time.time() - start
+        print(f"✅ EMAIL SENT to {to_email} in {elapsed:.2f} seconds")
         return True
 
     except Exception as e:
-        print(f"❌ EMAIL ERROR ({to_email}):", str(e))
+        elapsed = time.time() - start
+        print(f"❌ EMAIL ERROR ({to_email}) after {elapsed:.2f} seconds: {str(e)}")
         return False
+
 
 def send_email(to_email, subject, body, html_body=None, use_background=True):
     """
@@ -48,8 +52,12 @@ def send_email(to_email, subject, body, html_body=None, use_background=True):
     Default is use_background=True to prevent blocking the main request thread.
     """
     if use_background:
-        thread = threading.Thread(target=_send_email_core, args=(to_email, subject, body, html_body))
+        thread = threading.Thread(
+            target=_send_email_core,
+            args=(to_email, subject, body, html_body),
+            daemon=True
+        )
         thread.start()
         return True
-    else:
-        return _send_email_core(to_email, subject, body, html_body)
+
+    return _send_email_core(to_email, subject, body, html_body)
