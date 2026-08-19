@@ -695,60 +695,60 @@ def create_bill(enrollment_id):
                 uniform_total += Decimal(str(item["line_total"] or "0"))
 
         if existing_bill:
-    # -----------------------------------------
-    # OUTSTANDING UNIFORM
-    # -----------------------------------------
+            # -----------------------------------------
+            # OUTSTANDING UNIFORM
+            # -----------------------------------------
             cursor.execute("""
-    SELECT COALESCE(SUM(uo.total_amount), 0) AS outstanding_uniform
-    FROM uniform_orders uo
-    WHERE uo.enrollment_id = %s
-      AND uo.branch_id = %s
-      AND LOWER(COALESCE(uo.payment_status, 'unpaid')) = 'unpaid'
-      AND LOWER(COALESCE(uo.order_status, '')) <> 'cancelled'
-""", (
-            enrollment_id,
-            session.get("branch_id")
-        ))
+                SELECT COALESCE(SUM(uo.total_amount), 0) AS outstanding_uniform
+                FROM uniform_orders uo
+                WHERE uo.enrollment_id = %s
+                  AND uo.branch_id = %s
+                  AND LOWER(COALESCE(uo.payment_status, 'unpaid')) = 'unpaid'
+                  AND LOWER(COALESCE(uo.order_status, '')) <> 'cancelled'
+            """, (
+                enrollment_id,
+                session.get("branch_id")
+            ))
 
             uniform_total = Decimal(
                 str(cursor.fetchone()["outstanding_uniform"] or 0)
             )
 
-    # -----------------------------------------
-    # OUTSTANDING BOOKS
-    # -----------------------------------------
+            # -----------------------------------------
+            # OUTSTANDING BOOKS
+            # -----------------------------------------
             cursor.execute("""
-    SELECT COALESCE(SUM(res.total_amount), 0) AS outstanding_books
-    FROM (
-        SELECT
-            r.reservation_id,
-            SUM(ri.line_total) AS total_amount,
-            COALESCE((
-                SELECT SUM(p.amount)
-                FROM payments p
-                WHERE p.target_type = 'reservation'
-                  AND p.target_id = r.reservation_id
-            ), 0) AS paid_amount
-        FROM reservations r
-        JOIN reservation_items ri
-          ON ri.reservation_id = r.reservation_id
-        JOIN inventory_items ii
-          ON ii.item_id = ri.item_id
-        WHERE r.branch_id = %s
-          AND r.enrollment_id = %s
-          AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED')
-          AND UPPER(ii.category) = 'BOOK'
-        GROUP BY r.reservation_id
-    ) res
-    WHERE res.total_amount > res.paid_amount
-""", (
-            session.get("branch_id"),
-            enrollment_id
-        ))
+                SELECT COALESCE(SUM(res.total_amount), 0) AS outstanding_books
+                FROM (
+                    SELECT
+                        r.reservation_id,
+                        SUM(ri.line_total) AS total_amount,
+                        COALESCE((
+                            SELECT SUM(p.amount)
+                            FROM payments p
+                            WHERE p.target_type = 'reservation'
+                              AND p.target_id = r.reservation_id
+                        ), 0) AS paid_amount
+                    FROM reservations r
+                    JOIN reservation_items ri
+                      ON ri.reservation_id = r.reservation_id
+                    JOIN inventory_items ii
+                      ON ii.item_id = ri.item_id
+                    WHERE r.branch_id = %s
+                      AND r.enrollment_id = %s
+                      AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED')
+                      AND UPPER(ii.category) = 'BOOK'
+                    GROUP BY r.reservation_id
+                ) res
+                WHERE res.total_amount > res.paid_amount
+            """, (
+                session.get("branch_id"),
+                enrollment_id
+            ))
 
-        books_total = Decimal(
-            str(cursor.fetchone()["outstanding_books"] or 0)
-        )
+            books_total = Decimal(
+                str(cursor.fetchone()["outstanding_books"] or 0)
+            )
 
         # Legacy items (no price info directly attached, keeping for display)
         cursor.execute("SELECT * FROM enrollment_books WHERE enrollment_id = %s", (enrollment_id,))
@@ -1406,362 +1406,1002 @@ def view_bill(bill_id):
         db.close()
 
 
-@cashier_bp.route("/cashier/process-payment/<int:bill_id>", methods=["GET", "POST"])
+@cashier_bp.route(
+    "/cashier/process-payment/<int:bill_id>",
+    methods=["GET", "POST"]
+)
 def process_payment(bill_id):
     if not _require_cashier():
         return redirect("/")
 
     if not is_branch_active(session.get("branch_id")):
-        flash("This branch is currently deactivated. New payments are not allowed.", "error")
-        return redirect(url_for("cashier.view_bill", bill_id=bill_id))
+        flash(
+            "This branch is currently deactivated. "
+            "New payments are not allowed.",
+            "error"
+        )
+        return redirect(
+            url_for("cashier.view_bill", bill_id=bill_id)
+        )
 
     db = get_db_connection()
-    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cursor = db.cursor(
+        cursor_factory=psycopg2.extras.RealDictCursor
+    )
 
     try:
         cursor.execute("""
             SELECT
-    b.*,
-    e.student_first_name,
-    e.student_middle_name,
-    e.student_last_name,
-    e.grade_level,
-                       e.branch_enrollment_no
+                b.*,
+                e.student_first_name,
+                e.student_middle_name,
+                e.student_last_name,
+                e.grade_level,
+                e.branch_enrollment_no
             FROM billing b
-            JOIN enrollments e ON b.enrollment_id = e.enrollment_id
-            WHERE b.bill_id = %s AND e.branch_id = %s
-        """, (bill_id, session.get("branch_id")))
+            JOIN enrollments e
+              ON b.enrollment_id = e.enrollment_id
+            WHERE b.bill_id = %s
+              AND e.branch_id = %s
+        """, (
+            bill_id,
+            session.get("branch_id")
+        ))
+
         bill = cursor.fetchone()
 
         if not bill:
             flash("Bill not found", "error")
             return redirect("/cashier")
-        bill["student_name"] = " ".join(filter(None, [
-            bill.get("student_first_name"),
-            bill.get("student_middle_name"),
-            bill.get("student_last_name"),
-        ]))
+
+        bill["student_name"] = " ".join(
+            filter(None, [
+                bill.get("student_first_name"),
+                bill.get("student_middle_name"),
+                bill.get("student_last_name"),
+            ])
+        )
 
         if bill["status"] == "paid":
             message = "This bill is already fully paid"
 
-            if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+            if (
+                request.headers.get("X-Requested-With")
+                == "XMLHttpRequest"
+            ):
                 return jsonify({
                     "success": False,
                     "error": message
                 }), 400
 
             flash(message, "info")
-            return redirect(url_for("cashier.view_bill", bill_id=bill_id))
+            return redirect(
+                url_for("cashier.view_bill", bill_id=bill_id)
+            )
 
         if request.method == "POST":
-            amount = Decimal(request.form.get("amount", "0") or "0")
-            payment_method = request.form.get("payment_method", "cash")
+            amount = Decimal(
+                request.form.get("amount", "0") or "0"
+            )
+
+            payment_method = request.form.get(
+                "payment_method",
+                "cash"
+            )
+
             notes = request.form.get("notes", "")
-            target_type = request.form.get("target_type", "general")
-            target_id_str = request.form.get("target_id", "")
-            target_id = int(target_id_str) if target_id_str.strip() else None
 
-    # -------------------------------------------------
-    # LOCK GENERAL PAYMENT TO ITS REAL TARGET
-    # -------------------------------------------------
-            if target_type == "general":
-                possible_targets = []
+            target_type = request.form.get(
+                "target_type",
+                "general"
+            )
 
-        # Tuition
-                tuition_fee = Decimal(str(bill.get("tuition_fee") or 0))
+            target_id_str = request.form.get(
+                "target_id",
+                ""
+            )
 
-                cursor.execute("""
-                    SELECT COALESCE(SUM(amount), 0) AS paid
-                    FROM payments
-                    WHERE bill_id = %s
-              AND target_type = 'tuition'
-                """, (bill_id,))
-                tuition_paid = Decimal(str(cursor.fetchone()["paid"] or 0))
+            target_id = (
+                int(target_id_str)
+                if target_id_str.strip()
+                else None
+            )
 
-                tuition_balance = max(
-                    Decimal("0"),
-                    tuition_fee - tuition_paid
-                )
-
-                if tuition_balance > 0:
-                    possible_targets.append({
-                        "type": "tuition",
-                        "id": None,
-                        "balance": tuition_balance
-                    })
-
-                # Uniforms
-                cursor.execute("""
-            SELECT
-                uo.order_id,
-                uo.total_amount,
-                COALESCE((
-                    SELECT SUM(p.amount)
-                    FROM payments p
-                    WHERE p.target_type = 'uniform_order'
-                      AND p.target_id = uo.order_id
-                ), 0) AS paid_amount
-            FROM uniform_orders uo
-            WHERE uo.bill_id = %s
-              AND LOWER(COALESCE(uo.order_status, '')) <> 'cancelled'
-                """, (bill_id,))
-
-                for uo in cursor.fetchall():
-                    order_total = Decimal(str(uo["total_amount"] or 0))
-                    order_paid = Decimal(str(uo["paid_amount"] or 0))
-
-                    order_balance = max(
-                        Decimal("0"),
-                        order_total - order_paid
-                    )
-
-                    if order_balance > 0:
-                        possible_targets.append({
-                            "type": "uniform_order",
-                            "id": uo["order_id"],
-                            "balance": order_balance
-                        })
-
-        # Books
-                cursor.execute("""
-            SELECT
-                r.reservation_id,
-                COALESCE(SUM(ri.line_total), 0) AS total_amount,
-                COALESCE((
-                    SELECT SUM(p.amount)
-                    FROM payments p
-                    WHERE p.target_type = 'reservation'
-                      AND p.target_id = r.reservation_id
-                ), 0) AS paid_amount
-            FROM reservations r
-            JOIN reservation_items ri
-              ON ri.reservation_id = r.reservation_id
-            JOIN inventory_items ii
-              ON ii.item_id = ri.item_id
-            WHERE r.branch_id = %s
-              AND r.enrollment_id = %s
-              AND UPPER(COALESCE(r.status, ''))
-                  NOT IN ('CANCELLED', 'REJECTED', 'CLAIMED')
-              AND UPPER(COALESCE(ii.category, '')) = 'BOOK'
-            GROUP BY r.reservation_id
-        """, (
-                    session.get("branch_id"),
-                    bill["enrollment_id"]
-                ))
-
-                for res in cursor.fetchall():
-                    res_total = Decimal(str(res["total_amount"] or 0))
-                    res_paid = Decimal(str(res["paid_amount"] or 0))
-
-                    res_balance = max(
-                        Decimal("0"),
-                        res_total - res_paid
-                    )
-
-                    if res_balance > 0:
-                        possible_targets.append({
-                            "type": "reservation",
-                            "id": res["reservation_id"],
-                            "balance": res_balance
-                        })
-
-        # If only one real outstanding item exists,
-        # attach Pay Balance to that item permanently.
-                if len(possible_targets) == 1:
-                    actual_target = possible_targets[0]
-                    target_type = actual_target["type"]
-                    target_id = actual_target["id"]
-
-    # IMPORTANT:
-    # validation is OUTSIDE target_type == general,
-    # but still INSIDE POST
+            # ==========================================
+            # VALIDATION
+            # ==========================================
             if amount <= 0:
-                message = "Payment amount must be greater than zero"
-
-                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                    return jsonify({
-                        "success": False,
-                        "error": message
-                    }), 400
-
-                flash(message, "error")
-                return redirect(url_for("cashier.view_bill", bill_id=bill_id))
-
-            elif amount > Decimal(str(bill["balance"])):
                 message = (
-                    f"Payment amount (₱{amount:,.2f}) exceeds "
-                    f"balance (₱{Decimal(str(bill['balance'])):,.2f})"
+                    "Payment amount must be "
+                    "greater than zero"
                 )
 
-                if request.headers.get("X-Requested-With") == "XMLHttpRequest":
+                if (
+                    request.headers.get(
+                        "X-Requested-With"
+                    )
+                    == "XMLHttpRequest"
+                ):
                     return jsonify({
                         "success": False,
                         "error": message
                     }), 400
 
                 flash(message, "error")
-                return redirect(url_for("cashier.view_bill", bill_id=bill_id))
+                return redirect(
+                    url_for(
+                        "cashier.view_bill",
+                        bill_id=bill_id
+                    )
+                )
 
-            else:
-                try:
-                    receipt_number = generate_receipt_number()
+            if amount > Decimal(str(bill["balance"])):
+                current_balance = Decimal(
+                    str(bill["balance"])
+                )
 
-                    cursor.execute("""
-                INSERT INTO payments
-                  (bill_id, enrollment_id, branch_id, year_id,
-                   amount, payment_method, receipt_number, notes,
-                   received_by, target_type, target_id)
-                VALUES
-                  (%s, %s, %s, %s,
-                   %s, %s, %s, %s,
-                   %s, %s, %s)
-                RETURNING payment_id
-            """, (
-                bill_id,
-                bill["enrollment_id"],
-                session.get("branch_id"),
-                bill["year_id"],
-                amount,
-                payment_method,
-                receipt_number,
-                notes,
-                session.get("user_id"),
-                target_type,
-                target_id
-            ))
+                message = (
+                    f"Payment amount "
+                    f"(₱{amount:,.2f}) exceeds "
+                    f"balance "
+                    f"(₱{current_balance:,.2f})"
+                )
 
-                    payment_id = cursor.fetchone()["payment_id"]
+                if (
+                    request.headers.get(
+                        "X-Requested-With"
+                    )
+                    == "XMLHttpRequest"
+                ):
+                    return jsonify({
+                        "success": False,
+                        "error": message
+                    }), 400
 
-            # continue your existing code here...
+                flash(message, "error")
+                return redirect(
+                    url_for(
+                        "cashier.view_bill",
+                        bill_id=bill_id
+                    )
+                )
 
-                    amount_paid_now = Decimal(str(bill.get("amount_paid", 0)))
-                    total_amount = Decimal(str(bill.get("total_amount", 0)))
+            try:
+                payment_ids = []
 
-                    new_amount_paid = amount_paid_now + amount
-                    new_balance = total_amount - new_amount_paid
-                    if new_balance < 0:
-                        new_balance = Decimal("0")
+                # ======================================
+                # PAY BALANCE / GENERAL
+                # ======================================
+                if target_type == "general":
+                    remaining_payment = amount
 
-                    if target_type == 'reservation' and target_id:
-                        cursor.execute("SELECT SUM(amount) AS sum_paid FROM payments WHERE target_type='reservation' AND target_id=%s", (target_id,))
-                        r_paid = cursor.fetchone()["sum_paid"] or Decimal(0)
-                        
-                        cursor.execute("SELECT SUM(line_total) AS sum_total FROM reservation_items WHERE reservation_id=%s", (target_id,))
-                        r_total = cursor.fetchone()["sum_total"] or Decimal(0)
-                        
-                        if r_paid >= r_total:
-                            cursor.execute("""
-                                UPDATE reservations
-                                SET status = 'PAID'
-                                WHERE reservation_id = %s
-                            """, (target_id,))
-
-                    if target_type == 'uniform_order' and target_id:
-                        cursor.execute(
-                            "SELECT SUM(amount) AS sum_paid FROM payments WHERE target_type='uniform_order' AND target_id=%s",
-                            (target_id,),
+                    # ----------------------------------
+                    # 1. TUITION
+                    # ----------------------------------
+                    tuition_fee = Decimal(
+                        str(
+                            bill.get(
+                                "tuition_fee"
+                            ) or 0
                         )
-                        u_paid = cursor.fetchone()["sum_paid"] or Decimal(0)
-                        cursor.execute(
-                            "SELECT total_amount FROM uniform_orders WHERE order_id=%s",
-                            (target_id,),
-                        )
-                        u_row = cursor.fetchone()
-                        u_total = Decimal(str((u_row or {}).get("total_amount") or 0))
-                        if u_paid >= u_total and u_total > 0:
-                            cursor.execute("""
-                                UPDATE uniform_orders
-                                SET payment_status = 'Paid', updated_at = NOW()
-                                WHERE order_id = %s
-                            """, (target_id,))
+                    )
 
-                    if new_balance == 0:
-                        new_status = "paid"
-                    else:
-                        new_status = "partial"
-
-                    cursor.execute("""
-                        UPDATE billing
-                        SET amount_paid = %s, balance = %s, status = %s
-                        WHERE bill_id = %s
-                    """, (new_amount_paid, new_balance, new_status, bill_id))
-
-                    db.commit()
-
-                    # Fetch receipt data for the response
                     cursor.execute("""
                         SELECT
-                            p.*,
-                            e.student_first_name, e.student_middle_name, e.student_last_name,
-                            e.guardian_first_name, e.guardian_middle_name, e.guardian_last_name,
-                            e.grade_level, e.branch_enrollment_no,
-                            b.total_amount AS bill_total, b.amount_paid AS bill_paid, b.balance AS bill_balance,
-                            br.branch_name, br.location,
-                            COALESCE(NULLIF(TRIM(u.full_name), ''), u.username) AS received_by_name
-                        FROM payments p
-                        JOIN billing b ON p.bill_id = b.bill_id
-                        JOIN enrollments e ON p.enrollment_id = e.enrollment_id
-                        JOIN branches br ON e.branch_id = br.branch_id
-                        JOIN users u ON p.received_by = u.user_id
-                        WHERE p.payment_id = %s
-                    """, (payment_id,))
-                    receipt = cursor.fetchone()
+                            COALESCE(
+                                SUM(amount),
+                                0
+                            ) AS paid
+                        FROM payments
+                        WHERE bill_id = %s
+                          AND target_type =
+                              'tuition'
+                    """, (bill_id,))
 
-                    receipt_student = " ".join(filter(None, [
-                        receipt.get("student_first_name"),
-                        receipt.get("student_middle_name"),
-                        receipt.get("student_last_name"),
-                    ]))
-                    receipt_guardian = " ".join(filter(None, [
-                        receipt.get("guardian_first_name"),
-                        receipt.get("guardian_middle_name"),
-                        receipt.get("guardian_last_name"),
-                    ]))
-                    receipt_date = _to_manila_naive(receipt.get("payment_date"))
+                    tuition_paid = Decimal(
+                        str(
+                            cursor.fetchone()[
+                                "paid"
+                            ] or 0
+                        )
+                    )
 
-                    # If AJAX request, return JSON
-                    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                        from flask import jsonify
-                        return jsonify({
-                            "success": True,
-                            "receipt": {
-                                "payment_id": payment_id,
-                                "receipt_number": receipt_number,
-                                "payment_date": receipt_date.strftime("%B %d, %Y | %I:%M %p") if receipt_date else "",
-                                "amount": float(amount),
-                                "payment_method": payment_method.upper(),
-                                "student_name": receipt_student,
-                                "guardian_name": receipt_guardian,
-                                "grade_level": receipt.get("grade_level", ""),
-                                "enrollment_no": receipt.get("branch_enrollment_no", ""),
-                                "branch_name": receipt.get("branch_name", ""),
-                                "branch_location": receipt.get("location", ""),
-                                "bill_total": float(receipt.get("bill_total") or 0),
-                                "bill_paid": float(receipt.get("bill_paid") or 0),
-                                "bill_balance": float(receipt.get("bill_balance") or 0),
-                                "received_by": receipt.get("received_by_name", ""),
-                                "notes": notes,
-                            }
-                        })
+                    tuition_balance = max(
+                        Decimal("0"),
+                        tuition_fee - tuition_paid
+                    )
 
-                    flash(f"Payment recorded successfully! Receipt: {receipt_number}", "success")
-                    return redirect(url_for("cashier.print_receipt", payment_id=payment_id))
+                    if (
+                        remaining_payment > 0
+                        and tuition_balance > 0
+                    ):
+                        allocated = min(
+                            remaining_payment,
+                            tuition_balance
+                        )
 
-                except Exception as e:
-                    db.rollback()
-                    if request.headers.get("X-Requested-With") == "XMLHttpRequest":
-                        from flask import jsonify
-                        return jsonify({"success": False, "error": str(e)}), 500
-                    flash(f"Failed to process payment: {str(e)}", "error")
-                    return redirect(url_for("cashier.view_bill", bill_id=bill_id))
+                        split_receipt = (
+                            generate_receipt_number()
+                        )
 
-        target_type = request.args.get("target_type", "general")
-        target_id = request.args.get("target_id", "")
-        target_amount = request.args.get("target_amount", "")
-        target_name = request.args.get("target_name", "")
+                        cursor.execute("""
+                            INSERT INTO payments (
+                                bill_id,
+                                enrollment_id,
+                                branch_id,
+                                year_id,
+                                amount,
+                                payment_method,
+                                receipt_number,
+                                notes,
+                                received_by,
+                                target_type,
+                                target_id
+                            )
+                            VALUES (
+                                %s, %s, %s, %s,
+                                %s, %s, %s, %s,
+                                %s, 'tuition', NULL
+                            )
+                            RETURNING payment_id
+                        """, (
+                            bill_id,
+                            bill["enrollment_id"],
+                            session.get("branch_id"),
+                            bill["year_id"],
+                            allocated,
+                            payment_method,
+                            split_receipt,
+                            notes,
+                            session.get("user_id")
+                        ))
 
-        return render_template("cashier_process_payment.html", bill=bill, target_type=target_type, target_id=target_id, target_amount=target_amount, target_name=target_name)
+                        payment_ids.append(
+                            cursor.fetchone()[
+                                "payment_id"
+                            ]
+                        )
+
+                        remaining_payment -= allocated
+
+                    # ----------------------------------
+                    # 2. OTHER FEES
+                    # ----------------------------------
+                    if remaining_payment > 0:
+                        other_fee = Decimal(
+                            str(
+                                bill.get(
+                                    "other_fees"
+                                ) or 0
+                            )
+                        )
+
+                        cursor.execute("""
+                            SELECT
+                                COALESCE(
+                                    SUM(amount),
+                                    0
+                                ) AS paid
+                            FROM payments
+                            WHERE bill_id = %s
+                              AND target_type =
+                                  'other'
+                        """, (bill_id,))
+
+                        other_paid = Decimal(
+                            str(
+                                cursor.fetchone()[
+                                    "paid"
+                                ] or 0
+                            )
+                        )
+
+                        other_balance = max(
+                            Decimal("0"),
+                            other_fee - other_paid
+                        )
+
+                        if other_balance > 0:
+                            allocated = min(
+                                remaining_payment,
+                                other_balance
+                            )
+
+                            split_receipt = (
+                                generate_receipt_number()
+                            )
+
+                            cursor.execute("""
+                                INSERT INTO payments (
+                                    bill_id,
+                                    enrollment_id,
+                                    branch_id,
+                                    year_id,
+                                    amount,
+                                    payment_method,
+                                    receipt_number,
+                                    notes,
+                                    received_by,
+                                    target_type,
+                                    target_id
+                                )
+                                VALUES (
+                                    %s, %s, %s, %s,
+                                    %s, %s, %s, %s,
+                                    %s, 'other', NULL
+                                )
+                                RETURNING payment_id
+                            """, (
+                                bill_id,
+                                bill["enrollment_id"],
+                                session.get(
+                                    "branch_id"
+                                ),
+                                bill["year_id"],
+                                allocated,
+                                payment_method,
+                                split_receipt,
+                                notes,
+                                session.get(
+                                    "user_id"
+                                )
+                            ))
+
+                            payment_ids.append(
+                                cursor.fetchone()[
+                                    "payment_id"
+                                ]
+                            )
+
+                            remaining_payment -= (
+                                allocated
+                            )
+
+                    # ----------------------------------
+                    # 3. UNIFORM ORDERS
+                    # ----------------------------------
+                    if remaining_payment > 0:
+                        cursor.execute("""
+                            SELECT
+                                uo.order_id,
+                                uo.total_amount,
+                                COALESCE((
+                                    SELECT SUM(
+                                        p.amount
+                                    )
+                                    FROM payments p
+                                    WHERE
+                                        p.target_type =
+                                        'uniform_order'
+                                        AND
+                                        p.target_id =
+                                        uo.order_id
+                                ), 0) AS paid_amount
+                            FROM uniform_orders uo
+                            WHERE (
+                                uo.bill_id = %s
+                                OR
+                                uo.enrollment_id = %s
+                            )
+                              AND LOWER(
+                                  COALESCE(
+                                      uo.order_status,
+                                      ''
+                                  )
+                              ) <> 'cancelled'
+                            ORDER BY
+                                uo.order_id ASC
+                        """, (
+                            bill_id,
+                            bill["enrollment_id"]
+                        ))
+
+                        uniform_orders = (
+                            cursor.fetchall() or []
+                        )
+
+                        for uo in uniform_orders:
+                            if remaining_payment <= 0:
+                                break
+
+                            order_total = Decimal(
+                                str(
+                                    uo[
+                                        "total_amount"
+                                    ] or 0
+                                )
+                            )
+
+                            order_paid = Decimal(
+                                str(
+                                    uo[
+                                        "paid_amount"
+                                    ] or 0
+                                )
+                            )
+
+                            order_balance = max(
+                                Decimal("0"),
+                                order_total - order_paid
+                            )
+
+                            if order_balance <= 0:
+                                continue
+
+                            allocated = min(
+                                remaining_payment,
+                                order_balance
+                            )
+
+                            split_receipt = (
+                                generate_receipt_number()
+                            )
+
+                            cursor.execute("""
+                                INSERT INTO payments (
+                                    bill_id,
+                                    enrollment_id,
+                                    branch_id,
+                                    year_id,
+                                    amount,
+                                    payment_method,
+                                    receipt_number,
+                                    notes,
+                                    received_by,
+                                    target_type,
+                                    target_id
+                                )
+                                VALUES (
+                                    %s, %s, %s, %s,
+                                    %s, %s, %s, %s,
+                                    %s,
+                                    'uniform_order',
+                                    %s
+                                )
+                                RETURNING payment_id
+                            """, (
+                                bill_id,
+                                bill[
+                                    "enrollment_id"
+                                ],
+                                session.get(
+                                    "branch_id"
+                                ),
+                                bill["year_id"],
+                                allocated,
+                                payment_method,
+                                split_receipt,
+                                notes,
+                                session.get(
+                                    "user_id"
+                                ),
+                                uo["order_id"]
+                            ))
+
+                            payment_ids.append(
+                                cursor.fetchone()[
+                                    "payment_id"
+                                ]
+                            )
+
+                            remaining_payment -= (
+                                allocated
+                            )
+
+                    # ----------------------------------
+                    # 4. BOOK RESERVATIONS
+                    # ----------------------------------
+                    if remaining_payment > 0:
+                        cursor.execute("""
+                            SELECT
+                                r.reservation_id,
+                                COALESCE(
+                                    SUM(
+                                        ri.line_total
+                                    ),
+                                    0
+                                ) AS total_amount,
+
+                                COALESCE((
+                                    SELECT SUM(
+                                        p.amount
+                                    )
+                                    FROM payments p
+                                    WHERE
+                                        p.target_type =
+                                        'reservation'
+                                        AND
+                                        p.target_id =
+                                        r.reservation_id
+                                ), 0) AS paid_amount
+
+                            FROM reservations r
+
+                            JOIN reservation_items ri
+                              ON ri.reservation_id =
+                                 r.reservation_id
+
+                            JOIN inventory_items ii
+                              ON ii.item_id =
+                                 ri.item_id
+
+                            WHERE r.branch_id = %s
+
+                              AND (
+                                  r.enrollment_id = %s
+
+                                  OR
+                                  r.student_user_id
+                                  IN (
+                                      SELECT
+                                          u.user_id
+                                      FROM
+                                          student_accounts sa
+                                      JOIN users u
+                                        ON u.username =
+                                           sa.username
+                                      WHERE
+                                          sa.enrollment_id =
+                                          %s
+                                  )
+                              )
+
+                              AND UPPER(
+                                  COALESCE(
+                                      r.status,
+                                      ''
+                                  )
+                              ) NOT IN (
+                                  'CANCELLED',
+                                  'REJECTED',
+                                  'CLAIMED'
+                              )
+
+                              AND UPPER(
+                                  COALESCE(
+                                      ii.category,
+                                      ''
+                                  )
+                              ) = 'BOOK'
+
+                            GROUP BY
+                                r.reservation_id
+
+                            ORDER BY
+                                r.reservation_id ASC
+                        """, (
+                            session.get("branch_id"),
+                            bill["enrollment_id"],
+                            bill["enrollment_id"]
+                        ))
+
+                        reservations = (
+                            cursor.fetchall() or []
+                        )
+
+                        for res in reservations:
+                            if remaining_payment <= 0:
+                                break
+
+                            res_total = Decimal(
+                                str(
+                                    res[
+                                        "total_amount"
+                                    ] or 0
+                                )
+                            )
+
+                            res_paid = Decimal(
+                                str(
+                                    res[
+                                        "paid_amount"
+                                    ] or 0
+                                )
+                            )
+
+                            res_balance = max(
+                                Decimal("0"),
+                                res_total - res_paid
+                            )
+
+                            if res_balance <= 0:
+                                continue
+
+                            allocated = min(
+                                remaining_payment,
+                                res_balance
+                            )
+
+                            split_receipt = (
+                                generate_receipt_number()
+                            )
+
+                            cursor.execute("""
+                                INSERT INTO payments (
+                                    bill_id,
+                                    enrollment_id,
+                                    branch_id,
+                                    year_id,
+                                    amount,
+                                    payment_method,
+                                    receipt_number,
+                                    notes,
+                                    received_by,
+                                    target_type,
+                                    target_id
+                                )
+                                VALUES (
+                                    %s, %s, %s, %s,
+                                    %s, %s, %s, %s,
+                                    %s,
+                                    'reservation',
+                                    %s
+                                )
+                                RETURNING payment_id
+                            """, (
+                                bill_id,
+                                bill[
+                                    "enrollment_id"
+                                ],
+                                session.get(
+                                    "branch_id"
+                                ),
+                                bill["year_id"],
+                                allocated,
+                                payment_method,
+                                split_receipt,
+                                notes,
+                                session.get(
+                                    "user_id"
+                                ),
+                                res[
+                                    "reservation_id"
+                                ]
+                            ))
+
+                            payment_ids.append(
+                                cursor.fetchone()[
+                                    "payment_id"
+                                ]
+                            )
+
+                            remaining_payment -= (
+                                allocated
+                            )
+
+                    if remaining_payment > 0:
+                        raise ValueError(
+                            "Payment could not be "
+                            "fully allocated."
+                        )
+
+                    if not payment_ids:
+                        raise ValueError(
+                            "No outstanding items "
+                            "found."
+                        )
+
+                    payment_id = payment_ids[0]
+
+                # ======================================
+                # PAY SPECIFIC ITEM
+                # ======================================
+                else:
+                    receipt_number = (
+                        generate_receipt_number()
+                    )
+
+                    cursor.execute("""
+                        INSERT INTO payments (
+                            bill_id,
+                            enrollment_id,
+                            branch_id,
+                            year_id,
+                            amount,
+                            payment_method,
+                            receipt_number,
+                            notes,
+                            received_by,
+                            target_type,
+                            target_id
+                        )
+                        VALUES (
+                            %s, %s, %s, %s,
+                            %s, %s, %s, %s,
+                            %s, %s, %s
+                        )
+                        RETURNING payment_id
+                    """, (
+                        bill_id,
+                        bill["enrollment_id"],
+                        session.get("branch_id"),
+                        bill["year_id"],
+                        amount,
+                        payment_method,
+                        receipt_number,
+                        notes,
+                        session.get("user_id"),
+                        target_type,
+                        target_id
+                    ))
+
+                    payment_id = (
+                        cursor.fetchone()[
+                            "payment_id"
+                        ]
+                    )
+
+                    payment_ids.append(payment_id)
+
+                # ======================================
+                # RECALCULATE BILL
+                # ======================================
+                _recalculate_bill(
+                    cursor,
+                    bill_id
+                )
+
+                db.commit()
+
+                # ======================================
+                # FETCH REPRESENTATIVE RECEIPT
+                # ======================================
+                cursor.execute("""
+                    SELECT
+                        p.*,
+
+                        e.student_first_name,
+                        e.student_middle_name,
+                        e.student_last_name,
+
+                        e.guardian_first_name,
+                        e.guardian_middle_name,
+                        e.guardian_last_name,
+
+                        e.grade_level,
+                        e.branch_enrollment_no,
+
+                        b.total_amount AS bill_total,
+                        b.amount_paid AS bill_paid,
+                        b.balance AS bill_balance,
+
+                        br.branch_name,
+                        br.location,
+
+                        COALESCE(
+                            NULLIF(
+                                TRIM(u.full_name),
+                                ''
+                            ),
+                            u.username
+                        ) AS received_by_name
+
+                    FROM payments p
+
+                    JOIN billing b
+                      ON p.bill_id = b.bill_id
+
+                    JOIN enrollments e
+                      ON p.enrollment_id =
+                         e.enrollment_id
+
+                    JOIN branches br
+                      ON e.branch_id =
+                         br.branch_id
+
+                    JOIN users u
+                      ON p.received_by =
+                         u.user_id
+
+                    WHERE p.payment_id = %s
+                """, (payment_id,))
+
+                receipt = cursor.fetchone()
+
+                receipt_student = " ".join(
+                    filter(None, [
+                        receipt.get(
+                            "student_first_name"
+                        ),
+                        receipt.get(
+                            "student_middle_name"
+                        ),
+                        receipt.get(
+                            "student_last_name"
+                        ),
+                    ])
+                )
+
+                receipt_guardian = " ".join(
+                    filter(None, [
+                        receipt.get(
+                            "guardian_first_name"
+                        ),
+                        receipt.get(
+                            "guardian_middle_name"
+                        ),
+                        receipt.get(
+                            "guardian_last_name"
+                        ),
+                    ])
+                )
+
+                receipt_date = _to_manila_naive(
+                    receipt.get("payment_date")
+                )
+
+                actual_receipt_number = (
+                    receipt.get(
+                        "receipt_number"
+                    ) or ""
+                )
+
+                # ======================================
+                # AJAX RESPONSE
+                # ======================================
+                if (
+                    request.headers.get(
+                        "X-Requested-With"
+                    )
+                    == "XMLHttpRequest"
+                ):
+                    return jsonify({
+                        "success": True,
+                        "receipt": {
+                            "payment_id":
+                                payment_id,
+
+                            "receipt_number":
+                                actual_receipt_number,
+
+                            "payment_date":
+                                (
+                                    receipt_date.strftime(
+                                        "%B %d, %Y | "
+                                        "%I:%M %p"
+                                    )
+                                    if receipt_date
+                                    else ""
+                                ),
+
+                            "amount":
+                                float(amount),
+
+                            "payment_method":
+                                payment_method.upper(),
+
+                            "student_name":
+                                receipt_student,
+
+                            "guardian_name":
+                                receipt_guardian,
+
+                            "grade_level":
+                                receipt.get(
+                                    "grade_level",
+                                    ""
+                                ),
+
+                            "enrollment_no":
+                                receipt.get(
+                                    "branch_enrollment_no",
+                                    ""
+                                ),
+
+                            "branch_name":
+                                receipt.get(
+                                    "branch_name",
+                                    ""
+                                ),
+
+                            "branch_location":
+                                receipt.get(
+                                    "location",
+                                    ""
+                                ),
+
+                            "bill_total":
+                                float(
+                                    receipt.get(
+                                        "bill_total"
+                                    ) or 0
+                                ),
+
+                            "bill_paid":
+                                float(
+                                    receipt.get(
+                                        "bill_paid"
+                                    ) or 0
+                                ),
+
+                            "bill_balance":
+                                float(
+                                    receipt.get(
+                                        "bill_balance"
+                                    ) or 0
+                                ),
+
+                            "received_by":
+                                receipt.get(
+                                    "received_by_name",
+                                    ""
+                                ),
+
+                            "notes":
+                                notes,
+                        }
+                    })
+
+                flash(
+                    "Payment recorded successfully! "
+                    f"Receipt: "
+                    f"{actual_receipt_number}",
+                    "success"
+                )
+
+                return redirect(
+                    url_for(
+                        "cashier.print_receipt",
+                        payment_id=payment_id
+                    )
+                )
+
+            except Exception as e:
+                db.rollback()
+
+                if (
+                    request.headers.get(
+                        "X-Requested-With"
+                    )
+                    == "XMLHttpRequest"
+                ):
+                    return jsonify({
+                        "success": False,
+                        "error": str(e)
+                    }), 500
+
+                flash(
+                    f"Failed to process payment: "
+                    f"{str(e)}",
+                    "error"
+                )
+
+                return redirect(
+                    url_for(
+                        "cashier.view_bill",
+                        bill_id=bill_id
+                    )
+                )
+
+        target_type = request.args.get(
+            "target_type",
+            "general"
+        )
+
+        target_id = request.args.get(
+            "target_id",
+            ""
+        )
+
+        target_amount = request.args.get(
+            "target_amount",
+            ""
+        )
+
+        target_name = request.args.get(
+            "target_name",
+            ""
+        )
+
+        return render_template(
+            "cashier_process_payment.html",
+            bill=bill,
+            target_type=target_type,
+            target_id=target_id,
+            target_amount=target_amount,
+            target_name=target_name
+        )
+
     finally:
         cursor.close()
         db.close()
