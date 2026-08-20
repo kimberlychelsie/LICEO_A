@@ -2040,7 +2040,40 @@ def allow_resubmission(submission_id):
 # ══════════════════════════════════════════
 # EXAM ROUTES — TEACHER
 # ══════════════════════════════════════════
+@teacher_bp.route("/teacher/exams/incidents/<int:result_id>")
+def teacher_exam_incidents(result_id):
+    if not _require_teacher():
+        return jsonify({"ok": False, "error": "Unauthorized"}), 403
 
+    user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        cur.execute("""
+            SELECT ts.reason, ts.switched_at
+            FROM exam_tab_switches ts
+            JOIN exam_results r ON r.result_id = ts.result_id
+            JOIN exams e ON e.exam_id = r.exam_id
+            WHERE ts.result_id = %s
+              AND e.teacher_id = %s
+              AND e.branch_id = %s
+            ORDER BY ts.switched_at DESC
+        """, (result_id, user_id, branch_id))
+
+        incidents = cur.fetchall() or []
+
+        return jsonify({
+            "ok": True,
+            "incidents": incidents
+        })
+
+    finally:
+        cur.close()
+        db.close()
+        
 @teacher_bp.route("/teacher/exams/<int:exam_id>/settings", methods=["GET", "POST"])
 def teacher_exam_edit_settings(exam_id):
     if not _require_teacher():
@@ -3039,6 +3072,119 @@ def teacher_exam_results(exam_id):
         min_date = ph_now.strftime("%Y-%m-%d") + "T00:00"
         return render_template("teacher_exam_results.html",
                                exam=exam, results=results_display, min_date=min_date)  # ← use results_display
+    finally:
+        cur.close()
+        db.close()
+
+@teacher_bp.route(
+    "/teacher/exams/<int:exam_id>/results-status"
+)
+def teacher_exam_results_status(exam_id):
+
+    if not _require_teacher():
+        return jsonify({
+            "ok": False
+        }), 401
+
+    user_id = session.get("user_id")
+    branch_id = session.get("branch_id")
+
+    db = get_db_connection()
+
+    cur = db.cursor(
+        cursor_factory=
+        psycopg2.extras.RealDictCursor
+    )
+
+    try:
+        year_id = _get_active_school_year(
+            cur,
+            branch_id
+        )
+
+        if not year_id:
+            return jsonify({
+                "ok": False
+            }), 400
+
+        # Make sure this exam belongs
+        # to the logged-in teacher
+        cur.execute("""
+    SELECT e.exam_id
+    FROM exams e
+    JOIN sections s
+        ON e.section_id = s.section_id
+    WHERE e.exam_id = %s
+      AND e.teacher_id = %s
+      AND e.branch_id = %s
+      AND s.year_id = %s
+        """, (
+            exam_id,
+            user_id,
+            branch_id,
+            year_id
+        ))
+
+        if not cur.fetchone():
+            return jsonify({
+                "ok": False
+            }), 404
+
+        cur.execute("""
+            SELECT
+                result_id,
+                enrollment_id,
+                score,
+                total_points,
+                status,
+                submitted_at,
+                tab_switches
+            FROM exam_results
+            WHERE exam_id = %s
+            ORDER BY enrollment_id
+        """, (
+            exam_id,
+        ))
+
+        rows = cur.fetchall() or []
+
+        results = []
+
+        for row in rows:
+            results.append({
+                "result_id":
+                    row["result_id"],
+
+                "enrollment_id":
+                    row["enrollment_id"],
+
+                "score":
+                    float(row["score"])
+                    if row["score"] is not None
+                    else None,
+
+                "total_points":
+                    float(row["total_points"])
+                    if row["total_points"] is not None
+                    else None,
+
+                "status":
+                    row["status"],
+
+                "submitted_at":
+                    row["submitted_at"].isoformat()
+                    if row["submitted_at"]
+                    else None,
+
+                "tab_switches":
+                    row["tab_switches"] or 0
+            })
+
+        return jsonify({
+            "ok": True,
+            "results": results
+        })
+
     finally:
         cur.close()
         db.close()

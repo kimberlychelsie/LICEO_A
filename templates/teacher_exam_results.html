@@ -201,8 +201,12 @@
                     <th>Percentage</th>
                     <th>Status</th>
                     <th style="display: flex; align-items: center; gap: 6px;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                        Tab Switches
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                            <line x1="12" y1="9" x2="12" y2="13"></line>
+                            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                        Suspicious Activity
                     </th>
                     <th>Submitted</th>
                     <th style="text-align: center;">Allowed to Take</th>
@@ -223,13 +227,15 @@
                 <td><span class="badge badge-{{ r.status|lower|replace(' ', '_') }}">{{ r.status|replace('_',' ')|capitalize }}</span></td>
                 <td>
                     {% if r.switch_count > 0 %}
-                    <span class="tab-warn" style="display: inline-flex; align-items: center; gap: 4px;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                        {{ r.switch_count }} switch{{ 'es' if r.switch_count > 1 else '' }}
-                    </span>
-                    {% else %}
-                    <span class="tab-ok">None</span>
-                    {% endif %}
+<button type="button"
+        class="tab-warn"
+        style="display:inline-flex; align-items:center; gap:4px; border:none; cursor:pointer;"
+        onclick="openIncidentModal('{{ r.result_id }}', '{{ r.student_name|e }}')">
+    ⚠ {{ r.switch_count }} incident{{ 's' if r.switch_count > 1 else '' }}
+</button>
+{% else %}
+<span class="tab-ok">None</span>
+{% endif %}
                 </td>
                 <td>{{ r.submitted_at.strftime('%Y-%m-%d %H:%M') if r.submitted_at else '—' }}</td>
                 <td style="text-align: center;">
@@ -281,6 +287,23 @@
         {% else %}
         <div style="text-align:center; padding:40px; color:#aaa;">No submissions yet.</div>
         {% endif %}
+    </div>
+</div>
+
+<div id="incidentModal"
+     style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9999;">
+    <div style="max-width:500px; margin:80px auto; background:#fff; padding:24px; border-radius:12px;">
+        <h3 id="incidentModalTitle">Suspicious Activity</h3>
+
+        <div id="incidentModalBody">
+            Loading...
+        </div>
+
+        <button type="button"
+                class="btn btn-secondary"
+                onclick="closeIncidentModal()">
+            Close
+        </button>
     </div>
 </div>
 
@@ -424,5 +447,133 @@ function updateAllPermissions(action) {
         console.error(err);
     });
 }
+function formatIncidentTime(dateValue) {
+    if (!dateValue) return '';
+
+    const date = new Date(dateValue);
+
+    return new Intl.DateTimeFormat('en-PH', {
+        timeZone: 'Asia/Manila',
+        year: 'numeric',
+        month: 'short',
+        day: '2-digit',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    }).format(date);
+}
+
+function openIncidentModal(resultId, studentName) {
+    const modal = document.getElementById('incidentModal');
+    const body = document.getElementById('incidentModalBody');
+    const title = document.getElementById('incidentModalTitle');
+
+    title.textContent = 'Suspicious Activity — ' + studentName;
+    body.innerHTML = 'Loading...';
+    modal.style.display = 'block';
+
+    fetch('/teacher/exams/incidents/' + resultId)
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok) {
+                body.innerHTML = 'Unable to load incidents.';
+                return;
+            }
+
+            if (!data.incidents.length) {
+                body.innerHTML = 'No incidents found.';
+                return;
+            }
+
+            body.innerHTML = data.incidents.map(item => {
+                const labels = {
+                    page_hidden: 'Tab / App Switch',
+                    window_blur: 'Window Lost Focus',
+                    possible_split_screen: 'Possible Split Screen',
+                    fullscreen_exit: 'Fullscreen Exit',
+                    tab_switch: 'Tab Switch'
+                };
+
+                const label = labels[item.reason] || item.reason;
+
+                return `
+                    <div style="padding:10px 0; border-bottom:1px solid #eee;">
+                        <strong>${label}</strong><br>
+                        <small>${formatIncidentTime(item.switched_at)}</small>
+                    </div>
+                `;
+            }).join('');
+        });
+}
+
+function closeIncidentModal() {
+    document.getElementById('incidentModal').style.display = 'none';
+}
+let teacherResultSnapshot = null;
+let teacherStatusChecking = false;
+
+async function checkTeacherResults() {
+
+    if (teacherStatusChecking) {
+        return;
+    }
+
+    teacherStatusChecking = true;
+
+    try {
+        const response = await fetch(
+            '/teacher/exams/'
+            + '{{ exam.exam_id }}'
+            + '/results-status',
+            {
+                method: 'GET',
+                cache: 'no-store'
+            }
+        );
+
+        if (!response.ok) {
+            return;
+        }
+
+        const data = await response.json();
+
+        if (!data.ok) {
+            return;
+        }
+
+        const snapshot = JSON.stringify(
+            data.results
+        );
+
+        if (teacherResultSnapshot === null) {
+            teacherResultSnapshot = snapshot;
+            return;
+        }
+
+        if (
+            snapshot
+            !== teacherResultSnapshot
+        ) {
+            window.location.reload();
+        }
+
+    } catch (error) {
+        console.error(
+            'Teacher result check failed:',
+            error
+        );
+
+    } finally {
+        teacherStatusChecking = false;
+    }
+}
+
+setInterval(
+    checkTeacherResults,
+    3000
+);
+
+checkTeacherResults();
 </script>
 {% endblock %}

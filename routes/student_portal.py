@@ -32,7 +32,62 @@ def _to_manila_naive(dt_value):
         return dt_value.replace(tzinfo=None)
     return dt_value.astimezone(ph_tz).replace(tzinfo=None)
 
+def _finalize_expired_attempt(
+    cur,
+    result_id,
+    exam_id
+):
+    cur.execute("""
+        SELECT
+            COALESCE(
+                SUM(
+                    CASE
+                        WHEN ea.is_correct
+                        THEN q.points
+                        ELSE 0
+                    END
+                ),
+                0
+            ) AS score,
+            COALESCE(
+                SUM(q.points),
+                0
+            ) AS total_points
+        FROM exam_questions q
+        LEFT JOIN exam_answers ea
+            ON q.question_id = ea.question_id
+           AND ea.result_id = %s
+        WHERE q.exam_id = %s
+    """, (
+        result_id,
+        exam_id
+    ))
 
+    calc = cur.fetchone()
+
+    score = int(
+        calc["score"] or 0
+    )
+
+    total_points = int(
+        calc["total_points"] or 0
+    )
+
+    cur.execute("""
+        UPDATE exam_results
+        SET score = %s,
+            total_points = %s,
+            status = 'auto_submitted',
+            submitted_at = NOW()
+        WHERE result_id = %s
+          AND status = 'in_progress'
+    """, (
+        score,
+        total_points,
+        result_id
+    ))
+
+    return score, total_points
 
 @student_portal_bp.route("/student/dashboard")
 def dashboard():
@@ -939,6 +994,15 @@ def subject_view(subject_id):
         active_sy_row = cur.fetchone()
         active_year_id    = active_sy_row["year_id"] if active_sy_row else None
         school_year_label = active_sy_row["label"]   if active_sy_row else None
+        ph_tz = pytz.timezone(
+    "Asia/Manila"
+        )
+
+        now_naive = (
+            datetime.now(timezone.utc)
+            .astimezone(ph_tz)
+            .replace(tzinfo=None)
+        )
 
         # Only fetch school-year-specific data if the enrollment belongs to the active SY
         is_active_enrollment = (student_year_id == active_year_id) and (active_year_id is not None)
@@ -976,7 +1040,7 @@ def subject_view(subject_id):
             # Get quizzes for this subject/section — shown on the same page as activities
             cur.execute("""
                 SELECT e.*,
-                       r.result_id, r.score, r.total_points, r.status AS result_status,
+                       r.result_id, r.score, r.total_points, r.status AS result_status, r.started_at,
                        ext.new_due_date AS individual_extension
                 FROM exams e
                 LEFT JOIN exam_results r ON r.exam_id = e.exam_id AND r.enrollment_id = %s
@@ -993,22 +1057,248 @@ def subject_view(subject_id):
 
             for q in quizzes_raw:
                 q = dict(q)
-                duration = int(q.get("duration_mins") or 0)
-                
-                if q.get("individual_extension"):
-                    q["effective_start"] = _to_manila_naive(q["individual_extension"])
-                    q["effective_end"] = q["effective_start"] + timedelta(minutes=duration)
-                else:
-                    q["effective_start"] = _to_manila_naive(q.get("scheduled_start"))
-                    if q["effective_start"]:
-                        q["effective_end"] = q["effective_start"] + timedelta(minutes=duration)
-                    else:
-                        q["effective_end"] = None
-                        
-                quizzes.append(q)
 
-        ph_tz = pytz.timezone("Asia/Manila")
-        now_naive = datetime.now(timezone.utc).astimezone(ph_tz).replace(tzinfo=None)
+                duration = int(
+                    q.get("duration_mins") or 0
+                )
+
+                # -----------------------------
+                # GLOBAL QUIZ SCHEDULE
+                # -----------------------------
+                if q.get("individual_extension"):
+                    q["effective_start"] = (
+                        _to_manila_naive(
+                            q["individual_extension"]
+                        )
+                    )
+
+                else:
+                    q["effective_start"] = (
+                        _to_manila_naive(
+                            q.get("scheduled_start")
+                        )
+                    )
+
+                if q["effective_start"]:
+                    q["effective_end"] = (
+                        q["effective_start"]
+                        + timedelta(
+                            minutes=duration
+                        )
+                    )
+                else:
+                    q["effective_end"] = None
+
+                # -----------------------------
+                # STUDENT ATTEMPT END
+                # -----------------------------
+                attempt_end = None
+
+                if (
+                    q.get("result_status")
+                    == "in_progress"
+                    and q.get("started_at")
+                ):
+                    started_at = q["started_at"]
+
+                    if started_at.tzinfo is None:
+                        started_at = (
+                            started_at
+                            .replace(tzinfo=timezone.utc)
+                            .astimezone(ph_tz)
+                            .replace(tzinfo=None)
+                        )
+                    else:
+                        started_at = (
+                            started_at
+                            .astimezone(ph_tz)
+                            .replace(tzinfo=None)
+                        )
+                    attempt_end = (
+                        started_at
+                        + timedelta(
+                            minutes=duration
+                        )
+                    )
+
+                # -----------------------------
+                # TRUE EXPIRATION
+                # whichever ends first
+                # -----------------------------
+                expiry_time = None
+
+                if (
+                    q["effective_end"]
+                    and attempt_end
+                ):
+                    expiry_time = min(
+                        q["effective_end"],
+                        attempt_end
+                    )
+
+                elif attempt_end:
+                    expiry_time = attempt_end
+
+                elif q["effective_end"]:
+                    expiry_time = (
+                        q["effective_end"]
+                    )
+
+                # -----------------------------
+                # LEFT QUIZ PAGE
+                # -----------------------------
+                if (
+                    q.get("result_status")
+                    == "in_progress"
+                    and q.get("result_id")
+                    and (
+                        not expiry_time
+                        or now_naive < expiry_time
+                    )
+                ):
+                    result_id = q["result_id"]
+
+                    # Remove blur/tab events caused
+                    # by the same page-leave action
+                    cur.execute("""
+                        DELETE FROM exam_tab_switches
+                        WHERE result_id = %s
+                          AND reason IN (
+                              'page_hidden',
+                              'window_blur'
+                          )
+                          AND switched_at >= NOW()
+                              - INTERVAL '5 seconds'
+                    """, (
+                        result_id,
+                    ))
+
+                    # Avoid duplicate Left Page records
+                    cur.execute("""
+                        SELECT 1
+                        FROM exam_tab_switches
+                        WHERE result_id = %s
+                          AND reason = 'left_exam_page'
+                          AND switched_at >= NOW()
+                              - INTERVAL '10 seconds'
+                        LIMIT 1
+                    """, (
+                        result_id,
+                    ))
+
+                    recent_leave = cur.fetchone()
+
+                    if not recent_leave:
+                        cur.execute("""
+                            INSERT INTO exam_tab_switches (
+                                result_id,
+                                reason
+                            )
+                            VALUES (%s, %s)
+                        """, (
+                            result_id,
+                            "left_exam_page"
+                        ))
+
+                    # Recalculate actual count
+                    cur.execute("""
+                        UPDATE exam_results
+                        SET tab_switches = (
+                            SELECT COUNT(*)
+                            FROM exam_tab_switches
+                            WHERE result_id = %s
+                        )
+                        WHERE result_id = %s
+                    """, (
+                        result_id,
+                        result_id
+                    ))
+
+                    db.commit()
+
+                # -----------------------------
+                # AUTO-FINALIZE
+                # -----------------------------
+                if (
+                    q.get("result_status")
+                    == "in_progress"
+                    and expiry_time
+                    and now_naive >= expiry_time
+                ):
+                    result_id = q.get(
+                        "result_id"
+                    )
+
+                    cur.execute("""
+                        SELECT
+                            COALESCE(
+                                SUM(
+                                    CASE
+                                        WHEN ea.is_correct
+                                        THEN eq.points
+                                        ELSE 0
+                                    END
+                                ),
+                                0
+                            ) AS score,
+                            COALESCE(
+                                SUM(eq.points),
+                                0
+                            ) AS total_points
+                        FROM exam_questions eq
+                        LEFT JOIN exam_answers ea
+                            ON eq.question_id
+                               = ea.question_id
+                           AND ea.result_id = %s
+                        WHERE eq.exam_id = %s
+                    """, (
+                        result_id,
+                        q["exam_id"]
+                    ))
+
+                    calc = cur.fetchone()
+
+                    score = int(
+                        calc["score"] or 0
+                    )
+
+                    total_points = int(
+                        calc["total_points"] or 0
+                    )
+
+                    cur.execute("""
+                        UPDATE exam_results
+                        SET score = %s,
+                            total_points = %s,
+                            status =
+                                'auto_submitted',
+                            submitted_at = NOW()
+                        WHERE result_id = %s
+                          AND enrollment_id = %s
+                          AND exam_id = %s
+                          AND status =
+                              'in_progress'
+                    """, (
+                        score,
+                        total_points,
+                        result_id,
+                        enrollment_id,
+                        q["exam_id"]
+                    ))
+
+                    db.commit()
+
+                    # Update displayed data
+                    # without requiring refresh
+                    q["score"] = score
+                    q["total_points"] = (
+                        total_points
+                    )
+                    q["result_status"] = (
+                        "auto_submitted"
+                    )
+
+                quizzes.append(q)
 
     finally:
         cur.close()
@@ -1618,25 +1908,145 @@ def student_exam_take(exam_id):
                 return redirect(back_url)
 
         if request.method == "POST":
-            result_id    = request.form.get("result_id")
-            tab_switches = int(request.form.get("tab_switches", 0))
-            submit_type  = request.form.get("submit_type", "manual")
-            status       = "auto_submitted" if submit_type == "auto" else "submitted"
+            result_id = request.form.get("result_id")
+            submit_type = request.form.get(
+                "submit_type",
+                "manual"
+            )
+
+            status = (
+                "auto_submitted"
+                if submit_type == "auto"
+                else "submitted"
+            )
 
             if not result_id:
-                flash("Session error. Please try again.", "error")
+                flash(
+                    "Session error. Please try again.",
+                    "error"
+                )
                 return redirect(back_url)
 
-            # ✅ Calculate score from exam_answers table (answers saved via AJAX)
+            # =====================================
+            # FINAL ANSWER SYNC
+            # =====================================
+            for key, value in request.form.items():
+
+                if not key.startswith("answer_"):
+                    continue
+
+                if not value:
+                    continue
+
+                try:
+                    question_id = int(
+                        key.replace("answer_", "", 1)
+                    )
+                except ValueError:
+                    continue
+
+                student_answer = str(value).strip()
+
+                if not student_answer:
+                    continue
+
+                # Check question belongs to exam
+                cur.execute("""
+                    SELECT correct_answer
+                    FROM exam_questions
+                    WHERE question_id = %s
+                      AND exam_id = %s
+                """, (
+                    question_id,
+                    exam_id
+                ))
+
+                question = cur.fetchone()
+
+                if not question:
+                    continue
+
+                correct_answer = str(
+                    question["correct_answer"] or ""
+                ).strip()
+
+                is_correct = (
+                    student_answer.casefold()
+                    == correct_answer.casefold()
+                )
+
+                # Check existing answer
+                cur.execute("""
+                    SELECT 1
+                    FROM exam_answers
+                    WHERE result_id = %s
+                      AND question_id = %s
+                """, (
+                    result_id,
+                    question_id
+                ))
+
+                existing_answer = cur.fetchone()
+
+                if existing_answer:
+                    cur.execute("""
+                        UPDATE exam_answers
+                        SET student_answer = %s,
+                            is_correct = %s
+                        WHERE result_id = %s
+                          AND question_id = %s
+                    """, (
+                        student_answer,
+                        is_correct,
+                        result_id,
+                        question_id
+                    ))
+
+                else:
+                    cur.execute("""
+                        INSERT INTO exam_answers (
+                            result_id,
+                            question_id,
+                            student_answer,
+                            is_correct
+                        )
+                        VALUES (%s, %s, %s, %s)
+                    """, (
+                        result_id,
+                        question_id,
+                        student_answer,
+                        is_correct
+                    ))
+
+            # =====================================
+            # CALCULATE SCORE
+            # =====================================
             cur.execute("""
-                SELECT 
+                SELECT
                     COUNT(*) AS total_questions,
-                    COALESCE(SUM(CASE WHEN ea.is_correct THEN q.points ELSE 0 END), 0) AS score,
-                    COALESCE(SUM(q.points), 0) AS total_points
+                    COALESCE(
+                        SUM(
+                            CASE
+                                WHEN ea.is_correct
+                                THEN q.points
+                                ELSE 0
+                            END
+                        ),
+                        0
+                    ) AS score,
+                    COALESCE(
+                        SUM(q.points),
+                        0
+                    ) AS total_points
                 FROM exam_questions q
-                LEFT JOIN exam_answers ea ON q.question_id = ea.question_id AND ea.result_id = %s
+                LEFT JOIN exam_answers ea
+                    ON q.question_id = ea.question_id
+                   AND ea.result_id = %s
                 WHERE q.exam_id = %s
-            """, (result_id, exam_id))
+            """, (
+                result_id,
+                exam_id
+            ))
     
             result = cur.fetchone()
             score = int(result["score"]) if result["score"] else 0
@@ -1653,9 +2063,9 @@ def student_exam_take(exam_id):
             cur.execute("""
                 UPDATE exam_results
                 SET score=%s, total_points=%s, status=%s,
-                    submitted_at=NOW(), tab_switches=%s
+                    submitted_at=NOW()
                 WHERE result_id=%s AND enrollment_id=%s
-            """, (score, total_points, status, tab_switches, result_id, enrollment_id))
+            """, (score, total_points, status, result_id, enrollment_id))
             db.commit()
     
             return redirect(url_for("student_portal.student_exam_result",
@@ -1698,29 +2108,79 @@ def student_exam_take(exam_id):
         remaining = min(indiv_remaining, global_remaining)
 
         if remaining <= 0:
-            # 🚀 AUTO-FINALIZE: Either individual time is up OR global time is up
+
             cur.execute("""
-                SELECT 
-                    COALESCE(SUM(CASE WHEN ea.is_correct THEN q.points ELSE 0 END), 0) AS final_score,
-                    COALESCE(SUM(q.points), 0) AS total_points
+                SELECT
+                    COALESCE(
+                        SUM(
+                            CASE
+                                WHEN ea.is_correct
+                                THEN q.points
+                                ELSE 0
+                            END
+                        ),
+                        0
+                    ) AS final_score,
+                    COALESCE(
+                        SUM(q.points),
+                        0
+                    ) AS total_points
                 FROM exam_questions q
-                LEFT JOIN exam_answers ea ON q.question_id = ea.question_id AND ea.result_id = %s
+                LEFT JOIN exam_answers ea
+                    ON q.question_id = ea.question_id
+                   AND ea.result_id = %s
                 WHERE q.exam_id = %s
-            """, (result_id, exam_id))
+            """, (
+                result_id,
+                exam_id
+            ))
+
             calc = cur.fetchone()
-            score = int(calc["final_score"]) if calc else 0
-            total_pts = int(calc["total_points"]) if calc else 0
+
+            score = (
+                int(calc["final_score"])
+                if calc
+                else 0
+            )
+
+            total_pts = (
+                int(calc["total_points"])
+                if calc
+                else 0
+            )
 
             cur.execute("""
                 UPDATE exam_results
-                SET score=%s, total_points=%s, status='auto_submitted',
-                    submitted_at=NOW()
-                WHERE result_id=%s AND status='in_progress'
-            """, (score, total_pts, result_id))
+                SET score = %s,
+                    total_points = %s,
+                    status = 'auto_submitted',
+                    submitted_at = NOW()
+                WHERE result_id = %s
+                  AND enrollment_id = %s
+                  AND exam_id = %s
+                  AND status = 'in_progress'
+            """, (
+                score,
+                total_pts,
+                result_id,
+                enrollment_id,
+                exam_id
+            ))
+
             db.commit()
 
-            flash("The quiz time has expired. Your work has been automatically submitted.", "warning")
-            return redirect(url_for("student_portal.student_exam_result", result_id=result_id))
+            flash(
+                "The quiz time has expired. "
+                "Your work has been automatically submitted.",
+                "warning"
+            )
+
+            return redirect(
+                url_for(
+                    "student_portal.student_exam_result",
+                    result_id=result_id
+                )
+            )
 
         cur.execute("SELECT * FROM exam_questions WHERE exam_id=%s ORDER BY order_num",
                     (exam_id,))
@@ -1754,6 +2214,183 @@ def student_exam_take(exam_id):
                                result_id=result_id,
                                remaining_secs=remaining,
                                current_tab_switches=current_tab_switches)
+    finally:
+        cur.close()
+        db.close()
+
+@student_portal_bp.route(
+    "/student/exams/check-status",
+    methods=["GET"]
+)
+def check_exam_status():
+    if not _require_student():
+        return jsonify({
+            "ok": False
+        }), 401
+
+    enrollment_id = session.get(
+        "enrollment_id"
+    )
+
+    if not enrollment_id:
+        return jsonify({
+            "ok": False
+        }), 400
+
+    db = get_db_connection()
+    cur = db.cursor(
+        cursor_factory=
+        psycopg2.extras.RealDictCursor
+    )
+
+    try:
+        cur.execute("""
+            SELECT
+                r.result_id,
+                r.exam_id,
+                r.status,
+                r.started_at,
+                e.duration_mins,
+                e.scheduled_start,
+                ext.new_due_date
+                    AS individual_extension
+            FROM exam_results r
+            JOIN exams e
+                ON e.exam_id = r.exam_id
+            LEFT JOIN individual_extensions ext
+                ON ext.item_id = e.exam_id
+               AND ext.enrollment_id = %s
+               AND ext.item_type = 'quiz'
+            WHERE r.enrollment_id = %s
+              AND r.status = 'in_progress'
+        """, (
+            enrollment_id,
+            enrollment_id
+        ))
+
+        attempts = cur.fetchall() or []
+
+        ph_tz = pytz.timezone(
+            "Asia/Manila"
+        )
+
+        now_naive = (
+            datetime.now(timezone.utc)
+            .astimezone(ph_tz)
+            .replace(tzinfo=None)
+        )
+
+        finalized = []
+
+        for row in attempts:
+            row = dict(row)
+
+            duration = int(
+                row.get("duration_mins") or 0
+            )
+
+            schedule_start = (
+                row.get("individual_extension")
+                or row.get("scheduled_start")
+            )
+
+            schedule_start = (
+                _to_manila_naive(
+                    schedule_start
+                )
+            )
+
+            schedule_end = None
+
+            if schedule_start:
+                schedule_end = (
+                    schedule_start
+                    + timedelta(
+                        minutes=duration
+                    )
+                )
+
+            attempt_end = None
+
+            started_at = row.get(
+                "started_at"
+            )
+
+            if started_at:
+                if started_at.tzinfo is None:
+                    started_at = (
+                        started_at
+                        .replace(
+                            tzinfo=timezone.utc
+                        )
+                        .astimezone(ph_tz)
+                        .replace(tzinfo=None)
+                    )
+                else:
+                    started_at = (
+                        started_at
+                        .astimezone(ph_tz)
+                        .replace(tzinfo=None)
+                    )
+
+                attempt_end = (
+                    started_at
+                    + timedelta(
+                        minutes=duration
+                    )
+                )
+
+            expiry_time = None
+
+            if schedule_end and attempt_end:
+                expiry_time = min(
+                    schedule_end,
+                    attempt_end
+                )
+
+            elif attempt_end:
+                expiry_time = attempt_end
+
+            elif schedule_end:
+                expiry_time = schedule_end
+
+            if (
+                expiry_time
+                and now_naive >= expiry_time
+            ):
+                score, total_points = (
+                    _finalize_expired_attempt(
+                        cur,
+                        row["result_id"],
+                        row["exam_id"]
+                    )
+                )
+
+                finalized.append({
+                    "exam_id": row["exam_id"],
+                    "score": score,
+                    "total_points":
+                        total_points
+                })
+
+        db.commit()
+
+        return jsonify({
+            "ok": True,
+            "changed": bool(finalized),
+            "finalized": finalized
+        })
+
+    except Exception:
+        db.rollback()
+        logger.exception(
+            "Failed checking exam status"
+        )
+
+        return jsonify({
+            "ok": False
+        }), 500
+
     finally:
         cur.close()
         db.close()
@@ -1834,34 +2471,106 @@ def save_answer():
 
 @student_portal_bp.route("/student/exams/tab-switch", methods=["POST"])
 def student_exam_tab_switch():
-    """AJAX endpoint — called every time student switches tab"""
+    """AJAX endpoint — logs suspicious exam activity."""
     if session.get("role") != "student":
         return jsonify({"ok": False}), 403
 
-    data      = request.get_json()
+    data = request.get_json(
+        silent=True
+    ) or {}
+
     result_id = data.get("result_id")
+    reason = (data.get("reason") or "tab_switch").strip()
     enrollment_id = session.get("enrollment_id")
 
     if not result_id:
         return jsonify({"ok": False}), 400
 
-    db  = get_db_connection()
+    allowed_reasons = {
+        "tab_switch",
+        "page_hidden",
+        "window_blur",
+        "possible_split_screen",
+        "fullscreen_exit",
+        "left_exam_page"
+    }
+
+    if reason not in allowed_reasons:
+        reason = "tab_switch"
+
+    db = get_db_connection()
     cur = db.cursor()
+
     try:
-        # Verify ownership
-        cur.execute("SELECT 1 FROM exam_results WHERE result_id=%s AND enrollment_id=%s",
-                    (result_id, enrollment_id))
+        cur.execute("""
+            SELECT 1
+            FROM exam_results
+            WHERE result_id = %s
+              AND enrollment_id = %s
+              AND status = 'in_progress'
+        """, (
+            result_id,
+            enrollment_id
+        ))
+
         if not cur.fetchone():
             return jsonify({"ok": False}), 403
+        
+        # If student really left the exam page,
+        # remove blur/hidden events caused by the same action.
+        if reason == "left_exam_page":
 
-        cur.execute("INSERT INTO exam_tab_switches (result_id) VALUES (%s)", (result_id,))
-        cur.execute("UPDATE exam_results SET tab_switches = tab_switches + 1 WHERE result_id=%s",
-                    (result_id,))
+            cur.execute("""
+                DELETE FROM exam_tab_switches
+                WHERE result_id = %s
+                  AND reason IN (
+                      'page_hidden',
+                      'window_blur'
+                  )
+                  AND switched_at >= NOW()
+                      - INTERVAL '3 seconds'
+            """, (
+                result_id,
+            ))
+
+        cur.execute("""
+            INSERT INTO exam_tab_switches (
+                result_id,
+                reason
+            )
+            VALUES (%s, %s)
+        """, (
+            result_id,
+            reason
+        ))
+
+        cur.execute("""
+            UPDATE exam_results
+            SET tab_switches = (
+                SELECT COUNT(*)
+                FROM exam_tab_switches
+                WHERE result_id = %s
+            )
+            WHERE result_id = %s
+        """, (
+            result_id,
+            result_id
+        ))
+
         db.commit()
-        return jsonify({"ok": True})
-    except Exception:
+
+        return jsonify({
+            "ok": True
+        })
+
+    except Exception as e:
         db.rollback()
-        return jsonify({"ok": False}), 500
+        print("Error logging suspicious activity:", e)
+
+        return jsonify({
+            "ok": False
+        }), 500
+
     finally:
         cur.close()
         db.close()

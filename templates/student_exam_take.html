@@ -392,6 +392,34 @@
     function lsGet(k)      { return localStorage.getItem(EXAM_KEY + k); }
     function lsSet(k, v)   { localStorage.setItem(EXAM_KEY + k, v); }
 
+    // ── Exam state / anti-cheat state ──
+const resultId = {{ result_id | int }};
+
+let tabSwitchCount = {{ current_tab_switches | int }};
+let trackingActive = false;
+let lastSwitchTime = 0;
+let isPageUnloading = false;
+let isConfirmOpen = false;
+let ignoreAntiCheatUntil = 0;
+let isSubmittingExam = false;
+let leaveEventSent = false;
+
+function safeAlert(message) {
+
+isConfirmOpen = true;
+
+alert(message);
+
+isConfirmOpen = false;
+
+ignoreAntiCheatUntil =
+    Date.now() + 1200;
+}
+
+let resizeTimer = null;
+
+const initialViewportWidth = window.innerWidth;
+
     // ── Timer ──
     let remaining = {{ remaining_secs | int }};
     const timerEl = document.getElementById('timerBox');
@@ -416,8 +444,11 @@
     }
 
     function autoSubmit() {
-        console.log("Auto-submitting exam...");
-        trackingActive = false;
+    console.log("Auto-submitting exam...");
+
+    trackingActive = false;
+    isPageUnloading = true;
+    isSubmittingExam = true;
 
         // 1. Force save the currently visible question's answer if it exists
         const visibleCard = document.querySelector('.q-card[style*="display: block"], .q-card[style*="display:block"]');
@@ -461,8 +492,9 @@
             form.submit();
         }
     }
-
     updateTimer();
+
+    
 
     // ── Answered counter ──
     let answeredCount = 0;
@@ -596,77 +628,173 @@
             autoSubmit();
         }
     }
-
     window.nextMC = function () {
-        const card = document.getElementById(`mc-q${mcIndex}`);
-        if (!card.querySelector('input[type="radio"]:checked')) {
-            alert('⚠️ Please answer the question before proceeding.'); return;
-        }
-        const sel = card.querySelector('input[type="radio"]:checked');
-        saveAnswer(sel.name, sel.value);
-        mcIndex++; showMC(mcIndex);
-    };
+    const card = document.getElementById(
+        `mc-q${mcIndex}`
+    );
 
-    window.nextTF = function () {
-        const card = document.getElementById(`tf-q${tfIndex}`);
-        if (!card.querySelector('input[type="radio"]:checked')) {
-            alert('⚠️ Please select an answer before proceeding.'); return;
-        }
-        const sel = card.querySelector('input[type="radio"]:checked');
-        saveAnswer(sel.name, sel.value);
-        tfIndex++; showTF(tfIndex);
-    };
+    if (!card.querySelector(
+        'input[type="radio"]:checked'
+    )) {
+        safeAlert(
+            '⚠️ Please answer the question '
+            + 'before proceeding.'
+        );
+        return;
+    }
 
-    window.nextMatch = function () {
-        const card = document.getElementById(`match-q${matchIndex}`);
-        const sel = card.querySelector('select');
-        if (!sel.value) {
-            alert('⚠️ Please select an answer from the dropdown before proceeding.'); return;
-        }
-        saveAnswer(sel.name, sel.value);
-        matchIndex++; showMatch(matchIndex);
-    };
+    const sel = card.querySelector(
+        'input[type="radio"]:checked'
+    );
+
+    saveAnswer(
+        sel.name,
+        sel.value
+    );
+
+    mcIndex++;
+    showMC(mcIndex);
+};
+
+
+window.nextTF = function () {
+    const card = document.getElementById(
+        `tf-q${tfIndex}`
+    );
+
+    if (!card.querySelector(
+        'input[type="radio"]:checked'
+    )) {
+        safeAlert(
+            '⚠️ Please select an answer '
+            + 'before proceeding.'
+        );
+        return;
+    }
+
+    const sel = card.querySelector(
+        'input[type="radio"]:checked'
+    );
+
+    saveAnswer(
+        sel.name,
+        sel.value
+    );
+
+    tfIndex++;
+    showTF(tfIndex);
+};
+
+
+window.nextMatch = function () {
+    const card = document.getElementById(
+        `match-q${matchIndex}`
+    );
+
+    const sel = card.querySelector(
+        'select'
+    );
+
+    if (!sel.value) {
+        safeAlert(
+            '⚠️ Please select an answer '
+            + 'from the dropdown before proceeding.'
+        );
+        return;
+    }
+
+    saveAnswer(
+        sel.name,
+        sel.value
+    );
+
+    matchIndex++;
+    showMatch(matchIndex);
+};
 
     // Restore position
-    if (currentSection === 'match' && matchTotal > 0) showMatch(matchIndex);
-    else if (currentSection === 'tf' && tfTotal > 0) showTF(tfIndex);
-    else if (mcTotal > 0) showMC(mcIndex);
-    else if (tfTotal > 0) showTF(0);
-    else if (matchTotal > 0) showMatch(0);
+    // Restore position safely
+if (currentSection === 'match' && matchTotal > 0) {
 
-    // ══════════════════════════════════════════════════
-    // FIX 1: Tab/Window Switch Detection (UPGRADED)
-    // Detects: tab switches, Alt+Tab, clicking other
-    // windows, minimizing, mobile app switches
-    // ══════════════════════════════════════════════════
-    const resultId       = {{ result_id | int }};
-    let tabSwitchCount   = {{ current_tab_switches | int }};
-    let trackingActive   = false;
-    let lastSwitchTime   = 0;  // Debounce timestamp
+if (matchIndex >= matchTotal) {
+    autoSubmit();
+    return;
+}
+
+showMatch(matchIndex);
+
+} else if (currentSection === 'tf' && tfTotal > 0) {
+
+if (tfIndex >= tfTotal) {
+    if (matchTotal > 0) {
+        showMatch(0);
+    } else {
+        autoSubmit();
+        return;
+    }
+} else {
+    showTF(tfIndex);
+}
+
+} else if (mcTotal > 0) {
+
+if (mcIndex >= mcTotal) {
+    if (tfTotal > 0) {
+        showTF(0);
+    } else if (matchTotal > 0) {
+        showMatch(0);
+    } else {
+        autoSubmit();
+        return;
+    }
+} else {
+    showMC(mcIndex);
+}
+
+} else if (tfTotal > 0) {
+
+showTF(0);
+
+} else if (matchTotal > 0) {
+
+showMatch(0);
+}
 
     document.getElementById('tabSwitchInput').value = tabSwitchCount;
 
     // Wait 2s before tracking to prevent false positives on page load
     setTimeout(() => { trackingActive = true; }, 2000);
 
-    function recordSwitch() {
-        if (!trackingActive) return;
+    function recordSwitch(reason = 'tab_switch') {
+    if (!trackingActive) return;
+    if (isPageUnloading) return;
+    if (isConfirmOpen) return;
 
-        // Debounce: ignore if less than 500ms since last switch
-        const now = Date.now();
-        if (now - lastSwitchTime < 500) return;
-        lastSwitchTime = now;
+    if (Date.now() < ignoreAntiCheatUntil) return;
 
-        tabSwitchCount++;
-        document.getElementById('tabSwitchInput').value = tabSwitchCount;
 
-        // Send to server
-        fetch('/student/exams/tab-switch', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ result_id: resultId })
-        }).catch(() => {}); // Silently fail if offline
-    }
+    const now = Date.now();
+
+    if (now - lastSwitchTime < 1500) return;
+
+    lastSwitchTime = now;
+
+    tabSwitchCount++;
+    document.getElementById('tabSwitchInput').value = tabSwitchCount;
+
+    fetch('/student/exams/tab-switch', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            result_id: resultId,
+            reason: reason
+        })
+    }).catch(() => {});
+
+    showTabSwitchToast(tabSwitchCount);
+}
 
     function showTabSwitchToast(count) {
         const toastId = 'tabSwitchToast';
@@ -689,7 +817,7 @@
         toast.style.transition = 'opacity 0.3s, transform 0.3s';
         toast.style.opacity = '0';
         toast.style.transform = 'translateY(-20px)';
-        toast.innerHTML = `⚠️ Tab switch detected! (Switches: ${count})`;
+        toast.innerHTML = `⚠️ Suspicious activity detected! (Count: ${count})`;
         
         document.body.appendChild(toast);
         
@@ -705,25 +833,81 @@
         }, 4000);
     }
 
-    // Method 1: visibilitychange (tab switches, mobile app switches)
-    document.addEventListener("visibilitychange", function() {
+        // Method 1: Tab / app switch
+        document.addEventListener("visibilitychange", function() {
         if (document.visibilityState === "hidden") {
-            recordSwitch();
-        } else if (document.visibilityState === "visible") {
-            if (tabSwitchCount > 0) showTabSwitchToast(tabSwitchCount);
+            recordSwitch('page_hidden');
         }
     });
 
-    // Method 2: window blur/focus (Alt+Tab, clicking other windows)
+    // Method 2: Window loses focus
     window.addEventListener("blur", function() {
-        recordSwitch();
+        recordSwitch('window_blur');
     });
 
-    window.addEventListener("focus", function() {
+    window.addEventListener(
+    "focus",
+    function() {
+
+        isPageUnloading = false;
+
+        // Student returned/stayed on exam page
+        // Allow a future real leave to be recorded.
+        leaveEventSent = false;
+
         if (tabSwitchCount > 0) {
-            showTabSwitchToast(tabSwitchCount);
+            showTabSwitchToast(
+                tabSwitchCount
+            );
         }
-    });
+    }
+);
+
+    // Method 3: Possible split-screen / floating resized window
+    function checkSuspiciousViewport() {
+        if (!trackingActive) return;
+
+        clearTimeout(resizeTimer);
+
+        resizeTimer = setTimeout(function() {
+            const currentWidth = window.innerWidth;
+
+            const widthRatio =
+                currentWidth / initialViewportWidth;
+
+            /*
+             * We mainly check WIDTH because mobile keyboard
+             * normally changes height, not width.
+             */
+            if (widthRatio < 0.72) {
+                recordSwitch('possible_split_screen');
+            }
+        }, 800);
+    }
+
+    window.addEventListener(
+        'resize',
+        checkSuspiciousViewport
+    );
+
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener(
+            'resize',
+            checkSuspiciousViewport
+        );
+    }
+
+    // Method 4: Fullscreen exit
+    document.addEventListener(
+        'fullscreenchange',
+        function() {
+            if (!trackingActive) return;
+
+            if (!document.fullscreenElement) {
+                recordSwitch('fullscreen_exit');
+            }
+        }
+    );
 
     // ══════════════════════════════════════════════════
     // FIX 2 & 3: Submit Validation + Confirmation
@@ -731,47 +915,79 @@
     // question and shows a confirmation dialog
     // ══════════════════════════════════════════════════
     document.getElementById('examForm').addEventListener('submit', function(e) {
-        // Skip validation for auto-submit (timer expired)
-        if (document.getElementById('submitType').value === 'auto') return true;
-
-        // Check if the CURRENT visible question has an answer
-        const visibleCard = document.querySelector('.q-card[style*="display: block"], .q-card[style*="display:block"]');
-        if (visibleCard) {
-            const radio = visibleCard.querySelector('input[type="radio"]:checked');
-            const select = visibleCard.querySelector('select');
-            const hasSelectAnswer = select && select.value && select.value !== '';
-            
-            if (!radio && !hasSelectAnswer) {
-                e.preventDefault();
-                alert('⚠️ Please answer the current question before submitting.');
-                return false;
-            }
-
-            // Save the last answer before submitting
-            if (radio) {
-                saveAnswer(radio.name, radio.value);
-            } else if (hasSelectAnswer) {
-                saveAnswer(select.name, select.value);
-            }
-        }
-
-        // Confirmation dialog
-        const unanswered = total - answeredCount;
-        let msg = `Are you sure you want to submit?\n\n`;
-        msg += `✅ Answered: ${answeredCount} of ${total}\n`;
-        if (unanswered > 0) {
-            msg += `⚠️ Unanswered: ${unanswered}\n\n`;
-            msg += `Unanswered questions will be marked as incorrect.`;
-        }
-
-        if (!confirm(msg)) {
-            e.preventDefault();
-            return false;
-        }
-
-        trackingActive = false; // Disable tracking on submit
+    // Skip validation for auto-submit
+    if (document.getElementById('submitType').value === 'auto') {
         return true;
-    });
+    }
+
+    // Check current visible question
+    const visibleCard = document.querySelector(
+        '.q-card[style*="display: block"], .q-card[style*="display:block"]'
+    );
+
+    if (visibleCard) {
+        const radio = visibleCard.querySelector('input[type="radio"]:checked');
+        const select = visibleCard.querySelector('select');
+        const hasSelectAnswer =
+            select && select.value && select.value !== '';
+
+            if (!radio && !hasSelectAnswer) {
+    e.preventDefault();
+
+    safeAlert(
+        '⚠️ Please answer the current question '
+        + 'before submitting.'
+    );
+
+    return false;
+}
+
+        // Save last answer
+        if (radio) {
+            saveAnswer(radio.name, radio.value);
+        } else if (hasSelectAnswer) {
+            saveAnswer(select.name, select.value);
+        }
+    }
+
+    // Confirmation message
+    const unanswered = total - answeredCount;
+
+    let msg = `Are you sure you want to submit?\n\n`;
+    msg += `✅ Answered: ${answeredCount} of ${total}\n`;
+
+    if (unanswered > 0) {
+        msg += `⚠️ Unanswered: ${unanswered}\n\n`;
+        msg += `Unanswered questions will be marked as incorrect.`;
+    }
+
+    // Temporarily ignore blur caused by confirm dialog
+   // Temporarily ignore events caused by browser confirmation dialog
+isConfirmOpen = true;
+
+const confirmed = confirm(msg);
+
+isConfirmOpen = false;
+
+// Firefox/mobile browsers may fire blur AFTER confirm() closes
+ignoreAntiCheatUntil = Date.now() + 1200;
+
+if (!confirmed) {
+    e.preventDefault();
+
+    // Student cancelled — continue tracking
+    trackingActive = true;
+
+    return false;
+}
+
+// Actual submission
+trackingActive = false;
+isPageUnloading = true;
+isSubmittingExam = true;
+
+return true;
+});
 
     // ══════════════════════════════════════════════════
     // Security & Anti-cheat  
@@ -791,27 +1007,118 @@
     };
 
     // Prevent back button
-    history.pushState(null, null, location.href);
-    window.addEventListener('popstate', function () {
-        history.pushState(null, null, location.href);
-        alert('You cannot go back during the exam.');
-    });
+    window.addEventListener(
+    'popstate',
+    function() {
 
-    // Warn before closing/refreshing
-    window.addEventListener('beforeunload', function(e) {
-        if (trackingActive) {
-            e.preventDefault();
-            e.returnValue = '';
+        if (isSubmittingExam) {
+            return;
         }
-    });
+
+        if (!trackingActive) {
+            return;
+        }
+
+        isPageUnloading = true;
+
+        recordPageLeave();
+    }
+);
+    
+
+    function recordPageLeave() {
+
+if (leaveEventSent) {
+    return;
+}
+
+leaveEventSent = true;
+
+navigator.sendBeacon(
+    '/student/exams/tab-switch',
+    new Blob(
+        [
+            JSON.stringify({
+                result_id: resultId,
+                reason: 'left_exam_page'
+            })
+        ],
+        {
+            type: 'application/json'
+        }
+    )
+);
+}
+
+
+// Back / refresh / close / navigate away
+window.addEventListener(
+'beforeunload',
+function(e) {
+
+    if (isSubmittingExam) {
+        isPageUnloading = true;
+        return;
+    }
+
+    if (trackingActive) {
+        isPageUnloading = true;
+
+        recordPageLeave();
+
+        e.preventDefault();
+        e.returnValue = '';
+    }
+}
+);
+
+
+// Extra fallback for mobile/browser navigation
+window.addEventListener(
+'pagehide',
+function() {
+
+    if (isSubmittingExam) {
+        return;
+    }
+
+    if (!trackingActive) {
+        return;
+    }
+
+    recordPageLeave();
+}
+);
+window.addEventListener(
+    'pageshow',
+    function() {
+
+        if (!isSubmittingExam) {
+            isPageUnloading = false;
+            leaveEventSent = false;
+        }
+    }
+);
 
     // Fullscreen suggestion on exam start
     if (!lsGet('fullscreenPrompted') && document.documentElement.requestFullscreen) {
-        lsSet('fullscreenPrompted', 'true');
-        if (confirm('📺 For the best exam experience, would you like to go fullscreen?\n\nThis helps prevent accidental tab switches.')) {
-            document.documentElement.requestFullscreen().catch(() => {});
-        }
+    lsSet('fullscreenPrompted', 'true');
+
+    isConfirmOpen = true;
+
+    const wantsFullscreen = confirm(
+        '📺 For the best exam experience, would you like to go fullscreen?\n\n' +
+        'This helps prevent accidental tab switches.'
+    );
+
+    isConfirmOpen = false;
+    ignoreAntiCheatUntil = Date.now() + 1200;
+
+    if (wantsFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
     }
+} // ← ITO ANG KULANG
+
 })();
 </script>
 {% endblock %}
