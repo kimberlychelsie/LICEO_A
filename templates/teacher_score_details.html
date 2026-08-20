@@ -5,602 +5,854 @@
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
-    .sd-wrap { 
-        max-width: 1300px; 
-        margin: 0 auto; 
-        padding: 40px 24px; 
+    body {
         font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
     }
-    
-    .sd-card {
-        background: #fff;
-        border-radius: 24px;
-        padding: 32px 40px;
-        box-shadow: 0 15px 40px rgba(15, 23, 42, 0.06);
-        border: 1px solid #e2e8f0;
+
+    /* ── Main Layout Variables ── */
+    :root {
+        --primary-blue: #1e3a8a;
+        --primary-blue-hover: #1e40af;
+        --border-color: #e2e8f0;
+        --bg-color: #f1f5f9;
+        --text-dark: #1e293b;
+        --text-muted: #64748b;
+        
+        --ww-color: #2563eb;
+        --ww-bg: #eff6ff;
+        --pt-color: #16a34a;
+        --pt-bg: #f0fdf4;
+        --qa-color: #d97706;
+        --qa-bg: #fffbeb;
     }
+
+    .sd-modal-wrapper {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(100vh - 80px);
+        padding: 16px;
+    }
+
+    .sd-modal-container {
+        width: 100%;
+        max-width: 1200px;
+        background-color: #fff;
+        border-radius: 24px;
+        box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
+        border: 1px solid rgba(0,0,0,0.05);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        max-height: 85vh;
+    }
+
+    /* ── Lock Banner ── */
     .sd-lock-banner {
-        background: #fef2f2;
+        background-color: #fef2f2;
         border: 1px solid #fca5a5;
         border-radius: 12px;
         padding: 16px;
-        margin-bottom: 24px;
+        margin: 20px 20px 0 20px;
         display: flex;
         align-items: center;
         gap: 12px;
         color: #991b1b;
         font-size: 0.85rem;
     }
-
-    /* ── Component Section ── */
-    .sd-section {
-        margin-bottom: 40px;
-        padding-left: 20px;
-        border-left: 4px solid #e2e8f0;
-    }
-    .sd-section.ww { border-left-color: #2563eb; }
-    .sd-section.pt { border-left-color: #16a34a; }
-    .sd-section.qa { border-left-color: #d97706; }
-    
-    .sd-section-title {
-        font-size: 1.1rem;
-        font-weight: 800;
-        margin-bottom: 16px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
+    .sd-lock-icon {
+        width: 24px;
+        height: 24px;
+        flex-shrink: 0;
     }
 
-    .ww-color { color: #2563eb; }
-    .pt-color { color: #16a34a; }
-    .qa-color { color: #d97706; }
-
-    /* ── Form List ── */
-    .form-list {
+    /* ── Sticky Header ── */
+    .sd-header {
+        background: linear-gradient(135deg, var(--primary-blue) 0%, #172554 100%);
+        padding: 24px 32px;
+        color: #fff;
+        position: sticky;
+        top: 0;
+        z-index: 20;
         display: flex;
         flex-direction: column;
-        margin-top: 16px;
+        gap: 12px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     }
-
-    .form-item {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px 0;
-        border-bottom: 1px dashed #e2e8f0;
+    @media (min-width: 768px) {
+        .sd-header {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+        }
     }
     
-    .form-item:last-child {
-        border-bottom: none;
-    }
-
-    .form-label {
-        font-size: 0.9rem;
-        font-weight: 700;
-        color: #334155;
-    }
-    .form-label span {
-        font-weight: 500;
-        font-size: 0.75rem;
-        color: #94a3b8;
-        margin-left: 6px;
-    }
-
-    .sd-input {
-        padding: 12px 16px;
-        border-radius: 10px;
-        border: 1.5px solid #e2e8f0;
-        font-family: inherit;
-        font-weight: 700;
-        font-size: 0.95rem;
-        background: #fcfcfc;
-        transition: all 0.2s;
-        width: 120px;
-        text-align: right;
-    }
-    .sd-input:focus {
-        outline: none;
-        border-color: #2563eb;
-        box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
-    }
-    .sd-input:disabled {
-        background: #f1f5f9;
-        color: #94a3b8;
-    }
-
-    /* ── Bottom Actions ── */
-    .sd-actions {
+    .sd-header-left {
         display: flex;
-        flex-wrap: wrap;
-        justify-content: flex-end;
-        gap: 12px;
-        margin-top: 32px;
-        padding: 24px;
-        background: #f8fafc;
-        border-top: 1px solid #e2e8f0;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .sd-header-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 12px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 99px;
+        backdrop-filter: blur(8px);
+        width: fit-content;
+        font-size: 0.75rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .sd-header-badge-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #facc15;
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.4; }
+        100% { opacity: 1; }
+    }
+    .sd-title {
+        font-size: 1.75rem;
+        font-weight: 900;
+        margin: 0;
+        letter-spacing: -0.02em;
+    }
+    @media (min-width: 768px) {
+        .sd-title { font-size: 2.25rem; }
+    }
+    .sd-title span { color: #facc15; }
+
+    .sd-header-right {
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.2);
+        backdrop-filter: blur(8px);
+        padding: 12px 16px;
         border-radius: 16px;
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    .sd-avatar {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        background-color: #dbeafe;
+        color: #1e3a8a;
+        font-size: 1.25rem;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 2px solid #fff;
+    }
+    .sd-student-info {
+        display: flex;
+        flex-direction: column;
+    }
+    .sd-student-label {
+        font-size: 0.7rem;
+        color: rgba(255,255,255,0.7);
+        text-transform: uppercase;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+    }
+    .sd-student-name {
+        font-size: 1rem;
+        font-weight: 800;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 200px;
     }
 
-    .btn {
-        padding: 12px 24px;
-        border-radius: 10px;
-        font-size: 0.9rem;
+    /* ── Scrollable Body & Grid ── */
+    .sd-body {
+        overflow-y: auto;
+        padding: 24px;
+        flex: 1;
+        background-color: #f8fafc;
+    }
+    @media (min-width: 768px) {
+        .sd-body { padding: 32px; }
+    }
+    
+    .sd-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 24px;
+        width: 100%;
+    }
+    @media (min-width: 1024px) {
+        .sd-grid { grid-template-columns: repeat(2, 1fr); }
+        .sd-grid .col-full { grid-column: 1 / -1; }
+    }
+
+    /* ── Premium Cards ── */
+    .sd-card-box {
+        background: #fff;
+        border-radius: 20px;
+        border: 1px solid var(--border-color);
+        box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .sd-card-box:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.08);
+    }
+
+    .sd-card-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border-color);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .sd-card-header.ww { background-color: var(--ww-bg); }
+    .sd-card-header.pt { background-color: var(--pt-bg); }
+    .sd-card-header.qa { background-color: var(--qa-bg); }
+    
+    .sd-card-title-wrap {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    .sd-icon-box {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .sd-icon-box svg { width: 24px; height: 24px; }
+    .sd-icon-box.ww { background-color: #dbeafe; color: var(--ww-color); }
+    .sd-icon-box.pt { background-color: #dcfce3; color: var(--pt-color); }
+    .sd-icon-box.qa { background-color: #fef3c7; color: var(--qa-color); }
+
+    .sd-card-title h3 {
+        margin: 0;
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--text-dark);
+    }
+    .sd-card-title p {
+        margin: 4px 0 0 0;
+        font-size: 0.75rem;
         font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    .sd-card-title p.ww { color: var(--ww-color); }
+    .sd-card-title p.pt { color: var(--pt-color); }
+    .sd-card-title p.qa { color: var(--qa-color); }
+
+    /* ── Form Items ── */
+    .sd-card-content {
+        padding: 20px;
+        overflow-x: auto; /* Internal horizontal scroll if needed on tiny screens */
+    }
+    .sd-form-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-width: 280px;
+    }
+    
+    .sd-form-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px;
+        border-radius: 16px;
+        border: 1px solid transparent;
+        transition: background-color 0.2s, border-color 0.2s;
+    }
+    .sd-form-row:hover {
+        background-color: #f8fafc;
+        border-color: #e2e8f0;
+    }
+    
+    .sd-row-label h4 {
+        margin: 0;
+        font-size: 0.95rem;
+        font-weight: 700;
+        color: var(--text-dark);
+    }
+    .sd-row-label p {
+        margin: 4px 0 0 0;
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
+    
+    .sd-row-actions {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-shrink: 0;
+    }
+
+    .btn-zero {
+        padding: 6px 12px;
+        border-radius: 8px;
+        background-color: #fffbeb;
+        color: #d97706;
+        border: 1px solid #fde68a;
+        font-size: 0.75rem;
+        font-weight: 800;
         cursor: pointer;
         transition: all 0.2s;
+        white-space: nowrap;
+    }
+    .btn-zero:hover {
+        background-color: #fef3c7;
+        border-color: #f59e0b;
+    }
+
+    .sd-input-group {
+        display: flex;
+        align-items: center;
+        background: #fff;
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        overflow: hidden;
+        transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .sd-input-group:focus-within {
+        border-color: var(--primary-blue);
+        box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+    }
+    .sd-input {
+        width: 70px;
+        padding: 10px 12px;
         border: none;
-        text-decoration: none;
-        display: inline-block;
+        outline: none;
+        font-size: 1rem;
+        font-weight: 800;
+        color: var(--text-dark);
+        text-align: center;
+        font-family: inherit;
+        background: transparent;
+        -moz-appearance: textfield;
+    }
+    @media (min-width: 768px) { .sd-input { width: 90px; } }
+    
+    .sd-input::-webkit-outer-spin-button,
+    .sd-input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+    .sd-input:disabled {
+        color: #94a3b8;
+        cursor: not-allowed;
     }
     
-    .btn-cancel {
-        background: #e2e8f0;
+    .sd-max-score {
+        padding: 10px 16px;
+        background-color: #f8fafc;
+        border-left: 1px solid var(--border-color);
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: var(--text-muted);
+        user-select: none;
+    }
+
+    /* ── Empty State ── */
+    .sd-empty {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 20px;
+        color: var(--text-muted);
+        text-align: center;
+    }
+    .sd-empty svg {
+        width: 48px;
+        height: 48px;
+        margin-bottom: 12px;
+        opacity: 0.5;
+    }
+    .sd-empty p {
+        margin: 0;
+        font-size: 0.9rem;
+        font-weight: 600;
+    }
+
+    /* ── Sticky Footer ── */
+    .sd-footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 20;
+        background-color: #fff;
+        border-top: 1px solid var(--border-color);
+        padding: 20px 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        box-shadow: 0 -10px 30px rgba(0,0,0,0.03);
+    }
+    @media (min-width: 768px) {
+        .sd-footer {
+            flex-direction: row;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 32px;
+        }
+    }
+
+    .sd-footer-left {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        order: 1;
+    }
+    @media (min-width: 768px) {
+        .sd-footer-left {
+            width: auto;
+            order: 2;
+        }
+    }
+    .sd-footer-right {
+        display: flex;
+        flex-direction: row;
+        gap: 12px;
+        width: 100%;
+        justify-content: space-between;
+        order: 2;
+    }
+    @media (min-width: 768px) {
+        .sd-footer-right {
+            width: auto;
+            justify-content: flex-start;
+            order: 1;
+        }
+    }
+
+    .sd-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 14px 24px;
+        border-radius: 12px;
+        font-size: 0.95rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+        border: none;
+        width: 100%;
+        text-align: center;
+    }
+    @media (min-width: 768px) {
+        .sd-btn { width: auto; }
+    }
+    
+    .sd-btn-outline {
+        background-color: #f1f5f9;
         color: #475569;
     }
-    .btn-cancel:hover { background: #cbd5e1; }
-    .btn-save:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-    box-shadow: none;
-    transform: none;
-}
-
-.btn-save:disabled:hover {
-    background: #2563eb;
-    transform: none;
-    box-shadow: none;
-}
+    .sd-btn-outline:hover { background-color: #e2e8f0; }
     
-    .btn-save {
-        background: #2563eb;
+    .sd-btn-primary {
+        background-color: var(--primary-blue);
         color: #fff;
-        box-shadow: 0 4px 12px rgba(37,99,235,0.25);
+        box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
     }
-    .btn-save:hover { background: #1d4ed8; transform: translateY(-2px); }
-    .btn-zero {
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: 1px solid #f59e0b;
-    background: #fffbeb;
-    color: #b45309;
-    font-size: 0.75rem;
-    font-weight: 800;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.2s;
-}
+    .sd-btn-primary:hover:not(:disabled) {
+        background-color: var(--primary-blue-hover);
+        transform: translateY(-2px);
+    }
+    .sd-btn-primary:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        box-shadow: none;
+    }
 
-.btn-zero:hover {
-    background: #fef3c7;
-    border-color: #d97706;
-}
+    .sd-btn-zero-all {
+        background-color: #fff;
+        color: var(--text-dark);
+        border: 1px solid var(--border-color);
+        gap: 8px;
+    }
+    .sd-btn-zero-all:hover {
+        background-color: #f8fafc;
+        border-color: #cbd5e1;
+    }
+    .sd-btn-zero-all svg {
+        width: 18px;
+        height: 18px;
+        color: #d97706;
+    }
 
-.btn-zero:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
-}
+    /* Column Utilities for inner grids */
+    .sd-inner-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 24px;
+    }
+    @media (min-width: 768px) {
+        .sd-inner-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .sd-inner-col h4 {
+        margin: 0 0 12px 12px;
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="sd-wrap">
-    
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; background: #1a3a8f; padding: 24px 32px; border-radius: 20px; box-shadow: 0 15px 35px rgba(26, 58, 143, 0.15);">
-        <div style="display: flex; flex-direction: column; gap: 4px;">
-            <h1 class="break-words whitespace-normal" style="margin: 0; font-size: clamp(1.5rem, 5vw, 2.2rem); font-weight: 900; color: white; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; letter-spacing: -0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.1); word-break: break-word;">Score <span style="color: #facc15;">Details</span></h1>
-            <p style="margin: 0; font-size: 0.85rem; font-weight: 600; color: rgba(255, 255, 255, 0.9); display: flex; align-items: center; gap: 8px;">
-                <span>{{ student_name }}</span>
-                <span style="display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: rgba(255, 255, 255, 0.5);"></span>
-                <span>{{ period }} Grading</span>
-            </p>
+<div class="sd-modal-wrapper">
+    <div class="sd-modal-container">
+        
+        {% if is_locked %}
+        <div class="sd-lock-banner">
+            <svg class="sd-lock-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8V7a4 4 0 00-8 0v4h8z"></path>
+            </svg>
+            <div>
+                <strong>Scores are locked.</strong> You cannot edit scores because the class record has been submitted for review.
+            </div>
         </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('teacher.student_score_breakdown', section_id=section_id, subject_id=subject_id, enrollment_id=enrollment_id, period=period) }}" style="display: flex; flex-direction: column; flex: 1; min-height: 0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <!-- Sticky Header -->
+            <div class="sd-header">
+                <div class="sd-header-left">
+                    <div class="sd-header-badge">
+                        <div class="sd-header-badge-dot"></div>
+                        {{ period }} Grading
+                    </div>
+                    <h1 class="sd-title">Score <span>Details</span></h1>
+                </div>
+                
+                <div class="sd-header-right">
+                    <div class="sd-avatar">{{ student_name[0] }}</div>
+                    <div class="sd-student-info">
+                        <span class="sd-student-label">Student</span>
+                        <span class="sd-student-name">{{ student_name }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Scrollable Body -->
+            <div class="sd-body">
+                <div class="sd-grid">
+                    
+                    <!-- Written Works -->
+                    <div class="sd-card-box">
+                        <div class="sd-card-header ww">
+                            <div class="sd-card-title-wrap">
+                                <div class="sd-icon-box ww">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                </div>
+                                <div class="sd-card-title">
+                                    <h3>Written Works</h3>
+                                    <p class="ww">Weight: {{ weights.ww_pct }}%</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="sd-card-content">
+                            {% if not quizzes and not monthly %}
+                            <div class="sd-empty">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                                <p>No assessments created yet</p>
+                            </div>
+                            {% else %}
+                            <div class="sd-form-list">
+                                {% for q in quizzes %}
+                                <div class="sd-form-row form-item-row">
+                                    <div class="sd-row-label">
+                                        <h4>{{ q.title }}</h4>
+                                        <p>Quiz</p>
+                                    </div>
+                                    <div class="sd-row-actions">
+                                        {% if not q.has_result and not is_locked %}
+                                        <button type="button" class="btn-zero" onclick="setScoreZero(this)">Set to 0</button>
+                                        {% endif %}
+                                        <div class="sd-input-group">
+                                            <input type="number" step="1" class="sd-input score-field" name="exam_{{ q.exam_id }}" value="{{ q.score|int if q.has_result else '' }}" min="0" max="{{ q.total }}" required {{ 'disabled' if is_locked else '' }}>
+                                            <div class="sd-max-score">/ {{ q.total|int }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                                
+                                {% for m in monthly %}
+                                <div class="sd-form-row form-item-row">
+                                    <div class="sd-row-label">
+                                        <h4>{{ m.title }}</h4>
+                                        <p>Monthly Exam</p>
+                                    </div>
+                                    <div class="sd-row-actions">
+                                        {% if not m.has_result and not is_locked %}
+                                        <button type="button" class="btn-zero" onclick="setScoreZero(this)">Set to 0</button>
+                                        {% endif %}
+                                        <div class="sd-input-group">
+                                            <input type="number" step="1" class="sd-input score-field" name="exam_{{ m.exam_id }}" value="{{ m.score|int if m.has_result else '' }}" min="0" max="{{ m.total }}" required {{ 'disabled' if is_locked else '' }}>
+                                            <div class="sd-max-score">/ {{ m.total|int }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Term Assessment -->
+                    <div class="sd-card-box">
+                        <div class="sd-card-header qa">
+                            <div class="sd-card-title-wrap">
+                                <div class="sd-icon-box qa">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
+                                </div>
+                                <div class="sd-card-title">
+                                    <h3>Term Assessment</h3>
+                                    <p class="qa">Weight: {{ weights.qa_pct }}%</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="sd-card-content">
+                            {% if not periodical %}
+                            <div class="sd-empty">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"></path></svg>
+                                <p>No term assessment scheduled</p>
+                            </div>
+                            {% else %}
+                            <div class="sd-form-list">
+                                {% for p in periodical %}
+                                <div class="sd-form-row form-item-row">
+                                    <div class="sd-row-label">
+                                        <h4>{{ p.title }}</h4>
+                                        <p>Periodical Exam</p>
+                                    </div>
+                                    <div class="sd-row-actions">
+                                        {% if not p.has_result and not is_locked %}
+                                        <button type="button" class="btn-zero" onclick="setScoreZero(this)">Set to 0</button>
+                                        {% endif %}
+                                        <div class="sd-input-group">
+                                            <input type="number" step="1" class="sd-input score-field" name="exam_{{ p.exam_id }}" value="{{ p.score|int if p.has_result else '' }}" min="0" max="{{ p.total }}" required {{ 'disabled' if is_locked else '' }}>
+                                            <div class="sd-max-score">/ {{ p.total|int }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Performance Tasks (Full Width) -->
+                    <div class="sd-card-box col-full">
+                        <div class="sd-card-header pt">
+                            <div class="sd-card-title-wrap">
+                                <div class="sd-icon-box pt">
+                                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+                                </div>
+                                <div class="sd-card-title">
+                                    <h3>Performance Tasks</h3>
+                                    <p class="pt">Weight: {{ weights.pt_pct }}%</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="sd-card-content">
+                            <div class="sd-inner-grid">
+                                
+                                <!-- Activities -->
+                                <div class="sd-inner-col">
+                                    <h4>Activities</h4>
+                                    <div class="sd-form-list">
+                                        {% if not activities %}
+                                        <div class="sd-empty" style="padding: 20px;">
+                                            <p>No activities added</p>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        {% for a in activities %}
+                                        <div class="sd-form-row form-item-row">
+                                            <div class="sd-row-label">
+                                                <h4>{{ a.title }}</h4>
+                                            </div>
+                                            <div class="sd-row-actions">
+                                                {% if not a.has_result and not is_locked %}
+                                                <button type="button" class="btn-zero" onclick="setScoreZero(this)">Set to 0</button>
+                                                {% endif %}
+                                                <div class="sd-input-group">
+                                                    <input type="number" step="1" class="sd-input score-field" name="act_{{ a.activity_id }}" value="{{ a.score|int if a.has_result else '' }}" min="0" max="{{ a.total }}" required {{ 'disabled' if is_locked else '' }}>
+                                                    <div class="sd-max-score">/ {{ a.total|int }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                
+                                <!-- Class Standing -->
+                                <div class="sd-inner-col">
+                                    <h4>Class Standing</h4>
+                                    <div class="sd-form-list">
+                                        <!-- Participation -->
+                                        <div class="sd-form-row form-item-row">
+                                            <div class="sd-row-label">
+                                                <h4>Participation</h4>
+                                            </div>
+                                            <div class="sd-row-actions">
+                                                <div class="sd-input-group">
+                                                    <input type="number" step="1" class="sd-input" name="participation" value="{{ participation.score|int if participation.has_result else '' }}" min="0" max="{{ participation.max }}" required {{ 'disabled' if is_locked else '' }}>
+                                                    <div class="sd-max-score">/ {{ participation.max|int }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Attendance -->
+                                        <div class="sd-form-row form-item-row">
+                                            <div class="sd-row-label">
+                                                <h4>Attendance</h4>
+                                            </div>
+                                            <div class="sd-row-actions">
+                                                <div class="sd-input-group">
+                                                    <input type="number" step="1" class="sd-input" name="attendance" value="{{ attendance.score|int if attendance.has_result else '' }}" min="0" max="{{ attendance.max }}" required {{ 'disabled' if is_locked else '' }}>
+                                                    <div class="sd-max-score">/ {{ attendance.max|int }}</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                            </div>
+                        </div>
+                    </div>
+                    
+                </div>
+            </div>
+
+            <!-- Sticky Footer -->
+            <div class="sd-footer">
+                {% if not is_locked %}
+                <div class="sd-footer-left">
+                    <button type="button" id="btnSetAllZero" class="sd-btn sd-btn-zero-all" onclick="setAllMissingZero()">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        Set Missing to 0
+                    </button>
+                </div>
+                {% endif %}
+
+                <div class="sd-footer-right">
+                    <a href="{{ url_for('teacher.class_record', section_id=section_id, subject_id=subject_id, period=period) }}" class="sd-btn sd-btn-outline" style="flex:1;">
+                        Cancel
+                    </a>
+                
+                    {% if not is_locked %}
+                    <button type="submit" id="btnSaveScores" class="sd-btn sd-btn-primary" style="flex:1;" disabled>
+                        Save Scores
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            
+        </form>
     </div>
-
-    {% if is_locked %}
-    <div class="sd-lock-banner">
-        <strong>Scores are locked.</strong> You cannot edit scores because the class record has been submitted for review.
-    </div>
-    {% endif %}
-
-    <form method="POST" action="{{ url_for('teacher.student_score_breakdown', section_id=section_id, subject_id=subject_id, enrollment_id=enrollment_id, period=period) }}">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <div class="sd-card max-w-full overflow-x-auto" style="overflow-x: auto; max-width: 100%;">
-        <!-- Written Works -->
-        <div class="sd-section ww">
-            <h3 class="sd-section-title ww-color">Written Works ({{ weights.ww_pct }}%)</h3>
-            <div class="form-list">
-                {% for q in quizzes %}
-                <div class="form-item">
-                    <label class="form-label">{{ q.title }} <span>(Quiz)</span></label>
-                    <div style="display:flex; align-items:center; gap:8px;">
-
-                        <input
-                            type="number"
-                            step="1"
-                            class="sd-input score-field"
-                            name="exam_{{ q.exam_id }}"
-                            value="{{ q.score|int if q.has_result else '' }}"
-                            min="0"
-                            max="{{ q.total }}"
-                            required
-                            {{ 'disabled' if is_locked else '' }}
-                        >
-                    
-                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">
-                            / {{ q.total|int }}
-                        </span>
-                    
-                        {% if not q.has_result and not is_locked %}
-                        <button
-                            type="button"
-                            class="btn-zero"
-                            onclick="setScoreZero(this)">
-                            Set to 0
-                        </button>
-                        {% endif %}
-                    
-                    </div>
-                </div>
-                {% endfor %}
-                {% for m in monthly %}
-                <div class="form-item">
-                    <label class="form-label">{{ m.title }} <span>(Monthly)</span></label>
-                    <div style="display:flex; align-items:center; gap:8px;">
-
-                        <input
-                            type="number"
-                            step="1"
-                            class="sd-input score-field"
-                            name="exam_{{ m.exam_id }}"
-                            value="{{ m.score|int if m.has_result else '' }}"
-                            min="0"
-                            max="{{ m.total }}"
-                            required
-                            {{ 'disabled' if is_locked else '' }}
-                        >
-                    
-                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">
-                            / {{ m.total|int }}
-                        </span>
-                    
-                        {% if not m.has_result and not is_locked %}
-                        <button
-                            type="button"
-                            class="btn-zero"
-                            onclick="setScoreZero(this)">
-                            Set to 0
-                        </button>
-                        {% endif %}
-                    
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% if not quizzes and not monthly %}
-            <p style="color:#94a3b8; font-style:italic; margin-top:16px;">No Written Works</p>
-            {% endif %}
-        </div>
-
-        <!-- Performance Tasks -->
-        <div class="sd-section pt">
-            <h3 class="sd-section-title pt-color">Performance Tasks ({{ weights.pt_pct }}%)</h3>
-            <div class="form-list">
-                {% for a in activities %}
-                <div class="form-item">
-                    <label class="form-label">{{ a.title }} <span>(Activity)</span></label>
-                    <div style="display:flex; align-items:center; gap:8px;">
-
-                        <input
-                            type="number"
-                            step="1"
-                            class="sd-input score-field"
-                            name="act_{{ a.activity_id }}"
-                            value="{{ a.score|int if a.has_result else '' }}"
-                            min="0"
-                            max="{{ a.total }}"
-                            required
-                            {{ 'disabled' if is_locked else '' }}
-                        >
-                    
-                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">
-                            / {{ a.total|int }}
-                        </span>
-                    
-                        {% if not a.has_result and not is_locked %}
-                        <button
-                            type="button"
-                            class="btn-zero"
-                            onclick="setScoreZero(this)">
-                            Set to 0
-                        </button>
-                        {% endif %}
-                    
-                    </div>
-                </div>
-                {% endfor %}
-                <div class="form-item">
-                    <label class="form-label">Participation</label>
-                
-                    <div style="display:flex; align-items:center; gap:8px;">
-                
-                        <input
-                            type="number"
-                            step="1"
-                            class="sd-input"
-                            name="participation"
-                            value="{{ participation.score|int if participation.has_result else '' }}"
-                            min="0"
-                            max="{{ participation.max }}"
-                            required
-                            {{ 'disabled' if is_locked else '' }}
-                        >
-                
-                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">
-                            / {{ participation.max|int }}
-                        </span>
-                
-                    </div>
-                </div>
-                <div class="form-item">
-                    <label class="form-label">Attendance</label>
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <input type="number" step="1" class="sd-input" name="attendance"
-                               value="{{ attendance.score|int if attendance.has_result else '' }}" min="0" max="{{ attendance.max }}" required {{ 'disabled' if is_locked else '' }}>
-                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">/ {{ attendance.max }}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Term Assessment -->
-        <div class="sd-section qa">
-            <h3 class="sd-section-title qa-color">Term Assessment ({{ weights.qa_pct }}%)</h3>
-            <div class="form-list">
-                {% for p in periodical %}
-                <div class="form-item">
-                    <label class="form-label">{{ p.title }} <span>(Exam)</span></label>
-                    <div style="display:flex; align-items:center; gap:8px;">
-
-                        <input
-                            type="number"
-                            step="1"
-                            class="sd-input score-field"
-                            name="exam_{{ p.exam_id }}"
-                            value="{{ p.score|int if p.has_result else '' }}"
-                            min="0"
-                            max="{{ p.total }}"
-                            required
-                            {{ 'disabled' if is_locked else '' }}
-                        >
-                    
-                        <span style="color:#64748b; font-size:0.8rem; font-weight:700;">
-                            / {{ p.total|int }}
-                        </span>
-                    
-                        {% if not p.has_result and not is_locked %}
-                        <button
-                            type="button"
-                            class="btn-zero"
-                            onclick="setScoreZero(this)">
-                            Set to 0
-                        </button>
-                        {% endif %}
-                    
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% if not periodical %}
-            <p style="color:#94a3b8; font-style:italic; margin-top:16px;">No Term Assessment</p>
-            {% endif %}
-        </div>
-
-        <div class="sd-actions">
-            <a href="{{ url_for(
-                'teacher.class_record',
-                section_id=section_id,
-                subject_id=subject_id,
-                period=period
-            ) }}"
-               class="btn btn-cancel">
-                Cancel
-            </a>
-        
-            {% if not is_locked %}
-        
-            <button
-                type="button"
-                id="btnSetAllZero"
-                class="btn-zero"
-                onclick="setAllMissingZero()"
-            >
-                Set All Missing to 0
-            </button>
-        
-            <button
-                type="submit"
-                id="btnSaveScores"
-                class="btn btn-save"
-                disabled
-            >
-                Save Scores
-            </button>
-        
-            {% endif %}
-        </div>
-        </div>
-    </form>
 </div>
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
     
-        const form = document.querySelector('.sd-card').closest('form');
+        const form = document.querySelector('form');
         const saveButton = document.getElementById('btnSaveScores');
         const setAllButton = document.getElementById('btnSetAllZero');
     
         if (!form || !saveButton) return;
     
-        // ALL editable score inputs
-        // Includes Quiz, Activity, Participation,
-        // Attendance, Monthly and Periodical
-        const allInputs = form.querySelectorAll(
-            'input[type="number"]:not(:disabled)'
-        );
+        const allInputs = form.querySelectorAll('input[type="number"]:not(:disabled)');
+        const assessmentInputs = form.querySelectorAll('.score-field:not(:disabled)');
     
-        // Only assessments that are allowed to use "Set to 0"
-        // Quiz, Monthly, Activity, Periodical
-        const assessmentInputs = form.querySelectorAll(
-            '.score-field:not(:disabled)'
-        );
-    
-    
-        // ==========================================
-        // STORE ORIGINAL VALUES
-        // ==========================================
         allInputs.forEach(input => {
             input.dataset.originalValue = input.value;
         });
     
-    
-        // ==========================================
-        // CHECK FOR CHANGES
-        // ==========================================
         function checkForChanges() {
-    
             let hasChanges = false;
-    
             allInputs.forEach(input => {
-    
                 if (input.value !== input.dataset.originalValue) {
                     hasChanges = true;
                 }
-    
             });
-    
             saveButton.disabled = !hasChanges;
         }
     
-    
-        // ==========================================
-        // CHECK IF THERE ARE MISSING ASSESSMENTS
-        // ==========================================
         function checkMissingScores() {
-    
             if (!setAllButton) return;
-    
             let hasMissing = false;
-    
             assessmentInputs.forEach(input => {
-    
                 if (input.value.trim() === '') {
                     hasMissing = true;
                 }
-    
             });
-    
             setAllButton.disabled = !hasMissing;
         }
     
-    
-        // ==========================================
-        // NORMAL INPUT CHANGES
-        // ==========================================
         allInputs.forEach(input => {
-    
-            input.addEventListener('input', function () {
-                checkForChanges();
-                checkMissingScores();
-            });
-    
-            input.addEventListener('change', function () {
-                checkForChanges();
-                checkMissingScores();
-            });
-    
+            input.addEventListener('input', () => { checkForChanges(); checkMissingScores(); });
+            input.addEventListener('change', () => { checkForChanges(); checkMissingScores(); });
         });
     
-    
-        // ==========================================
-        // INDIVIDUAL SET TO ZERO
-        // ==========================================
         window.setScoreZero = function(button) {
-    
-            const row = button.closest('.form-item');
+            const row = button.closest('.form-item-row');
             const input = row.querySelector('.score-field');
-    
             if (!input) return;
-    
-            const confirmed = confirm(
-                'Set this missing score to 0? ' +
-                'This means the student will receive zero for this item.'
-            );
-    
+            const confirmed = confirm('Set this missing score to 0? This means the student will receive zero for this item.');
             if (!confirmed) return;
-    
             input.value = '0';
-    
             button.style.display = 'none';
-    
             checkForChanges();
             checkMissingScores();
-    
             input.focus();
         };
     
-    
-        // ==========================================
-        // SET ALL MISSING ASSESSMENTS TO ZERO
-        // ==========================================
         window.setAllMissingZero = function() {
-    
-            const missingInputs = Array.from(
-                assessmentInputs
-            ).filter(input => input.value.trim() === '');
-    
-            if (missingInputs.length === 0) {
-                return;
-            }
-    
-            const confirmed = confirm(
-                `Set all ${missingInputs.length} missing assessment score(s) to 0?\n\n` +
-                `This will only affect missing Quiz, Monthly Exam, Activity, ` +
-                `and Periodical Exam scores.\n\n` +
-                `Participation and Attendance will NOT be changed.`
-            );
-    
+            const missingInputs = Array.from(assessmentInputs).filter(input => input.value.trim() === '');
+            if (missingInputs.length === 0) return;
+            const confirmed = confirm(`Set all ${missingInputs.length} missing assessment score(s) to 0?\n\nThis will only affect missing Quiz, Monthly Exam, Activity, and Periodical Exam scores.\n\nParticipation and Attendance will NOT be changed.`);
             if (!confirmed) return;
     
-    
             missingInputs.forEach(input => {
-    
                 input.value = '0';
-    
-                // Hide individual Set to 0 button
-                const row = input.closest('.form-item');
-    
+                const row = input.closest('.form-item-row');
                 if (row) {
-    
-                    const zeroButton =
-                        row.querySelector('.btn-zero');
-    
-                    if (zeroButton) {
-                        zeroButton.style.display = 'none';
-                    }
-    
+                    const zeroButton = row.querySelector('.btn-zero');
+                    if (zeroButton) zeroButton.style.display = 'none';
                 }
-    
             });
-    
-    
             checkForChanges();
             checkMissingScores();
         };
     
-    
-        // Initial state
         checkForChanges();
         checkMissingScores();
-    
     });
-    </script>
+</script>
 {% endblock %}
