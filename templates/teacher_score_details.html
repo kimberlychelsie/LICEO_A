@@ -28,23 +28,17 @@
 
     .sd-modal-wrapper {
         display: flex;
-        align-items: center;
         justify-content: center;
-        min-height: calc(100vh - 80px);
-        padding: 16px;
+        padding: 24px 16px;
     }
 
     .sd-modal-container {
         width: 100%;
         max-width: 1200px;
-        background-color: #fff;
-        border-radius: 24px;
-        box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.1);
-        border: 1px solid rgba(0,0,0,0.05);
-        overflow: hidden;
+        background-color: transparent;
         display: flex;
         flex-direction: column;
-        max-height: 85vh;
+        gap: 24px;
     }
 
     /* ── Lock Banner ── */
@@ -69,22 +63,22 @@
     /* ── Sticky Header ── */
     .sd-header {
         background: linear-gradient(135deg, var(--primary-blue) 0%, #172554 100%);
-        padding: 24px 32px;
+        padding: 20px;
         color: #fff;
-        position: sticky;
-        top: 0;
-        z-index: 20;
         display: flex;
         flex-direction: column;
         gap: 12px;
-        border-bottom: 1px solid rgba(255,255,255,0.1);
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        border-radius: 16px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        margin: 0 8px; /* Extra margin on mobile to not be edge-to-edge */
     }
     @media (min-width: 768px) {
         .sd-header {
             flex-direction: row;
             justify-content: space-between;
             align-items: center;
+            padding: 24px 32px;
+            margin: 0;
         }
     }
     
@@ -120,10 +114,11 @@
         100% { opacity: 1; }
     }
     .sd-title {
-        font-size: 1.75rem;
+        font-size: 1.4rem;
         font-weight: 900;
         margin: 0;
         letter-spacing: -0.02em;
+        line-height: 1.2;
     }
     @media (min-width: 768px) {
         .sd-title { font-size: 2.25rem; }
@@ -165,23 +160,25 @@
         letter-spacing: 0.05em;
     }
     .sd-student-name {
-        font-size: 1rem;
+        font-size: 0.95rem;
         font-weight: 800;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 200px;
-    }
-
-    /* ── Scrollable Body & Grid ── */
-    .sd-body {
-        overflow-y: auto;
-        padding: 24px;
-        flex: 1;
-        background-color: #f8fafc;
+        max-width: 160px;
     }
     @media (min-width: 768px) {
-        .sd-body { padding: 32px; }
+        .sd-student-name {
+            font-size: 1rem;
+            max-width: 200px;
+        }
+    }
+
+    /* ── Grid ── */
+    .sd-body {
+        flex: 1;
+        background-color: transparent;
+        margin-top: 24px;
     }
     
     .sd-grid {
@@ -242,16 +239,23 @@
 
     .sd-card-title h3 {
         margin: 0;
-        font-size: 1.15rem;
+        font-size: 1rem;
         font-weight: 800;
         color: var(--text-dark);
+        line-height: 1.3;
+    }
+    @media (min-width: 768px) {
+        .sd-card-title h3 { font-size: 1.15rem; }
     }
     .sd-card-title p {
         margin: 4px 0 0 0;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.05em;
+    }
+    @media (min-width: 768px) {
+        .sd-card-title p { font-size: 0.75rem; }
     }
     .sd-card-title p.ww { color: var(--ww-color); }
     .sd-card-title p.pt { color: var(--pt-color); }
@@ -273,10 +277,16 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 16px;
-        border-radius: 16px;
+        padding: 12px;
+        border-radius: 12px;
         border: 1px solid transparent;
         transition: background-color 0.2s, border-color 0.2s;
+    }
+    @media (min-width: 768px) {
+        .sd-form-row {
+            padding: 16px;
+            border-radius: 16px;
+        }
     }
     .sd-form-row:hover {
         background-color: #f8fafc;
@@ -285,17 +295,24 @@
     
     .sd-row-label h4 {
         margin: 0;
-        font-size: 0.95rem;
+        font-size: 0.85rem;
         font-weight: 700;
         color: var(--text-dark);
+        line-height: 1.4;
+    }
+    @media (min-width: 768px) {
+        .sd-row-label h4 { font-size: 0.95rem; }
     }
     .sd-row-label p {
         margin: 4px 0 0 0;
-        font-size: 0.75rem;
+        font-size: 0.7rem;
         font-weight: 600;
         color: var(--text-muted);
         text-transform: uppercase;
         letter-spacing: 0.05em;
+    }
+    @media (min-width: 768px) {
+        .sd-row-label p { font-size: 0.75rem; }
     }
     
     .sd-row-actions {
@@ -392,25 +409,18 @@
         font-weight: 600;
     }
 
-    /* ── Sticky Footer ── */
+    /* ── Footer Actions ── */
     .sd-footer {
-        position: sticky;
-        bottom: 0;
-        z-index: 20;
-        background-color: #fff;
-        border-top: 1px solid var(--border-color);
-        padding: 20px 24px;
         display: flex;
         flex-direction: column;
         gap: 16px;
-        box-shadow: 0 -10px 30px rgba(0,0,0,0.03);
+        margin-top: 40px;
     }
     @media (min-width: 768px) {
         .sd-footer {
             flex-direction: row;
             justify-content: space-between;
             align-items: center;
-            padding: 24px 32px;
         }
     }
 
@@ -418,27 +428,23 @@
         display: flex;
         flex-direction: column;
         width: 100%;
-        order: 1;
     }
     @media (min-width: 768px) {
         .sd-footer-left {
             width: auto;
-            order: 2;
         }
     }
     .sd-footer-right {
         display: flex;
         flex-direction: row;
-        gap: 12px;
+        gap: 24px;
         width: 100%;
         justify-content: space-between;
-        order: 2;
     }
     @media (min-width: 768px) {
         .sd-footer-right {
             width: auto;
-            justify-content: flex-start;
-            order: 1;
+            justify-content: flex-end;
         }
     }
 
@@ -446,14 +452,15 @@
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        padding: 14px 24px;
-        border-radius: 12px;
+        padding: 12px 24px;
+        border-radius: 6px;
         font-size: 0.95rem;
         font-weight: 800;
         cursor: pointer;
         transition: all 0.2s;
         text-decoration: none;
         border: none;
+        white-space: nowrap;
         width: 100%;
         text-align: center;
     }
@@ -462,10 +469,11 @@
     }
     
     .sd-btn-outline {
-        background-color: #f1f5f9;
-        color: #475569;
+        background-color: #ffffff;
+        color: #000000;
+        border: 1px solid #000000;
     }
-    .sd-btn-outline:hover { background-color: #e2e8f0; }
+    .sd-btn-outline:hover { background-color: #f8fafc; border-color: #000000; }
     
     .sd-btn-primary {
         background-color: var(--primary-blue);
@@ -588,9 +596,6 @@
                                         <p>Quiz</p>
                                     </div>
                                     <div class="sd-row-actions">
-                                        {% if not q.has_result and not is_locked %}
-                                        <button type="button" class="btn-zero" onclick="setScoreZero(this)">Set to 0</button>
-                                        {% endif %}
                                         <div class="sd-input-group">
                                             <input type="number" step="1" class="sd-input score-field" name="exam_{{ q.exam_id }}" value="{{ q.score|int if q.has_result else '' }}" min="0" max="{{ q.total }}" required {{ 'disabled' if is_locked else '' }}>
                                             <div class="sd-max-score">/ {{ q.total|int }}</div>
@@ -606,9 +611,6 @@
                                         <p>Monthly Exam</p>
                                     </div>
                                     <div class="sd-row-actions">
-                                        {% if not m.has_result and not is_locked %}
-                                        <button type="button" class="btn-zero" onclick="setScoreZero(this)">Set to 0</button>
-                                        {% endif %}
                                         <div class="sd-input-group">
                                             <input type="number" step="1" class="sd-input score-field" name="exam_{{ m.exam_id }}" value="{{ m.score|int if m.has_result else '' }}" min="0" max="{{ m.total }}" required {{ 'disabled' if is_locked else '' }}>
                                             <div class="sd-max-score">/ {{ m.total|int }}</div>
@@ -650,9 +652,6 @@
                                         <p>Periodical Exam</p>
                                     </div>
                                     <div class="sd-row-actions">
-                                        {% if not p.has_result and not is_locked %}
-                                        <button type="button" class="btn-zero" onclick="setScoreZero(this)">Set to 0</button>
-                                        {% endif %}
                                         <div class="sd-input-group">
                                             <input type="number" step="1" class="sd-input score-field" name="exam_{{ p.exam_id }}" value="{{ p.score|int if p.has_result else '' }}" min="0" max="{{ p.total }}" required {{ 'disabled' if is_locked else '' }}>
                                             <div class="sd-max-score">/ {{ p.total|int }}</div>
@@ -698,9 +697,6 @@
                                                 <h4>{{ a.title }}</h4>
                                             </div>
                                             <div class="sd-row-actions">
-                                                {% if not a.has_result and not is_locked %}
-                                                <button type="button" class="btn-zero" onclick="setScoreZero(this)">Set to 0</button>
-                                                {% endif %}
                                                 <div class="sd-input-group">
                                                     <input type="number" step="1" class="sd-input score-field" name="act_{{ a.activity_id }}" value="{{ a.score|int if a.has_result else '' }}" min="0" max="{{ a.total }}" required {{ 'disabled' if is_locked else '' }}>
                                                     <div class="sd-max-score">/ {{ a.total|int }}</div>

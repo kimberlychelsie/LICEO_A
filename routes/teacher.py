@@ -3045,11 +3045,15 @@ def teacher_exam_results(exam_id):
         """, (exam['class_mode'] != 'Face-to-Face', exam_id, exam_id, exam_id, exam.get('exam_type', 'exam'), exam['section_id'], branch_id))
         results = cur.fetchall() or []
         for r in results:
-            r["student_name"] = " ".join(filter(None, [
-                r.get("student_first_name"),
-                r.get("student_middle_name"),
-                r.get("student_last_name")
-            ]))
+            last = r.get("student_last_name", "").strip() if r.get("student_last_name") else ""
+            first = r.get("student_first_name", "").strip() if r.get("student_first_name") else ""
+            mid = r.get("student_middle_name", "").strip() if r.get("student_middle_name") else ""
+            
+            first_mid = " ".join(filter(None, [first, mid]))
+            if last:
+                r["student_name"] = f"{last}, {first_mid}".strip(", ")
+            else:
+                r["student_name"] = first_mid
 
         # ✅ ADD THIS — convert UTC → PH time for display
         ph_tz = pytz.timezone("Asia/Manila")
