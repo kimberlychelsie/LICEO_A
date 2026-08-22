@@ -991,7 +991,14 @@ def view_bill(bill_id):
         ]))
 
         cursor.execute("""
-            SELECT p.*, u.username as received_by_name
+            SELECT p.*,
+                   COALESCE(
+                       NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''),
+                       NULLIF(TRIM(u.full_name), ''),
+                       u.username
+                   ) AS received_by_name,
+                   u.first_name AS user_first_name,
+                   u.last_name AS user_last_name
             FROM payments p
             LEFT JOIN users u ON p.received_by = u.user_id
             WHERE p.bill_id = %s
@@ -2432,7 +2439,13 @@ def print_receipt(payment_id):
     b.balance,
     br.branch_name,
     br.location,
-    COALESCE(NULLIF(TRIM(u.full_name), ''), u.username) AS received_by_name
+    COALESCE(
+        NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''),
+        NULLIF(TRIM(u.full_name), ''),
+        u.username
+    ) AS received_by_name,
+    u.first_name AS user_first_name,
+    u.last_name AS user_last_name
             FROM payments p
             JOIN billing b ON p.bill_id = b.bill_id
             JOIN enrollments e ON p.enrollment_id = e.enrollment_id
@@ -2445,6 +2458,14 @@ def print_receipt(payment_id):
         if not payment:
             flash("Receipt not found", "error")
             return redirect("/cashier")
+
+        if payment.get("user_first_name") and payment.get("user_last_name"):
+            payment["received_by_name"] = f"{payment['user_first_name'].strip()} {payment['user_last_name'].strip()}"
+        elif payment.get("received_by_name"):
+            parts = payment["received_by_name"].strip().split()
+            if len(parts) >= 3:
+                payment["received_by_name"] = f"{parts[0]} {parts[-1]}"
+
         payment["student_name"] = " ".join(filter(None, [
             payment.get("student_first_name"),
             payment.get("student_middle_name"),
@@ -2500,7 +2521,11 @@ def _fetch_report_payments(cursor, branch_id, start_date, end_date):
         SELECT p.payment_id, p.receipt_number, p.amount, p.payment_method, p.payment_date, p.bill_id,
                e.student_first_name, e.student_middle_name, e.student_last_name,
                e.grade_level, e.branch_enrollment_no,
-               COALESCE(NULLIF(TRIM(u.full_name),''), u.username) AS received_by_name
+               COALESCE(
+                   NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''),
+                   NULLIF(TRIM(u.full_name), ''),
+                   u.username
+               ) AS received_by_name
         FROM payments p
         JOIN enrollments e ON p.enrollment_id = e.enrollment_id
         JOIN users u ON p.received_by = u.user_id
@@ -2532,11 +2557,31 @@ def _fetch_report_summary(cursor, branch_id, start_date, end_date):
 
 def _fetch_branch_admin_name(cursor, branch_id):
     cursor.execute("""
-        SELECT COALESCE(NULLIF(TRIM(full_name), ''), username) AS admin_name
+        SELECT 
+            first_name,
+            last_name,
+            full_name,
+            username
         FROM users WHERE branch_id = %s AND role = 'branch_admin' LIMIT 1
     """, (branch_id,))
     row = cursor.fetchone()
-    return row["admin_name"] if row else "Branch Administrator"
+    if not row:
+        return "School Principal"
+    first = (row.get("first_name") or "").strip()
+    last = (row.get("last_name") or "").strip()
+    if first and last:
+        return f"{first} {last}"
+    elif first:
+        return first
+    elif last:
+        return last
+    full = (row.get("full_name") or "").strip()
+    if full:
+        parts = full.split()
+        if len(parts) >= 3:
+            return f"{parts[0]} {parts[-1]}"
+        return full
+    return row.get("username") or "School Principal"
 
 
 @cashier_bp.route("/cashier/reports", methods=["GET", "POST"])

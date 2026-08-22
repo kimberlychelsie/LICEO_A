@@ -825,7 +825,7 @@
                     </thead>
                     <tbody>
                         {% for o in orders %}
-                        <tr>
+                        <tr class="order-row">
                             <td>
                                 <div class="student-name">{{ o.student_name }}</div>
                                 <div class="sub-text">{{ o.branch_enrollment_no or '' }}</div>
@@ -925,6 +925,31 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Pagination Container -->
+            {% if orders %}
+            <div id="paginationContainer" style="padding: 16px 24px; border-top: 1px solid var(--u-border); display: flex; justify-content: space-between; align-items: center; background: #fff; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="font-size: 0.85rem; color: var(--u-muted); font-weight: 600;">
+                        Showing <span id="pageStart" style="font-weight: 700; color: var(--u-text);">1</span> to <span id="pageEnd" style="font-weight: 700; color: var(--u-text);">10</span> of <span id="pageTotal" style="font-weight: 700; color: var(--u-text);">{{ orders|length }}</span> orders
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--u-muted); font-weight: 600;">
+                        <label for="rowsPerPageSelect">Per page:</label>
+                        <select id="rowsPerPageSelect" onchange="changeRowsPerPage(this.value)" style="padding: 4px 8px; border: 1.5px solid var(--u-border); border-radius: 8px; font-size: 0.82rem; font-weight: 700; color: var(--u-text); outline: none; background: #fff; cursor: pointer;">
+                            <option value="10" selected>10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 6px; align-items: center;" id="pageNavControls">
+                    <button onclick="prevPage()" id="prevBtn" class="stab" style="padding: 6px 14px; font-size: 0.8rem; cursor: pointer;" disabled>&laquo; Previous</button>
+                    <div id="pageNumberButtons" style="display: flex; gap: 4px;"></div>
+                    <button onclick="nextPage()" id="nextBtn" class="stab" style="padding: 6px 14px; font-size: 0.8rem; cursor: pointer;">Next &raquo;</button>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -1008,9 +1033,8 @@
                                         Price</button>
                                     {% if pieces|length >= 2 %}
                                     <button class="btn-onsite"
-                                        style="padding:6px 12px; font-size:0.74rem; background:#94a3b8; cursor:not-allowed;"
-                                        disabled title="Maximum 2 pieces reached for this set">+ Add Piece (Max 2
-                                        Reached)</button>
+                                        style="padding:6px 12px; font-size:0.74rem;"
+                                        disabled title="+ Add Piece (Max Reached)">+ Add Piece</button>
                                     {% else %}
                                     <button class="btn-onsite" style="padding:6px 12px; font-size:0.74rem;"
                                         onclick="openAddPieceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}', {{ pieces|length }})">+
@@ -1351,6 +1375,104 @@
                     this.getAttribute('data-order-no')
                 );
             });
+        });
+
+        // ══════════════════════════════════════════
+        // PAGINATION LOGIC
+        // ══════════════════════════════════════════
+        let currentPage = 1;
+        let rowsPerPage = 10;
+
+        function updateOrderPagination() {
+            const rows = Array.from(document.querySelectorAll('.order-row'));
+            const pagContainer = document.getElementById('paginationContainer');
+            if (!rows.length || !pagContainer) return;
+
+            const totalRows = rows.length;
+            const totalPages = Math.ceil(totalRows / rowsPerPage) || 1;
+
+            if (currentPage > totalPages) currentPage = totalPages;
+            if (currentPage < 1) currentPage = 1;
+
+            const startIdx = (currentPage - 1) * rowsPerPage;
+            const endIdx = startIdx + rowsPerPage;
+
+            rows.forEach((row, idx) => {
+                if (idx >= startIdx && idx < endIdx) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+
+            // Update stats
+            const pageStartEl = document.getElementById('pageStart');
+            const pageEndEl = document.getElementById('pageEnd');
+            const pageTotalEl = document.getElementById('pageTotal');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const pageButtonsContainer = document.getElementById('pageNumberButtons');
+
+            if (pageStartEl) pageStartEl.textContent = totalRows === 0 ? 0 : startIdx + 1;
+            if (pageEndEl) pageEndEl.textContent = Math.min(endIdx, totalRows);
+            if (pageTotalEl) pageTotalEl.textContent = totalRows;
+
+            if (prevBtn) prevBtn.disabled = currentPage <= 1;
+            if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+
+            // Render page buttons (sliding window up to 5 buttons)
+            if (pageButtonsContainer) {
+                let html = '';
+                let startPage = Math.max(1, currentPage - 2);
+                let endPage = Math.min(totalPages, startPage + 4);
+                if (endPage - startPage < 4) {
+                    startPage = Math.max(1, endPage - 4);
+                }
+
+                if (startPage > 1) {
+                    html += `<button onclick="goToPage(1)" class="stab" style="padding: 6px 12px; font-size: 0.8rem; cursor: pointer;">1</button>`;
+                    if (startPage > 2) html += `<span style="padding: 6px 4px; color: var(--u-muted); font-size: 0.8rem;">...</span>`;
+                }
+
+                for (let p = startPage; p <= endPage; p++) {
+                    const isActive = p === currentPage;
+                    html += `<button onclick="goToPage(${p})" class="stab ${isActive ? 'active' : ''}" style="padding: 6px 12px; font-size: 0.8rem; cursor: pointer; ${isActive ? 'background: var(--u-primary); color: #fff; border-color: var(--u-primary);' : ''}">${p}</button>`;
+                }
+
+                if (endPage < totalPages) {
+                    if (endPage < totalPages - 1) html += `<span style="padding: 6px 4px; color: var(--u-muted); font-size: 0.8rem;">...</span>`;
+                    html += `<button onclick="goToPage(${totalPages})" class="stab" style="padding: 6px 12px; font-size: 0.8rem; cursor: pointer;">${totalPages}</button>`;
+                }
+
+                pageButtonsContainer.innerHTML = html;
+            }
+        }
+
+        function nextPage() {
+            currentPage++;
+            updateOrderPagination();
+        }
+
+        function prevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                updateOrderPagination();
+            }
+        }
+
+        function goToPage(page) {
+            currentPage = page;
+            updateOrderPagination();
+        }
+
+        function changeRowsPerPage(val) {
+            rowsPerPage = parseInt(val, 10) || 10;
+            currentPage = 1;
+            updateOrderPagination();
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+            updateOrderPagination();
         });
     </script>
     {% endblock %}

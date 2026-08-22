@@ -5,13 +5,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Official Receipt - {{ payment.receipt_number }}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
-            --receipt-bg: #fff;
-            --receipt-text: #000;
             --primary: #1e3a8a;
             --accent: #3b82f6;
+            --receipt-bg: #ffffff;
+            --receipt-text: #0f172a;
+            --receipt-muted: #64748b;
+            --receipt-border: #e2e8f0;
+            --success: #059669;
         }
 
         * {
@@ -21,56 +24,61 @@
         }
 
         body {
-            font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
             background: #f1f5f9;
             color: #0f172a;
-            padding: 40px 20px;
+            padding: 32px 16px 64px;
             display: flex;
             flex-direction: column;
             align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
         }
 
-        /* Modern Page Header - Not Printed */
+        /* ── Modern Page Header (Screen Only) ── */
         .page-header {
-            max-width: 800px;
+            max-width: 520px;
             width: 100%;
             background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
             border-radius: 20px;
-            padding: 32px 40px;
+            padding: 24px 28px;
             margin-bottom: 24px;
             color: #fff;
-            box-shadow: 0 15px 35px -10px rgba(30, 58, 138, 0.2);
+            box-shadow: 0 15px 35px -10px rgba(30, 58, 138, 0.25);
             display: flex;
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
-            gap: 20px;
+            gap: 16px;
+            box-sizing: border-box;
         }
 
         .header-text h1 {
-            font-size: 2rem;
+            font-size: 1.5rem;
             font-weight: 900;
-            letter-spacing: -0.03em;
+            letter-spacing: -0.02em;
             line-height: 1.1;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
 
         .header-text p {
-            font-size: 0.95rem;
-            font-weight: 500;
+            font-size: 0.85rem;
+            font-weight: 600;
             opacity: 0.9;
+            font-family: 'JetBrains Mono', monospace;
         }
 
         .action-buttons {
             display: flex;
-            gap: 12px;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         .btn {
-            padding: 12px 20px;
+            padding: 10px 16px;
             border-radius: 12px;
             font-family: 'Plus Jakarta Sans', sans-serif;
-            font-size: 0.95rem;
+            font-size: 0.88rem;
             font-weight: 700;
             text-decoration: none;
             cursor: pointer;
@@ -78,55 +86,293 @@
             transition: all 0.2s;
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
         }
 
         .btn-print {
             background: #fff;
             color: var(--primary);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
         .btn-print:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(0,0,0,0.15);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
         }
 
         .btn-back {
-            background: rgba(255,255,255,0.15);
+            background: rgba(255, 255, 255, 0.18);
             color: #fff;
-            border: 1px solid rgba(255,255,255,0.3);
+            border: 1px solid rgba(255, 255, 255, 0.35);
         }
 
         .btn-back:hover {
-            background: rgba(255,255,255,0.25);
+            background: rgba(255, 255, 255, 0.28);
         }
 
-        /* Classic Receipt Container */
-        .receipt-container {
+        /* ── Responsive Official Receipt Card ── */
+        .receipt-card {
             width: 100%;
-            max-width: 800px;
+            max-width: 520px;
             background: var(--receipt-bg);
-            padding: 40px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            font-family: 'Courier New', Courier, monospace;
-            font-size: 14px;
-            line-height: 1.2;
+            border-radius: 20px;
+            padding: 36px 32px;
+            box-shadow: 0 10px 30px -5px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
+            border: 1px solid var(--receipt-border);
+            font-family: 'JetBrains Mono', 'Courier New', Courier, monospace;
             color: var(--receipt-text);
-            white-space: pre-wrap; /* to handle raw text layout easily */
+            box-sizing: border-box;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
         }
 
-        .text-center { text-align: center; }
+        /* Receipt Header */
+        .receipt-header {
+            text-align: center;
+            padding-bottom: 16px;
+        }
 
+        .receipt-brand {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--receipt-text);
+            letter-spacing: -0.01em;
+            text-transform: uppercase;
+            line-height: 1.2;
+            margin-bottom: 4px;
+        }
+
+        .receipt-sub {
+            font-size: 0.8rem;
+            color: var(--receipt-muted);
+            line-height: 1.3;
+            margin-bottom: 8px;
+        }
+
+        .receipt-badge {
+            display: inline-block;
+            font-size: 0.78rem;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            color: var(--primary);
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            padding: 4px 12px;
+            border-radius: 6px;
+            margin-top: 4px;
+        }
+
+        /* Dividers */
+        .r-divider-double {
+            border-top: 2px solid #0f172a;
+            margin: 14px 0;
+        }
+
+        .r-divider-dashed {
+            border-top: 1px dashed #cbd5e1;
+            margin: 12px 0;
+        }
+
+        .r-divider-solid {
+            border-top: 1px solid #cbd5e1;
+            margin: 8px 0;
+        }
+
+        /* Section Headings */
+        .r-section-title {
+            font-size: 0.72rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--primary);
+            background: #f8fafc;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin: 14px 0 8px;
+            display: inline-block;
+        }
+
+        /* Data Rows */
+        .r-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            gap: 12px;
+            padding: 3.5px 0;
+            font-size: 0.85rem;
+            line-height: 1.35;
+        }
+
+        .r-lbl {
+            color: var(--receipt-muted);
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        .r-val {
+            font-weight: 700;
+            text-align: right;
+            color: var(--receipt-text);
+            word-break: break-word;
+        }
+
+        .r-notes-box {
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 10px 12px;
+            font-size: 0.82rem;
+            color: #334155;
+            margin: 6px 0;
+            line-height: 1.4;
+            white-space: pre-wrap;
+        }
+
+        .r-highlight {
+            background: #ecfdf5;
+            padding: 6px 8px;
+            border-radius: 6px;
+            margin: 4px 0;
+        }
+
+        .r-highlight .r-lbl {
+            color: #047857;
+            font-weight: 800;
+        }
+
+        .r-highlight .r-val {
+            color: #047857;
+            font-weight: 800;
+            font-size: 0.95rem;
+        }
+
+        .r-balance {
+            background: #f8fafc;
+            padding: 6px 8px;
+            border-radius: 6px;
+            margin: 4px 0;
+        }
+
+        .r-balance .r-lbl,
+        .r-balance .r-val {
+            font-weight: 800;
+            color: var(--primary);
+        }
+
+        /* Footer & Signature */
+        .r-footer {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .r-sig-box {
+            margin: 16px auto 12px;
+            display: inline-block;
+            min-width: 220px;
+            max-width: 100%;
+        }
+
+        .r-sig-tag {
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--receipt-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 6px;
+        }
+
+        .r-sig-name {
+            font-size: 0.95rem;
+            font-weight: 800;
+            color: var(--receipt-text);
+            border-top: 1.5px solid #0f172a;
+            padding-top: 8px;
+            text-transform: uppercase;
+        }
+
+        .r-sig-role {
+            font-size: 0.75rem;
+            color: var(--receipt-muted);
+            font-weight: 600;
+            margin-top: 2px;
+        }
+
+        .r-thankyou {
+            font-size: 0.78rem;
+            color: var(--receipt-muted);
+            line-height: 1.4;
+            margin-top: 14px;
+            padding: 0 8px;
+        }
+
+        /* ── Mobile Responsive Adjustments ── */
+        @media (max-width: 580px) {
+            body {
+                padding: 14px 10px 48px;
+            }
+
+            .page-header {
+                padding: 16px;
+                border-radius: 16px;
+                margin-bottom: 16px;
+            }
+
+            .header-text h1 {
+                font-size: 1.3rem;
+            }
+
+            .action-buttons {
+                width: 100%;
+            }
+
+            .action-buttons .btn {
+                flex: 1;
+                text-align: center;
+                padding: 10px 12px;
+                font-size: 0.82rem;
+            }
+
+            .receipt-card {
+                padding: 22px 14px;
+                border-radius: 16px;
+            }
+
+            .receipt-brand {
+                font-size: 1.05rem;
+            }
+
+            .r-row {
+                font-size: 0.8rem;
+                gap: 8px;
+                padding: 3px 0;
+            }
+
+            .r-highlight .r-val {
+                font-size: 0.88rem;
+            }
+        }
+
+        /* ── Print Styles ── */
         @media print {
-            .no-print { display: none !important; }
-            body { background: #fff; padding: 0; display: block; }
-            .receipt-container { 
-                box-shadow: none; 
-                padding: 0; 
-                width: 100%; 
-                max-width: 100%; 
-                font-size: 12px; 
+            .no-print {
+                display: none !important;
+            }
+
+            body {
+                background: #fff;
+                padding: 0;
+                margin: 0;
+                display: block;
+            }
+
+            .receipt-card {
+                box-shadow: none;
+                border: 1px solid #000;
+                padding: 20px;
+                width: 100%;
+                max-width: 100%;
+                border-radius: 0;
                 margin: 0;
             }
         }
@@ -138,60 +384,117 @@
     <div class="page-header no-print">
         <div class="header-text">
             <h1>Payment Receipt</h1>
-            <p>Transaction ID: {{ payment.receipt_number }}</p>
+            <p>OR #{{ payment.receipt_number }}</p>
         </div>
         <div class="action-buttons">
             <a href="/cashier/bill/{{ payment.bill_id }}" class="btn btn-back">← Back to Bills</a>
-            <button onclick="window.print()" class="btn btn-print">🖨️ Print Receipt</button>
+            <button onclick="window.print()" class="btn btn-print">🖨️ Print</button>
         </div>
     </div>
 
-    <div class="receipt-container">
-        <div style="margin: 0 auto; width: 520px; max-width: 100%;">
-<div class="text-center">============================================================
-{{ payment.branch_name|upper }}
-{{ payment.location }}
-OFFICIAL ELECTRONIC RECEIPT
-============================================================</div>
-
- RECEIPT DETAILS
- ───────────────────────────────────────────────────────────
-  OR Number       : {{ payment.receipt_number }}
-  Date & Time  : {{ payment.payment_date.strftime('%B %d, %Y | %I:%M %p') }}
-  Payer Name   : {{ payment.guardian_name }}
-  Payment Mode : {{ payment.payment_method|title }}
-
- STUDENT INFORMATION
- ───────────────────────────────────────────────────────────
-  Student Name    : {{ payment.student_name }}
-  Enrollment No.  : {{ payment.branch_enrollment_no or "N/A" }}
-  Academic Level  : {% set level = (payment.grade_level or '')|string %}{% set level_lower = level|lower %}{{ level if level_lower[:5] == 'grade' else (level) }}
-{% if payment.notes %}
- TRANSACTION NOTES
- ───────────────────────────────────────────────────────────
-  {{ payment.notes }}
-{% endif %}
- PAYMENT SUMMARY
- ───────────────────────────────────────────────────────────
-  Total Tuition Fee          : ₱ {{ "{:,.2f}".format(payment.total_amount).rjust(11) }}
-  Previous Payments          : ₱ {{ "{:,.2f}".format(payment.amount_paid - payment.amount).rjust(11) }}
-  Previous Outstanding       : ₱ {{ "{:,.2f}".format(payment.balance + payment.amount).rjust(11) }}
-  Payment Received           : ₱ {{ "{:,.2f}".format(payment.amount).rjust(11) }}
-  ----------------------------------------------------------
-  Total Paid To Date         : ₱ {{ "{:,.2f}".format(payment.amount_paid).rjust(11) }}
-  Remaining Balance          : ₱ {{ "{:,.2f}".format(payment.balance).rjust(11) }}
-============================================================
-<div class="text-center">
-[ AUTHORIZED SIGNATURE ]
-{{ payment.received_by_name }}
-Authorized Cashier
-
-------------------------------------------------------------
-Thank you for your transaction! This document
-serves as an official confirmation of payment.
-============================================================</div>
+    <div class="receipt-card">
+        <div class="receipt-header">
+            <div class="receipt-brand">{{ payment.branch_name }}</div>
+            <div class="receipt-sub">{{ payment.location }}</div>
+            <div class="receipt-badge">OFFICIAL ELECTRONIC RECEIPT</div>
         </div>
-</div>
+
+        <div class="r-divider-double"></div>
+
+        <div>
+            <span class="r-section-title">Receipt Details</span>
+            <div class="r-row">
+                <span class="r-lbl">OR Number</span>
+                <span class="r-val">{{ payment.receipt_number }}</span>
+            </div>
+            <div class="r-row">
+                <span class="r-lbl">Date &amp; Time</span>
+                <span class="r-val">{{ payment.payment_date.strftime('%B %d, %Y | %I:%M %p') }}</span>
+            </div>
+            <div class="r-row">
+                <span class="r-lbl">Payer Name</span>
+                <span class="r-val">{{ payment.guardian_name or payment.student_name }}</span>
+            </div>
+            <div class="r-row">
+                <span class="r-lbl">Payment Mode</span>
+                <span class="r-val">{{ payment.payment_method|title }}</span>
+            </div>
+        </div>
+
+        <div class="r-divider-dashed"></div>
+
+        <div>
+            <span class="r-section-title">Student Information</span>
+            <div class="r-row">
+                <span class="r-lbl">Student Name</span>
+                <span class="r-val">{{ payment.student_name }}</span>
+            </div>
+            <div class="r-row">
+                <span class="r-lbl">Enrollment No.</span>
+                <span class="r-val">{{ payment.branch_enrollment_no or "N/A" }}</span>
+            </div>
+            <div class="r-row">
+                <span class="r-lbl">Academic Level</span>
+                <span class="r-val">{% set level = (payment.grade_level or '')|string %}{% set level_lower = level|lower %}{{ level if level_lower[:5] == 'grade' else (level) }}</span>
+            </div>
+        </div>
+
+        {% if payment.notes %}
+        <div class="r-divider-dashed"></div>
+        <div>
+            <span class="r-section-title">Transaction Notes</span>
+            <div class="r-notes-box">{{ payment.notes }}</div>
+        </div>
+        {% endif %}
+
+        <div class="r-divider-dashed"></div>
+
+        <div>
+            <span class="r-section-title">Payment Summary</span>
+            <div class="r-row">
+                <span class="r-lbl">Total Tuition Fee</span>
+                <span class="r-val">₱{{ "{:,.2f}".format(payment.total_amount) }}</span>
+            </div>
+            <div class="r-row">
+                <span class="r-lbl">Previous Payments</span>
+                <span class="r-val">₱{{ "{:,.2f}".format(payment.amount_paid - payment.amount) }}</span>
+            </div>
+            <div class="r-row">
+                <span class="r-lbl">Previous Outstanding</span>
+                <span class="r-val">₱{{ "{:,.2f}".format(payment.balance + payment.amount) }}</span>
+            </div>
+            <div class="r-row r-highlight">
+                <span class="r-lbl">Payment Received</span>
+                <span class="r-val">₱{{ "{:,.2f}".format(payment.amount) }}</span>
+            </div>
+            <div class="r-divider-solid"></div>
+            <div class="r-row">
+                <span class="r-lbl">Total Paid To Date</span>
+                <span class="r-val">₱{{ "{:,.2f}".format(payment.amount_paid) }}</span>
+            </div>
+            <div class="r-row r-balance">
+                <span class="r-lbl">Remaining Balance</span>
+                <span class="r-val">₱{{ "{:,.2f}".format(payment.balance) }}</span>
+            </div>
+        </div>
+
+        <div class="r-divider-double"></div>
+
+        <div class="r-footer">
+            <div class="r-sig-box">
+                <div class="r-sig-tag">[ Authorized Signature ]</div>
+                <div class="r-sig-name">{{ payment.received_by_name }}</div>
+                <div class="r-sig-role">Authorized Cashier</div>
+            </div>
+
+            <div class="r-divider-dashed"></div>
+
+            <div class="r-thankyou">
+                Thank you for your transaction!<br>
+                This document serves as an official confirmation of payment.
+            </div>
+        </div>
+    </div>
 
 </body>
 </html>

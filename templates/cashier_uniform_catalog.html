@@ -164,7 +164,14 @@
         padding: 8px 16px; border-radius: 10px; font-size: 0.78rem; font-weight: 700;
         background: var(--u-primary); color: #fff; border: none; cursor: pointer; transition: all .15s;
     }
-    .btn-onsite:hover { background: #172554; }
+    .btn-onsite:hover:not(:disabled) { background: #172554; }
+    .btn-onsite:disabled {
+        background: #f1f5f9;
+        color: #94a3b8;
+        border: 1px solid #e2e8f0;
+        cursor: not-allowed;
+        opacity: 0.85;
+    }
     .btn-claim {
         padding: 8px 16px; border-radius: 10px; font-size: 0.78rem; font-weight: 700;
         background: var(--u-success); color: #fff; border: none; cursor: pointer; transition: all .15s;
@@ -379,7 +386,7 @@
                             <div style="display:flex; gap:6px; flex-wrap:wrap;" onclick="event.stopPropagation()">
                                 <button class="btn-view" onclick="openPriceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}', '{{ '%.2f'|format(s.price or 0) }}', '{{ '%.0f'|format(s.size_price_step or 20) }}', false)">Edit Price</button>
                                 {% if pieces|length >= 2 %}
-                                <button class="btn-onsite" style="padding:6px 12px; font-size:0.74rem; background:#94a3b8; cursor:not-allowed;" disabled title="Maximum 2 pieces reached for this set">+ Add Piece (Max 2 Reached)</button>
+                                <button class="btn-onsite" style="padding:6px 12px; font-size:0.74rem;" disabled title="+ Add Piece (Max Reached)">+ Add Piece</button>
                                 {% else %}
                                 <button class="btn-onsite" style="padding:6px 12px; font-size:0.74rem;" onclick="openAddPieceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}', {{ pieces|length }})">+ Add Piece</button>
                                 {% endif %}
@@ -426,6 +433,31 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Pagination Container -->
+            {% if catalog_sets %}
+            <div id="catalogPaginationContainer" style="padding: 16px 24px; border-top: 1px solid var(--u-border); display: flex; justify-content: space-between; align-items: center; background: #fff; flex-wrap: wrap; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="font-size: 0.85rem; color: var(--u-muted); font-weight: 600;">
+                        Showing <span id="catalogPageStart" style="font-weight: 700; color: var(--u-text);">1</span> to <span id="catalogPageEnd" style="font-weight: 700; color: var(--u-text);">10</span> of <span id="catalogPageTotal" style="font-weight: 700; color: var(--u-text);">{{ catalog_sets|length }}</span> uniform sets
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: var(--u-muted); font-weight: 600;">
+                        <label for="catalogRowsPerPageSelect">Per page:</label>
+                        <select id="catalogRowsPerPageSelect" onchange="changeCatalogRowsPerPage(this.value)" style="padding: 4px 8px; border: 1.5px solid var(--u-border); border-radius: 8px; font-size: 0.82rem; font-weight: 700; color: var(--u-text); outline: none; background: #fff; cursor: pointer;">
+                            <option value="10" selected>10</option>
+                            <option value="20">20</option>
+                            <option value="50">50</option>
+                            <option value="100">100</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 6px; align-items: center;" id="catalogPageNavControls">
+                    <button onclick="prevCatalogPage()" id="catalogPrevBtn" class="stab" style="padding: 6px 14px; font-size: 0.8rem; cursor: pointer;" disabled>&laquo; Previous</button>
+                    <div id="catalogPageNumberButtons" style="display: flex; gap: 4px;"></div>
+                    <button onclick="nextCatalogPage()" id="catalogNextBtn" class="stab" style="padding: 6px 14px; font-size: 0.8rem; cursor: pointer;">Next &raquo;</button>
+                </div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -781,6 +813,113 @@
 
     document.querySelectorAll('.modal-backdrop').forEach(m => {
         m.addEventListener('click', function (e) { if (e.target === this) closeModal(this.id); });
+    });
+
+    // ══════════════════════════════════════════
+    // CATALOG PAGINATION LOGIC
+    // ══════════════════════════════════════════
+    let catalogCurrentPage = 1;
+    let catalogRowsPerPage = 10;
+
+    function updateCatalogPagination() {
+        const setRows = Array.from(document.querySelectorAll('.set-row'));
+        const pagContainer = document.getElementById('catalogPaginationContainer');
+        if (!setRows.length || !pagContainer) return;
+
+        const totalSets = setRows.length;
+        const totalPages = Math.ceil(totalSets / catalogRowsPerPage) || 1;
+
+        if (catalogCurrentPage > totalPages) catalogCurrentPage = totalPages;
+        if (catalogCurrentPage < 1) catalogCurrentPage = 1;
+
+        const startIdx = (catalogCurrentPage - 1) * catalogRowsPerPage;
+        const endIdx = startIdx + catalogRowsPerPage;
+
+        setRows.forEach((row, idx) => {
+            const setId = row.getAttribute('data-set-id');
+            const childPieceRows = document.querySelectorAll(`.piece-row[data-parent-set="${setId}"]`);
+
+            if (idx >= startIdx && idx < endIdx) {
+                row.style.display = '';
+                // Keep piece rows state in sync with set expansion
+                if (row.classList.contains('open')) {
+                    childPieceRows.forEach(pr => pr.classList.add('visible'));
+                } else {
+                    childPieceRows.forEach(pr => pr.classList.remove('visible'));
+                }
+            } else {
+                row.style.display = 'none';
+                childPieceRows.forEach(pr => pr.classList.remove('visible'));
+            }
+        });
+
+        // Update indicators
+        const startEl = document.getElementById('catalogPageStart');
+        const endEl = document.getElementById('catalogPageEnd');
+        const totalEl = document.getElementById('catalogPageTotal');
+        const prevBtn = document.getElementById('catalogPrevBtn');
+        const nextBtn = document.getElementById('catalogNextBtn');
+        const buttonsContainer = document.getElementById('catalogPageNumberButtons');
+
+        if (startEl) startEl.textContent = totalSets === 0 ? 0 : startIdx + 1;
+        if (endEl) endEl.textContent = Math.min(endIdx, totalSets);
+        if (totalEl) totalEl.textContent = totalSets;
+
+        if (prevBtn) prevBtn.disabled = catalogCurrentPage <= 1;
+        if (nextBtn) nextBtn.disabled = catalogCurrentPage >= totalPages;
+
+        if (buttonsContainer) {
+            let html = '';
+            let startPage = Math.max(1, catalogCurrentPage - 2);
+            let endPage = Math.min(totalPages, startPage + 4);
+            if (endPage - startPage < 4) {
+                startPage = Math.max(1, endPage - 4);
+            }
+
+            if (startPage > 1) {
+                html += `<button onclick="goToCatalogPage(1)" class="stab" style="padding: 6px 12px; font-size: 0.8rem; cursor: pointer;">1</button>`;
+                if (startPage > 2) html += `<span style="padding: 6px 4px; color: var(--u-muted); font-size: 0.8rem;">...</span>`;
+            }
+
+            for (let p = startPage; p <= endPage; p++) {
+                const isActive = p === catalogCurrentPage;
+                html += `<button onclick="goToCatalogPage(${p})" class="stab ${isActive ? 'active' : ''}" style="padding: 6px 12px; font-size: 0.8rem; cursor: pointer; ${isActive ? 'background: var(--u-primary); color: #fff; border-color: var(--u-primary);' : ''}">${p}</button>`;
+            }
+
+            if (endPage < totalPages) {
+                if (endPage < totalPages - 1) html += `<span style="padding: 6px 4px; color: var(--u-muted); font-size: 0.8rem;">...</span>`;
+                html += `<button onclick="goToCatalogPage(${totalPages})" class="stab" style="padding: 6px 12px; font-size: 0.8rem; cursor: pointer;">${totalPages}</button>`;
+            }
+
+            buttonsContainer.innerHTML = html;
+        }
+    }
+
+    function nextCatalogPage() {
+        catalogCurrentPage++;
+        updateCatalogPagination();
+    }
+
+    function prevCatalogPage() {
+        if (catalogCurrentPage > 1) {
+            catalogCurrentPage--;
+            updateCatalogPagination();
+        }
+    }
+
+    function goToCatalogPage(page) {
+        catalogCurrentPage = page;
+        updateCatalogPagination();
+    }
+
+    function changeCatalogRowsPerPage(val) {
+        catalogRowsPerPage = parseInt(val, 10) || 10;
+        catalogCurrentPage = 1;
+        updateCatalogPagination();
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        updateCatalogPagination();
     });
 </script>
 {% endblock %}

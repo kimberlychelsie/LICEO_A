@@ -134,7 +134,7 @@
         padding: 11px 12px;
         border-bottom: 1px solid var(--border);
         text-align: left;
-        vertical-align: top;
+        vertical-align: middle;
         font-size: 13.5px;
     }
 
@@ -145,6 +145,12 @@
         text-transform: uppercase;
         letter-spacing: .04em;
         background: #fbfdff;
+    }
+
+    .th-actions,
+    .td-actions {
+        text-align: right !important;
+        padding-right: 24px !important;
     }
 
     /* ── Badges ── */
@@ -798,7 +804,7 @@
                         <th>Student ID</th>
                         <th>Student Name</th>
                         <th>Grade Level</th>
-                        <th>Actions</th>
+                        <th class="th-actions">Actions</th>
                     </tr>
 
                     {% for enrollment in new_enrollments %}
@@ -818,7 +824,7 @@
                         </td>
                         <td>{{ enrollment.grade_level }}</td>
 
-                        <td>
+                        <td class="td-actions">
                             {% if enrollment.status == 'pending' %}
                             {% if is_branch_active_status and can_modify %}
                             <button type="button" class="btn btn-primary btn-sm"
@@ -1346,13 +1352,13 @@
             </div>
 
             <!-- Pagination: New Enrollments -->
-            {% if total_pages_new > 1 %}
+            {% if total_pages_new is defined and (total_pages_new >= 1 or new_enrollments) %}
             <div class="pagination-wrapper">
                 <div class="pagination-container">
                     <div class="pagination-controls">
-                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=current_page_new-1, p_enrolled=current_page_enrolled, q_new=q_new, q_enrolled=q_enrolled) }}"
-                            class="page-link pagination-arrow {{ 'disabled' if current_page_new == 1 }}" {% if
-                            current_page_new==1 %}onclick="return false;" {% endif %}>
+                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=[current_page_new-1, 1]|max, p_enrolled=current_page_enrolled, q_new=q_new, q_enrolled=q_enrolled) }}"
+                            class="page-link pagination-arrow {{ 'disabled' if current_page_new <= 1 }}" {% if
+                            current_page_new <= 1 %}onclick="return false;" {% endif %}>
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                                 stroke-linejoin="round">
@@ -1360,27 +1366,26 @@
                             </svg>
                         </a>
 
-                        {% for p in range(1, total_pages_new + 1) %}
-                        {% if p == 1 or p == total_pages_new or (p >= current_page_new - 2 and p <= current_page_new +
-                            2) %} <a
-                            href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=p, p_enrolled=current_page_enrolled, q_new=q_new, q_enrolled=q_enrolled) }}"
+                        {% for p in range(1, [total_pages_new, 1]|max + 1) %}
+                        {% if p == 1 or p == total_pages_new or (p >= current_page_new - 2 and p <= current_page_new + 2) %}
+                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=p, p_enrolled=current_page_enrolled, q_new=q_new, q_enrolled=q_enrolled) }}"
                             class="page-link {{ 'active' if p == current_page_new }}">
                             {{ p }}
-                            </a>
-                            {% elif p == current_page_new - 3 or p == current_page_new + 3 %}
-                            <span class="page-link disabled">...</span>
-                            {% endif %}
-                            {% endfor %}
+                        </a>
+                        {% elif p == current_page_new - 3 or p == current_page_new + 3 %}
+                        <span class="page-link disabled">...</span>
+                        {% endif %}
+                        {% endfor %}
 
-                            <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=current_page_new+1, p_enrolled=current_page_enrolled, q_new=q_new, q_enrolled=q_enrolled) }}"
-                                class="page-link pagination-arrow {{ 'disabled' if current_page_new == total_pages_new }}"
-                                {% if current_page_new==total_pages_new %}onclick="return false;" {% endif %}>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                                    stroke-linejoin="round">
-                                    <polyline points="9 18 15 12 9 6"></polyline>
-                                </svg>
-                            </a>
+                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_new=[current_page_new+1, total_pages_new]|min, p_enrolled=current_page_enrolled, q_new=q_new, q_enrolled=q_enrolled) }}"
+                            class="page-link pagination-arrow {{ 'disabled' if current_page_new >= total_pages_new or total_pages_new <= 1 }}"
+                            {% if current_page_new >= total_pages_new or total_pages_new <= 1 %}onclick="return false;" {% endif %}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </a>
                     </div>
                 </div>
             </div>
@@ -1600,7 +1605,7 @@
                         <th>Student Name</th>
                         <th>Grade Level</th>
                         <th>Section</th>
-                        <th>Actions</th>
+                        <th class="th-actions">Actions</th>
                     </tr>
                     {% for e in enrolled_students %}
                     {% set display_id = branch_code ~ '_' ~ ("%04d"|format(e.display_no|default(0)|int) if e.display_no|int else
@@ -1627,7 +1632,7 @@
                             <span style="color:#f59e0b; font-weight:700;">Not assigned</span>
                             {% endif %}
                         </td>
-                        <td>
+                        <td class="td-actions">
                             {% if not e.has_student_account %}
                             {% if is_branch_active_status and can_modify %}
                             <button class="btn-registrar" onclick="openCreateModal(
@@ -1727,13 +1732,13 @@
             </div>
 
             <!-- Pagination: Enrolled Students -->
-            {% if total_pages_enrolled > 1 %}
+            {% if total_pages_enrolled is defined and (total_pages_enrolled >= 1 or enrolled_students) %}
             <div class="pagination-wrapper">
                 <div class="pagination-container">
                     <div class="pagination-controls">
-                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=current_page_enrolled-1, p_new=current_page_new) }}"
-                            class="page-link pagination-arrow {{ 'disabled' if current_page_enrolled == 1 }}" {% if
-                            current_page_enrolled==1 %}onclick="return false;" {% endif %}>
+                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=[current_page_enrolled-1, 1]|max, p_new=current_page_new) }}"
+                            class="page-link pagination-arrow {{ 'disabled' if current_page_enrolled <= 1 }}" {% if
+                            current_page_enrolled <= 1 %}onclick="return false;" {% endif %}>
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
                                 fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                                 stroke-linejoin="round">
@@ -1741,27 +1746,26 @@
                             </svg>
                         </a>
 
-                        {% for p in range(1, total_pages_enrolled + 1) %}
-                        {% if p == 1 or p == total_pages_enrolled or (p >= current_page_enrolled - 2 and p <=
-                            current_page_enrolled + 2) %} <a
-                            href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=p, p_new=current_page_new) }}"
+                        {% for p in range(1, [total_pages_enrolled, 1]|max + 1) %}
+                        {% if p == 1 or p == total_pages_enrolled or (p >= current_page_enrolled - 2 and p <= current_page_enrolled + 2) %}
+                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=p, p_new=current_page_new) }}"
                             class="page-link {{ 'active' if p == current_page_enrolled }}">
                             {{ p }}
-                            </a>
-                            {% elif p == current_page_enrolled - 3 or p == current_page_enrolled + 3 %}
-                            <span class="page-link disabled">...</span>
-                            {% endif %}
-                            {% endfor %}
+                        </a>
+                        {% elif p == current_page_enrolled - 3 or p == current_page_enrolled + 3 %}
+                        <span class="page-link disabled">...</span>
+                        {% endif %}
+                        {% endfor %}
 
-                            <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=current_page_enrolled+1, p_new=current_page_new) }}"
-                                class="page-link pagination-arrow {{ 'disabled' if current_page_enrolled == total_pages_enrolled }}"
-                                {% if current_page_enrolled==total_pages_enrolled %}onclick="return false;" {% endif %}>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
-                                    fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                                    stroke-linejoin="round">
-                                    <polyline points="9 18 15 12 9 6"></polyline>
-                                </svg>
-                            </a>
+                        <a href="{{ url_for('registrar.registrar_enrollments', year_id=selected_year_id, p_enrolled=[current_page_enrolled+1, total_pages_enrolled]|min, p_new=current_page_new) }}"
+                            class="page-link pagination-arrow {{ 'disabled' if current_page_enrolled >= total_pages_enrolled or total_pages_enrolled <= 1 }}"
+                            {% if current_page_enrolled >= total_pages_enrolled or total_pages_enrolled <= 1 %}onclick="return false;" {% endif %}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <polyline points="9 18 15 12 9 6"></polyline>
+                            </svg>
+                        </a>
                     </div>
                 </div>
             </div>

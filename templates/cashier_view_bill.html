@@ -323,13 +323,77 @@
         color: var(--cashier-muted);
     }
 
-    .btn-back:hover {
-        background: #e2e8f0;
-    }
-
-    @media (max-width: 600px) {
+    @media (max-width: 768px) {
+        .bill-container {
+            padding: 16px 12px 48px;
+        }
+        .hero-banner {
+            padding: 24px 20px;
+            border-radius: 16px;
+            margin-bottom: 16px;
+        }
+        .hero-content h1 {
+            font-size: 1.75rem;
+        }
+        .hero-content p {
+            font-size: 0.88rem;
+        }
+        .bill-card {
+            padding: 20px 14px;
+            border-radius: 16px;
+            margin-bottom: 16px;
+        }
+        .student-info-sheet {
+            grid-template-columns: 1fr;
+            border-bottom: none;
+            padding-bottom: 0;
+            gap: 16px;
+        }
+        .sis-left {
+            border-right: none;
+            padding-right: 0;
+            border-bottom: 2px solid var(--cashier-primary);
+            padding-bottom: 14px;
+            flex-wrap: wrap;
+        }
+        .sis-photo {
+            width: 54px;
+            height: 54px;
+            font-size: 1.6rem;
+        }
+        .sis-right {
+            grid-template-columns: 1fr;
+            gap: 12px;
+        }
+        .sis-value {
+            font-size: 0.98rem;
+            word-break: break-word;
+        }
         .kpi-row {
             grid-template-columns: 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .kpi-well {
+            padding: 16px;
+            border-radius: 14px;
+        }
+        .kpi-well .value {
+            font-size: 1.35rem;
+        }
+        .breakdown-table th, .breakdown-table td {
+            padding: 10px 8px;
+            font-size: 0.82rem;
+        }
+        .action-row {
+            margin-top: 24px;
+            flex-direction: column;
+        }
+        .btn-main {
+            width: 100%;
+            text-align: center;
+            padding: 12px 16px;
+            box-sizing: border-box;
         }
     }
 
@@ -969,6 +1033,15 @@
 </div>
 
 <script>
+function _cleanReceiptName(nameStr) {
+    if (!nameStr) return '';
+    var parts = nameStr.trim().split(/\s+/);
+    if (parts.length >= 3) {
+        return parts[0] + ' ' + parts[parts.length - 1];
+    }
+    return nameStr;
+}
+
 function openReceiptModal(btn) {
     var d = btn.dataset;
     document.getElementById('rc-branch').textContent   = d.branch;
@@ -997,8 +1070,8 @@ function openReceiptModal(btn) {
     document.getElementById('rc-total').textContent    = '\u20b1' + d.total;
     document.getElementById('rc-paid').textContent     = '\u20b1' + d.paid;
     document.getElementById('rc-balance').textContent  = '\u20b1' + d.balance;
-    document.getElementById('rc-cashier').textContent  = d.cashier;
-    document.getElementById('rc-admin').textContent    = d.admin || 'School Principal';
+    document.getElementById('rc-cashier').textContent  = _cleanReceiptName(d.cashier);
+    document.getElementById('rc-admin').textContent    = _cleanReceiptName(d.admin) || 'School Principal';
     document.getElementById('receiptModal').classList.add('open');
 }
 function closeReceiptModal() {
@@ -1042,16 +1115,12 @@ function toggleUoPieces(orderId) {
 
             <div class="form-group">
                 <label>Payment Amount (₱) *</label>
-                <input type="number" id="modalAmountInput" name="amount" required step="0.01" min="0.01" placeholder="0.00"
-                    style="font-size: 1.15rem; font-weight: 800;"
-                    onkeydown="if(event.key==='-' || event.key==='+') return false;"
-                    oninput="if(this.value.includes('.')){ let p = this.value.split('.'); if(p[1].length > 2) this.value = p[0] + '.' + p[1].substring(0,2); }">
-                
-                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px;" id="modalPresets">
-                    <button type="button" class="btn-preset" onclick="document.getElementById('modalAmountInput').value = '500'">₱500</button>
-                    <button type="button" class="btn-preset" onclick="document.getElementById('modalAmountInput').value = '1000'">₱1,000</button>
-                    <button type="button" class="btn-preset" onclick="document.getElementById('modalAmountInput').value = '2000'">₱2,000</button>
-                    <button type="button" class="btn-preset btn-preset-full" onclick="document.getElementById('modalAmountInput').value = document.getElementById('modalAmountInput').getAttribute('max')">FULL</button>
+                <div style="display: flex; gap: 8px; align-items: stretch;">
+                    <input type="number" id="modalAmountInput" name="amount" required step="0.01" min="0.01" placeholder="0.00"
+                        style="flex: 1; font-size: 1.15rem; font-weight: 800; padding: 10px 14px;"
+                        onkeydown="if(event.key==='-' || event.key==='+') return false;"
+                        oninput="if(this.value.includes('.')){ let p = this.value.split('.'); if(p[1].length > 2) this.value = p[0] + '.' + p[1].substring(0,2); }">
+                    <button type="button" class="btn-preset btn-preset-full" id="btnFullAmount" style="padding: 0 20px; font-size: 0.85rem; font-weight: 800; white-space: nowrap; border-radius: 10px;" onclick="document.getElementById('modalAmountInput').value = document.getElementById('modalAmountInput').getAttribute('max')">FULL</button>
                 </div>
             </div>
 
@@ -1090,7 +1159,7 @@ function toggleUoPieces(orderId) {
         const idInput = document.getElementById('modalTargetId');
         const amountInput = document.getElementById('modalAmountInput');
         const nameDisplay = document.getElementById('modalTargetName');
-        const presets = document.getElementById('modalPresets');
+        const btnFull = document.getElementById('btnFullAmount');
 
         document.querySelectorAll('.btn-pay-modal').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -1109,12 +1178,12 @@ function toggleUoPieces(orderId) {
                     amountInput.setAttribute('readonly', 'true');
                     amountInput.style.background = '#f8fafc';
                     amountInput.style.cursor = 'not-allowed';
-                    presets.style.display = 'none';
+                    if (btnFull) btnFull.style.display = 'none';
                 } else {
                     amountInput.removeAttribute('readonly');
                     amountInput.style.background = '';
                     amountInput.style.cursor = '';
-                    presets.style.display = 'grid';
+                    if (btnFull) btnFull.style.display = '';
                 }
 
                 modal.classList.add('open');

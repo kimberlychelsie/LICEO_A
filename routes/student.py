@@ -525,6 +525,22 @@ def enroll(branch_id):
             if not dob:
                 flash("Birthday is required.", "error")
                 return redirect(request.url)
+            else:
+                try:
+                    import datetime
+                    dob_date = datetime.datetime.strptime(dob, "%Y-%m-%d").date()
+                    today = datetime.date.today()
+                    # Calculate age
+                    age = today.year - dob_date.year - ((today.month, today.day) < (dob_date.month, dob_date.day))
+                    if dob_date > today:
+                        flash("Birthday cannot be a future date.", "error")
+                        return redirect(request.url)
+                    if age < 3:
+                        flash("Student must be at least 3 years old to enroll.", "error")
+                        return redirect(request.url)
+                except ValueError:
+                    flash("Invalid birthday format.", "error")
+                    return redirect(request.url)
             if lrn and (not lrn.isdigit() or len(lrn) != 12):
                 flash("LRN must be a 12-digit number.", "error")
                 return redirect(request.url)
@@ -660,6 +676,9 @@ def enroll(branch_id):
 
         # ── GET: Render form ──
         import datetime
+        today = datetime.date.today()
+        # Max birthdate allowed: exactly 3 years ago from today
+        max_dob_date = datetime.date(today.year - 3, today.month, today.day).strftime('%Y-%m-%d')
         return render_template(
             "student_enroll.html",
             branch=branch,
@@ -668,7 +687,8 @@ def enroll(branch_id):
             message=None,
             duplicate_blocked=False,
             duplicate_reason=None,
-            today_date=datetime.date.today().strftime('%Y-%m-%d')
+            today_date=today.strftime('%Y-%m-%d'),
+            max_dob_date=max_dob_date
         )
 
     finally:

@@ -707,7 +707,7 @@
                             <div class="c4">
                                 <div class="field">
                                     <label>Birthday <span class="req">*</span></label>
-                                    <input type="date" id="field_dob" name="dob" required />
+                                    <input type="date" id="field_dob" name="dob" max="{{ max_dob_date }}" required />
                                     <small>Minimum age is 3 years old</small>
                                     <small>Must not be a future date</small>
                                 </div>
@@ -1101,10 +1101,6 @@
                     enrollDateEl.min   = todayStr;
                     enrollDateEl.max   = todayStr;
                 }
-                /* Birthdate: no future dates allowed */
-                if (dobEl) {
-                    dobEl.max = todayStr;
-                }
             })();
 
             /* ── Enrollment type pill logic ── */
@@ -1345,17 +1341,24 @@
                     errors.push('LRN must be exactly 12 digits (numbers only).');
                 }
 
-                /* Birthday — required, must not be future */
+                /* Birthday — required, must be at least 3 years old and not future */
                 if (!birthday) {
                     errors.push('Birthday is required.');
                 } else if (isNaN(Date.parse(birthday))) {
                     errors.push('Birthday must be a valid date.');
                 } else {
                     var bdParts = birthday.split('-');
-                    var bd = new Date(parseInt(bdParts[0]), parseInt(bdParts[1])-1, parseInt(bdParts[2]));
-                    bd.setHours(0,0,0,0);
+                    var bd = new Date(parseInt(bdParts[0], 10), parseInt(bdParts[1], 10) - 1, parseInt(bdParts[2], 10));
+                    bd.setHours(0, 0, 0, 0);
+
+                    var minAllowedDate = new Date();
+                    minAllowedDate.setFullYear(minAllowedDate.getFullYear() - 3);
+                    minAllowedDate.setHours(23, 59, 59, 999);
+
                     if (bd > today) {
                         errors.push('Birthday cannot be a future date.');
+                    } else if (bd > minAllowedDate) {
+                        errors.push('Student must be at least 3 years old to enroll.');
                     }
                 }
 
