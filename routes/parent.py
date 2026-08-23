@@ -87,28 +87,66 @@ def dashboard():
 
     try:
         cursor.execute("""
-            SELECT ps.*, e.student_first_name,
-    e.student_middle_name,
-    e.student_last_name, e.grade_level, e.status,
-                   br.branch_name, br.location,
-                   b.bill_id, b.total_amount, b.amount_paid, b.balance, b.status as bill_status,
+            SELECT ps.*, 
+                   e.student_first_name,
+                   e.student_middle_name,
+                   e.student_last_name, 
+                   e.grade_level, 
+                   e.status,
+                   e.branch_enrollment_no,
+                   br.branch_name, 
+                   br.location, 
+                   br.branch_code,
+                   sec.section_name,
+                   b.bill_id, 
+                   b.total_amount, 
+                   b.amount_paid, 
+                   b.balance, 
+                   b.status as bill_status,
                    e.enrollment_id
             FROM parent_student ps
             JOIN enrollments e ON ps.student_id = e.enrollment_id
             JOIN branches br ON e.branch_id = br.branch_id
+            LEFT JOIN sections sec ON e.section_id = sec.section_id
             LEFT JOIN billing b ON e.enrollment_id = b.enrollment_id
             WHERE ps.parent_id = %s
             ORDER BY e.created_at DESC
         """, (session.get("user_id"),))
 
         children = cursor.fetchall()
+        enrollment_ids = [c["enrollment_id"] for c in children]
+        total_balance = Decimal(0)
+        re_enrollment_children = []
+
         for child in children:
             child["student_name"] = " ".join(filter(None, [
                 child.get("student_first_name"),
                 child.get("student_middle_name"),
                 child.get("student_last_name"),
             ]))
-        return render_template("parent_dashboard.html", children=children)
+            child_balance = Decimal(str(child.get("balance") or 0))
+            total_balance += child_balance
+            if child.get("status") == "open_for_enrollment":
+                re_enrollment_children.append(child)
+
+        active_reservations_count = 0
+        if enrollment_ids:
+            cursor.execute("""
+                SELECT COUNT(DISTINCT r.reservation_id) AS res_count
+                FROM reservations r
+                WHERE r.enrollment_id = ANY(%s)
+                  AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED', 'COMPLETED')
+            """, (enrollment_ids,))
+            res_row = cursor.fetchone()
+            active_reservations_count = res_row["res_count"] if res_row else 0
+
+        return render_template(
+            "parent_dashboard.html",
+            children=children,
+            total_balance=total_balance,
+            active_reservations_count=active_reservations_count,
+            re_enrollment_children=re_enrollment_children
+        )
 
     finally:
         cursor.close()
@@ -763,96 +801,243 @@ def child_bills(enrollment_id):
 
             reservation_details = list(reservation_details or []) + uo_details
 
-        # Chronologically allocate payments to fees (Tuition -> Other -> Uniforms -> Books)
-        rem_tuition = Decimal(str(bill.get("tuition_fee") or 0)) if bill else Decimal(0)
-        rem_other = Decimal(str(bill.get("other_fees") or 0)) if bill else Decimal(0)
+        # ── Unpaid / Partial reservations (Fee Breakdown) ─────────
+        cursor.execute("""
+            SELECT
+                r.reservation_id,
+                r.status,
+                r.created_at,
+                COALESCE(SUM(ri.line_total), 0) AS total_amount,
+                STRING_AGG(DISTINCT ii.item_name, ', ' ORDER BY ii.item_name) AS item_names
+            FROM reservations r
+            LEFT JOIN reservation_items ri ON ri.reservation_id = r.reservation_id
+            LEFT JOIN inventory_items ii ON ii.item_id = ri.item_id
+            WHERE (r.enrollment_id = %s OR r.student_user_id IN (
+                SELECT u.user_id FROM student_accounts sa 
+                JOIN users u ON sa.username = u.username 
+                WHERE sa.enrollment_id = %s
+            ))
+              AND UPPER(COALESCE(r.status, '')) NOT IN ('CANCELLED', 'REJECTED', 'PAID', 'CLAIMED')
+              AND EXISTS (
+                  SELECT 1 FROM reservation_items ri2
+                  JOIN inventory_items ii2 ON ii2.item_id = ri2.item_id
+                  WHERE ri2.reservation_id = r.reservation_id
+                    AND UPPER(COALESCE(ii2.category, '')) <> 'UNIFORM'
+              )
+            GROUP BY r.reservation_id, r.status, r.created_at
+            ORDER BY r.created_at DESC
+        """, (enrollment_id, enrollment_id))
+        raw_reservations = cursor.fetchall() or []
+        reservations = []
+        for res in raw_reservations:
+            cursor.execute("""
+                SELECT COALESCE(SUM(amount), 0) AS paid_toward
+                FROM payments
+                WHERE target_type = 'reservation' AND target_id = %s
+            """, (res["reservation_id"],))
+            row = cursor.fetchone()
+            res["amount_paid"] = float(row["paid_toward"] or 0)
+            res["total_amount"] = float(res["total_amount"] or 0)
+            res["remaining"] = max(res["total_amount"] - res["amount_paid"], 0.0)
+            if res["remaining"] > 0:
+                reservations.append(res)
 
-        uo_list = []
-        for uo in uo_details:
-            uo_list.append({
-                "order_id": uo["reservation_id"],
-                "item_names": uo["item_name"],
-                "rem": Decimal(str(uo["line_total"] or 0))
-            })
+        # ── Unpaid / Partial uniform orders (Fee Breakdown) ───────
+        cursor.execute("""
+            SELECT
+                uo.order_id, uo.order_number, uo.order_status, uo.payment_status, uo.total_amount,
+                STRING_AGG(
+                    uoi.item_name
+                    || CASE WHEN uoi.size_label IS NOT NULL AND uoi.size_label <> ''
+                            THEN ' (' || uoi.size_label || ')' ELSE '' END,
+                    ', ' ORDER BY uoi.item_name
+                ) AS item_names
+            FROM uniform_orders uo
+            JOIN uniform_order_items uoi ON uoi.order_id = uo.order_id
+            WHERE (uo.bill_id = %s OR uo.enrollment_id = %s OR uo.student_user_id IN (
+                SELECT u.user_id FROM student_accounts sa 
+                JOIN users u ON sa.username = u.username 
+                WHERE sa.enrollment_id = %s
+            ))
+              AND UPPER(COALESCE(uo.payment_status, '')) != 'PAID'
+              AND UPPER(COALESCE(uo.order_status, '')) NOT IN ('CANCELLED', 'REJECTED')
+            GROUP BY uo.order_id, uo.order_number, uo.order_status, uo.payment_status, uo.total_amount
+            ORDER BY uo.order_id ASC
+        """, (bill["bill_id"] if bill else None, enrollment_id, enrollment_id))
+        raw_uniform_orders = cursor.fetchall() or []
+        uniform_orders = []
+        for uo in raw_uniform_orders:
+            cursor.execute("""
+                SELECT COALESCE(SUM(amount), 0) AS paid_toward
+                FROM payments
+                WHERE target_type = 'uniform_order' AND target_id = %s
+            """, (uo["order_id"],))
+            row = cursor.fetchone()
+            uo["amount_paid"] = float(row["paid_toward"] or 0)
+            uo["total_amount"] = float(uo["total_amount"] or 0)
+            uo["remaining"] = max(uo["total_amount"] - uo["amount_paid"], 0.0)
+            if uo["remaining"] > 0:
+                uniform_orders.append(uo)
 
-        res_list = []
-        for res in (reservation_details or []):
-            if res not in uo_details:  # ensure it's a book/material
-                res_list.append({
-                    "reservation_id": res["reservation_id"],
-                    "item_names": res["item_name"],
-                    "rem": Decimal(str(res["line_total"] or 0))
-                })
+        # ── Tuition fee tracking ──────────────────────────────────
+        tuition_fee = float(bill["tuition_fee"] or 0) if bill else 0.0
+        other_fees = float(bill["other_fees"] or 0) if bill else 0.0
+        b_id = bill["bill_id"] if bill else None
 
+        # Sum up all reservations (Books) for the student
+        cursor.execute("""
+            SELECT COALESCE(SUM(ri.line_total), 0) as res_total
+            FROM reservations r
+            JOIN reservation_items ri ON ri.reservation_id = r.reservation_id
+            JOIN inventory_items ii ON ii.item_id = ri.item_id
+            WHERE (r.enrollment_id = %s OR r.student_user_id IN (
+                SELECT u.user_id FROM student_accounts sa 
+                JOIN users u ON sa.username = u.username 
+                WHERE sa.enrollment_id = %s
+            ))
+              AND UPPER(r.status) NOT IN ('CANCELLED', 'REJECTED')
+              AND UPPER(COALESCE(ii.category, '')) <> 'UNIFORM'
+        """, (enrollment_id, enrollment_id))
+        res_total = float(cursor.fetchone()["res_total"] or 0)
+
+        # Sum up all uniform orders
+        cursor.execute("""
+            SELECT COALESCE(SUM(total_amount), 0) as uo_total
+            FROM uniform_orders uo
+            WHERE uo.bill_id = %s
+               OR (uo.enrollment_id = %s AND LOWER(uo.order_status) != 'cancelled')
+        """, (b_id, enrollment_id))
+        uo_total = float(cursor.fetchone()["uo_total"] or 0)
+
+        tuition_paid_direct = 0.0
+        general_paid = 0.0
+        total_paid_all = 0.0
+        if b_id:
+            cursor.execute("""
+                SELECT 
+                    COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = %s AND target_type = 'tuition'), 0) AS tuition_paid_direct,
+                    COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = %s AND target_type = 'general'), 0) AS general_paid,
+                    COALESCE((SELECT SUM(amount) FROM payments WHERE bill_id = %s), 0) AS total_paid_all
+            """, (b_id, b_id, b_id))
+            pay_stats = cursor.fetchone()
+            tuition_paid_direct = float(pay_stats["tuition_paid_direct"] or 0)
+            general_paid = float(pay_stats["general_paid"] or 0)
+            total_paid_all = float(pay_stats["total_paid_all"] or 0)
+
+        tuition_balance = max(tuition_fee - tuition_paid_direct, 0.0)
+        applied_to_tuition = min(tuition_balance, general_paid)
+        tuition_paid = tuition_paid_direct + applied_to_tuition
+        tuition_remaining = max(tuition_fee - tuition_paid, 0.0)
+
+        if tuition_fee == 0:
+            tuition_status = "N/A"
+        elif tuition_remaining <= 0:
+            tuition_status = "PAID"
+        elif tuition_paid > 0:
+            tuition_status = "PARTIAL"
+        else:
+            tuition_status = "UNPAID"
+
+        total_assessment = tuition_fee + other_fees + res_total + uo_total
+        amount_paid_total = total_paid_all
+        remaining_balance = max(total_assessment - amount_paid_total, 0.0)
+
+        # ── Item maps for payment allocation labels ───────────────
+        cursor.execute("""
+            SELECT r.reservation_id, STRING_AGG(DISTINCT ii.item_name, ', ' ORDER BY ii.item_name) as item_names,
+                   COALESCE(SUM(ri.line_total), 0) as total_amount
+            FROM reservations r
+            JOIN reservation_items ri ON ri.reservation_id = r.reservation_id
+            JOIN inventory_items ii ON ii.item_id = ri.item_id
+            WHERE (r.enrollment_id = %s OR r.student_user_id IN (
+                SELECT u.user_id FROM student_accounts sa 
+                JOIN users u ON sa.username = u.username 
+                WHERE sa.enrollment_id = %s
+            ))
+            GROUP BY r.reservation_id
+        """, (enrollment_id, enrollment_id))
+        all_res_map = {row["reservation_id"]: {"name": row["item_names"], "total": float(row["total_amount"] or 0)} for row in (cursor.fetchall() or [])}
+
+        cursor.execute("""
+            SELECT uo.order_id, STRING_AGG(DISTINCT uoi.item_name, ', ' ORDER BY uoi.item_name) as item_names,
+                   uo.total_amount
+            FROM uniform_orders uo
+            JOIN uniform_order_items uoi ON uoi.order_id = uo.order_id
+            WHERE (uo.bill_id = %s OR uo.enrollment_id = %s OR uo.student_user_id IN (
+                SELECT u.user_id FROM student_accounts sa 
+                JOIN users u ON sa.username = u.username 
+                WHERE sa.enrollment_id = %s
+            ))
+            GROUP BY uo.order_id, uo.total_amount
+        """, (bill["bill_id"] if bill else None, enrollment_id, enrollment_id))
+        all_uo_map = {row["order_id"]: {"name": row["item_names"], "total": float(row["total_amount"] or 0)} for row in (cursor.fetchall() or [])}
+
+        # Chronologically allocate payments so Payment For shows exact items & partial status
+        rem_tuition = tuition_fee
+        rem_other = other_fees
         chrono_payments = sorted(payments, key=lambda x: x["payment_date"])
         for p in chrono_payments:
-            p_amount = Decimal(str(p["amount"] or 0))
+            p_amount = float(p.get("amount") or 0)
             p_breakdown = []
-            
-            if p["target_type"] == "tuition":
-                allocated = min(rem_tuition, p_amount)
-                rem_tuition -= allocated
-                p_breakdown.append({"desc": "Tuition & Mandatory Fees", "amount": float(allocated)})
-            elif p["target_type"] == "other":
-                allocated = min(rem_other, p_amount)
-                rem_other -= allocated
-                p_breakdown.append({"desc": "Other Fees", "amount": float(allocated)})
-            elif p["target_type"] == "reservation":
-                for r_item in res_list:
-                    if r_item["reservation_id"] == p["target_id"]:
-                        allocated = min(r_item["rem"], p_amount)
-                        r_item["rem"] -= allocated
-                        p_breakdown.append({"desc": f"Book: {r_item['item_names']}", "amount": float(allocated)})
-                        break
-                else:
-                    p_breakdown.append({"desc": "Book Reservation", "amount": float(p_amount)})
-            elif p["target_type"] == "uniform_order":
-                for u_item in uo_list:
-                    if u_item["order_id"] == p["target_id"]:
-                        allocated = min(u_item["rem"], p_amount)
-                        u_item["rem"] -= allocated
-                        p_breakdown.append({"desc": f"Uniform: {u_item['item_names']}", "amount": float(allocated)})
-                        break
-                else:
-                    p_breakdown.append({"desc": "Uniform Order", "amount": float(p_amount)})
+            ttype = (p.get("target_type") or "").lower()
+            tid = p.get("target_id")
+
+            if ttype == "tuition":
+                lbl = "Tuition Fee (Partial)" if (tuition_fee > 0 and p_amount < tuition_fee) else "Tuition Fee"
+                p_breakdown.append({"desc": lbl, "amount": p_amount})
+            elif ttype == "other":
+                p_breakdown.append({"desc": "Other Fees", "amount": p_amount})
+            elif ttype == "reservation":
+                res_info = all_res_map.get(tid, {})
+                res_name = res_info.get("name", "Book")
+                res_tot = res_info.get("total", 0)
+                lbl = f"Book: {res_name} (Partial)" if (res_tot > 0 and p_amount < res_tot) else f"Book: {res_name}"
+                p_breakdown.append({"desc": lbl, "amount": p_amount})
+            elif ttype == "uniform_order":
+                uo_info = all_uo_map.get(tid, {})
+                uo_name = uo_info.get("name", "Uniform")
+                uo_tot = uo_info.get("total", 0)
+                lbl = f"Uniform: {uo_name} (Partial)" if (uo_tot > 0 and p_amount < uo_tot) else f"Uniform: {uo_name}"
+                p_breakdown.append({"desc": lbl, "amount": p_amount})
             else:
                 rem_p = p_amount
                 if rem_p > 0 and rem_tuition > 0:
-                    allocated = min(rem_tuition, rem_p)
-                    rem_tuition -= allocated
-                    rem_p -= allocated
-                    p_breakdown.append({"desc": "Tuition & Mandatory Fees", "amount": float(allocated)})
+                    alloc = min(rem_tuition, rem_p)
+                    rem_tuition -= alloc
+                    rem_p -= alloc
+                    lbl = "Tuition Fee (Partial)" if alloc < tuition_fee else "Tuition Fee"
+                    p_breakdown.append({"desc": lbl, "amount": float(alloc)})
                 if rem_p > 0 and rem_other > 0:
-                    allocated = min(rem_other, rem_p)
-                    rem_other -= allocated
-                    rem_p -= allocated
-                    p_breakdown.append({"desc": "Other Fees", "amount": float(allocated)})
+                    alloc = min(rem_other, rem_p)
+                    rem_other -= alloc
+                    rem_p -= alloc
+                    p_breakdown.append({"desc": "Other Fees", "amount": float(alloc)})
                 if rem_p > 0:
-                    for u_item in uo_list:
-                        if u_item["rem"] > 0:
-                            allocated = min(u_item["rem"], rem_p)
-                            u_item["rem"] -= allocated
-                            rem_p -= allocated
-                            p_breakdown.append({"desc": f"Uniform: {u_item['item_names']}", "amount": float(allocated)})
-                            if rem_p <= 0: break
-                if rem_p > 0:
-                    for r_item in res_list:
-                        if r_item["rem"] > 0:
-                            allocated = min(r_item["rem"], rem_p)
-                            r_item["rem"] -= allocated
-                            rem_p -= allocated
-                            p_breakdown.append({"desc": f"Book: {r_item['item_names']}", "amount": float(allocated)})
-                            if rem_p <= 0: break
-                if rem_p > 0:
-                    p_breakdown.append({"desc": "General Excess Payment", "amount": float(rem_p)})
+                    p_breakdown.append({"desc": "Tuition Fee", "amount": float(rem_p)})
+                if not p_breakdown:
+                    p_breakdown.append({"desc": "Tuition Fee", "amount": p_amount})
+
             p["breakdown_items"] = p_breakdown
+
+        if bill:
+            bill["total_amount"] = total_assessment
+            bill["amount_paid"] = amount_paid_total
+            bill["balance"] = remaining_balance
 
         return render_template(
             "parent_child_bills.html",
             child=child,
             bill=bill,
             payments=payments,
-            reservation_details=reservation_details
+            reservations=reservations,
+            uniform_orders=uniform_orders,
+            tuition_fee=tuition_fee,
+            tuition_paid=tuition_paid,
+            tuition_remaining=tuition_remaining,
+            tuition_status=tuition_status,
+            total_assessment=total_assessment,
+            amount_paid_total=amount_paid_total,
+            remaining_balance=remaining_balance
         )
 
     finally:
@@ -981,6 +1166,7 @@ def parent_reservations_list():
         rows = []
 
         if child_ids:
+            # 1. Book / School Supply Reservations
             cursor.execute("""
                 SELECT
                     r.reservation_id AS ref_id,
@@ -1011,15 +1197,19 @@ def parent_reservations_list():
                 rows.append({
                     "ref_id": res["ref_id"],
                     "ref_type": "RES",
+                    "order_number": f"RES-{res['ref_id']:04d}",
                     "status": res["status"],
                     "created_at": res["created_at"],
                     "total_amount": float(res["total_amount"] or 0),
                     "total_qty": int(res["total_qty"] or 0),
                     "item_names": res["item_names"],
+                    "category": "books",
+                    "category_label": "Books / Material",
                     "student_name": student_name or "Child",
                     "grade_level": res.get("grade_level") or "N/A"
                 })
 
+            # 2. Uniform Orders
             cursor.execute("""
                 SELECT
                     uo.order_id AS ref_id,
@@ -1045,15 +1235,50 @@ def parent_reservations_list():
                 rows.append({
                     "ref_id": u["ref_id"],
                     "ref_type": "UO",
-                    "order_number": u.get("order_number"),
+                    "order_number": u.get("order_number") or f"UO-{u['ref_id']:04d}",
                     "status": u["status"],
                     "created_at": u["created_at"],
                     "total_amount": float(u["total_amount"] or 0),
                     "total_qty": int(u["total_qty"] or 0),
                     "item_names": u["item_names"],
+                    "category": "uniform",
+                    "category_label": "Uniform",
                     "payment_status": u.get("payment_status"),
                     "student_name": student_name or "Child",
                     "grade_level": u.get("grade_level") or "N/A"
+                })
+
+            # 3. Tuition Fee Assessments
+            cursor.execute("""
+                SELECT
+                    b.bill_id AS ref_id,
+                    'TUI' AS ref_type,
+                    b.status,
+                    b.created_at,
+                    b.tuition_fee AS total_amount,
+                    1 AS total_qty,
+                    'Academic Tuition Fee' AS item_names,
+                    e.student_first_name, e.student_last_name, e.grade_level
+                FROM billing b
+                JOIN enrollments e ON e.enrollment_id = b.enrollment_id
+                WHERE b.enrollment_id = ANY(%s) AND b.tuition_fee > 0
+                ORDER BY b.created_at DESC
+            """, (child_ids,))
+            for t in cursor.fetchall() or []:
+                student_name = f"{t.get('student_first_name') or ''} {t.get('student_last_name') or ''}".strip()
+                rows.append({
+                    "ref_id": t["ref_id"],
+                    "ref_type": "TUI",
+                    "order_number": f"TUI-{t['ref_id']:04d}",
+                    "status": (t["status"] or "Pending").upper(),
+                    "created_at": t["created_at"],
+                    "total_amount": float(t["total_amount"] or 0),
+                    "total_qty": 1,
+                    "item_names": t["item_names"],
+                    "category": "tuition",
+                    "category_label": "Tuition",
+                    "student_name": student_name or "Child",
+                    "grade_level": t.get("grade_level") or "N/A"
                 })
 
         rows.sort(key=lambda r: r.get("created_at") or datetime.min, reverse=True)

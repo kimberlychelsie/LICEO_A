@@ -34,17 +34,33 @@
     }
 
     @media (max-width: 768px) {
-        .container-layout { padding: 24px 16px 60px; }
+        .container-layout {
+            padding: 24px 16px 60px;
+        }
     }
 
     @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     @keyframes fadeInDown {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     /* ── Hero Header ── */
@@ -118,13 +134,16 @@
             gap: 16px;
             text-align: left;
         }
+
         .res-hero-content h1 {
             font-size: 1.8rem;
             margin-bottom: 6px;
         }
+
         .res-hero-content p {
             font-size: 0.9rem;
         }
+
         .btn-hero {
             width: 100%;
             justify-content: center;
@@ -191,7 +210,7 @@
         color: var(--text-main);
         max-width: 300px;
     }
-    
+
     .item-sub {
         font-size: 0.8rem;
         color: var(--text-muted);
@@ -215,13 +234,47 @@
         text-transform: uppercase;
     }
 
-    .status-reserved  { background: #fef9c3; color: #713f12; border: 1px solid #fde047; }
-    .status-paid      { background: var(--success-bg); color: var(--success-text); border: 1px solid #bbf7d0; }
-    .status-claimed   { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
-    .status-cancelled { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
-    .status-for-ordering { background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; }
-    .status-ready-for-claim { background: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; }
-    .status-unpaid { background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; }
+    .status-reserved {
+        background: #fef9c3;
+        color: #713f12;
+        border: 1px solid #fde047;
+    }
+
+    .status-paid {
+        background: var(--success-bg);
+        color: var(--success-text);
+        border: 1px solid #bbf7d0;
+    }
+
+    .status-claimed {
+        background: #dbeafe;
+        color: #1e40af;
+        border: 1px solid #bfdbfe;
+    }
+
+    .status-cancelled {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    .status-for-ordering {
+        background: #ffedd5;
+        color: #c2410c;
+        border: 1px solid #fed7aa;
+    }
+
+    .status-ready-for-claim {
+        background: #dbeafe;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+    }
+
+    .status-unpaid {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
 
     .status-sub {
         font-size: 0.75rem;
@@ -249,11 +302,14 @@
             <h1>Order & Reservation <span>History</span></h1>
             <p>Track your books, materials, and uniform pre-orders</p>
         </div>
-        
+
         <div class="res-hero-actions" style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end;">
-            <a class="btn-hero" href="{{ url_for('student.student_reservation') }}" style="background: #fff; color: #1a3a8f; border: none;">
-                <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+            <a class="btn-hero" href="{{ url_for('student.student_reservation') }}"
+                style="background: #fff; color: #1a3a8f; border: none;">
+                <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none"
+                    viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
                 </svg>
                 New Reservation
             </a>
@@ -279,9 +335,9 @@
                     <tr>
                         <td class="res-id">
                             {% if r.ref_type == 'UO' %}
-                                {{ r.order_number or ('UO-' ~ '%04d'|format(r.ref_id|int)) }}
+                            {{ r.order_number or ('UO-' ~ '%04d'|format(r.ref_id|int)) }}
                             {% else %}
-                                RES-{{ "%04d"|format(r.ref_id|int) }}
+                            RES-{{ "%04d"|format(r.ref_id|int) }}
                             {% endif %}
                         </td>
                         <td class="res-items">
@@ -291,7 +347,8 @@
                             {% endif %}
                         </td>
                         <td class="res-date">
-                            {{ r.created_at.strftime('%b %d, %Y') if r.created_at and r.created_at.strftime else r.created_at }}
+                            {{ r.created_at.strftime('%b %d, %Y') if r.created_at and r.created_at.strftime else
+                            r.created_at }}
                         </td>
                         <td>
                             {% set status_slug = (r.status or '')|lower|replace(' ', '-') %}
@@ -314,10 +371,15 @@
     </div>
     {% else %}
     <div class="empty-box">
-        <h3 style="font-weight: 800; color: var(--primary); font-size: 1.5rem; margin-bottom: 12px;">No Reservations Found</h3>
-        <p style="color: var(--text-muted); font-size: 1rem; max-width: 450px; margin: 0 auto; line-height: 1.6; font-weight: 500;">You haven't made any reservations for academic materials yet. Start a new reservation to get your books and uniforms.</p>
+        <h3 style="font-weight: 800; color: var(--primary); font-size: 1.5rem; margin-bottom: 12px;">No Reservations
+            Found</h3>
+        <p
+            style="color: var(--text-muted); font-size: 1rem; max-width: 450px; margin: 0 auto; line-height: 1.6; font-weight: 500;">
+            You haven't made any reservations for academic materials yet. Start a new reservation to get your books and
+            uniforms.</p>
         <div style="margin-top: 32px;">
-            <a href="{{ url_for('student.student_reservation') }}" class="btn-action btn-primary" style="padding: 12px 24px;">
+            <a href="{{ url_for('student.student_reservation') }}" class="btn-action btn-primary"
+                style="padding: 12px 24px;">
                 Start Reservation
             </a>
         </div>

@@ -1426,6 +1426,7 @@ def student_reservation():
     branch_id = None
     student_grade = None
     student_user_id = None  # student only
+    target_student_name = None
     reserved_by_user_id = session.get("user_id")
 
     if not reserved_by_user_id:
@@ -1440,6 +1441,7 @@ def student_reservation():
             branch_id = session.get("branch_id")
             student_user_id = session.get("user_id")
             enrollment_id = session.get("enrollment_id")
+            target_student_name = session.get("name")
 
             if not branch_id or not student_user_id or not enrollment_id:
                 session.clear()
@@ -1455,7 +1457,7 @@ def student_reservation():
                 return redirect(url_for("parent.dashboard"))
 
             cursor.execute("""
-                SELECT e.branch_id, e.grade_level
+                SELECT e.branch_id, e.grade_level, e.student_first_name, e.student_middle_name, e.student_last_name
                 FROM parent_student ps
                 JOIN enrollments e ON e.enrollment_id = ps.student_id
                 WHERE ps.parent_id = %s AND ps.student_id = %s
@@ -1469,6 +1471,11 @@ def student_reservation():
 
             branch_id = row["branch_id"]
             student_grade = normalize_grade_level(row["grade_level"])
+            target_student_name = " ".join(filter(None, [
+                row.get("student_first_name"),
+                row.get("student_middle_name"),
+                row.get("student_last_name")
+            ])).strip()
 
             # Resolve student's user_id so cashier can show this reservation and link parent_student
             cursor.execute("""
@@ -1949,6 +1956,7 @@ def student_reservation():
         items=items,
         catalog_groups=catalog_groups,
         student_grade=student_grade,
+        target_student_name=target_student_name,
         branch_id=branch_id,
         search=search,
         category=category_filter,

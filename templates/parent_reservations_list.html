@@ -3,6 +3,8 @@
 
 {% block styles %}
 <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+    
     :root {
         --sd-primary: #1a3a8f;
         --sd-primary-dark: #142e75;
@@ -12,23 +14,27 @@
         --sd-text: #0f172a;
         --sd-muted: #64748b;
         --sd-border: #e2e8f0;
-        --sd-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-        --sd-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        --sd-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+        --sd-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+    }
+
+    body {
+        font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
     .sd-container {
-        padding: 40px 32px;
-        max-width: 1500px;
+        max-width: 1300px;
         margin: 0 auto;
-        font-family: 'Inter', sans-serif;
-    }
-
-    @media (max-width: 1024px) {
-        .sd-container { padding: 32px 20px; }
+        padding: 24px 20px 64px;
+        box-sizing: border-box;
+        font-family: 'Plus Jakarta Sans', sans-serif;
     }
 
     @media (max-width: 768px) {
-        .sd-container { padding: 16px 12px 60px; }
+        .sd-container {
+            padding: 16px 12px 60px;
+        }
+
         .res-hero {
             padding: 24px 18px;
             border-radius: 18px;
@@ -37,29 +43,36 @@
             gap: 16px;
             text-align: left;
         }
+
         .res-hero-content h1 {
             font-size: 1.8rem;
             margin-bottom: 6px;
         }
+
         .res-hero-content p {
             font-size: 0.9rem;
         }
+
         .res-hero-actions {
             width: 100%;
             flex-direction: column !important;
             align-items: stretch !important;
             gap: 10px !important;
         }
+
         .btn-hero {
             width: 100%;
             justify-content: center;
             text-align: center;
             box-sizing: border-box;
         }
+
         .table-card {
             border-radius: 16px;
         }
-        .res-table th, .res-table td {
+
+        .res-table th,
+        .res-table td {
             padding: 14px 12px;
             font-size: 0.85rem;
         }
@@ -69,9 +82,9 @@
     .res-hero {
         background: linear-gradient(135deg, #1e3a8a 0%, #1a3a8f 50%, #1e40af 100%);
         border-radius: 24px;
-        padding: 48px;
+        padding: 36px 40px;
         color: #fff;
-        margin-bottom: 32px;
+        margin-bottom: 28px;
         position: relative;
         overflow: hidden;
         box-shadow: var(--sd-shadow-lg);
@@ -79,7 +92,7 @@
         justify-content: space-between;
         align-items: center;
         gap: 32px;
-        animation: fadeInDown 0.6s ease-out;
+        animation: fadeInDown 0.5s ease-out;
     }
 
     .res-hero::before {
@@ -94,19 +107,19 @@
     }
 
     .res-hero-content h1 {
-        font-size: 2.6rem;
+        font-size: 2.2rem;
         font-weight: 900;
-        margin: 0 0 12px;
-        letter-spacing: -0.04em;
+        margin: 0 0 8px;
+        letter-spacing: -0.02em;
     }
 
     .res-hero-content h1 span {
-        color: #f59e0b;
+        color: #facc15;
     }
 
     .res-hero-content p {
         margin: 0;
-        font-size: 1.05rem;
+        font-size: 0.95rem;
         color: #93c5fd;
         font-weight: 500;
     }
@@ -136,11 +149,114 @@
     /* ── Table Card ── */
     .table-card {
         background: var(--sd-card);
-        border-radius: 24px;
+        border-radius: 20px;
         border: 1px solid var(--sd-border);
         box-shadow: var(--sd-shadow);
         overflow: hidden;
-        animation: fadeInUp 0.6s ease-out;
+        animation: fadeInUp 0.5s ease-out;
+    }
+
+    /* ── Controls Toolbar (Single Sleek Row) ── */
+    .table-controls {
+        padding: 16px 24px;
+        background: #ffffff;
+        border-bottom: 1px solid var(--sd-border);
+        display: flex;
+        align-items: center;
+        gap: 14px;
+    }
+
+    .search-wrap {
+        position: relative;
+        flex: 1;
+        min-width: 220px;
+    }
+
+    .search-icon {
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        pointer-events: none;
+    }
+
+    .search-input {
+        width: 100%;
+        height: 42px;
+        padding: 0 16px 0 40px;
+        border-radius: 10px;
+        border: 1px solid #cbd5e1;
+        background: #f8fafc;
+        font-size: 0.88rem;
+        font-family: inherit;
+        font-weight: 600;
+        color: var(--sd-text);
+        outline: none;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
+    }
+
+    .search-input:focus {
+        background: #ffffff;
+        border-color: var(--sd-primary);
+        box-shadow: 0 0 0 3px rgba(26, 58, 143, 0.1);
+    }
+
+    .filter-inline {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .filter-label {
+        font-size: 0.8rem;
+        font-weight: 800;
+        color: #475569;
+        white-space: nowrap;
+    }
+
+    .filter-select {
+        height: 42px;
+        padding: 0 36px 0 14px;
+        border-radius: 10px;
+        border: 1px solid #cbd5e1;
+        background: #ffffff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center;
+        appearance: none;
+        -webkit-appearance: none;
+        font-size: 0.85rem;
+        font-weight: 700;
+        font-family: inherit;
+        color: var(--sd-text);
+        cursor: pointer;
+        outline: none;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
+    }
+
+    .filter-select:focus {
+        border-color: var(--sd-primary);
+        box-shadow: 0 0 0 3px rgba(26, 58, 143, 0.1);
+    }
+
+    @media (max-width: 860px) {
+        .table-controls {
+            flex-wrap: wrap;
+        }
+
+        .search-wrap {
+            min-width: 100%;
+        }
+
+        .filter-inline {
+            flex: 1;
+            min-width: 140px;
+        }
+
+        .filter-select {
+            width: 100%;
+        }
     }
 
     .table-responsive {
@@ -156,25 +272,26 @@
 
     .res-table th {
         background: #f8fafc;
-        padding: 18px 24px;
-        font-size: 0.78rem;
+        padding: 16px 20px;
+        font-size: 0.75rem;
         font-weight: 800;
         color: var(--sd-muted);
         text-transform: uppercase;
         letter-spacing: 0.05em;
         border-bottom: 1px solid var(--sd-border);
+        white-space: nowrap;
     }
 
     .res-table td {
-        padding: 20px 24px;
+        padding: 16px 20px;
         border-bottom: 1px solid #f1f5f9;
-        font-size: 0.92rem;
+        font-size: 0.9rem;
         color: var(--sd-text);
         vertical-align: middle;
     }
 
     .res-table tbody tr {
-        transition: background 0.2s;
+        transition: background 0.15s;
     }
 
     .res-table tbody tr:hover {
@@ -197,58 +314,162 @@
         max-width: 320px;
     }
 
-    /* ── Badges ── */
-    .badge {
+    /* ── Category Badges ── */
+    .cat-badge {
         display: inline-flex;
         align-items: center;
+        gap: 4px;
         padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 0.75rem;
+        border-radius: 6px;
+        font-size: 0.72rem;
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.03em;
+        white-space: nowrap;
     }
 
-    .status-pre-order, .status-pending, .status-for-ordering {
-        background: #fff7ed;
+    .cat-tuition {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #86efac;
+    }
+
+    .cat-uniform {
+        background: #ffedd5;
         color: #c2410c;
-        border: 1px solid #ffedd5;
+        border: 1px solid #fed7aa;
     }
 
-    .status-approved, .status-ready-for-claim, .status-ready {
+    .cat-books {
+        background: #e0e7ff;
+        color: #3730a3;
+        border: 1px solid #c7d2fe;
+    }
+
+    /* ── Smart Unified Status Badges (Uniform Blue Rectangles) ── */
+    .unified-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 5px 12px;
+        border-radius: 6px;
+        font-size: 0.72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        white-space: nowrap;
         background: #eff6ff;
-        color: #1d4ed8;
-        border: 1px solid #dbeafe;
+        color: #1e40af;
+        border: 1px solid #bfdbfe;
     }
 
-    .status-claimed, .status-paid, .status-completed {
-        background: #ecfdf5;
-        color: #047857;
-        border: 1px solid #d1fae5;
+    .badge-completed,
+    .badge-ready-paid,
+    .badge-ready-unpaid,
+    .badge-pending,
+    .badge-unpaid,
+    .badge-partial,
+    .badge-cancelled {
+        background: #eff6ff;
+        color: #1e40af;
+        border: 1px solid #bfdbfe;
     }
 
-    .status-unpaid {
-        background: #fef2f2;
-        color: #b91c1c;
-        border: 1px solid #fee2e2;
+    /* ── Pagination Bar (Matching Child Bills & Cashier Design) ── */
+    .pagination-bar {
+        padding: 16px 24px;
+        background: #f8fafc;
+        border-top: 1px solid var(--sd-border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        box-sizing: border-box;
+    }
+
+    .pagination-info {
+        font-size: 0.85rem;
+        color: var(--sd-muted);
+        font-weight: 600;
+    }
+
+    .pagination-info strong {
+        color: var(--sd-primary);
+        font-weight: 800;
+    }
+
+    .pagination-controls {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+    }
+
+    .btn-page {
+        min-width: 32px;
+        height: 32px;
+        padding: 0 8px;
+        border-radius: 8px;
+        border: 1px solid #cbd5e1;
+        background: white;
+        color: #475569;
+        font-size: 0.8rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.15s ease;
+        user-select: none;
+    }
+
+    .btn-page:hover:not(:disabled):not(.active) {
+        background: #f8fafc;
+        border-color: #94a3b8;
+        color: var(--sd-primary);
+    }
+
+    .btn-page.active {
+        background: var(--sd-primary);
+        color: white;
+        border-color: var(--sd-primary);
+        font-weight: 800;
+    }
+
+    .btn-page:disabled {
+        opacity: 0.35;
+        cursor: not-allowed;
     }
 
     /* ── Animations ── */
     @keyframes fadeInDown {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+        from {
+            opacity: 0;
+            transform: translateY(15px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
     }
 
     .empty-box {
         text-align: center;
-        padding: 100px 24px;
+        padding: 80px 24px;
         background: white;
-        border-radius: 32px;
+        border-radius: 24px;
         border: 1px solid var(--sd-border);
         box-shadow: var(--sd-shadow);
     }
@@ -260,88 +481,321 @@
     <!-- Hero Header -->
     <header class="res-hero">
         <div class="res-hero-content">
-            <h1 style="margin: 0; font-size: 2.2rem; font-weight: 900; color: white; display: flex; align-items: center; gap: 12px; letter-spacing: -0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.1);">Order & Reservation <span style="color: #facc15;">History</span></h1>
-            <p style="margin: 4px 0 0 0; font-size: 0.85rem; opacity: 0.9; font-weight: 600;">Track books, materials, and uniform pre-orders placed for your children</p>
-        </div>
-        
-        <div class="res-hero-actions" style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: flex-end;">
-            <a class="btn-hero" href="{{ url_for('parent.parent_reserve') }}" style="background: #fff; color: #1a3a8f; border: none;">
-                <svg xmlns="http://www.w3.org/2000/svg" style="width: 20px; height: 20px;" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-                Reserve Items
-            </a>
+            <h1 style="margin: 0; font-size: 2.2rem; font-weight: 900; color: white; display: flex; align-items: center; gap: 12px; letter-spacing: -0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                Order & Reservation <span style="color: #facc15;">History</span>
+            </h1>
+            <p style="margin: 4px 0 0 0; font-size: 0.95rem; opacity: 0.9; font-weight: 600; color: #93c5fd;">
+                Track tuition, books, materials, and uniform pre-orders placed for your children
+            </p>
         </div>
     </header>
 
     {% if rows and rows|length > 0 %}
     <div class="table-card">
+        <!-- ── Search & Filter Controls in One Clean Line ── -->
+        <div class="table-controls">
+            <div class="search-wrap">
+                <svg class="search-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                    fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" id="orderSearchInput" class="search-input"
+                    placeholder="Search Order Ref, Child Name, Items..." onkeyup="filterAndSortOrders()"
+                    onsearch="filterAndSortOrders()">
+            </div>
+
+            <div class="filter-inline">
+                <span class="filter-label">Type:</span>
+                <select id="categoryFilter" class="filter-select" onchange="filterAndSortOrders()">
+                    <option value="all">All Types</option>
+                    <option value="tuition">Tuition</option>
+                    <option value="uniform">Uniform</option>
+                    <option value="books">Books / Material</option>
+                </select>
+            </div>
+
+            <div class="filter-inline">
+                <span class="filter-label">Sort By:</span>
+                <select id="orderSortSelect" class="filter-select" onchange="filterAndSortOrders()">
+                    <option value="date-desc">Newest Date</option>
+                    <option value="date-asc">Oldest Date</option>
+                    <option value="amount-desc">Amount: High to Low</option>
+                    <option value="amount-asc">Amount: Low to High</option>
+                    <option value="child-asc">Child Name (A - Z)</option>
+                    <option value="type-asc">Category Type</option>
+                </select>
+            </div>
+        </div>
+
         <div class="table-responsive">
             <table class="res-table">
                 <thead>
                     <tr>
                         <th>Order Ref</th>
                         <th>Child / Student</th>
-                        <th>Reserved Items</th>
+                        <th>Type</th>
+                        <th>Reserved Items / Description</th>
                         <th>Date Placed</th>
                         <th>Status</th>
                         <th style="text-align: right;">Qty</th>
                         <th style="text-align: right;">Total Amount</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="ordersTableBody">
                     {% for r in rows %}
-                    <tr>
+                    <tr class="order-row"
+                        data-ref="{{ (r.order_number or ('UO-' ~ '%04d'|format(r.ref_id|int)) if r.ref_type == 'UO' else (r.order_number or ('RES-' ~ '%04d'|format(r.ref_id|int))))|lower }}"
+                        data-child="{{ (r.student_name or '')|lower }}" data-grade="{{ (r.grade_level or '')|lower }}"
+                        data-items="{{ (r.item_names or '')|lower }}"
+                        data-category="{{ (r.category or 'other')|lower }}" data-amount="{{ r.total_amount|float }}"
+                        data-date="{{ r.created_at.strftime('%Y%m%d%H%M%S') if r.created_at and r.created_at.strftime else '' }}"
+                        data-child-name="{{ (r.student_name or '')|lower }}">
                         <td class="res-id">
                             {% if r.ref_type == 'UO' %}
-                                {{ r.order_number or ('UO-' ~ '%04d'|format(r.ref_id|int)) }}
+                            {{ r.order_number or ('UO-' ~ '%04d'|format(r.ref_id|int)) }}
+                            {% elif r.ref_type == 'TUI' %}
+                            {{ r.order_number or ('TUI-' ~ '%04d'|format(r.ref_id|int)) }}
                             {% else %}
-                                RES-{{ "%04d"|format(r.ref_id|int) }}
+                            RES-{{ "%04d"|format(r.ref_id|int) }}
                             {% endif %}
                         </td>
                         <td>
                             <strong style="color: var(--sd-primary); display: block;">{{ r.student_name }}</strong>
-                            <span style="font-size: 0.72rem; color: var(--sd-muted); font-weight: 700;">{{ r.grade_level }}</span>
+                            <span style="font-size: 0.72rem; color: var(--sd-muted); font-weight: 700;">{{ r.grade_level
+                                }}</span>
+                        </td>
+                        <td>
+                            {% if r.category == 'tuition' %}
+                            <span class="cat-badge cat-tuition">Tuition</span>
+                            {% elif r.category == 'uniform' %}
+                            <span class="cat-badge cat-uniform">Uniform</span>
+                            {% else %}
+                            <span class="cat-badge cat-books">Book</span>
+                            {% endif %}
                         </td>
                         <td class="res-items">
                             {{ r.item_names or 'N/A' }}
-                            {% if r.ref_type == 'UO' %}
-                            <div style="font-size:0.7rem; color:var(--sd-muted); font-weight:700; margin-top:4px;">Uniform Pre-Order</div>
-                            {% endif %}
                         </td>
                         <td style="font-weight: 600; color: var(--sd-muted);">
-                            {{ r.created_at.strftime('%b %d, %Y') if r.created_at and r.created_at.strftime else r.created_at }}
+                            {{ r.created_at.strftime('%b %d, %Y') if r.created_at and r.created_at.strftime else
+                            r.created_at }}
                         </td>
                         <td>
-                            {% set status_slug = (r.status or '')|lower|replace(' ', '-') %}
-                            <span class="badge status-{{ status_slug }}">{{ r.status }}</span>
-                            {% if r.ref_type == 'UO' and r.payment_status %}
-                            <div style="margin-top:6px;">
-                                <span class="badge status-{{ (r.payment_status or '')|lower }}" style="font-size:0.65rem;">{{ r.payment_status }}</span>
-                            </div>
+                            {% set st = (r.status or '')|upper %}
+                            {% set pst = (r.payment_status or '')|upper %}
+                            {% if r.ref_type == 'UO' %}
+                            {% if st in ['CLAIMED', 'COMPLETED'] and pst == 'PAID' %}
+                            <span class="unified-badge badge-completed">Completed</span>
+                            {% elif st in ['READY FOR CLAIM', 'READY_FOR_CLAIM', 'READY'] and pst == 'PAID' %}
+                            <span class="unified-badge badge-ready-paid">Ready for Pickup</span>
+                            {% elif st in ['READY FOR CLAIM', 'READY_FOR_CLAIM', 'READY'] %}
+                            <span class="unified-badge badge-ready-unpaid">Ready • Pay at Cashier</span>
+                            {% elif pst == 'PAID' %}
+                            <span class="unified-badge badge-ready-paid">Paid • In Process</span>
+                            {% elif pst == 'PARTIAL' %}
+                            <span class="unified-badge badge-partial">Partial • In Process</span>
+                            {% elif st in ['CANCELLED', 'REJECTED'] %}
+                            <span class="unified-badge badge-cancelled">Cancelled</span>
+                            {% else %}
+                            <span class="unified-badge badge-pending">Pending Pre-Order</span>
+                            {% endif %}
+                            {% elif r.ref_type == 'RES' %}
+                            {% if st in ['CLAIMED', 'COMPLETED'] %}
+                            <span class="unified-badge badge-completed">Completed</span>
+                            {% elif st in ['PAID', 'READY'] %}
+                            <span class="unified-badge badge-ready-paid">Ready for Pickup</span>
+                            {% elif st in ['CANCELLED', 'REJECTED'] %}
+                            <span class="unified-badge badge-cancelled">Cancelled</span>
+                            {% else %}
+                            <span class="unified-badge badge-ready-unpaid">Reserved • Unpaid</span>
+                            {% endif %}
+                            {% else %}
+                            {% if st == 'PAID' %}
+                            <span class="unified-badge badge-completed">Fully Paid</span>
+                            {% elif st == 'PARTIAL' %}
+                            <span class="unified-badge badge-partial">Partial Payment</span>
+                            {% else %}
+                            <span class="unified-badge badge-unpaid">Unpaid Tuition</span>
+                            {% endif %}
                             {% endif %}
                         </td>
                         <td style="text-align: right; font-weight: 700;">{{ r.total_qty }}</td>
                         <td style="text-align: right; font-weight: 900; color: var(--sd-primary);">
-                            ₱{{ "%.2f"|format(r.total_amount|float) }}
+                            ₱{{ "{:,.2f}".format(r.total_amount|float) }}
                         </td>
                     </tr>
                     {% endfor %}
+                    <!-- No search results row -->
+                    <tr id="noOrdersFoundRow" style="display: none;">
+                        <td colspan="8" style="text-align: center; padding: 48px 16px; color: var(--sd-muted);">
+                            <div style="font-size: 1.8rem; margin-bottom: 8px;">🔍</div>
+                            <div style="font-weight: 700; font-size: 1rem; color: var(--sd-text);">No matching orders
+                                found</div>
+                            <div style="font-size: 0.85rem; margin-top: 4px;">Try modifying your search keywords or type
+                                filter.</div>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
+        </div>
+
+        <!-- ── Pagination Bar ── -->
+        <div class="pagination-bar" id="orderPaginationBar">
+            <div class="pagination-info" id="orderPaginationInfo">
+                Showing <strong>0</strong>-<strong>0</strong> of <strong>0</strong> orders
+            </div>
+            <div class="pagination-controls" id="orderPaginationControls"></div>
         </div>
     </div>
     {% else %}
     <div class="empty-box">
         <div style="font-size: 4rem; margin-bottom: 24px; opacity: 0.2;">🛒</div>
-        <h3 style="font-weight: 900; color: var(--sd-primary); font-size: 1.5rem; margin-bottom: 12px;">No Orders Found</h3>
-        <p style="color: var(--sd-muted); font-size: 1rem; max-width: 450px; margin: 0 auto; line-height: 1.6; font-weight: 500;">No reservations or uniform orders have been placed for your children yet.</p>
+        <h3 style="font-weight: 900; color: var(--sd-primary); font-size: 1.5rem; margin-bottom: 12px;">No Orders Found
+        </h3>
+        <p
+            style="color: var(--sd-muted); font-size: 1rem; max-width: 450px; margin: 0 auto; line-height: 1.6; font-weight: 500;">
+            No reservations or uniform orders have been placed for your children yet.</p>
         <div style="margin-top: 32px;">
-            <a href="{{ url_for('parent.parent_reserve') }}" class="btn-hero" style="background: var(--sd-accent); color: white; border: none; padding: 14px 32px;">
+            <a href="{{ url_for('parent.parent_reserve') }}" class="btn-hero"
+                style="background: var(--sd-accent); color: white; border: none; padding: 14px 32px;">
                 Reserve Items
             </a>
         </div>
     </div>
     {% endif %}
 </div>
+
+<script>
+    var currentOrderPage = 1;
+    var orderRowsPerPage = 5;
+    var matchingOrderRows = [];
+
+    function filterAndSortOrders() {
+        var searchVal = (document.getElementById('orderSearchInput') ? document.getElementById('orderSearchInput').value : '').toLowerCase().trim();
+        var categoryVal = (document.getElementById('categoryFilter') ? document.getElementById('categoryFilter').value : 'all').toLowerCase();
+        var sortVal = (document.getElementById('orderSortSelect') ? document.getElementById('orderSortSelect').value : 'date-desc');
+
+        var allRows = Array.from(document.querySelectorAll('.order-row'));
+        var tbody = document.getElementById('ordersTableBody');
+        var noResultsRow = document.getElementById('noOrdersFoundRow');
+
+        if (!tbody || allRows.length === 0) return;
+
+        // Filter matching rows
+        matchingOrderRows = allRows.filter(function (row) {
+            var ref = row.getAttribute('data-ref') || '';
+            var child = row.getAttribute('data-child') || '';
+            var grade = row.getAttribute('data-grade') || '';
+            var items = row.getAttribute('data-items') || '';
+            var cat = row.getAttribute('data-category') || '';
+
+            var matchesSearch = !searchVal || ref.includes(searchVal) || child.includes(searchVal) || grade.includes(searchVal) || items.includes(searchVal);
+            var matchesCategory = (categoryVal === 'all') || (cat === categoryVal);
+
+            return matchesSearch && matchesCategory;
+        });
+
+        // Sort matching rows
+        matchingOrderRows.sort(function (a, b) {
+            if (sortVal === 'date-desc') {
+                return (b.getAttribute('data-date') || '').localeCompare(a.getAttribute('data-date') || '');
+            } else if (sortVal === 'date-asc') {
+                return (a.getAttribute('data-date') || '').localeCompare(b.getAttribute('data-date') || '');
+            } else if (sortVal === 'amount-desc') {
+                return parseFloat(b.getAttribute('data-amount') || 0) - parseFloat(a.getAttribute('data-amount') || 0);
+            } else if (sortVal === 'amount-asc') {
+                return parseFloat(a.getAttribute('data-amount') || 0) - parseFloat(b.getAttribute('data-amount') || 0);
+            } else if (sortVal === 'child-asc') {
+                return (a.getAttribute('data-child-name') || '').localeCompare(b.getAttribute('data-child-name') || '');
+            } else if (sortVal === 'type-asc') {
+                return (a.getAttribute('data-category') || '').localeCompare(b.getAttribute('data-category') || '');
+            }
+            return 0;
+        });
+
+        // Re-append sorted rows to tbody (before noResultsRow)
+        matchingOrderRows.forEach(function (row) {
+            tbody.insertBefore(row, noResultsRow);
+        });
+
+        // Reset to page 1
+        currentOrderPage = 1;
+        renderOrderPage(currentOrderPage);
+    }
+
+    function renderOrderPage(page) {
+        currentOrderPage = page;
+        var allRows = Array.from(document.querySelectorAll('.order-row'));
+        var noResultsRow = document.getElementById('noOrdersFoundRow');
+        var paginationBar = document.getElementById('orderPaginationBar');
+        var paginationInfo = document.getElementById('orderPaginationInfo');
+        var paginationControls = document.getElementById('orderPaginationControls');
+
+        var totalMatches = matchingOrderRows.length;
+
+        // Hide all rows first
+        allRows.forEach(function (r) { r.style.display = 'none'; });
+
+        if (totalMatches === 0) {
+            if (noResultsRow) noResultsRow.style.display = '';
+            if (paginationBar) paginationBar.style.display = 'none';
+            return;
+        }
+
+        if (noResultsRow) noResultsRow.style.display = 'none';
+        if (paginationBar) paginationBar.style.display = 'flex';
+
+        var totalPages = Math.ceil(totalMatches / orderRowsPerPage);
+        if (page > totalPages) page = totalPages;
+        if (page < 1) page = 1;
+        currentOrderPage = page;
+
+        var start = (page - 1) * orderRowsPerPage;
+        var end = Math.min(start + orderRowsPerPage, totalMatches);
+
+        // Show current page items
+        for (var i = start; i < end; i++) {
+            if (matchingOrderRows[i]) {
+                matchingOrderRows[i].style.display = '';
+            }
+        }
+
+        // Update info text
+        if (paginationInfo) {
+            paginationInfo.innerHTML = 'Showing <strong>' + (start + 1) + '</strong>-<strong>' + end + '</strong> of <strong>' + totalMatches + '</strong> orders';
+        }
+
+        // Render pagination buttons
+        if (paginationControls) {
+            var html = '';
+
+            // Prev button
+            html += '<button type="button" class="btn-page" ' + (page === 1 ? 'disabled' : '') + ' onclick="goToOrderPage(' + (page - 1) + ')" aria-label="Previous Page">';
+            html += '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"></polyline></svg></button>';
+
+            for (var p = 1; p <= totalPages; p++) {
+                if (p === 1 || p === totalPages || (p >= page - 1 && p <= page + 1)) {
+                    html += '<button type="button" class="btn-page ' + (p === page ? 'active' : '') + '" onclick="goToOrderPage(' + p + ')">' + p + '</button>';
+                } else if (p === page - 2 || p === page + 2) {
+                    html += '<span style="padding: 0 4px; color: #94a3b8; font-weight: 700;">...</span>';
+                }
+            }
+
+            // Next button
+            html += '<button type="button" class="btn-page" ' + (page === totalPages ? 'disabled' : '') + ' onclick="goToOrderPage(' + (page + 1) + ')" aria-label="Next Page">';
+            html += '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg></button>';
+
+            paginationControls.innerHTML = html;
+        }
+    }
+
+    function goToOrderPage(page) {
+        renderOrderPage(page);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        filterAndSortOrders();
+    });
+</script>
 {% endblock %}

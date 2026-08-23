@@ -29,7 +29,8 @@
     .app-container {
         max-width: 1300px;
         margin: 0 auto;
-        padding: 40px 24px;
+        padding: 24px 20px 64px;
+        box-sizing: border-box;
         animation: fadeIn 0.8s ease-out;
     }
 
@@ -45,72 +46,49 @@
         }
     }
 
-    /* ── High-End Slim Header ── */
-    .app-header {
+    /* ── Header Banner (Matching Order History) ── */
+    .res-hero {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1a3a8f 50%, #1e40af 100%);
+        border-radius: 24px;
+        padding: 36px 40px;
+        color: #fff;
+        margin-bottom: 28px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 32px;
-        background: var(--royal-blue);
-        padding: 18px 32px;
-        border-radius: 16px;
-        box-shadow: 0 15px 30px rgba(26, 58, 143, 0.2);
-        color: white;
-        border-bottom: 4px solid var(--gold);
+        gap: 32px;
     }
 
-    .header-info h1 {
-        margin: 0;
-        font-size: 1.3rem;
+    .res-hero::before {
+        content: '';
+        position: absolute;
+        top: -100px;
+        right: -100px;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+        border-radius: 50%;
+    }
+
+    .res-hero-content h1 {
+        font-size: 2.2rem;
         font-weight: 900;
+        margin: 0 0 8px;
         letter-spacing: -0.02em;
-        display: flex;
-        align-items: center;
-        gap: 12px;
     }
 
-    .header-info p {
-        margin: 2px 0 0 0;
-        font-size: 0.75rem;
-        opacity: 0.8;
+    .res-hero-content h1 span {
+        color: var(--gold);
+    }
+
+    .res-hero-content p {
+        margin: 0;
+        font-size: 0.95rem;
+        color: #93c5fd;
         font-weight: 500;
-    }
-
-    .header-nav {
-        display: flex;
-        gap: 12px;
-    }
-
-    .nav-link {
-        padding: 8px 18px;
-        border-radius: 10px;
-        font-weight: 800;
-        font-size: 0.8rem;
-        text-decoration: none;
-        transition: all 0.3s;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .nav-back {
-        background: rgba(255, 255, 255, 0.1);
-        color: white;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-    }
-
-    .nav-back:hover {
-        background: rgba(255, 255, 255, 0.2);
-    }
-
-    .nav-bill {
-        background: var(--gold);
-        color: var(--royal-blue);
-    }
-
-    .nav-bill:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px var(--gold-glow);
     }
 
     /* ── Sophisticated Hero ── */
@@ -423,17 +401,15 @@
 
 {% block content %}
 <div class="app-container">
-    <!-- Premium Header -->
-    <header class="app-header">
-        <div class="header-info">
-            <h1 style="margin: 0; font-size: 2.2rem; font-weight: 900; color: white; display: flex; align-items: center; gap: 12px; letter-spacing: -0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.1);">Student <span style="color: var(--gold);">Portal</span></h1>
-            <p style="margin: 4px 0 0 0; font-size: 0.85rem; opacity: 0.9; font-weight: 600;">Official Academic Records Center</p>
-        </div>
-        <div class="header-nav">
-            <a href="{{ url_for('parent.dashboard') }}" class="nav-link nav-back"><i class="fas fa-chevron-left"></i>
-                Dashboard</a>
-            <a href="{{ url_for('parent.child_bills', enrollment_id=child.enrollment_id) }}"
-                class="nav-link nav-bill"><i class="fas fa-file-invoice-dollar"></i> Billing</a>
+    <!-- Header -->
+    <header class="res-hero">
+        <div class="res-hero-content">
+            <h1 style="margin: 0; font-size: 2.2rem; font-weight: 900; color: white; display: flex; align-items: center; gap: 12px; letter-spacing: -0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                Student <span style="color: var(--gold);">Profile</span>
+            </h1>
+            <p style="margin: 4px 0 0 0; font-size: 0.95rem; opacity: 0.9; font-weight: 600; color: #93c5fd;">
+                Official Academic Records Center
+            </p>
         </div>
     </header>
 
@@ -525,20 +501,6 @@
                 <p>Weekly schedules</p>
             </div>
         </div>
-        <div class="action-tile" id="tile-books" onclick="expandPanel('books')">
-            <div class="tile-icon-box icon-books"><i class="fas fa-book"></i></div>
-            <div class="tile-text">
-                <h4>Book Orders</h4>
-                <p>Learning materials</p>
-            </div>
-        </div>
-        <div class="action-tile" id="tile-docs" onclick="expandPanel('docs')">
-            <div class="tile-icon-box icon-docs"><i class="fas fa-folder-open"></i></div>
-            <div class="tile-text">
-                <h4>Verification Docs</h4>
-                <p>Uploaded files</p>
-            </div>
-        </div>
     </div>
 
     <!-- Expansion Panels -->
@@ -582,51 +544,6 @@
 
     <div class="expansion-box" id="panel-schedule">
         <div class="panel-wrap" style="padding: 24px;">{{ render_weekly_schedule(schedules, show_teacher=true) }}</div>
-    </div>
-
-    <div class="expansion-box" id="panel-books">
-        <div class="panel-wrap">
-            <div class="panel-header">
-                <h3>Reference Materials</h3>
-            </div>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Book Title</th>
-                        <th style="text-align:right;">Qty</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for book in books %}
-                    <tr>
-                        <td>{{ book.book_name }} {% if book.is_reservation %}<span
-                                style="font-size:0.6rem; background:#e0f2fe; color:#0369a1; padding:2px 6px; border-radius:4px; font-weight:800;">RESERVED</span>{%
-                            endif %}</td>
-                        <td style="text-align:right; font-weight:800;">{{ book.quantity }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <div class="expansion-box" id="panel-docs">
-        <div class="panel-wrap" style="padding: 24px;">
-            {% if documents %}
-            {% for doc in documents %}
-            <a href="javascript:void(0)"
-                onclick="openPreview('{{ doc.file_path }}', '{{ doc.file_name|replace("'", "\\'") }}')" class="doc-btn">
-                <i class="fas fa-file-pdf" style="color: #ef4444; font-size: 1.1rem;"></i>
-                <div style="flex: 1;">
-                    <div style="font-size: 0.85rem;">{{ doc.file_name }}</div>
-                </div>
-                <i class="fas fa-external-link-alt" style="opacity: 0.2; font-size: 0.7rem;"></i>
-            </a>
-            {% endfor %}
-            {% else %}
-            <div style="text-align: center; opacity: 0.4; padding: 20px;">No documents found.</div>
-            {% endif %}
-        </div>
     </div>
 </div>
 
