@@ -377,6 +377,31 @@
         padding: 14px 20px;
         background: var(--slate-50);
         border-radius: 12px;
+    .panel-wrap {
+        background: white;
+        border-radius: 20px;
+        border: 1px solid var(--slate-200);
+        overflow: hidden;
+        width: 100%;
+        max-width: 100%;
+        box-sizing: border-box;
+    }
+
+    .panel-table-scroll {
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        display: block;
+    }
+
+    .doc-btn {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 14px 20px;
+        background: var(--slate-50);
+        border-radius: 12px;
         text-decoration: none;
         color: var(--slate-800);
         font-weight: 800;
@@ -393,26 +418,28 @@
 
     @media (max-width: 768px) {
         .app-container {
-            padding: 16px 12px 60px;
+            padding: 14px 12px 60px;
         }
 
         .res-hero {
-            padding: 22px 18px;
-            border-radius: 18px;
-            margin-bottom: 20px;
-            gap: 16px;
+            padding: 18px 20px;
+            border-radius: 16px;
+            margin-bottom: 18px;
+            display: block;
         }
 
         .res-hero-content h1 {
-            font-size: 1.45rem;
-            line-height: 1.25;
+            font-size: 1.25rem !important;
+            font-weight: 800 !important;
+            line-height: 1.25 !important;
             word-break: break-word;
-            margin-bottom: 4px;
+            margin: 0 0 3px 0 !important;
         }
 
         .res-hero-content p {
-            font-size: 0.82rem;
-            line-height: 1.35;
+            font-size: 0.8rem !important;
+            line-height: 1.35 !important;
+            margin: 0 !important;
         }
 
         .student-hero {
@@ -551,41 +578,47 @@
             <div class="panel-header">
                 <h3>Term Grade Ledger</h3> <i class="fas fa-star-of-life"></i>
             </div>
-            <table class="data-table">
-                <thead>
-                    <tr>
-                        <th>Subject</th>
-                        <th style="text-align:center;">1st Term</th>
-                        <th style="text-align:center;">2nd Term</th>
-                        <th style="text-align:center;">3rd Term</th>
-                        <th style="text-align:center; background:rgba(0,0,0,0.02);">Finals</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for subj in grade_data %}
-                    <tr>
-                        <td style="color: var(--royal-blue); font-weight: 800;">{{ subj.subject_name }}</td>
-                        <td style="text-align:center;">{% if subj.grades.get('1st') %}<span
-                                class="grade-marker {{ 'pass-bg' if subj.grades.get('1st')|float >= 75 else 'fail-bg' }}">{{
-                                subj.grades.get('1st')|int }}</span>{% else %}--{% endif %}</td>
-                        <td style="text-align:center;">{% if subj.grades.get('2nd') %}<span
-                                class="grade-marker {{ 'pass-bg' if subj.grades.get('2nd')|float >= 75 else 'fail-bg' }}">{{
-                                subj.grades.get('2nd')|int }}</span>{% else %}--{% endif %}</td>
-                        <td style="text-align:center;">{% if subj.grades.get('3rd') %}<span
-                                class="grade-marker {{ 'pass-bg' if subj.grades.get('3rd')|float >= 75 else 'fail-bg' }}">{{
-                                subj.grades.get('3rd')|int }}</span>{% else %}--{% endif %}</td>
-                        <td style="text-align:center; background:rgba(0,0,0,0.01);">{% if subj.final_grade %}<span
-                                class="grade-marker {{ 'pass-bg' if subj.final_grade|float >= 75 else 'fail-bg' }}">{{
-                                subj.final_grade|int }}</span>{% else %}--{% endif %}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="panel-table-scroll">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Subject</th>
+                            <th style="text-align:center;">1st Term</th>
+                            <th style="text-align:center;">2nd Term</th>
+                            <th style="text-align:center;">3rd Term</th>
+                            <th style="text-align:center; background:rgba(0,0,0,0.02);">Finals</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for subj in grade_data %}
+                        <tr>
+                            <td style="color: var(--royal-blue); font-weight: 800;">{{ subj.subject_name }}</td>
+                            <td style="text-align:center;">{% if subj.grades.get('1st') %}<span
+                                    class="grade-marker {{ 'pass-bg' if subj.grades.get('1st')|float >= 75 else 'fail-bg' }}">{{
+                                    subj.grades.get('1st')|int }}</span>{% else %}--{% endif %}</td>
+                            <td style="text-align:center;">{% if subj.grades.get('2nd') %}<span
+                                    class="grade-marker {{ 'pass-bg' if subj.grades.get('2nd')|float >= 75 else 'fail-bg' }}">{{
+                                    subj.grades.get('2nd')|int }}</span>{% else %}--{% endif %}</td>
+                            <td style="text-align:center;">{% if subj.grades.get('3rd') %}<span
+                                    class="grade-marker {{ 'pass-bg' if subj.grades.get('3rd')|float >= 75 else 'fail-bg' }}">{{
+                                    subj.grades.get('3rd')|int }}</span>{% else %}--{% endif %}</td>
+                            <td style="text-align:center; background:rgba(0,0,0,0.01);">{% if subj.final_grade %}<span
+                                    class="grade-marker {{ 'pass-bg' if subj.final_grade|float >= 75 else 'fail-bg' }}">{{
+                                    subj.final_grade|int }}</span>{% else %}--{% endif %}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <div class="expansion-box" id="panel-schedule">
-        <div class="panel-wrap" style="padding: 24px;">{{ render_weekly_schedule(schedules, show_teacher=true) }}</div>
+        <div class="panel-wrap panel-table-scroll" style="padding: 16px;">
+            <div style="min-width: 600px;">
+                {{ render_weekly_schedule(schedules, show_teacher=true) }}
+            </div>
+        </div>
     </div>
 </div>
 
