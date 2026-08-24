@@ -365,18 +365,6 @@
         color: #166534;
     }
 
-    .fail-bg {
-        background: #fee2e2;
-        color: #991b1b;
-    }
-
-    .doc-btn {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 14px 20px;
-        background: var(--slate-50);
-        border-radius: 12px;
     .panel-wrap {
         background: white;
         border-radius: 20px;
@@ -387,6 +375,7 @@
         box-sizing: border-box;
     }
 
+    .table-responsive,
     .panel-table-scroll {
         width: 100%;
         max-width: 100%;
@@ -418,7 +407,7 @@
 
     @media (max-width: 768px) {
         .app-container {
-            padding: 14px 12px 60px;
+            padding: 16px 16px 64px;
         }
 
         .res-hero {
@@ -447,6 +436,8 @@
             align-items: center;
             text-align: center;
             padding: 20px 16px;
+            border-radius: 18px;
+            margin-bottom: 20px;
             gap: 16px;
         }
 
@@ -460,9 +451,23 @@
             gap: 16px;
         }
 
+        .info-card {
+            padding: 20px 16px;
+            border-radius: 18px;
+        }
+
         .field-grid {
             grid-template-columns: 1fr;
             gap: 12px;
+        }
+
+        .panel-wrap {
+            border-radius: 18px;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 12px 14px;
         }
     }
 </style>
@@ -578,8 +583,8 @@
             <div class="panel-header">
                 <h3>Term Grade Ledger</h3> <i class="fas fa-star-of-life"></i>
             </div>
-            <div class="panel-table-scroll">
-                <table class="data-table">
+            <div class="table-responsive" style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+                <table class="data-table" style="white-space: nowrap; min-width: 520px;">
                     <thead>
                         <tr>
                             <th>Subject</th>
@@ -614,10 +619,8 @@
     </div>
 
     <div class="expansion-box" id="panel-schedule">
-        <div class="panel-wrap panel-table-scroll" style="padding: 16px;">
-            <div style="min-width: 600px;">
-                {{ render_weekly_schedule(schedules, show_teacher=true) }}
-            </div>
+        <div class="panel-wrap table-responsive" style="padding: 0; border: none; background: transparent; width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch;">
+            {{ render_weekly_schedule(schedules, title="", subtitle="", show_teacher=true) }}
         </div>
     </div>
 </div>
