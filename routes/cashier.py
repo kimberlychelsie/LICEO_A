@@ -4719,6 +4719,60 @@ def uniform_catalog_delete_piece():
         db.close()
 
 
+@cashier_bp.route("/cashier/uniform-catalog/delete-set", methods=["POST"])
+def uniform_catalog_delete_set():
+    """Delete an entire uniform SET and all its child pieces."""
+    if not _require_cashier():
+        return jsonify({"error": "Unauthorized"}), 403
+
+    branch_id = session.get("branch_id")
+    set_id = request.form.get("set_id", "").strip()
+    if not set_id:
+        return jsonify({"error": "Missing set_id"}), 400
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT item_id, item_name
+            FROM inventory_items
+            WHERE item_id = %s AND branch_id = %s AND UPPER(category) = 'UNIFORM'
+        """, (int(set_id), branch_id))
+        set_row = cursor.fetchone()
+        if not set_row:
+            return jsonify({"error": "Uniform set not found"}), 404
+
+        # Delete sizes for set and child pieces
+        cursor.execute("""
+            DELETE FROM inventory_item_sizes
+            WHERE item_id IN (
+                SELECT item_id FROM inventory_items
+                WHERE (item_id = %s OR parent_item_id = %s) AND branch_id = %s
+            )
+        """, (int(set_id), int(set_id), branch_id))
+
+        # Delete child pieces
+        cursor.execute("""
+            DELETE FROM inventory_items
+            WHERE parent_item_id = %s AND branch_id = %s
+        """, (int(set_id), branch_id))
+
+        # Delete parent set
+        cursor.execute("""
+            DELETE FROM inventory_items
+            WHERE item_id = %s AND branch_id = %s
+        """, (int(set_id), branch_id))
+
+        db.commit()
+        return jsonify({"success": True, "message": f"Deleted set: {set_row['item_name']}"})
+    except Exception as e:
+        db.rollback()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
 @cashier_bp.after_request
 def add_no_cache_headers(response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"

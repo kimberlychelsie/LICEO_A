@@ -390,6 +390,7 @@
                                 {% else %}
                                 <button class="btn-onsite" style="padding:6px 12px; font-size:0.74rem;" onclick="openAddPieceModal({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}', {{ pieces|length }})">+ Add Piece</button>
                                 {% endif %}
+                                <button class="btn-delete-piece" style="padding:6px 12px; font-size:0.74rem; background:#fee2e2; color:#dc2626; border:1px solid #fca5a5;" onclick="deleteSet({{ s.item_id }}, '{{ s.item_name|replace("'","\'")|safe }}')">Delete</button>
                             </div>
                         </td>
                     </tr>
@@ -797,6 +798,19 @@
                 } else { alert('Error: ' + data.error); }
             });
     });
+
+    function deleteSet(setId, setName) {
+        if (!confirm('Delete full uniform set "' + setName + '" and all its pieces? This cannot be undone.')) return;
+        const formData = new FormData();
+        formData.append('set_id', setId);
+        fetch('/cashier/uniform-catalog/delete-set', { method: 'POST', body: formData })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) location.reload();
+                else alert('Error: ' + (data.error || 'Failed to delete set'));
+            })
+            .catch(() => alert('Failed to delete uniform set.'));
+    }
 
     function deletePiece(itemId, itemName, parentSetId) {
         if (!confirm('Delete piece "' + itemName + '"? This cannot be undone.')) return;
