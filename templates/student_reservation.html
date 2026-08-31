@@ -1256,6 +1256,158 @@
             justify-content: center;
         }
     }
+
+    /* ── SUCCESS MODAL RESPONSIVE STYLES ── */
+    .res-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.65);
+        backdrop-filter: blur(4px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        animation: fadeIn 0.3s ease;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    .res-modal-card {
+        background: white;
+        width: 100%;
+        max-width: 680px;
+        max-height: 90vh;
+        border-radius: 16px;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+        position: relative;
+        animation: slideUp 0.3s ease;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .res-modal-header {
+        background: var(--res-primary);
+        color: white;
+        padding: 16px 24px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    .res-modal-header h2 {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 800;
+        letter-spacing: 1px;
+    }
+
+    .res-modal-close {
+        background: none;
+        border: none;
+        color: white;
+        font-size: 1.5rem;
+        cursor: pointer;
+        line-height: 1;
+        padding: 4px;
+    }
+
+    .res-modal-body {
+        padding: 28px 36px;
+        overflow-y: auto;
+        flex: 1;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .res-modal-total-box {
+        border: 1px solid var(--res-primary);
+        border-radius: 10px;
+        background: #f0f9ff;
+        padding: 16px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+    }
+
+    @media (max-width: 640px) {
+        .res-modal-overlay {
+            padding: 10px;
+        }
+
+        .res-modal-card {
+            max-height: 92vh;
+            border-radius: 14px;
+        }
+
+        .res-modal-header {
+            padding: 12px 16px;
+        }
+
+        .res-modal-header h2 {
+            font-size: 0.92rem;
+            letter-spacing: 0.5px;
+        }
+
+        .res-modal-body {
+            padding: 16px 14px;
+        }
+
+        .res-modal-body .status-badge {
+            font-size: 0.78rem !important;
+            padding: 4px 12px !important;
+            margin-bottom: 8px !important;
+        }
+
+        .res-modal-body .receipt-meta {
+            font-size: 0.88rem !important;
+            line-height: 1.4 !important;
+        }
+
+        .res-modal-table-wrap {
+            margin-bottom: 16px !important;
+            overflow-x: auto;
+        }
+
+        .res-modal-table th,
+        .res-modal-table td {
+            padding: 8px 10px !important;
+            font-size: 0.78rem !important;
+        }
+
+        .res-modal-total-box {
+            padding: 12px 14px;
+            flex-direction: column;
+            gap: 4px;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+
+        .res-modal-total-box .total-label {
+            font-size: 0.85rem !important;
+        }
+
+        .res-modal-total-box .total-val {
+            font-size: 1.25rem !important;
+        }
+
+        .res-modal-notice {
+            padding: 12px !important;
+            margin-bottom: 16px !important;
+        }
+
+        .res-modal-notice strong {
+            font-size: 0.82rem !important;
+        }
+
+        .res-modal-notice p {
+            font-size: 0.82rem !important;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -1950,27 +2102,21 @@
 
 {% if success_data %}
 <!-- Success Modal -->
-<div id="successModal"
-    style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; z-index: 10000; animation: fadeIn 0.3s ease; padding: 20px;">
-    <div
-        style="background: white; width: 100%; max-width: 700px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); overflow: hidden; position: relative; animation: slideUp 0.3s ease;">
-        Release Transaction History
+<div id="successModal" class="res-modal-overlay">
+    <div class="res-modal-card">
         <!-- Header -->
-        <div
-            style="background: var(--res-primary); color: white; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center;">
-            <h2 style="margin: 0; font-size: 1.1rem; font-weight: 800; letter-spacing: 1px;"><i
-                    class="fas fa-check-circle" style="margin-right: 8px;"></i> RESERVATION CONFIRMATION</h2>
-            <button onclick="closeSuccessModal()"
-                style="background: none; border: none; color: white; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        <div class="res-modal-header">
+            <h2><i class="fas fa-check-circle" style="margin-right: 8px;"></i> RESERVATION CONFIRMATION</h2>
+            <button onclick="closeSuccessModal()" class="res-modal-close" aria-label="Close">&times;</button>
         </div>
 
         <!-- Body -->
-        <div style="padding: 30px 40px;">
-            <div style="text-align: center; margin-bottom: 24px;">
-                <div
+        <div class="res-modal-body">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div class="status-badge"
                     style="display: inline-block; background: #e0f2fe; color: #0284c7; padding: 6px 16px; border-radius: 20px; font-weight: 900; font-size: 0.9rem; letter-spacing: 1px; margin-bottom: 12px;">
                     STATUS: RESERVED</div>
-                <div style="font-size: 1.1rem; color: var(--res-muted); font-weight: 600;">
+                <div class="receipt-meta" style="font-size: 1.05rem; color: var(--res-muted); font-weight: 600;">
                     Receipt ID: <strong style="color: var(--res-primary);">{{ success_data.ref_id or ("#" ~
                         success_data.reservation.reservation_id if success_data.reservation else "RESERVATION")
                         }}</strong> &nbsp;|&nbsp;
@@ -1981,12 +2127,12 @@
             </div>
 
             <!-- Table -->
-            <div
+            <div class="res-modal-table-wrap"
                 style="border: 1px solid var(--res-border); border-radius: 8px; overflow: hidden; margin-bottom: 24px;">
                 <div
-                    style="background: #f8fafc; padding: 12px 16px; font-weight: 800; color: var(--res-text); border-bottom: 1px solid var(--res-border); font-size: 0.95rem;">
+                    style="background: #f8fafc; padding: 10px 14px; font-weight: 800; color: var(--res-text); border-bottom: 1px solid var(--res-border); font-size: 0.88rem;">
                     ORDER SUMMARY</div>
-                <table style="width: 100%; border-collapse: collapse;">
+                <table class="res-modal-table" style="width: 100%; border-collapse: collapse;">
                     <thead>
                         <tr
                             style="background: white; border-bottom: 1px solid var(--res-border); text-align: left; font-size: 0.85rem; color: var(--res-muted);">
@@ -2015,28 +2161,26 @@
             </div>
 
             <!-- Total -->
-            <div
-                style="border: 1px solid var(--res-primary); border-radius: 8px; background: #f0f9ff; padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-                <div style="font-weight: 900; color: var(--res-primary); font-size: 1.1rem; letter-spacing: 0.5px;">
+            <div class="res-modal-total-box">
+                <div class="total-label" style="font-weight: 900; color: var(--res-primary); font-size: 1.05rem; letter-spacing: 0.5px;">
                     TOTAL AMOUNT TO PAY</div>
-                <div style="font-weight: 900; color: var(--res-primary); font-size: 1.5rem;">PHP {{
+                <div class="total-val" style="font-weight: 900; color: var(--res-primary); font-size: 1.4rem;">PHP {{
                     "{:,.2f}".format(success_data.total) }}</div>
             </div>
 
             <!-- Notice -->
-            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; margin-bottom: 30px;">
+            <div class="res-modal-notice" style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; margin-bottom: 20px; border-radius: 6px;">
                 <strong style="color: #b45309; display: block; margin-bottom: 4px; font-size: 0.9rem;">NOTICE:</strong>
-                <p style="margin: 0; color: #92400e; font-size: 0.95rem; line-height: 1.5;">Please present this Receipt
+                <p style="margin: 0; color: #92400e; font-size: 0.9rem; line-height: 1.5;">Please present this Receipt
                     ID (<strong>{{ success_data.ref_id or ("#" ~ success_data.reservation.reservation_id if
                         success_data.reservation else "RESERVATION") }}</strong>) at the cashier to finalize payment.
                 </p>
             </div>
 
-            <!-- Removed Button -->
-
         </div>
     </div>
 </div>
+{% endif %}
 
 <script>
     function closeSuccessModal() {
