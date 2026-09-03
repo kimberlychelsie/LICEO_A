@@ -845,26 +845,48 @@ def continuing_enrollment(branch_id):
             chosen_grade = request.form.get("grade_level") or next_grade
             section_id_raw = request.form.get("section_id")
             section_id = int(section_id_raw) if section_id_raw and section_id_raw.isdigit() else None
-
-            # Retain the original branch_enrollment_no / Student ID for continuing students
+            shs_track = request.form.get("shs_track") or enrollment.get("shs_track")
             next_no = enrollment.get("branch_enrollment_no")
+            orig_track = (enrollment.get("shs_track") or "").strip().lower()
+            sel_track = (shs_track or "").strip().lower()
+            is_cross_track = bool(orig_track and sel_track and orig_track not in sel_track and sel_track not in orig_track)
+            initial_status = 'approved' if is_cross_track else 'enrolled'
 
             cursor.execute("""
                 INSERT INTO enrollments
-                  (student_name, grade_level, gender, dob, address, contact_number,
-                   guardian_name, guardian_contact, previous_school, branch_id, status,
-                   branch_enrollment_no, lrn, email, guardian_email, user_id, section_id, year_id)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'enrolled',%s,%s,%s,%s,%s,%s,%s)
+                  (student_first_name, student_middle_name, student_last_name,
+                   guardian_first_name, guardian_middle_name, guardian_last_name,
+                   grade_level, gender, dob, address, contact_number,
+                   guardian_contact, previous_school, branch_id, status,
+                   branch_enrollment_no, lrn, email, guardian_email, user_id, section_id, year_id, shs_track)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                 RETURNING enrollment_id
             """, (
-                enrollment["student_name"], chosen_grade, enrollment["gender"], 
-                enrollment["dob"], enrollment["address"], 
-                enrollment["contact_number"], enrollment["guardian_name"], 
-                enrollment["guardian_contact"], enrollment["previous_school"], 
-                branch_id, next_no, enrollment["lrn"], enrollment.get("email"), 
-                enrollment.get("guardian_email"), enrollment.get("user_id"), 
-                section_id, active_sy_id
+                enrollment.get("student_first_name"),
+                enrollment.get("student_middle_name"),
+                enrollment.get("student_last_name"),
+                enrollment.get("guardian_first_name"),
+                enrollment.get("guardian_middle_name"),
+                enrollment.get("guardian_last_name"),
+                chosen_grade,
+                enrollment.get("gender"), 
+                enrollment.get("dob"),
+                enrollment.get("address"), 
+                enrollment.get("contact_number"),
+                enrollment.get("guardian_contact"),
+                enrollment.get("previous_school"), 
+                branch_id,
+                initial_status,
+                next_no,
+                enrollment.get("lrn"),
+                enrollment.get("email"), 
+                enrollment.get("guardian_email"),
+                enrollment.get("user_id"), 
+                section_id,
+                active_sy_id,
+                shs_track
             ))
+
             new_enrollment_id = cursor.fetchone()["enrollment_id"]
 
             cursor.execute("""
@@ -884,6 +906,20 @@ def continuing_enrollment(branch_id):
                            (new_enrollment_id, enrollment_id))
 
             db.commit()
+
+            # Auto-sync SHS electives for incoming Grade 11/12 students
+            try:
+                from routes.registrar import sync_student_elective_membership
+                sync_student_elective_membership(cursor, new_enrollment_id)
+                db.commit()
+            except Exception as sync_err:
+                db.rollback()
+                logger.warning(f"Re-enrollment elective sync error: {sync_err}")
+
+            if is_cross_track:
+                flash("Pathway shifting submitted! Your cross-track elective request is subject to Registrar approval.", "info")
+            else:
+                flash("Re-enrollment confirmed! You are enrolled in your recommended pathway electives.", "success")
 
             session["enrollment_id"] = new_enrollment_id
             session["student_grade_level"] = chosen_grade
@@ -913,6 +949,15 @@ def continuing_enrollment(branch_id):
             """, (branch_id,))
             shs_strands = [row["name"] for row in cursor.fetchall()]
 
+        cursor.execute("SELECT DISTINCT pathway_name FROM shs_pathways WHERE branch_id = %s AND is_active = TRUE ORDER BY pathway_name", (branch_id,))
+        official_pathways = [r["pathway_name"] for r in (cursor.fetchall() or [])]
+
+        display_student_name = enrollment.get("student_name") or " ".join(filter(None, [
+            enrollment.get("student_first_name"),
+            enrollment.get("student_middle_name"),
+            enrollment.get("student_last_name")
+        ])) or "Student"
+
         return render_template(
             "student_continuing_enroll.html", 
             branch_id=branch_id, 
@@ -920,9 +965,12 @@ def continuing_enrollment(branch_id):
             next_grade=next_grade,
             needs_strand=needs_strand,
             shs_strands=shs_strands,
+            official_pathways=official_pathways,
+            current_pathway=enrollment.get("shs_track") or "",
             sections=sections,
-            student_name=enrollment.get("student_name")
+            student_name=display_student_name
         )
+
     finally:
         cursor.close()
         db.close()
@@ -1055,6 +1103,9 @@ def api_section_subjects_student(section_id):
         return {"error": "Unauthorized"}, 403
 
     branch_id = session.get("branch_id")
+    enrollment_id = session.get("enrollment_id")
+    shs_track = (request.args.get("shs_track") or "").strip().lower()
+
     if not branch_id:
         return {"error": "No branch in session"}, 400
 
@@ -1070,9 +1121,29 @@ def api_section_subjects_student(section_id):
         if not sec:
             return {"error": "Section not found"}, 404
 
+        # Fetch passed subject IDs for prerequisite verification
+        passed_subject_ids = set()
+        if enrollment_id:
+            cursor.execute("""
+                SELECT DISTINCT subject_id
+                FROM posted_grades
+                WHERE enrollment_id = %s
+                  AND (
+                    (grade_value IS NOT NULL AND CAST(grade_value AS NUMERIC) >= 75)
+                    OR (grade IS NOT NULL AND CAST(grade AS NUMERIC) >= 75)
+                  )
+            """, (enrollment_id,))
+            passed_rows = cursor.fetchall() or []
+            passed_subject_ids = {r["subject_id"] for r in passed_rows}
+
         cursor.execute("""
             SELECT
+                sub.subject_id,
                 sub.name        AS subject_name,
+                sub.subject_type,
+                COALESCE(sub.pathway, sub.track, 'General') AS pathway,
+                sub.prerequisite_subject_id,
+                prereq.name     AS prereq_name,
                 u.full_name     AS teacher_full_name,
                 u.username      AS teacher_username,
                 u.gender        AS teacher_gender,
@@ -1087,6 +1158,7 @@ def api_section_subjects_student(section_id):
                 ) as schedules_json
             FROM section_teachers st
             JOIN subjects sub   ON st.subject_id  = sub.subject_id
+            LEFT JOIN subjects prereq ON sub.prerequisite_subject_id = prereq.subject_id
             LEFT JOIN users u   ON st.teacher_id  = u.user_id
             WHERE st.section_id = %s
             ORDER BY sub.name
@@ -1096,20 +1168,33 @@ def api_section_subjects_student(section_id):
         formatted_subjects = []
         for r in rows:
             subject = dict(r)
+            s_type = (subject.get("subject_type") or "").upper()
+            sub_pathway = (subject.get("pathway") or "").lower()
+
+            # If student selected a specific SHS track/pathway and this subject is an ELECTIVE:
+            # Only include electives matching the student's selected pathway!
+            if shs_track and s_type == "ELECTIVE":
+                if sub_pathway not in shs_track and shs_track not in sub_pathway:
+                    continue
+
+            prereq_id = subject.get("prerequisite_subject_id")
+            has_prereq = bool(prereq_id)
+            prereq_met = (prereq_id in passed_subject_ids) if has_prereq else True
+
+            subject["has_prereq"] = has_prereq
+            subject["prereq_met"] = prereq_met
+
             schedules = subject.pop('schedules_json', None)
             schedule_display = "TBA"
             
             if schedules:
-                # Group days by identical time slots
                 time_groups = {}
                 for sc in schedules:
                     if sc and sc.get('start_time') and sc.get('end_time'):
-                        # Convert times to AM/PM format
                         try:
                             from datetime import datetime
                             st_str = sc['start_time']
                             et_str = sc['end_time']
-                            # Handle different time string formats
                             if len(st_str) == 5: st_str += ":00"
                             if len(et_str) == 5: et_str += ":00"
                             
@@ -1120,18 +1205,15 @@ def api_section_subjects_student(section_id):
                             et_ampm = et_obj.strftime("%I:%M %p").lstrip('0')
                             
                             time_key = f"{st_ampm} - {et_ampm}"
-                            
-                            # Abbreviate day (e.g., Monday -> Mon)
                             day = sc['day'][:3]
                             
                             if time_key not in time_groups:
                                 time_groups[time_key] = []
                             time_groups[time_key].append(day)
-                        except Exception as e:
+                        except Exception:
                             pass
                 
                 if time_groups:
-                    # Format as: Mon/Wed/Fri 8:00 AM - 9:00 AM, Tue/Thu 1:00 PM - 2:00 PM
                     display_parts = []
                     for time_key, days in time_groups.items():
                         days_str = "/".join(days)
@@ -1148,6 +1230,7 @@ def api_section_subjects_student(section_id):
     finally:
         cursor.close()
         db.close()
+
 
 
 # ---------------- Step 2: Book Reservation (legacy; not used in main flow) ----------------

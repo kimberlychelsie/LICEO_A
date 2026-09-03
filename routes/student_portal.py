@@ -3166,7 +3166,7 @@ def shs_electives():
 
         # Auto-detect for Grade 11/12
         grade_level_str = student.get("grade_level") or ""
-        if "Grade 11" in grade_level_str:
+        if "Grade 11" in grade_level_str or "Grade 12" in grade_level_str or "11" in grade_level_str or "12" in grade_level_str:
             student["curriculum_type"] = "strengthened_shs"
 
         if "Grade 11" in grade_level_str or "Grade 12" in grade_level_str:
@@ -3271,8 +3271,23 @@ def shs_electives():
                                 ON CONFLICT DO NOTHING
                             """, (enrollment_id, student.get("user_id"), int(oid), term_name, year_id))
 
+                        # Record approved request tracking
+                        cur.execute("""
+                            INSERT INTO shs_student_elective_requests
+                            (enrollment_id, student_user_id, branch_id, year_id, term_name, status)
+                            VALUES (%s, %s, %s, %s, %s, 'APPROVED') RETURNING request_id
+                        """, (enrollment_id, student.get("user_id"), branch_id, year_id, term_name))
+                        req_id = cur.fetchone()["request_id"]
+
+                        for oid in selected_offerings:
+                            cur.execute("""
+                                INSERT INTO shs_student_elective_items (request_id, offering_id)
+                                VALUES (%s, %s)
+                            """, (req_id, int(oid)))
+
                         db.commit()
                         flash("You are now enrolled in your selected elective!", "success")
+
                     else:
                         # ---- Cross-track: Send for Registrar approval ----
                         cur.execute("""
@@ -3421,21 +3436,16 @@ def shs_electives():
         # Check if student already has a pending/approved request or active membership for the selected term
         term_status = None
         if year_id and selected_term_name:
-            is_selection_open = selected_term_name in open_terms
-
-            # Always check for existing PENDING/APPROVED requests — even during open selection period
             cur.execute("""
                 SELECT status FROM shs_student_elective_requests
                 WHERE enrollment_id = %s AND term_name = %s AND year_id = %s
                 AND status IN ('PENDING', 'APPROVED')
-                LIMIT 1
+                ORDER BY request_id DESC LIMIT 1
             """, (enrollment_id, selected_term_name, year_id))
             req_row = cur.fetchone()
             if req_row:
                 term_status = req_row["status"]
-            elif not is_selection_open:
-                # Only treat auto-membership as "approved" if selection period is CLOSED
-                # (during open period, let student re-select even if they have old memberships)
+            else:
                 cur.execute("""
                     SELECT 1 FROM shs_student_elective_memberships
                     WHERE enrollment_id = %s AND term_name = %s AND year_id = %s AND status = 'ACTIVE'
@@ -3443,6 +3453,7 @@ def shs_electives():
                 """, (enrollment_id, selected_term_name, year_id))
                 if cur.fetchone():
                     term_status = "APPROVED"
+
 
         return render_template("student_shs_electives.html",
             student=student,
