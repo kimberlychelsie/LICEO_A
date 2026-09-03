@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block title %}SHS Elective Requests{% endblock %}
+{% block content %}
+<style>
+    :root { --ma-primary: #1a3a8f; --ma-gold: #facc15; --ma-bg: #f8fafc; --ma-card: #ffffff; --ma-border: rgba(26,58,143,0.1); --ma-text: #0f172a; --ma-muted: #64748b; --ma-accent: #3b82f6; }
+    .ba-container { max-width: 1400px; margin: 0 auto; padding: 32px 24px; }
+    
+    /* ── Premium Card Header ── */
+    .hero-banner {
+        background: linear-gradient(135deg, #1a3a8f 0%, #0c2461 100%);
+        border-radius: 24px;
+        padding: 32px 40px;
+        color: white;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 30px rgba(26, 58, 143, 0.2);
+        position: relative;
+        overflow: hidden;
+    }
+    .hero-banner::before { content:''; position:absolute; top:-50px; right:-30px; width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,0.05); }
+    .hero-content h1 { font-size: 2.2rem; font-weight: 900; letter-spacing: -0.02em; margin: 0 0 12px 0; line-height: 1; }
+    .hero-content h1 span { color: var(--ma-gold); }
+    .hero-content p { font-size: 1rem; opacity: 0.9; font-weight: 500; margin: 0; line-height: 1.5; max-width: 600px; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); backdrop-filter: blur(4px); border-radius: 8px; padding: 6px 14px; font-size: 0.85rem; font-weight: 600; margin-top: 16px; }
+    
+    .modern-card { background: var(--ma-card); border: 1px solid var(--ma-border); border-radius: 20px; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 24px; }
+    .modern-card h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+
+    .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+    .btn-outline {
+        background: transparent; border: 1.5px solid #e2e8f0; color: var(--ma-text);
+        padding: 8px 16px; border-radius: 10px; font-weight: 600; cursor: pointer;
+        font-size: 0.85rem; transition: all 0.2s; text-decoration: none;
+    }
+    .btn-outline:hover { border-color: var(--ma-accent); color: var(--ma-accent); }
+    .btn-outline.active { background: var(--ma-primary); color: #fff; border-color: var(--ma-primary); }
+
+    .request-card {
+        background: #fff; border: 1px solid var(--ma-border); border-radius: 16px;
+        padding: 24px; margin-bottom: 16px; transition: all 0.3s;
+    }
+    .request-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+    .request-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+    .student-info h3 { font-size: 1.1rem; font-weight: 800; margin-bottom: 4px; }
+    .student-info .meta { font-size: 0.85rem; color: var(--ma-muted); }
+    .status-badge { display: inline-flex; align-items: center; gap: 5px; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+    .status-pending { background: #fef3c7; color: #d97706; }
+    .status-approved { background: #d1fae5; color: #059669; }
+    .status-revised { background: #dbeafe; color: #1d4ed8; }
+    .status-rejected { background: #fee2e2; color: #dc2626; }
+
+    .items-table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 16px; }
+    .items-table th {
+        background: #f1f5f9; padding: 10px 14px; text-align: left;
+        font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: 0.06em; color: var(--ma-muted);
+    }
+    .items-table th:first-child { border-radius: 8px 0 0 0; }
+    .items-table th:last-child { border-radius: 0 8px 0 0; }
+    .items-table td { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; font-size: 0.88rem; }
+
+    .capacity-mini { display: inline-flex; align-items: center; gap: 6px; }
+    .cap-bar { width: 60px; height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden; display: inline-block; }
+    .cap-fill { height: 100%; border-radius: 3px; }
+
+    .request-actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .btn-primary { background: var(--ma-primary); color: #fff; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 0.88rem; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px;}
+    .btn-primary:hover { background: #142e75; }
+    .btn-approve { background: #059669; }
+    .btn-approve:hover { background: #047857; }
+    .btn-sm { padding: 8px 16px; font-size: 0.82rem; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 4px; }
+    .btn-warn { background: #fef3c7; color: #d97706; }
+    .btn-warn:hover { background: #fde68a; }
+    .btn-danger { background: #fee2e2; color: #dc2626; }
+    .btn-danger:hover { background: #fecaca; }
+
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--ma-muted); }
+    .empty-state h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; color: var(--ma-text); }
+
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 9999; justify-content: center; align-items: center; }
+    .modal-overlay.show { display: flex; }
+    .modal-box { background: #fff; border-radius: 20px; padding: 32px; width: 90%; max-width: 500px; box-shadow: 0 25px 60px rgba(0,0,0,0.15); animation: modalIn 0.3s ease; }
+    @keyframes modalIn { from { opacity: 0; transform: scale(0.95) translateY(10px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+    .modal-box h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: 16px; }
+    .modal-box textarea { width: 100%; padding: 12px; border: 1px solid #e2e8f0; border-radius: 10px; font-family: inherit; font-size: 0.9rem; min-height: 100px; resize: vertical; }
+    .modal-box textarea:focus { outline: none; border-color: var(--ma-accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+    .btn-ghost { background: #f1f5f9; color: var(--ma-text); border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; }
+
+    @media (max-width: 768px) { 
+        .ba-container { 
+            padding: calc(24px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(80px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left)); 
+        }
+        .hero-banner { padding: 24px 20px; border-radius: 16px; margin-bottom: 16px; }
+        .hero-content h1 { font-size: 1.75rem; } 
+        .hero-content p { font-size: 0.9rem; }
+        .modern-card { padding: 20px 16px; border-radius: 16px; }
+        .modern-card h2 { font-size: 1.2rem; }
+        .request-card { padding: 16px; }
+        .request-header { flex-direction: column; align-items: flex-start; gap: 8px; }
+        .request-actions { flex-direction: column; width: 100%; gap: 12px; }
+        .btn-primary, .btn-sm { width: 100%; }
+        
+        .items-table { display: block; overflow-x: auto; white-space: nowrap; }
+    }
+</style>
+
+<div class="ba-container">
+    <div class="hero-banner">
+        <div class="hero-content">
+            <h1>Elective <span>Requests</span></h1>
+            <p>Review and approve student elective selection requests. Verify capacity and schedule compatibility before approving.</p>
+            {% if school_year_label %}
+            <div class="hero-badge">{{ school_year_label }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not year_id %}
+    <div class="modern-card">
+        <div class="empty-state">
+            <h3>No Active School Year</h3>
+            <p>Please set an active school year first.</p>
+        </div>
+    </div>
+    {% else %}
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        {% for s in ['PENDING', 'APPROVED', 'REVISED', 'REJECTED'] %}
+        <a href="{{ url_for('registrar.shs_requests', status=s) }}" class="btn-outline {% if filter_status == s %}active{% endif %}">{{ s }}</a>
+        {% endfor %}
+    </div>
+
+    {% if requests_list %}
+    {% for req in requests_list %}
+    <div class="request-card">
+        <div class="request-header">
+            <div class="student-info">
+                <h3>{{ req.student_name }}</h3>
+                <div class="meta">{{ req.grade_level }} · {{ req.term_name }} · Submitted {{ req.submitted_at.strftime('%b %d, %Y %I:%M %p') if req.submitted_at else '—' }}</div>
+            </div>
+            <span class="status-badge status-{{ req.status|lower }}">{{ req.status }}</span>
+        </div>
+
+        {% if req.revision_reason and req.status == 'REVISED' %}
+        <div style="background:#fef3c7; border:1px solid #fde68a; border-radius:10px; padding:12px 16px; margin-bottom:14px; font-size:0.88rem;">
+            <strong>Revision Reason:</strong> {{ req.revision_reason }}
+        </div>
+        {% endif %}
+
+        {% if req['items'] %}
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Group Code</th>
+                    <th>Subject</th>
+                    <th>Teacher</th>
+                    <th>Capacity</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in req['items'] %}
+                <tr>
+                    <td><strong>{{ item.group_code }}</strong></td>
+                    <td>{{ item.subject_name }}</td>
+                    <td>{{ item.teacher_name }}</td>
+                    <td>
+                        <div class="capacity-mini">
+                            {% set pct = ((item.enrolled_count / item.capacity) * 100) if item.capacity > 0 else 0 %}
+                            <span class="cap-bar">
+                                <span class="cap-fill" style="width:{{ 100 if pct > 100 else pct }}%; background:{% if pct >= 90 %}#ef4444{% elif pct >= 70 %}#f59e0b{% else %}#22c55e{% endif %};"></span>
+                            </span>
+                            <span style="font-size:0.8rem;">{{ item.enrolled_count }}/{{ item.capacity }}</span>
+                        </div>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endif %}
+
+        {% if req.status == 'PENDING' %}
+        <div class="request-actions">
+            <form method="POST" style="display:inline;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="approve">
+                <input type="hidden" name="request_id" value="{{ req.request_id }}">
+                <button type="submit" class="btn-primary btn-approve" onclick="return confirm('Approve this elective request?')">Approve</button>
+            </form>
+            <button class="btn-sm btn-warn" onclick="openRevisionModal({{ req.request_id }})">Return for Revision</button>
+            <form method="POST" style="display:inline;">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="action" value="reject">
+                <input type="hidden" name="request_id" value="{{ req.request_id }}">
+                <button type="submit" class="btn-sm btn-danger" onclick="return confirm('Reject this request?')">Reject</button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="modern-card">
+        <div class="empty-state">
+            <h3>No {{ filter_status }} Requests</h3>
+            <p>There are no elective requests with status "{{ filter_status }}" at this time.</p>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+
+<!-- Revision Modal -->
+<div class="modal-overlay" id="revisionModal">
+    <div class="modal-box">
+        <h3>Return for Revision</h3>
+        <p style="font-size:0.88rem; color:var(--ma-muted); margin-bottom:14px;">Provide a reason so the student knows what to change.</p>
+        <form method="POST" id="revisionForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="return_revision">
+            <input type="hidden" name="request_id" id="rev_request_id">
+            <textarea name="revision_reason" placeholder="e.g. Schedule conflict detected. Please choose a different Physics group." required></textarea>
+            <div class="modal-actions">
+                <button type="button" class="btn-ghost" onclick="document.getElementById('revisionModal').classList.remove('show')">Cancel</button>
+                <button type="submit" class="btn-primary">Return to Student</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openRevisionModal(requestId) {
+    document.getElementById('rev_request_id').value = requestId;
+    document.getElementById('revisionModal').classList.add('show');
+}
+document.getElementById('revisionModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('show');
+});
+</script>
+{% endblock %}

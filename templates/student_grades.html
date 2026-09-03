@@ -80,7 +80,7 @@
         border: 1px solid rgba(255, 255, 255, 0.2);
         border-radius: 18px;
         padding: 6px;
-        min-width: 320px;
+        min-width: 380px;
         z-index: 1;
     }
 
@@ -223,16 +223,36 @@
         </div>
         
         <div class="term-selector-wrap">
-            <select class="term-select" onchange="window.location.href='?enrollment_id=' + this.value">
+            <select class="term-select" onchange="var parts = this.value.split('|'); updateFilters(parts[0], parts[1]);">
                 {% for e in all_enrollments %}
-                <option value="{{ e.enrollment_id }}" {% if e.enrollment_id == selected_enrollment_id %}selected{% endif %}>
-                    {{ e.school_year if e.school_year else 'Current' }} : {{ e.grade_level_name or e.grade_level }}
-                    {% if e.section_name %} • {{ e.section_name }}{% endif %}
-                </option>
+                    {% if available_terms and e.enrollment_id == selected_enrollment_id %}
+                        <option value="{{ e.enrollment_id }}|all" {% if e.enrollment_id == selected_enrollment_id and selected_term == 'all' %}selected{% endif %}>
+                            {{ e.school_year if e.school_year else 'Current' }} : {{ e.grade_level_name or e.grade_level }}{% if e.section_name %} • {{ e.section_name }}{% endif %} (All Terms)
+                        </option>
+                        {% for t in available_terms %}
+                        <option value="{{ e.enrollment_id }}|{{ t }}" {% if e.enrollment_id == selected_enrollment_id and selected_term == t %}selected{% endif %}>
+                            {{ e.school_year if e.school_year else 'Current' }} : {{ e.grade_level_name or e.grade_level }}{% if e.section_name %} • {{ e.section_name }}{% endif %} ({{ t }} Term)
+                        </option>
+                        {% endfor %}
+                    {% else %}
+                        <option value="{{ e.enrollment_id }}|" {% if e.enrollment_id == selected_enrollment_id %}selected{% endif %}>
+                            {{ e.school_year if e.school_year else 'Current' }} : {{ e.grade_level_name or e.grade_level }}{% if e.section_name %} • {{ e.section_name }}{% endif %}
+                        </option>
+                    {% endif %}
                 {% endfor %}
             </select>
         </div>
     </header>
+
+    <script>
+        function updateFilters(enrollmentId, termFilter) {
+            let url = '?enrollment_id=' + enrollmentId;
+            if (termFilter) {
+                url += '&term_filter=' + termFilter;
+            }
+            window.location.href = url;
+        }
+    </script>
 
     {% if grade_data %}
     <div class="grades-card">
@@ -252,20 +272,41 @@
                     <tr>
                         <td>
                             <span class="subject-name">{{ subj.subject_name }}</span>
+                            {% if subj.elective_term %}
+                            <span style="display:inline-block; background:#ede9fe; color:#7c3aed; font-size:0.65rem; font-weight:700; padding:2px 8px; border-radius:6px; margin-left:6px; vertical-align:middle;">📚 {{ subj.elective_term }} Term Elective</span>
+                            {% endif %}
                         </td>
                         
+                        {% if subj.elective_term and subj.elective_term != '1st' %}
+                        <td class="grade-cell" style="color: #cbd5e1; background: #f8fafc;">—</td>
+                        {% else %}
                         <td class="grade-cell {% if subj.grades.get('1st') %}{% if subj.grades['1st'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
                             {{ subj.grades.get('1st') if subj.grades.get('1st') else '' }}
                         </td>
+                        {% endif %}
+
+                        {% if subj.elective_term and subj.elective_term != '2nd' %}
+                        <td class="grade-cell" style="color: #cbd5e1; background: #f8fafc;">—</td>
+                        {% else %}
                         <td class="grade-cell {% if subj.grades.get('2nd') %}{% if subj.grades['2nd'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
                             {{ subj.grades.get('2nd') if subj.grades.get('2nd') else '' }}
                         </td>
+                        {% endif %}
+
+                        {% if subj.elective_term and subj.elective_term != '3rd' %}
+                        <td class="grade-cell" style="color: #cbd5e1; background: #f8fafc;">—</td>
+                        {% else %}
                         <td class="grade-cell {% if subj.grades.get('3rd') %}{% if subj.grades['3rd'] >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
                             {{ subj.grades.get('3rd') if subj.grades.get('3rd') else '' }}
                         </td>
+                        {% endif %}
                         
                         <td class="grade-cell final-cell {% if subj.final_grade %}{% if subj.final_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}{% else %}grade-empty{% endif %}">
-                            {{ subj.final_grade if subj.final_grade else '' }}
+                            {% if subj.elective_term %}
+                                <span style="color: #cbd5e1;">—</span>
+                            {% else %}
+                                {{ subj.final_grade if subj.final_grade else '' }}
+                            {% endif %}
                         </td>
                     </tr>
                     {% endfor %}

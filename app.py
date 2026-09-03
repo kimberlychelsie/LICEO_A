@@ -277,13 +277,40 @@ def inject_student_subjects():
 
                 # 3. Only show subjects if the enrollment year matches the active year
                 if enr['year_id'] == active_year_id and active_year_id is not None:
+                    # Determine the current active term based on today's date
+                    from datetime import date
+                    today = date.today()
+                    cursor.execute("""
+                        SELECT period_name FROM grading_period_ranges
+                        WHERE branch_id = %s AND year_id = %s
+                          AND start_date <= %s AND end_date >= %s
+                        ORDER BY start_date LIMIT 1
+                    """, (enr['branch_id'], active_year_id, today, today))
+                    active_term_row = cursor.fetchone()
+                    active_term = active_term_row['period_name'] if active_term_row else None
+
                     cursor.execute("""
                         SELECT sub.subject_id, sub.name as subject_name
                         FROM section_teachers st
                         JOIN subjects sub ON st.subject_id = sub.subject_id
                         WHERE st.section_id = %s AND st.year_id = %s
+                          AND (
+                            COALESCE(sub.subject_type, 'CORE') = 'CORE'
+                            OR (
+                              sub.subject_type = 'ELECTIVE'
+                              AND EXISTS (
+                                SELECT 1 FROM shs_student_elective_memberships m
+                                JOIN shs_elective_offerings o ON m.offering_id = o.offering_id
+                                WHERE m.enrollment_id = %s
+                                  AND m.year_id = %s
+                                  AND m.status = 'ACTIVE'
+                                  AND o.section_teacher_id = st.id
+                                  AND (%s IS NULL OR m.term_name = %s)
+                              )
+                            )
+                          )
                         ORDER BY sub.name
-                    """, (enr['section_id'], active_year_id))
+                    """, (enr['section_id'], active_year_id, enrollment_id, active_year_id, active_term, active_term))
                     subjects = cursor.fetchall()
                     return dict(student_global_subjects=subjects)
         except:

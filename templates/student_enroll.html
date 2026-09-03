@@ -232,6 +232,7 @@
         }
 
         @media(max-width:860px) {
+
             .c8,
             .c7,
             .c6,
@@ -526,14 +527,14 @@
                 </div>
             </div>
             {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for category, msg in messages %}
+            {% if messages %}
+            {% for category, msg in messages %}
             <div class="flash {{ 'success' if category == 'success' else 'error' }}">
                 {{ msg }}
             </div>
-        {% endfor %}
-    {% endif %}
-{% endwith %}
+            {% endfor %}
+            {% endif %}
+            {% endwith %}
 
             {% if message %}
             <div class="flash error">{{ message }}</div>
@@ -547,7 +548,8 @@
                     <strong style="display:block; margin-bottom:4px; font-size:0.95rem;">
                         We found an existing student record with similar information
                     </strong>
-                    <span style="font-size:0.85rem; color:#7f1d1d;">Matched because: {{ duplicate_reason }}.</span>
+                    <span style="font-size:0.85rem; color:#7f1d1d;">Matched because: {{ duplicate_reason | safe
+                        }}</span>
                     <br><br>
                     <span style="font-size:0.85rem;">
                         If you are a <strong>returning student</strong>, please use the
@@ -559,8 +561,26 @@
             </div>
             {% endif %}
 
+            <div id="duplicateWarning" class="flash error"
+                style="display:none; margin:16px 24px 0; align-items:flex-start; gap:12px; background:#fef2f2; border:2px solid #fca5a5; border-radius:12px; padding:16px 18px;">
+                <span style="font-size:1.6rem; line-height:1;">🚫</span>
+                <div>
+                    <strong style="display:block; margin-bottom:4px; font-size:0.95rem;">
+                        We found an existing student record with similar information
+                    </strong>
+                    <span id="duplicateDetail" style="font-size:0.85rem; color:#7f1d1d;"></span>
+                    <br><br>
+                    <span style="font-size:0.85rem;">
+                        If you are a <strong>returning student</strong>, please use the
+                        <a href="/branch/{{ branch.branch_id }}" style="color:#1d4ed8; font-weight:700;">
+                            Continuing Student
+                        </a> option instead. If you believe this is an error, please visit the school office directly.
+                    </span>
+                </div>
+            </div>
+
             <form method="post" enctype="multipart/form-data" id="enrollForm" data-branch-id="{{ branch.branch_id }}">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
                 <!-- ══ ENROLLMENT TYPE ══ -->
                 <div class="section" style="margin-top:20px">
@@ -575,7 +595,9 @@
                             <div class="c3">
                                 <div class="field">
                                     <label>Enrollment Date <span class="req">*</span></label>
-                                    <input type="date" id="enroll_date" name="enroll_date" required readonly style="background-color: #f1f5f9; cursor: not-allowed;" value="{{ today_date }}" />
+                                    <input type="date" id="enroll_date" name="enroll_date" required readonly
+                                        style="background-color: #f1f5f9; cursor: not-allowed;"
+                                        value="{{ today_date }}" />
                                     <small>Defaults to today</small>
                                 </div>
                             </div>
@@ -611,7 +633,8 @@
                                             <input type="radio" name="enroll_type" id="et_new" value="New"> New
                                         </label>
                                         <label class="pill">
-                                            <input type="radio" name="enroll_type" id="et_transferee" value="Transferee"> Transferee
+                                            <input type="radio" name="enroll_type" id="et_transferee"
+                                                value="Transferee"> Transferee
                                         </label>
                                     </div>
                                 </div>
@@ -623,13 +646,16 @@
                                     <label>Semester <span class="req">*</span></label>
                                     <div class="pill-row">
                                         <label class="pill">
-                                            <input type="radio" name="enroll_semester" value="First Semester"> 1st Semester
+                                            <input type="radio" name="enroll_semester" value="First Semester"> 1st
+                                            Semester
                                         </label>
                                         <label class="pill">
-                                            <input type="radio" name="enroll_semester" value="Second Semester"> 2nd Semester
+                                            <input type="radio" name="enroll_semester" value="Second Semester"> 2nd
+                                            Semester
                                         </label>
                                     </div>
-                                    <small style="color:var(--primary); font-weight:600;">Select which semester you are enrolling for</small>
+                                    <small style="color:var(--primary); font-weight:600;">Select which semester you are
+                                        enrolling for</small>
                                 </div>
                             </div>
 
@@ -648,55 +674,44 @@
                             <div class="c4">
                                 <div class="field">
                                     <label>First Name <span class="req">*</span></label>
-                                    <input type="text"
-                                           id="student_first_name"
-                                           name="student_first_name"
-                                           placeholder="First Name"
-                                           required
-                                           maxlength="50"
-                                           oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')" />
+                                    <input type="text" id="student_first_name" name="student_first_name"
+                                        placeholder="First Name" required maxlength="50"
+                                        oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')" />
                                 </div>
                             </div>
-                            
+
                             <div class="c4">
                                 <div class="field">
                                     <label>Middle Name</label>
-                                    <input type="text"
-                                           id="student_middle_name"
-                                           name="student_middle_name"
-                                           placeholder="Middle Name"
-                                           maxlength="50"
-                                           oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')" />
+                                    <input type="text" id="student_middle_name" name="student_middle_name"
+                                        placeholder="Middle Name" maxlength="50"
+                                        oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')" />
                                 </div>
                             </div>
-                            
+
                             <div class="c4">
                                 <div class="field">
                                     <label>Last Name <span class="req">*</span></label>
-                                    <input type="text"
-                                           id="student_last_name"
-                                           name="student_last_name"
-                                           placeholder="Last Name"
-                                           required
-                                           maxlength="50"
-                                           oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')" />
+                                    <input type="text" id="student_last_name" name="student_last_name"
+                                        placeholder="Last Name" required maxlength="50"
+                                        oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')" />
                                 </div>
                             </div>
                             <div class="c5">
                                 <div class="field">
-                                    <label>Learner Reference Number (LRN) <span class="req">*</span></label>
-                                    <input type="text" id="field_lrn" name="lrn"
-                                        placeholder="12-digit LRN" maxlength="12" minlength="12"
-                                        inputmode="numeric" pattern="\d{12}" required
+                                    <label>Learner Reference Number (LRN)</label>
+                                    <input type="text" id="field_lrn" name="lrn" placeholder="12-digit LRN"
+                                        maxlength="12" minlength="12" inputmode="numeric" pattern="\d{12}"
                                         oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
-                                    <small>Numbers only, exactly 12 digits</small>
+                                    <small>Numbers only, exactly 12 digits (Optional)</small>
                                 </div>
                             </div>
 
                             <div class="c4">
                                 <div class="field">
                                     <label>Grade Level / Strand <span class="req">*</span></label>
-                                    <select name="grade_level" required>
+                                    <select name="grade_level" id="grade_level_select" required
+                                        onchange="toggleElectiveField(this.value)">
                                         <option value="" disabled selected>-- Select --</option>
                                         {% for g in grade_levels %}
                                         <option value="{{ g.name }}">{{ g.name }}</option>
@@ -704,6 +719,19 @@
                                     </select>
                                 </div>
                             </div>
+
+                            <!-- SHS Elective Field (Grade 11/12 only) -->
+                            <div class="c4" id="elective_field_wrapper" style="display:none;">
+                                <div class="field">
+                                    <label>SHS PATHWAY <span class="req" id="elective_req_star"
+                                            style="display:none;">*</span></label>
+                                    <select name="shs_track" id="shs_track_select">
+                                        <option value="">-- Select Pathway --</option>
+                                    </select>
+                                    <small>Only required for Grade 11 &amp; 12 students</small>
+                                </div>
+                            </div>
+
                             <div class="c4">
                                 <div class="field">
                                     <label>Birthday <span class="req">*</span></label>
@@ -715,8 +743,9 @@
                             <div class="c4">
                                 <div class="field">
                                     <label>Birthplace <span class="req">*</span></label>
-                                    <input type="text" name="birthplace" placeholder="City, Province" required minlength="3" maxlength="100"
-                                         oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s,]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',')" />
+                                    <input type="text" name="birthplace" placeholder="City, Province" required
+                                        minlength="3" maxlength="100"
+                                        oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s,]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',')" />
                                 </div>
                             </div>
 
@@ -724,20 +753,17 @@
                                 <div class="field">
                                     <label>Address <span class="req">*</span></label>
                                     <input type="text" name="address"
-                                        placeholder="House No., Street, Barangay, City, Province"
-                                        required minlength="10" maxlength="255"
+                                        placeholder="House No., Street, Barangay, City, Province" required
+                                        minlength="10" maxlength="255"
                                         oninput="this.value = this.value.replace(/[^A-Za-z0-9ñÑ\s,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',').replace(/--+/g, '-')" />
                                 </div>
                             </div>
                             <div class="c4">
                                 <div class="field">
                                     <label>Cellphone No. <span class="req">*</span></label>
-                                    <input type="tel" name="contact_number"
-                                            pattern="^09\d{9}$"
-                                            maxlength="11" minlength="11"
-                                            placeholder="09xxxxxxxxx" required
-                                            inputmode="numeric"
-                                            oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
+                                    <input type="tel" name="contact_number" pattern="^09\d{9}$" maxlength="11"
+                                        minlength="11" placeholder="09xxxxxxxxx" required inputmode="numeric"
+                                        oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
                                     <small>Numbers only, must start with 09</small>
                                 </div>
                             </div>
@@ -757,9 +783,8 @@
                             <div class="c8">
                                 <div class="field">
                                     <label>Email Address <span class="req">*</span></label>
-                                    <input type="email" name="email" placeholder="username@domain.com" required 
+                                    <input type="email" name="email" placeholder="username@domain.com" required
                                         minlength="5" maxlength="60"
-                                        pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
                                         oninput="this.value = this.value.replace(/[^a-zA-Z0-9@._-]/g, '').replace(/\.\.+/g, '.').replace(/--+/g, '-').replace(/__+/g, '_').replace(/(@.*)@/g, '$1')"
                                         title="Please enter a valid email address (e.g. username@domain.com)" />
                                     <small>Use any valid email; no spaces or special symbols like # % &</small>
@@ -784,14 +809,14 @@
                                     <input type="text" name="father_first_name" maxlength="50">
                                 </div>
                             </div>
-                            
+
                             <div class="c4">
                                 <div class="field">
                                     <label>Father's Middle Name</label>
                                     <input type="text" name="father_middle_name" maxlength="50">
                                 </div>
                             </div>
-                            
+
                             <div class="c4">
                                 <div class="field">
                                     <label>Father's Last Name</label>
@@ -802,20 +827,16 @@
                             <div class="c6">
                                 <div class="field">
                                     <label>Father's Contact</label>
-                                    <input type="tel"
-                                        name="father_contact"
-                                        pattern="^09\d{9}$"
-                                        minlength="11"
-                                        maxlength="11"
-                                        placeholder="09xxxxxxxxx"
-                                        inputmode="numeric"
+                                    <input type="tel" name="father_contact" pattern="^09\d{9}$" minlength="11"
+                                        maxlength="11" placeholder="09xxxxxxxxx" inputmode="numeric"
                                         oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
                                 </div>
                             </div>
                             <div class="c6">
                                 <div class="field">
                                     <label>Father's Occupation</label>
-                                    <input type="text" name="father_occupation" placeholder="e.g., Farmer" maxlength="100"
+                                    <input type="text" name="father_occupation" placeholder="e.g., Farmer"
+                                        maxlength="100"
                                         oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')" />
                                 </div>
                             </div>
@@ -826,14 +847,14 @@
                                     <input type="text" name="mother_first_name" maxlength="50">
                                 </div>
                             </div>
-                            
+
                             <div class="c4">
                                 <div class="field">
                                     <label>Mother's Middle Name</label>
                                     <input type="text" name="mother_middle_name" maxlength="50">
                                 </div>
                             </div>
-                            
+
                             <div class="c4">
                                 <div class="field">
                                     <label>Mother's Last Name (Maiden)</label>
@@ -844,20 +865,16 @@
                             <div class="c6">
                                 <div class="field">
                                     <label>Mother's Contact</label>
-                                    <input type="tel"
-                                            name="mother_contact"
-                                            pattern="^09\d{9}$"
-                                            minlength="11"
-                                            maxlength="11"
-                                            placeholder="09xxxxxxxxx"
-                                            inputmode="numeric"
-                                            oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
+                                    <input type="tel" name="mother_contact" pattern="^09\d{9}$" minlength="11"
+                                        maxlength="11" placeholder="09xxxxxxxxx" inputmode="numeric"
+                                        oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
                                 </div>
                             </div>
                             <div class="c6">
                                 <div class="field">
                                     <label>Mother's Occupation</label>
-                                    <input type="text" name="mother_occupation" placeholder="e.g., Housewife" maxlength="100"
+                                    <input type="text" name="mother_occupation" placeholder="e.g., Housewife"
+                                        maxlength="100"
                                         oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')" />
                                 </div>
                             </div>
@@ -865,51 +882,38 @@
                             <div class="c4">
                                 <div class="field">
                                     <label>Guardian First Name <span class="req">*</span></label>
-                                    <input type="text"
-                                           name="guardian_first_name"
-                                           required
-                                           maxlength="50">
+                                    <input type="text" name="guardian_first_name" required maxlength="50">
                                 </div>
                             </div>
-                            
+
                             <div class="c4">
                                 <div class="field">
                                     <label>Guardian Middle Name</label>
-                                    <input type="text"
-                                           name="guardian_middle_name"
-                                           maxlength="50">
+                                    <input type="text" name="guardian_middle_name" maxlength="50">
                                 </div>
                             </div>
-                            
+
                             <div class="c4">
                                 <div class="field">
                                     <label>Guardian Last Name <span class="req">*</span></label>
-                                    <input type="text"
-                                           name="guardian_last_name"
-                                           required
-                                           maxlength="50">
+                                    <input type="text" name="guardian_last_name" required maxlength="50">
                                 </div>
                             </div>
 
                             <div class="c6">
                                 <div class="field">
                                     <label>Guardian Contact <span class="req">*</span></label>
-                                    <input type="tel" name="guardian_contact"
-                                            pattern="^09\d{9}$"
-                                            maxlength="11" minlength="11"
-                                            placeholder="09xxxxxxxxx" required
-                                            inputmode="numeric"
-                                            oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
+                                    <input type="tel" name="guardian_contact" pattern="^09\d{9}$" maxlength="11"
+                                        minlength="11" placeholder="09xxxxxxxxx" required inputmode="numeric"
+                                        oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
                                 </div>
                             </div>
 
                             <div class="c6">
                                 <div class="field">
                                     <label>Guardian Email <span class="req">*</span></label>
-                                    <input type="email" name="guardian_email"
-                                        placeholder="username@domain.com" required 
+                                    <input type="email" name="guardian_email" placeholder="username@domain.com" required
                                         minlength="5" maxlength="60"
-                                        pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
                                         oninput="this.value = this.value.replace(/[^a-zA-Z0-9@._-]/g, '').replace(/\.\.+/g, '.').replace(/--+/g, '-').replace(/__+/g, '_').replace(/(@.*)@/g, '$1')"
                                         title="Please enter a valid email address (e.g. username@domain.com)" />
                                 </div>
@@ -929,7 +933,8 @@
                             <div class="c12">
                                 <div class="field">
                                     <label>Last School Attended <span class="req">*</span></label>
-                                    <input type="text" name="previous_school" placeholder="School Name" required maxlength="100"
+                                    <input type="text" name="previous_school" placeholder="School Name" required
+                                        maxlength="100"
                                         oninput="this.value = this.value.replace(/[^A-Za-z\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')" />
                                 </div>
                             </div>
@@ -947,50 +952,45 @@
                     <div class="section-body">
                         <div class="grid">
 
-                             <div class="c6">
-                                 <div class="field">
-                                     <label>PSA Birth Certificate</label>
-                                     <input type="file" name="psa_birth_cert"
-                                         accept=".pdf,.jpg,.jpeg,.png" />
-                                     <small>Photocopy / Original</small>
-                                 </div>
-                             </div>
- 
-                             <div class="c6">
-                                 <div class="field">
-                                     <label>Baptismal Certificate</label>
-                                     <input type="file" name="baptismal_cert"
-                                         accept=".pdf,.jpg,.jpeg,.png" />
-                                     <small>Photocopy / Original</small>
-                                 </div>
-                             </div>
- 
-                             <div class="c6">
-                                 <div class="field">
-                                     <label>Card / Form 138</label>
-                                     <input type="file" name="form_138"
-                                         accept=".pdf,.jpg,.jpeg,.png" />
-                                     <small>Latest report card</small>
-                                 </div>
-                             </div>
- 
-                             <div class="c6">
-                                 <div class="field">
-                                     <label>Good Moral Certificate</label>
-                                     <input type="file" name="good_moral"
-                                         accept=".pdf,.jpg,.jpeg,.png" />
-                                     <small>Certificate from previous school</small>
-                                 </div>
-                             </div>
- 
-                             <div class="c6">
-                                 <div class="field">
-                                     <label>Form 137</label>
-                                     <input type="file" name="form_137"
-                                         accept=".pdf,.jpg,.jpeg,.png" />
-                                     <small>Permanent record / cumulative form</small>
-                                 </div>
-                             </div>
+                            <div class="c6">
+                                <div class="field">
+                                    <label>PSA Birth Certificate</label>
+                                    <input type="file" name="psa_birth_cert" accept=".pdf,.jpg,.jpeg,.png" />
+                                    <small>Photocopy / Original</small>
+                                </div>
+                            </div>
+
+                            <div class="c6">
+                                <div class="field">
+                                    <label>Baptismal Certificate</label>
+                                    <input type="file" name="baptismal_cert" accept=".pdf,.jpg,.jpeg,.png" />
+                                    <small>Photocopy / Original</small>
+                                </div>
+                            </div>
+
+                            <div class="c6">
+                                <div class="field">
+                                    <label>Card / Form 138</label>
+                                    <input type="file" name="form_138" accept=".pdf,.jpg,.jpeg,.png" />
+                                    <small>Latest report card</small>
+                                </div>
+                            </div>
+
+                            <div class="c6">
+                                <div class="field">
+                                    <label>Good Moral Certificate</label>
+                                    <input type="file" name="good_moral" accept=".pdf,.jpg,.jpeg,.png" />
+                                    <small>Certificate from previous school</small>
+                                </div>
+                            </div>
+
+                            <div class="c6">
+                                <div class="field">
+                                    <label>Form 137</label>
+                                    <input type="file" name="form_137" accept=".pdf,.jpg,.jpeg,.png" />
+                                    <small>Permanent record / cumulative form</small>
+                                </div>
+                            </div>
 
                         </div>
                     </div>
@@ -1018,8 +1018,7 @@
                                 by law or authorized by the National Privacy Commission.
                             </p>
                             <div class="privacy-check-row">
-                                <input type="checkbox" name="privacy_consent"
-                                    id="privacyConsent" value="1" required />
+                                <input type="checkbox" name="privacy_consent" id="privacyConsent" value="1" required />
                                 <label for="privacyConsent">
                                     I have read and understood the above Data Privacy statement, and I freely give my
                                     consent to the collection and processing of my personal data.
@@ -1032,21 +1031,36 @@
                 </div>
 
                 <!-- ══ SUBMIT LOADING OVERLAY ══ -->
-                <div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15, 23, 42, 0.85); backdrop-filter:blur(8px); z-index:99999; flex-direction:column; align-items:center; justify-content:center; color:#fff; text-align:center; padding:24px;">
-                    <div class="spinner-ring" style="width:64px; height:64px; border:6px solid rgba(255,255,255,0.2); border-top-color:#3b82f6; border-radius:50%; animation:spin 0.9s linear infinite; margin-bottom:24px;"></div>
-                    <h2 style="font-size:1.75rem; font-weight:900; margin:0 0 10px; color:#fff; letter-spacing:-0.02em;">Submitting Enrollment Form...</h2>
-                    <p style="font-size:1rem; opacity:0.9; max-width:480px; line-height:1.6; color:#cbd5e1; margin:0; font-weight:500;">Please wait while your student details and document attachments are being securely processed and uploaded.</p>
+                <div id="loadingOverlay"
+                    style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; background:rgba(15, 23, 42, 0.85); backdrop-filter:blur(8px); z-index:99999; flex-direction:column; align-items:center; justify-content:center; color:#fff; text-align:center; padding:24px;">
+                    <div class="spinner-ring"
+                        style="width:64px; height:64px; border:6px solid rgba(255,255,255,0.2); border-top-color:#3b82f6; border-radius:50%; animation:spin 0.9s linear infinite; margin-bottom:24px;">
+                    </div>
+                    <h2
+                        style="font-size:1.75rem; font-weight:900; margin:0 0 10px; color:#fff; letter-spacing:-0.02em;">
+                        Submitting Enrollment Form...</h2>
+                    <p
+                        style="font-size:1rem; opacity:0.9; max-width:480px; line-height:1.6; color:#cbd5e1; margin:0; font-weight:500;">
+                        Please wait while your student details and document attachments are being securely processed and
+                        uploaded.</p>
                 </div>
                 <style>
-                    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                    @keyframes spin {
+                        0% {
+                            transform: rotate(0deg);
+                        }
+
+                        100% {
+                            transform: rotate(360deg);
+                        }
+                    }
                 </style>
 
                 <!-- ══ SUBMIT FOOTER ══ -->
                 <div class="form-footer">
 
                     <!-- Duplicate warning banner (shown by AJAX) -->
-                    <div id="dupWarning"
-                        style="display:none; width:100%; background:#fef2f2; border:2px solid #fca5a5;
+                    <div id="dupWarning" style="display:none; width:100%; background:#fef2f2; border:2px solid #fca5a5;
                                border-radius:12px; padding:14px 18px; margin-bottom:12px;">
                         <div style="display:flex; align-items:flex-start; gap:12px;">
                             <span style="font-size:1.5rem;">🚫</span>
@@ -1079,32 +1093,37 @@
 
     <script>
         (function () {
-            var branchId  = parseInt(document.getElementById('enrollForm').getAttribute('data-branch-id'), 10);
-            var nameEl    = document.getElementById('field_name');
-            var dobEl     = document.getElementById('field_dob');
-            var lrnEl     = document.getElementById('field_lrn');
+            var branchId = parseInt(document.getElementById('enrollForm').getAttribute('data-branch-id'), 10);
+            var firstNameEl = document.getElementById('student_first_name');
+            var middleNameEl = document.getElementById('student_middle_name');
+            var lastNameEl = document.getElementById('student_last_name');
+            var dobEl = document.getElementById('field_dob');
+            var lrnEl = document.getElementById('field_lrn');
             var enrollDateEl = document.getElementById('enroll_date');
             var submitBtn = document.getElementById('submitBtn');
-            var dupWarn   = document.getElementById('dupWarning');
+            var dupWarn = document.getElementById('dupWarning');
             var dupDetail = document.getElementById('dupDetail');
-            var blocked   = false;
+            var topDupWarn = document.getElementById('duplicateWarning');
+            var topDupDetail = document.getElementById('duplicateDetail');
+            var blocked = false;
+            var blockedReason = '';
 
             /* ── Set enrollment date to today and restrict to today only ── */
             (function initEnrollDate() {
                 var today = new Date();
-                var yyyy  = today.getFullYear();
-                var mm    = String(today.getMonth() + 1).padStart(2, '0');
-                var dd    = String(today.getDate()).padStart(2, '0');
+                var yyyy = today.getFullYear();
+                var mm = String(today.getMonth() + 1).padStart(2, '0');
+                var dd = String(today.getDate()).padStart(2, '0');
                 var todayStr = yyyy + '-' + mm + '-' + dd;
                 if (enrollDateEl) {
                     enrollDateEl.value = todayStr;
-                    enrollDateEl.min   = todayStr;
-                    enrollDateEl.max   = todayStr;
+                    enrollDateEl.min = todayStr;
+                    enrollDateEl.max = todayStr;
                 }
             })();
 
             /* ── Enrollment type pill logic ── */
-            var semRow  = document.getElementById('semRow');
+            var semRow = document.getElementById('semRow');
             var typeRadios = document.querySelectorAll('input[name="enroll_type"]');
 
             function updateSemVisibility() {
@@ -1114,14 +1133,14 @@
                     semRow.style.display = isTransferee ? '' : 'none';
                     if (!isTransferee) {
                         /* Uncheck semester when switching to Old/New */
-                        document.querySelectorAll('input[name="enroll_semester"]').forEach(function(r) {
+                        document.querySelectorAll('input[name="enroll_semester"]').forEach(function (r) {
                             r.checked = false;
                         });
                     }
                 }
             }
 
-            typeRadios.forEach(function(r) {
+            typeRadios.forEach(function (r) {
                 r.addEventListener('change', updateSemVisibility);
             });
             /* ── Set Dynamic Min Age (3 years) ── */
@@ -1137,23 +1156,23 @@
             updateSemVisibility(); // run once on load
 
             /* ── Immediate File Validation ── */
-            document.querySelectorAll('input[type="file"]').forEach(function(input) {
-                input.addEventListener('change', function() {
+            document.querySelectorAll('input[type="file"]').forEach(function (input) {
+                input.addEventListener('change', function () {
                     if (this.files.length > 0) {
                         var file = this.files[0];
                         var allowedExts = ['.pdf', '.jpg', '.jpeg', '.png'];
                         var fileName = file.name.toLowerCase();
                         var isAllowed = allowedExts.some(ext => fileName.endsWith(ext));
-                        
+
                         var maxSizeBytes = 10 * 1024 * 1024; // 10MB
-                        
+
                         if (!isAllowed) {
                             alert('Invalid file type! Only PDF, JPG, JPEG, and PNG are allowed.');
                             input.value = '';
                             if (input.value) { input.type = "text"; input.type = "file"; }
                             return;
                         }
-                        
+
                         if (file.size > maxSizeBytes) {
                             alert('File is too large! Maximum size is 10MB.');
                             input.value = '';
@@ -1167,26 +1186,25 @@
             /* ── Duplicate check ── */
             function setBlocked(val, detail) {
                 blocked = val;
+                blockedReason = val ? (detail || '') : '';
                 if (val) {
-                    dupWarn.style.display = 'block';
-                    dupDetail.textContent = detail || '';
-                    submitBtn.disabled = true;
-                    submitBtn.style.opacity = '0.45';
-                    submitBtn.style.cursor = 'not-allowed';
-                    submitBtn.title = 'Cannot submit — existing record found';
+                    if (dupWarn) dupWarn.style.display = 'block';
+                    if (dupDetail) dupDetail.textContent = detail || '';
+                    if (topDupWarn) topDupWarn.style.display = 'flex';
+                    if (topDupDetail) topDupDetail.textContent = detail || '';
                 } else {
-                    dupWarn.style.display = 'none';
-                    submitBtn.disabled = false;
-                    submitBtn.style.opacity = '';
-                    submitBtn.style.cursor = '';
-                    submitBtn.title = '';
+                    if (dupWarn) dupWarn.style.display = 'none';
+                    if (topDupWarn) topDupWarn.style.display = 'none';
                 }
             }
 
             function runCheck() {
-                var name = nameEl ? nameEl.value.trim() : '';
-                var dob  = dobEl  ? dobEl.value.trim()  : '';
-                var lrn  = lrnEl  ? lrnEl.value.trim()  : '';
+                var fn = firstNameEl ? firstNameEl.value.trim() : '';
+                var mn = middleNameEl ? middleNameEl.value.trim() : '';
+                var ln = lastNameEl ? lastNameEl.value.trim() : '';
+                var name = [fn, mn, ln].filter(Boolean).join(' ');
+                var dob = dobEl ? dobEl.value.trim() : '';
+                var lrn = lrnEl ? lrnEl.value.trim() : '';
                 if (!name && !lrn) { setBlocked(false); return; }
 
                 fetch('/api/check-duplicate', {
@@ -1198,7 +1216,7 @@
                     .then(function (res) {
                         if (res.status === 'blocked') {
                             var reasons = (res.reasons || []).join(', ');
-                            var detail  = 'Matched because: ' + reasons + '.';
+                            var detail = 'Matched because: ' + reasons + '.';
                             if (res.match_grade) detail += ' Existing grade: ' + res.match_grade + '.';
                             setBlocked(true, detail);
                         } else {
@@ -1208,19 +1226,24 @@
                     .catch(function () { /* network error — fail open */ });
             }
 
-            if (lrnEl)  lrnEl.addEventListener('blur', runCheck);
-            if (dobEl)  dobEl.addEventListener('change', runCheck);
-            if (nameEl) nameEl.addEventListener('blur', runCheck);
+            if (lrnEl) lrnEl.addEventListener('blur', runCheck);
+            if (dobEl) dobEl.addEventListener('change', runCheck);
+            if (firstNameEl) firstNameEl.addEventListener('blur', runCheck);
+            if (lastNameEl) lastNameEl.addEventListener('blur', runCheck);
 
-                /* ── Submit validation ── */
-                var isSubmitting = false;
-                document.getElementById('enrollForm').addEventListener('submit', function (e) {
-                    if (isSubmitting) { e.preventDefault(); return false; }
-                    if (blocked) { e.preventDefault(); return false; }
+            /* ── Submit validation ── */
+            var isSubmitting = false;
+            document.getElementById('enrollForm').addEventListener('submit', function (e) {
+                if (isSubmitting) { e.preventDefault(); return false; }
+                if (blocked) {
+                    alert("⚠️ Existing Student Record Detected!\n\n" + (blockedReason || "A student with similar details is already enrolled.") + "\n\nIf you are a returning student, please use the Continuing Student option instead. If you believe this is an error, please visit the school office directly.");
+                    e.preventDefault();
+                    return false;
+                }
 
-                    var errors = [];
-                    var today = new Date();
-                    today.setHours(0,0,0,0);
+                var errors = [];
+                var today = new Date();
+                today.setHours(0, 0, 0, 0);
 
 
 
@@ -1243,7 +1266,7 @@
                 /* Occupation validation */
                 var occInputs = document.querySelectorAll('input[name*="occupation"]');
                 var alphaValidRegex = /^[A-Za-z\s.,-]*$/;
-                occInputs.forEach(function(inp) {
+                occInputs.forEach(function (inp) {
                     if (inp.value && !alphaValidRegex.test(inp.value)) {
                         errors.push('Occupation contains invalid characters.');
                     }
@@ -1254,7 +1277,7 @@
 
                 /* Double space validation */
                 var nameInputs = document.querySelectorAll('input[name*="name"]');
-                nameInputs.forEach(function(inp) {
+                nameInputs.forEach(function (inp) {
                     if (inp.value.includes('  ')) {
                         errors.push('Double spaces are not allowed in name fields.');
                     }
@@ -1263,7 +1286,7 @@
                 /* File Size and Type Validation */
                 var fileInputs = document.querySelectorAll('input[type="file"]');
                 var maxSizeBytes = 10 * 1024 * 1024; // 10MB
-                fileInputs.forEach(function(input) {
+                fileInputs.forEach(function (input) {
                     if (input.files.length > 0) {
                         var file = input.files[0];
                         if (file.size > maxSizeBytes) {
@@ -1271,7 +1294,7 @@
                         }
                         var allowedTypes = ['application/pdf', 'image/jpeg', 'image/pjpeg', 'image/png'];
                         if (allowedTypes.indexOf(file.type) === -1 && !file.name.toLowerCase().endsWith('.jpg') && !file.name.toLowerCase().endsWith('.jpeg') && !file.name.toLowerCase().endsWith('.pdf') && !file.name.toLowerCase().endsWith('.png')) {
-                             errors.push('File "' + (input.name.replace(/_/g, ' ')) + '" has an invalid type. Only PDF, JPG, JPEG, and PNG are allowed.');
+                            errors.push('File "' + (input.name.replace(/_/g, ' ')) + '" has an invalid type. Only PDF, JPG, JPEG, and PNG are allowed.');
                         }
                     }
                 });
@@ -1293,14 +1316,15 @@
                     errors.push('Enrollment date is required.');
                 } else {
                     var edParts = enrollDateVal.split('-');
-                    var ed = new Date(parseInt(edParts[0]), parseInt(edParts[1])-1, parseInt(edParts[2]));
-                    ed.setHours(0,0,0,0);
+                    var ed = new Date(parseInt(edParts[0]), parseInt(edParts[1]) - 1, parseInt(edParts[2]));
+                    ed.setHours(0, 0, 0, 0);
                     if (ed.getTime() !== today.getTime()) {
                         errors.push('Enrollment date must be today\'s date.');
                     }
                 }
 
-                var name = nameEl ? nameEl.value.trim() : '';
+                var firstName = firstNameEl ? firstNameEl.value.trim() : '';
+                var lastName = lastNameEl ? lastNameEl.value.trim() : '';
                 var birthday = dobEl ? dobEl.value : '';
                 var gradeLevel = document.querySelector('select[name="grade_level"]').value;
                 var consent = document.querySelector('input[name="privacy_consent"]:checked');
@@ -1329,9 +1353,16 @@
                     return /^09\d{9}$/.test(num) && num.length === 11;
                 }
 
-                /* Full name */
-                if (name.split(',').length < 2 || name.length < 5) {
-                    errors.push('Please enter the Student\\'s Full Name (at the top of the form) in \\'Last Name, First Name, M.I.\\' format (e.g. Dela Cruz, Juan). Don\\'t forget the comma!');
+                /* Student name validations */
+                if (!firstName) {
+                    errors.push('Student first name is required.');
+                } else if (firstName.length < 2) {
+                    errors.push('Student first name must be at least 2 characters.');
+                }
+                if (!lastName) {
+                    errors.push('Student last name is required.');
+                } else if (lastName.length < 2) {
+                    errors.push('Student last name must be at least 2 characters.');
                 }
 
                 /* LRN — now required, exactly 12 digits numbers only */
@@ -1363,10 +1394,10 @@
                 }
 
                 /* Student detail required fields */
-                if (!gradeLevel)    errors.push('Grade level/strand is required.');
-                if (!birthplace)    errors.push('Birthplace is required.');
-                if (!address)       errors.push('Address is required.');
-                if (!gender)        errors.push('Sex is required.');
+                if (!gradeLevel) errors.push('Grade level/strand is required.');
+                if (!birthplace) errors.push('Birthplace is required.');
+                if (!address) errors.push('Address is required.');
+                if (!gender) errors.push('Sex is required.');
 
                 /* Student contact — required */
                 if (!studentContact) {
@@ -1378,21 +1409,15 @@
                 /* Student email — required */
                 if (!studentEmail) errors.push('Student email address is required.');
 
-                /* Father — contact & occupation required */
-                if (!fatherContact) {
-                    errors.push('Father\'s contact number is required.');
-                } else if (!isValidPHMobile(fatherContact)) {
+                /* Father — optional, validate PH mobile format ONLY if entered */
+                if (fatherContact && !isValidPHMobile(fatherContact)) {
                     errors.push('Father\'s contact must be an 11-digit PH mobile (09XXXXXXXXX).');
                 }
-                if (!fatherOccupation) errors.push('Father\'s occupation is required.');
 
-                /* Mother — contact & occupation required */
-                if (!motherContact) {
-                    errors.push('Mother\'s contact number is required.');
-                } else if (!isValidPHMobile(motherContact)) {
+                /* Mother — optional, validate PH mobile format ONLY if entered */
+                if (motherContact && !isValidPHMobile(motherContact)) {
                     errors.push('Mother\'s contact must be an 11-digit PH mobile (09XXXXXXXXX).');
                 }
-                if (!motherOccupation) errors.push('Mother\'s occupation is required.');
 
                 /* Guardian — required */
                 if (!guardianName) errors.push('Guardian first name is required.');
@@ -1421,12 +1446,7 @@
                 /* Previous school — required */
                 if (!previousSchool) errors.push('Last school attended is required.');
 
-                /* Requirements / Documents — all required */
-                if (!psaFile)       errors.push('PSA Birth Certificate is required.');
-                if (!baptismalFile) errors.push('Baptismal Certificate is required.');
-                if (!form138File)   errors.push('Card / Form 138 is required.');
-                if (!goodMoralFile) errors.push('Good Moral Certificate is required.');
-                if (!form137File)   errors.push('Form 137 is required.');
+                /* Requirements / Documents — optional */
 
                 /* Privacy consent */
                 if (!consent) {
@@ -1435,7 +1455,7 @@
 
                 /* Double hyphen validation */
                 var allTextInputs = document.querySelectorAll('input[type="text"]');
-                allTextInputs.forEach(function(inp) {
+                allTextInputs.forEach(function (inp) {
                     if (inp.value.includes('--')) {
                         errors.push('Consecutive hyphens are not allowed.');
                     }
@@ -1463,28 +1483,114 @@
             });
         })();
         // Set max date for Birthday (Minimum age: 3 years)
-    const dobInput = document.querySelector('input[name="dob"]');
-    if (dobInput) {
-        const today = new Date();
-        const maxDate = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
-        dobInput.setAttribute('max', maxDate.toISOString().split('T')[0]);
-    }
-    
-    // Hide loading overlay when user clicks the browser's Back button
-    window.addEventListener('pageshow', function(event) {
-        if (event.persisted) {
-            var overlay = document.getElementById('loadingOverlay');
-            if (overlay) overlay.style.display = 'none';
-            var submitBtn = document.getElementById('submitBtn');
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.innerText = 'Submit Enrollment';
-                submitBtn.style.opacity = '1';
-                submitBtn.style.cursor = 'pointer';
+        const dobInput = document.querySelector('input[name="dob"]');
+        if (dobInput) {
+            const today = new Date();
+            const maxDate = new Date(today.getFullYear() - 3, today.getMonth(), today.getDate());
+            dobInput.setAttribute('max', maxDate.toISOString().split('T')[0]);
+        }
+
+        // Hide loading overlay when user clicks the browser's Back button
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                var overlay = document.getElementById('loadingOverlay');
+                if (overlay) overlay.style.display = 'none';
+                var submitBtn = document.getElementById('submitBtn');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = 'Submit Enrollment';
+                    submitBtn.style.opacity = '1';
+                    submitBtn.style.cursor = 'pointer';
+                }
+            }
+        });
+
+        /* ── SHS Elective Show/Hide Logic ── */
+        const electiveOfferings = {{ shs_elective_offerings | tojson | safe if shs_elective_offerings else '[]' }};
+        const officialPathways = {{ official_pathways | tojson | safe if official_pathways else '[]' }};
+
+        function toggleElectiveField(gradeValue) {
+            var wrapper = document.getElementById('elective_field_wrapper');
+            var selectEl = document.getElementById('shs_track_select');
+            var reqStar = document.getElementById('elective_req_star');
+            if (!wrapper || !selectEl) return;
+
+            var isSHS = gradeValue && (gradeValue.indexOf('Grade 11') !== -1 || gradeValue.indexOf('Grade 12') !== -1);
+
+            if (isSHS) {
+                // Rebuild select options
+                selectEl.innerHTML = '<option value="">-- Select Pathway --</option>';
+
+                var PATHWAY_DISPLAY = {
+                    'Arts, Social Science, and Humanities': 'Arts, Social Sci & Humanities',
+                    'Science, Technology, Engineering, and Mathematics': 'Science, Tech, Eng & Math',
+                    'Business and Entrepreneurship': 'Business & Entrepreneurship',
+                    'Automotive and Small Engine Technologies': 'Automotive & Small Engine',
+                    'Construction and Building Technology': 'Construction & Building'
+                };
+
+                var pathways = [];
+
+                // 1. If official pathways are configured by Admin in catalog, use them
+                if (officialPathways && officialPathways.length > 0) {
+                    officialPathways.forEach(function (p) {
+                        var name = p.pathway_name;
+                        if (pathways.indexOf(name) === -1) {
+                            pathways.push(name);
+                        }
+                    });
+                } else {
+                    // 2. Fallback to offerings list if pathways catalog is empty
+                    var filtered = electiveOfferings.filter(function (o) {
+                        return o.grade_level_name === gradeValue;
+                    });
+
+                    filtered.forEach(function (o) {
+                        var p = o.pathway || 'General';
+                        if (pathways.indexOf(p) === -1) {
+                            pathways.push(p);
+                        }
+                    });
+                }
+
+                // If still empty (no offerings, no catalog), provide standard default pathways
+                if (pathways.length === 0) {
+                    pathways = [
+                        'Science, Technology, Engineering, and Mathematics',
+                        'Business and Entrepreneurship',
+                        'Arts, Social Science, and Humanities',
+                        'Automotive and Small Engine Technologies',
+                        'Construction and Building Technology'
+                    ];
+                }
+
+                pathways.forEach(function (p) {
+                    var opt = document.createElement('option');
+                    opt.value = p;
+                    opt.textContent = PATHWAY_DISPLAY[p] || p;
+                    selectEl.appendChild(opt);
+                });
+
+                wrapper.style.display = '';
+                selectEl.required = true;
+                if (reqStar) reqStar.style.display = '';
+            } else {
+                wrapper.style.display = 'none';
+                selectEl.value = '';
+                selectEl.required = false;
+                if (reqStar) reqStar.style.display = 'none';
             }
         }
-    });
-</script>
+
+        // Run on page load in case grade is pre-selected
+        document.addEventListener('DOMContentLoaded', function () {
+            var gradeSelect = document.getElementById('grade_level_select');
+            if (gradeSelect && gradeSelect.value) {
+                toggleElectiveField(gradeSelect.value);
+            }
+        });
+
+    </script>
 
 </body>
 

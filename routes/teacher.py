@@ -1781,27 +1781,65 @@ def activity_submissions(activity_id):
             return redirect(url_for("teacher.activities"))
             
         # Get all students enrolled in this section/class
-        cur.execute('''
-            SELECT
-                e.enrollment_id,
-                e.student_first_name,
-                e.student_middle_name,
-                e.student_last_name,
-                u.user_id AS student_user_id
-            FROM enrollments e
-            LEFT JOIN student_accounts sa
-                ON sa.enrollment_id = e.enrollment_id
-            LEFT JOIN users u
-                ON u.username = sa.username
-            WHERE e.section_id = %s
-              AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-              AND e.branch_id = %s
-              AND e.year_id = %s
-            ORDER BY
-                e.student_last_name,
-                e.student_first_name,
-                e.student_middle_name
-        ''', (activity['section_id'], activity['branch_id'], year_id))
+        cur.execute("SELECT subject_type FROM subjects WHERE subject_id = %s", (activity['subject_id'],))
+        sub_row = cur.fetchone()
+        is_elective = (sub_row and sub_row["subject_type"] == "ELECTIVE")
+
+        if is_elective:
+            cur.execute("""
+                SELECT offering_id FROM shs_elective_offerings o
+                JOIN section_teachers st ON o.section_teacher_id = st.id
+                WHERE st.section_id = %s AND st.subject_id = %s AND o.year_id = %s AND o.term_name = %s AND o.status = 'ACTIVE'
+            """, (activity['section_id'], activity['subject_id'], year_id, activity['grading_period']))
+            off_row = cur.fetchone()
+            offering_id = off_row["offering_id"] if off_row else None
+        else:
+            offering_id = None
+
+        if offering_id:
+            cur.execute('''
+                SELECT
+                    e.enrollment_id,
+                    e.student_first_name,
+                    e.student_middle_name,
+                    e.student_last_name,
+                    u.user_id AS student_user_id
+                FROM enrollments e
+                LEFT JOIN student_accounts sa ON sa.enrollment_id = e.enrollment_id
+                LEFT JOIN users u ON u.username = sa.username
+                JOIN shs_student_elective_memberships m ON e.enrollment_id = m.enrollment_id
+                WHERE e.section_id = %s
+                  AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                  AND e.branch_id = %s
+                  AND e.year_id = %s
+                  AND m.offering_id = %s AND m.status = 'ACTIVE'
+                ORDER BY
+                    e.student_last_name,
+                    e.student_first_name,
+                    e.student_middle_name
+            ''', (activity['section_id'], activity['branch_id'], year_id, offering_id))
+        else:
+            cur.execute('''
+                SELECT
+                    e.enrollment_id,
+                    e.student_first_name,
+                    e.student_middle_name,
+                    e.student_last_name,
+                    u.user_id AS student_user_id
+                FROM enrollments e
+                LEFT JOIN student_accounts sa
+                    ON sa.enrollment_id = e.enrollment_id
+                LEFT JOIN users u
+                    ON u.username = sa.username
+                WHERE e.section_id = %s
+                  AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                  AND e.branch_id = %s
+                  AND e.year_id = %s
+                ORDER BY
+                    e.student_last_name,
+                    e.student_first_name,
+                    e.student_middle_name
+            ''', (activity['section_id'], activity['branch_id'], year_id))
         students = cur.fetchall()
         for s in students:
             first_mid = " ".join(filter(None, [s.get("student_first_name"), s.get("student_middle_name")]))
@@ -3026,23 +3064,59 @@ def teacher_exam_results(exam_id):
             flash("Exam not found.", "error")
             return redirect(url_for("teacher.teacher_exams"))
 
-        cur.execute("""
-            SELECT
-                e.enrollment_id,e.student_first_name, e.student_middle_name, e.student_last_name, e.grade_level,
-                r.result_id, r.score, r.total_points, COALESCE(r.status, 'Not Taken') AS status,
-                r.submitted_at, r.started_at, r.tab_switches,
-                (SELECT COUNT(*) FROM exam_tab_switches ts WHERE ts.result_id = r.result_id) AS switch_count,
-                ext.new_due_date AS individual_extension,
-                COALESCE(esp.is_allowed, %s) AS is_allowed
-            FROM enrollments e
-            LEFT JOIN exam_results r ON e.enrollment_id = r.enrollment_id AND r.exam_id = %s
-            LEFT JOIN exam_student_permissions esp ON esp.enrollment_id = e.enrollment_id AND esp.exam_id = %s
-            LEFT JOIN individual_extensions ext ON ext.enrollment_id = e.enrollment_id 
-                 AND ext.item_id = %s AND ext.item_type = %s
-            WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-            AND e.branch_id = %s
-            ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
-        """, (exam['class_mode'] != 'Face-to-Face', exam_id, exam_id, exam_id, exam.get('exam_type', 'exam'), exam['section_id'], branch_id))
+        cur.execute("SELECT subject_type FROM subjects WHERE subject_id = %s", (exam['subject_id'],))
+        sub_row = cur.fetchone()
+        is_elective = (sub_row and sub_row["subject_type"] == "ELECTIVE")
+
+        if is_elective:
+            cur.execute("""
+                SELECT offering_id FROM shs_elective_offerings o
+                JOIN section_teachers st ON o.section_teacher_id = st.id
+                WHERE st.section_id = %s AND st.subject_id = %s AND o.year_id = %s AND o.term_name = %s AND o.status = 'ACTIVE'
+            """, (exam['section_id'], exam['subject_id'], year_id, exam['grading_period']))
+            off_row = cur.fetchone()
+            offering_id = off_row["offering_id"] if off_row else None
+        else:
+            offering_id = None
+
+        if offering_id:
+            cur.execute("""
+                SELECT
+                    e.enrollment_id,e.student_first_name, e.student_middle_name, e.student_last_name, e.grade_level,
+                    r.result_id, r.score, r.total_points, COALESCE(r.status, 'Not Taken') AS status,
+                    r.submitted_at, r.started_at, r.tab_switches,
+                    (SELECT COUNT(*) FROM exam_tab_switches ts WHERE ts.result_id = r.result_id) AS switch_count,
+                    ext.new_due_date AS individual_extension,
+                    COALESCE(esp.is_allowed, %s) AS is_allowed
+                FROM enrollments e
+                LEFT JOIN exam_results r ON e.enrollment_id = r.enrollment_id AND r.exam_id = %s
+                LEFT JOIN exam_student_permissions esp ON esp.enrollment_id = e.enrollment_id AND esp.exam_id = %s
+                LEFT JOIN individual_extensions ext ON ext.enrollment_id = e.enrollment_id 
+                     AND ext.item_id = %s AND ext.item_type = %s
+                JOIN shs_student_elective_memberships m ON e.enrollment_id = m.enrollment_id
+                WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                AND e.branch_id = %s
+                AND m.offering_id = %s AND m.status = 'ACTIVE'
+                ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
+            """, (exam['class_mode'] != 'Face-to-Face', exam_id, exam_id, exam_id, exam.get('exam_type', 'exam'), exam['section_id'], branch_id, offering_id))
+        else:
+            cur.execute("""
+                SELECT
+                    e.enrollment_id,e.student_first_name, e.student_middle_name, e.student_last_name, e.grade_level,
+                    r.result_id, r.score, r.total_points, COALESCE(r.status, 'Not Taken') AS status,
+                    r.submitted_at, r.started_at, r.tab_switches,
+                    (SELECT COUNT(*) FROM exam_tab_switches ts WHERE ts.result_id = r.result_id) AS switch_count,
+                    ext.new_due_date AS individual_extension,
+                    COALESCE(esp.is_allowed, %s) AS is_allowed
+                FROM enrollments e
+                LEFT JOIN exam_results r ON e.enrollment_id = r.enrollment_id AND r.exam_id = %s
+                LEFT JOIN exam_student_permissions esp ON esp.enrollment_id = e.enrollment_id AND esp.exam_id = %s
+                LEFT JOIN individual_extensions ext ON ext.enrollment_id = e.enrollment_id 
+                     AND ext.item_id = %s AND ext.item_type = %s
+                WHERE e.section_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                AND e.branch_id = %s
+                ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
+            """, (exam['class_mode'] != 'Face-to-Face', exam_id, exam_id, exam_id, exam.get('exam_type', 'exam'), exam['section_id'], branch_id))
         results = cur.fetchall() or []
         for r in results:
             last = r.get("student_last_name", "").strip() if r.get("student_last_name") else ""
@@ -3866,15 +3940,42 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
       Quarterly Assessment (QA) = Periodical Exam scores only
     """
 
-    # All students in the section
-    cur.execute("""
-        SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name
-        FROM enrollments e
-        JOIN sections s ON e.section_id = s.section_id
-        WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s
-              AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-        ORDER BY  e.student_last_name, e.student_first_name, e.student_middle_name
-    """, (section_id, branch_id, year_id))
+    # Check if subject is an elective
+    cur.execute("SELECT subject_type FROM subjects WHERE subject_id = %s", (subject_id,))
+    sub_row = cur.fetchone()
+    is_elective = (sub_row and sub_row["subject_type"] == "ELECTIVE")
+
+    if is_elective:
+        cur.execute("""
+            SELECT offering_id FROM shs_elective_offerings o
+            JOIN section_teachers st ON o.section_teacher_id = st.id
+            WHERE st.section_id = %s AND st.subject_id = %s AND o.year_id = %s AND o.term_name = %s AND o.status = 'ACTIVE'
+        """, (section_id, subject_id, year_id, period))
+        off_row = cur.fetchone()
+        offering_id = off_row["offering_id"] if off_row else None
+    else:
+        offering_id = None
+
+    if offering_id:
+        cur.execute("""
+            SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name
+            FROM enrollments e
+            JOIN sections s ON e.section_id = s.section_id
+            JOIN shs_student_elective_memberships m ON e.enrollment_id = m.enrollment_id
+            WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s
+                  AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                  AND m.offering_id = %s AND m.status = 'ACTIVE'
+            ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
+        """, (section_id, branch_id, year_id, offering_id))
+    else:
+        cur.execute("""
+            SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name
+            FROM enrollments e
+            JOIN sections s ON e.section_id = s.section_id
+            WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s
+                  AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+            ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
+        """, (section_id, branch_id, year_id))
     students = cur.fetchall() or []
     for s in students:
         s["student_name"] = " ".join(filter(None, [
@@ -5861,47 +5962,63 @@ def participation_input(section_id, subject_id, period):
         # GET STUDENTS
         # =========================================
 
-        cur.execute("""
-            SELECT
-                e.enrollment_id,
-                e.student_first_name,
-                e.student_middle_name,
-                e.student_last_name,
+        cur.execute("SELECT subject_type FROM subjects WHERE subject_id = %s", (subject_id,))
+        sub_row = cur.fetchone()
+        is_elective = (sub_row and sub_row["subject_type"] == "ELECTIVE")
 
-                COALESCE(ps.score, 0) AS score
+        if is_elective:
+            cur.execute("""
+                SELECT offering_id FROM shs_elective_offerings o
+                JOIN section_teachers st ON o.section_teacher_id = st.id
+                WHERE st.section_id = %s AND st.subject_id = %s AND o.year_id = %s AND o.term_name = %s AND o.status = 'ACTIVE'
+            """, (section_id, subject_id, year_id, period))
+            off_row = cur.fetchone()
+            offering_id = off_row["offering_id"] if off_row else None
+        else:
+            offering_id = None
 
-            FROM enrollments e
-
-            JOIN sections s
-                ON e.section_id = s.section_id
-
-            LEFT JOIN participation_scores ps
-                ON ps.enrollment_id = e.enrollment_id
-               AND ps.subject_id = %s
-               AND ps.grading_period = %s
-
-            WHERE e.section_id = %s
-              AND e.branch_id = %s
-              AND s.year_id = %s
-              AND e.status IN (
-                  'approved',
-                  'enrolled',
-                  'open_for_enrollment',
-                  'completed'
-              )
-
-            ORDER BY
-                e.student_last_name,
-                e.student_first_name,
-                e.student_middle_name
-
-        """, (
-            subject_id,
-            period,
-            section_id,
-            branch_id,
-            year_id
-        ))
+        if offering_id:
+            cur.execute("""
+                SELECT
+                    e.enrollment_id,
+                    e.student_first_name,
+                    e.student_middle_name,
+                    e.student_last_name,
+                    COALESCE(ps.score, 0) AS score
+                FROM enrollments e
+                JOIN sections s ON e.section_id = s.section_id
+                LEFT JOIN participation_scores ps ON ps.enrollment_id = e.enrollment_id AND ps.subject_id = %s AND ps.grading_period = %s
+                JOIN shs_student_elective_memberships m ON e.enrollment_id = m.enrollment_id
+                WHERE e.section_id = %s
+                  AND e.branch_id = %s
+                  AND s.year_id = %s
+                  AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                  AND m.offering_id = %s AND m.status = 'ACTIVE'
+                ORDER BY
+                    e.student_last_name,
+                    e.student_first_name,
+                    e.student_middle_name
+            """, (subject_id, period, section_id, branch_id, year_id, offering_id))
+        else:
+            cur.execute("""
+                SELECT
+                    e.enrollment_id,
+                    e.student_first_name,
+                    e.student_middle_name,
+                    e.student_last_name,
+                    COALESCE(ps.score, 0) AS score
+                FROM enrollments e
+                JOIN sections s ON e.section_id = s.section_id
+                LEFT JOIN participation_scores ps ON ps.enrollment_id = e.enrollment_id AND ps.subject_id = %s AND ps.grading_period = %s
+                WHERE e.section_id = %s
+                  AND e.branch_id = %s
+                  AND s.year_id = %s
+                  AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                ORDER BY
+                    e.student_last_name,
+                    e.student_first_name,
+                    e.student_middle_name
+            """, (subject_id, period, section_id, branch_id, year_id))
 
         students = cur.fetchall() or []
 
@@ -6040,18 +6157,47 @@ def attendance_input(section_id, subject_id, period):
         td_row = cur.fetchone()
         total_days = td_row["total_days"] if td_row else 10
 
-        cur.execute("""
-            SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name,
-                   COALESCE(att.score, 0) AS score,
-                   COALESCE(att.total_days, 10) AS total_days
-            FROM enrollments e
-            JOIN sections s ON e.section_id = s.section_id
-            LEFT JOIN attendance_scores att
-                ON att.enrollment_id = e.enrollment_id
-               AND att.subject_id = %s AND att.grading_period = %s
-            WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-            ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
-        """, (subject_id, period, section_id, branch_id, year_id))
+        cur.execute("SELECT subject_type FROM subjects WHERE subject_id = %s", (subject_id,))
+        sub_row = cur.fetchone()
+        is_elective = (sub_row and sub_row["subject_type"] == "ELECTIVE")
+
+        if is_elective:
+            cur.execute("""
+                SELECT offering_id FROM shs_elective_offerings o
+                JOIN section_teachers st ON o.section_teacher_id = st.id
+                WHERE st.section_id = %s AND st.subject_id = %s AND o.year_id = %s AND o.term_name = %s AND o.status = 'ACTIVE'
+            """, (section_id, subject_id, year_id, period))
+            off_row = cur.fetchone()
+            offering_id = off_row["offering_id"] if off_row else None
+        else:
+            offering_id = None
+
+        if offering_id:
+            cur.execute("""
+                SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name,
+                       COALESCE(att.score, 0) AS score,
+                       COALESCE(att.total_days, 10) AS total_days
+                FROM enrollments e
+                JOIN sections s ON e.section_id = s.section_id
+                LEFT JOIN attendance_scores att ON att.enrollment_id = e.enrollment_id AND att.subject_id = %s AND att.grading_period = %s
+                JOIN shs_student_elective_memberships m ON e.enrollment_id = m.enrollment_id
+                WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                AND m.offering_id = %s AND m.status = 'ACTIVE'
+                ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
+            """, (subject_id, period, section_id, branch_id, year_id, offering_id))
+        else:
+            cur.execute("""
+                SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name,
+                       COALESCE(att.score, 0) AS score,
+                       COALESCE(att.total_days, 10) AS total_days
+                FROM enrollments e
+                JOIN sections s ON e.section_id = s.section_id
+                LEFT JOIN attendance_scores att
+                    ON att.enrollment_id = e.enrollment_id
+                   AND att.subject_id = %s AND att.grading_period = %s
+                WHERE e.section_id = %s AND e.branch_id = %s AND s.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
+            """, (subject_id, period, section_id, branch_id, year_id))
         students = cur.fetchall() or []
         for s in students:
             first_mid = " ".join(filter(None, [s.get("student_first_name"), s.get("student_middle_name")]))
@@ -6140,16 +6286,39 @@ def api_teacher_classlist(section_id):
         if not cur.fetchone():
             return jsonify({"error": "Unauthorized section access"}), 403
 
-        cur.execute("""
-            SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name, u.user_id as student_user_id
-            FROM enrollments e
-            LEFT JOIN users u ON u.user_id = e.user_id
-            WHERE e.section_id = %s 
-              AND e.branch_id = %s 
-              AND e.year_id = %s
-              AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
-            ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
-        """, (section_id, branch_id, year_id))
+        subject_id = request.args.get("subject_id")
+        is_elective = False
+        if subject_id:
+            cur.execute("SELECT subject_type FROM subjects WHERE subject_id = %s", (subject_id,))
+            sub_row = cur.fetchone()
+            is_elective = (sub_row and sub_row["subject_type"] == "ELECTIVE")
+
+        if is_elective:
+            cur.execute("""
+                SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name, u.user_id as student_user_id
+                FROM enrollments e
+                LEFT JOIN users u ON u.user_id = e.user_id
+                JOIN shs_student_elective_memberships m ON e.enrollment_id = m.enrollment_id
+                JOIN shs_elective_offerings o ON m.offering_id = o.offering_id
+                JOIN section_teachers st ON o.section_teacher_id = st.id
+                WHERE e.section_id = %s 
+                  AND e.branch_id = %s 
+                  AND e.year_id = %s
+                  AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                  AND st.section_id = %s AND st.subject_id = %s AND m.status = 'ACTIVE'
+                ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
+            """, (section_id, branch_id, year_id, section_id, subject_id))
+        else:
+            cur.execute("""
+                SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name, u.user_id as student_user_id
+                FROM enrollments e
+                LEFT JOIN users u ON u.user_id = e.user_id
+                WHERE e.section_id = %s 
+                  AND e.branch_id = %s 
+                  AND e.year_id = %s
+                  AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed')
+                ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
+            """, (section_id, branch_id, year_id))
 
         students = cur.fetchall()
 

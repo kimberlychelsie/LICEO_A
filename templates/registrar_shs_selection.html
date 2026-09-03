@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+{% block title %}SHS Selection Period Control{% endblock %}
+{% block content %}
+<style>
+    :root { --ma-primary: #1a3a8f; --ma-gold: #facc15; --ma-bg: #f8fafc; --ma-card: #ffffff; --ma-border: rgba(26,58,143,0.1); --ma-text: #0f172a; --ma-muted: #64748b; --ma-accent: #3b82f6; }
+    .ba-container { max-width: 1400px; margin: 0 auto; padding: 32px 24px; }
+    
+    /* ── Premium Card Header ── */
+    .hero-banner {
+        background: linear-gradient(135deg, #1a3a8f 0%, #0c2461 100%);
+        border-radius: 24px;
+        padding: 32px 40px;
+        color: white;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 30px rgba(26, 58, 143, 0.2);
+        position: relative;
+        overflow: hidden;
+    }
+    .hero-banner::before { content:''; position:absolute; top:-50px; right:-30px; width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,0.05); }
+    .hero-content h1 { font-size: 2.2rem; font-weight: 900; letter-spacing: -0.02em; margin: 0 0 12px 0; line-height: 1; }
+    .hero-content h1 span { color: var(--ma-gold); }
+    .hero-content p { font-size: 1rem; opacity: 0.9; font-weight: 500; margin: 0; line-height: 1.5; max-width: 600px; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); backdrop-filter: blur(4px); border-radius: 8px; padding: 6px 14px; font-size: 0.85rem; font-weight: 600; margin-top: 16px; }
+    
+    .modern-card { background: var(--ma-card); border: 1px solid var(--ma-border); border-radius: 20px; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 24px; }
+    .modern-card h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+
+    .term-control-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; }
+    .term-control-card {
+        background: #fff; border: 2px solid var(--ma-border); border-radius: 16px;
+        padding: 24px; transition: all 0.3s;
+    }
+    .term-control-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+    .term-name { font-size: 1.2rem; font-weight: 800; margin-bottom: 16px; color: var(--ma-primary); }
+
+    .selection-status {
+        display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+        border-radius: 12px; margin-bottom: 16px; font-weight: 700;
+    }
+    .selection-open { background: #d1fae5; color: #059669; border: 1px solid #a7f3d0; }
+    .selection-closed { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
+    .selection-none { background: #f1f5f9; color: var(--ma-muted); border: 1px solid #e2e8f0; }
+    .pulse-dot { width: 10px; height: 10px; border-radius: 50%; animation: pulse 2s infinite; }
+    .pulse-green { background: #22c55e; }
+    .pulse-red { background: #ef4444; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+    .btn-primary { background: var(--ma-primary); color: #fff; border: none; padding: 10px 24px; border-radius: 10px; font-weight: 700; cursor: pointer; font-size: 0.9rem; transition: all 0.2s; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;}
+    .btn-primary:hover { background: #142e75; }
+    .btn-open { background: #059669; }
+    .btn-open:hover { background: #047857; }
+    .btn-close { background: #dc2626; }
+    .btn-close:hover { background: #b91c1c; }
+    .meta-text { font-size: 0.78rem; color: var(--ma-muted); margin-top: 8px; text-align: center; }
+    
+    .empty-state { text-align: center; padding: 60px 20px; color: var(--ma-muted); }
+    .empty-state h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; color: var(--ma-text); }
+
+    @media (max-width: 768px) { 
+        .ba-container { 
+            padding: calc(24px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(80px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left)); 
+        }
+        .hero-banner { padding: 24px 20px; border-radius: 16px; margin-bottom: 16px; }
+        .hero-content h1 { font-size: 1.75rem; } 
+        .hero-content p { font-size: 0.9rem; }
+        .modern-card { padding: 20px 16px; border-radius: 16px; }
+        .modern-card h2 { font-size: 1.2rem; }
+        .term-control-grid { grid-template-columns: 1fr; gap: 16px; } 
+        .term-control-card { padding: 20px; }
+        .term-name { font-size: 1.1rem; }
+    }
+</style>
+
+<div class="ba-container">
+    <div class="hero-banner">
+        <div class="hero-content">
+            <h1>Selection <span>Period</span></h1>
+            <p>Control when SHS students can submit their elective selections. Open or close the selection window for each calendar term.</p>
+            {% if school_year_label %}
+            <div class="hero-badge">{{ school_year_label }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not year_id %}
+    <div class="modern-card">
+        <div class="empty-state">
+            <h3>No Active School Year</h3>
+            <p>Please set an active school year first.</p>
+        </div>
+    </div>
+    {% elif not terms_with_status %}
+    <div class="modern-card">
+        <div class="empty-state">
+            <h3>No Active Calendar Terms</h3>
+            <p>No active terms found in the Academic Calendar for this branch and school year. Please set up term ranges first.</p>
+        </div>
+    </div>
+    {% else %}
+    <div class="modern-card">
+        <h2>
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Term Selection Control
+        </h2>
+        <div class="term-control-grid">
+            {% for t in terms_with_status %}
+            <div class="term-control-card">
+                <div class="term-name">{{ t.term_name }} Term</div>
+
+                {% if t.selection_status == 'OPEN' %}
+                <div class="selection-status selection-open">
+                    <span class="pulse-dot pulse-green"></span>
+                    Selection is OPEN
+                </div>
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="close_selection">
+                    <input type="hidden" name="term_name" value="{{ t.term_name }}">
+                    <button type="submit" class="btn-primary btn-close" onclick="return confirm('Close the selection period? Students will no longer be able to submit elective requests.')">Close Selection</button>
+                </form>
+                {% if t.opened_at %}
+                <div class="meta-text">Opened: {{ t.opened_at.strftime('%b %d, %Y %I:%M %p') }}</div>
+                {% endif %}
+
+                {% elif t.selection_status == 'CLOSED' %}
+                <div class="selection-status selection-closed">
+                    <span class="pulse-dot pulse-red"></span>
+                    Selection is CLOSED
+                </div>
+                {% if t.is_active_calendar_term %}
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="open_selection">
+                    <input type="hidden" name="term_name" value="{{ t.term_name }}">
+                    <button type="submit" class="btn-primary btn-open">Open Selection</button>
+                </form>
+                {% else %}
+                <div style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: 14px; color: var(--ma-muted); text-align: center; border: 1px solid var(--ma-border);">
+                    Selection is locked.<br>
+                    <small>Term is no longer active in the Academic Calendar.</small>
+                </div>
+                {% endif %}
+                {% if t.closed_at %}
+                <div class="meta-text">Closed: {{ t.closed_at.strftime('%b %d, %Y %I:%M %p') }}</div>
+                {% endif %}
+
+                {% else %}
+                <div class="selection-status selection-none">
+                    Not yet configured
+                </div>
+                
+                {% if t.is_active_calendar_term %}
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="open_selection">
+                    <input type="hidden" name="term_name" value="{{ t.term_name }}">
+                    <button type="submit" class="btn-primary btn-open">Open Selection</button>
+                </form>
+                {% else %}
+                <div style="margin-top: 16px; padding: 12px; background: #f8fafc; border-radius: 8px; font-size: 14px; color: var(--ma-muted); text-align: center; border: 1px solid var(--ma-border);">
+                    Selection is locked.<br>
+                    <small>Term is not currently active in the Academic Calendar.</small>
+                </div>
+                {% endif %}
+                
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

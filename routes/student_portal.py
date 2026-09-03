@@ -194,6 +194,16 @@ def dashboard():
         active_section_id     = active_enrollment["section_id"] if active_enrollment else None
         active_enrollment_id  = active_enrollment["enrollment_id"] if active_enrollment else student["enrollment_id"]
 
+        # Self-healing elective sync to automatically resolve out-of-sync memberships
+        if enrolled_in_active_sy and active_section_id:
+            try:
+                from routes.registrar import sync_student_elective_membership
+                sync_student_elective_membership(cursor, active_enrollment_id)
+                db.commit()
+            except Exception as sync_err:
+                db.rollback()
+                logger.warning(f"Self-healing elective sync failed: {sync_err}")
+
         # Fetch section name directly (independent of subject assignments)
         section_name = None
         if active_section_id:
@@ -303,12 +313,49 @@ def dashboard():
                 LEFT JOIN users u        ON st.teacher_id    = u.user_id
                 WHERE s.section_id = %(section_id)s
                   AND st.year_id   = %(year_id)s
+                  AND sub.subject_type != 'ELECTIVE'
                 ORDER BY sub.name
             """, {
                 "section_id": active_section_id,
                 "year_id":    active_year_id,
             })
             subject_rows = cursor.fetchall() or []
+
+            # ── Append SHS Elective Subjects ──
+            current_grade = (active_enrollment.get("grade_level") if active_enrollment else None) or student.get("grade_level") or ""
+            if current_grade in ["Grade 11", "Grade 12"]:
+                cursor.execute("""
+                    SELECT
+                        g.name      AS grade_level_name,
+                        s.section_name,
+                        sub.subject_id,
+                        sub.name    AS subject_name,
+                        u.full_name AS teacher_full_name,
+                        u.username  AS teacher_username,
+                        u.gender    AS teacher_gender
+                    FROM shs_student_elective_memberships m
+                    JOIN shs_elective_offerings o ON m.offering_id = o.offering_id
+                    JOIN section_teachers st ON o.section_teacher_id = st.id
+                    JOIN sections s ON st.section_id = s.section_id
+                    JOIN grade_levels g ON s.grade_level_id = g.id
+                    JOIN subjects sub ON st.subject_id = sub.subject_id
+                    LEFT JOIN users u ON st.teacher_id = u.user_id
+                    WHERE m.enrollment_id = %(enrollment_id)s
+                      AND m.status = 'ACTIVE'
+                """, {
+                    "enrollment_id": active_enrollment_id
+                })
+                elective_subjects = cursor.fetchall() or []
+                
+                # Check for duplicates before extending (in case an elective is somehow in the regular section)
+                existing_subject_ids = {r["subject_id"] for r in subject_rows}
+                for e_sub in elective_subjects:
+                    if e_sub["subject_id"] not in existing_subject_ids:
+                        subject_rows.append(e_sub)
+                        existing_subject_ids.add(e_sub["subject_id"])
+                
+                # Re-sort by subject name
+                subject_rows.sort(key=lambda x: x["subject_name"])
 
         todo_items = []
         if enrolled_in_active_sy and active_section_id:
@@ -2680,10 +2727,11 @@ def student_grades():
             cur.execute("""
                 SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                        e.year_id,
-                       s.section_name, s.school_year, gl.name as grade_level_name
+                       s.section_name, COALESCE(sy.label, s.school_year) AS school_year, gl.name as grade_level_name
                 FROM enrollments e
                 LEFT JOIN sections s ON e.section_id = s.section_id
                 LEFT JOIN grade_levels gl ON s.grade_level_id = gl.id
+                LEFT JOIN school_years sy ON e.year_id = sy.year_id
                 WHERE (e.enrollment_id = %s)
                    OR (e.user_id IS NOT NULL AND e.user_id = %s)
                    OR (
@@ -2709,10 +2757,11 @@ def student_grades():
 e.student_middle_name,
 e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                        e.year_id,
-                       s.section_name, s.school_year, gl.name as grade_level_name
+                       s.section_name, COALESCE(sy.label, s.school_year) AS school_year, gl.name as grade_level_name
                 FROM enrollments e
                 LEFT JOIN sections s ON e.section_id = s.section_id
                 LEFT JOIN grade_levels gl ON s.grade_level_id = gl.id
+                LEFT JOIN school_years sy ON e.year_id = sy.year_id
                 WHERE e.user_id = %s
                 ORDER BY e.created_at DESC
             """, (user_id,))
@@ -2760,20 +2809,83 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
             enr.get("student_last_name"),
         ]))
 
+        available_terms = []
+        selected_term = None
+
         if not section_id:
             # flash(f"No section assigned for {enr.get('school_year', 'this term')}.", "warning")
             subjects = []
             posted_map = {}
         else:
-            # 3. Get subjects for this specific enrollment's section
+            # 3. Fetch available terms and determine the selected term filter
+            from datetime import date
+            today = date.today()
+            branch_id_for_query = enr.get("branch_id", session.get("branch_id"))
+
+            cur.execute("""
+                SELECT DISTINCT period_name, start_date
+                FROM grading_period_ranges
+                WHERE branch_id = %s AND year_id = %s
+                  AND start_date <= %s
+                ORDER BY start_date
+            """, (branch_id_for_query, enr["year_id"], today))
+            available_terms = [r["period_name"] for r in cur.fetchall()]
+
+            # Determine active term (based on today's date)
+            cur.execute("""
+                SELECT period_name FROM grading_period_ranges
+                WHERE branch_id = %s AND year_id = %s
+                  AND start_date <= %s AND end_date >= %s
+                ORDER BY start_date LIMIT 1
+            """, (branch_id_for_query, enr["year_id"], today, today))
+            active_term_row = cur.fetchone()
+            auto_active_term = active_term_row['period_name'] if active_term_row else None
+
+            # User can manually select a term via query param, default to active/latest term
+            selected_term = request.args.get("term_filter")
+            if selected_term is None:
+                selected_term = auto_active_term or (available_terms[-1] if available_terms else None)
+
+            active_term = selected_term
+
+            # Get subjects for this specific enrollment's section
             cur.execute("""
                 SELECT sub.subject_id, sub.name AS subject_name
                 FROM section_teachers st
                 JOIN subjects sub ON st.subject_id = sub.subject_id
                 WHERE st.section_id = %s
+                  AND (
+                    COALESCE(sub.subject_type, 'CORE') = 'CORE'
+                    OR (
+                      sub.subject_type = 'ELECTIVE'
+                      AND EXISTS (
+                        SELECT 1 FROM shs_student_elective_memberships m
+                        JOIN shs_elective_offerings o ON m.offering_id = o.offering_id
+                        WHERE m.enrollment_id = %s
+                          AND m.year_id = %s
+                          AND m.status = 'ACTIVE'
+                          AND o.section_teacher_id = st.id
+                          AND (%s = 'all' OR %s IS NULL OR m.term_name = %s)
+                      )
+                    )
+                  )
                 ORDER BY sub.name
-            """, (section_id,))
+            """, (section_id, enrollment_id, enr["year_id"], active_term, active_term, active_term))
             subjects = cur.fetchall() or []
+
+            # Get elective term mapping for display
+            elective_term_map = {}
+            cur.execute("""
+                SELECT s.subject_id, m.term_name
+                FROM shs_student_elective_memberships m
+                JOIN shs_elective_offerings o ON m.offering_id = o.offering_id
+                JOIN section_teachers st ON o.section_teacher_id = st.id
+                JOIN subjects s ON st.subject_id = s.subject_id
+                WHERE m.enrollment_id = %s AND m.year_id = %s AND m.status = 'ACTIVE'
+                  AND (%s = 'all' OR %s IS NULL OR m.term_name = %s)
+            """, (enrollment_id, enr["year_id"], active_term, active_term, active_term))
+            for row in cur.fetchall():
+                elective_term_map[row["subject_id"]] = row["term_name"]
 
             # 4. Get posted grades
             cur.execute("""
@@ -2798,12 +2910,14 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
             period_vals = [float(v) for v in grades.values()]
             # Finals shows only if ALL 3 terms are posted (rounded to whole number)
             final_avg = int(round(sum(period_vals) / 3)) if len(period_vals) == 3 else None
+            elective_term = elective_term_map.get(sid)
 
             grade_data.append({
                 "subject_name": s["subject_name"],
                 "units":        3, # Default
                 "grades":       grades,
-                "final_grade":  final_avg
+                "final_grade":  final_avg,
+                "elective_term": elective_term
             })
 
         # 5. Get the School Year Label for the SELECTED enrollment
@@ -2819,7 +2933,9 @@ e.student_last_name, e.section_id, e.status, e.branch_enrollment_no,
                                selected_enrollment_id=enrollment_id,
                                grade_data=grade_data,
                                grading_periods=GRADING_PERIODS,
-                               school_year_label=school_year_label)
+                               school_year_label=school_year_label,
+                               available_terms=available_terms,
+                               selected_term=selected_term)
     finally:
         cur.close()
         db.close()
@@ -2888,6 +3004,22 @@ def student_my_schedule():
                 WHERE sc.section_id = %s
                   AND sc.year_id = %s
                   AND sc.is_archived = FALSE
+                  AND (
+                    COALESCE(sub.subject_type, 'CORE') = 'CORE'
+                    OR (
+                      sub.subject_type = 'ELECTIVE'
+                      AND EXISTS (
+                        SELECT 1 FROM shs_student_elective_memberships m
+                        JOIN shs_elective_offerings o ON m.offering_id = o.offering_id
+                        JOIN section_teachers st ON o.section_teacher_id = st.id
+                        WHERE m.enrollment_id = %s
+                          AND m.year_id = %s
+                          AND m.status = 'ACTIVE'
+                          AND st.section_id = sc.section_id
+                          AND st.subject_id = sc.subject_id
+                      )
+                    )
+                  )
                 ORDER BY
                     CASE sc.day_of_week
                         WHEN 'Monday'    THEN 1
@@ -2900,7 +3032,7 @@ def student_my_schedule():
                         ELSE 8
                     END,
                     sc.start_time
-            """, (section_id, student_year_id))
+            """, (section_id, student_year_id, enrollment_id, student_year_id))
             schedules = cur.fetchall() or []
 
         return render_template("student_my_schedule.html",
@@ -2982,6 +3114,348 @@ def student_profile():
 
         return render_template("student_profile.html", student=student)
 
+    finally:
+        cur.close()
+        db.close()
+
+
+# =======================
+# SHS ELECTIVE SELECTION
+# =======================
+@student_portal_bp.route("/student/shs/electives", methods=["GET", "POST"])
+def shs_electives():
+    if not _require_student():
+        return redirect("/")
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        account_id = session.get("student_account_id")
+        enrollment_id = session.get("enrollment_id")
+
+        if not account_id and not enrollment_id:
+            flash("Session expired. Please log in again.", "error")
+            return redirect("/login")
+
+        # Get enrollment info
+        if account_id:
+            cur.execute("""
+                SELECT e.enrollment_id, e.branch_id, e.grade_level, e.year_id,
+                       e.curriculum_type, e.shs_track, e.user_id,
+                       e.student_first_name, e.student_last_name
+                FROM student_accounts sa
+                JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
+                WHERE sa.account_id = %s
+            """, (account_id,))
+        else:
+            cur.execute("""
+                SELECT e.enrollment_id, e.branch_id, e.grade_level, e.year_id,
+                       e.curriculum_type, e.shs_track, e.user_id,
+                       e.student_first_name, e.student_last_name
+                FROM enrollments e
+                WHERE e.enrollment_id = %s
+            """, (enrollment_id,))
+
+        student = cur.fetchone()
+        if not student:
+            flash("Student profile not found.", "error")
+            return redirect(url_for("student_portal.dashboard"))
+
+        # Convert RealDictRow to standard writable dict
+        student = dict(student)
+
+        # Auto-detect for Grade 11/12
+        grade_level_str = student.get("grade_level") or ""
+        if "Grade 11" in grade_level_str:
+            student["curriculum_type"] = "strengthened_shs"
+
+        if "Grade 11" in grade_level_str or "Grade 12" in grade_level_str:
+            if not student.get("shs_track"):
+                grade_upper = grade_level_str.upper()
+                if any(k in grade_upper for k in ["TVL", "AUTO", "ICT", "TECH"]):
+                    student["shs_track"] = "TVL"
+                elif "SPORTS" in grade_upper:
+                    student["shs_track"] = "Sports"
+                elif any(k in grade_upper for k in ["ARTS", "DESIGN"]):
+                    student["shs_track"] = "Arts and Design"
+                else:
+                    student["shs_track"] = "Academic"
+
+        enrollment_id = student["enrollment_id"]
+        branch_id = student["branch_id"]
+        year_id = student.get("year_id")
+        curriculum_type = student.get("curriculum_type") or "basic_ed"
+
+        # Safety: Only strengthened_shs students can access this page
+        if curriculum_type != "strengthened_shs":
+            flash("This feature is only available for Strengthened SHS students.", "error")
+            return redirect(url_for("student_portal.dashboard"))
+
+        # Get active school year
+        if not year_id:
+            cur.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
+            yr = cur.fetchone()
+            year_id = yr["year_id"] if yr else None
+
+        if not year_id:
+            flash("No active school year.", "error")
+            return redirect(url_for("student_portal.dashboard"))
+
+        # Find open selection periods
+        cur.execute("""
+            SELECT term_name
+            FROM shs_selection_periods
+            WHERE branch_id = %s AND year_id = %s AND status = 'OPEN'
+            ORDER BY term_name
+        """, (branch_id, year_id))
+        open_terms_raw = cur.fetchall()
+        open_terms = [t["term_name"] for t in open_terms_raw]
+
+        if request.method == "POST":
+            action = request.form.get("action")
+
+            if action == "submit_selection":
+                term_name = request.form.get("term_name")
+                selected_offerings = request.form.getlist("offering_ids")
+
+                if not term_name or not selected_offerings:
+                    flash("Please select a term and at least one elective.", "error")
+                    return redirect(url_for("student_portal.shs_electives"))
+
+                # Check if student already has a pending or approved request for this term
+                cur.execute("""
+                    SELECT request_id, status FROM shs_student_elective_requests
+                    WHERE enrollment_id = %s AND term_name = %s AND year_id = %s
+                    AND status IN ('PENDING', 'APPROVED')
+                """, (enrollment_id, term_name, year_id))
+                existing = cur.fetchone()
+                if existing:
+                    flash(f"You already have a {existing['status']} request for this term.", "error")
+                    return redirect(url_for("student_portal.shs_electives"))
+
+                # Determine if all selected offerings are from the student's recommended pathway
+                student_pathway = student.get("shs_track") or ""
+                is_cross_track = False
+
+                if selected_offerings and student_pathway:
+                    cur.execute("""
+                        SELECT o.offering_id,
+                               COALESCE(s.pathway, o.shs_track, 'General') AS pathway
+                        FROM shs_elective_offerings o
+                        JOIN section_teachers st ON o.section_teacher_id = st.id
+                        JOIN subjects s ON st.subject_id = s.subject_id
+                        WHERE o.offering_id = ANY(%s::int[])
+                    """, ([int(x) for x in selected_offerings],))
+                    offering_pathways = cur.fetchall() or []
+                    for op in offering_pathways:
+                        op_pathway = (op["pathway"] or "").lower()
+                        sp_lower = student_pathway.lower()
+                        if op_pathway not in sp_lower and sp_lower not in op_pathway:
+                            is_cross_track = True
+                            break
+
+                try:
+                    if not is_cross_track and student_pathway:
+                        # ---- Recommended pathway: AUTO-APPROVE ----
+                        # Remove any old memberships for this term first
+                        cur.execute("""
+                            DELETE FROM shs_student_elective_memberships
+                            WHERE enrollment_id = %s AND term_name = %s AND year_id = %s
+                        """, (enrollment_id, term_name, year_id))
+
+                        for oid in selected_offerings:
+                            cur.execute("""
+                                INSERT INTO shs_student_elective_memberships
+                                (enrollment_id, student_user_id, offering_id, term_name, year_id, status)
+                                VALUES (%s, %s, %s, %s, %s, 'ACTIVE')
+                                ON CONFLICT DO NOTHING
+                            """, (enrollment_id, student.get("user_id"), int(oid), term_name, year_id))
+
+                        db.commit()
+                        flash("You are now enrolled in your selected elective!", "success")
+                    else:
+                        # ---- Cross-track: Send for Registrar approval ----
+                        cur.execute("""
+                            INSERT INTO shs_student_elective_requests
+                            (enrollment_id, student_user_id, branch_id, year_id, term_name)
+                            VALUES (%s, %s, %s, %s, %s) RETURNING request_id
+                        """, (enrollment_id, student.get("user_id"), branch_id, year_id, term_name))
+                        request_id = cur.fetchone()["request_id"]
+
+                        for oid in selected_offerings:
+                            cur.execute("""
+                                INSERT INTO shs_student_elective_items (request_id, offering_id)
+                                VALUES (%s, %s)
+                            """, (request_id, int(oid)))
+
+                        db.commit()
+                        flash("Cross-track elective selection submitted! Waiting for Registrar approval.", "success")
+
+                except Exception as e:
+                    db.rollback()
+                    flash(f"Error submitting selection: {e}", "error")
+
+                return redirect(url_for("student_portal.shs_electives"))
+
+        # GET – fetch data
+        offerings = []
+        schedules_map = {}
+        enrolled_counts = {}
+        existing_requests = []
+        memberships = []
+        selected_term_name = request.args.get("term_name", "")
+
+        if not selected_term_name and open_terms:
+            selected_term_name = open_terms[0]
+
+        if year_id and selected_term_name:
+            # Fetch student's passed subject IDs (posted_grades with grade >= 75)
+            cur.execute("""
+                SELECT DISTINCT subject_id
+                FROM posted_grades
+                WHERE enrollment_id = %s
+                  AND (
+                    (grade_value IS NOT NULL AND CAST(grade_value AS NUMERIC) >= 75)
+                    OR (grade IS NOT NULL AND CAST(grade AS NUMERIC) >= 75)
+                  )
+            """, (enrollment_id,))
+            passed_rows = cur.fetchall() or []
+            passed_subject_ids = {r["subject_id"] for r in passed_rows}
+
+            # Get available offerings for the selected term with prerequisite info
+            cur.execute("""
+                SELECT o.*, s.name AS subject_name, s.track,
+                       COALESCE(s.pathway, s.track, 'General') AS pathway,
+                       s.prerequisite_subject_id, prereq.name AS prerequisite_name,
+                       sec.section_id, st.subject_id,
+                       COALESCE(u.first_name || ' ' || COALESCE(u.last_name, ''), u.full_name, u.username) AS teacher_name
+                FROM shs_elective_offerings o
+                JOIN section_teachers st ON o.section_teacher_id = st.id
+                JOIN subjects s ON st.subject_id = s.subject_id
+                LEFT JOIN subjects prereq ON s.prerequisite_subject_id = prereq.subject_id
+                JOIN sections sec ON st.section_id = sec.section_id
+                LEFT JOIN users u ON st.teacher_id = u.user_id
+                WHERE o.branch_id = %s AND o.year_id = %s AND o.term_name = %s AND o.status = 'ACTIVE'
+                ORDER BY COALESCE(s.pathway, s.track, 'General'), o.group_code
+            """, (branch_id, year_id, selected_term_name))
+            offerings = cur.fetchall()
+
+            # Evaluate prerequisite completion for each offering
+            for o in offerings:
+                prereq_id = o.get("prerequisite_subject_id")
+                if prereq_id:
+                    o["prereq_met"] = (prereq_id in passed_subject_ids)
+                else:
+                    o["prereq_met"] = True
+
+            # Get schedules and enrolled counts
+            offering_ids = [o["offering_id"] for o in offerings]
+            if offerings:
+                for o in offerings:
+                    cur.execute("""
+                        SELECT day_of_week, start_time, end_time, room 
+                        FROM schedules
+                        WHERE section_id = %s AND subject_id = %s AND year_id = %s AND is_archived = FALSE
+                        ORDER BY day_of_week, start_time
+                    """, (o["section_id"], o["subject_id"], year_id))
+                    schedules_map[o["offering_id"]] = cur.fetchall()
+
+                cur.execute("""
+                    SELECT offering_id, COUNT(*) AS cnt
+                    FROM shs_student_elective_memberships
+                    WHERE offering_id = ANY(%s) AND status = 'ACTIVE'
+                    GROUP BY offering_id
+                """, (offering_ids,))
+                for row in cur.fetchall():
+                    enrolled_counts[row["offering_id"]] = row["cnt"]
+
+        # Get existing requests
+        if year_id:
+            cur.execute("""
+                SELECT r.*
+                FROM shs_student_elective_requests r
+                WHERE r.enrollment_id = %s AND r.year_id = %s
+                ORDER BY r.submitted_at DESC
+            """, (enrollment_id, year_id))
+            existing_requests = cur.fetchall()
+            for req in existing_requests:
+                cur.execute("""
+                    SELECT i.*, o.group_code, s.name AS subject_name
+                    FROM shs_student_elective_items i
+                    JOIN shs_elective_offerings o ON i.offering_id = o.offering_id
+                    JOIN section_teachers st ON o.section_teacher_id = st.id
+                    JOIN subjects s ON st.subject_id = s.subject_id
+                    WHERE i.request_id = %s
+                """, (req["request_id"],))
+                req["items"] = cur.fetchall()
+
+            # Get active memberships for the selected term only
+            if selected_term_name:
+                cur.execute("""
+                    SELECT m.*, o.group_code, s.name AS subject_name,
+                           COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, u.full_name, u.username) AS teacher_name
+                    FROM shs_student_elective_memberships m
+                    JOIN shs_elective_offerings o ON m.offering_id = o.offering_id
+                    JOIN section_teachers st ON o.section_teacher_id = st.id
+                    JOIN subjects s ON st.subject_id = s.subject_id
+                    LEFT JOIN users u ON st.teacher_id = u.user_id
+                    WHERE m.enrollment_id = %s AND m.year_id = %s AND m.status = 'ACTIVE'
+                      AND m.term_name = %s
+                    ORDER BY m.term_name, o.group_code
+                """, (enrollment_id, year_id, selected_term_name))
+                memberships = cur.fetchall()
+            else:
+                cur.execute("""
+                    SELECT m.*, o.group_code, s.name AS subject_name,
+                           COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, u.full_name, u.username) AS teacher_name
+                    FROM shs_student_elective_memberships m
+                    JOIN shs_elective_offerings o ON m.offering_id = o.offering_id
+                    JOIN section_teachers st ON o.section_teacher_id = st.id
+                    JOIN subjects s ON st.subject_id = s.subject_id
+                    LEFT JOIN users u ON st.teacher_id = u.user_id
+                    WHERE m.enrollment_id = %s AND m.year_id = %s AND m.status = 'ACTIVE'
+                    ORDER BY m.term_name, o.group_code
+                """, (enrollment_id, year_id))
+                memberships = cur.fetchall()
+
+        # Check if student already has a pending/approved request or active membership for the selected term
+        term_status = None
+        if year_id and selected_term_name:
+            is_selection_open = selected_term_name in open_terms
+
+            # Always check for existing PENDING/APPROVED requests — even during open selection period
+            cur.execute("""
+                SELECT status FROM shs_student_elective_requests
+                WHERE enrollment_id = %s AND term_name = %s AND year_id = %s
+                AND status IN ('PENDING', 'APPROVED')
+                LIMIT 1
+            """, (enrollment_id, selected_term_name, year_id))
+            req_row = cur.fetchone()
+            if req_row:
+                term_status = req_row["status"]
+            elif not is_selection_open:
+                # Only treat auto-membership as "approved" if selection period is CLOSED
+                # (during open period, let student re-select even if they have old memberships)
+                cur.execute("""
+                    SELECT 1 FROM shs_student_elective_memberships
+                    WHERE enrollment_id = %s AND term_name = %s AND year_id = %s AND status = 'ACTIVE'
+                    LIMIT 1
+                """, (enrollment_id, selected_term_name, year_id))
+                if cur.fetchone():
+                    term_status = "APPROVED"
+
+        return render_template("student_shs_electives.html",
+            student=student,
+            open_terms=open_terms,
+            offerings=offerings,
+            schedules_map=schedules_map,
+            enrolled_counts=enrolled_counts,
+            existing_requests=existing_requests,
+            memberships=memberships,
+            selected_term_name=selected_term_name,
+            curriculum_type=curriculum_type,
+            term_status=term_status
+        )
     finally:
         cur.close()
         db.close()

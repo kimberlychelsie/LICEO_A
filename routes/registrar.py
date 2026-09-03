@@ -35,6 +35,117 @@ def is_valid_email(email):
     return bool(re.match(email_regex, email))
 
 
+def sync_student_elective_membership(cursor, enrollment_id):
+    """
+    Auto-enroll Grade 11/12 students into elective memberships matching their pathway,
+    BUT only for terms that do NOT have an open shs_selection_periods.
+    Terms with an open selection period are skipped so the student can choose manually.
+    Cross-track memberships created via approved Registrar requests are NEVER touched.
+    """
+    cursor.execute("""
+        SELECT enrollment_id, branch_id, year_id, grade_level, shs_track, section_id, user_id
+        FROM enrollments
+        WHERE enrollment_id = %s
+    """, (enrollment_id,))
+    enrollment = cursor.fetchone()
+    if not enrollment:
+        return
+
+    grade = enrollment.get("grade_level") or ""
+    shs_track = enrollment.get("shs_track")
+    section_id = enrollment.get("section_id")
+    year_id = enrollment.get("year_id")
+    branch_id = enrollment.get("branch_id")
+    user_id = enrollment.get("user_id")
+
+    is_shs = grade and ("11" in grade or "12" in grade)
+
+    if is_shs and shs_track and section_id and year_id:
+        # Find terms with open selection period — skip those
+        cursor.execute("""
+            SELECT term_name FROM shs_selection_periods
+            WHERE branch_id = %s AND year_id = %s AND status = 'OPEN'
+        """, (branch_id, year_id))
+        open_selection_terms = {r["term_name"] for r in (cursor.fetchall() or [])}
+
+        # Find offering_ids that were approved via a formal request (cross-track)
+        # These must NEVER be deleted by auto-sync
+        cursor.execute("""
+            SELECT DISTINCT i.offering_id
+            FROM shs_student_elective_items i
+            JOIN shs_student_elective_requests r ON i.request_id = r.request_id
+            WHERE r.enrollment_id = %s AND r.status = 'APPROVED'
+        """, (enrollment_id,))
+        approved_request_offering_ids = {r["offering_id"] for r in (cursor.fetchall() or [])}
+
+        # Get pathway-matched offerings for terms without open selection
+        cursor.execute("""
+            SELECT o.offering_id, o.term_name
+            FROM shs_elective_offerings o
+            JOIN section_teachers st ON o.section_teacher_id = st.id
+            JOIN subjects s ON st.subject_id = s.subject_id
+            WHERE COALESCE(s.pathway, o.shs_track, 'General') = %s
+              AND o.branch_id = %s
+              AND o.year_id = %s
+              AND o.status = 'ACTIVE'
+              AND o.term_name NOT IN %s
+        """, (shs_track, branch_id, year_id, tuple(open_selection_terms) if open_selection_terms else ('__none__',)))
+        offerings = cursor.fetchall() or []
+
+        # Get existing auto memberships (excluding approved request ones and open-term ones)
+        cursor.execute("""
+            SELECT offering_id, term_name, student_user_id
+            FROM shs_student_elective_memberships
+            WHERE enrollment_id = %s AND status = 'ACTIVE'
+              AND term_name NOT IN %s
+              AND offering_id NOT IN %s
+        """, (enrollment_id,
+              tuple(open_selection_terms) if open_selection_terms else ('__none__',),
+              tuple(approved_request_offering_ids) if approved_request_offering_ids else (-1,)))
+        current_memberships = cursor.fetchall() or []
+
+        current_ids = {m["offering_id"] for m in current_memberships}
+        offering_ids = {off["offering_id"] for off in offerings}
+
+        needs_user_id_update = False
+        if user_id:
+            for m in current_memberships:
+                if m.get("student_user_id") != user_id:
+                    needs_user_id_update = True
+                    break
+
+        if (offering_ids != current_ids) or needs_user_id_update:
+            # Only delete auto-memberships (not approved request ones, not open-term ones)
+            if open_selection_terms or approved_request_offering_ids:
+                cursor.execute("""
+                    DELETE FROM shs_student_elective_memberships
+                    WHERE enrollment_id = %s AND status = 'ACTIVE'
+                      AND term_name NOT IN %s
+                      AND offering_id NOT IN %s
+                """, (enrollment_id,
+                      tuple(open_selection_terms) if open_selection_terms else ('__none__',),
+                      tuple(approved_request_offering_ids) if approved_request_offering_ids else (-1,)))
+            else:
+                cursor.execute("""
+                    DELETE FROM shs_student_elective_memberships
+                    WHERE enrollment_id = %s AND status = 'ACTIVE'
+                """, (enrollment_id,))
+
+            for off in offerings:
+                cursor.execute("""
+                    INSERT INTO shs_student_elective_memberships
+                    (enrollment_id, student_user_id, offering_id, term_name, year_id)
+                    VALUES (%s, %s, %s, %s, %s)
+                    ON CONFLICT DO NOTHING
+                """, (enrollment_id, user_id, off["offering_id"], off["term_name"], year_id))
+    else:
+        cursor.execute("""
+            DELETE FROM shs_student_elective_memberships
+            WHERE enrollment_id = %s AND status = 'ACTIVE'
+        """, (enrollment_id,))
+
+
+
 @registrar_bp.route("/registrar/api/sidebar-badges")
 def registrar_sidebar_badges():
     """Live counts for registrar sidebar badges (AJAX poll)."""
@@ -539,7 +650,7 @@ def registrar_enrollments():
         """, tuple(enrolled_query_params))
         enrolled_students = cursor.fetchall()
 
-        cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s AND name NOT IN ('Grade 11', 'Grade 12') ORDER BY display_order", (branch_id,))
+        cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s ORDER BY display_order", (branch_id,))
         grade_levels = [row["name"] for row in cursor.fetchall()]
 
         # Check if re-enrollment is open anywhere in the branch
@@ -559,6 +670,32 @@ def registrar_enrollments():
         """, (branch_id, branch_id))
         section_options = cursor.fetchall()
 
+        # Fetch active SHS elective offerings and official pathways for the dashboard
+        shs_elective_offerings = []
+        if selected_year_id:
+            cursor.execute("""
+                SELECT DISTINCT COALESCE(s.pathway, o.shs_track, 'General') AS pathway,
+                       g.name AS grade_level_name
+                FROM shs_elective_offerings o
+                JOIN section_teachers st ON o.section_teacher_id = st.id
+                JOIN subjects s ON st.subject_id = s.subject_id
+                JOIN sections sec ON st.section_id = sec.section_id
+                JOIN grade_levels g ON sec.grade_level_id = g.id
+                WHERE o.branch_id = %s AND o.year_id = %s AND o.status = 'ACTIVE'
+                ORDER BY g.name, COALESCE(s.pathway, o.shs_track, 'General')
+            """, (branch_id, selected_year_id))
+            shs_elective_offerings = cursor.fetchall() or []
+
+        # Ensure official catalog pathways are also included
+        cursor.execute("SELECT pathway_name AS pathway FROM shs_pathways WHERE branch_id = %s AND is_active = TRUE", (branch_id,))
+        cat_p = cursor.fetchall() or []
+        existing_p = {x["pathway"] for x in shs_elective_offerings}
+        for cp in cat_p:
+            if cp["pathway"] not in existing_p:
+                shs_elective_offerings.append({"pathway": cp["pathway"], "grade_level_name": "Grade 11"})
+                shs_elective_offerings.append({"pathway": cp["pathway"], "grade_level_name": "Grade 12"})
+                existing_p.add(cp["pathway"])
+
         is_branch_active_status = is_branch_active(branch_id)
 
         return render_template(
@@ -568,6 +705,7 @@ def registrar_enrollments():
             grade_levels=grade_levels,
             reenrollment_open=reenrollment_open,
             section_options=section_options,
+            shs_elective_offerings=shs_elective_offerings,
             is_branch_active_status=is_branch_active_status,
 
             # NEW template vars for year switcher
@@ -619,7 +757,7 @@ def enrollment_detail(enrollment_id):
                 "guardian_first_name", "guardian_middle_name", "guardian_last_name", "guardian_contact", "guardian_email",
                 "father_first_name", "father_middle_name", "father_last_name", "father_contact", "father_occupation",
                 "mother_first_name", "mother_middle_name", "mother_last_name", "mother_contact", "mother_occupation",
-                "previous_school", "enroll_type", "remarks",
+                "previous_school", "enroll_type", "remarks", "shs_track",
             ]
             sets = []
             vals = []
@@ -642,6 +780,7 @@ def enrollment_detail(enrollment_id):
                     f"UPDATE enrollments SET {', '.join(sets)} WHERE enrollment_id = %s AND branch_id = %s",
                     vals,
                 )
+                sync_student_elective_membership(cursor, enrollment_id)
                 db.commit()
                 flash("Enrollment details updated!", "success")
             return redirect("/registrar/enrollments")
@@ -690,14 +829,47 @@ FROM enrollments e
         cursor.execute("SELECT * FROM enrollment_documents WHERE enrollment_id = %s", (enrollment_id,))
         documents = cursor.fetchall()
 
-        cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s AND name NOT IN ('Grade 11', 'Grade 12') ORDER BY display_order", (branch_id,))
+        cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s ORDER BY display_order", (branch_id,))
         grade_levels = [row["name"] for row in cursor.fetchall()]
+
+        # Fetch active school year ID fallback if year_id is not set on enrollment
+        year_id_for_electives = enrollment.get("year_id")
+        if not year_id_for_electives:
+            cursor.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
+            act_sy = cursor.fetchone()
+            year_id_for_electives = act_sy["year_id"] if act_sy else None
+
+        shs_elective_offerings = []
+        if year_id_for_electives:
+            cursor.execute("""
+                SELECT DISTINCT COALESCE(s.pathway, o.shs_track, 'General') AS pathway,
+                       g.name AS grade_level_name
+                FROM shs_elective_offerings o
+                JOIN section_teachers st ON o.section_teacher_id = st.id
+                JOIN subjects s ON st.subject_id = s.subject_id
+                JOIN sections sec ON st.section_id = sec.section_id
+                JOIN grade_levels g ON sec.grade_level_id = g.id
+                WHERE o.branch_id = %s AND o.year_id = %s AND o.status = 'ACTIVE'
+                ORDER BY g.name, COALESCE(s.pathway, o.shs_track, 'General')
+            """, (branch_id, year_id_for_electives))
+            shs_elective_offerings = cursor.fetchall() or []
+
+        # Ensure official catalog pathways are also included
+        cursor.execute("SELECT pathway_name AS pathway FROM shs_pathways WHERE branch_id = %s AND is_active = TRUE", (branch_id,))
+        cat_p = cursor.fetchall() or []
+        existing_p = {x["pathway"] for x in shs_elective_offerings}
+        for cp in cat_p:
+            if cp["pathway"] not in existing_p:
+                shs_elective_offerings.append({"pathway": cp["pathway"], "grade_level_name": "Grade 11"})
+                shs_elective_offerings.append({"pathway": cp["pathway"], "grade_level_name": "Grade 12"})
+                existing_p.add(cp["pathway"])
 
         return render_template(
             "registrar_enrollment_detail.html",
             enrollment=enrollment,
             documents=documents,
             grade_levels=grade_levels,
+            shs_elective_offerings=shs_elective_offerings,
         )
     except Exception as e:
         db.rollback()
@@ -1005,6 +1177,7 @@ def create_student_account(enrollment_id):
                             AND s.section_id = %s
                             AND s.branch_id = %s
                         """, (enrollment_id, branch_id, int(section_id), branch_id))
+                        sync_student_elective_membership(cursor, enrollment_id)
                         db.commit()
                 except Exception as e:
                     db.rollback()
@@ -1500,7 +1673,7 @@ def registrar_profile_pictures():
 
         if tab == "students":
             # Get grades for filter
-            cursor.execute("SELECT name FROM grade_levels WHERE name NOT IN ('Grade 11', 'Grade 12') ORDER BY id ASC")
+            cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s ORDER BY display_order", (branch_id,))
             all_grades = [row["name"] for row in cursor.fetchall()]
 
             # Get all sections
@@ -1636,7 +1809,7 @@ def registrar_students_by_grade():
         else:
             year_filter = active_year_id
         
-        cursor.execute("SELECT name FROM grade_levels WHERE name NOT IN ('Grade 11', 'Grade 12') ORDER BY id ASC")
+        cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s ORDER BY display_order", (branch_id,))
         raw_grades = [row["name"] for row in cursor.fetchall()]
         all_grades = []
         for g in raw_grades:
@@ -1715,6 +1888,32 @@ def registrar_students_by_grade():
                 e["documents"] = json.loads(e["documents"])
             students.append(e)
 
+        # Fetch active SHS elective offerings
+        shs_elective_offerings = []
+        if year_filter:
+            cursor.execute("""
+                SELECT DISTINCT COALESCE(s.pathway, o.shs_track, 'General') AS pathway,
+                       g.name AS grade_level_name
+                FROM shs_elective_offerings o
+                JOIN section_teachers st ON o.section_teacher_id = st.id
+                JOIN subjects s ON st.subject_id = s.subject_id
+                JOIN sections sec ON st.section_id = sec.section_id
+                JOIN grade_levels g ON sec.grade_level_id = g.id
+                WHERE o.branch_id = %s AND o.year_id = %s AND o.status = 'ACTIVE'
+                ORDER BY g.name, COALESCE(s.pathway, o.shs_track, 'General')
+            """, (branch_id, year_filter))
+            shs_elective_offerings = cursor.fetchall() or []
+
+        # Ensure official catalog pathways are also included
+        cursor.execute("SELECT pathway_name AS pathway FROM shs_pathways WHERE branch_id = %s AND is_active = TRUE", (branch_id,))
+        cat_p = cursor.fetchall() or []
+        existing_p = {x["pathway"] for x in shs_elective_offerings}
+        for cp in cat_p:
+            if cp["pathway"] not in existing_p:
+                shs_elective_offerings.append({"pathway": cp["pathway"], "grade_level_name": "Grade 11"})
+                shs_elective_offerings.append({"pathway": cp["pathway"], "grade_level_name": "Grade 12"})
+                existing_p.add(cp["pathway"])
+
         return render_template(
             "registrar_students_by_grade.html",
             students=students,
@@ -1724,6 +1923,7 @@ def registrar_students_by_grade():
             section_filter=section_filter,
             school_years=school_years,
             year_filter=str(year_filter) if year_filter else "",
+            shs_elective_offerings=shs_elective_offerings,
             branch=branch
         )
     except Exception as e:
@@ -1934,7 +2134,7 @@ def list_and_add_schedules():
     active_year = school_years[0] if school_years else None
 
     # Fetch unique Grades and Sections for filtering
-    cursor.execute("SELECT name FROM grade_levels WHERE name NOT IN ('Grade 11', 'Grade 12') ORDER BY id ASC")
+    cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s ORDER BY display_order", (branch_id,))
     all_grades_list = [row["name"] for row in cursor.fetchall()]
     cursor.execute("""
         SELECT s.section_id, s.section_name, g.name AS grade_name
@@ -2399,8 +2599,14 @@ def registrar_grade_levels():
     cursor = db.cursor()
 
     # Fetch all unique grade names from the system, sorted by their academic order
-    cursor.execute("SELECT name FROM grade_levels GROUP BY name ORDER BY MIN(display_order)")
-    available_grade_names = [row[0] for row in cursor.fetchall()]
+    cursor.execute("SELECT name FROM grade_levels GROUP BY name")
+    db_names = [row[0] for row in cursor.fetchall()]
+    ACADEMIC_ORDER = {
+        "Nursery": 1, "Kinder": 2, "Grade 1": 3, "Grade 2": 4, "Grade 3": 5,
+        "Grade 4": 6, "Grade 5": 7, "Grade 6": 8, "Grade 7": 9, "Grade 8": 10,
+        "Grade 9": 11, "Grade 10": 12, "Grade 11": 13, "Grade 12": 14
+    }
+    available_grade_names = sorted(db_names, key=lambda x: ACADEMIC_ORDER.get(x, 99))
     
     # Defaults if DB is empty
     if not available_grade_names:
@@ -2688,6 +2894,8 @@ def registrar_subjects():
     if request.method == "POST":
         names = request.form.getlist("names")
         categories = request.form.getlist("categories")
+        subject_types = request.form.getlist("subject_types")
+        tracks = request.form.getlist("tracks")
         section_ids = request.form.getlist("section_ids")
 
         if not names or not section_ids:
@@ -2699,13 +2907,18 @@ def registrar_subjects():
                 name = names[i].strip()
                 if not name: continue
                 deped_category = categories[i] if i < len(categories) else "language"
+                subject_type = subject_types[i].upper() if i < len(subject_types) else "CORE"
+                track = tracks[i].strip() if i < len(tracks) and subject_type == "ELECTIVE" else None
 
                 cursor.execute("""
-                    INSERT INTO subjects (name, deped_category)
-                    VALUES (%s, %s)
-                    ON CONFLICT (name) DO UPDATE SET deped_category = EXCLUDED.deped_category
+                    INSERT INTO subjects (name, deped_category, subject_type, track)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (name) DO UPDATE SET 
+                        deped_category = EXCLUDED.deped_category,
+                        subject_type = EXCLUDED.subject_type,
+                        track = EXCLUDED.track
                     RETURNING subject_id
-                """, (name, deped_category))
+                """, (name, deped_category, subject_type, track))
                 res = cursor.fetchone()
                 subject_id = res["subject_id"] if res else None
                 if not subject_id:
@@ -2737,7 +2950,7 @@ def registrar_subjects():
         section_id_filter = str(section_options[0]['section_id'])
 
     query = """
-        SELECT st.subject_id, sub.name, sub.deped_category, s.section_id, s.section_name, g.name AS grade_level_name, st.is_archived
+        SELECT st.subject_id, sub.name, sub.deped_category, sub.subject_type, sub.track, s.section_id, s.section_name, g.name AS grade_level_name, st.is_archived
         FROM section_teachers st
         INNER JOIN subjects sub ON st.subject_id = sub.subject_id
         INNER JOIN sections s ON st.section_id = s.section_id
@@ -2817,6 +3030,8 @@ def registrar_subject_edit(subject_id):
     new_name = (request.form.get("name") or "").strip()
     section_id = request.form.get("section_id")
     deped_category = request.form.get("deped_category", "language")
+    subject_type = (request.form.get("subject_type") or "CORE").upper()
+    track = (request.form.get("track") or "").strip() if subject_type == "ELECTIVE" else None
 
     if not new_name or not section_id:
         flash("Required fields missing.", "error")
@@ -2830,7 +3045,11 @@ def registrar_subject_edit(subject_id):
             flash("Invalid section.", "error")
             return redirect(url_for("registrar.registrar_subjects"))
 
-        cursor.execute("UPDATE subjects SET name = %s, deped_category = %s WHERE subject_id = %s", (new_name, deped_category, subject_id))
+        cursor.execute("""
+            UPDATE subjects 
+            SET name = %s, deped_category = %s, subject_type = %s, track = %s 
+            WHERE subject_id = %s
+        """, (new_name, deped_category, subject_type, track, subject_id))
         db.commit()
         flash("Subject updated.", "success")
     except Exception as e:
@@ -3440,6 +3659,7 @@ def registrar_assign_students():
                     return redirect(url_for("registrar.registrar_assign_students", grade=grade_filter))
 
             cursor.execute("UPDATE enrollments SET section_id=%s, status = CASE WHEN %s IS NOT NULL AND status = 'approved' THEN 'enrolled' ELSE status END WHERE enrollment_id=%s AND year_id=%s", (section_id, section_id, enrollment_id, active_year_id))
+            sync_student_elective_membership(cursor, enrollment_id)
             db.commit()
             flash("Student section updated!", "success")
             return redirect(url_for("registrar.registrar_assign_students", grade=grade_filter))
@@ -3463,7 +3683,7 @@ def registrar_assign_students():
             ORDER BY e.student_last_name,
     e.student_first_name,
     e.student_middle_name
-        """, (branch_id, active_year_id, grade_name, grade_name.replace("Grade ", "")))
+        """, (branch_id, active_year_id, f"{grade_name}%", f"{grade_name.replace('Grade ', '')}%"))
         students = cursor.fetchall() or []
         for s in students:
             s["student_name"] = " ".join(filter(None, [
@@ -3505,6 +3725,7 @@ def registrar_api_assign_student_section():
         if not active_year_id: return {"success": False, "message": "No active school year"}, 400
 
         cursor.execute("UPDATE enrollments SET section_id=%s, status = CASE WHEN %s IS NOT NULL AND status = 'approved' THEN 'enrolled' ELSE status END WHERE enrollment_id=%s AND branch_id=%s AND year_id=%s", (section_id, section_id, enrollment_id, branch_id, active_year_id))
+        sync_student_elective_membership(cursor, enrollment_id)
         db.commit()
         return {"success": True}
     except Exception as e:
@@ -4265,3 +4486,260 @@ def registrar_view_class_record(req_id):
         cur.close()
         db.close()
 
+
+# =======================
+# SHS SELECTION PERIOD CONTROL
+# =======================
+@registrar_bp.route("/registrar/shs/selection-period", methods=["GET", "POST"])
+def shs_selection_period():
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("No branch assigned.", "error")
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Get active year
+        cur.execute("SELECT year_id, label FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
+        yr = cur.fetchone()
+        year_id = yr["year_id"] if yr else None
+        school_year_label = yr["label"] if yr else ""
+
+        if request.method == "POST" and year_id:
+            action = request.form.get("action")
+            term_name = request.form.get("term_name")
+
+            if action == "open_selection":
+                try:
+                    cur.execute("""
+                        INSERT INTO shs_selection_periods (branch_id, year_id, term_name, status, opened_at)
+                        VALUES (%s, %s, %s, 'OPEN', NOW())
+                        ON CONFLICT (branch_id, year_id, term_name)
+                        DO UPDATE SET status = 'OPEN', opened_at = NOW(), closed_at = NULL
+                    """, (branch_id, year_id, term_name))
+                    db.commit()
+                    flash("Elective selection period OPENED.", "success")
+                except Exception as e:
+                    db.rollback()
+                    flash(f"Error opening selection: {e}", "error")
+
+            elif action == "close_selection":
+                try:
+                    cur.execute("""
+                        UPDATE shs_selection_periods
+                        SET status = 'CLOSED', closed_at = NOW()
+                        WHERE branch_id = %s AND year_id = %s AND term_name = %s
+                    """, (branch_id, year_id, term_name))
+                    db.commit()
+                    flash("Elective selection period CLOSED.", "success")
+                except Exception as e:
+                    db.rollback()
+                    flash(f"Error closing selection: {e}", "error")
+
+            return redirect(url_for("registrar.shs_selection_period"))
+
+        # GET – fetch terms and their selection period status
+        terms_with_status = []
+        if year_id:
+            cur.execute("""
+                SELECT DISTINCT r.period_name AS term_name,
+                       sp.status AS selection_status,
+                       sp.opened_at, sp.closed_at,
+                       r.start_date, r.end_date
+                FROM grading_period_ranges r
+                LEFT JOIN shs_selection_periods sp
+                    ON r.period_name = sp.term_name AND sp.branch_id = %s AND sp.year_id = %s
+                WHERE r.branch_id = %s AND r.year_id = %s
+                ORDER BY r.period_name
+            """, (branch_id, year_id, branch_id, year_id))
+            
+            from datetime import date
+            today = date.today()
+            fetched_terms = cur.fetchall()
+            
+            for t in fetched_terms:
+                is_active = False
+                if t['start_date'] and t['end_date']:
+                    if t['start_date'] <= today <= t['end_date']:
+                        is_active = True
+                t['is_active_calendar_term'] = is_active
+                terms_with_status.append(t)
+
+        return render_template("registrar_shs_selection.html",
+            terms_with_status=terms_with_status,
+            year_id=year_id,
+            school_year_label=school_year_label
+        )
+    finally:
+        cur.close()
+        db.close()
+
+
+# =======================
+# SHS ELECTIVE REQUESTS REVIEW
+# =======================
+@registrar_bp.route("/registrar/shs/requests", methods=["GET", "POST"])
+def shs_requests():
+    if session.get("role") != "registrar":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("No branch assigned.", "error")
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Get active year
+        cur.execute("SELECT year_id, label FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
+        yr = cur.fetchone()
+        year_id = yr["year_id"] if yr else None
+        school_year_label = yr["label"] if yr else ""
+
+        if request.method == "POST" and year_id:
+            action = request.form.get("action")
+            request_id = request.form.get("request_id")
+
+            if action == "approve":
+                try:
+                    # Fetch the request and its items
+                    cur.execute("""
+                        SELECT r.*, COALESCE(e.student_first_name, '') || ' ' || COALESCE(e.student_last_name, '') AS student_name, e.user_id AS student_user_id
+                        FROM shs_student_elective_requests r
+                        JOIN enrollments e ON r.enrollment_id = e.enrollment_id
+                        WHERE r.request_id = %s AND r.branch_id = %s
+                    """, (request_id, branch_id))
+                    req = cur.fetchone()
+                    if not req:
+                        flash("Request not found.", "error")
+                        return redirect(url_for("registrar.shs_requests"))
+
+                    cur.execute("""
+                        SELECT i.offering_id
+                        FROM shs_student_elective_items i
+                        WHERE i.request_id = %s
+                    """, (request_id,))
+                    items = cur.fetchall()
+
+                    # Transactional approval with capacity check
+                    for item in items:
+                        oid = item["offering_id"]
+                        # Lock the offering row for update
+                        cur.execute("""
+                            SELECT capacity FROM shs_elective_offerings
+                            WHERE offering_id = %s FOR UPDATE
+                        """, (oid,))
+                        offering = cur.fetchone()
+                        if not offering:
+                            db.rollback()
+                            flash(f"Offering #{oid} not found.", "error")
+                            return redirect(url_for("registrar.shs_requests"))
+
+                        cur.execute("""
+                            SELECT COUNT(*) AS cnt FROM shs_student_elective_memberships
+                            WHERE offering_id = %s AND status = 'ACTIVE'
+                        """, (oid,))
+                        count = cur.fetchone()["cnt"]
+                        if count >= offering["capacity"]:
+                            db.rollback()
+                            flash(f"Offering #{oid} is already full ({count}/{offering['capacity']}). Cannot approve.", "error")
+                            return redirect(url_for("registrar.shs_requests"))
+
+                        # Insert membership
+                        cur.execute("""
+                            INSERT INTO shs_student_elective_memberships
+                            (enrollment_id, student_user_id, offering_id, term_name, year_id)
+                            VALUES (%s, %s, %s, %s, %s)
+                        """, (req["enrollment_id"], req.get("student_user_id"), oid, req["term_name"], req["year_id"]))
+
+                    # Mark request as approved
+                    cur.execute("""
+                        UPDATE shs_student_elective_requests
+                        SET status = 'APPROVED', reviewed_by = %s, reviewed_at = NOW()
+                        WHERE request_id = %s
+                    """, (session.get("user_id"), request_id))
+
+                    db.commit()
+                    flash(f"Request approved for {req['student_name']}.", "success")
+                except Exception as e:
+                    db.rollback()
+                    flash(f"Error approving request: {e}", "error")
+
+            elif action == "return_revision":
+                revision_reason = (request.form.get("revision_reason") or "").strip()
+                if not revision_reason:
+                    flash("Revision reason is required.", "error")
+                else:
+                    try:
+                        cur.execute("""
+                            UPDATE shs_student_elective_requests
+                            SET status = 'REVISED', revision_reason = %s,
+                                reviewed_by = %s, reviewed_at = NOW()
+                            WHERE request_id = %s AND branch_id = %s
+                        """, (revision_reason, session.get("user_id"), request_id, branch_id))
+                        db.commit()
+                        flash("Request returned for revision.", "success")
+                    except Exception as e:
+                        db.rollback()
+                        flash(f"Error: {e}", "error")
+
+            elif action == "reject":
+                try:
+                    cur.execute("""
+                        UPDATE shs_student_elective_requests
+                        SET status = 'REJECTED', reviewed_by = %s, reviewed_at = NOW()
+                        WHERE request_id = %s AND branch_id = %s
+                    """, (session.get("user_id"), request_id, branch_id))
+                    db.commit()
+                    flash("Request rejected.", "success")
+                except Exception as e:
+                    db.rollback()
+                    flash(f"Error: {e}", "error")
+
+            return redirect(url_for("registrar.shs_requests"))
+
+        # GET – fetch requests
+        requests_list = []
+        filter_status = request.args.get("status", "PENDING")
+
+        if year_id:
+            cur.execute("""
+                SELECT r.*,
+                       COALESCE(e.student_first_name, '') || ' ' || COALESCE(e.student_last_name, '') AS student_name, 
+                       e.grade_level
+                FROM shs_student_elective_requests r
+                JOIN enrollments e ON r.enrollment_id = e.enrollment_id
+                WHERE r.branch_id = %s AND r.year_id = %s AND r.status = %s
+                ORDER BY r.submitted_at DESC
+            """, (branch_id, year_id, filter_status))
+            requests_list = cur.fetchall()
+
+            # For each request, fetch items with offering details
+            for req in requests_list:
+                cur.execute("""
+                    SELECT i.*, o.group_code, s.name AS subject_name,
+                           COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, u.full_name, u.username) AS teacher_name,
+                           o.capacity,
+                           (SELECT COUNT(*) FROM shs_student_elective_memberships m
+                            WHERE m.offering_id = o.offering_id AND m.status = 'ACTIVE') AS enrolled_count
+                    FROM shs_student_elective_items i
+                    JOIN shs_elective_offerings o ON i.offering_id = o.offering_id
+                    JOIN section_teachers st ON o.section_teacher_id = st.id
+                    JOIN subjects s ON st.subject_id = s.subject_id
+                    LEFT JOIN users u ON st.teacher_id = u.user_id
+                    WHERE i.request_id = %s
+                """, (req["request_id"],))
+                req["items"] = cur.fetchall()
+
+        return render_template("registrar_shs_requests.html",
+            requests_list=requests_list,
+            year_id=year_id,
+            school_year_label=school_year_label,
+            filter_status=filter_status
+        )
+    finally:
+        cur.close()
+        db.close()

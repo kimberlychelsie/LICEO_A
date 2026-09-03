@@ -526,6 +526,27 @@
                         <input type="text" name="remarks" class="field-input track-change"
                             value="{{ enrollment.remarks or '' }}">
                     </div>
+                    <div class="field-group" id="registrar_elective_wrapper" style="display:none;">
+                        <label>SHS Pathway / Track</label>
+                        <select name="shs_track" class="field-input track-change" id="registrar_shs_track_select">
+                            <option value="">-- None / Select Pathway --</option>
+                            {% set PATHWAY_DISPLAY = {
+                                'Arts, Social Science, and Humanities': 'Arts, Social Sci & Humanities',
+                                'Science, Technology, Engineering, and Mathematics': 'Science, Tech, Eng & Math',
+                                'Business and Entrepreneurship': 'Business & Entrepreneurship',
+                                'Automotive and Small Engine Technologies': 'Automotive & Small Engine',
+                                'Construction and Building Technology': 'Construction & Building'
+                            } %}
+                            {% for o in shs_elective_offerings %}
+                            <option value="{{ o.pathway }}" 
+                                    data-grade="{{ o.grade_level_name }}"
+                                    {% if enrollment.shs_track == o.pathway %}selected{% endif %}>
+                                {{ PATHWAY_DISPLAY.get(o.pathway, o.pathway) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small style="color:var(--reg-primary); font-weight:600;">🎓 SHS pathway/track assigned to student</small>
+                    </div>
                 </div>
             </div>
         </div>
@@ -610,6 +631,59 @@
     document.addEventListener('DOMContentLoaded', () => {
         const form = document.getElementById('enrollmentForm');
         const saveFloat = document.getElementById('saveFloat');
+
+        // ── SHS Elective Filter and Show/Hide Logic ──
+        function toggleRegistrarElectives() {
+            const gradeSelect = document.querySelector('select[name="grade_level"]');
+            const electiveWrapper = document.getElementById('registrar_elective_wrapper');
+            const electiveSelect = document.getElementById('registrar_shs_track_select');
+            if (!gradeSelect || !electiveWrapper || !electiveSelect) return;
+
+            const selectedGrade = gradeSelect.value;
+            
+            // Filter options based on data-grade attribute
+            let hasOptions = false;
+            const options = electiveSelect.querySelectorAll('option');
+            options.forEach(opt => {
+                if (opt.value === "") {
+                    opt.style.display = "";
+                } else {
+                    const optGrade = opt.getAttribute('data-grade');
+                    if (optGrade === selectedGrade) {
+                        opt.style.display = "";
+                        hasOptions = true;
+                    } else {
+                        opt.style.display = "none";
+                        if (opt.selected) {
+                            opt.selected = false;
+                            electiveSelect.value = "";
+                        }
+                    }
+                }
+            });
+
+            const isSHS = selectedGrade && (selectedGrade.indexOf('11') !== -1 || selectedGrade.indexOf('12') !== -1);
+            
+            if (isSHS && hasOptions) {
+                electiveWrapper.style.display = "";
+                electiveSelect.required = true;
+            } else {
+                electiveWrapper.style.display = "none";
+                electiveSelect.value = "";
+                electiveSelect.required = false;
+            }
+            
+            if (typeof checkChanges === 'function') {
+                checkChanges();
+            }
+        }
+
+        const gradeSelect = document.querySelector('select[name="grade_level"]');
+        if (gradeSelect) {
+            gradeSelect.addEventListener("change", toggleRegistrarElectives);
+            toggleRegistrarElectives(); // Run once on load to filter options
+        }
+
         const fields = form.querySelectorAll('.track-change');
         const originals = {};
 

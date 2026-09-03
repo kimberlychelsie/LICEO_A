@@ -1177,10 +1177,10 @@
                 <p style="margin:0; font-size:0.9rem;">Updating list...</p>
             </div>`;
 
-        fetch("/api/teacher/classlist/" + sectionId)
+        fetch("/api/teacher/classlist/" + sectionId + "?subject_id={{ subject_id }}")
         .then(res => res.json())
         .then(data => {
-            if (data.ok) {
+            if (data.students) {
                 countEl.textContent = data.students.length + " Students";
                 if (data.students.length === 0) {
                     container.innerHTML = `

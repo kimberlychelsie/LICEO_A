@@ -1,0 +1,376 @@
+{% extends "base.html" %}
+{% block title %}SHS Elective Offerings{% endblock %}
+{% block content %}
+<style>
+    :root {
+        --ma-primary: #1a3a8f;
+        --ma-gold: #facc15;
+        --ma-bg: #f8fafc;
+        --ma-card: #ffffff;
+        --ma-border: rgba(26, 58, 143, 0.1);
+        --ma-text: #0f172a;
+        --ma-muted: #64748b;
+        --ma-accent: #3b82f6;
+    }
+
+    .ba-container { max-width: 1400px; margin: 0 auto; padding: 32px 24px; }
+
+    .hero-banner {
+        background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 50%, #1a3a8f 100%);
+        border-radius: 20px; padding: 40px; margin-bottom: 24px;
+        position: relative; overflow: hidden; color: #fff;
+        box-shadow: 0 15px 35px -10px rgba(37, 99, 235, 0.3);
+    }
+    .hero-banner::before {
+        content: ''; position: absolute; top: -60px; right: -30px;
+        width: 220px; height: 220px; border-radius: 50%;
+        background: rgba(255,255,255,0.05);
+    }
+    .hero-content h1 {
+        font-size: 2.2rem; font-weight: 900; letter-spacing: -0.04em;
+        margin-bottom: 10px; line-height: 1;
+    }
+    .hero-content h1 span { color: var(--ma-gold); text-shadow: 0 4px 12px rgba(250,204,21,0.3); }
+    .hero-content p { font-size: 0.95rem; font-weight: 500; color: rgba(255,255,255,0.85); max-width: 650px; margin: 0; }
+    .hero-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        background: rgba(255,255,255,0.15); backdrop-filter: blur(4px);
+        border-radius: 8px; padding: 6px 14px; font-size: 0.85rem; font-weight: 600;
+        margin-top: 12px;
+    }
+
+    .modern-card {
+        background: var(--ma-card); border: 1px solid var(--ma-border);
+        border-radius: 20px; padding: 32px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 24px;
+    }
+    .modern-card h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; align-items: end; }
+    .form-group label { display: block; font-size: 0.8rem; font-weight: 700; color: var(--ma-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+    .form-group input, .form-group select {
+        width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0;
+        border-radius: 10px; font-size: 0.9rem; font-family: inherit;
+        transition: all 0.2s;
+    }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--ma-accent); box-shadow: 0 0 0 3px rgba(59,130,246,0.1); }
+
+    .btn-primary {
+        background: var(--ma-primary); color: #fff; border: none;
+        padding: 10px 24px; border-radius: 10px; font-weight: 700;
+        cursor: pointer; font-size: 0.9rem; transition: all 0.2s;
+    }
+    .btn-primary:hover { background: #142e75; transform: translateY(-1px); }
+    .btn-sm {
+        padding: 6px 14px; font-size: 0.78rem; border-radius: 8px;
+        border: none; cursor: pointer; font-weight: 600; transition: all 0.2s;
+    }
+    .btn-edit { background: #dbeafe; color: #1d4ed8; }
+    .btn-edit:hover { background: #bfdbfe; }
+    .btn-danger { background: #fee2e2; color: #dc2626; }
+    .btn-danger:hover { background: #fecaca; }
+    .btn-outline {
+        background: transparent; border: 1.5px solid #e2e8f0; color: var(--ma-text);
+        padding: 8px 16px; border-radius: 10px; font-weight: 600; cursor: pointer;
+        font-size: 0.85rem; transition: all 0.2s;
+    }
+    .btn-outline:hover { border-color: var(--ma-accent); color: var(--ma-accent); }
+    .btn-outline.active { background: var(--ma-primary); color: #fff; border-color: var(--ma-primary); }
+
+    .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+
+    /* Offering Cards */
+    .offering-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px; }
+    .offering-card {
+        background: #fff; border: 1px solid var(--ma-border); border-radius: 16px;
+        padding: 24px; transition: all 0.3s; position: relative;
+    }
+    .offering-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); transform: translateY(-2px); }
+    .offering-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+    .offering-code {
+        font-size: 1.3rem; font-weight: 900; color: var(--ma-primary);
+        letter-spacing: -0.02em;
+    }
+    .offering-subject { font-size: 0.95rem; font-weight: 600; color: var(--ma-text); margin-bottom: 4px; }
+    .offering-teacher { font-size: 0.85rem; color: var(--ma-muted); margin-bottom: 4px; }
+    .offering-section { font-size: 0.82rem; font-weight: 700; color: var(--ma-accent); margin-bottom: 12px; }
+    .offering-meta {
+        display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
+    }
+    .meta-chip {
+        display: inline-flex; align-items: center; gap: 4px;
+        background: #f1f5f9; padding: 4px 10px; border-radius: 8px;
+        font-size: 0.78rem; font-weight: 600; color: var(--ma-muted);
+    }
+    .capacity-bar {
+        height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;
+        margin-bottom: 4px;
+    }
+    .capacity-fill {
+        height: 100%; border-radius: 3px; transition: width 0.5s ease;
+    }
+    .capacity-text { font-size: 0.78rem; color: var(--ma-muted); font-weight: 600; }
+
+    .schedule-list { margin-top: 12px; }
+    .schedule-item {
+        display: flex; align-items: center; gap: 8px;
+        padding: 6px 10px; background: #f8fafc; border-radius: 8px;
+        font-size: 0.8rem; margin-bottom: 4px; color: var(--ma-text);
+    }
+    .schedule-item .day { font-weight: 700; min-width: 90px; }
+
+    .offering-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid #f1f5f9; }
+
+    .status-badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 4px 12px; border-radius: 20px; font-size: 0.72rem; font-weight: 700;
+    }
+    .status-active { background: #d1fae5; color: #059669; }
+    .status-inactive { background: #fee2e2; color: #dc2626; }
+
+    .empty-state {
+        text-align: center; padding: 60px 20px; color: var(--ma-muted);
+    }
+    .empty-state svg { width: 64px; height: 64px; margin-bottom: 16px; opacity: 0.3; }
+    .empty-state h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; color: var(--ma-text); }
+
+    /* Modal */
+    .modal-overlay {
+        display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.5); backdrop-filter: blur(4px);
+        z-index: 9999; justify-content: center; align-items: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal-box {
+        background: #fff; border-radius: 20px; padding: 32px;
+        width: 90%; max-width: 500px; box-shadow: 0 25px 60px rgba(0,0,0,0.15);
+        animation: modalIn 0.3s ease; max-height: 90vh; overflow-y: auto;
+    }
+    .modal-box h3 { font-size: 1.2rem; font-weight: 800; margin-bottom: 20px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .btn-ghost { background: #f1f5f9; color: var(--ma-text); border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; }
+
+    @media (max-width: 768px) {
+        .ba-container {
+            padding: calc(24px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(80px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left));
+        }
+        .hero-banner { padding: 24px 20px; border-radius: 16px; margin-bottom: 16px; }
+        .hero-content h1 { font-size: 1.75rem; }
+        .modern-card { padding: 20px 16px; border-radius: 16px; }
+        .form-grid { grid-template-columns: 1fr; }
+        .offering-grid { grid-template-columns: 1fr; }
+        .btn-primary { width: 100%; }
+    }
+</style>
+
+<div class="ba-container">
+    <!-- Hero Banner -->
+    <div class="hero-banner">
+        <div class="hero-content">
+            <h1>Elective <span>Offerings</span></h1>
+            <p>Register section elective subject assignments as student selectable offerings. Set capacity, track constraints, and group codes.</p>
+            {% if school_year_label %}
+            <div class="hero-badge">{{ school_year_label }}</div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if not year_id %}
+    <div class="modern-card">
+        <div class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <h3>No Active School Year</h3>
+            <p>Please set an active school year before managing elective offerings.</p>
+        </div>
+    </div>
+    {% else %}
+
+    <!-- Add Offering Form -->
+    <div class="modern-card">
+        <h2>
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            Create Elective Offering
+        </h2>
+        {% if not grouped_assignments %}
+        <div style="font-size: 0.9rem; color: var(--ma-muted); padding: 10px; background: #fff8e1; border-radius: 8px;">
+            ⚠️ No elective subjects have been assigned to sections yet. Go to <strong>Subjects Management</strong> to assign elective subjects.
+        </div>
+        {% else %}
+        <form method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="add_offering">
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Calendar Term</label>
+                    <select name="term_name" required>
+                        <option value="">Select term...</option>
+                        {% for t in terms %}
+                        <option value="{{ t }}" {% if filter_term == t %}selected{% endif %}>{{ t }} Term</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Elective Class (Section - Subject)</label>
+                    <select name="section_teacher_id" required>
+                        <option value="">Select elective subject...</option>
+                        {% for track, assignments in grouped_assignments.items() %}
+                        <optgroup label="{{ track }}">
+                            {% for ea in assignments %}
+                            <option value="{{ ea.section_teacher_id }}">{{ ea.grade_level_name }} - {{ ea.section_name }}: {{ ea.subject_name }} ({% if ea.teacher_name %}{{ ea.teacher_name }}{% else %}No Teacher Assigned{% endif %})</option>
+                            {% endfor %}
+                        </optgroup>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Group Code</label>
+                    <input type="text" name="group_code" placeholder="e.g. PHY-A" required>
+                </div>
+                <div class="form-group">
+                    <label>Capacity</label>
+                    <input type="number" name="capacity" value="30" min="1" max="200" required>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn-primary" style="width:100%;">+ Add Offering</button>
+                </div>
+            </div>
+        </form>
+        {% endif %}
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+        {% for t in terms %}
+        <a href="{{ url_for('branch_admin.shs_offerings', term_name=t) }}" class="btn-outline {% if filter_term == t %}active{% endif %}">{{ t }} Term</a>
+        {% endfor %}
+    </div>
+
+    <!-- Offerings Grid -->
+    {% if offerings %}
+    <div class="offering-grid">
+        {% for o in offerings %}
+        <div class="offering-card">
+            <div class="offering-header">
+                <div>
+                    <div class="offering-code">{{ o.group_code }}</div>
+                    <div class="offering-subject">{{ o.subject_name }}</div>
+                    <div class="offering-teacher">{{ o.teacher_name or 'Unassigned' }}</div>
+                    <div class="offering-section">{{ o.grade_level_name }} - {{ o.section_name }}</div>
+                </div>
+                <span class="status-badge {% if o.status == 'ACTIVE' %}status-active{% else %}status-inactive{% endif %}">
+                    {{ o.status }}
+                </span>
+            </div>
+
+            <div class="offering-meta">
+                <span class="meta-chip">{{ o.term_name }} Term</span>
+                <span class="meta-chip">{{ o.shs_track }}</span>
+                <span class="meta-chip">{{ enrolled_counts.get(o.offering_id, 0) }}/{{ o.capacity }}</span>
+            </div>
+
+            <!-- Capacity Bar -->
+            {% set enrolled = enrolled_counts.get(o.offering_id, 0) %}
+            {% set pct = ((enrolled / o.capacity) * 100) if o.capacity > 0 else 0 %}
+            <div class="capacity-bar">
+                <div class="capacity-fill" style="width: {{ 100 if pct > 100 else pct }}%;
+                    background: {% if pct >= 90 %}#ef4444{% elif pct >= 70 %}#f59e0b{% else %}#22c55e{% endif %};"></div>
+            </div>
+            <div class="capacity-text">{{ enrolled }} of {{ o.capacity }} slots filled ({{ pct|round|int }}%)</div>
+
+            <!-- Schedules (Pulled from schedules table for the underlying section/subject) -->
+            <div class="schedule-list">
+                <div style="font-size: 0.78rem; font-weight:700; color: var(--ma-muted); margin-bottom: 6px; border-bottom: 1px solid #f1f5f9; padding-bottom: 2px;">
+                    Class Schedule
+                </div>
+                {% if schedules_map.get(o.offering_id) %}
+                    {% for s in schedules_map[o.offering_id] %}
+                    <div class="schedule-item">
+                        <span class="day">{{ s.day_of_week }}</span>
+                        <span>{{ s.start_time.strftime('%I:%M %p') }} – {{ s.end_time.strftime('%I:%M %p') }}</span>
+                        {% if s.room %}<span style="color:var(--ma-muted); margin-left: auto;">Room: {{ s.room }}</span>{% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div style="font-size: 0.78rem; color: var(--ma-muted); font-style: italic; padding: 4px;">
+                        No schedules defined in schedules manager.
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="offering-actions">
+                <button class="btn-sm btn-edit" onclick="openEditOfferingModal({{ o|tojson }})">Edit Offering</button>
+                <form method="POST" style="display:inline; margin-left:auto;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="action" value="delete_offering">
+                    <input type="hidden" name="offering_id" value="{{ o.offering_id }}">
+                    <button type="submit" class="btn-sm btn-danger" onclick="return confirm('Delete this entire offering? Approved student selections for this offering will be unlinked.')">🗑 Delete</button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="modern-card">
+        <div class="empty-state">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+            <h3>No Offerings Yet</h3>
+            <p>Create your first elective offering using the form above for {{ filter_term }} Term.</p>
+        </div>
+    </div>
+    {% endif %}
+    {% endif %}
+</div>
+
+<!-- Edit Offering Modal -->
+<div class="modal-overlay" id="editOfferingModal">
+    <div class="modal-box">
+        <h3>✏️ Edit Elective Offering</h3>
+        <form method="POST" id="editOfferingForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="action" value="update_offering">
+            <input type="hidden" name="offering_id" id="eo_id">
+            
+            <div style="background: #f8fafc; padding: 14px; border-radius: 12px; border: 1px solid var(--ma-border); margin-bottom: 16px;">
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--ma-muted); text-transform: uppercase;">Class Details (Fixed)</div>
+                <div id="eo_display_details" style="font-size: 0.95rem; font-weight: 600; color: var(--ma-primary); margin-top: 4px;"></div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:14px;">
+                <div class="form-group">
+                    <label>Group Code</label>
+                    <input type="text" name="group_code" id="eo_code" required>
+                </div>
+                <div class="form-group">
+                    <label>Capacity</label>
+                    <input type="number" name="capacity" id="eo_capacity" min="1" max="200" required>
+                </div>
+                <div class="form-group">
+                    <label>Status</label>
+                    <select name="status" id="eo_status">
+                        <option value="ACTIVE">ACTIVE</option>
+                        <option value="INACTIVE">INACTIVE</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-ghost" onclick="document.getElementById('editOfferingModal').classList.remove('show')">Cancel</button>
+                <button type="submit" class="btn-primary">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+function openEditOfferingModal(o) {
+    document.getElementById('eo_id').value = o.offering_id;
+    document.getElementById('eo_code').value = o.group_code;
+    document.getElementById('eo_capacity').value = o.capacity;
+    document.getElementById('eo_status').value = o.status;
+    document.getElementById('eo_display_details').innerText = o.grade_level_name + " - " + o.section_name + " • " + o.subject_name + " (" + (o.teacher_name ? o.teacher_name : 'Unassigned') + ")";
+    document.getElementById('editOfferingModal').classList.add('show');
+}
+document.querySelectorAll('.modal-overlay').forEach(m => {
+    m.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('show'); });
+});
+</script>
+{% endblock %}

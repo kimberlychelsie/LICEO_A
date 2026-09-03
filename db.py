@@ -601,38 +601,76 @@ def get_db_connection():
                 logger.warning(f"Could not migrate financial tables: {e}")
                 conn.rollback()
 
-            # ONE-TIME STRAND MIGRATION: Update generic Grade 11/12 to strands
+            # ONE-TIME STRAND CLEANUP MIGRATION: Merge strands back to generic Grade 11/12
             try:
-                # 1. Update generic "Grade 11" and "Grade 12" to strands with "Grade" prefix
-                cur.execute("SELECT enrollment_id FROM enrollments WHERE grade_level = 'Grade 11' ORDER BY enrollment_id")
-                g11_rows = cur.fetchall()
-                strands_11 = ['Grade 11-GAS', 'Grade 11-STEM', 'Grade 11-HUMSS']
-                for i, row in enumerate(g11_rows):
-                    cur.execute("UPDATE enrollments SET grade_level = %s WHERE enrollment_id = %s", (strands_11[i % 3], row[0]))
-                
-                cur.execute("SELECT enrollment_id FROM enrollments WHERE grade_level = 'Grade 12' ORDER BY enrollment_id")
-                g12_rows = cur.fetchall()
-                strands_12 = ['Grade 12-GAS', 'Grade 12-STEM', 'Grade 12-HUMSS']
-                for i, row in enumerate(g12_rows):
-                    cur.execute("UPDATE enrollments SET grade_level = %s WHERE enrollment_id = %s", (strands_12[i % 3], row[0]))
+                # 1. Update enrollments grade_level names
+                cur.execute("""
+                    UPDATE enrollments 
+                    SET grade_level = CASE 
+                        WHEN grade_level ILIKE 'Grade 11-%' OR grade_level ILIKE '11-%' THEN 'Grade 11'
+                        WHEN grade_level ILIKE 'Grade 12-%' OR grade_level ILIKE '12-%' THEN 'Grade 12'
+                        ELSE grade_level
+                    END
+                    WHERE grade_level ILIKE '%11-%' OR grade_level ILIKE '%12-%'
+                       OR grade_level IN ('11-GAS', '11-STEM', '11-HUMSS', '12-GAS', '12-STEM', '12-HUMSS')
+                """)
 
-                # 2. FIX existing strand names missing "Grade" prefix
-                cur.execute("UPDATE enrollments SET grade_level = 'Grade ' || grade_level WHERE grade_level NOT LIKE 'Grade %' AND (grade_level LIKE '11-%' OR grade_level LIKE '12-%')")
-                cur.execute("UPDATE grade_levels SET name = 'Grade ' || name WHERE name NOT LIKE 'Grade %' AND (name LIKE '11-%' OR name LIKE '12-%')")
+                # 2. Query all strand grade levels in grade_levels table
+                cur.execute("""
+                    SELECT id, name, branch_id 
+                    FROM grade_levels 
+                    WHERE name ILIKE 'Grade 11-%' OR name ILIKE '11-%' 
+                       OR name ILIKE 'Grade 12-%' OR name ILIKE '12-%'
+                """)
+                strand_grades = cur.fetchall()
                 
+                for sg_id, sg_name, sg_branch_id in strand_grades:
+                    target_name = 'Grade 11' if ('11' in sg_name) else 'Grade 12'
+                    target_order = 13 if target_name == 'Grade 11' else 14
+                    
+                    # Find or create a matching 'Grade 11' or 'Grade 12' row for the same branch_id
+                    if sg_branch_id is not None:
+                        cur.execute("SELECT id FROM grade_levels WHERE name = %s AND branch_id = %s", (target_name, sg_branch_id))
+                    else:
+                        cur.execute("SELECT id FROM grade_levels WHERE name = %s AND branch_id IS NULL", (target_name,))
+                    
+                    matching_row = cur.fetchone()
+                    if matching_row:
+                        target_id = matching_row[0]
+                    else:
+                        if sg_branch_id is not None:
+                            cur.execute("INSERT INTO grade_levels (name, display_order, branch_id) VALUES (%s, %s, %s) RETURNING id", (target_name, target_order, sg_branch_id))
+                        else:
+                            cur.execute("INSERT INTO grade_levels (name, display_order) VALUES (%s, %s) RETURNING id", (target_name, target_order))
+                        target_id = cur.fetchone()[0]
+                        
+                    # Update references: sections table
+                    cur.execute("UPDATE sections SET grade_level_id = %s WHERE grade_level_id = %s", (target_id, sg_id))
+                    
+                    # Update references: teacher_grade_levels table
+                    cur.execute("UPDATE teacher_grade_levels SET grade_level_id = %s WHERE grade_level_id = %s", (target_id, sg_id))
+                    
+                    # Delete the old strand grade level row
+                    cur.execute("DELETE FROM grade_levels WHERE id = %s", (sg_id,))
+
+                # 3. Remove duplicate entries in teacher_grade_levels
+                cur.execute("""
+                    DELETE FROM teacher_grade_levels a USING teacher_grade_levels b 
+                    WHERE a.id > b.id AND a.teacher_id = b.teacher_id AND a.grade_level_id = b.grade_level_id
+                """)
                 conn.commit()
             except Exception as e:
                 conn.rollback()
-                logger.warning(f"Strand migration skipped: {e}")
+                logger.warning(f"Strand cleanup migration failed: {e}")
 
-            # SEED GRADE LEVELS: Ensure strands exist in grade_levels table
+            # SEED GRADE LEVELS: Ensure Grade 11 & Grade 12 exist in grade_levels table
             try:
-                strands_to_add = [
-                    ('Grade 11-GAS', 13.1), ('Grade 11-STEM', 13.2), ('Grade 11-HUMSS', 13.3),
-                    ('Grade 12-GAS', 14.1), ('Grade 12-STEM', 14.2), ('Grade 12-HUMSS', 14.3)
+                grades_to_add = [
+                    ('Grade 11', 13.0),
+                    ('Grade 12', 14.0)
                 ]
-                for g_name, g_order in strands_to_add:
-                    cur.execute("SELECT id FROM grade_levels WHERE name = %s", (g_name,))
+                for g_name, g_order in grades_to_add:
+                    cur.execute("SELECT id FROM grade_levels WHERE name = %s AND branch_id IS NULL", (g_name,))
                     if not cur.fetchone():
                         cur.execute("INSERT INTO grade_levels (name, display_order) VALUES (%s, %s)", (g_name, g_order))
                 conn.commit()
@@ -766,6 +804,157 @@ def get_db_connection():
                     conn.commit()
             except Exception as e:
                 logger.warning(f"Could not create or migrate uniform_orders tables: {e}")
+                conn.rollback()
+
+            # ── SHS Elective Enrollment System tables ──
+
+            try:
+                # 1. shs_selection_periods – registrar controlled open/close
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS shs_selection_periods (
+                        period_id    SERIAL PRIMARY KEY,
+                        branch_id    INTEGER NOT NULL REFERENCES branches(branch_id) ON DELETE CASCADE,
+                        year_id      INTEGER NOT NULL REFERENCES school_years(year_id) ON DELETE CASCADE,
+                        term_name    VARCHAR(50) NOT NULL,
+                        status       VARCHAR(20) DEFAULT 'CLOSED',
+                        opened_at    TIMESTAMP,
+                        closed_at    TIMESTAMP,
+                        CONSTRAINT uq_branch_term_selection UNIQUE (branch_id, year_id, term_name)
+                    )
+                """)
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not create shs_selection_periods table: {e}")
+                conn.rollback()
+
+            try:
+                # 2. shs_elective_offerings – branch admin managed electives linked to section_teachers
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS shs_elective_offerings (
+                        offering_id        SERIAL PRIMARY KEY,
+                        branch_id          INTEGER NOT NULL REFERENCES branches(branch_id) ON DELETE CASCADE,
+                        year_id            INTEGER NOT NULL REFERENCES school_years(year_id) ON DELETE CASCADE,
+                        term_name          VARCHAR(50) NOT NULL,
+                        section_teacher_id INTEGER NOT NULL REFERENCES section_teachers(id) ON DELETE CASCADE,
+                        group_code         VARCHAR(50) NOT NULL,
+                        shs_track          VARCHAR(50) NOT NULL DEFAULT 'Academic',
+                        capacity           INTEGER NOT NULL DEFAULT 30,
+                        status             VARCHAR(20) DEFAULT 'ACTIVE',
+                        created_at         TIMESTAMP DEFAULT NOW(),
+                        CONSTRAINT uq_section_teacher_term UNIQUE (section_teacher_id, term_name)
+                    )
+                """)
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not create shs_elective_offerings table: {e}")
+                conn.rollback()
+
+            try:
+                # 3. shs_student_elective_requests – student selection submissions
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS shs_student_elective_requests (
+                        request_id       SERIAL PRIMARY KEY,
+                        enrollment_id    INTEGER NOT NULL REFERENCES enrollments(enrollment_id) ON DELETE CASCADE,
+                        student_user_id  INTEGER REFERENCES users(user_id),
+                        branch_id        INTEGER NOT NULL,
+                        year_id          INTEGER NOT NULL,
+                        term_name        VARCHAR(50) NOT NULL,
+                        status           VARCHAR(30) DEFAULT 'PENDING',
+                        revision_reason  TEXT,
+                        submitted_at     TIMESTAMP DEFAULT NOW(),
+                        reviewed_by      INTEGER REFERENCES users(user_id),
+                        reviewed_at      TIMESTAMP
+                    )
+                """)
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not create shs_student_elective_requests table: {e}")
+                conn.rollback()
+
+            try:
+                # 4. shs_student_elective_items – line items per request
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS shs_student_elective_items (
+                        item_id      SERIAL PRIMARY KEY,
+                        request_id   INTEGER NOT NULL REFERENCES shs_student_elective_requests(request_id) ON DELETE CASCADE,
+                        offering_id  INTEGER NOT NULL REFERENCES shs_elective_offerings(offering_id) ON DELETE CASCADE
+                    )
+                """)
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not create shs_student_elective_items table: {e}")
+                conn.rollback()
+
+            try:
+                # 5. shs_student_elective_memberships – active class enrollment
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS shs_student_elective_memberships (
+                        membership_id    SERIAL PRIMARY KEY,
+                        enrollment_id    INTEGER NOT NULL REFERENCES enrollments(enrollment_id) ON DELETE CASCADE,
+                        student_user_id  INTEGER REFERENCES users(user_id),
+                        offering_id      INTEGER NOT NULL REFERENCES shs_elective_offerings(offering_id) ON DELETE CASCADE,
+                        term_name        VARCHAR(50) NOT NULL,
+                        year_id          INTEGER NOT NULL REFERENCES school_years(year_id) ON DELETE CASCADE,
+                        status           VARCHAR(20) DEFAULT 'ACTIVE',
+                        enrolled_at      TIMESTAMP DEFAULT NOW(),
+                        dropped_at       TIMESTAMP
+                    )
+                """)
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not create shs_student_elective_memberships table: {e}")
+                conn.rollback()
+
+            # ── Safe ALTER TABLEs for SHS curriculum support ──
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'enrollments'")
+                enr_shs = [r[0] for r in cur.fetchall()]
+                if 'curriculum_type' not in enr_shs:
+                    cur.execute("ALTER TABLE enrollments ADD COLUMN curriculum_type VARCHAR(50) DEFAULT 'basic_ed'")
+                if 'shs_track' not in enr_shs:
+                    cur.execute("ALTER TABLE enrollments ADD COLUMN shs_track VARCHAR(50)")
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not add SHS columns to enrollments: {e}")
+                conn.rollback()
+
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'subjects'")
+                subj_cols = [r[0] for r in cur.fetchall()]
+                if subj_cols:
+                    if 'subject_type' not in subj_cols:
+                        cur.execute("ALTER TABLE subjects ADD COLUMN subject_type VARCHAR(50) DEFAULT 'CORE'")
+                    if 'track' not in subj_cols:
+                        cur.execute("ALTER TABLE subjects ADD COLUMN track VARCHAR(50)")
+                    if 'pathway' not in subj_cols:
+                        cur.execute("ALTER TABLE subjects ADD COLUMN pathway VARCHAR(100)")
+                    if 'prerequisite_subject_id' not in subj_cols:
+                        cur.execute("ALTER TABLE subjects ADD COLUMN prerequisite_subject_id INTEGER REFERENCES public.subjects(subject_id) ON DELETE SET NULL")
+                    conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not add SHS columns to subjects: {e}")
+                conn.rollback()
+
+            # ── Migration for shs_pathways table ──
+            try:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS public.shs_pathways (
+                        pathway_id    SERIAL PRIMARY KEY,
+                        branch_id     INTEGER NOT NULL REFERENCES public.branches(branch_id) ON DELETE CASCADE,
+                        track_name    VARCHAR(100) NOT NULL,
+                        pathway_name  VARCHAR(200) NOT NULL,
+                        description   TEXT,
+                        is_active     BOOLEAN DEFAULT TRUE,
+                        display_order INTEGER DEFAULT 0,
+                        created_at    TIMESTAMP DEFAULT NOW(),
+                        CONSTRAINT uq_branch_track_pathway UNIQUE (branch_id, track_name, pathway_name)
+                    )
+                """)
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_shs_pathways_branch ON public.shs_pathways (branch_id)")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_shs_pathways_active ON public.shs_pathways (branch_id, is_active)")
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not create shs_pathways table: {e}")
                 conn.rollback()
 
             # Commit successful things

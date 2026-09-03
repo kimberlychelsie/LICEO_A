@@ -1200,7 +1200,7 @@ def list_and_add_schedules():
     active_year = school_years[0] if school_years else None
 
     # Fetch unique Grades and Sections for filtering
-    cursor.execute("SELECT name FROM grade_levels WHERE name NOT IN ('Grade 11', 'Grade 12') ORDER BY id ASC")
+    cursor.execute("SELECT name FROM grade_levels WHERE branch_id = %s ORDER BY display_order", (branch_id,))
     all_grades_list = [row["name"] for row in cursor.fetchall()]
     cursor.execute("""
         SELECT s.section_id, s.section_name, g.name AS grade_name
@@ -1542,8 +1542,14 @@ def branch_admin_grade_levels():
     cursor = db.cursor()
 
     # Fetch all unique grade names from the system, sorted by their academic order
-    cursor.execute("SELECT name FROM grade_levels GROUP BY name ORDER BY MIN(display_order)")
-    available_grade_names = [row[0] for row in cursor.fetchall()]
+    cursor.execute("SELECT name FROM grade_levels GROUP BY name")
+    db_names = [row[0] for row in cursor.fetchall()]
+    ACADEMIC_ORDER = {
+        "Nursery": 1, "Kinder": 2, "Grade 1": 3, "Grade 2": 4, "Grade 3": 5,
+        "Grade 4": 6, "Grade 5": 7, "Grade 6": 8, "Grade 7": 9, "Grade 8": 10,
+        "Grade 9": 11, "Grade 10": 12, "Grade 11": 13, "Grade 12": 14
+    }
+    available_grade_names = sorted(db_names, key=lambda x: ACADEMIC_ORDER.get(x, 99))
     
     # Defaults if DB is empty
     if not available_grade_names:
@@ -1832,23 +1838,42 @@ def branch_admin_subjects():
         names = request.form.getlist("names")
         categories = request.form.getlist("categories")
         section_ids = request.form.getlist("section_ids")
+        subject_types = request.form.getlist("subject_types")
+        tracks = request.form.getlist("tracks")
+        pathways = request.form.getlist("pathways")
 
         if not names or not section_ids:
             flash("At least one subject and one section are required.", "error")
             return redirect(url_for("branch_admin.branch_admin_subjects"))
 
         try:
+            prerequisite_ids = request.form.getlist("prerequisite_ids")
             for i in range(len(names)):
                 name = names[i].strip()
                 if not name: continue
                 deped_category = categories[i] if i < len(categories) else "language"
+                subject_type = subject_types[i] if i < len(subject_types) else "CORE"
+                track = tracks[i] if i < len(tracks) else None
+                pathway = pathways[i] if i < len(pathways) else None
+                prereq_id_raw = prerequisite_ids[i] if i < len(prerequisite_ids) else None
+                prereq_id = int(prereq_id_raw) if (prereq_id_raw and str(prereq_id_raw).isdigit()) else None
+
+                if subject_type != "ELECTIVE":
+                    track = None
+                    pathway = None
+                    prereq_id = None
 
                 cursor.execute("""
-                    INSERT INTO subjects (name, deped_category)
-                    VALUES (%s, %s)
-                    ON CONFLICT (name) DO UPDATE SET deped_category = EXCLUDED.deped_category
+                    INSERT INTO subjects (name, deped_category, subject_type, track, pathway, prerequisite_subject_id)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (name) DO UPDATE SET 
+                        deped_category = EXCLUDED.deped_category,
+                        subject_type = EXCLUDED.subject_type,
+                        track = EXCLUDED.track,
+                        pathway = EXCLUDED.pathway,
+                        prerequisite_subject_id = EXCLUDED.prerequisite_subject_id
                     RETURNING subject_id
-                """, (name, deped_category))
+                """, (name, deped_category, subject_type, track, pathway, prereq_id))
                 res = cursor.fetchone()
                 subject_id = res["subject_id"] if res else None
                 if not subject_id:
@@ -1880,9 +1905,12 @@ def branch_admin_subjects():
         section_id_filter = str(section_options[0]['section_id'])
 
     query = """
-        SELECT st.subject_id, sub.name, sub.deped_category, s.section_id, s.section_name, g.name AS grade_level_name, st.is_archived
+        SELECT st.subject_id, sub.name, sub.deped_category, sub.subject_type, sub.track, sub.pathway, 
+               sub.prerequisite_subject_id, prereq.name AS prerequisite_name,
+               s.section_id, s.section_name, g.name AS grade_level_name, st.is_archived
         FROM section_teachers st
         INNER JOIN subjects sub ON st.subject_id = sub.subject_id
+        LEFT JOIN subjects prereq ON sub.prerequisite_subject_id = prereq.subject_id
         INNER JOIN sections s ON st.section_id = s.section_id
         INNER JOIN grade_levels g ON s.grade_level_id = g.id
         INNER JOIN school_years y ON s.year_id = y.year_id           
@@ -1897,13 +1925,42 @@ def branch_admin_subjects():
     cursor.execute(query, tuple(params))
     assignments = cursor.fetchall() or []
 
+    # Fetch all subjects in branch for prerequisite dropdown options
+    cursor.execute("""
+        SELECT DISTINCT s.subject_id, s.name, s.subject_type, s.track, s.pathway
+        FROM subjects s
+        JOIN section_teachers st ON s.subject_id = st.subject_id
+        JOIN sections sec ON st.section_id = sec.section_id
+        WHERE sec.branch_id = %s
+        ORDER BY s.name
+    """, (branch_id,))
+    all_branch_subjects = cursor.fetchall() or []
+
+    # Fetch active pathways for dynamic subject creation
+    cursor.execute("""
+        SELECT track_name, pathway_name 
+        FROM shs_pathways 
+        WHERE branch_id = %s AND is_active = TRUE 
+        ORDER BY track_name, display_order, pathway_name
+    """, (branch_id,))
+    db_pathways = cursor.fetchall() or []
+
+    pathways_by_track = {}
+    for row in db_pathways:
+        t = row["track_name"]
+        if t not in pathways_by_track:
+            pathways_by_track[t] = []
+        pathways_by_track[t].append(row["pathway_name"])
+
     cursor.close(); db.close()
 
     return render_template(
         "branch_admin_subjects.html",
         assignments=assignments,
         section_options=section_options,
-        selected_section_id=section_id_filter
+        selected_section_id=section_id_filter,
+        pathways_by_track=pathways_by_track,
+        all_branch_subjects=all_branch_subjects
     )
 
 @branch_admin_bp.route("/branch-admin/subjects/<int:subject_id>/<int:section_id>/toggle-archive", methods=["POST"])
@@ -1960,6 +2017,16 @@ def branch_admin_subject_edit(subject_id):
     new_name = (request.form.get("name") or "").strip()
     section_id = request.form.get("section_id")
     deped_category = request.form.get("deped_category", "language")
+    subject_type = request.form.get("subject_type", "CORE")
+    track = request.form.get("track")
+    pathway = request.form.get("pathway")
+    prereq_id_raw = request.form.get("prerequisite_subject_id")
+    prereq_id = int(prereq_id_raw) if (prereq_id_raw and str(prereq_id_raw).isdigit()) else None
+
+    if subject_type != "ELECTIVE":
+        track = None
+        pathway = None
+        prereq_id = None
 
     if not new_name or not section_id:
         flash("Required fields missing.", "error")
@@ -1973,7 +2040,11 @@ def branch_admin_subject_edit(subject_id):
             flash("Invalid section.", "error")
             return redirect(url_for("branch_admin.branch_admin_subjects"))
 
-        cursor.execute("UPDATE subjects SET name = %s, deped_category = %s WHERE subject_id = %s", (new_name, deped_category, subject_id))
+        cursor.execute("""
+            UPDATE subjects 
+            SET name = %s, deped_category = %s, subject_type = %s, track = %s, pathway = %s, prerequisite_subject_id = %s 
+            WHERE subject_id = %s
+        """, (new_name, deped_category, subject_type, track, pathway, prereq_id, subject_id))
         db.commit()
         flash("Subject updated.", "success")
     except Exception as e:
@@ -2469,7 +2540,7 @@ def branch_admin_assign_students():
            ORDER BY e.student_last_name,
    e.student_first_name,
    e.student_middle_name
-       """, (branch_id, active_year_id, grade_name, grade_name.replace("Grade ", "")))
+       """, (branch_id, active_year_id, f"{grade_name}%", f"{grade_name.replace('Grade ', '')}%"))
        students = cursor.fetchall() or []
        for s in students:
            s["student_name"] = " ".join(filter(None, [
@@ -3153,3 +3224,327 @@ def branch_admin_view_class_record(req_id):
     finally:
         cur.close()
         db.close()
+
+
+# =======================
+# SHS ELECTIVE OFFERINGS
+# =======================
+@branch_admin_bp.route("/branch-admin/shs/offerings", methods=["GET", "POST"])
+def shs_offerings():
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("No branch assigned.", "error")
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        year_id = _get_viewed_year_id(cur, branch_id)
+
+        if request.method == "POST":
+            action = request.form.get("action")
+
+            if action == "add_offering":
+                term_name = request.form.get("term_name")
+                section_teacher_id = request.form.get("section_teacher_id")
+                group_code = (request.form.get("group_code") or "").strip()
+                capacity = request.form.get("capacity", 30)
+
+                if not all([term_name, section_teacher_id, group_code, year_id]):
+                    flash("All fields are required.", "error")
+                else:
+                    try:
+                        # Auto-resolve track from the subject associated with this section_teacher assignment
+                        cur.execute("""
+                            SELECT s.track 
+                            FROM section_teachers st
+                            JOIN subjects s ON st.subject_id = s.subject_id
+                            WHERE st.id = %s
+                        """, (section_teacher_id,))
+                        res = cur.fetchone()
+                        shs_track = res["track"] if (res and res["track"]) else "Academic"
+
+                        cur.execute("""
+                            INSERT INTO shs_elective_offerings
+                            (branch_id, year_id, term_name, section_teacher_id, group_code, shs_track, capacity)
+                            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                        """, (branch_id, year_id, term_name, section_teacher_id, group_code, shs_track, capacity))
+                        db.commit()
+                        flash(f"Elective offering '{group_code}' created.", "success")
+                    except Exception as e:
+                        db.rollback()
+                        if "uq_section_teacher_term" in str(e):
+                            flash("This elective subject has already been registered for this term.", "error")
+                        else:
+                            flash(f"Error creating offering: {e}", "error")
+
+            elif action == "update_offering":
+                offering_id = request.form.get("offering_id")
+                group_code = (request.form.get("group_code") or "").strip()
+                capacity = request.form.get("capacity", 30)
+                status = request.form.get("status", "ACTIVE")
+                try:
+                    # Auto-resolve track from the subject associated with this offering
+                    cur.execute("""
+                        SELECT s.track 
+                        FROM shs_elective_offerings o
+                        JOIN section_teachers st ON o.section_teacher_id = st.id
+                        JOIN subjects s ON st.subject_id = s.subject_id
+                        WHERE o.offering_id = %s
+                    """, (offering_id,))
+                    res = cur.fetchone()
+                    shs_track = res["track"] if (res and res["track"]) else "Academic"
+
+                    cur.execute("""
+                        UPDATE shs_elective_offerings
+                        SET group_code = %s, shs_track = %s, capacity = %s, status = %s
+                        WHERE offering_id = %s AND branch_id = %s
+                    """, (group_code, shs_track, capacity, status, offering_id, branch_id))
+                    db.commit()
+                    flash("Offering updated.", "success")
+                except Exception as e:
+                    db.rollback()
+                    flash(f"Error updating offering: {e}", "error")
+
+            elif action == "delete_offering":
+                offering_id = request.form.get("offering_id")
+                try:
+                    cur.execute("DELETE FROM shs_elective_offerings WHERE offering_id = %s AND branch_id = %s",
+                                (offering_id, branch_id))
+                    db.commit()
+                    flash("Offering deleted.", "success")
+                except Exception as e:
+                    db.rollback()
+                    flash(f"Cannot delete offering (may have linked students): {e}", "error")
+
+            return redirect(url_for("branch_admin.shs_offerings"))
+
+        # GET – fetch data
+        terms = []
+        offerings = []
+        elective_assignments = []
+        schedules_map = {}
+        enrolled_counts = {}
+        school_year_label = ""
+        filter_term = request.args.get("term_name", "")
+
+        if year_id:
+            cur.execute("SELECT label FROM school_years WHERE year_id = %s", (year_id,))
+            yr = cur.fetchone()
+            school_year_label = yr["label"] if yr else ""
+
+            # Get terms from academic calendar (grading period ranges)
+            cur.execute("""
+                SELECT DISTINCT period_name 
+                FROM grading_period_ranges
+                WHERE branch_id = %s AND year_id = %s
+                ORDER BY period_name
+            """, (branch_id, year_id))
+            raw_periods = cur.fetchall()
+            terms = [p["period_name"] for p in raw_periods]
+            if not terms:
+                terms = ["1st", "2nd", "3rd"] # fallback
+
+            if not filter_term and terms:
+                filter_term = terms[0]
+
+            # Build offerings query
+            q = """
+                SELECT o.*, s.name AS subject_name,
+                       sec.section_name,
+                       g.name AS grade_level_name,
+                       st.section_id, st.subject_id, st.teacher_id,
+                       COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, u.full_name, u.username) AS teacher_name
+                FROM shs_elective_offerings o
+                JOIN section_teachers st ON o.section_teacher_id = st.id
+                JOIN subjects s ON st.subject_id = s.subject_id
+                JOIN sections sec ON st.section_id = sec.section_id
+                JOIN grade_levels g ON sec.grade_level_id = g.id
+                LEFT JOIN users u ON st.teacher_id = u.user_id
+                WHERE o.branch_id = %s AND o.year_id = %s
+            """
+            params = [branch_id, year_id]
+            if filter_term:
+                q += " AND o.term_name = %s"
+                params.append(filter_term)
+            q += " ORDER BY o.term_name, o.group_code"
+            cur.execute(q, params)
+            offerings = cur.fetchall()
+
+            # Get standard schedules for each offering
+            offering_ids = [o["offering_id"] for o in offerings]
+            if offerings:
+                for o in offerings:
+                    cur.execute("""
+                        SELECT day_of_week, start_time, end_time, room 
+                        FROM schedules
+                        WHERE section_id = %s AND subject_id = %s AND year_id = %s AND is_archived = FALSE
+                        ORDER BY day_of_week, start_time
+                    """, (o["section_id"], o["subject_id"], year_id))
+                    schedules_map[o["offering_id"]] = cur.fetchall()
+
+                # Get enrolled counts
+                cur.execute("""
+                    SELECT offering_id, COUNT(*) AS cnt
+                    FROM shs_student_elective_memberships
+                    WHERE offering_id = ANY(%s) AND status = 'ACTIVE'
+                    GROUP BY offering_id
+                """, (offering_ids,))
+                for row in cur.fetchall():
+                    enrolled_counts[row["offering_id"]] = row["cnt"]
+
+            # Get eligible section_teachers assignments that are marked as electives and not already offered in ANY term
+            cur.execute("""
+                SELECT st.id AS section_teacher_id,
+                       s.name AS subject_name,
+                       s.track AS subject_track,
+                       sec.section_name,
+                       g.name AS grade_level_name,
+                       COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, u.full_name, u.username) AS teacher_name
+                FROM section_teachers st
+                JOIN subjects s ON st.subject_id = s.subject_id
+                JOIN sections sec ON st.section_id = sec.section_id
+                JOIN grade_levels g ON sec.grade_level_id = g.id
+                LEFT JOIN shs_elective_offerings o ON st.id = o.section_teacher_id
+                    AND o.branch_id = %s AND o.year_id = %s
+                LEFT JOIN users u ON st.teacher_id = u.user_id
+                WHERE sec.branch_id = %s
+                  AND st.year_id = %s
+                  AND s.subject_type = 'ELECTIVE'
+                  AND st.is_archived = FALSE
+                  AND o.offering_id IS NULL
+                ORDER BY s.track, g.name, sec.section_name, s.name
+            """, (branch_id, year_id, branch_id, year_id))
+            raw_assignments = cur.fetchall()
+            
+            # Group by track for optgroup display
+            grouped_assignments = {}
+            for ea in raw_assignments:
+                track = ea["subject_track"] or "Other Electives"
+                if track not in grouped_assignments:
+                    grouped_assignments[track] = []
+                grouped_assignments[track].append(ea)
+
+        return render_template("branch_admin_shs_offerings.html",
+            terms=terms,
+            offerings=offerings,
+            grouped_assignments=grouped_assignments,
+            schedules_map=schedules_map,
+            enrolled_counts=enrolled_counts,
+            year_id=year_id,
+            school_year_label=school_year_label,
+            filter_term=filter_term
+        )
+    finally:
+        cur.close()
+        db.close()
+
+
+# =======================
+# SHS PATHWAYS MANAGEMENT
+# =======================
+@branch_admin_bp.route("/branch-admin/shs/pathways", methods=["GET", "POST"])
+def shs_pathways():
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("No branch assigned.", "error")
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        if request.method == "POST":
+            action = request.form.get("action")
+
+            if action == "add_pathway":
+                track_name = (request.form.get("track_name") or "").strip()
+                pathway_name = (request.form.get("pathway_name") or "").strip()
+                description = (request.form.get("description") or "").strip() or None
+                display_order = int(request.form.get("display_order") or 0)
+
+                if not track_name or not pathway_name:
+                    flash("Track and Pathway name are required.", "error")
+                else:
+                    try:
+                        cur.execute("""
+                            INSERT INTO shs_pathways (branch_id, track_name, pathway_name, description, display_order)
+                            VALUES (%s, %s, %s, %s, %s)
+                            ON CONFLICT (branch_id, track_name, pathway_name)
+                            DO UPDATE SET description = EXCLUDED.description, display_order = EXCLUDED.display_order, is_active = TRUE
+                        """, (branch_id, track_name, pathway_name, description, display_order))
+                        db.commit()
+                        flash(f"Pathway '{pathway_name}' added successfully.", "success")
+                    except Exception as e:
+                        db.rollback()
+                        flash(f"Error adding pathway: {e}", "error")
+
+            elif action == "update_pathway":
+                pathway_id = request.form.get("pathway_id")
+                track_name = (request.form.get("track_name") or "").strip()
+                pathway_name = (request.form.get("pathway_name") or "").strip()
+                description = (request.form.get("description") or "").strip() or None
+                display_order = int(request.form.get("display_order") or 0)
+
+                try:
+                    cur.execute("""
+                        UPDATE shs_pathways
+                        SET track_name = %s, pathway_name = %s, description = %s, display_order = %s
+                        WHERE pathway_id = %s AND branch_id = %s
+                    """, (track_name, pathway_name, description, display_order, pathway_id, branch_id))
+                    db.commit()
+                    flash("Pathway updated.", "success")
+                except Exception as e:
+                    db.rollback()
+                    flash(f"Error updating pathway: {e}", "error")
+
+            elif action == "toggle_active":
+                pathway_id = request.form.get("pathway_id")
+                try:
+                    cur.execute("""
+                        UPDATE shs_pathways
+                        SET is_active = NOT is_active
+                        WHERE pathway_id = %s AND branch_id = %s
+                    """, (pathway_id, branch_id))
+                    db.commit()
+                    flash("Pathway status updated.", "success")
+                except Exception as e:
+                    db.rollback()
+                    flash(f"Error: {e}", "error")
+
+            elif action == "delete_pathway":
+                pathway_id = request.form.get("pathway_id")
+                try:
+                    cur.execute("DELETE FROM shs_pathways WHERE pathway_id = %s AND branch_id = %s", (pathway_id, branch_id))
+                    db.commit()
+                    flash("Pathway deleted.", "success")
+                except Exception as e:
+                    db.rollback()
+                    flash(f"Cannot delete pathway: {e}", "error")
+
+            return redirect(url_for("branch_admin.shs_pathways"))
+
+        # GET: Fetch pathways grouped by track
+        cur.execute("""
+            SELECT * FROM shs_pathways
+            WHERE branch_id = %s
+            ORDER BY track_name, display_order, pathway_name
+        """, (branch_id,))
+        raw_pathways = cur.fetchall()
+
+        grouped_pathways = {}
+        for p in raw_pathways:
+            track = p["track_name"]
+            if track not in grouped_pathways:
+                grouped_pathways[track] = []
+            grouped_pathways[track].append(p)
+
+        return render_template("branch_admin_shs_pathways.html",
+            grouped_pathways=grouped_pathways
+        )
+    finally:
+        cur.close()
+        db.close()

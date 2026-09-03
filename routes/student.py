@@ -412,7 +412,7 @@ def enroll(branch_id):
         # ── Fetch grade levels ──
         cursor.execute("""
             SELECT id, name FROM grade_levels
-            WHERE branch_id = %s AND name NOT IN ('Grade 11', 'Grade 12')
+            WHERE branch_id = %s
             ORDER BY display_order
         """, (branch_id,))
         grade_levels = cursor.fetchall() or []
@@ -425,6 +425,38 @@ def enroll(branch_id):
             ORDER BY label DESC
         """, (branch_id,))
         school_years = cursor.fetchall() or []
+
+        # ── Fetch active school year ID for electives ──
+        cursor.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
+        active_yr = cursor.fetchone()
+        active_year_id_for_form = active_yr["year_id"] if active_yr else None
+
+        # ── Fetch elective offerings and pathways (for Grade 11/12 dropdown) ──
+        shs_elective_offerings = []
+        if active_year_id_for_form:
+            cursor.execute("""
+                SELECT o.offering_id, o.group_code, o.shs_track,
+                       s.name AS subject_name,
+                       COALESCE(s.pathway, o.shs_track, 'General') AS pathway,
+                       g.name AS grade_level_name
+                FROM shs_elective_offerings o
+                JOIN section_teachers st ON o.section_teacher_id = st.id
+                JOIN subjects s ON st.subject_id = s.subject_id
+                JOIN sections sec ON st.section_id = sec.section_id
+                JOIN grade_levels g ON sec.grade_level_id = g.id
+                WHERE o.branch_id = %s AND o.year_id = %s AND o.status = 'ACTIVE'
+                ORDER BY COALESCE(s.pathway, 'General'), o.group_code
+            """, (branch_id, active_year_id_for_form))
+            shs_elective_offerings = cursor.fetchall() or []
+
+        # Also fetch all official active pathways from shs_pathways table
+        cursor.execute("""
+            SELECT pathway_id, track_name, pathway_name 
+            FROM shs_pathways 
+            WHERE branch_id = %s AND is_active = TRUE 
+            ORDER BY track_name, display_order, pathway_name
+        """, (branch_id,))
+        official_pathways = cursor.fetchall() or []
 
         # ── POST: Handle enrollment ──
         if request.method == "POST":
@@ -483,6 +515,10 @@ def enroll(branch_id):
             previous_school   = request.form.get("previous_school", "").strip() or None
             enroll_type_raw   = request.form.get("enroll_type", "").strip() or None
             enroll_semester   = request.form.get("enroll_semester", "").strip() or None
+            shs_track         = request.form.get("shs_track", "").strip() or None
+            # Only save shs_track for SHS grades
+            if grade_level and "11" not in grade_level and "12" not in grade_level:
+                shs_track = None
 
             student_name = " ".join(filter(None, [
                 student_first_name,
@@ -616,6 +652,8 @@ def enroll(branch_id):
                     branch=branch,
                     grade_levels=grade_levels,
                     school_years=school_years,
+                    shs_elective_offerings=shs_elective_offerings,
+                    official_pathways=official_pathways,
                     message=None,
                     duplicate_blocked=True,
                     duplicate_reason=reason_text,
@@ -633,10 +671,10 @@ def enroll(branch_id):
                    branch_enrollment_no, lrn, email, guardian_email,
                    birthplace, father_first_name, father_middle_name, father_last_name, father_contact, father_occupation,
                    mother_first_name, mother_middle_name, mother_last_name, mother_contact, mother_occupation,
-                   enroll_type, enroll_date, remarks, year_id)
+                   enroll_type, enroll_date, remarks, year_id, shs_track)
                 VALUES (
                     %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,'pending',%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
-                     %s,%s,%s,%s
+                     %s,%s,%s,%s,%s
                 )
                 RETURNING enrollment_id;
             """, (
@@ -645,7 +683,7 @@ def enroll(branch_id):
                 guardian_contact, previous_school, branch_id, next_no, lrn, email, guardian_email, birthplace,
                 father_first_name, father_middle_name, father_last_name, father_contact, father_occupation,
                 mother_first_name, mother_middle_name, mother_last_name, mother_contact, mother_occupation,
-                enroll_type, enroll_date, remarks, selected_sy_id
+                enroll_type, enroll_date, remarks, selected_sy_id, shs_track
             ))
             enrollment_id = cursor.fetchone()["enrollment_id"]
 
@@ -679,11 +717,14 @@ def enroll(branch_id):
         today = datetime.date.today()
         # Max birthdate allowed: exactly 3 years ago from today
         max_dob_date = datetime.date(today.year - 3, today.month, today.day).strftime('%Y-%m-%d')
+
         return render_template(
             "student_enroll.html",
             branch=branch,
             grade_levels=grade_levels,
-            school_years=school_years,  # ✅ pass school years to template
+            school_years=school_years,
+            shs_elective_offerings=shs_elective_offerings,
+            official_pathways=official_pathways,
             message=None,
             duplicate_blocked=False,
             duplicate_reason=None,

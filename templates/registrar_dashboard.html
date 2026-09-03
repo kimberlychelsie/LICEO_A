@@ -868,6 +868,20 @@
                                                 </select>
                                             </div>
 
+                                            {% if enrollment.shs_track %}
+                                            <div class="form-row shs-elective-row"
+                                                style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+                                                <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">
+                                                    SHS Elective:
+                                                </div>
+                                                <select name="shs_track" class="track-change shs-track-select"
+                                                    data-current-val="{{ enrollment.shs_track or '' }}"
+                                                    style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px; background:#fff; font-weight: 700; color: #1e40af;">
+                                                    <option value="">-- Select Elective --</option>
+                                                </select>
+                                            </div>
+                                            {% endif %}
+
                                             <div class="form-row"
                                                 style="display:grid; grid-template-columns: 100px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
                                                 <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">
@@ -2024,6 +2038,51 @@
         });
     });
 
+    // SHS Elective Dropdown Logic
+    const shsOfferings = {{ shs_elective_offerings|tojson }};
+    function toggleDashboardElectives(form) {
+        const gradeSelect = form.querySelector('select[name="grade_level"]');
+        const electiveRow = form.querySelector('.shs-elective-row');
+        const trackSelect = form.querySelector('.shs-track-select');
+        
+        if (!gradeSelect || !electiveRow || !trackSelect) return;
+
+        const grade = gradeSelect.value;
+        const matchingOfferings = shsOfferings.filter(o => o.grade_level_name === grade);
+        const hasOffering = matchingOfferings.length > 0;
+
+        if (hasOffering) {
+            electiveRow.style.display = 'grid';
+            
+            // Rebuild options based on current grade
+            const currentVal = trackSelect.getAttribute('data-current-val') || '';
+            let optionsHtml = '<option value="">-- Select Elective --</option>';
+            matchingOfferings.forEach(o => {
+                const isSelected = o.pathway === currentVal ? 'selected' : '';
+                optionsHtml += `<option value="${o.pathway}" ${isSelected}>${o.pathway}</option>`;
+            });
+            
+            trackSelect.innerHTML = optionsHtml;
+        } else {
+            electiveRow.style.display = 'none';
+            trackSelect.innerHTML = '<option value="">-- Select Elective --</option>';
+            trackSelect.value = '';
+        }
+    }
+
+    // Attach grade change listener for electives
+    document.querySelectorAll('select[name="grade_level"]').forEach(el => {
+        el.addEventListener('change', function() {
+            const form = this.closest('.new-details-form');
+            if (form) {
+                toggleDashboardElectives(form);
+                // Also update the hidden data attribute so switching back resets properly
+                const trackSelect = form.querySelector('.shs-track-select');
+                if (trackSelect) trackSelect.setAttribute('data-current-val', trackSelect.value);
+            }
+        });
+    });
+
     // Run on expansion
     const originalToggle = window.toggleNewDetails;
     window.toggleNewDetails = function(enrollmentId, btn) {
@@ -2031,7 +2090,10 @@
         const row = document.getElementById('new-details-' + enrollmentId);
         if (row && row.style.display !== 'none') {
             const form = row.querySelector('.new-details-form');
-            if (form) initFormState(form);
+            if (form) {
+                initFormState(form);
+                toggleDashboardElectives(form); // Initialize dropdown based on current grade
+            }
         }
         return result;
     };

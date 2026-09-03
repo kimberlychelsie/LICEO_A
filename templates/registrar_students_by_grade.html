@@ -617,6 +617,21 @@
                                             value="{{ s.student_last_name or '' }}" maxlength="100" required
                                             oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/--+/g, '-').replace(/\.\.+/g, '.').replace(/,,+/g, ',')">
 
+                                        {% set student_offerings = shs_elective_offerings | selectattr('grade_level_name', 'equalto', s.grade_level) | list %}
+                                        {% if student_offerings|length > 0 or s.shs_track %}
+                                        <strong>SHS Elective:</strong>
+                                        <select name="shs_track" class="input-edit track-{{ s.enrollment_id }}">
+                                            <option value="">-- Select Elective --</option>
+                                            {% if student_offerings|length > 0 %}
+                                                {% for o in student_offerings %}
+                                                    <option value="{{ o.pathway }}" {% if s.shs_track == o.pathway %}selected{% endif %}>{{ o.pathway }}</option>
+                                                {% endfor %}
+                                            {% else %}
+                                                <option value="{{ s.shs_track }}" selected>{{ s.shs_track }}</option>
+                                            {% endif %}
+                                        </select>
+                                        {% endif %}
+
                                         <strong>Sex:</strong>
                                         <select name="gender" class="input-edit track-{{ s.enrollment_id }}">
                                             <option value="" {% if not s.gender %}selected{% endif %}>N/A</option>

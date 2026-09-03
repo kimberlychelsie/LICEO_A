@@ -269,8 +269,10 @@
         background: rgba(15, 23, 42, 0.4);
         backdrop-filter: blur(8px);
         z-index: 2000;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
+        overflow-y: auto;
+        padding: 40px 20px;
     }
 
     .glass-modal {
@@ -428,12 +430,23 @@
                     <div class="form-node">
                         <label>Subjects to Add</label>
                         <div id="subjectEntries" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px;">
-                            <div class="subject-entry-row" style="display: grid; grid-template-columns: 1fr 140px auto; gap: 8px; align-items: center;">
+                            <div class="subject-entry-row" style="display: grid; grid-template-columns: 1fr 110px 100px 110px auto; gap: 8px; align-items: center;">
                                 <input type="text" name="names" class="form-control" placeholder="Subject Name" required oninput="autoDetectCategory(this)">
                                 <select name="categories" class="form-control" required style="font-size: 0.75rem; padding: 12px 8px;">
                                     <option value="language">Language</option>
                                     <option value="science_math">Sci / Math</option>
                                     <option value="skills">Skills</option>
+                                </select>
+                                <select name="subject_types" class="form-control" required style="font-size: 0.75rem; padding: 12px 8px;" onchange="toggleTrackInput(this)">
+                                    <option value="CORE">Core</option>
+                                    <option value="ELECTIVE">Elective</option>
+                                </select>
+                                <select name="tracks" class="form-control" style="font-size: 0.75rem; padding: 12px 8px;" disabled>
+                                    <option value="">No Track</option>
+                                    <option value="Academic">Academic</option>
+                                    <option value="TVL">TVL</option>
+                                    <option value="Sports">Sports</option>
+                                    <option value="Arts & Design">Arts & Design</option>
                                 </select>
                                 <button type="button" class="btn-tiny" style="background: transparent; border: none; color: #ef4444;" onclick="removeRow(this)">
                                     <i class="fas fa-times-circle" style="font-size: 1.2rem;"></i>
@@ -517,14 +530,22 @@
                                 <div style="font-weight: 700; color: var(--ma-primary);">{{ a.name }}</div>
                                 {% if a.deped_category == 'science_math' %}
                                 <span class="badge-pill"
-                                    style="background: #dcfce7; color: #166534; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">SCI
-                                    / MATH</span>
+                                    style="background: #dcfce7; color: #166534; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">SCI / MATH</span>
                                 {% elif a.deped_category == 'skills' %}
                                 <span class="badge-pill"
                                     style="background: #fef3c7; color: #92400e; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">SKILLS</span>
                                 {% else %}
                                 <span class="badge-pill"
                                     style="background: #dbeafe; color: #1e40af; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">LANGUAGE</span>
+                                {% endif %}
+                                
+                                {% if a.subject_type == 'ELECTIVE' %}
+                                <span class="badge-pill"
+                                    style="background: #f3e8ff; color: #6b21a8; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">ELECTIVE</span>
+                                {% if a.track %}
+                                <span class="badge-pill"
+                                    style="background: #e0f2fe; color: #0369a1; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">{{ a.track }}</span>
+                                {% endif %}
                                 {% endif %}
                             </td>
                             <td data-label="Assigned To">
@@ -543,7 +564,7 @@
                                 {% if is_branch_active_status %}
                                 <div style="display: flex; gap: 6px; justify-content: flex-end;">
                                     <button class="btn-prem btn-secondary" style="padding: 6px 14px; font-size: 0.7rem;"
-                                        onclick='openEditModal({{ a.subject_id }}, {{ a.name | tojson }}, "{{ a.section_id }}", "{{ a.deped_category }}")'>
+                                        onclick='openEditModal({{ a.subject_id }}, {{ a.name | tojson }}, "{{ a.section_id }}", "{{ a.deped_category }}", "{{ a.subject_type }}", "{{ a.track or '' }}")'>
                                         <i class="fas fa-edit"></i> Edit
                                     </button>
                                     
@@ -633,6 +654,25 @@
                 </select>
             </div>
 
+            <div class="form-node">
+                <label>Subject Type</label>
+                <select name="subject_type" id="edit_subject_type" class="form-control" required onchange="toggleEditTrackInput(this)">
+                    <option value="CORE">Core</option>
+                    <option value="ELECTIVE">Elective</option>
+                </select>
+            </div>
+
+            <div class="form-node">
+                <label>Track (Elective only)</label>
+                <select name="track" id="edit_track" class="form-control" disabled>
+                    <option value="">No Track</option>
+                    <option value="Academic">Academic</option>
+                    <option value="TVL">TVL</option>
+                    <option value="Sports">Sports</option>
+                    <option value="Arts & Design">Arts & Design</option>
+                </select>
+            </div>
+
             <div
                 style="font-size: 14px; color: var(--ma-muted); margin-bottom: 32px; line-height: 1.6; background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid var(--ma-border);">
                 <strong>Category Guide:</strong><br>
@@ -682,17 +722,50 @@
 
     let initialSubjectData = {};
 
-    function openEditModal(subjectId, name, sectionId, category) {
+    function toggleTrackInput(typeSelect) {
+        const row = typeSelect.closest('.subject-entry-row');
+        const trackSelect = row.querySelector('select[name="tracks"]');
+        if (typeSelect.value === 'ELECTIVE') {
+            trackSelect.disabled = false;
+            trackSelect.required = true;
+        } else {
+            trackSelect.disabled = true;
+            trackSelect.required = false;
+            trackSelect.value = '';
+        }
+    }
+
+    function toggleEditTrackInput(typeSelect) {
+        const trackSelect = document.getElementById('edit_track');
+        if (typeSelect.value === 'ELECTIVE') {
+            trackSelect.disabled = false;
+            trackSelect.required = true;
+        } else {
+            trackSelect.disabled = true;
+            trackSelect.required = false;
+            trackSelect.value = '';
+        }
+    }
+
+    function openEditModal(subjectId, name, sectionId, category, subjectType, track) {
         document.getElementById('editForm').action = '/registrar/subjects/' + subjectId + '/edit';
         document.getElementById('edit_name').value = name;
         document.getElementById('edit_section_id').value = sectionId;
         document.getElementById('edit_deped_category').value = category || 'language';
+        
+        const typeSelect = document.getElementById('edit_subject_type');
+        typeSelect.value = subjectType || 'CORE';
+        toggleEditTrackInput(typeSelect);
+
+        document.getElementById('edit_track').value = track || '';
 
         // Capture initial state
         initialSubjectData = {
             name: String(name).trim(),
             section: String(sectionId),
-            category: String(category || 'language')
+            category: String(category || 'language'),
+            type: String(subjectType || 'CORE'),
+            track: String(track || '')
         };
 
         const submitBtn = document.getElementById('editSubmitBtn');
@@ -720,20 +793,44 @@
     }
 
     // Monitor changes
-    ['edit_name', 'edit_section_id', 'edit_deped_category'].forEach(id => {
-        document.getElementById(id).addEventListener('input', function () {
-            const currentName = document.getElementById('edit_name').value.trim();
-            const currentSection = document.getElementById('edit_section_id').value;
-            const currentCat = document.getElementById('edit_deped_category').value;
+    ['edit_name', 'edit_section_id', 'edit_deped_category', 'edit_subject_type', 'edit_track'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.addEventListener('input', function () {
+                const currentName = document.getElementById('edit_name').value.trim();
+                const currentSection = document.getElementById('edit_section_id').value;
+                const currentCat = document.getElementById('edit_deped_category').value;
+                const currentType = document.getElementById('edit_subject_type').value;
+                const currentTrack = document.getElementById('edit_track').value;
 
-            const hasChanged = (
-                currentName !== initialSubjectData.name ||
-                currentSection !== initialSubjectData.section ||
-                currentCat !== initialSubjectData.category
-            );
+                const hasChanged = (
+                    currentName !== initialSubjectData.name ||
+                    currentSection !== initialSubjectData.section ||
+                    currentCat !== initialSubjectData.category ||
+                    currentType !== initialSubjectData.type ||
+                    currentTrack !== initialSubjectData.track
+                );
 
-            document.getElementById('editSubmitBtn').disabled = !hasChanged;
-        });
+                document.getElementById('editSubmitBtn').disabled = !hasChanged;
+            });
+            el.addEventListener('change', function () {
+                const currentName = document.getElementById('edit_name').value.trim();
+                const currentSection = document.getElementById('edit_section_id').value;
+                const currentCat = document.getElementById('edit_deped_category').value;
+                const currentType = document.getElementById('edit_subject_type').value;
+                const currentTrack = document.getElementById('edit_track').value;
+
+                const hasChanged = (
+                    currentName !== initialSubjectData.name ||
+                    currentSection !== initialSubjectData.section ||
+                    currentCat !== initialSubjectData.category ||
+                    currentType !== initialSubjectData.type ||
+                    currentTrack !== initialSubjectData.track
+                );
+
+                document.getElementById('editSubmitBtn').disabled = !hasChanged;
+            });
+        }
     });
 
     // Bulk Subject Builder Logic
@@ -741,13 +838,24 @@
         const container = document.getElementById('subjectEntries');
         const newRow = document.createElement('div');
         newRow.className = 'subject-entry-row';
-        newRow.style.cssText = 'display: grid; grid-template-columns: 1fr 140px auto; gap: 8px; align-items: center;';
+        newRow.style.cssText = 'display: grid; grid-template-columns: 1fr 110px 100px 110px auto; gap: 8px; align-items: center;';
         newRow.innerHTML = `
             <input type="text" name="names" class="form-control" placeholder="Subject Name" required oninput="autoDetectCategory(this)">
             <select name="categories" class="form-control" required style="font-size: 0.75rem; padding: 12px 8px;">
                 <option value="language">Language</option>
                 <option value="science_math">Sci / Math</option>
                 <option value="skills">Skills</option>
+            </select>
+            <select name="subject_types" class="form-control" required style="font-size: 0.75rem; padding: 12px 8px;" onchange="toggleTrackInput(this)">
+                <option value="CORE">Core</option>
+                <option value="ELECTIVE">Elective</option>
+            </select>
+            <select name="tracks" class="form-control" style="font-size: 0.75rem; padding: 12px 8px;" disabled>
+                <option value="">No Track</option>
+                <option value="Academic">Academic</option>
+                <option value="TVL">TVL</option>
+                <option value="Sports">Sports</option>
+                <option value="Arts & Design">Arts & Design</option>
             </select>
             <button type="button" class="btn-tiny" style="background: transparent; border: none; color: #ef4444;" onclick="removeRow(this)">
                 <i class="fas fa-times-circle" style="font-size: 1.2rem;"></i>
@@ -789,7 +897,6 @@
             cb.checked = checked;
         });
     }
-
 
     // Attach validation to both forms
     document.addEventListener('DOMContentLoaded', function () {
