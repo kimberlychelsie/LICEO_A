@@ -898,7 +898,14 @@ def continuing_enrollment(branch_id):
             if enrollment.get("user_id"):
                 cursor.execute("UPDATE users SET enrollment_id = %s, grade_level = %s WHERE user_id = %s", 
                                (new_enrollment_id, chosen_grade, enrollment["user_id"]))
-                               
+
+            if next_no:
+                cursor.execute("UPDATE users SET enrollment_id = %s, grade_level = %s WHERE username = %s OR enrollment_id = %s",
+                               (new_enrollment_id, chosen_grade, str(next_no), enrollment_id))
+            else:
+                cursor.execute("UPDATE users SET enrollment_id = %s, grade_level = %s WHERE enrollment_id = %s",
+                               (new_enrollment_id, chosen_grade, enrollment_id))
+
             cursor.execute("UPDATE student_accounts SET enrollment_id = %s WHERE enrollment_id = %s",
                            (new_enrollment_id, enrollment_id))
                            
@@ -1005,12 +1012,45 @@ def continuing_enrolled_confirmation(branch_id):
                 section_name = row["section_name"]
                 grade_level_name = row["grade_level_name"]
 
+        enrollment_id = session.get("enrollment_id")
+        shs_track = ""
+        passed_subject_ids = set()
+        if enrollment_id:
+            cursor.execute("SELECT shs_track FROM enrollments WHERE enrollment_id = %s", (enrollment_id,))
+            erow = cursor.fetchone()
+            if erow and erow.get("shs_track"):
+                shs_track = (erow["shs_track"] or "").strip().lower()
+
+            cursor.execute("""
+                SELECT DISTINCT subject_id
+                FROM posted_grades
+                WHERE enrollment_id = %s
+                  AND grade IS NOT NULL
+                  AND grade >= 75
+            """, (enrollment_id,))
+            passed_rows = cursor.fetchall() or []
+            passed_subject_ids = {r["subject_id"] for r in passed_rows}
+
         # Fetch subjects assigned to this section
         subjects = []
         if section_id:
+            # Check active SHS elective offerings for this section
+            cursor.execute("""
+                SELECT DISTINCT st.subject_id
+                FROM shs_elective_offerings o
+                JOIN section_teachers st ON o.section_teacher_id = st.id
+                WHERE st.section_id = %s AND o.status = 'ACTIVE'
+            """, (section_id,))
+            offered_elective_subject_ids = {r["subject_id"] for r in (cursor.fetchall() or [])}
+
             cursor.execute("""
                 SELECT
+                    sub.subject_id,
                     sub.name        AS subject_name,
+                    sub.subject_type,
+                    COALESCE(sub.pathway, sub.track, 'General') AS pathway,
+                    sub.prerequisite_subject_id,
+                    prereq.name     AS prereq_name,
                     u.full_name     AS teacher_full_name,
                     u.username      AS teacher_username,
                     u.gender        AS teacher_gender,
@@ -1025,6 +1065,7 @@ def continuing_enrolled_confirmation(branch_id):
                     ) as schedules_json
                 FROM section_teachers st
                 JOIN subjects sub   ON st.subject_id  = sub.subject_id
+                LEFT JOIN subjects prereq ON sub.prerequisite_subject_id = prereq.subject_id
                 LEFT JOIN users u   ON st.teacher_id  = u.user_id
                 WHERE st.section_id = %s
                 ORDER BY sub.name
@@ -1033,6 +1074,27 @@ def continuing_enrolled_confirmation(branch_id):
             
             for r in rows:
                 subject = dict(r)
+                s_type = (subject.get("subject_type") or "").upper()
+                sub_pathway = (subject.get("pathway") or "").lower()
+
+                # Filter out electives that don't match student's selected pathway or active offerings
+                if s_type == "ELECTIVE":
+                    if shs_track and (sub_pathway not in shs_track and shs_track not in sub_pathway):
+                        continue
+                    if offered_elective_subject_ids and subject["subject_id"] not in offered_elective_subject_ids:
+                        continue
+
+                prereq_id = subject.get("prerequisite_subject_id")
+                has_prereq = bool(prereq_id)
+                prereq_met = (prereq_id in passed_subject_ids) if has_prereq else True
+
+                # Do not display subjects on confirmation page if prerequisite is not met (since student is not enrolled in it)
+                if has_prereq and not prereq_met:
+                    continue
+
+                subject["has_prereq"] = has_prereq
+                subject["prereq_met"] = prereq_met
+
                 schedules = subject.pop('schedules_json', None)
                 schedule_display = "TBA"
                 
@@ -1075,10 +1137,18 @@ def continuing_enrolled_confirmation(branch_id):
         enrollment_id = session.get("enrollment_id")
         student_name = ""
         if enrollment_id:
-            cursor.execute("SELECT student_name FROM enrollments WHERE enrollment_id=%s", (enrollment_id,))
+            cursor.execute("""
+                SELECT student_first_name, student_middle_name, student_last_name 
+                FROM enrollments 
+                WHERE enrollment_id=%s
+            """, (enrollment_id,))
             row = cursor.fetchone()
             if row:
-                student_name = row["student_name"]
+                student_name = " ".join(filter(None, [
+                    row.get("student_first_name"),
+                    row.get("student_middle_name"),
+                    row.get("student_last_name")
+                ]))
 
         return render_template(
             "student_continuing_enrolled.html",
@@ -1128,13 +1198,20 @@ def api_section_subjects_student(section_id):
                 SELECT DISTINCT subject_id
                 FROM posted_grades
                 WHERE enrollment_id = %s
-                  AND (
-                    (grade_value IS NOT NULL AND CAST(grade_value AS NUMERIC) >= 75)
-                    OR (grade IS NOT NULL AND CAST(grade AS NUMERIC) >= 75)
-                  )
+                  AND grade IS NOT NULL
+                  AND grade >= 75
             """, (enrollment_id,))
             passed_rows = cursor.fetchall() or []
             passed_subject_ids = {r["subject_id"] for r in passed_rows}
+
+        # Check active SHS elective offerings for this section
+        cursor.execute("""
+            SELECT DISTINCT st.subject_id
+            FROM shs_elective_offerings o
+            JOIN section_teachers st ON o.section_teacher_id = st.id
+            WHERE st.section_id = %s AND o.status = 'ACTIVE'
+        """, (section_id,))
+        offered_elective_subject_ids = {r["subject_id"] for r in (cursor.fetchall() or [])}
 
         cursor.execute("""
             SELECT
@@ -1171,10 +1248,11 @@ def api_section_subjects_student(section_id):
             s_type = (subject.get("subject_type") or "").upper()
             sub_pathway = (subject.get("pathway") or "").lower()
 
-            # If student selected a specific SHS track/pathway and this subject is an ELECTIVE:
-            # Only include electives matching the student's selected pathway!
-            if shs_track and s_type == "ELECTIVE":
-                if sub_pathway not in shs_track and shs_track not in sub_pathway:
+            # Filter out electives that don't match student's selected pathway or active offerings
+            if s_type == "ELECTIVE":
+                if shs_track and (sub_pathway not in shs_track and shs_track not in sub_pathway):
+                    continue
+                if offered_elective_subject_ids and subject["subject_id"] not in offered_elective_subject_ids:
                     continue
 
             prereq_id = subject.get("prerequisite_subject_id")

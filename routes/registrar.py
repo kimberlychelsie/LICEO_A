@@ -78,9 +78,21 @@ def sync_student_elective_membership(cursor, enrollment_id):
         """, (enrollment_id,))
         approved_request_offering_ids = {r["offering_id"] for r in (cursor.fetchall() or [])}
 
+        # Fetch student's passed subject IDs from posted_grades for prerequisite verification
+        passed_subject_ids = set()
+        cursor.execute("""
+            SELECT DISTINCT subject_id
+            FROM posted_grades
+            WHERE enrollment_id = %s
+              AND grade IS NOT NULL
+              AND grade >= 75
+        """, (enrollment_id,))
+        passed_rows = cursor.fetchall() or []
+        passed_subject_ids = {r["subject_id"] for r in passed_rows}
+
         # Get pathway-matched offerings for terms without open selection
         cursor.execute("""
-            SELECT o.offering_id, o.term_name
+            SELECT o.offering_id, o.term_name, s.prerequisite_subject_id
             FROM shs_elective_offerings o
             JOIN section_teachers st ON o.section_teacher_id = st.id
             JOIN subjects s ON st.subject_id = s.subject_id
@@ -90,7 +102,15 @@ def sync_student_elective_membership(cursor, enrollment_id):
               AND o.status = 'ACTIVE'
               AND o.term_name NOT IN %s
         """, (shs_track, branch_id, year_id, tuple(open_selection_terms) if open_selection_terms else ('__none__',)))
-        offerings = cursor.fetchall() or []
+        raw_offerings = cursor.fetchall() or []
+
+        # Filter out offerings whose prerequisite is NOT met
+        offerings = []
+        for off in raw_offerings:
+            prereq_id = off.get("prerequisite_subject_id")
+            if prereq_id and prereq_id not in passed_subject_ids:
+                continue
+            offerings.append(off)
 
         # Get existing auto memberships (excluding approved request ones and open-term ones)
         cursor.execute("""
@@ -1068,9 +1088,12 @@ def toggle_reenrollment():
                 cursor.execute("""
                     UPDATE enrollments SET status = 'open_for_enrollment'
                     WHERE branch_id = %s 
-                      AND status IN ('enrolled', 'approved')
+                      AND (
+                          status IN ('enrolled', 'approved')
+                          OR (status = 'open_for_enrollment' AND (year_id IS NULL OR year_id != %s))
+                      )
                       AND (year_id IS NULL OR year_id != %s)
-                """, (branch_id, active_year_id))
+                """, (branch_id, active_year_id, active_year_id))
                 count = cursor.rowcount
                 db.commit()
                 flash(f"Re-enrollment opened for {count} continuing student(s).", "success")

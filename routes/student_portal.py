@@ -3329,10 +3329,8 @@ def shs_electives():
                 SELECT DISTINCT subject_id
                 FROM posted_grades
                 WHERE enrollment_id = %s
-                  AND (
-                    (grade_value IS NOT NULL AND CAST(grade_value AS NUMERIC) >= 75)
-                    OR (grade IS NOT NULL AND CAST(grade AS NUMERIC) >= 75)
-                  )
+                  AND grade IS NOT NULL
+                  AND grade >= 75
             """, (enrollment_id,))
             passed_rows = cur.fetchall() or []
             passed_subject_ids = {r["subject_id"] for r in passed_rows}

@@ -111,7 +111,16 @@ def login():
 
                     # ── For students: load enrollment session FIRST (before any redirects)
                     if role == "student":
-                        enrollment_id = user.get("enrollment_id")
+                        # Ensure users.enrollment_id is in sync with student_accounts.enrollment_id if present
+                        cursor.execute("SELECT sa.account_id, sa.enrollment_id FROM student_accounts sa WHERE sa.username = %s LIMIT 1", (username,))
+                        sa_check = cursor.fetchone()
+                        if sa_check and sa_check.get("enrollment_id"):
+                            enrollment_id = sa_check["enrollment_id"]
+                            if enrollment_id != user.get("enrollment_id"):
+                                cursor.execute("UPDATE users SET enrollment_id = %s WHERE user_id = %s", (enrollment_id, user["user_id"]))
+                        else:
+                            enrollment_id = user.get("enrollment_id")
+
                         if enrollment_id:
                             cursor.execute("""
                                 SELECT

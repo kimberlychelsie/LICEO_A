@@ -505,6 +505,16 @@
                 }
             }
 
+            function getBaseGrade(str) {
+                if (!str) return "";
+                var s = str.toString().trim().toLowerCase();
+                var match = s.match(/(?:grade\s*)?(\d+)/);
+                if (match) {
+                    return "grade " + match[1];
+                }
+                return s;
+            }
+
             function updateSections() {
                 var selectedGrade = (gradeSelect ? gradeSelect.value : null) || nextGrade;
                 sectionSelect.innerHTML = '<option value="" disabled selected>Select a section...</option>';
@@ -516,9 +526,12 @@
 
                 var hasSections = false;
                 sectionsData.forEach(function (section) {
-                    var gradeName = (section.grade_name || "").toLowerCase().replace("grade ", "").replace("grade", "").trim();
-                    var grade = selectedGrade.toLowerCase().replace("grade ", "").replace("grade", "").trim();
-                    if (gradeName === grade || grade.startsWith(gradeName) || gradeName.startsWith(grade)) {
+                    var secGrade = getBaseGrade(section.grade_name);
+                    var selGrade = getBaseGrade(selectedGrade);
+                    var rawSec = (section.grade_name || "").toLowerCase().trim();
+                    var rawSel = selectedGrade.toLowerCase().trim();
+
+                    if ((secGrade && selGrade && secGrade === selGrade) || rawSec === rawSel) {
                         var opt = document.createElement("option");
                         opt.value = section.section_id;
                         opt.textContent = section.section_name;

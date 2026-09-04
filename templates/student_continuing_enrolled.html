@@ -334,7 +334,7 @@
                 {% if subjects %}
                 <ul class="subject-list">
                     {% for row in subjects %}
-                    <li class="subject-item" style="animation-delay: {{ loop.index0 * 0.05 }}s;">
+                    <li class="subject-item" style="animation-delay: {{ loop.index0 * 0.05 }}s; {% if row.has_prereq and not row.prereq_met %}opacity: 0.75; background: #fafafa;{% endif %}">
                         <div class="subject-name">{{ row.subject_name }}</div>
                         <div class="teacher-name">
                             {% if row.teacher_full_name %}
@@ -343,6 +343,13 @@
                             <span style="color:#94a3b8;">Teacher TBA</span>
                             {% endif %}
                         </div>
+                        {% if row.has_prereq %}
+                            {% if row.prereq_met %}
+                            <div style="font-size:0.8rem; color:#16a34a; font-weight:700; margin-bottom:6px; background:#f0fdf4; padding:4px 8px; border-radius:6px; display:inline-block;">✓ Prereq: {{ row.prereq_name }} (Passed)</div>
+                            {% else %}
+                            <div style="font-size:0.8rem; color:#dc2626; font-weight:700; margin-bottom:6px; background:#fef2f2; border:1px solid #fca5a5; padding:4px 8px; border-radius:6px; display:inline-block;">🔒 Prereq Required: Must pass {{ row.prereq_name }} first</div>
+                            {% endif %}
+                        {% endif %}
                         {% set schedText = row.schedule_display | default('TBA') %}
                         {% set schedClass = 'schedule-line' if schedText != 'TBA' else 'schedule-line tba' %}
                         <div class="{{ schedClass }}">{{ schedText }}</div>

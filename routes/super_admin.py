@@ -1016,6 +1016,27 @@ def superadmin_set_active_year():
                         AND old_s.branch_id = %s
                     """, (new_year_id, new_year_id, old_year_id, branch_id))
 
+                    # Copy SHS elective offerings
+                    cursor.execute("""
+                        INSERT INTO shs_elective_offerings (branch_id, year_id, section_teacher_id, term_name, group_code, shs_track, capacity, status)
+                        SELECT %s, %s, new_st.id, old_o.term_name, old_o.group_code, old_o.shs_track, old_o.capacity, 'ACTIVE'
+                        FROM shs_elective_offerings old_o
+                        JOIN section_teachers old_st ON old_o.section_teacher_id = old_st.id
+                        JOIN sections old_s ON old_st.section_id = old_s.section_id
+                        JOIN sections new_s ON new_s.section_name = old_s.section_name AND new_s.grade_level_id = old_s.grade_level_id AND new_s.branch_id = old_s.branch_id AND new_s.year_id = %s
+                        JOIN section_teachers new_st ON new_st.section_id = new_s.section_id AND new_st.subject_id = old_st.subject_id AND new_st.year_id = %s
+                        WHERE old_o.branch_id = %s AND old_o.year_id = %s
+                    """, (branch_id, new_year_id, new_year_id, new_year_id, branch_id, old_year_id))
+
+        # Auto-reset any stale open_for_enrollment statuses from previous school years
+        cursor.execute("""
+            UPDATE enrollments SET status = 'enrolled'
+            WHERE status = 'open_for_enrollment'
+              AND (year_id IS NULL OR year_id != (
+                  SELECT year_id FROM school_years WHERE branch_id = enrollments.branch_id AND is_active = TRUE LIMIT 1
+              ))
+        """)
+
         db.commit()
         flash(f"All branches updated to School Year {label}", "success")
     except Exception as e:
