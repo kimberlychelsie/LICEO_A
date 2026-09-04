@@ -164,81 +164,68 @@
         box-shadow: 0 4px 12px rgba(26,58,143,0.3);
     }
 
-    /* ── DepEd Banner ── */
-    .deped-banner {
-        background: linear-gradient(135deg, #eff6ff, #f0fdf4);
-        border: 1.5px solid #bfdbfe;
-        border-radius: 16px;
-        padding: 20px 24px;
-        margin-bottom: 22px;
-    }
-
-    .deped-banner-title {
-        font-size: 1rem;
-        font-weight: 800;
-        color: #1e40af;
-        margin-bottom: 14px;
+    /* ── DepEd Compact Strip ── */
+    .deped-strip {
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 8px 14px;
+        margin-bottom: 16px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 8px;
-    }
-
-    .deped-banner-title-text {
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 8px;
-        word-break: break-word;
-    }
-
-    .deped-components {
-        display: flex;
         gap: 12px;
         flex-wrap: wrap;
-        margin-bottom: 14px;
     }
 
-    .deped-comp-card {
-        background: white;
-        border: 1.5px solid #e2e8f0;
-        border-radius: 12px;
-        padding: 12px 18px;
-        flex: 1;
-        min-width: 160px;
-        text-align: center;
-        transition: transform 0.15s, box-shadow 0.15s;
+    .deped-strip-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
     }
 
-    .deped-comp-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+    .deped-strip-badges {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
     }
 
-    .comp-label {
-        font-size: 0.72rem;
-        color: #64748b;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
+    .deped-badge {
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
     }
 
-    .comp-source {
-        font-size: 0.74rem;
-        color: #94a3b8;
-        margin-top: 2px;
-    }
+    .badge-ww { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+    .badge-pt { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .badge-qa { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
 
-    .comp-weight {
-        font-size: 1.6rem;
-        font-weight: 900;
-        margin-top: 6px;
-        letter-spacing: -0.03em;
+    .deped-help-btn {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        background: #e2e8f0;
+        color: #475569;
+        border: none;
+        font-size: 0.75rem;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+        flex-shrink: 0;
     }
-
-    .comp-ww { color: #2563eb; }
-    .comp-pt { color: #16a34a; }
-    .comp-qa { color: #d97706; }
+    .deped-help-btn:hover {
+        background: #2563eb;
+        color: #fff;
+    }
 
     .deped-note {
         font-size: 0.82rem;
@@ -304,7 +291,6 @@
 
     table.cr-table td:first-child {
         text-align: left;
-        min-width: 230px;
     }
 
     table.cr-table tbody tr {
@@ -900,6 +886,126 @@
         font-size: 0.82rem;
     }
 
+    /* ── Batch Modal Styles ── */
+    .batch-modal-overlay {
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(15, 23, 42, 0.7);
+        backdrop-filter: blur(8px);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.25s ease-in-out;
+    }
+    .batch-modal-overlay.show {
+        opacity: 1;
+        visibility: visible;
+    }
+    .batch-modal-card {
+        background: #ffffff;
+        border-radius: 20px;
+        width: 100%;
+        max-width: 840px;
+        max-height: 90vh;
+        display: flex;
+        flex-direction: column;
+        padding: 24px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        transform: translateY(20px) scale(0.98);
+        transition: transform 0.25s ease-in-out;
+        overflow: hidden;
+    }
+    .batch-modal-overlay.show .batch-modal-card {
+        transform: translateY(0) scale(1);
+    }
+    .batch-modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 14px;
+        border-bottom: 1.5px solid #f1f5f9;
+    }
+    .batch-close-btn {
+        background: #f1f5f9;
+        border: none;
+        width: 32px; height: 32px;
+        border-radius: 50%;
+        font-size: 1.4rem;
+        cursor: pointer;
+        color: #64748b;
+        display: flex; align-items: center; justify-content: center;
+        transition: background 0.15s;
+    }
+    .batch-close-btn:hover { background: #e2e8f0; color: #0f172a; }
+    .batch-mode-tab {
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: #64748b;
+        cursor: pointer;
+        transition: all 0.15s;
+        user-select: none;
+    }
+    .batch-mode-tab.active {
+        background: #ffffff;
+        color: #1e3a8f;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+    .batch-input:focus {
+        outline: 2px solid #2563eb;
+        background: #eff6ff;
+    }
+
+    /* ── Category View Tabs ── */
+    .category-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    .ctab {
+        padding: 9px 18px;
+        border-radius: 12px;
+        font-weight: 700;
+        font-size: 0.86rem;
+        border: 1.5px solid #cbd5e1;
+        background: #f8fafc;
+        color: #475569;
+        cursor: pointer;
+        transition: all 0.18s ease-in-out;
+    }
+    .ctab:hover {
+        background: #e2e8f0;
+        color: #0f172a;
+    }
+    .ctab.active {
+        background: #1e3a8f;
+        color: #ffffff;
+        border-color: #1e3a8f;
+        box-shadow: 0 4px 12px rgba(30, 58, 143, 0.2);
+    }
+    .grid-score-input {
+        width: 75px;
+        padding: 6px 8px;
+        text-align: center;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 8px;
+        font-weight: 700;
+        font-size: 0.85rem;
+        transition: all 0.15s;
+    }
+    .grid-score-input:focus {
+        border-color: #2563eb;
+        background: #eff6ff;
+        outline: none;
+        box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
+    }
+
     @media (max-width: 768px) {
         .cr-wrap { padding: 20px 16px; }
         .cr-hero { padding: 24px 20px; border-radius: 16px; flex-direction: column; align-items: flex-start; gap: 16px; }
@@ -964,32 +1070,32 @@
                     <span>{{ context.grade_level_name }} / {{ context.section_name }}</span>
                 </p>
             </div>
-            <div class="cr-hero-actions" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: stretch; width: 100%;">
-                <a href="{{ url_for('teacher.participation_input', section_id=section_id, subject_id=subject_id, period=period) }}" class="cr-btn cr-btn-ghost" style="flex: 1 1 calc(50% - 12px); min-width: 140px;">
+            <div class="cr-hero-actions" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%;">
+                <a href="{{ url_for('teacher.participation_input', section_id=section_id, subject_id=subject_id, period=period) }}" class="cr-btn cr-btn-ghost" style="justify-content: center;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M19 8v2"></path><path d="M19 12h.01"></path></svg>
                     Participation
                 </a>
-                <a href="{{ url_for('teacher.attendance_input', section_id=section_id, subject_id=subject_id, period=period) }}" class="cr-btn cr-btn-ghost">
+                <a href="{{ url_for('teacher.attendance_input', section_id=section_id, subject_id=subject_id, period=period) }}" class="cr-btn cr-btn-ghost" style="justify-content: center;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                     Attendance
                 </a>
                 <a href="{{ url_for('teacher.class_record_export', section_id=section_id, subject_id=subject_id, period=period) }}"
-                    class="cr-btn cr-btn-ghost">
+                    class="cr-btn cr-btn-ghost" style="justify-content: center;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
                     Export Excel
                 </a>
 
                 {% if submission_req.status in ['draft', 'rejected', None] %}
                 <form action="{{ url_for('teacher.teacher_submit_grades', section_id=section_id, subject_id=subject_id, period=period) }}"
-                    method="POST" style="display: flex; height: 100%;"
+                    method="POST" style="display: flex; width: 100%;"
                     onsubmit="return confirm('Submit {{ period }} Grading class record to Registrar for review?');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="cr-btn cr-btn-solid" style="background:#2563eb; color:#fff; width: 100%; height: 100%;">
+                    <button type="submit" class="cr-btn cr-btn-solid" style="background:#2563eb; color:#fff; width: 100%; justify-content: center;">
                         Submit for Review
                     </button>
                 </form>
                 {% elif submission_req.status in ['pending_registrar', 'pending_admin'] %}
-                <div style="display:flex; flex-direction:column; gap:4px; grid-column: span 2;">
+                <div style="display:flex; flex-direction:column; gap:4px; width: 100%;">
                     <span class="cr-btn cr-btn-ghost" style="background:rgba(254,243,199,0.25); color:#fef08a; border-color:rgba(254,243,199,0.45); font-weight:700; width: 100%; justify-content: center;">
                         {% if submission_req.status == 'pending_registrar' %}Pending Registrar Review{% else %}Pending Admin Approval{% endif %}
                     </span>
@@ -1005,15 +1111,15 @@
                 </div>
                 {% elif submission_req.status == 'approved_for_posting' %}
                 <form action="{{ url_for('teacher.teacher_post_grades', section_id=section_id, subject_id=subject_id, period=period) }}"
-                    method="POST" style="display:inline;"
+                    method="POST" style="display:flex; width:100%;"
                     onsubmit="return confirm('Publish {{ period }} Grading grades to the student portal? This will make grades visible to students and parents.');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="cr-btn cr-btn-solid" style="background:#16a34a; color:#fff;">
+                    <button type="submit" class="cr-btn cr-btn-solid" style="background:#16a34a; color:#fff; width:100%; justify-content:center;">
                         Post Grades
                     </button>
                 </form>
                 {% elif submission_req.status == 'posted' %}
-                <span class="cr-btn cr-btn-ghost" style="background:rgba(220,252,231,0.3); color:#86efac; border-color:rgba(220,252,231,0.5);">
+                <span class="cr-btn cr-btn-ghost" style="background:rgba(220,252,231,0.3); color:#86efac; border-color:rgba(220,252,231,0.5); justify-content:center;">
                     Grades Posted
                 </span>
                 {% endif %}
@@ -1030,15 +1136,14 @@
     </div>
 
     {% if period == 'final' %}
-    <!-- ── Final Grade Summary Header Banner ── -->
-    <div class="deped-banner" style="background: linear-gradient(135deg, #1e3a8a 0%, #0c2461 100%); color:#fff; border:none; margin-bottom: 24px;">
-        <div class="deped-banner-title" style="color:#fff; font-size:1.05rem; font-weight:800;">
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right:8px; display:inline-block; vertical-align:middle;"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
-            Final Grade Summary &mdash; All Terms Overview
+    <!-- ── Final Grade Summary Header Strip ── -->
+    <div class="deped-strip" style="background: linear-gradient(135deg, #1e3a8a 0%, #0c2461 100%); color:#fff; border:none; margin-bottom: 16px; padding: 10px 16px;">
+        <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+            <span style="font-weight:800; color:#fff; font-size:0.9rem;">Final Grade Summary</span>
+            <span style="color:#93c5fd; font-size:0.8rem;">(1st Term + 2nd Term + 3rd Term Overview)</span>
         </div>
-        <div style="font-size:0.86rem; opacity:0.9; margin-top:6px; font-weight:500;">
-            Displays 1st Term, 2nd Term, and 3rd Term transmuted grades along with the computed overall Final Grade for each student.
-        </div>
+        <button type="button" onclick="alert('Final Grade Computation:\n\n• Displays 1st Term, 2nd Term, and 3rd Term transmuted grades.\n• Overall Final Grade is automatically computed as the average of all completed term grades once posted.')" class="deped-help-btn" style="background:rgba(255,255,255,0.2); color:#fff;" title="View Final Grade Info">?</button>
     </div>
 
     {% if records %}
@@ -1046,7 +1151,9 @@
         <table class="cr-table">
             <thead>
                 <tr>
-                    <th style="text-align:left;">Student</th>
+                    <th style="text-align:left; width:28px; padding:10px 4px 10px 10px;">#</th>
+                    <th style="text-align:left; width:110px; padding:10px 6px;">STUDENT ID</th>
+                    <th style="text-align:left; padding:10px 6px;">STUDENT NAME</th>
                     <th style="text-align:center;">1st Term</th>
                     <th style="text-align:center;">2nd Term</th>
                     <th style="text-align:center;">3rd Term</th>
@@ -1057,12 +1164,9 @@
             <tbody>
                 {% for r in records %}
                 <tr>
-                    <td>
-                        <div class="student-cell">
-                            <span class="student-num">{{ loop.index }}</span>
-                            <span class="student-name-text">{{ r.student_name }}</span>
-                        </div>
-                    </td>
+                    <td style="text-align:left; padding:8px 4px 8px 10px; color:#94a3b8; font-weight:600;">{{ loop.index }}</td>
+                    <td style="text-align:left; padding:8px 6px; font-weight:700; color:#1e293b; font-size:0.88rem; white-space:nowrap;">{{ r.student_number or ('LDMAJ_' ~ ('%04d'|format(r.enrollment_id|int))) }}</td>
+                    <td style="text-align:left; padding:8px 6px; font-weight:700; color:var(--text); font-size:0.88rem; white-space:nowrap;">{{ r.student_name }}</td>
                     <td style="text-align:center;">
                         {% if r.grade_1st is not none %}
                             <span style="color:#1d4ed8; font-weight:800; font-size:0.95rem;">{{ "%0.2f" | format(r.grade_1st | float) }}</span>
@@ -1117,33 +1221,20 @@
 
     {% else %}
 
-    <!-- ── DepEd Grading Info ── -->
+    <!-- ── DepEd Grading Info (Compact Strip) ── -->
     {% if weights %}
-    <div class="deped-banner">
-        <div class="deped-banner-title">
-            <div class="deped-banner-title-text">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
-                DepEd K-12 Grading System — School Policy Applied <span style="font-weight:500; color:#3b82f6; font-size:0.85rem; white-space:nowrap;">(DepEd Order No. 8, s. 2015)</span>
-            </div>
-            <button type="button" onclick="alert('Grade computation: Quiz + Monthly Exam → Written Works | Activity + Participation + Attendance → Performance Tasks | Periodical Exam → Term Assessment.\n\nClick Score Details to view and edit student scores — the transmuted grade will re-compute automatically.')" style="width:36px; height:36px; border-radius:50%; background:#dbeafe; color:#1e40af; border:1px solid #bfdbfe; font-weight:900; display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;" title="Help">?</button>
+    <div class="deped-strip">
+        <div class="deped-strip-info">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+            <span style="font-weight:800; color:#1e40af;">DepEd K-12 Policy</span>
+            <span style="color:#64748b; font-size:0.8rem;">(DepEd Order No. 8, s. 2015)</span>
         </div>
-        <div class="deped-components">
-            <div class="deped-comp-card">
-                <div class="comp-label">Written Works (WW)</div>
-                <div class="comp-source">← Quiz + Monthly Exam scores</div>
-                <div class="comp-weight comp-ww">{{ weights.quiz_pct | int }}%</div>
-            </div>
-            <div class="deped-comp-card">
-                <div class="comp-label">Performance Tasks (PT)</div>
-                <div class="comp-source">← Activities + Participation + Attendance</div>
-                <div class="comp-weight comp-pt">{{ weights.activity_pct | int }}%</div>
-            </div>
-            <div class="deped-comp-card">
-                <div class="comp-label">Term Assessment (TA)</div>
-                <div class="comp-source">← Periodical Exam scores</div>
-                <div class="comp-weight comp-qa">{{ weights.exam_pct | int }}%</div>
-            </div>
+        <div class="deped-strip-badges">
+            <span class="deped-badge badge-ww" title="Quiz + Monthly Exam">Written Works: <strong>{{ weights.quiz_pct | int }}%</strong></span>
+            <span class="deped-badge badge-pt" title="Activities + Participation + Attendance">Performance Tasks: <strong>{{ weights.activity_pct | int }}%</strong></span>
+            <span class="deped-badge badge-qa" title="Periodical Exam">Term Assessment: <strong>{{ weights.exam_pct | int }}%</strong></span>
         </div>
+        <button type="button" onclick="alert('Grade computation formula:\n\n• Written Works (WW): Quiz + Monthly Exam scores ({{ weights.quiz_pct | int }}%)\n• Performance Tasks (PT): Activities + Participation + Attendance ({{ weights.activity_pct | int }}%)\n• Term Assessment (TA): Periodical Exam scores ({{ weights.exam_pct | int }}%)\n\nTransmuted Grade is calculated using official DepEd Transmutation Table.')" class="deped-help-btn" title="View Computation Info">?</button>
     </div>
     {% endif %}
 
@@ -1172,116 +1263,369 @@
     </div>
     {% endif %}
 
-    <!-- ── Class Record Table ── -->
-    {% if records %}
-    <div class="cr-table-wrap">
-        <table class="cr-table">
-            <thead>
-                <tr>
-                    <th style="text-align:left;">Student</th>
-                    <th class="th-ww">
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                            Written Works
-                        </div>
-                        <small>Quiz + Monthly Exam · {{ weights.quiz_pct | int }}%</small>
-                    </th>
-                    <th class="th-pt">
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
-                            Performance Tasks
-                        </div>
-                        <small>Activity + Participation + Attendance · {{ weights.activity_pct | int }}%</small>
-                    </th>
-                    <th class="th-qa">
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
-                            Term Assessment
-                        </div>
-                        <small>Periodical Exam · {{ weights.exam_pct | int }}%</small>
-                    </th>
-                    <th>
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
-                            Term Grade
-                        </div>
-                    </th>
-                    <th>
-                        <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                            Details
-                        </div>
-                    </th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for r in records %}
-                <tr id="row-{{ r.enrollment_id }}">
-                    <td>
-                        <div class="student-cell">
-                            <span class="student-num">{{ loop.index }}</span>
-                            <span class="student-name-text" title="{{ r.student_name }}">{{ r.student_name }}</span>
-                        </div>
-                    </td>
-
-                    <!-- WW cell (Read-only summary) -->
-                    <td class="col-ww score-cell" id="cell-ww-{{ r.enrollment_id }}">
-                        <div class="score-display">
-                            <span class="score-value">{{ "%0.1f" | format(r.quiz | float) }}</span>
-                            {% if r.ww_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
-                        </div>
-                    </td>
-
-                    <!-- PT cell (Read-only summary) -->
-                    <td class="col-pt score-cell" id="cell-pt-{{ r.enrollment_id }}">
-                        <div class="score-display">
-                            <span class="score-value">{{ "%0.1f" | format(r.pt_score | float) }}</span>
-                            {% if r.pt_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
-                        </div>
-                        <div class="pt-breakdown">
-                            {% if r.has_activity %}Act: {{ "%0.1f" | format(r.activity|float) }}{% endif %}
-                            {% if r.has_participation %}
-                                · Par: {{ r.participation | int }}/{{ r.participation_total | default(10) | int }}
-                            {% endif %}
-                            {% if r.has_attendance %} · Att: {{ r.attendance | int }}/{{ r.attendance_total | default(10) | int }}{% endif %}
-                        </div>
-                    </td>
-
-                    <!-- QA cell (Read-only summary) -->
-                    <td class="col-qa score-cell" id="cell-qa-{{ r.enrollment_id }}">
-                        <div class="score-display">
-                            <span class="score-value">{{ "%0.1f" | format(r.exam | float) }}</span>
-                            {% if r.qa_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
-                        </div>
-                    </td>
-
-                    <!-- Term Grade (always auto-computed) -->
-                    <td id="grade-cell-{{ r.enrollment_id }}">
-                        {% if r.transmuted_grade is not none %}
-                        <span class="grade-pill {% if r.transmuted_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}"
-                              id="grade-pill-{{ r.enrollment_id }}">
-                            {{ "%0.2f" | format(r.transmuted_grade | float) }}
-                        </span>
-                        {% else %}
-                        <span class="grade-pill" id="grade-pill-{{ r.enrollment_id }}"
-                              style="background:var(--bg); color:var(--muted); font-style:italic; font-size:0.8rem;">—</span>
-                        {% endif %}
-                    </td>
-
-                    <td>
-                        <a href="{{ url_for('teacher.student_score_breakdown', section_id=section_id, subject_id=subject_id, enrollment_id=r.enrollment_id, period=period) }}"
-                            class="cr-btn"
-                            style="padding:7px 14px; font-size:0.8rem; font-weight:700; color:#1e3a8a; border:1.5px solid #bfdbfe; background:#eff6ff; border-radius:10px; cursor:pointer; transition:all 0.15s; font-family:'Inter',sans-serif; text-decoration:none;"
-                            onmouseover="this.style.background='#dbeafe'; this.style.borderColor='#93c5fd';"
-                            onmouseout="this.style.background='#eff6ff'; this.style.borderColor='#bfdbfe';">
-                            Score Details
-                        </a>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- ── Category View Tabs ── -->
+    <div class="category-tabs">
+        <button type="button" class="ctab active" id="ctab-summary" onclick="switchCategoryView('summary')">
+            Class Record Summary
+        </button>
+        <button type="button" class="ctab" id="ctab-pt" onclick="switchCategoryView('pt')">
+            Performance Tasks (Activities Breakdown)
+        </button>
+        <button type="button" class="ctab" id="ctab-ww" onclick="switchCategoryView('ww')">
+            Written Works (Quizzes Breakdown)
+        </button>
+        <button type="button" class="ctab" id="ctab-qa" onclick="switchCategoryView('qa')">
+            Term Assessment
+        </button>
     </div>
+
+    {% if records %}
+
+    <!-- ── VIEW 1: Summary Sheet ── -->
+    <div id="cview-summary" class="cview-container">
+        <div class="cr-table-wrap">
+            <table class="cr-table">
+                <thead>
+                    <tr>
+                        <th style="text-align:left; width:28px; padding:10px 4px 10px 10px;">#</th>
+                        <th style="text-align:left; width:110px; padding:10px 6px;">STUDENT ID</th>
+                        <th style="text-align:left; padding:10px 6px;">STUDENT NAME</th>
+                        <th class="th-ww">
+                            <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                                Written Works
+                            </div>
+                            <small>Quiz + Monthly Exam · {{ weights.quiz_pct | int }}%</small>
+                        </th>
+                        <th class="th-pt">
+                            <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                                Performance Tasks
+                            </div>
+                            <small>Activity + Participation + Attendance · {{ weights.activity_pct | int }}%</small>
+                        </th>
+                        <th class="th-qa">
+                            <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                Term Assessment
+                            </div>
+                            <small>Periodical Exam · {{ weights.exam_pct | int }}%</small>
+                        </th>
+                        <th>
+                            <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+                                Term Grade
+                            </div>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in records %}
+                    <tr id="row-{{ r.enrollment_id }}">
+                        <td style="text-align:left; padding:8px 4px 8px 10px; color:#94a3b8; font-weight:600;">{{ loop.index }}</td>
+                        <td style="text-align:left; padding:8px 6px; font-weight:700; color:#1e293b; font-size:0.88rem; white-space:nowrap;">{{ r.student_number or ('LDMAJ_' ~ ('%04d'|format(r.enrollment_id|int))) }}</td>
+                        <td style="text-align:left; padding:8px 6px; font-weight:700; color:var(--text); font-size:0.88rem; white-space:nowrap;">{{ r.student_name }}</td>
+
+                        <td class="col-ww score-cell" id="cell-ww-{{ r.enrollment_id }}">
+                            <div class="score-display">
+                                <span class="score-value">{{ "%0.1f" | format(r.quiz | float) }}</span>
+                                {% if r.ww_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
+                            </div>
+                        </td>
+
+                        <td class="col-pt score-cell" id="cell-pt-{{ r.enrollment_id }}">
+                            <div class="score-display">
+                                <span class="score-value">{{ "%0.1f" | format(r.pt_score | float) }}</span>
+                                {% if r.pt_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
+                            </div>
+                            <div class="pt-breakdown">
+                                {% if r.has_activity %}Act: {{ "%0.1f" | format(r.activity|float) }}{% endif %}
+                                {% if r.has_participation %}
+                                    · Par: {{ r.participation | int }}/{{ r.participation_total | default(10) | int }}
+                                {% endif %}
+                                {% if r.has_attendance %} · Att: {{ r.attendance | int }}/{{ r.attendance_total | default(10) | int }}{% endif %}
+                            </div>
+                        </td>
+
+                        <td class="col-qa score-cell" id="cell-qa-{{ r.enrollment_id }}">
+                            <div class="score-display">
+                                <span class="score-value">{{ "%0.1f" | format(r.exam | float) }}</span>
+                                {% if r.qa_overridden %}<span class="edited-badge" title="Manually edited">Edited</span>{% endif %}
+                            </div>
+                        </td>
+
+                        <td id="grade-cell-{{ r.enrollment_id }}">
+                            {% if r.transmuted_grade is not none %}
+                            <span class="grade-pill {% if r.transmuted_grade >= 75 %}grade-pass{% else %}grade-fail{% endif %}"
+                                  id="grade-pill-{{ r.enrollment_id }}">
+                                {{ "%0.2f" | format(r.transmuted_grade | float) }}
+                            </span>
+                            {% else %}
+                            <span class="grade-pill" id="grade-pill-{{ r.enrollment_id }}"
+                                  style="background:var(--bg); color:var(--muted); font-style:italic; font-size:0.8rem;">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── VIEW 2: Performance Tasks (Activities Breakdown Grid) ── -->
+    <div id="cview-pt" class="cview-container" style="display:none;">
+        <form action="{{ url_for('teacher.teacher_save_grid_scores', section_id=section_id, subject_id=subject_id) }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="period" value="{{ period }}">
+            <input type="hidden" name="active_tab" value="pt">
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                <h3 style="margin:0; font-size:1.1rem; font-weight:800; color:#15803d; display:flex; align-items:center; gap:8px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
+                    Performance Tasks (PT) — Activities Breakdown
+                </h3>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" onclick="openBatchModal(); switchBatchMode('new_activity');" class="cr-btn" style="background:#16a34a; color:#fff; font-weight:800; border:none; box-shadow:0 4px 12px rgba(22,163,74,0.25);">
+                        + Add Activity
+                    </button>
+                    <button type="submit" class="cr-btn cr-btn-solid" style="background:#15803d; color:#fff; font-weight:800; padding:8px 18px;">
+                        Save PT Scores
+                    </button>
+                </div>
+            </div>
+
+            <div class="cr-table-wrap">
+                <table class="cr-table">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left; width:28px; padding:10px 4px 10px 10px;">#</th>
+                            <th style="text-align:left; width:110px; padding:10px 6px;">STUDENT ID</th>
+                            <th style="text-align:left; padding:10px 6px;">STUDENT NAME</th>
+                            {% if activities_list %}
+                                {% for act in activities_list %}
+                                <th style="text-align:center; min-width:110px; background:#f0fdf4; color:#166534; border-bottom:2px solid #bbf7d0;">
+                                    <div style="font-weight:800;">{{ act.title }}</div>
+                                    <small style="color:#15803d; font-weight:600;">Max: {{ act.max_score | int }}</small>
+                                </th>
+                                {% endfor %}
+                            {% else %}
+                                <th style="text-align:center; color:#94a3b8; font-style:italic;">No Activities Added Yet (Click + Add Activity)</th>
+                            {% endif %}
+                            <th style="text-align:center; min-width:110px; background:#fffbeb; color:#92400e;">Participation</th>
+                            <th style="text-align:center; min-width:110px; background:#eff6ff; color:#1e40af;">Attendance</th>
+                            <th style="text-align:center; min-width:100px;">PT Total %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in records %}
+                        <tr>
+                            <td style="text-align:left; padding:8px 4px 8px 10px; color:#94a3b8; font-weight:600;">{{ loop.index }}</td>
+                            <td style="text-align:left; padding:8px 6px; font-weight:700; color:#1e293b; font-size:0.88rem; white-space:nowrap;">{{ r.student_number or ('LDMAJ_' ~ ('%04d'|format(r.enrollment_id|int))) }}</td>
+                            <td style="text-align:left; padding:8px 6px; font-weight:700; color:var(--text); font-size:0.88rem; white-space:nowrap;">{{ r.student_name }}</td>
+                            {% if activities_list %}
+                                {% for act in activities_list %}
+                                {% set score_key = r.enrollment_id ~ '_' ~ act.activity_id %}
+                                <td style="text-align:center; padding:6px;">
+                                    <input type="number" step="0.1" min="0" max="{{ act.max_score }}"
+                                           name="score_act_{{ act.activity_id }}_{{ r.enrollment_id }}"
+                                           value="{{ activity_scores_map.get(score_key, '') }}"
+                                           class="grid-score-input" style="border-color:#bbf7d0; color:#15803d;">
+                                </td>
+                                {% endfor %}
+                            {% else %}
+                                <td style="text-align:center; color:#94a3b8;">—</td>
+                            {% endif %}
+
+                            <!-- Participation Input -->
+                            <td style="text-align:center; padding:6px;">
+                                <input type="hidden" name="max_part_{{ r.enrollment_id }}" value="{{ r.participation_total | default(10) }}">
+                                <input type="number" step="0.1" min="0" max="{{ r.participation_total | default(10) }}"
+                                       name="score_part_{{ r.enrollment_id }}"
+                                       value="{{ r.participation if r.has_participation else '' }}"
+                                       placeholder="/{{ r.participation_total | default(10) | int }}"
+                                       class="grid-score-input" style="border-color:#fde68a; color:#b45309;">
+                            </td>
+
+                            <!-- Attendance Input -->
+                            <td style="text-align:center; padding:6px;">
+                                <input type="hidden" name="total_att_{{ r.enrollment_id }}" value="{{ r.attendance_total | default(10) }}">
+                                <input type="number" step="0.1" min="0" max="{{ r.attendance_total | default(10) }}"
+                                       name="score_att_{{ r.enrollment_id }}"
+                                       value="{{ r.attendance if r.has_attendance else '' }}"
+                                       placeholder="/{{ r.attendance_total | default(10) | int }}"
+                                       class="grid-score-input" style="border-color:#bfdbfe; color:#1d4ed8;">
+                            </td>
+
+                            <!-- PT Total % -->
+                            <td style="text-align:center; font-weight:800; color:#16a34a; font-size:0.95rem;">
+                                {{ "%0.1f" | format(r.pt_score | float) }}%
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    </div>
+
+    <!-- ── VIEW 3: Written Works (Quizzes Breakdown Grid) ── -->
+    <div id="cview-ww" class="cview-container" style="display:none;">
+        <form action="{{ url_for('teacher.teacher_save_grid_scores', section_id=section_id, subject_id=subject_id) }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="period" value="{{ period }}">
+            <input type="hidden" name="active_tab" value="ww">
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                <h3 style="margin:0; font-size:1.1rem; font-weight:800; color:#1d4ed8; display:flex; align-items:center; gap:8px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                    Written Works (WW) — Quizzes & Exams Breakdown
+                </h3>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" onclick="openBatchModal(); switchBatchMode('quiz');" class="cr-btn" style="background:#2563eb; color:#fff; font-weight:800; border:none; box-shadow:0 4px 12px rgba(37,99,235,0.25);">
+                        + Add Quiz
+                    </button>
+                    <button type="button" onclick="openBatchModal(); switchBatchMode('monthly_exam');" class="cr-btn" style="background:#7c3aed; color:#fff; font-weight:800; border:none; box-shadow:0 4px 12px rgba(124,58,237,0.25);">
+                        + Add Monthly Exam
+                    </button>
+                    <button type="submit" class="cr-btn cr-btn-solid" style="background:#1d4ed8; color:#fff; font-weight:800; padding:8px 18px;">
+                        Save WW Scores
+                    </button>
+                </div>
+            </div>
+
+            <div class="cr-table-wrap">
+                <table class="cr-table">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left; width:28px; padding:10px 4px 10px 10px;">#</th>
+                            <th style="text-align:left; width:110px; padding:10px 6px;">STUDENT ID</th>
+                            <th style="text-align:left; padding:10px 6px;">STUDENT NAME</th>
+                            {% if quizzes_list %}
+                                {% for q in quizzes_list %}
+                                {% if q.exam_type == 'monthly_exam' %}
+                                <th style="text-align:center; min-width:115px; background:#f3e8ff; color:#6b21a8; border-bottom:2px solid #d8b4fe;">
+                                    <span style="font-size:0.65rem; font-weight:800; text-transform:uppercase; background:#e9d5ff; color:#7e22ce; padding:2px 6px; border-radius:4px; letter-spacing:0.5px;">Monthly Exam</span>
+                                    <div style="font-weight:800; margin-top:3px;">{{ q.title }}</div>
+                                    <small style="color:#7c3aed; font-weight:600;">Max: {{ q.total_points | int }}</small>
+                                </th>
+                                {% else %}
+                                <th style="text-align:center; min-width:110px; background:#eff6ff; color:#1e40af; border-bottom:2px solid #bfdbfe;">
+                                    <span style="font-size:0.65rem; font-weight:800; text-transform:uppercase; background:#dbeafe; color:#1d4ed8; padding:2px 6px; border-radius:4px; letter-spacing:0.5px;">Quiz</span>
+                                    <div style="font-weight:800; margin-top:3px;">{{ q.title }}</div>
+                                    <small style="color:#2563eb; font-weight:600;">Max: {{ q.total_points | int }}</small>
+                                </th>
+                                {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <th style="text-align:center; color:#94a3b8; font-style:italic;">No Quizzes or Monthly Exams Added Yet</th>
+                            {% endif %}
+                            <th style="text-align:center; min-width:100px;">WW Total %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in records %}
+                        <tr>
+                            <td style="text-align:left; padding:8px 4px 8px 10px; color:#94a3b8; font-weight:600;">{{ loop.index }}</td>
+                            <td style="text-align:left; padding:8px 6px; font-weight:700; color:#1e293b; font-size:0.88rem; white-space:nowrap;">{{ r.student_number or ('LDMAJ_' ~ ('%04d'|format(r.enrollment_id|int))) }}</td>
+                            <td style="text-align:left; padding:8px 6px; font-weight:700; color:var(--text); font-size:0.88rem; white-space:nowrap;">{{ r.student_name }}</td>
+                            {% if quizzes_list %}
+                                {% for q in quizzes_list %}
+                                {% set score_key = r.enrollment_id ~ '_' ~ q.exam_id %}
+                                <td style="text-align:center; padding:6px;">
+                                    <input type="number" step="0.1" min="0" max="{{ q.total_points }}"
+                                           name="score_quiz_{{ q.exam_id }}_{{ r.enrollment_id }}"
+                                           value="{{ quiz_scores_map.get(score_key, '') }}"
+                                           class="grid-score-input" style="border-color:{% if q.exam_type == 'monthly_exam' %}#d8b4fe; color:#7c3aed;{% else %}#bfdbfe; color:#1d4ed8;{% endif %}">
+                                </td>
+                                {% endfor %}
+                            {% else %}
+                                <td style="text-align:center; color:#94a3b8;">—</td>
+                            {% endif %}
+
+                            <td style="text-align:center; font-weight:800; color:#2563eb; font-size:0.95rem;">
+                                {{ "%0.1f" | format(r.quiz | float) }}%
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    </div>
+
+    <!-- ── VIEW 4: Term Assessment (QA Breakdown Grid) ── -->
+    <div id="cview-qa" class="cview-container" style="display:none;">
+        <form action="{{ url_for('teacher.teacher_save_grid_scores', section_id=section_id, subject_id=subject_id) }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="period" value="{{ period }}">
+            <input type="hidden" name="active_tab" value="qa">
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
+                <h3 style="margin:0; font-size:1.1rem; font-weight:800; color:#b45309; display:flex; align-items:center; gap:8px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+                    Term Assessment (QA) — Periodical Exam Breakdown
+                </h3>
+                <div style="display:flex; gap:10px;">
+                    <button type="button" onclick="openBatchModal(); switchBatchMode('term_exam');" class="cr-btn" style="background:#d97706; color:#fff; font-weight:800; border:none; box-shadow:0 4px 12px rgba(217,119,6,0.25);">
+                        + Add Periodical Exam
+                    </button>
+                    <button type="submit" class="cr-btn cr-btn-solid" style="background:#b45309; color:#fff; font-weight:800; padding:8px 18px;">
+                        Save QA Scores
+                    </button>
+                </div>
+            </div>
+
+            <div class="cr-table-wrap">
+                <table class="cr-table">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left; width:28px; padding:10px 4px 10px 10px;">#</th>
+                            <th style="text-align:left; width:110px; padding:10px 6px;">STUDENT ID</th>
+                            <th style="text-align:left; padding:10px 6px;">STUDENT NAME</th>
+                            {% if exams_list %}
+                                {% for ex in exams_list %}
+                                <th style="text-align:center; min-width:110px; background:#fffbeb; color:#92400e; border-bottom:2px solid #fde68a;">
+                                    <div style="font-weight:800;">{{ ex.title }}</div>
+                                    <small style="color:#d97706; font-weight:600;">Max: {{ ex.total_points | int }}</small>
+                                </th>
+                                {% endfor %}
+                            {% else %}
+                                <th style="text-align:center; color:#94a3b8; font-style:italic;">No Periodical Exam Added Yet</th>
+                            {% endif %}
+                            <th style="text-align:center; min-width:100px;">QA Total %</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in records %}
+                        <tr>
+                            <td style="text-align:left; padding:8px 4px 8px 10px; color:#94a3b8; font-weight:600;">{{ loop.index }}</td>
+                            <td style="text-align:left; padding:8px 6px; font-weight:700; color:#1e293b; font-size:0.88rem; white-space:nowrap;">{{ r.student_number or ('LDMAJ_' ~ ('%04d'|format(r.enrollment_id|int))) }}</td>
+                            <td style="text-align:left; padding:8px 6px; font-weight:700; color:var(--text); font-size:0.88rem; white-space:nowrap;">{{ r.student_name }}</td>
+                            {% if exams_list %}
+                                {% for ex in exams_list %}
+                                {% set score_key = r.enrollment_id ~ '_' ~ ex.exam_id %}
+                                <td style="text-align:center; padding:6px;">
+                                    <input type="number" step="0.1" min="0" max="{{ ex.total_points }}"
+                                           name="score_exam_{{ ex.exam_id }}_{{ r.enrollment_id }}"
+                                           value="{{ quiz_scores_map.get(score_key, '') }}"
+                                           class="grid-score-input" style="border-color:#fde68a; color:#b45309;">
+                                </td>
+                                {% endfor %}
+                            {% else %}
+                                <td style="text-align:center; color:#94a3b8;">—</td>
+                            {% endif %}
+
+                            <td style="text-align:center; font-weight:800; color:#d97706; font-size:0.95rem;">
+                                {{ "%0.1f" | format(r.exam | float) }}%
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </form>
+    </div>
+
     {% else %}
     <div class="cr-empty">
         <div class="big-icon">
@@ -1296,9 +1640,185 @@
 
 </div>
 
+<!-- ── Add Assessment Item Modal ── -->
+<div id="batchModalOverlay" class="batch-modal-overlay" onclick="batchCloseOnBackdrop(event)">
+    <div class="batch-modal-card" style="max-width:480px; padding:22px; border-radius:16px;">
+        <div class="batch-modal-header" style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px;">
+            <div>
+                <h3 id="modalHeaderTitle" style="margin:0; font-size:1.1rem; font-weight:800; color:var(--text);">Add Assessment Item</h3>
+                <span style="font-size:0.78rem; color:#64748b;">Create a new item column for {{ period }} Term</span>
+            </div>
+            <button type="button" onclick="closeBatchModal()" class="batch-close-btn" style="font-size:1.4rem; cursor:pointer; background:none; border:none; color:#64748b;">&times;</button>
+        </div>
 
+        <form action="{{ url_for('teacher.teacher_batch_save_scores', section_id=section_id, subject_id=subject_id) }}" method="POST" id="batchForm" style="display:flex; flex-direction:column; gap:14px; margin-top:14px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="period" value="{{ period }}">
+            <input type="hidden" name="active_tab" id="batchActiveTab" value="pt">
+
+            <!-- Category Context Badge -->
+            <input type="hidden" name="input_type" id="modalInputType" value="new_activity">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:0.8rem; font-weight:600; color:#64748b;">Category:</span>
+                <span id="modalCategoryBadge" style="padding:4px 10px; border-radius:6px; font-size:0.75rem; font-weight:800; text-transform:uppercase; background:#dcfce7; color:#15803d;">Performance Task (PT)</span>
+            </div>
+
+            <!-- Activity / Item Meta Details Section -->
+            <div id="itemDetailsSection" style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px; display:flex; flex-direction:column; gap:12px;">
+                <div>
+                    <label id="itemTitleLabel" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:4px;">Title / Name</label>
+                    <input type="text" name="activity_title" id="itemTitleInput" placeholder="e.g. Activity 1" required class="batch-meta-input" style="width:100%; padding:8px 12px; border-radius:8px; border:1.5px solid #cbd5e1; font-weight:600; box-sizing:border-box;">
+                </div>
+                <div>
+                    <label id="itemMaxLabel" style="display:block; font-size:0.78rem; font-weight:700; color:#334155; margin-bottom:4px;">Max Score / Total Points</label>
+                    <input type="number" name="max_score" id="itemMaxInput" value="100" min="1" required class="batch-meta-input" style="width:100%; padding:8px 12px; border-radius:8px; border:1.5px solid #cbd5e1; font-weight:700; box-sizing:border-box;">
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:6px;">
+                <button type="button" onclick="closeBatchModal()" class="cr-btn" style="background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; padding:8px 18px;">Cancel</button>
+                <button type="submit" id="modalSubmitBtn" class="cr-btn cr-btn-solid" style="background:#16a34a; color:#fff; font-weight:800; padding:8px 22px;">Create Item</button>
+            </div>
+        </form>
+    </div>
+</div>
 
 <script>
+function switchCategoryView(view) {
+    document.querySelectorAll('.ctab').forEach(b => b.classList.remove('active'));
+    const activeBtn = document.getElementById('ctab-' + view);
+    if (activeBtn) activeBtn.classList.add('active');
+
+    document.querySelectorAll('.cview-container').forEach(c => c.style.display = 'none');
+    const activeView = document.getElementById('cview-' + view);
+    if (activeView) activeView.style.display = 'block';
+
+    const url = new URL(window.location);
+    url.searchParams.set('tab', view);
+    window.history.replaceState({}, '', url);
+}
+
+document.addEventListener("DOMContentLoaded", function() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam && ['summary', 'pt', 'ww', 'qa'].includes(tabParam)) {
+        switchCategoryView(tabParam);
+    }
+});
+function openBatchModal(mode) {
+    const overlay = document.getElementById('batchModalOverlay');
+    if (!overlay) return;
+    overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    switchBatchMode(mode || 'new_activity');
+}
+
+function closeBatchModal() {
+    const overlay = document.getElementById('batchModalOverlay');
+    if (!overlay) return;
+    overlay.classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+function batchCloseOnBackdrop(e) {
+    if (e.target.id === 'batchModalOverlay') closeBatchModal();
+}
+
+function switchBatchMode(mode) {
+    const inputTypeHidden = document.getElementById('modalInputType');
+    if (inputTypeHidden) inputTypeHidden.value = mode;
+
+    let tabVal = 'pt';
+    if (mode === 'quiz' || mode === 'monthly_exam') tabVal = 'ww';
+    else if (mode === 'term_exam') tabVal = 'qa';
+    else if (mode === 'new_activity') tabVal = 'pt';
+
+    const hiddenTab = document.getElementById('batchActiveTab');
+    if (hiddenTab) hiddenTab.value = tabVal;
+
+    const titleLabel = document.getElementById('itemTitleLabel');
+    const titleInput = document.getElementById('itemTitleInput');
+    const maxLabel = document.getElementById('itemMaxLabel');
+    const maxInput = document.getElementById('itemMaxInput');
+    const modalHeaderTitle = document.getElementById('modalHeaderTitle');
+    const modalSubmitBtn = document.getElementById('modalSubmitBtn');
+    const catBadge = document.getElementById('modalCategoryBadge');
+
+    const actCount = parseInt("{{ act_count | default(0) }}") || 0;
+    const quizCount = parseInt("{{ quiz_count | default(0) }}") || 0;
+    const meCount = parseInt("{{ monthly_exam_count | default(0) }}") || 0;
+
+    if (mode === 'new_activity') {
+        if (modalHeaderTitle) modalHeaderTitle.textContent = 'Add New Activity';
+        if (modalSubmitBtn) { modalSubmitBtn.textContent = 'Add Activity'; modalSubmitBtn.style.background = '#16a34a'; }
+        if (catBadge) { catBadge.textContent = 'Performance Task (PT)'; catBadge.style.background = '#dcfce7'; catBadge.style.color = '#15803d'; }
+        titleLabel.textContent = 'Activity Title / Name';
+        titleInput.setAttribute('name', 'activity_title');
+        titleInput.placeholder = 'e.g. Activity 1';
+        titleInput.value = 'Activity ' + (actCount + 1);
+        maxLabel.textContent = 'Max Score';
+        maxInput.setAttribute('name', 'max_score');
+        maxInput.value = '100';
+    } else if (mode === 'quiz') {
+        if (modalHeaderTitle) modalHeaderTitle.textContent = 'Add New Quiz';
+        if (modalSubmitBtn) { modalSubmitBtn.textContent = 'Add Quiz'; modalSubmitBtn.style.background = '#2563eb'; }
+        if (catBadge) { catBadge.textContent = 'Written Work (Quiz)'; catBadge.style.background = '#dbeafe'; catBadge.style.color = '#1d4ed8'; }
+        titleLabel.textContent = 'Quiz Title';
+        titleInput.setAttribute('name', 'exam_title');
+        titleInput.placeholder = 'e.g. Quiz 1';
+        titleInput.value = 'Quiz ' + (quizCount + 1);
+        maxLabel.textContent = 'Max Score';
+        maxInput.setAttribute('name', 'max_score');
+        maxInput.value = '50';
+    } else if (mode === 'monthly_exam') {
+        if (modalHeaderTitle) modalHeaderTitle.textContent = 'Add New Monthly Exam';
+        if (modalSubmitBtn) { modalSubmitBtn.textContent = 'Add Monthly Exam'; modalSubmitBtn.style.background = '#7c3aed'; }
+        if (catBadge) { catBadge.textContent = 'Written Work (Monthly Exam)'; catBadge.style.background = '#f3e8ff'; catBadge.style.color = '#7e22ce'; }
+        titleLabel.textContent = 'Monthly Exam Title';
+        titleInput.setAttribute('name', 'exam_title');
+        titleInput.placeholder = 'e.g. Monthly Exam 1';
+        titleInput.value = 'Monthly Exam ' + (meCount + 1);
+        maxLabel.textContent = 'Max Score';
+        maxInput.setAttribute('name', 'max_score');
+        maxInput.value = '100';
+    } else if (mode === 'term_exam') {
+        if (modalHeaderTitle) modalHeaderTitle.textContent = 'Add New Periodical Exam';
+        if (modalSubmitBtn) { modalSubmitBtn.textContent = 'Add Periodical Exam'; modalSubmitBtn.style.background = '#d97706'; }
+        if (catBadge) { catBadge.textContent = 'Quarterly Assessment (QA)'; catBadge.style.background = '#fef3c7'; catBadge.style.color = '#b45309'; }
+        titleLabel.textContent = 'Periodical Exam Title';
+        titleInput.setAttribute('name', 'exam_title');
+        titleInput.placeholder = 'e.g. {{ period }} Term Periodical Exam';
+        titleInput.value = '{{ period }} Term Periodical Exam';
+        maxLabel.textContent = 'Max Score';
+    }
+
+    setTimeout(() => {
+        if (titleInput) { titleInput.focus(); titleInput.select(); }
+    }, 100);
+}
+
+// Keydown listener for Arrow / Enter navigation in batch inputs
+document.addEventListener('keydown', function(e) {
+    const active = document.activeElement;
+    if (!active || !active.classList.contains('batch-input')) return;
+
+    const row = parseInt(active.getAttribute('data-row') || 0);
+
+    if (e.key === 'Enter' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        const next = document.querySelector(`.mode-single-input[data-row="${row + 1}"]`);
+        if (next) { next.focus(); next.select(); }
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        const prev = document.querySelector(`.mode-single-input[data-row="${row - 1}"]`);
+        if (prev) { prev.focus(); prev.select(); }
+    } else if (e.key === 'Escape') {
+        if (document.getElementById('batchModalOverlay').classList.contains('show')) {
+            closeBatchModal();
+        }
+    }
+});
+
 // ── DepEd Transmutation Table ─────────────────────────────────────────────────
 const TRANSMUTATION_RANGES = [
     [98.40, 99.99, 99], [96.80, 98.39, 98], [95.20, 96.79, 97],

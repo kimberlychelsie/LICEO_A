@@ -279,6 +279,63 @@
         color: #fff;
     }
 
+    .gw-term-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 14px;
+        border-radius: 999px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.15s ease-in-out;
+        white-space: nowrap;
+    }
+    .gw-term-1st {
+        background: #eff6ff;
+        color: #1d4ed8;
+        border: 1px solid #bfdbfe;
+    }
+    .gw-term-1st:hover {
+        background: #2563eb;
+        color: #ffffff;
+        border-color: #2563eb;
+        transform: translateY(-1px);
+    }
+    .gw-term-2nd {
+        background: #f0fdf4;
+        color: #15803d;
+        border: 1px solid #bbf7d0;
+    }
+    .gw-term-2nd:hover {
+        background: #16a34a;
+        color: #ffffff;
+        border-color: #16a34a;
+        transform: translateY(-1px);
+    }
+    .gw-term-3rd {
+        background: #fffbeb;
+        color: #b45309;
+        border: 1px solid #fde68a;
+    }
+    .gw-term-3rd:hover {
+        background: #d97706;
+        color: #ffffff;
+        border-color: #d97706;
+        transform: translateY(-1px);
+    }
+    .gw-term-summary {
+        background: #f8fafc;
+        color: #475569;
+        border: 1px solid #cbd5e1;
+    }
+    .gw-term-summary:hover {
+        background: #334155;
+        color: #ffffff;
+        border-color: #334155;
+        transform: translateY(-1px);
+    }
+
     @media (max-width: 768px) {
         .gw-wrap { padding: 16px 14px 48px; }
         .gw-hero { padding: 22px 18px; }
@@ -351,11 +408,25 @@
                     </span>
                     {% endif %}
                 </div>
-                <a href="{{ url_for('teacher.class_record', section_id=a.section_id, subject_id=a.subject_id) }}"
-                   class="gw-cr-btn">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-                    Class Record
-                </a>
+                <div class="gw-term-group" style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                    <a href="{{ url_for('teacher.class_record', section_id=a.section_id, subject_id=a.subject_id, period='1st') }}"
+                       class="gw-term-btn gw-term-1st" title="View 1st Term Class Record">
+                       1st Term
+                    </a>
+                    <a href="{{ url_for('teacher.class_record', section_id=a.section_id, subject_id=a.subject_id, period='2nd') }}"
+                       class="gw-term-btn gw-term-2nd" title="View 2nd Term Class Record">
+                       2nd Term
+                    </a>
+                    <a href="{{ url_for('teacher.class_record', section_id=a.section_id, subject_id=a.subject_id, period='3rd') }}"
+                       class="gw-term-btn gw-term-3rd" title="View 3rd Term Class Record">
+                       3rd Term
+                    </a>
+                    <a href="{{ url_for('teacher.class_record', section_id=a.section_id, subject_id=a.subject_id, period='final') }}"
+                       class="gw-term-btn gw-term-summary" title="View Final Grade Summary Sheet">
+                       <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                       Summary
+                    </a>
+                </div>
             </div>
 
             <div class="gw-weights">
