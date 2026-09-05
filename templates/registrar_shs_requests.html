@@ -3,10 +3,10 @@
 {% block content %}
 <style>
     :root { --ma-primary: #1a3a8f; --ma-gold: #facc15; --ma-bg: #f8fafc; --ma-card: #ffffff; --ma-border: rgba(26,58,143,0.1); --ma-text: #0f172a; --ma-muted: #64748b; --ma-accent: #3b82f6; }
-    .ba-container { max-width: 1400px; margin: 0 auto; padding: 32px 24px; }
+    .ba-container { max-width: 1200px; margin: 0 auto; padding: 0 20px 64px; }
     
     /* ── Premium Card Header ── */
-    .hero-banner {
+    .welcome-header {
         background: linear-gradient(135deg, #1a3a8f 0%, #0c2461 100%);
         border-radius: 24px;
         padding: 32px 40px;
@@ -16,12 +16,9 @@
         position: relative;
         overflow: hidden;
     }
-    .hero-banner::before { content:''; position:absolute; top:-50px; right:-30px; width:200px; height:200px; border-radius:50%; background:rgba(255,255,255,0.05); }
-    .hero-content h1 { font-size: 2.2rem; font-weight: 900; letter-spacing: -0.02em; margin: 0 0 12px 0; line-height: 1; }
-    .hero-content h1 span { color: var(--ma-gold); }
-    .hero-content p { font-size: 1rem; opacity: 0.9; font-weight: 500; margin: 0; line-height: 1.5; max-width: 600px; }
-    .hero-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(255,255,255,0.15); backdrop-filter: blur(4px); border-radius: 8px; padding: 6px 14px; font-size: 0.85rem; font-weight: 600; margin-top: 16px; }
-    
+    .welcome-header h1 { font-size: 2.2rem; font-weight: 900; letter-spacing: -0.02em; margin: 0 0 12px 0; line-height: 1.1; color: white; }
+    .welcome-header p { font-size: 1rem; opacity: 0.9; font-weight: 500; margin: 0; line-height: 1.5; color: white; }
+
     .modern-card { background: var(--ma-card); border: 1px solid var(--ma-border); border-radius: 20px; padding: 32px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); margin-bottom: 24px; }
     .modern-card h2 { font-size: 1.3rem; font-weight: 800; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
 
@@ -86,13 +83,12 @@
     .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
     .btn-ghost { background: #f1f5f9; color: var(--ma-text); border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; }
 
-    @media (max-width: 768px) { 
+    @media (max-width: 1024px) { 
         .ba-container { 
-            padding: calc(24px + env(safe-area-inset-top)) calc(16px + env(safe-area-inset-right)) calc(80px + env(safe-area-inset-bottom)) calc(16px + env(safe-area-inset-left)); 
+            padding: 16px 12px 48px !important; 
         }
-        .hero-banner { padding: 24px 20px; border-radius: 16px; margin-bottom: 16px; }
-        .hero-content h1 { font-size: 1.75rem; } 
-        .hero-content p { font-size: 0.9rem; }
+        .welcome-header { padding: 24px 20px !important; }
+        .welcome-header h1 { font-size: 1.6rem !important; } 
         .modern-card { padding: 20px 16px; border-radius: 16px; }
         .modern-card h2 { font-size: 1.2rem; }
         .request-card { padding: 16px; }
@@ -105,14 +101,9 @@
 </style>
 
 <div class="ba-container">
-    <div class="hero-banner">
-        <div class="hero-content">
-            <h1>Elective <span>Requests</span></h1>
-            <p>Review and approve student elective selection requests. Verify capacity and schedule compatibility before approving.</p>
-            {% if school_year_label %}
-            <div class="hero-badge">{{ school_year_label }}</div>
-            {% endif %}
-        </div>
+    <div class="welcome-header">
+        <h1>Elective <span style="color: #facc15; text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);">Requests</span></h1>
+        <p>Review and approve student elective selection requests. Verify capacity and schedule compatibility before approving.</p>
     </div>
 
     {% if not year_id %}

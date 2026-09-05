@@ -3,220 +3,329 @@
 
 <head>
     <meta charset="UTF-8">
-    <title>Continuing Enrollment - Liceo LMS</title>
+    <title>Continuing Enrollment – Liceo LMS</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --liceo-navy: #1a3a8f;
+            --liceo-navy-dark: #0f2766;
+            --liceo-navy-light: #2551c6;
+            --liceo-gold: #f59e0b;
+            --liceo-gold-dark: #d97706;
+            --liceo-gold-light: #fef3c7;
+            --liceo-bg: #f4f7fc;
+            --liceo-card-bg: #ffffff;
+            --liceo-text-dark: #0f172a;
+            --liceo-text-main: #1e293b;
+            --liceo-text-muted: #64748b;
+            --liceo-border: #e2e8f0;
+            --liceo-border-focus: #3b82f6;
+            --liceo-success: #16a34a;
+            --liceo-success-bg: #f0fdf4;
+            --liceo-warning: #d97706;
+            --liceo-warning-bg: #fffbeb;
+            --shadow-sm: 0 2px 8px rgba(15, 23, 42, 0.04);
+            --shadow-md: 0 12px 24px -4px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.04);
+            --shadow-lg: 0 25px 50px -12px rgba(15, 39, 102, 0.25);
+            --radius-sm: 10px;
+            --radius-md: 16px;
+            --radius-lg: 24px;
+        }
+
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            margin: 0;
-            font-family: 'Inter', Arial, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+            font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--liceo-bg);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(26, 58, 143, 0.08) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(245, 158, 11, 0.06) 0px, transparent 50%),
+                radial-gradient(at 50% 100%, rgba(15, 23, 42, 0.03) 0px, transparent 50%);
+            background-attachment: fixed;
             min-height: 100vh;
+            color: var(--liceo-text-main);
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            padding: 40px 20px;
-            color: #1e293b;
+            padding: 20px;
+            overflow-x: hidden;
         }
 
-        .ce-card {
-            background: white;
-            border-radius: 24px;
+        .ce-wrapper {
             width: 100%;
             max-width: 1100px;
-            box-shadow: 0 24px 48px rgba(0, 0, 0, 0.4);
-            position: relative;
+            margin: 0 auto;
+        }
+
+        /* Main Container Card */
+        .ce-card {
+            background: var(--liceo-card-bg);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            border: 1px solid var(--liceo-border);
             overflow: hidden;
             display: flex;
-            min-height: 600px;
+            position: relative;
+            max-height: calc(100vh - 40px);
         }
-        
+
+        /* Top Accent Stripe */
         .ce-card::before {
             content: '';
             position: absolute;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 6px;
-            background: linear-gradient(90deg, #1e3a8a, #f59e0b);
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, var(--liceo-navy) 0%, #2563eb 50%, var(--liceo-gold) 100%);
             z-index: 10;
         }
 
+        /* Left Section: Form & Info */
         .ce-left {
-            flex: 1;
-            padding: 48px 50px;
+            flex: 1.15;
+            padding: 34px 40px;
             display: flex;
             flex-direction: column;
-            max-width: 50%;
+            border-right: 1px solid var(--liceo-border);
+            overflow-y: auto;
         }
 
+        /* Right Section: Subject Schedule Preview */
         .ce-right {
-            flex: 1;
+            flex: 0.85;
             background: #f8fafc;
-            padding: 48px 50px;
-            border-left: 1px solid #e2e8f0;
+            padding: 34px 36px;
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
 
         .ce-header {
-            color: #1e3a8a;
+            color: var(--liceo-navy-dark);
             font-weight: 900;
             font-size: 1.8rem;
-            margin-bottom: 4px;
-            letter-spacing: -0.02em;
+            letter-spacing: -0.03em;
+            line-height: 1.2;
+            margin-bottom: 6px;
         }
 
         .ce-subtitle {
-            color: #64748b;
-            font-size: 1rem;
-            margin-bottom: 32px;
+            color: var(--liceo-text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 22px;
             font-weight: 500;
-            margin-top: 0;
         }
 
+        /* Student Profile Card */
         .ce-welcome {
-            background: #f8fafc;
-            border-radius: 16px;
-            padding: 24px 28px;
-            margin-bottom: 32px;
-            border-left: 5px solid #f59e0b;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+            background: linear-gradient(135deg, rgba(26, 58, 143, 0.06) 0%, rgba(37, 99, 235, 0.04) 100%);
+            border: 1px solid rgba(26, 58, 143, 0.15);
+            border-left: 4px solid var(--liceo-navy);
+            border-radius: var(--radius-md);
+            padding: 16px 20px;
+            margin-bottom: 22px;
+            display: flex;
+            align-items: center;
         }
 
-        .ce-welcome strong {
-            color: #1e3a8a;
-            font-size: 1.2rem;
-            font-weight: 800;
-            display: block;
-            margin-bottom: 8px;
+        .student-profile-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .student-avatar-img {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2.5px solid var(--liceo-navy);
+            box-shadow: 0 3px 8px rgba(26, 58, 143, 0.15);
+            flex-shrink: 0;
+        }
+
+        .student-avatar-fallback {
+            width: 52px;
+            height: 52px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--liceo-navy) 0%, var(--liceo-navy-dark) 100%);
+            color: #ffffff;
+            font-weight: 900;
+            font-size: 1.4rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2.5px solid var(--liceo-navy);
+            box-shadow: 0 3px 8px rgba(26, 58, 143, 0.25);
+            flex-shrink: 0;
+        }
+
+        .student-profile-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .student-full-name {
+            color: var(--liceo-navy-dark);
+            font-size: 1.18rem;
+            font-weight: 900;
+            line-height: 1.25;
+            letter-spacing: -0.01em;
+        }
+
+        .student-id-tag {
+            font-size: 0.78rem;
+            color: var(--liceo-text-muted);
+            font-weight: 600;
+            margin-top: 2px;
         }
 
         .ce-welcome p {
-            margin: 0;
-            font-size: 1rem;
+            font-size: 0.85rem;
             color: #475569;
-            line-height: 1.6;
+            line-height: 1.45;
+            margin: 0;
         }
 
-        .ce-form-group {
-            margin-bottom: 24px;
-        }
-
-        .ce-label {
-            display: block;
-            font-weight: 700;
-            margin-bottom: 10px;
-            font-size: 1rem;
-            color: #1e3a8a;
-        }
-
-        .ce-input,
-        .ce-select {
-            width: 100%;
-            padding: 14px 18px;
-            border: 2px solid #e2e8f0;
-            border-radius: 12px;
-            font-family: inherit;
-            font-size: 1.05rem;
-            font-weight: 500;
-            transition: all 0.2s;
-            background: #f8fafc;
-            color: #0f172a;
-        }
-
-        .ce-select {
-            border-color: #cbd5e1;
-            cursor: pointer;
-            background: white;
-        }
-
-        .ce-select:focus {
-            outline: none;
-            border-color: #1e3a8a;
-            box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.1);
-        }
-
-        .ce-hint {
-            color: #64748b;
-            font-size: 0.9rem;
-            margin-top: 8px;
-            display: block;
-        }
-
-        /* Grade pills */
+        /* Grade Level Transition Cards */
         .grade-pills {
             display: flex;
-            gap: 16px;
-            margin-bottom: 32px;
+            gap: 14px;
+            margin-bottom: 22px;
             align-items: center;
         }
 
         .grade-pill {
             flex: 1;
-            background: white;
-            border: 2px solid #e2e8f0;
-            border-radius: 16px;
-            padding: 16px;
+            background: #ffffff;
+            border: 1.5px solid var(--liceo-border);
+            border-radius: var(--radius-md);
+            padding: 14px 12px;
             text-align: center;
+            box-shadow: var(--shadow-sm);
         }
 
         .grade-pill .pill-label {
-            font-size: 0.85rem;
-            color: #64748b;
-            font-weight: 700;
+            font-size: 0.72rem;
+            color: var(--liceo-text-muted);
+            font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 0.08em;
-            margin-bottom: 6px;
+            letter-spacing: 0.06em;
+            margin-bottom: 5px;
         }
 
         .grade-pill .pill-value {
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             font-weight: 800;
-            color: #1e3a8a;
+            color: var(--liceo-navy-dark);
         }
 
         .grade-pill.next {
-            border-color: #bfdbfe;
-            background: #eff6ff;
+            border-color: rgba(22, 163, 74, 0.3);
+            background: var(--liceo-success-bg);
+        }
+
+        .grade-pill.next .pill-label {
+            color: #15803d;
         }
 
         .grade-pill.next .pill-value {
-            color: #16a34a;
+            color: var(--liceo-success);
         }
 
         .arrow-mid {
-            font-size: 1.8rem;
-            color: #94a3b8;
+            font-size: 1.3rem;
+            color: var(--liceo-gold);
             flex-shrink: 0;
-            font-weight: 300;
+            font-weight: 800;
+            width: 32px;
+            height: 32px;
+            background: #fef3c7;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
-        /* Button */
+        /* Form Inputs */
+        .ce-form-group {
+            margin-bottom: 18px;
+        }
+
+        .ce-label {
+            display: block;
+            font-weight: 700;
+            margin-bottom: 8px;
+            font-size: 0.92rem;
+            color: var(--liceo-navy-dark);
+        }
+
+        .ce-select {
+            width: 100%;
+            padding: 13px 18px;
+            border: 1.5px solid var(--liceo-border);
+            border-radius: var(--radius-sm);
+            font-family: inherit;
+            font-size: 0.96rem;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            background-color: #ffffff;
+            color: var(--liceo-text-dark);
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%20f59e0b' stroke-width='2.5'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7' /%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+            background-size: 17px;
+            padding-right: 44px;
+        }
+
+        .ce-select:focus {
+            outline: none;
+            border-color: var(--liceo-navy);
+            box-shadow: 0 0 0 4px rgba(26, 58, 143, 0.12);
+        }
+
+        .ce-hint {
+            color: var(--liceo-text-muted);
+            font-size: 0.82rem;
+            margin-top: 6px;
+            display: block;
+            font-weight: 500;
+        }
+
+        /* Action Button */
         .ce-btn {
-            background: #1e3a8a;
-            color: #fff;
+            background: linear-gradient(135deg, var(--liceo-navy) 0%, var(--liceo-navy-dark) 100%);
+            color: #ffffff;
             border: none;
-            padding: 18px 24px;
-            font-size: 1.15rem;
+            padding: 15px 22px;
+            font-size: 1.02rem;
             font-weight: 800;
-            border-radius: 14px;
+            border-radius: var(--radius-sm);
             cursor: pointer;
             width: 100%;
-            margin-top: auto;
-            transition: all 0.2s;
-            box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
+            margin-top: 8px;
+            transition: all 0.2s ease;
+            box-shadow: 0 6px 16px rgba(26, 58, 143, 0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
         .ce-btn:hover:not(:disabled) {
-            background: #172554;
+            background: linear-gradient(135deg, var(--liceo-navy-light) 0%, var(--liceo-navy) 100%);
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(30, 58, 138, 0.3);
+            box-shadow: 0 10px 22px rgba(26, 58, 143, 0.35);
         }
 
         .ce-btn:disabled {
@@ -226,36 +335,43 @@
             color: #94a3b8;
         }
 
-        /* Subject preview (Right Column) */
+        /* Right Column: Schedule & Subject Preview */
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 14px;
+            border-bottom: 2px solid var(--liceo-border);
+            margin-bottom: 16px;
+        }
+
         .preview-title {
             font-weight: 800;
-            color: #1e3a8a;
-            font-size: 1.3rem;
-            margin: 0 0 24px 0;
+            color: var(--liceo-navy-dark);
+            font-size: 1.1rem;
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding-bottom: 16px;
-            border-bottom: 2px solid #e2e8f0;
+            gap: 8px;
         }
 
         .preview-title .badge {
-            background: #f59e0b;
-            color: white;
+            background: var(--liceo-gold);
+            color: #ffffff;
             border-radius: 20px;
-            padding: 4px 12px;
-            font-size: 0.9rem;
+            padding: 2px 10px;
+            font-size: 0.82rem;
             font-weight: 800;
+            box-shadow: 0 2px 6px rgba(245, 158, 11, 0.3);
         }
 
         #subjectListContainer {
             flex: 1;
             overflow-y: auto;
-            padding-right: 10px;
+            padding-right: 4px;
         }
-        
+
         #subjectListContainer::-webkit-scrollbar {
-            width: 6px;
+            width: 5px;
         }
         #subjectListContainer::-webkit-scrollbar-track {
             background: #f1f5f9;
@@ -266,72 +382,70 @@
             border-radius: 4px;
         }
 
-        .subject-list {
-            list-style: none;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-
         .subject-item {
-            background: white;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            padding: 16px;
+            background: #ffffff;
+            border: 1px solid var(--liceo-border);
+            border-radius: var(--radius-sm);
+            padding: 14px 16px;
             display: flex;
             flex-direction: column;
-            transition: all 0.2s;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 12px;
         }
 
         .subject-item:hover {
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            box-shadow: var(--shadow-md);
             border-color: #cbd5e1;
+            transform: translateX(2px);
         }
 
         .subject-name {
             font-weight: 800;
-            font-size: 1.05rem;
-            color: #0f172a;
-            margin-bottom: 8px;
+            font-size: 0.98rem;
+            color: var(--liceo-text-dark);
+            margin-bottom: 4px;
         }
 
         .teacher-name {
-            font-size: 0.85rem;
-            color: #475569;
-            font-weight: 500;
-            margin-bottom: 8px;
-        }
-        
-        .schedule-line {
             font-size: 0.82rem;
-            color: #16a34a;
-            font-weight: 600;
-            background: #f0fdf4;
-            padding: 6px 10px;
+            color: var(--liceo-text-muted);
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        .schedule-line {
+            font-size: 0.78rem;
+            color: var(--liceo-success);
+            font-weight: 700;
+            background: var(--liceo-success-bg);
+            padding: 5px 10px;
             border-radius: 6px;
             display: inline-block;
             align-self: flex-start;
+            border: 1px solid rgba(22, 163, 74, 0.2);
         }
-        
+
         .schedule-line.tba {
-            color: #f59e0b;
-            background: #fffbeb;
+            color: var(--liceo-warning);
+            background: var(--liceo-warning-bg);
+            border-color: rgba(217, 119, 6, 0.2);
         }
 
         .no-subjects-msg, .preview-loading {
-            color: #64748b;
-            font-size: 1.05rem;
-            padding: 40px 0;
+            color: var(--liceo-text-muted);
+            font-size: 0.92rem;
+            padding: 40px 14px;
+            text-align: center;
             font-weight: 500;
+            line-height: 1.55;
         }
 
         .spinner {
-            width: 20px;
-            height: 20px;
-            border: 3px solid #e2e8f0;
-            border-top-color: #1e3a8a;
+            width: 18px;
+            height: 18px;
+            border: 2.5px solid var(--liceo-border);
+            border-top-color: var(--liceo-navy);
             border-radius: 50%;
             animation: spin 0.8s linear infinite;
             display: inline-block;
@@ -343,123 +457,174 @@
             to { transform: rotate(360deg); }
         }
 
-        /* Mobile responsive */
-        @media (max-width: 900px) {
-            .ce-card {
-                flex-direction: column;
-            }
-            .ce-left {
-                max-width: 100%;
-                border-right: none;
-                border-bottom: 1px solid #e2e8f0;
-            }
-            .ce-right {
-                border-left: none;
-            }
-        }
-
-        /* Flash */
-        .flash-messages { margin-bottom: 24px; }
+        /* Flash Alerts */
+        .flash-messages { margin-bottom: 16px; }
         .flash {
-            padding: 16px 20px;
-            border-radius: 12px;
-            font-size: 1rem;
+            padding: 13px 18px;
+            border-radius: var(--radius-sm);
+            font-size: 0.9rem;
             font-weight: 600;
             margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
-        .flash.error { border-left: 5px solid #dc2626; background: #fef2f2; color: #991b1b; }
-        .flash.success { border-left: 5px solid #16a34a; background: #f0fdf4; color: #166534; }
+        .flash.error { border-left: 4px solid #dc2626; background: #fef2f2; color: #991b1b; }
+        .flash.success { border-left: 4px solid #16a34a; background: #f0fdf4; color: #166534; }
+        .flash.info { border-left: 4px solid #2563eb; background: #eff6ff; color: #1e40af; }
+
+        /* Responsive Layout for Mobile / Phone */
+        @media (max-width: 850px) {
+            body {
+                padding: 16px 12px;
+                justify-content: flex-start;
+                min-height: 100vh;
+            }
+            .ce-card {
+                flex-direction: column;
+                max-height: none;
+                border-radius: 20px;
+                width: 100%;
+            }
+            .ce-left {
+                padding: 26px 20px;
+                border-right: none;
+                border-bottom: 1px solid var(--liceo-border);
+                overflow-y: visible;
+                width: 100%;
+            }
+            .ce-right {
+                padding: 26px 20px;
+                overflow-y: visible;
+                width: 100%;
+            }
+            .ce-header {
+                font-size: 1.55rem;
+            }
+            .grade-pills {
+                gap: 10px;
+                margin-bottom: 20px;
+            }
+            .grade-pill {
+                padding: 12px 10px;
+            }
+            .grade-pill .pill-value {
+                font-size: 1.05rem;
+            }
+            .ce-form-group {
+                margin-bottom: 16px;
+            }
+            #subjectListContainer {
+                max-height: 380px;
+            }
+        }
     </style>
 </head>
 
 <body>
-    <div class="ce-card">
-        <!-- Left Side: Information and Form -->
-        <div class="ce-left">
-            <div class="ce-header">Continuing Enrollment</div>
-            <p class="ce-subtitle">School Year Re-Enrollment Portal</p>
 
-            <div class="flash-messages">
-                {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                {% for category, msg in messages %}
-                <div class="flash {{ category }}">{{ msg }}</div>
-                {% endfor %}
-                {% endif %}
-                {% endwith %}
+    <div class="ce-wrapper">
+        <!-- Main Enrollment Card -->
+        <div class="ce-card">
+            <!-- Left Side: Information & Section Form -->
+            <div class="ce-left">
+                <h1 class="ce-header">Continuing Student</h1>
+                <p class="ce-subtitle">{% if school_year_label %}School Year {{ school_year_label }}{% else %}School Year Academic Re-Enrollment{% endif %}</p>
+
+                <div class="flash-messages">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, msg in messages %}
+                    <div class="flash {{ category }}">{{ msg }}</div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+                </div>
+
+                <div class="ce-welcome">
+                    <div class="student-profile-header">
+                        {% if profile_image %}
+                            <img src="{{ profile_image }}" alt="{{ student_name }}" class="student-avatar-img">
+                        {% else %}
+                            <div class="student-avatar-fallback">
+                                {{ student_name[0] | upper if student_name else 'S' }}
+                            </div>
+                        {% endif %}
+                        <div class="student-profile-info">
+                            <div class="student-full-name">{{ student_name }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Grade Progress Pills -->
+                <div class="grade-pills">
+                    <div class="grade-pill">
+                        <div class="pill-label">Previous Grade</div>
+                        <div class="pill-value">{{ current_grade }}</div>
+                    </div>
+                    <div class="arrow-mid">➔</div>
+                    <div class="grade-pill next">
+                        <div class="pill-label">Enrolling Grade</div>
+                        <div class="pill-value">{% if needs_strand %}Grade 11 (SHS){% else %}{{ next_grade }}{% endif %}</div>
+                    </div>
+                </div>
+
+                <form method="POST" style="display: flex; flex-direction: column; flex: 1;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    {% if needs_strand %}
+                    <div class="ce-form-group">
+                        <label class="ce-label">Select Your SHS Strand (Grade 11)</label>
+                        <select class="ce-select" name="grade_level" id="gradeSelect" required>
+                            <option value="" disabled selected>Select a strand...</option>
+                            {% for strand in shs_strands %}
+                            <option value="{{ strand }}">{{ strand }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% else %}
+                    <input type="hidden" name="grade_level" value="{{ next_grade }}">
+                    {% endif %}
+
+                    {% if needs_strand or next_grade in ['Grade 11', 'Grade 12'] %}
+                    <div class="ce-form-group">
+                        <label class="ce-label">Select Your SHS Pathway / Track</label>
+                        <select class="ce-select" name="shs_track" id="trackSelect" required>
+                            <option value="" disabled selected>Select a pathway...</option>
+                            {% for pw in official_pathways %}
+                            <option value="{{ pw }}" {% if current_pathway and current_pathway.lower() in pw.lower() %}selected{% endif %}>{{ pw }}</option>
+                            {% endfor %}
+                        </select>
+                        <div id="pathwayNotice" style="margin-top: 8px;"></div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Section Selection -->
+                    <div class="ce-form-group">
+                        <label class="ce-label">Select Your Preferred Section</label>
+                        <select class="ce-select" name="section_id" id="sectionSelect" required>
+                            <option value="" disabled selected>Select a section...</option>
+                        </select>
+                        <span class="ce-hint">Showing available sections for {{ next_grade }}.</span>
+                    </div>
+
+                    <button type="submit" class="ce-btn" id="submitBtn" disabled>
+                        <span>Confirm</span> ➔
+                    </button>
+                </form>
             </div>
 
-            <div class="ce-welcome">
-                <strong>Welcome back, {{ student_name }}!</strong>
-                <p>Choose your section for the upcoming school year. Your grade level will be automatically updated and you'll be able to see your subjects and schedules right away.</p>
-            </div>
-
-            <!-- Grade Progress Pills -->
-            <div class="grade-pills">
-                <div class="grade-pill">
-                    <div class="pill-label">Current Grade</div>
-                    <div class="pill-value">{{ current_grade }}</div>
+            <!-- Right Side: Subjects Preview -->
+            <div class="ce-right">
+                <div class="preview-header">
+                    <div class="preview-title">
+                        Enrolled Subjects & Schedule
+                    </div>
+                    <span class="badge" id="subjectCount">0</span>
                 </div>
-                <div class="arrow-mid">&#8594;</div>
-                <div class="grade-pill next">
-                    <div class="pill-label">Next Grade</div>
-                    <div class="pill-value">{% if needs_strand %}Grade 11 (SHS){% else %}{{ next_grade }}{% endif %}</div>
-                </div>
-            </div>
-
-            <form method="POST" style="display: flex; flex-direction: column; flex: 1;">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                {% if needs_strand %}
-                <div class="ce-form-group">
-                    <label class="ce-label">Select Your SHS Strand (Grade 11)</label>
-                    <select class="ce-select" name="grade_level" id="gradeSelect" required>
-                        <option value="" disabled selected>Select a strand...</option>
-                        {% for strand in shs_strands %}
-                        <option value="{{ strand }}">{{ strand }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                {% else %}
-                <input type="hidden" name="grade_level" value="{{ next_grade }}">
-                {% endif %}
-
-                {% if needs_strand or next_grade in ['Grade 11', 'Grade 12'] %}
-                <div class="ce-form-group">
-                    <label class="ce-label">Select Your SHS Pathway / Track</label>
-                    <select class="ce-select" name="shs_track" id="trackSelect" required>
-                        <option value="" disabled selected>Select a pathway...</option>
-                        {% for pw in official_pathways %}
-                        <option value="{{ pw }}" {% if current_pathway and current_pathway.lower() in pw.lower() %}selected{% endif %}>{{ pw }}</option>
-                        {% endfor %}
-                    </select>
-                    <div id="pathwayNotice" style="margin-top: 8px;"></div>
-                </div>
-                {% endif %}
-
-                <!-- Section Selection -->
-                <div class="ce-form-group">
-                    <label class="ce-label">Select Your Section</label>
-                    <select class="ce-select" name="section_id" id="sectionSelect" required>
-                        <option value="" disabled selected>Select a section...</option>
-                    </select>
-                    <span class="ce-hint">Only sections for {{ next_grade }} are shown.</span>
-                </div>
-
-                <button type="submit" class="ce-btn" id="submitBtn" disabled>
-                    Confirm Enrollment
-                </button>
-            </form>
-        </div>
-
-        <!-- Right Side: Subjects Preview -->
-        <div class="ce-right">
-            <p class="preview-title">
-                Subjects & Schedules
-                <span class="badge" id="subjectCount">0</span>
-            </p>
-            <div id="subjectListContainer">
-                <div class="no-subjects-msg">
-                    Please select a section to view the assigned subjects and schedules.
+                <div id="subjectListContainer">
+                    <div class="no-subjects-msg">
+                        Please select a section on the left to view the assigned subject list and weekly schedules.
+                    </div>
                 </div>
             </div>
         </div>
@@ -497,11 +662,11 @@
                 var valLower = val.toLowerCase().trim();
 
                 if (cpLower && (cpLower.includes(valLower) || valLower.includes(cpLower))) {
-                    pathwayNotice.innerHTML = '<div style="font-size:0.85rem; color:#16a34a; font-weight:700; background:#f0fdf4; padding:8px 12px; border-radius:8px; border:1px solid #bbf7d0;">✅ Recommended Pathway: Auto-approved upon confirmation. No Registrar approval needed.</div>';
+                    pathwayNotice.innerHTML = '<div style="font-size:0.83rem; color:#16a34a; font-weight:700; background:#f0fdf4; padding:8px 12px; border-radius:8px; border:1px solid #bbf7d0;">✅ Recommended Pathway: Auto-approved upon confirmation. No Registrar approval needed.</div>';
                 } else if (cpLower) {
-                    pathwayNotice.innerHTML = '<div style="font-size:0.85rem; color:#d97706; font-weight:700; background:#fffbeb; padding:8px 12px; border-radius:8px; border:1px solid #fde68a;">⚠️ Shifting / Cross-Track Pathway: Will require Registrar approval.</div>';
+                    pathwayNotice.innerHTML = '<div style="font-size:0.83rem; color:#d97706; font-weight:700; background:#fffbeb; padding:8px 12px; border-radius:8px; border:1px solid #fde68a;">⚠️ Shifting / Cross-Track Pathway: Will require Registrar approval.</div>';
                 } else {
-                    pathwayNotice.innerHTML = '<div style="font-size:0.85rem; color:#1e3a8a; font-weight:700; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #bfdbfe;">ℹ️ Selected Pathway for Grade 11/12.</div>';
+                    pathwayNotice.innerHTML = '<div style="font-size:0.83rem; color:#1e3a8a; font-weight:700; background:#eff6ff; padding:8px 12px; border-radius:8px; border:1px solid #bfdbfe;">ℹ️ Selected Pathway for Grade 11/12.</div>';
                 }
             }
 
@@ -681,9 +846,8 @@
             if (!needsStrand) {
                 updateSections();
             }
-
-
         });
     </script>
 </body>
-</html>
+
+</html>

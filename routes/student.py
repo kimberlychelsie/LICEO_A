@@ -965,6 +965,10 @@ def continuing_enrollment(branch_id):
             enrollment.get("student_last_name")
         ])) or "Student"
 
+        cursor.execute("SELECT label FROM school_years WHERE year_id = %s", (active_sy_id,))
+        sy_row = cursor.fetchone()
+        school_year_label = sy_row["label"] if sy_row else ""
+
         return render_template(
             "student_continuing_enroll.html", 
             branch_id=branch_id, 
@@ -975,7 +979,10 @@ def continuing_enrollment(branch_id):
             official_pathways=official_pathways,
             current_pathway=enrollment.get("shs_track") or "",
             sections=sections,
-            student_name=display_student_name
+            student_name=display_student_name,
+            profile_image=enrollment.get("profile_image"),
+            enrollment=enrollment,
+            school_year_label=school_year_label
         )
 
     finally:

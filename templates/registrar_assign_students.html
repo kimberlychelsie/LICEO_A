@@ -14,43 +14,51 @@
     }
 
     .ba-container {
-        max-width: 1400px;
+        max-width: 1200px;
         margin: 0 auto;
-        padding: 32px 24px;
+        padding: 0 20px 64px;
     }
 
     /* Premium Header */
     .premium-welcome {
         background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
         border-radius: 24px;
-        padding: 40px;
+        padding: 32px 40px;
         color: white;
-        margin-bottom: 32px;
+        margin-bottom: 24px;
         box-shadow: 0 10px 30px rgba(26, 58, 143, 0.2);
+        position: relative;
+        overflow: hidden;
     }
 
     .premium-welcome h1 {
         font-size: 2.2rem;
-        font-weight: 800;
-        margin: 0 0 8px 0;
+        font-weight: 900;
+        margin: 0 0 12px 0;
+        letter-spacing: -0.02em;
+        line-height: 1.1;
         color: white;
     }
 
-    .status-line {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        font-weight: 500;
+    .premium-welcome p, .status-line {
+        font-size: 1rem;
         opacity: 0.9;
-        font-size: 0.9rem;
+        font-weight: 500;
+        margin: 0;
+        line-height: 1.5;
+        color: white;
     }
 
-    .pulse-dot {
-        width: 10px;
-        height: 10px;
-        background: var(--ma-gold);
-        border-radius: 50%;
-        box-shadow: 0 0 10px var(--ma-gold);
+    @media (max-width: 1024px) {
+        .ba-container {
+            padding: 16px 12px 48px !important;
+        }
+        .premium-welcome {
+            padding: 24px 20px !important;
+        }
+        .premium-welcome h1 {
+            font-size: 1.6rem !important;
+        }
     }
 
     /* Simple Instructions */
@@ -78,38 +86,46 @@
         font-size: 1.8rem;
     }
 
-    /* Tabs */
-    .grade-tabs {
+    /* Grade Dropdown Select */
+    .grade-select-wrapper {
+        position: relative;
         display: flex;
-        gap: 12px;
-        flex-wrap: wrap;
-        margin-bottom: 32px;
+        align-items: center;
+        min-width: 220px;
     }
 
-    .grade-tab {
-        padding: 12px 24px;
-        border-radius: 16px;
-        border: 1px solid var(--ma-border);
-        background: white;
+    .grade-select-icon {
+        position: absolute;
+        left: 16px;
+        color: var(--ma-primary);
+        pointer-events: none;
+        font-size: 0.9rem;
+        z-index: 2;
+    }
+
+    .grade-dropdown-select {
+        width: 100%;
+        padding: 12px 36px 12px 42px;
+        border: 1.5px solid var(--ma-border);
+        border-radius: 14px;
         font-size: 0.9rem;
         font-weight: 700;
-        color: var(--ma-muted);
-        text-decoration: none;
-        transition: all 0.3s ease;
-    }
-
-    .grade-tab:hover {
-        transform: translateY(-2px);
-        background: #f1f5f9;
         color: var(--ma-primary);
-        border-color: var(--ma-primary);
+        background: #f8fafc;
+        cursor: pointer;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%231a3a8f' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 14px center;
+        transition: all 0.2s ease;
     }
 
-    .grade-tab.active {
-        background: var(--ma-primary);
-        color: white;
+    .grade-dropdown-select:focus, .grade-dropdown-select:hover {
         border-color: var(--ma-primary);
-        box-shadow: 0 8px 16px rgba(26, 58, 143, 0.2);
+        background-color: #ffffff;
+        box-shadow: 0 0 0 3px rgba(26, 58, 143, 0.1);
+        outline: none;
     }
 
     /* Layout Grid */
@@ -305,17 +321,14 @@
         }
         .vault-table td:first-child::before { display: none; }
         
-        .grade-tabs {
-            overflow-x: auto;
-            flex-wrap: nowrap;
-            padding-bottom: 6px;
-            gap: 8px;
+        .filter-section {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
         }
 
-        .grade-tab {
-            white-space: nowrap;
-            padding: 8px 14px;
-            font-size: 0.75rem;
+        .grade-select-wrapper {
+            width: 100%;
         }
 
         .sidebar-column { order: -1; }
@@ -340,38 +353,24 @@
 
     <!-- Header -->
     <div class="premium-welcome">
-        <h1>Assign Students to Sections</h1>
-        <div class="status-line">
-            <span class="pulse-dot"></span>
-            Sectioning & Capacity Management • Academic Year Deployment
-        </div>
+        <h1>Assign Students to <span style="color: #facc15; text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);">Sections</span></h1>
+        <p>Sectioning & Capacity Management • Academic Year Deployment</p>
     </div>
 
-    {% if is_branch_active_status %}
-    <!-- Instructions -->
-    <div class="guide-card">
-        <div class="guide-icon">💡</div>
-        <div style="flex: 1;">
-            <div style="font-weight: 800; color: var(--ma-primary); font-size: 1.1rem; margin-bottom: 4px;">Quick Guide</div>
-            <p style="font-size: 0.9rem; color: var(--ma-muted); margin: 0; line-height: 1.5;">
-                1. Select a <b>Grade Level</b> below. 2. Choose a <b>Section</b> for each student. 3. Click <b>Save</b> to confirm.
-            </p>
-        </div>
-    </div>
-    {% endif %}
 
-    <!-- Tabs -->
-    <div class="grade-tabs">
-        {% for g in grade_options %}
-        <a href="?grade={{ g.id }}" class="grade-tab {% if grade_filter == g.id|string %}active{% endif %}">{{ g.name }}</a>
-        {% endfor %}
-    </div>
 
     <div class="main-layout-grid">
         <!-- Main Column: Table -->
         <div class="table-column">
-            {% if students %}
             <div class="filter-section">
+                <div class="grade-select-wrapper">
+                    <i class="fas fa-graduation-cap grade-select-icon"></i>
+                    <select id="gradeDropdownSelect" class="grade-dropdown-select" onchange="window.location.href='?grade=' + this.value">
+                        {% for g in grade_options %}
+                        <option value="{{ g.id }}" {% if grade_filter == g.id|string %}selected{% endif %}>{{ g.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <div class="search-wrapper">
                     <i class="fas fa-search"></i>
                     <input type="text" id="searchInput" class="form-control" placeholder="Search student name..." oninput="applyFilters()">
@@ -382,6 +381,7 @@
                 <div id="visibleCount" style="margin-left: auto; font-size: 0.8rem; font-weight: 800; color: var(--ma-primary);"></div>
             </div>
 
+            {% if students %}
             <div class="modern-card">
                 <div class="table-responsive">
                     <table class="vault-table">
