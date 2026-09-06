@@ -1,6 +1,8 @@
-from flask import Blueprint, render_template, request, session, redirect, flash, url_for
+from flask import Blueprint, render_template, request, session, redirect, flash, url_for, Response
+from datetime import datetime
+import time
 from db import get_db_connection
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 import psycopg2.extras
 import secrets
 import string
@@ -15,6 +17,23 @@ logger = logging.getLogger(__name__)
 def generate_password(length=8):
     characters = string.ascii_letters + string.digits
     return ''.join(secrets.choice(characters) for _ in range(length))
+
+def log_audit_event(cur, user_id, user_name, role, branch_id, action, details, ip_address=None):
+    try:
+        display_name = user_name or session.get("full_name") or session.get("username") or "Super Admin"
+        cur.execute("""
+            INSERT INTO audit_logs (user_id, user_name, role, branch_id, action, details, ip_address, created_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
+        """, (user_id, display_name, role, branch_id, action, details, ip_address))
+    except Exception as e:
+        logger.warning(f"Could not log audit event: {e}")
+
+
+def check_sudo_required():
+    sudo_app = session.get("sudo_approved")
+    if sudo_app and (time.time() - sudo_app < 900):
+        return True
+    return False
 
 
 # =======================
@@ -434,6 +453,10 @@ def super_admin_replace_admin(branch_id):
     if session.get("role") != "super_admin":
         return redirect(url_for("auth.login"))
 
+    if not check_sudo_required():
+        flash("🔒 Password re-verification (Sudo Mode) required before replacing branch administrator.", "warning")
+        return redirect(url_for("super_admin.super_admin_security"))
+
     replacement_mode = request.form.get("replacement_mode", "new")
     transfer_user_id = request.form.get("transfer_user_id")
 
@@ -694,6 +717,10 @@ def superadmin_branch_reset_password(branch_id):
     if session.get("role") != "super_admin":
         return redirect(url_for("auth.login"))
 
+    if not check_sudo_required():
+        flash("🔒 Password re-verification (Sudo Mode) required before resetting branch password.", "warning")
+        return redirect(url_for("super_admin.super_admin_security"))
+
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
@@ -882,6 +909,7 @@ def superadmin_faq_edit(faq_id):
         db.close()
     return redirect(url_for("super_admin.superadmin_faqs"))
 @super_admin_bp.route("/superadmin/school-years", methods=["GET", "POST"])
+@super_admin_bp.route("/super-admin/school-years", methods=["GET", "POST"])
 def superadmin_school_years():
     if "user_id" not in session or session.get("role") != "super_admin":
         return redirect(url_for("auth.login"))
@@ -1047,6 +1075,344 @@ def superadmin_set_active_year():
         db.close()
 
     return redirect(url_for("super_admin.superadmin_school_years"))
+
+
+# =======================
+# AUDIT LOGS
+# =======================
+@super_admin_bp.route("/super-admin/audit-logs", methods=["GET"])
+def super_admin_audit_logs():
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    search_query = request.args.get("q", "").strip()
+    action_filter = request.args.get("action", "").strip()
+    start_date = request.args.get("start_date", "").strip()
+    end_date = request.args.get("end_date", "").strip()
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        query = """
+            SELECT log_id, user_id, user_name, role, branch_id, action, details, ip_address,
+                   created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila' AS created_at_ph
+            FROM audit_logs
+            WHERE 1=1
+        """
+        params = []
+
+        if action_filter:
+            query += " AND action = %s"
+            params.append(action_filter)
+
+        if search_query:
+            query += " AND (user_name ILIKE %s OR details ILIKE %s OR ip_address ILIKE %s)"
+            search_param = f"%{search_query}%"
+            params.extend([search_param, search_param, search_param])
+
+        if start_date:
+            query += " AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date >= %s::date"
+            params.append(start_date)
+
+        if end_date:
+            query += " AND (created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila')::date <= %s::date"
+            params.append(end_date)
+
+        query += " ORDER BY created_at DESC LIMIT 300"
+
+        cursor.execute(query, params)
+        logs = cursor.fetchall() or []
+
+        cursor.execute("SELECT DISTINCT action FROM audit_logs ORDER BY action ASC")
+        actions_list = [r["action"] for r in (cursor.fetchall() or [])]
+
+        return render_template("super_admin_audit_logs.html",
+            logs=logs,
+            actions_list=actions_list,
+            search_query=search_query,
+            action_filter=action_filter,
+            start_date=start_date,
+            end_date=end_date
+        )
+    finally:
+        cursor.close()
+        db.close()
+
+
+# =======================
+# DATABASE BACKUP & SYSTEM MAINTENANCE
+# =======================
+@super_admin_bp.route("/super-admin/backup-database", methods=["GET", "POST"])
+def super_admin_backup_database():
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    if request.method == "POST":
+        if not check_sudo_required():
+            flash("🔒 Password re-verification (Sudo Mode) required before downloading database SQL backup.", "warning")
+            return redirect(url_for("super_admin.super_admin_security"))
+        try:
+            backup_lines = [
+                "-- ========================================================",
+                "-- LICEO LMS DATABASE BACKUP",
+                f"-- Exported At: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} (PHT)",
+                f"-- Exported By: Super Admin ({session.get('full_name', 'System')})",
+                "-- ========================================================\n"
+            ]
+
+            tables_to_dump = [
+                'branches', 'school_years', 'users', 'student_accounts',
+                'grade_levels', 'sections', 'subjects', 'enrollments',
+                'posted_grades', 'system_announcements', 'audit_logs'
+            ]
+
+            for table in tables_to_dump:
+                try:
+                    cursor.execute(f"SELECT column_name, data_type FROM information_schema.columns WHERE table_name = '{table}' ORDER BY ordinal_position")
+                    cols = [r['column_name'] for r in (cursor.fetchall() or [])]
+                    if not cols:
+                        continue
+
+                    cursor.execute(f"SELECT * FROM {table}")
+                    rows = cursor.fetchall() or []
+
+                    backup_lines.append(f"\n-- Data for table `{table}` ({len(rows)} rows)")
+                    cols_joined = ", ".join([f'"{c}"' for c in cols])
+
+                    for r in rows:
+                        vals = []
+                        for c in cols:
+                            v = r.get(c)
+                            if v is None:
+                                vals.append("NULL")
+                            elif isinstance(v, (int, float)):
+                                vals.append(str(v))
+                            elif isinstance(v, bool):
+                                vals.append("TRUE" if v else "FALSE")
+                            elif isinstance(v, datetime):
+                                vals.append(f"'{v.strftime('%Y-%m-%d %H:%M:%S')}'")
+                            else:
+                                clean_v = str(v).replace("'", "''")
+                                vals.append(f"'{clean_v}'")
+                        vals_joined = ", ".join(vals)
+                        backup_lines.append(f"INSERT INTO {table} ({cols_joined}) VALUES ({vals_joined}) ON CONFLICT DO NOTHING;")
+                except Exception as te:
+                    logger.warning(f"Skipping table {table} during backup dump: {te}")
+
+            sql_content = "\n".join(backup_lines)
+
+            log_audit_event(
+                cursor, session.get("user_id"), session.get("full_name") or session.get("username") or "Super Admin", "super_admin", None,
+                "DATABASE_BACKUP", f"Exported database SQL backup ({len(sql_content)} bytes)", request.remote_addr
+            )
+            db.commit()
+
+            filename = f"liceo_lms_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.sql"
+            return Response(
+                sql_content,
+                mimetype="application/sql",
+                headers={"Content-Disposition": f"attachment;filename={filename}"}
+            )
+        except Exception as e:
+            db.rollback()
+            flash(f"Error generating backup: {e}", "error")
+
+    try:
+        cursor.execute("SELECT count(*) AS cnt FROM information_schema.tables WHERE table_schema='public'")
+        total_tables = cursor.fetchone()["cnt"]
+
+        cursor.execute("SELECT count(*) AS cnt FROM users")
+        total_users = cursor.fetchone()["cnt"]
+
+        cursor.execute("SELECT count(*) AS cnt FROM enrollments")
+        total_enrollments = cursor.fetchone()["cnt"]
+
+        cursor.execute("SELECT count(*) AS cnt FROM audit_logs")
+        total_audit_logs = cursor.fetchone()["cnt"]
+
+        cursor.execute("""
+            SELECT user_name, action, details, ip_address,
+                   created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila' AS created_at_ph
+            FROM audit_logs
+            ORDER BY created_at DESC LIMIT 5
+        """)
+        recent_logs = cursor.fetchall() or []
+
+        return render_template("super_admin_backup.html",
+            total_tables=total_tables,
+            total_users=total_users,
+            total_enrollments=total_enrollments,
+            total_audit_logs=total_audit_logs,
+            recent_logs=recent_logs
+        )
+    finally:
+        cursor.close()
+        db.close()
+
+
+# =======================
+# SUPER ADMIN SECURITY CENTER & MAINTENANCE TOGGLE
+# =======================
+@super_admin_bp.route("/super-admin/security", methods=["GET"])
+def super_admin_security():
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        # Get maintenance mode setting
+        cursor.execute("SELECT setting_value FROM system_settings WHERE setting_key = 'maintenance_mode'")
+        m_row = cursor.fetchone()
+        maintenance_mode = m_row["setting_value"] if m_row else "off"
+
+        # Count failed login attempts in last 24h
+        cursor.execute("SELECT count(*) AS cnt FROM failed_logins WHERE created_at > NOW() - INTERVAL '24 hours'")
+        failed_24h = cursor.fetchone()["cnt"]
+
+        # Count active locked out accounts/IPs (>= 5 failed attempts in 5 mins)
+        cursor.execute("""
+            SELECT COUNT(DISTINCT ip_address) AS cnt 
+            FROM (
+                SELECT ip_address 
+                FROM failed_logins 
+                WHERE created_at > NOW() - INTERVAL '5 minutes'
+                GROUP BY ip_address HAVING COUNT(*) >= 5
+            ) t
+        """)
+        locked_ips_count = cursor.fetchone()["cnt"]
+
+        # Recent security audit logs
+        cursor.execute("""
+            SELECT user_name, action, details, ip_address,
+                   created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Asia/Manila' AS created_at_ph
+            FROM audit_logs
+            WHERE action IN ('USER_LOGIN', 'FAILED_LOGIN', 'RATE_LIMIT_LOCKOUT', 'MAINTENANCE_TOGGLE', 'DATABASE_BACKUP', 'PASSWORD_RESET')
+            ORDER BY created_at DESC LIMIT 10
+        """)
+        security_logs = cursor.fetchall() or []
+
+        # Check Sudo Mode Status (valid 15 mins)
+        sudo_approved = False
+        if session.get("sudo_approved"):
+            if time.time() - session["sudo_approved"] < 900:
+                sudo_approved = True
+
+        return render_template("super_admin_security.html",
+            maintenance_mode=maintenance_mode,
+            failed_24h=failed_24h,
+            locked_ips_count=locked_ips_count,
+            security_logs=security_logs,
+            sudo_approved=sudo_approved
+        )
+    finally:
+        cursor.close()
+        db.close()
+
+
+@super_admin_bp.route("/super-admin/toggle-maintenance", methods=["POST"])
+def super_admin_toggle_maintenance():
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        cursor.execute("SELECT setting_value FROM system_settings WHERE setting_key = 'maintenance_mode'")
+        m_row = cursor.fetchone()
+        current_status = m_row["setting_value"] if m_row else "off"
+        new_status = "off" if current_status == "on" else "on"
+
+        cursor.execute("""
+            INSERT INTO system_settings (setting_key, setting_value, updated_at)
+            VALUES ('maintenance_mode', %s, NOW())
+            ON CONFLICT (setting_key) DO UPDATE SET setting_value = EXCLUDED.setting_value, updated_at = NOW()
+        """, (new_status,))
+
+        executor_name = session.get("full_name") or session.get("username") or "Super Admin"
+        log_audit_event(
+            cursor, session.get("user_id"), executor_name, "super_admin", None,
+            "MAINTENANCE_TOGGLE", f"Maintenance mode changed to '{new_status.upper()}' by Super Admin", request.remote_addr
+        )
+        db.commit()
+
+        if new_status == "on":
+            flash("⚠️ System Maintenance Mode is now ENABLED. Only Super Admin can navigate the platform.", "warning")
+        else:
+            flash("✅ System Maintenance Mode is now DISABLED. All users can access Liceo LMS.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error toggling maintenance mode: {e}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(request.referrer or url_for("super_admin.super_admin_security"))
+
+
+@super_admin_bp.route("/super-admin/sudo-verify", methods=["POST"])
+def super_admin_sudo_verify():
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    password = request.form.get("password", "")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        cursor.execute("SELECT password FROM users WHERE user_id = %s", (session.get("user_id"),))
+        u = cursor.fetchone()
+        if u:
+            stored = u.get("password") or ""
+            if stored.startswith(("scrypt:", "pbkdf2:", "$2b$", "$2a$")):
+                valid = check_password_hash(stored, password)
+            else:
+                valid = (stored == password)
+
+            if valid:
+                session["sudo_approved"] = time.time()
+                flash("🔒 Sensitive Action Permission granted for 15 minutes (Sudo Mode Active).", "success")
+            else:
+                flash("❌ Password verification failed. Action denied.", "error")
+    except Exception as e:
+        flash(f"Verification error: {e}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(request.referrer or url_for("super_admin.super_admin_security"))
+
+
+@super_admin_bp.route("/super-admin/clear-lockouts", methods=["POST"])
+def super_admin_clear_lockouts():
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        cursor.execute("TRUNCATE TABLE failed_logins")
+        executor_name = session.get("full_name") or session.get("username") or "Super Admin"
+        log_audit_event(
+            cursor, session.get("user_id"), executor_name, "super_admin", None,
+            "LOCKOUTS_CLEARED", "Cleared all active failed login lockouts and unblocked all IP addresses", request.remote_addr
+        )
+        db.commit()
+        flash("✅ All active failed login lockouts and IP blocks have been cleared.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error clearing lockouts: {e}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(request.referrer or url_for("super_admin.super_admin_security"))
 
 
 @super_admin_bp.after_request

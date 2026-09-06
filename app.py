@@ -1,4 +1,5 @@
 import os
+import time
 from dotenv import load_dotenv
 load_dotenv()  # loads .env file locally; no effect in Railway (env vars set directly)
 
@@ -126,6 +127,42 @@ if os.getenv("FLASK_ENV") == "production" or os.getenv("RAILWAY_ENVIRONMENT"):
 
 # Max upload size: 100MB total
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024
+
+@app.before_request
+def check_maintenance_and_session_timeout():
+    now = time.time()
+    
+    # 1. Session Inactivity Timeout (1 hour = 3600s)
+    if session.get("user_id") or session.get("role"):
+        last_act = session.get("last_activity")
+        if last_act and (now - last_act > 3600):
+            session.clear()
+            flash("Your session expired due to 1 hour of inactivity for security reasons.", "warning")
+            return redirect(url_for("auth.login"))
+        session["last_activity"] = now
+
+    # 2. Maintenance Mode Enforcement
+    endpoint = request.endpoint or ""
+    if session.get("role") == "super_admin" or endpoint.startswith("auth.") or endpoint.startswith("super_admin.") or endpoint in ["static", "uploaded_file", "maintenance_page"]:
+        return
+
+    try:
+        db = get_db_connection()
+        with db.cursor() as cur:
+            cur.execute("SELECT setting_value FROM system_settings WHERE setting_key = 'maintenance_mode'")
+            row = cur.fetchone()
+            if row and row[0] == "on":
+                db.close()
+                return render_template("maintenance.html"), 503
+        db.close()
+    except Exception:
+        pass
+
+
+@app.route("/maintenance")
+def maintenance_page():
+    return render_template("maintenance.html"), 503
+
 
 @app.before_request
 def validate_user_session():

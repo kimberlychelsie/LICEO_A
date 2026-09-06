@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+{% block title %}System Audit Logs | Super Admin{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --ma-primary: #1a3a8f;
+        --ma-gold: #facc15;
+        --ma-bg: #f8fafc;
+        --ma-card: #ffffff;
+        --ma-border: rgba(26, 58, 143, 0.1);
+        --ma-text: #0f172a;
+        --ma-muted: #64748b;
+    }
+
+    .sa-container {
+        padding: 32px 24px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    /* ── Hero Banner ── */
+    .hero-banner {
+        background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
+        border-radius: 20px;
+        padding: 36px 40px;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+        color: #fff;
+        box-shadow: 0 15px 35px -10px rgba(26, 58, 143, 0.2);
+    }
+
+    .hero-content h1 {
+        font-size: 2.2rem;
+        font-weight: 900;
+        letter-spacing: -0.03em;
+        margin: 0 0 10px 0;
+        line-height: 1.1;
+        color: #ffffff;
+    }
+
+    .hero-content h1 span {
+        color: var(--ma-gold);
+        text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+    }
+
+    .hero-content p {
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+        max-width: 650px;
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    /* ── Filter Card ── */
+    .al-filter-card {
+        background: var(--ma-card);
+        border: 1px solid var(--ma-border);
+        border-radius: 20px;
+        padding: 20px 24px;
+        margin-bottom: 24px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+    }
+
+    .al-filter-form {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    .al-input {
+        padding: 10px 16px;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 12px;
+        font-size: 0.88rem;
+        outline: none;
+        transition: all 0.2s ease;
+        background: #ffffff;
+    }
+
+    .al-input:focus {
+        border-color: var(--ma-primary);
+        box-shadow: 0 0 0 3px rgba(26, 58, 143, 0.15);
+    }
+
+    /* ── Table Card ── */
+    .al-table-card {
+        background: var(--ma-card);
+        border: 1px solid var(--ma-border);
+        border-radius: 20px;
+        overflow: hidden;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+    }
+
+    .al-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.88rem;
+    }
+
+    .al-table th {
+        background: #f8fafc;
+        padding: 14px 18px;
+        text-align: left;
+        font-weight: 800;
+        color: var(--ma-muted);
+        font-size: 0.76rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        border-bottom: 1.5px solid var(--ma-border);
+    }
+
+    .al-table td {
+        padding: 14px 18px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+    }
+
+    .al-table tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    .action-badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .badge-primary { background: #dbeafe; color: #1e40af; }
+    .badge-success { background: #dcfce7; color: #15803d; }
+    .badge-warning { background: #fef3c7; color: #b45309; }
+    .badge-danger  { background: #fee2e2; color: #b91c1c; }
+</style>
+
+<div class="sa-container">
+    <!-- Hero Banner -->
+    <div class="hero-banner">
+        <div class="hero-content">
+            <h1>System Audit Logs & <span>Security History</span></h1>
+            <p>Real-time security history, system activity tracking, and operation logs across all branches and accounts.</p>
+        </div>
+    </div>
+
+    <!-- Filter Bar Card -->
+    <div class="al-filter-card">
+        <form method="GET" action="{{ url_for('super_admin.super_admin_audit_logs') }}" class="al-filter-form">
+            <input type="text" name="q" value="{{ search_query }}" placeholder="Search user, IP, or action details..." class="al-input" style="flex:1; min-width:200px;">
+            
+            <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-size:0.82rem; font-weight:800; color:var(--ma-muted);">From:</span>
+                <input type="date" name="start_date" value="{{ start_date }}" class="al-input" style="color:var(--ma-text); font-weight:600;">
+            </div>
+
+            <div style="display:flex; align-items:center; gap:6px;">
+                <span style="font-size:0.82rem; font-weight:800; color:var(--ma-muted);">To:</span>
+                <input type="date" name="end_date" value="{{ end_date }}" class="al-input" style="color:var(--ma-text); font-weight:600;">
+            </div>
+
+            <select name="action" class="al-input" style="min-width:160px;">
+                <option value="">All Actions</option>
+                {% for a in actions_list %}
+                <option value="{{ a }}" {% if action_filter == a %}selected{% endif %}>{{ a }}</option>
+                {% endfor %}
+            </select>
+
+            <button type="submit" style="background:var(--ma-primary); color:#fff; padding:10px 22px; font-weight:800; font-size:0.88rem; border-radius:12px; border:none; cursor:pointer; transition: all 0.2s ease;">Filter Logs</button>
+            {% if search_query or action_filter or start_date or end_date %}
+            <a href="{{ url_for('super_admin.super_admin_audit_logs') }}" style="background:#f1f5f9; color:#475569; padding:10px 18px; font-weight:800; font-size:0.88rem; border-radius:12px; text-decoration:none; display:inline-flex; align-items:center;">Reset</a>
+            {% endif %}
+        </form>
+    </div>
+
+    <!-- Audit Logs Data Table Card -->
+    <div class="al-table-card">
+        <div style="overflow-x:auto;">
+            <table class="al-table">
+                <thead>
+                    <tr>
+                        <th style="width:50px;">#</th>
+                        <th style="width:170px;">Timestamp (PHT)</th>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th>Action</th>
+                        <th>Details</th>
+                        <th style="width:120px;">IP Address</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if logs %}
+                        {% for l in logs %}
+                        <tr>
+                            <td style="color:#94a3b8; font-weight:600;">{{ loop.index }}</td>
+                            <td style="white-space:nowrap; font-weight:600; color:#334155;">
+                                {{ l.created_at_ph.strftime('%b %d, %Y %I:%M %p') if l.created_at_ph else '—' }}
+                            </td>
+                            <td>
+                                <strong style="color:var(--ma-text);">{{ l.user_name or 'System Auto' }}</strong>
+                            </td>
+                            <td>
+                                <span class="action-badge badge-primary">{{ l.role or 'system' }}</span>
+                            </td>
+                            <td>
+                                <span class="action-badge {% if 'BACKUP' in l.action or 'EXPORT' in l.action %}badge-success{% elif 'RESET' in l.action or 'DELETE' in l.action or 'LOCKOUT' in l.action or 'BLOCKED' in l.action %}badge-danger{% else %}badge-warning{% endif %}">
+                                    {{ l.action }}
+                                </span>
+                            </td>
+                            <td style="color:#475569; max-width:340px; word-break:break-word;">
+                                {{ l.details or '—' }}
+                            </td>
+                            <td style="font-family:monospace; color:#64748b;">
+                                {{ l.ip_address or '127.0.0.1' }}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" style="text-align:center; color:#94a3b8; padding: 40px; font-style:italic;">
+                                No audit log records found matching your query filters.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

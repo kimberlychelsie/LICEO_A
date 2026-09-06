@@ -957,6 +957,67 @@ def get_db_connection():
                 logger.warning(f"Could not create shs_pathways table: {e}")
                 conn.rollback()
 
+            try:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS public.audit_logs (
+                        log_id      SERIAL PRIMARY KEY,
+                        user_id     INTEGER,
+                        user_name   VARCHAR(150),
+                        role        VARCHAR(50),
+                        branch_id   INTEGER,
+                        action      VARCHAR(100) NOT NULL,
+                        details     TEXT,
+                        ip_address  VARCHAR(50),
+                        created_at  TIMESTAMP DEFAULT NOW()
+                    )
+                """)
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON public.audit_logs (action)")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_audit_logs_created ON public.audit_logs (created_at DESC)")
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not create audit_logs table: {e}")
+                conn.rollback()
+
+            try:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS public.system_settings (
+                        setting_key   VARCHAR(100) PRIMARY KEY,
+                        setting_value TEXT,
+                        updated_at    TIMESTAMP DEFAULT NOW()
+                    )
+                """)
+                cur.execute("""
+                    INSERT INTO public.system_settings (setting_key, setting_value)
+                    VALUES ('maintenance_mode', 'off')
+                    ON CONFLICT (setting_key) DO NOTHING
+                """)
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not create system_settings table: {e}")
+                conn.rollback()
+
+            try:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS public.failed_logins (
+                        id         SERIAL PRIMARY KEY,
+                        ip_address VARCHAR(50),
+                        username   VARCHAR(150),
+                        created_at TIMESTAMP DEFAULT NOW()
+                    )
+                """)
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_failed_logins_ip ON public.failed_logins (ip_address, created_at DESC)")
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not create failed_logins table: {e}")
+                conn.rollback()
+
+            try:
+                cur.execute("UPDATE users SET full_name = 'Super Admin' WHERE role = 'super_admin' AND (full_name IS NULL OR full_name = '')")
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not update super admin full_name: {e}")
+                conn.rollback()
+
             # Commit successful things
             conn.commit()
             cur.close()

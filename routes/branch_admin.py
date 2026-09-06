@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, session, redirect, flash, url_for, jsonify
-from datetime import datetime
+from datetime import datetime, time as dt_time
 import pytz
 from db import get_db_connection
 from werkzeug.security import generate_password_hash
@@ -10,6 +10,7 @@ import uuid
 import psycopg2.extras
 import secrets
 import string
+import time
 from cloudinary_helper import upload_announcement_photo
 from utils.send_email import send_email
 
@@ -723,7 +724,6 @@ def branch_admin_manage_accounts():
         section_options = cursor.fetchall() or []
 
         # Fetch accounts based on role
-        # Fetch accounts based on role
         if role_filter == "student":
             query = """
                 SELECT 
@@ -733,7 +733,7 @@ def branch_admin_manage_accounts():
                 FROM student_accounts sa
                 JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
                 LEFT JOIN sections s ON e.section_id = s.section_id
-                WHERE sa.branch_id = %s
+                WHERE sa.branch_id = %s AND COALESCE(sa.is_active, TRUE) = TRUE
             """
             params = [branch_id]
             if filter_grade:
@@ -758,7 +758,7 @@ def branch_admin_manage_accounts():
                 JOIN section_teachers st ON u.user_id = st.teacher_id
                 JOIN sections s ON st.section_id = s.section_id
                 JOIN grade_levels g_s ON s.grade_level_id = g_s.id
-                WHERE u.branch_id = %s AND u.role = 'teacher'
+                WHERE u.branch_id = %s AND u.role = 'teacher' AND COALESCE(u.is_archived, FALSE) = FALSE
             """
             params = [branch_id]
             if filter_search:
@@ -778,7 +778,7 @@ def branch_admin_manage_accounts():
                      WHERE st2.teacher_id = u.user_id) AS sections
                 FROM users u
                 LEFT JOIN grade_levels g ON u.grade_level_id = g.id
-                WHERE u.branch_id = %s AND {query_role_cond}
+                WHERE u.branch_id = %s AND {query_role_cond} AND COALESCE(u.is_archived, FALSE) = FALSE
             """
             if filter_grade and role_filter == "teacher":
                 query += " AND u.grade_level_id = %s"
@@ -929,6 +929,38 @@ def branch_admin_edit_student_account(account_id):
         cursor.close()
         db.close()
 
+def _safe_delete_user(cursor, user_id, branch_id):
+    """Safely delete a user from the users table by unlinking/deleting child records that lack ON DELETE CASCADE."""
+    # 1. Unlink schedules & sections
+    cursor.execute("UPDATE schedules SET teacher_id = NULL WHERE teacher_id = %s", (user_id,))
+    cursor.execute("UPDATE sections SET teacher_id = NULL WHERE teacher_id = %s", (user_id,))
+
+    # 2. Unlink enrollments
+    cursor.execute("UPDATE enrollments SET user_id = NULL WHERE user_id = %s", (user_id,))
+
+    # 3. Unlink grade_submission_requests
+    cursor.execute("UPDATE grade_submission_requests SET submitted_by = NULL WHERE submitted_by = %s", (user_id,))
+    cursor.execute("UPDATE grade_submission_requests SET registrar_approved_by = NULL WHERE registrar_approved_by = %s", (user_id,))
+    cursor.execute("UPDATE grade_submission_requests SET admin_approved_by = NULL WHERE admin_approved_by = %s", (user_id,))
+    cursor.execute("UPDATE grade_submission_requests SET rejected_by = NULL WHERE rejected_by = %s", (user_id,))
+
+    # 4. Unlink reservations and uniform orders
+    cursor.execute("UPDATE reservations SET reserved_by_user_id = NULL WHERE reserved_by_user_id = %s", (user_id,))
+    cursor.execute("DELETE FROM reservations WHERE student_user_id = %s", (user_id,))
+    cursor.execute("UPDATE uniform_orders SET created_by_user_id = NULL WHERE created_by_user_id = %s", (user_id,))
+    cursor.execute("UPDATE uniform_orders SET claimed_by_user_id = NULL WHERE claimed_by_user_id = %s", (user_id,))
+    cursor.execute("UPDATE uniform_orders SET student_user_id = NULL WHERE student_user_id = %s", (user_id,))
+
+    # 5. Delete parent mapping & elective records
+    cursor.execute("DELETE FROM parent_student WHERE parent_id = %s", (user_id,))
+    cursor.execute("DELETE FROM shs_student_elective_requests WHERE student_user_id = %s", (user_id,))
+    cursor.execute("UPDATE shs_student_elective_requests SET reviewed_by = NULL WHERE reviewed_by = %s", (user_id,))
+    cursor.execute("DELETE FROM shs_student_elective_memberships WHERE student_user_id = %s", (user_id,))
+
+    # 6. Finally delete from users table
+    cursor.execute("DELETE FROM users WHERE user_id = %s AND branch_id = %s", (user_id, branch_id))
+
+
 @branch_admin_bp.route("/branch-admin/manage-accounts/<int:user_id>/delete", methods=["POST"])
 def branch_admin_delete_account(user_id):
     if session.get("role") != "branch_admin":
@@ -936,7 +968,7 @@ def branch_admin_delete_account(user_id):
     db = get_db_connection()
     cursor = db.cursor()
     try:
-        cursor.execute("DELETE FROM users WHERE user_id=%s AND branch_id=%s", (user_id, session.get("branch_id")))
+        _safe_delete_user(cursor, user_id, session.get("branch_id"))
         db.commit()
         flash("Account deleted.", "success")
     except Exception as e:
@@ -946,6 +978,317 @@ def branch_admin_delete_account(user_id):
         cursor.close()
         db.close()
     return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
+
+
+@branch_admin_bp.route("/branch-admin/manage-accounts/archive", methods=["GET"])
+def branch_admin_archived_accounts():
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    filter_search = request.args.get("search", "").strip()
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    accounts = []
+    try:
+        query = """
+            SELECT
+                u.user_id, u.username, u.full_name, u.gender, u.email, u.role,
+                COALESCE(u.status, 'inactive') AS status,
+                COALESCE(g.name, u.grade_level) AS grade_level
+            FROM users u
+            LEFT JOIN grade_levels g ON u.grade_level_id = g.id
+            WHERE u.branch_id = %s AND u.role IN ('registrar', 'cashier', 'librarian', 'teacher')
+              AND COALESCE(u.is_archived, FALSE) = TRUE
+        """
+        params = [branch_id]
+        if filter_search:
+            query += " AND (u.full_name ILIKE %s OR u.username ILIKE %s OR u.email ILIKE %s)"
+            params.extend([f"%{filter_search}%", f"%{filter_search}%", f"%{filter_search}%"])
+        query += " ORDER BY u.full_name"
+        cursor.execute(query, params)
+        accounts = cursor.fetchall() or []
+    except Exception as e:
+        db.rollback()
+        flash(f"Something went wrong: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+    return render_template(
+        "branch_admin_archived_accounts.html",
+        accounts=accounts,
+        filter_search=filter_search,
+    )
+
+
+@branch_admin_bp.route("/branch-admin/manage-accounts/<int:user_id>/archive", methods=["POST"])
+def branch_admin_archive_account(user_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute(
+            """UPDATE users SET is_archived = TRUE, status = 'inactive'
+               WHERE user_id = %s AND branch_id = %s
+                 AND COALESCE(is_archived, FALSE) = FALSE""",
+            (user_id, branch_id),
+        )
+        if cursor.rowcount == 0:
+            flash("Account not found or already archived.", "error")
+        else:
+            cursor.execute(
+                """UPDATE section_teachers st
+                   SET teacher_id = NULL
+                   FROM sections s
+                   WHERE st.section_id = s.section_id
+                     AND st.teacher_id = %s AND s.branch_id = %s""",
+                (user_id, branch_id),
+            )
+            flash("Account archived. You can restore or delete them from the Archived Accounts page.", "success")
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not archive account: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
+
+
+@branch_admin_bp.route("/branch-admin/manage-accounts/student/<int:account_id>/archive", methods=["POST"])
+def branch_admin_archive_student_account(account_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute(
+            """UPDATE student_accounts SET is_active = FALSE
+               WHERE account_id = %s AND branch_id = %s""",
+            (account_id, branch_id),
+        )
+        db.commit()
+        flash("Student account archived (deactivated) successfully.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not archive student account: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts", role='student'))
+
+
+@branch_admin_bp.route("/branch-admin/manage-accounts/<int:user_id>/unarchive", methods=["POST"])
+def branch_admin_unarchive_account(user_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute(
+            """UPDATE users SET is_archived = FALSE, status = 'active'
+               WHERE user_id = %s AND branch_id = %s
+                 AND COALESCE(is_archived, FALSE) = TRUE""",
+            (user_id, branch_id),
+        )
+        if cursor.rowcount == 0:
+            flash("Account not found or not archived.", "error")
+        else:
+            flash("Account restored to active status successfully.", "success")
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not restore account: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(request.referrer or url_for("branch_admin.branch_admin_archived_accounts"))
+
+
+@branch_admin_bp.route("/branch-admin/manage-accounts/student/<int:account_id>/unarchive", methods=["POST"])
+def branch_admin_unarchive_student_account(account_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute(
+            """UPDATE student_accounts SET is_active = TRUE
+               WHERE account_id = %s AND branch_id = %s""",
+            (account_id, branch_id),
+        )
+        db.commit()
+        flash("Student account restored to active status successfully.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not restore student account: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts", role="student", show_archived="true"))
+
+
+@branch_admin_bp.route("/branch-admin/manage-accounts/<int:user_id>/reset-password", methods=["POST"])
+def branch_admin_reset_account_password(user_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+
+    # Rate limiting cooldown (60 seconds per target account)
+    now_ts = time.time()
+    last_resets = session.get("pw_reset_cooldowns", {})
+    key = f"user_{user_id}"
+    if key in last_resets and (now_ts - last_resets[key] < 60):
+        remaining = int(60 - (now_ts - last_resets[key]))
+        flash(f"Please wait {remaining} second(s) before resetting password for this account again.", "warning")
+        return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("SELECT user_id, username, full_name, email FROM users WHERE user_id = %s AND branch_id = %s",
+                       (user_id, session.get("branch_id")))
+        user = cursor.fetchone()
+        if not user:
+            flash("User account not found.", "error")
+            return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
+
+        temp_password = generate_password(8)
+        hashed_password = generate_password_hash(temp_password)
+
+        cursor.execute("""
+            UPDATE users 
+            SET password = %s, require_password_change = TRUE 
+            WHERE user_id = %s AND branch_id = %s
+        """, (hashed_password, user_id, session.get("branch_id")))
+        db.commit()
+
+        # Update rate limit timestamp
+        last_resets[key] = now_ts
+        session["pw_reset_cooldowns"] = last_resets
+
+        user_email = user.get("email")
+        email_sent = False
+        if user_email:
+            subject = "Password Reset - Liceo LMS"
+            body = f"""Hello {user.get('full_name') or user.get('username')},
+
+Your account password has been reset by the Branch Admin.
+
+Username: {user['username']}
+Temporary Password: {temp_password}
+Login URL: http://127.0.0.1:5001/
+
+Please log in and change your password upon logging in.
+
+-- The Liceo LMS Team
+"""
+            email_sent = send_email(user_email, subject, body)
+
+        if user_email and email_sent:
+            flash(f"Password reset successfully for {user['username']}! An email with instructions has been sent to {user_email}.", "success")
+        elif user_email and not email_sent:
+            flash(f"Password reset successfully for {user['username']}, but email delivery failed to {user_email}.", "warning")
+        else:
+            flash(f"Password reset successfully for {user['username']}! (Note: No email address is linked to this account).", "warning")
+
+    except Exception as e:
+        db.rollback()
+        flash(f"Failed to reset password: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
+
+
+@branch_admin_bp.route("/branch-admin/manage-accounts/student/<int:account_id>/reset-password", methods=["POST"])
+def branch_admin_reset_student_password(account_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+
+    # Rate limiting cooldown (60 seconds per target account)
+    now_ts = time.time()
+    last_resets = session.get("pw_reset_cooldowns", {})
+    key = f"student_{account_id}"
+    if key in last_resets and (now_ts - last_resets[key] < 60):
+        remaining = int(60 - (now_ts - last_resets[key]))
+        flash(f"Please wait {remaining} second(s) before resetting password for this student account again.", "warning")
+        return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts", role='student'))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT sa.account_id, sa.username, sa.email, CONCAT_WS(' ', e.student_first_name, e.student_last_name) AS full_name
+            FROM student_accounts sa
+            JOIN enrollments e ON sa.enrollment_id = e.enrollment_id
+            WHERE sa.account_id = %s AND sa.branch_id = %s
+        """, (account_id, session.get("branch_id")))
+        student = cursor.fetchone()
+        if not student:
+            flash("Student account not found.", "error")
+            return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts", role='student'))
+
+        temp_password = generate_password(8)
+        hashed_password = generate_password_hash(temp_password)
+
+        cursor.execute("""
+            UPDATE student_accounts
+            SET password = %s, require_password_change = TRUE
+            WHERE account_id = %s AND branch_id = %s
+        """, (hashed_password, account_id, session.get("branch_id")))
+        db.commit()
+
+        # Update rate limit timestamp
+        last_resets[key] = now_ts
+        session["pw_reset_cooldowns"] = last_resets
+
+        student_email = student.get("email")
+        email_sent = False
+        if student_email:
+            subject = "Student Portal Password Reset - Liceo LMS"
+            body = f"""Hello {student.get('full_name') or student.get('username')},
+
+Your student portal password has been reset by the Branch Admin.
+
+Username: {student['username']}
+Temporary Password: {temp_password}
+Login URL: http://127.0.0.1:5001/
+
+Please log in and change your password upon logging in.
+
+-- The Liceo LMS Team
+"""
+            email_sent = send_email(student_email, subject, body)
+
+        if student_email and email_sent:
+            flash(f"Password reset successfully for student {student['username']}! An email with instructions has been sent to {student_email}.", "success")
+        elif student_email and not email_sent:
+            flash(f"Password reset successfully for student {student['username']}, but email delivery failed to {student_email}.", "warning")
+        else:
+            flash(f"Password reset successfully for student {student['username']}! (Note: No email address is linked to this account).", "warning")
+
+    except Exception as e:
+        db.rollback()
+        flash(f"Failed to reset password: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts", role='student'))
+
 
 @branch_admin_bp.route("/branch-admin/manage-accounts/student/<int:account_id>/delete", methods=["POST"])
 def branch_admin_delete_student_account(account_id):
@@ -1229,7 +1572,7 @@ def list_and_add_schedules():
         # --- TIME VALIDATION: must be within 07:00 and 17:00, and start < end ---
         start_t = datetime.strptime(start_time, "%H:%M").time()
         end_t = datetime.strptime(end_time, "%H:%M").time()
-        if not (time(7,0) <= start_t <= time(17,0)) or not (time(7,0) <= end_t <= time(17,0)):
+        if not (dt_time(7,0) <= start_t <= dt_time(17,0)) or not (dt_time(7,0) <= end_t <= dt_time(17,0)):
             flash("Invalid schedule: Times must be between 07:00 and 17:00.", "danger")
             cursor.close(); db.close()
             return redirect(url_for("branch_admin.list_and_add_schedules"))
@@ -1344,9 +1687,6 @@ def list_and_add_schedules():
     )
 
 
-
-from datetime import datetime, time
-
 @branch_admin_bp.route("/branch-admin/schedules/<int:schedule_id>/edit", methods=["GET", "POST"])
 def edit_schedule(schedule_id):
     db = get_db_connection()
@@ -1407,7 +1747,7 @@ def edit_schedule(schedule_id):
         # --- TIME VALIDATION: must be within 07:00 and 17:00, and start < end ---
         start_t = datetime.strptime(start_time, "%H:%M").time()
         end_t = datetime.strptime(end_time, "%H:%M").time()
-        if not (time(7,0) <= start_t <= time(17,0)) or not (time(7,0) <= end_t <= time(17,0)):
+        if not (dt_time(7,0) <= start_t <= dt_time(17,0)) or not (dt_time(7,0) <= end_t <= dt_time(17,0)):
             flash("Invalid schedule: Times must be between 07:00 and 17:00.", "danger")
             cursor.close(); db.close()
             return redirect(url_for("branch_admin.list_and_add_schedules"))
@@ -2742,11 +3082,7 @@ def branch_admin_delete_archived_teacher(user_id):
         if not cursor.fetchone():
             flash("Only archived teachers can be deleted here.", "error")
             return redirect("/branch-admin/manage-teachers/archive")
-        cursor.execute("DELETE FROM teacher_grade_levels WHERE teacher_id = %s", (user_id,))
-        cursor.execute(
-            "DELETE FROM users WHERE user_id = %s AND branch_id = %s AND role = 'teacher' AND COALESCE(is_archived, FALSE) = TRUE",
-            (user_id, branch_id),
-        )
+        _safe_delete_user(cursor, user_id, branch_id)
         db.commit()
         flash("Teacher permanently removed.", "success")
     except Exception as e:

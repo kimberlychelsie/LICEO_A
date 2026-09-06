@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block title %}Security Center — Super Admin | Liceo LMS{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --ma-primary: #1a3a8f;
+        --ma-gold: #facc15;
+        --ma-bg: #f8fafc;
+        --ma-card: #ffffff;
+        --ma-border: rgba(26, 58, 143, 0.1);
+        --ma-text: #0f172a;
+        --ma-muted: #64748b;
+    }
+
+    .sa-container {
+        padding: 32px 24px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    /* ── Hero Banner ── */
+    .hero-banner {
+        background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
+        border-radius: 20px;
+        padding: 36px 40px;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+        color: #fff;
+        box-shadow: 0 15px 35px -10px rgba(26, 58, 143, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .hero-content h1 {
+        font-size: 2.2rem;
+        font-weight: 900;
+        letter-spacing: -0.03em;
+        margin: 0 0 10px 0;
+        line-height: 1.1;
+        color: #ffffff;
+    }
+
+    .hero-content h1 span {
+        color: var(--ma-gold);
+        text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+    }
+
+    .hero-content p {
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+        max-width: 650px;
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    /* ── Grid Layout ── */
+    .sec-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+
+    .sec-card {
+        background: var(--ma-card);
+        border: 1px solid var(--ma-border);
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .sec-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(26, 58, 143, 0.08);
+    }
+    
+    .sec-card-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+    }
+
+    .sec-card-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .icon-amber { background: #fef3c7; color: #d97706; }
+    .icon-blue { background: #dbeafe; color: #1a3a8f; }
+    .icon-emerald { background: #d1fae5; color: #059669; }
+    .icon-rose { background: #ffe4e6; color: #dc2626; }
+
+    .sec-card-title {
+        font-size: 1.1rem;
+        font-weight: 800;
+        color: var(--ma-text);
+        margin-bottom: 6px;
+    }
+
+    .sec-card-desc {
+        font-size: 0.88rem;
+        color: var(--ma-muted);
+        margin-bottom: 20px;
+        line-height: 1.5;
+    }
+
+    .sec-status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 99px;
+        font-weight: 800;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .pill-off { background: #f1f5f9; color: #475569; }
+    .pill-on { background: #fef3c7; color: #b45309; }
+    .pill-active { background: #d1fae5; color: #047857; }
+
+    .btn-toggle-m {
+        width: 100%;
+        padding: 12px;
+        border-radius: 12px;
+        font-weight: 800;
+        font-size: 0.9rem;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    .btn-m-on { background: #dc2626; color: white; }
+    .btn-m-on:hover { background: #b91c1c; }
+    .btn-m-off { background: #f59e0b; color: white; }
+    .btn-m-off:hover { background: #d97706; }
+
+    .hero-btn {
+        background: rgba(255, 255, 255, 0.15);
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 10px 20px;
+        border-radius: 12px;
+        text-decoration: none;
+        font-weight: 700;
+        font-size: 0.9rem;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        backdrop-filter: blur(8px);
+        transition: all 0.2s ease;
+    }
+    .hero-btn:hover {
+        background: rgba(255, 255, 255, 0.25);
+        color: #ffffff;
+        transform: translateY(-1px);
+    }
+</style>
+
+<div class="sa-container">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div style="padding: 14px 18px; border-radius: 14px; margin-bottom: 20px; font-weight: 700; font-size: 0.9rem; display: flex; align-items: center; gap: 10px;
+                    {% if category == 'error' %}background:#fee2e2; color:#991b1b; border:1px solid #fca5a5;
+                    {% elif category == 'warning' %}background:#fef3c7; color:#92400e; border:1px solid #fde68a;
+                    {% else %}background:#dcfce7; color:#15803d; border:1px solid #86efac;{% endif %}">
+                    <i class="fa-solid {% if category == 'error' %}fa-circle-exclamation{% elif category == 'warning' %}fa-triangle-exclamation{% else %}fa-circle-check{% endif %}"></i>
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <!-- Hero Banner -->
+    <div class="hero-banner">
+        <div class="hero-content">
+            <h1>Super Admin <span>Security Center</span></h1>
+            <p>Real-time threat prevention, maintenance mode controls, session timeouts, and brute-force protection for Liceo LMS.</p>
+        </div>
+        <div>
+            <a href="/super-admin/audit-logs" class="hero-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                View Audit Logs
+            </a>
+        </div>
+    </div>
+
+    <!-- Security Control Cards Grid -->
+    <div class="sec-grid">
+        <!-- 1. System Maintenance Mode Toggle -->
+        <div class="sec-card">
+            <div>
+                <div class="sec-card-header">
+                    <div class="sec-card-icon icon-amber">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                    </div>
+                    <span class="sec-status-pill {% if maintenance_mode == 'on' %}pill-on{% else %}pill-off{% endif %}">
+                        <i class="fa-solid fa-circle" style="font-size:0.45rem;"></i>
+                        {% if maintenance_mode == 'on' %}MAINTENANCE ACTIVE{% else %}NORMAL OPERATION{% endif %}
+                    </span>
+                </div>
+                <div class="sec-card-title">System Maintenance Mode</div>
+                <div class="sec-card-desc">
+                    When active, non-superadmin users (teachers, students, parents) will see a maintenance screen. Only Super Admin can access the app.
+                </div>
+            </div>
+            <form action="/super-admin/toggle-maintenance" method="POST" onsubmit="return confirm('Are you sure you want to toggle System Maintenance Mode?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% if maintenance_mode == 'on' %}
+                    <button type="submit" class="btn-toggle-m btn-m-on">
+                        <i class="fa-solid fa-power-off"></i> Disable Maintenance Mode
+                    </button>
+                {% else %}
+                    <button type="submit" class="btn-toggle-m btn-m-off">
+                        <i class="fa-solid fa-wrench"></i> Enable Maintenance Mode
+                    </button>
+                {% endif %}
+            </form>
+        </div>
+
+        <!-- 2. Session Inactivity Auto-Logout -->
+        <div class="sec-card">
+            <div>
+                <div class="sec-card-header">
+                    <div class="sec-card-icon icon-blue">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    </div>
+                    <span class="sec-status-pill pill-active">
+                        <i class="fa-solid fa-circle" style="font-size:0.45rem;"></i> 1 HOUR POLICY ACTIVE
+                    </span>
+                </div>
+                <div class="sec-card-title">Inactivity Auto-Timeout</div>
+                <div class="sec-card-desc">
+                    Automatically terminates idle user sessions after 1 hour (60 mins) of inactivity with a 5-minute advance warning banner.
+                </div>
+            </div>
+            <div style="background: #f8fafc; padding: 12px 16px; border-radius: 12px; font-size: 0.85rem; color: var(--ma-muted); border: 1px solid var(--ma-border);">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a3a8f" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px; vertical-align: middle;"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                Status: <strong style="color: var(--ma-text);">Enforced (60 Mins + 5M Warning)</strong>
+            </div>
+        </div>
+
+        <!-- 3. Failed Login Rate Limiter & Lockout -->
+        <div class="sec-card">
+            <div>
+                <div class="sec-card-header">
+                    <div class="sec-card-icon icon-rose">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                    </div>
+                    <span class="sec-status-pill {% if locked_ips_count > 0 %}pill-on{% else %}pill-active{% endif %}">
+                        <i class="fa-solid fa-circle" style="font-size:0.45rem;"></i>
+                        {% if locked_ips_count > 0 %}{{ locked_ips_count }} IP LOCKED{% else %}PROTECTED (5M){% endif %}
+                    </span>
+                </div>
+                <div class="sec-card-title">Brute Force Protection</div>
+                <div class="sec-card-desc">
+                    Blocks account/IP access after 5 consecutive failed login attempts within 5 minutes.
+                </div>
+            </div>
+            <div>
+                <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+                    <div style="flex:1; background: #f8fafc; padding: 10px; border-radius: 12px; text-align: center; border: 1px solid var(--ma-border);">
+                        <div style="font-size: 1.2rem; font-weight: 900; color: var(--ma-text);">{{ failed_24h }}</div>
+                        <div style="font-size: 0.72rem; color: var(--ma-muted); font-weight: 700;">Failed Logins (24h)</div>
+                    </div>
+                    <div style="flex:1; background: #f8fafc; padding: 10px; border-radius: 12px; text-align: center; border: 1px solid var(--ma-border);">
+                        <div style="font-size: 1.2rem; font-weight: 900; color: {% if locked_ips_count > 0 %}#dc2626{% else %}#16a34a{% endif %};">{{ locked_ips_count }}</div>
+                        <div style="font-size: 0.72rem; color: var(--ma-muted); font-weight: 700;">Locked IPs</div>
+                    </div>
+                </div>
+                <form action="/super-admin/clear-lockouts" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" style="width:100%; background:#f1f5f9; color:#334155; border:1px solid #cbd5e1; padding:10px; border-radius:10px; font-weight:800; font-size:0.82rem; cursor:pointer; transition: all 0.2s ease;">
+                        <i class="fa-solid fa-key" style="margin-right:4px;"></i> Clear All Lockouts (Unblock All)
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 4. Sensitive Action "Sudo Mode" Re-verification -->
+        <div class="sec-card">
+            <div>
+                <div class="sec-card-header">
+                    <div class="sec-card-icon icon-emerald">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-2-2l2 2m2 4l-4 4M10.5 13.5L3 21v-3l7.5-7.5m2.5-2.5a3.535 3.535 0 1 0-5 5 3.535 3.535 0 0 0 5-5z"/></svg>
+                    </div>
+                    <span class="sec-status-pill {% if sudo_approved %}pill-active{% else %}pill-off{% endif %}">
+                        <i class="fa-solid fa-circle" style="font-size:0.45rem;"></i>
+                        {% if sudo_approved %}SUDO ACTIVE (15M){% else %}RE-AUTH REQUIRED{% endif %}
+                    </span>
+                </div>
+                <div class="sec-card-title">Sensitive Action Verification</div>
+                <div class="sec-card-desc">
+                    Requires password re-verification before executing high-risk administrative operations (e.g. database dump).
+                </div>
+            </div>
+            
+            {% if not sudo_approved %}
+                <form action="/super-admin/sudo-verify" method="POST" style="display:flex; gap:8px;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="password" name="password" placeholder="Confirm Super Admin password" required style="flex:1; padding: 10px 14px; border-radius: 10px; border: 1.5px solid #cbd5e1; font-size: 0.85rem; outline:none;">
+                    <button type="submit" style="background:#059669; color:white; border:none; padding: 10px 16px; border-radius: 10px; font-weight: 800; font-size: 0.85rem; cursor:pointer; transition: all 0.2s ease;">
+                        Verify
+                    </button>
+                </form>
+            {% else %}
+                <div style="background: #dcfce7; color: #15803d; padding: 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 800; text-align: center; border: 1px solid #86efac;">
+                    <i class="fa-solid fa-circle-check" style="margin-right:4px;"></i> Sudo mode verified & active
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Database Backup & Recovery | Super Admin{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --ma-primary: #1a3a8f;
+        --ma-gold: #facc15;
+        --ma-bg: #f8fafc;
+        --ma-card: #ffffff;
+        --ma-border: rgba(26, 58, 143, 0.1);
+        --ma-text: #0f172a;
+        --ma-muted: #64748b;
+    }
+
+    .sa-container {
+        padding: 32px 24px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    /* ── Hero Banner ── */
+    .hero-banner {
+        background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
+        border-radius: 20px;
+        padding: 36px 40px;
+        margin-bottom: 24px;
+        position: relative;
+        overflow: hidden;
+        color: #fff;
+        box-shadow: 0 15px 35px -10px rgba(26, 58, 143, 0.2);
+    }
+
+    .hero-content h1 {
+        font-size: 2.2rem;
+        font-weight: 900;
+        letter-spacing: -0.03em;
+        margin: 0 0 10px 0;
+        line-height: 1.1;
+        color: #ffffff;
+    }
+
+    .hero-content h1 span {
+        color: var(--ma-gold);
+        text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+    }
+
+    .hero-content p {
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+        max-width: 650px;
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    /* ── Stats Grid ── */
+    .bk-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        gap: 20px;
+        margin-bottom: 24px;
+    }
+
+    .bk-stat-card {
+        background: var(--ma-card);
+        border: 1px solid var(--ma-border);
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        transition: transform 0.2s ease;
+    }
+
+    .bk-stat-card:hover {
+        transform: translateY(-2px);
+    }
+
+    .bk-stat-label {
+        font-size: 0.78rem;
+        font-weight: 800;
+        color: var(--ma-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+
+    .bk-stat-num {
+        font-size: 2.1rem;
+        font-weight: 900;
+        color: var(--ma-primary);
+        margin-top: 6px;
+        line-height: 1;
+    }
+
+    /* ── Main Export Card ── */
+    .bk-main-card {
+        background: var(--ma-card);
+        border: 1px solid var(--ma-border);
+        border-radius: 20px;
+        padding: 32px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+    }
+
+    .btn-download-sql {
+        background: #16a34a;
+        color: #ffffff;
+        padding: 14px 28px;
+        font-weight: 800;
+        font-size: 0.95rem;
+        border-radius: 12px;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 14px rgba(22, 163, 74, 0.25);
+        transition: all 0.2s ease;
+    }
+
+    .btn-download-sql:hover {
+        background: #15803d;
+        transform: translateY(-1px);
+        box-shadow: 0 6px 18px rgba(22, 163, 74, 0.35);
+    }
+</style>
+
+<div class="sa-container">
+    <!-- Hero Banner -->
+    <div class="hero-banner">
+        <div class="hero-content">
+            <h1>Database Backup & <span>System Recovery</span></h1>
+            <p>Generate, manage, and download complete database SQL backups to protect school records, user accounts, and system data.</p>
+        </div>
+    </div>
+
+    <!-- System Stats -->
+    <div class="bk-stats-grid">
+        <div class="bk-stat-card">
+            <div class="bk-stat-label">Database Tables</div>
+            <div class="bk-stat-num">{{ total_tables }}</div>
+        </div>
+        <div class="bk-stat-card">
+            <div class="bk-stat-label">Registered Accounts</div>
+            <div class="bk-stat-num">{{ total_users }}</div>
+        </div>
+        <div class="bk-stat-card">
+            <div class="bk-stat-label">Total Student Records</div>
+            <div class="bk-stat-num">{{ total_enrollments }}</div>
+        </div>
+        <div class="bk-stat-card">
+            <div class="bk-stat-label">Total Audit Events</div>
+            <div class="bk-stat-num">{{ total_audit_logs }}</div>
+        </div>
+    </div>
+
+    <!-- Backup Action Card -->
+    <div class="bk-main-card">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px;">
+            <div style="max-width: 600px;">
+                <h2 style="margin:0 0 8px; font-size:1.3rem; font-weight:900; color:var(--ma-text);">Manual Database SQL Export</h2>
+                <p style="margin:0; font-size:0.92rem; color:var(--ma-muted); line-height:1.5;">Generates an instant, complete SQL dump of all critical database tables including branches, users, enrollments, activities, and posted grades.</p>
+            </div>
+            <form method="POST" action="{{ url_for('super_admin.super_admin_backup_database') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn-download-sql">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Download Database Backup (.sql)
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

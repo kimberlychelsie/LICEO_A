@@ -8,7 +8,9 @@ from datetime import datetime, timedelta, timezone
 from utils.send_email import send_email
 import os
 
+import time
 from extensions import limiter
+from routes.super_admin import log_audit_event
 
 auth_bp = Blueprint("auth", __name__)
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:5000")
@@ -62,6 +64,44 @@ def login():
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
         try:
+            client_ip = request.remote_addr or "127.0.0.1"
+
+            # 1. Per-Account Lockout Check (Max 5 failed attempts per username in 5 mins)
+            cursor.execute("""
+                SELECT COUNT(*) AS cnt FROM failed_logins
+                WHERE username = %s AND created_at > NOW() - INTERVAL '5 minutes'
+            """, (username,))
+            u_row = cursor.fetchone()
+            if u_row and u_row["cnt"] >= 5:
+                try:
+                    log_audit_event(
+                        cursor, None, username, "guest", None,
+                        "ACCOUNT_LOCKOUT", f"Account '{username}' locked out for 5 mins after 5 failed login attempts", client_ip
+                    )
+                    db.commit()
+                except Exception:
+                    pass
+                flash(f"Too many failed login attempts for account '{username}'. Access for this account is temporarily paused for 5 minutes.", "error")
+                return redirect(url_for("auth.login"))
+
+            # 2. Global IP Bot Protection Guard (Max 15 failed attempts across all accounts from same IP in 5 mins)
+            cursor.execute("""
+                SELECT COUNT(*) AS cnt FROM failed_logins
+                WHERE ip_address = %s AND created_at > NOW() - INTERVAL '5 minutes'
+            """, (client_ip,))
+            ip_row = cursor.fetchone()
+            if ip_row and ip_row["cnt"] >= 15:
+                try:
+                    log_audit_event(
+                        cursor, None, username, "guest", None,
+                        "BRUTE_FORCE_BLOCKED", f"Suspicious brute-force traffic blocked from IP {client_ip} (15+ failed attempts)", client_ip
+                    )
+                    db.commit()
+                except Exception:
+                    pass
+                flash("Suspicious brute-force traffic detected from this network IP. Access is temporarily paused for 5 minutes.", "error")
+                return redirect(url_for("auth.login"))
+
             # ✅ 1) Check regular users (super_admin, branch_admin, registrar, cashier, parent, librarian, student if exists)
             cursor.execute("SELECT * FROM users WHERE username=%s", (username,))
             user = cursor.fetchone()
@@ -87,6 +127,17 @@ def login():
                     session["branch_id"] = user.get("branch_id")
                     session["username"]  = user.get("username")
                     session["full_name"] = user.get("full_name")  # for display in sidebar
+                    session["last_activity"] = time.time()
+
+                    try:
+                        cursor.execute("DELETE FROM failed_logins WHERE username = %s OR ip_address = %s", (username, client_ip))
+                        log_audit_event(
+                            cursor, user["user_id"], user.get("full_name") or user.get("username"), user.get("role"), user.get("branch_id"),
+                            "USER_LOGIN", f"Successful login from IP {client_ip}", client_ip
+                        )
+                        db.commit()
+                    except Exception:
+                        pass
 
                     # Fetch branch name and code for sidebar display
                     if user.get("branch_id"):
@@ -305,6 +356,16 @@ def login():
                         return redirect(next_url)
 
                     return redirect("/student/dashboard")
+
+            try:
+                cursor.execute("INSERT INTO failed_logins (ip_address, username) VALUES (%s, %s)", (client_ip, username))
+                log_audit_event(
+                    cursor, None, username, "guest", None,
+                    "FAILED_LOGIN", f"Failed login attempt for username '{username}' from IP {client_ip}", client_ip
+                )
+                db.commit()
+            except Exception:
+                pass
 
             flash("Invalid username or password", "error")
             return redirect(url_for("auth.login"))
