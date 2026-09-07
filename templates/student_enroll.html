@@ -594,11 +594,10 @@
                             <!-- Row 1: Enrollment Date + School Year + Remarks -->
                             <div class="c3">
                                 <div class="field">
-                                    <label>Enrollment Date <span class="req">*</span></label>
-                                    <input type="date" id="enroll_date" name="enroll_date" required readonly
-                                        style="background-color: #f1f5f9; cursor: not-allowed;"
+                                    <label>Enrollment Date <small class="text-muted" style="font-weight: normal; font-size: 11px;">(Optional)</small></label>
+                                    <input type="date" id="enroll_date" name="enroll_date"
                                         value="{{ today_date }}" />
-                                    <small>Defaults to today</small>
+                                    <small>Select enrollment date (past dates allowed)</small>
                                 </div>
                             </div>
                             <div class="c3">
@@ -1108,17 +1107,15 @@
             var blocked = false;
             var blockedReason = '';
 
-            /* ── Set enrollment date to today and restrict to today only ── */
+            /* ── Set enrollment date default to today if not set ── */
             (function initEnrollDate() {
                 var today = new Date();
                 var yyyy = today.getFullYear();
                 var mm = String(today.getMonth() + 1).padStart(2, '0');
                 var dd = String(today.getDate()).padStart(2, '0');
                 var todayStr = yyyy + '-' + mm + '-' + dd;
-                if (enrollDateEl) {
+                if (enrollDateEl && !enrollDateEl.value) {
                     enrollDateEl.value = todayStr;
-                    enrollDateEl.min = todayStr;
-                    enrollDateEl.max = todayStr;
                 }
             })();
 
