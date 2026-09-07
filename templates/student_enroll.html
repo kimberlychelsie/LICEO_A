@@ -734,16 +734,16 @@
 
                             <div class="c4">
                                 <div class="field">
-                                    <label>Birthday <span class="req">*</span></label>
-                                    <input type="date" id="field_dob" name="dob" max="{{ max_dob_date }}" required />
+                                    <label>Birthday <small class="text-muted" style="font-weight: normal; font-size: 11px;">(Optional)</small></label>
+                                    <input type="date" id="field_dob" name="dob" max="{{ max_dob_date }}" />
                                     <small>Minimum age is 3 years old</small>
                                     <small>Must not be a future date</small>
                                 </div>
                             </div>
                             <div class="c4">
                                 <div class="field">
-                                    <label>Birthplace <span class="req">*</span></label>
-                                    <input type="text" name="birthplace" placeholder="City, Province" required
+                                    <label>Birthplace <small class="text-muted" style="font-weight: normal; font-size: 11px;">(Optional)</small></label>
+                                    <input type="text" name="birthplace" placeholder="City, Province"
                                         minlength="3" maxlength="100"
                                         oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s,]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',')" />
                                 </div>
@@ -751,18 +751,18 @@
 
                             <div class="c8">
                                 <div class="field">
-                                    <label>Address <span class="req">*</span></label>
+                                    <label>Address <small class="text-muted" style="font-weight: normal; font-size: 11px;">(Optional)</small></label>
                                     <input type="text" name="address"
-                                        placeholder="House No., Street, Barangay, City, Province" required
+                                        placeholder="House No., Street, Barangay, City, Province"
                                         minlength="10" maxlength="255"
                                         oninput="this.value = this.value.replace(/[^A-Za-z0-9ñÑ\s,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',').replace(/--+/g, '-')" />
                                 </div>
                             </div>
                             <div class="c4">
                                 <div class="field">
-                                    <label>Cellphone No. <span class="req">*</span></label>
+                                    <label>Cellphone No. <small class="text-muted" style="font-weight: normal; font-size: 11px;">(Optional)</small></label>
                                     <input type="tel" name="contact_number" pattern="^09\d{9}$" maxlength="11"
-                                        minlength="11" placeholder="09xxxxxxxxx" required inputmode="numeric"
+                                        minlength="11" placeholder="09xxxxxxxxx" inputmode="numeric"
                                         oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
                                     <small>Numbers only, must start with 09</small>
                                 </div>
@@ -770,8 +770,8 @@
 
                             <div class="c4">
                                 <div class="field">
-                                    <label>Sex <span class="req">*</span></label>
-                                    <select name="gender" required>
+                                    <label>Sex <small class="text-muted" style="font-weight: normal; font-size: 11px;">(Optional)</small></label>
+                                    <select name="gender">
                                         <option value="" disabled selected>Select</option>
                                         <option value="Male">Male</option>
                                         <option value="Female">Female</option>
@@ -881,8 +881,8 @@
 
                             <div class="c4">
                                 <div class="field">
-                                    <label>Guardian First Name <span class="req">*</span></label>
-                                    <input type="text" name="guardian_first_name" required maxlength="50">
+                                    <label>Guardian First Name <small class="text-muted" style="font-weight: normal; font-size: 11px;">(Optional)</small></label>
+                                    <input type="text" name="guardian_first_name" maxlength="50">
                                 </div>
                             </div>
 
@@ -895,16 +895,16 @@
 
                             <div class="c4">
                                 <div class="field">
-                                    <label>Guardian Last Name <span class="req">*</span></label>
-                                    <input type="text" name="guardian_last_name" required maxlength="50">
+                                    <label>Guardian Last Name <small class="text-muted" style="font-weight: normal; font-size: 11px;">(Optional)</small></label>
+                                    <input type="text" name="guardian_last_name" maxlength="50">
                                 </div>
                             </div>
 
                             <div class="c6">
                                 <div class="field">
-                                    <label>Guardian Contact <span class="req">*</span></label>
+                                    <label>Guardian Contact <small class="text-muted" style="font-weight: normal; font-size: 11px;">(Optional)</small></label>
                                     <input type="tel" name="guardian_contact" pattern="^09\d{9}$" maxlength="11"
-                                        minlength="11" placeholder="09xxxxxxxxx" required inputmode="numeric"
+                                        minlength="11" placeholder="09xxxxxxxxx" inputmode="numeric"
                                         oninput="this.value=this.value.replace(/[^0-9]/g,'')" />
                                 </div>
                             </div>
@@ -1365,44 +1365,37 @@
                     errors.push('Student last name must be at least 2 characters.');
                 }
 
-                /* LRN — now required, exactly 12 digits numbers only */
-                if (!lrn) {
-                    errors.push('LRN is required.');
-                } else if (!/^\d{12}$/.test(lrn)) {
+                /* LRN — optional, if entered must be 12 digits */
+                if (lrn && !/^\d{12}$/.test(lrn)) {
                     errors.push('LRN must be exactly 12 digits (numbers only).');
                 }
 
-                /* Birthday — required, must be at least 3 years old and not future */
-                if (!birthday) {
-                    errors.push('Birthday is required.');
-                } else if (isNaN(Date.parse(birthday))) {
-                    errors.push('Birthday must be a valid date.');
-                } else {
-                    var bdParts = birthday.split('-');
-                    var bd = new Date(parseInt(bdParts[0], 10), parseInt(bdParts[1], 10) - 1, parseInt(bdParts[2], 10));
-                    bd.setHours(0, 0, 0, 0);
+                /* Birthday — optional, if entered must be at least 3 years old and not future */
+                if (birthday) {
+                    if (isNaN(Date.parse(birthday))) {
+                        errors.push('Birthday must be a valid date.');
+                    } else {
+                        var bdParts = birthday.split('-');
+                        var bd = new Date(parseInt(bdParts[0], 10), parseInt(bdParts[1], 10) - 1, parseInt(bdParts[2], 10));
+                        bd.setHours(0, 0, 0, 0);
 
-                    var minAllowedDate = new Date();
-                    minAllowedDate.setFullYear(minAllowedDate.getFullYear() - 3);
-                    minAllowedDate.setHours(23, 59, 59, 999);
+                        var minAllowedDate = new Date();
+                        minAllowedDate.setFullYear(minAllowedDate.getFullYear() - 3);
+                        minAllowedDate.setHours(23, 59, 59, 999);
 
-                    if (bd > today) {
-                        errors.push('Birthday cannot be a future date.');
-                    } else if (bd > minAllowedDate) {
-                        errors.push('Student must be at least 3 years old to enroll.');
+                        if (bd > today) {
+                            errors.push('Birthday cannot be a future date.');
+                        } else if (bd > minAllowedDate) {
+                            errors.push('Student must be at least 3 years old to enroll.');
+                        }
                     }
                 }
 
                 /* Student detail required fields */
                 if (!gradeLevel) errors.push('Grade level/strand is required.');
-                if (!birthplace) errors.push('Birthplace is required.');
-                if (!address) errors.push('Address is required.');
-                if (!gender) errors.push('Sex is required.');
 
-                /* Student contact — required */
-                if (!studentContact) {
-                    errors.push('Student cellphone number is required.');
-                } else if (!isValidPHMobile(studentContact)) {
+                /* Student contact — optional, validate if entered */
+                if (studentContact && !isValidPHMobile(studentContact)) {
                     errors.push('Student contact must be an 11-digit PH mobile (09XXXXXXXXX).');
                 }
 
@@ -1418,11 +1411,8 @@
                     errors.push('Mother\'s contact must be an 11-digit PH mobile (09XXXXXXXXX).');
                 }
 
-                /* Guardian — required */
-                if (!guardianName) errors.push('Guardian first name is required.');
-                if (!guardianContact) {
-                    errors.push('Guardian contact number is required.');
-                } else if (!isValidPHMobile(guardianContact)) {
+                /* Guardian — optional, validate contact if entered */
+                if (guardianContact && !isValidPHMobile(guardianContact)) {
                     errors.push('Guardian contact must be an 11-digit PH mobile (09XXXXXXXXX).');
                 }
                 if (guardianEmail) {

@@ -558,10 +558,7 @@ def enroll(branch_id):
             if not grade_level:
                 flash("Grade level is required.", "error")
                 return redirect(request.url)
-            if not dob:
-                flash("Birthday is required.", "error")
-                return redirect(request.url)
-            else:
+            if dob:
                 try:
                     import datetime
                     dob_date = datetime.datetime.strptime(dob, "%Y-%m-%d").date()
@@ -579,12 +576,6 @@ def enroll(branch_id):
                     return redirect(request.url)
             if lrn and (not lrn.isdigit() or len(lrn) != 12):
                 flash("LRN must be a 12-digit number.", "error")
-                return redirect(request.url)
-            if not guardian_first_name or not guardian_last_name:
-                flash("Guardian name is required.", "error")
-                return redirect(request.url)
-            if not guardian_contact:
-                flash("Guardian contact is required.", "error")
                 return redirect(request.url)
             if not request.form.get("privacy_consent"):
                 flash("You must agree to the Data Privacy Consent.", "error")
