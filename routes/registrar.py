@@ -2621,23 +2621,26 @@ def registrar_grade_levels():
     db = get_db_connection()
     cursor = db.cursor()
 
-    # Fetch all unique grade names from the system, sorted by their academic order
-    cursor.execute("SELECT name FROM grade_levels GROUP BY name")
-    db_names = [row[0] for row in cursor.fetchall()]
     ACADEMIC_ORDER = {
         "Nursery": 1, "Kinder": 2, "Grade 1": 3, "Grade 2": 4, "Grade 3": 5,
         "Grade 4": 6, "Grade 5": 7, "Grade 6": 8, "Grade 7": 9, "Grade 8": 10,
-        "Grade 9": 11, "Grade 10": 12, "Grade 11": 13, "Grade 12": 14
+        "Grade 9": 11, "Grade 10": 12, "Grade 11": 13,
+        "Grade 11-STEM": 14, "Grade 11-HUMSS": 15, "Grade 11-GAS": 16, "Grade 11-ABM": 17, "Grade 11-TVL": 18,
+        "Grade 12": 19,
+        "Grade 12-STEM": 20, "Grade 12-HUMSS": 21, "Grade 12-GAS": 22, "Grade 12-ABM": 23, "Grade 12-TVL": 24
     }
-    available_grade_names = sorted(db_names, key=lambda x: ACADEMIC_ORDER.get(x, 99))
-    
-    # Defaults if DB is empty
-    if not available_grade_names:
-        available_grade_names = [
-            "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3",
-            "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8",
-            "Grade 9", "Grade 10", "Grade 11", "Grade 12"
-        ]
+    DEFAULT_PRESET_GRADES = [
+        "Nursery", "Kinder", "Grade 1", "Grade 2", "Grade 3",
+        "Grade 4", "Grade 5", "Grade 6", "Grade 7", "Grade 8",
+        "Grade 9", "Grade 10", "Grade 11",
+        "Grade 11-STEM", "Grade 11-HUMSS", "Grade 11-GAS", "Grade 11-ABM", "Grade 11-TVL",
+        "Grade 12", "Grade 12-STEM", "Grade 12-HUMSS", "Grade 12-GAS", "Grade 12-ABM", "Grade 12-TVL"
+    ]
+
+    cursor.execute("SELECT DISTINCT name FROM grade_levels")
+    db_names = [row[0] for row in cursor.fetchall()]
+    combined = set(db_names) | set(DEFAULT_PRESET_GRADES)
+    available_grade_names = sorted(list(combined), key=lambda x: ACADEMIC_ORDER.get(x, 99))
 
     if request.method == "POST":
         name = (request.form.get("name") or "").strip()
