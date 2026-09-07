@@ -1307,18 +1307,7 @@
                     }
                 }
 
-                /* Enrollment date — must be today */
-                var enrollDateVal = enrollDateEl ? enrollDateEl.value : '';
-                if (!enrollDateVal) {
-                    errors.push('Enrollment date is required.');
-                } else {
-                    var edParts = enrollDateVal.split('-');
-                    var ed = new Date(parseInt(edParts[0]), parseInt(edParts[1]) - 1, parseInt(edParts[2]));
-                    ed.setHours(0, 0, 0, 0);
-                    if (ed.getTime() !== today.getTime()) {
-                        errors.push('Enrollment date must be today\'s date.');
-                    }
-                }
+                /* Enrollment date — optional, past dates allowed */
 
                 var firstName = firstNameEl ? firstNameEl.value.trim() : '';
                 var lastName = lastNameEl ? lastNameEl.value.trim() : '';
