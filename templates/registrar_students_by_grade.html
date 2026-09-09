@@ -903,25 +903,12 @@
         </div>
 
         <!-- Pagination Container -->
-        <div id="paginationContainer" style="padding: 16px 24px; border-top: 1px solid var(--border, #e2e8f0); display: flex; justify-content: space-between; align-items: center; background: #fff; flex-wrap: wrap; gap: 12px;">
-            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-                <div style="font-size: 0.85rem; color: var(--muted);">
-                    Showing <span id="pageStart">1</span> to <span id="pageEnd">10</span> of <span id="pageTotal">{{ students|length }}</span> entries
-                </div>
-                <div style="display: flex; align-items: center; gap: 6px; font-size: 0.82rem; color: #64748b; font-weight: 600;">
-                    <label for="rowsPerPageSelect">Per page:</label>
-                    <select id="rowsPerPageSelect" onchange="changeRowsPerPage(this.value)" style="padding: 4px 8px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.82rem; font-weight: 700; color: #1e293b; outline: none; background: #fff; cursor: pointer;">
-                        <option value="10" selected>10</option>
-                        <option value="25">25</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                        <option value="all">All</option>
-                    </select>
-                </div>
+        <div id="paginationContainer" style="padding: 16px 24px; border-top: 1px solid var(--border, #e2e8f0); display: flex; justify-content: space-between; align-items: center; background: #fff;">
+            <div style="font-size: 0.85rem; color: var(--muted);">
+                Showing <span id="pageStart">1</span> to <span id="pageEnd">10</span> of <span id="pageTotal">{{ students|length }}</span> entries
             </div>
-            <div style="display: flex; gap: 6px; align-items: center;">
+            <div style="display: flex; gap: 8px;">
                 <button onclick="prevPage()" id="prevBtn" class="btn btn-outline" style="padding: 6px 12px; border-radius: 6px; font-size: 0.8rem;" disabled>Previous</button>
-                <div id="pageNumberButtons" style="display: flex; gap: 4px;"></div>
                 <button onclick="nextPage()" id="nextBtn" class="btn btn-outline" style="padding: 6px 12px; border-radius: 6px; font-size: 0.8rem;">Next</button>
             </div>
         </div>
@@ -998,18 +985,8 @@
     });
 
     let currentPage = 1;
-    let rowsPerPage = 10;
+    const rowsPerPage = 10;
     
-    function changeRowsPerPage(val) {
-        if (val === 'all') {
-            rowsPerPage = 999999;
-        } else {
-            rowsPerPage = parseInt(val, 10) || 10;
-        }
-        currentPage = 1;
-        updatePagination();
-    }
-
     function updatePagination() {
         const searchInput = document.getElementById('searchInput');
         const query = searchInput ? searchInput.value.toLowerCase() : '';
@@ -1033,7 +1010,7 @@
             return;
         }
 
-        const totalPages = Math.ceil(visibleRows.length / rowsPerPage) || 1;
+        const totalPages = Math.ceil(visibleRows.length / rowsPerPage);
         if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
         if (currentPage < 1) currentPage = 1;
 
@@ -1055,33 +1032,7 @@
         document.getElementById('pageTotal').innerText = visibleRows.length;
 
         document.getElementById('prevBtn').disabled = currentPage === 1;
-        document.getElementById('nextBtn').disabled = currentPage === totalPages || totalPages === 0 || visibleRows.length === 0;
-
-        const pageBtnContainer = document.getElementById('pageNumberButtons');
-        if (pageBtnContainer) {
-            pageBtnContainer.innerHTML = '';
-            if (totalPages > 1 && totalPages <= 15) {
-                for (let i = 1; i <= totalPages; i++) {
-                    const btn = document.createElement('button');
-                    btn.className = 'btn btn-outline';
-                    btn.style.padding = '6px 10px';
-                    btn.style.borderRadius = '6px';
-                    btn.style.fontSize = '0.8rem';
-                    btn.innerText = i;
-                    if (i === currentPage) {
-                        btn.style.background = '#2563eb';
-                        btn.style.color = '#fff';
-                        btn.style.borderColor = '#2563eb';
-                        btn.style.fontWeight = '800';
-                    }
-                    btn.onclick = function() {
-                        currentPage = i;
-                        updatePagination();
-                    };
-                    pageBtnContainer.appendChild(btn);
-                }
-            }
-        }
+        document.getElementById('nextBtn').disabled = currentPage === totalPages || totalPages === 0;
     }
 
     function nextPage() { currentPage++; updatePagination(); }

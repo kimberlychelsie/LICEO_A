@@ -409,9 +409,13 @@ def registrar_enrollments():
         if p_enrolled < 1: p_enrolled = 1
         offset_enrolled = (p_enrolled - 1) * limit
 
-        # SEARCH QUERIES
+        # SEARCH & FILTER QUERIES
         q_new = (request.args.get("q_new") or "").strip()
+        g_new = (request.args.get("g_new") or "").strip()
+
         q_enrolled = (request.args.get("q_enrolled") or "").strip()
+        g_enrolled = (request.args.get("g_enrolled") or "").strip()
+        sec_enrolled = (request.args.get("sec_enrolled") or "").strip()
 
         # dropdown data: active + inactive
         cursor.execute("""
@@ -576,9 +580,16 @@ def registrar_enrollments():
             """
             new_params.extend([f"%{q_new}%", f"%{q_new}%"])
 
+        if g_new:
+            new_where += " AND LOWER(e.grade_level) = LOWER(%s)"
+            new_params.append(g_new)
+
         cursor.execute(f"SELECT COUNT(DISTINCT e.enrollment_id) FROM enrollments e WHERE {new_where}", tuple(new_params))
         total_new = cursor.fetchone()["count"]
-        total_pages_new = (total_new + limit - 1) // limit
+        total_pages_new = max((total_new + limit - 1) // limit, 1)
+        if p_new > total_pages_new:
+            p_new = total_pages_new
+            offset_new = (p_new - 1) * limit
 
         new_query_params = new_params + [limit, offset_new]
         cursor.execute(f"""
@@ -632,9 +643,20 @@ def registrar_enrollments():
             """
             enrolled_params.extend([f"%{q_enrolled}%", f"%{q_enrolled}%"])
 
-        cursor.execute(f"SELECT COUNT(*) FROM enrollments e WHERE {enrolled_where}", tuple(enrolled_params))
+        if g_enrolled:
+            enrolled_where += " AND LOWER(e.grade_level) = LOWER(%s)"
+            enrolled_params.append(g_enrolled)
+
+        if sec_enrolled:
+            enrolled_where += " AND LOWER(s.section_name) = LOWER(%s)"
+            enrolled_params.append(sec_enrolled)
+
+        cursor.execute(f"SELECT COUNT(DISTINCT e.enrollment_id) FROM enrollments e LEFT JOIN sections s ON s.section_id = e.section_id WHERE {enrolled_where}", tuple(enrolled_params))
         total_enrolled = cursor.fetchone()["count"]
-        total_pages_enrolled = (total_enrolled + limit - 1) // limit
+        total_pages_enrolled = max((total_enrolled + limit - 1) // limit, 1)
+        if p_enrolled > total_pages_enrolled:
+            p_enrolled = total_pages_enrolled
+            offset_enrolled = (p_enrolled - 1) * limit
 
         enrolled_query_params = enrolled_params + [limit, offset_enrolled]
         cursor.execute(f"""
@@ -760,9 +782,12 @@ def registrar_enrollments():
             current_page_enrolled=p_enrolled,
             total_enrolled=total_enrolled,
 
-            # SEARCH QUERIES
+            # SEARCH & FILTER QUERIES
             q_new=q_new,
+            g_new=g_new,
             q_enrolled=q_enrolled,
+            g_enrolled=g_enrolled,
+            sec_enrolled=sec_enrolled,
             branch_code=branch_code,
         )
     except Exception as e:
