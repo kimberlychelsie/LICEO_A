@@ -34,6 +34,24 @@ def is_valid_email(email):
     email_regex = r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
     return bool(re.match(email_regex, email))
 
+def is_valid_name(val):
+    if not val:
+        return True
+    import re
+    return bool(re.match(r"^[A-Za-zñÑ\s.,'-]+$", val))
+
+def is_valid_contact(val):
+    if not val:
+        return True
+    import re
+    return bool(re.match(r"^\d{7,15}$", val))
+
+def is_valid_lrn(val):
+    if not val:
+        return True
+    import re
+    return bool(re.match(r"^\d{12}$", val))
+
 
 def sync_student_elective_membership(cursor, enrollment_id):
     """
@@ -789,6 +807,24 @@ def enrollment_detail(enrollment_id):
                     if f in ["email", "guardian_email"] and val:
                         if not is_valid_email(val):
                             flash(f"The email address '{val}' is invalid. Please follow the correct format (e.g., name@domain.com) and avoid special characters like # % &.", "error")
+                            return redirect(request.url)
+
+                    # ── CONTACT VALIDATION ──
+                    if f in ["contact_number", "guardian_contact", "father_contact", "mother_contact"] and val:
+                        if not is_valid_contact(val):
+                            flash(f"The contact number '{val}' is invalid. Contact numbers must contain digits only.", "error")
+                            return redirect(request.url)
+
+                    # ── NAME VALIDATION ──
+                    if f in ["student_first_name", "student_middle_name", "student_last_name", "student_name", "guardian_first_name", "guardian_middle_name", "guardian_last_name", "guardian_name", "father_first_name", "father_middle_name", "father_last_name", "father_name", "mother_first_name", "mother_middle_name", "mother_last_name", "mother_name"] and val:
+                        if not is_valid_name(val):
+                            flash(f"The name '{val}' is invalid. Names must only contain letters, spaces, hyphens, and periods.", "error")
+                            return redirect(request.url)
+
+                    # ── LRN VALIDATION ──
+                    if f == "lrn" and val:
+                        if not is_valid_lrn(val):
+                            flash("Learner Reference Number (LRN) must be exactly 12 digits.", "error")
                             return redirect(request.url)
 
                     sets.append(f"{f} = %s")
@@ -2015,6 +2051,31 @@ def registrar_students_by_grade_update(enrollment_id):
             raw = request.form.get(f)
             if raw is not None:
                 val = raw.strip() or None
+
+                # ── EMAIL VALIDATION ──
+                if f in ["email", "guardian_email"] and val:
+                    if not is_valid_email(val):
+                        flash(f"The email address '{val}' is invalid. Please follow the correct format (e.g., name@domain.com) and avoid special characters like # % &.", "error")
+                        return redirect(request.referrer or "/registrar/students-by-grade")
+
+                # ── CONTACT VALIDATION ──
+                if f in ["contact_number", "guardian_contact", "father_contact", "mother_contact"] and val:
+                    if not is_valid_contact(val):
+                        flash(f"The contact number '{val}' is invalid. Contact numbers must contain digits only.", "error")
+                        return redirect(request.referrer or "/registrar/students-by-grade")
+
+                # ── NAME VALIDATION ──
+                if f in ["student_first_name", "student_middle_name", "student_last_name", "student_name", "guardian_first_name", "guardian_middle_name", "guardian_last_name", "guardian_name", "father_first_name", "father_middle_name", "father_last_name", "father_name", "mother_first_name", "mother_middle_name", "mother_last_name", "mother_name"] and val:
+                    if not is_valid_name(val):
+                        flash(f"The name '{val}' is invalid. Names must only contain letters, spaces, hyphens, and periods.", "error")
+                        return redirect(request.referrer or "/registrar/students-by-grade")
+
+                # ── LRN VALIDATION ──
+                if f == "lrn" and val:
+                    if not is_valid_lrn(val):
+                        flash("Learner Reference Number (LRN) must be exactly 12 digits.", "error")
+                        return redirect(request.referrer or "/registrar/students-by-grade")
+
                 sets.append(f"{f} = %s")
                 vals.append(val)
 

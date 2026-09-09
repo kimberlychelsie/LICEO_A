@@ -916,7 +916,7 @@
                                                 </div>
                                                 <input type="text" name="birthplace" class="track-change"
                                                     value="{{ enrollment.birthplace or '' }}"
-                                                    placeholder="City, Province" required minlength="3" maxlength="100"
+                                                    placeholder="City, Province" maxlength="100"
                                                     oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s,]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',')"
                                                     style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                             </div>
@@ -928,6 +928,7 @@
                                                 </div>
                                                 <input type="text" name="lrn" class="track-change"
                                                     value="{{ enrollment.lrn or '' }}" maxlength="12"
+                                                    oninput="this.value=this.value.replace(/[^0-9]/g,'')"
                                                     style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                             </div>
 
@@ -938,7 +939,7 @@
                                                 </div>
                                                 <input type="email" name="email" class="track-change"
                                                     value="{{ enrollment.email or '' }}"
-                                                    placeholder="username@domain.com" required minlength="5"
+                                                    placeholder="username@domain.com"
                                                     maxlength="60"
                                                     pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
                                                     oninput="this.value = this.value.replace(/[^a-zA-Z0-9@._-]/g, '').replace(/\.\.+/g, '.').replace(/--+/g, '-').replace(/__+/g, '_').replace(/(@.*)@/g, '$1')"
@@ -952,6 +953,7 @@
                                                     Contact:</div>
                                                 <input type="text" name="contact_number" class="track-change"
                                                     value="{{ enrollment.contact_number or '' }}" maxlength="11"
+                                                    oninput="this.value=this.value.replace(/[^0-9]/g,'')"
                                                     style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                             </div>
 
@@ -961,7 +963,6 @@
                                                     style="font-size:0.78rem; font-weight:800; color:var(--muted); padding-top:8px;">
                                                     Address:</div>
                                                 <textarea name="address" class="track-change" rows="2" maxlength="255"
-                                                    required minlength="10"
                                                     oninput="this.value = this.value.replace(/[^A-Za-z0-9ñÑ\s,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',').replace(/--+/g, '-')"
                                                     style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px; resize:none;">{{ enrollment.address or '' }}</textarea>
                                             </div>
@@ -983,6 +984,7 @@
                                                        class="track-change"
                                                        value="{{ enrollment.guardian_first_name or '' }}"
                                                        maxlength="100"
+                                                       oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s.-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ')"
                                                        style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                             </div>
                                             
@@ -996,6 +998,7 @@
                                                        class="track-change"
                                                        value="{{ enrollment.guardian_middle_name or '' }}"
                                                        maxlength="100"
+                                                       oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s.-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ')"
                                                        style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                             </div>
                                             
@@ -1009,6 +1012,7 @@
                                                        class="track-change"
                                                        value="{{ enrollment.guardian_last_name or '' }}"
                                                        maxlength="100"
+                                                       oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s.-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ')"
                                                        style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                             </div>
                                             <div class="form-row"
@@ -1017,6 +1021,7 @@
                                                     Contact:</div>
                                                 <input type="text" name="guardian_contact" class="track-change"
                                                     value="{{ enrollment.guardian_contact or '' }}" maxlength="11"
+                                                    oninput="this.value=this.value.replace(/[^0-9]/g,'')"
                                                     style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
                                             </div>
                                             <div class="form-row"
@@ -1026,7 +1031,7 @@
                                                 </div>
                                                 <input type="email" name="guardian_email" class="track-change"
                                                     value="{{ enrollment.guardian_email or '' }}"
-                                                    placeholder="username@domain.com" required minlength="5"
+                                                    placeholder="username@domain.com"
                                                     maxlength="60"
                                                     pattern="^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$"
                                                     oninput="this.value = this.value.replace(/[^a-zA-Z0-9@._-]/g, '').replace(/\.\.+/g, '.').replace(/--+/g, '-').replace(/__+/g, '_').replace(/(@.*)@/g, '$1')"
@@ -1050,6 +1055,7 @@
            class="track-change"
            value="{{ enrollment.father_first_name or '' }}"
            maxlength="100"
+           oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s.-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ')"
            style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
 </div>
 
@@ -1063,6 +1069,7 @@
            class="track-change"
            value="{{ enrollment.father_middle_name or '' }}"
            maxlength="100"
+           oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s.-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ')"
            style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
 </div>
 
@@ -1076,6 +1083,7 @@
            class="track-change"
            value="{{ enrollment.father_last_name or '' }}"
            maxlength="100"
+           oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s.-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ')"
            style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
 </div>
 
@@ -1089,18 +1097,10 @@
            class="track-change"
            value="{{ enrollment.father_contact or '' }}"
            maxlength="11"
+           oninput="this.value=this.value.replace(/[^0-9]/g,'')"
            style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
 </div>
-                                            <div class="form-row"
-                                                style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center; margin-bottom:8px;">
-                                                <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">
-                                                    Father
-                                                    Contact:</div>
-                                                <input type="text" name="father_contact" class="track-change"
-                                                    value="{{ enrollment.father_contact or '' }}" maxlength="11"
-                                                    style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
-                                            </div>
-                                            <div style="height:10px;"></div>
+<div style="height:10px;"></div>
 
 <div style="font-weight:800; color:#1e3a8a; margin-bottom:10px;">
     Mother Information
@@ -1116,6 +1116,7 @@
            class="track-change"
            value="{{ enrollment.mother_first_name or '' }}"
            maxlength="100"
+           oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s.-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ')"
            style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
 </div>
 
@@ -1129,6 +1130,7 @@
            class="track-change"
            value="{{ enrollment.mother_middle_name or '' }}"
            maxlength="100"
+           oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s.-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ')"
            style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
 </div>
 
@@ -1142,6 +1144,7 @@
            class="track-change"
            value="{{ enrollment.mother_last_name or '' }}"
            maxlength="100"
+           oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s.-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ')"
            style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
 </div>
 
@@ -1155,17 +1158,9 @@
            class="track-change"
            value="{{ enrollment.mother_contact or '' }}"
            maxlength="11"
+           oninput="this.value=this.value.replace(/[^0-9]/g,'')"
            style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
 </div>
-                                            <div class="form-row"
-                                                style="display:grid; grid-template-columns: 110px 1fr; gap:10px; align-items:center;">
-                                                <div style="font-size:0.78rem; font-weight:800; color:var(--muted);">
-                                                    Mother
-                                                    Contact:</div>
-                                                <input type="text" name="mother_contact" class="track-change"
-                                                    value="{{ enrollment.mother_contact or '' }}" maxlength="11"
-                                                    style="padding:8px 10px; border:1.5px solid var(--border); border-radius:10px;">
-                                            </div>
                                         </div>
 
                                         <!-- Documents -->

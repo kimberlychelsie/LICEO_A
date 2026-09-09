@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, session, redirect, flash, url_for, Response
+from flask import Blueprint, render_template, request, session, redirect, flash, url_for, Response, jsonify
 from datetime import datetime
 import time
 from db import get_db_connection
@@ -28,6 +28,24 @@ def log_audit_event(cur, user_id, user_name, role, branch_id, action, details, i
     except Exception as e:
         logger.warning(f"Could not log audit event: {e}")
 
+
+def is_valid_name(val):
+    if not val:
+        return True
+    import re
+    return bool(re.match(r"^[A-Za-zñÑ\s.,'-]+$", val))
+
+def is_valid_contact(val):
+    if not val:
+        return True
+    import re
+    return bool(re.match(r"^\d{7,15}$", val))
+
+def is_valid_username(val):
+    if not val:
+        return True
+    import re
+    return bool(re.match(r"^[A-Za-z0-9_.-]+$", val))
 
 def check_sudo_required():
     sudo_app = session.get("sudo_approved")
@@ -1415,9 +1433,339 @@ def super_admin_clear_lockouts():
     return redirect(request.referrer or url_for("super_admin.super_admin_security"))
 
 
+
+# =======================
+# =======================
+# SUPER ADMIN ACCOUNT & SECURITY SETTINGS
+# =======================
+def mask_email(email):
+    if not email or "@" not in email:
+        return email or ""
+    parts = email.split("@")
+    name, domain = parts[0], parts[1]
+    if len(name) <= 2:
+        masked_name = name[0] + "*"
+    elif len(name) <= 4:
+        masked_name = name[:1] + "*" * (len(name) - 2) + name[-1]
+    else:
+        masked_name = name[:2] + "*" * (len(name) - 3) + name[-1]
+    return f"{masked_name}@{domain}"
+
+
+def mask_phone(phone):
+    if not phone or len(phone) < 7:
+        return phone or ""
+    return phone[:4] + "*" * (len(phone) - 7) + phone[-3:]
+
+
+def mask_username(username):
+    if not username:
+        return ""
+    if len(username) <= 2:
+        return username[0] + "*"
+    elif len(username) <= 4:
+        return username[:1] + "*" * (len(username) - 2) + username[-1]
+    else:
+        return username[:2] + "*" * (len(username) - 4) + username[-2:]
+
+
+def verify_password_safe(stored_password, provided_password):
+    if not stored_password or not provided_password:
+        return False
+    if stored_password.startswith(("scrypt:", "pbkdf2:", "$2b$", "$2a$")):
+        try:
+            return check_password_hash(stored_password, provided_password)
+        except Exception:
+            return False
+    return stored_password == provided_password
+
+
+@super_admin_bp.route("/super-admin/verify-sudo-ajax", methods=["POST"])
+def super_admin_verify_sudo_ajax():
+    if session.get("role") != "super_admin":
+        return jsonify({"success": False, "error": "Unauthorized"}), 403
+
+    data = request.get_json() or {}
+    password = data.get("password", "").strip()
+
+    if not password:
+        return jsonify({"success": False, "error": "Master Password is required."}), 400
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        user_id = session.get("user_id")
+        cursor.execute("SELECT password FROM users WHERE role = 'super_admin' AND (user_id = %s OR username = %s) LIMIT 1", (user_id, session.get("username")))
+        user_rec = cursor.fetchone()
+        if not user_rec:
+            cursor.execute("SELECT password FROM users WHERE role = 'super_admin' LIMIT 1")
+            user_rec = cursor.fetchone()
+
+        if user_rec and verify_password_safe(user_rec.get("password") or "", password):
+            session["sudo_approved"] = time.time()
+            log_audit_event(
+                cursor, session.get("user_id"), session.get("full_name") or "Super Admin",
+                "super_admin", None, "SUDO_UNLOCKED", "Super Admin verified master password to reveal sensitive information.",
+                request.remote_addr
+            )
+            db.commit()
+            return jsonify({"success": True, "message": "Access granted! Sensitive information unlocked."})
+        else:
+            return jsonify({"success": False, "error": "Incorrect Master Password. Access denied."}), 401
+    except Exception as e:
+        logger.error(f"Error verifying sudo AJAX: {e}")
+        return jsonify({"success": False, "error": f"Server error: {e}"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+
+@super_admin_bp.route("/super-admin/settings", methods=["GET"])
+def super_admin_settings():
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        user_id = session.get("user_id")
+        cursor.execute("""
+            SELECT user_id, username, full_name, email, contact_number, role, last_login, last_password_change, status, profile_image
+            FROM users
+            WHERE role = 'super_admin' AND (user_id = %s OR username = %s)
+            LIMIT 1
+        """, (user_id, session.get("username")))
+        admin_user = cursor.fetchone()
+
+        if not admin_user:
+            cursor.execute("""
+                SELECT user_id, username, full_name, email, contact_number, role, last_login, last_password_change, status, profile_image
+                FROM users
+                WHERE role = 'super_admin'
+                ORDER BY user_id ASC
+                LIMIT 1
+            """)
+            admin_user = cursor.fetchone()
+
+        sudo_active = check_sudo_required()
+        sudo_remaining = 0
+        if sudo_active and session.get("sudo_approved"):
+            elapsed = time.time() - session.get("sudo_approved")
+            sudo_remaining = max(0, int(900 - elapsed))
+
+        masked_username_val = mask_username(admin_user["username"]) if (admin_user and admin_user.get("username")) else ""
+        masked_email_val = mask_email(admin_user["email"]) if (admin_user and admin_user.get("email")) else ""
+        masked_contact_val = mask_phone(admin_user["contact_number"]) if (admin_user and admin_user.get("contact_number")) else ""
+
+    except Exception as e:
+        logger.error(f"Error loading super admin settings: {e}")
+        admin_user = None
+        sudo_active = False
+        sudo_remaining = 0
+        masked_username_val = ""
+        masked_email_val = ""
+        masked_contact_val = ""
+    finally:
+        cursor.close()
+        db.close()
+
+    return render_template(
+        "super_admin_settings.html",
+        admin_user=admin_user,
+        sudo_active=sudo_active,
+        sudo_remaining=sudo_remaining,
+        masked_username=masked_username_val,
+        masked_email=masked_email_val,
+        masked_contact=masked_contact_val
+    )
+
+
+@super_admin_bp.route("/super-admin/settings/profile", methods=["POST"])
+def super_admin_update_profile():
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    username = request.form.get("username", "").strip()
+    full_name = request.form.get("full_name", "").strip()
+    email = request.form.get("email", "").strip().lower()
+    contact_number = request.form.get("contact_number", "").strip()
+    password_verify = request.form.get("password_verify", "").strip()
+
+    if not username or not full_name:
+        flash("❌ Username and Full Name are required.", "error")
+        return redirect(url_for("super_admin.super_admin_settings"))
+
+    if not is_valid_username(username):
+        flash("❌ Username can only contain letters, numbers, underscores, hyphens, and periods.", "error")
+        return redirect(url_for("super_admin.super_admin_settings"))
+
+    if not is_valid_name(full_name):
+        flash("❌ Full Name can only contain letters, spaces, hyphens, and periods.", "error")
+        return redirect(url_for("super_admin.super_admin_settings"))
+
+    if contact_number and not is_valid_contact(contact_number):
+        flash("❌ Contact number must contain digits only.", "error")
+        return redirect(url_for("super_admin.super_admin_settings"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        user_id = session.get("user_id")
+
+        # Verify Master Password if Sudo session is not currently active
+        if not check_sudo_required():
+            if not password_verify:
+                flash("🔒 Master Password verification is required to update sensitive profile information.", "error")
+                return redirect(url_for("super_admin.super_admin_settings"))
+
+            cursor.execute("SELECT password FROM users WHERE role = 'super_admin' LIMIT 1")
+            user_rec = cursor.fetchone()
+            if not user_rec or not verify_password_safe(user_rec.get("password") or "", password_verify):
+                flash("❌ Incorrect Master Password. Profile update denied.", "error")
+                return redirect(url_for("super_admin.super_admin_settings"))
+
+            session["sudo_approved"] = time.time()
+
+        # Check if username is taken by another account
+        cursor.execute("""
+            SELECT user_id FROM users 
+            WHERE username = %s AND role != 'super_admin'
+        """, (username,))
+        existing_user = cursor.fetchone()
+        if existing_user:
+            flash(f"❌ Username '{username}' is already taken by another account.", "error")
+            return redirect(url_for("super_admin.super_admin_settings"))
+
+        if email:
+            cursor.execute("""
+                SELECT user_id FROM users 
+                WHERE email = %s AND user_id != %s AND role != 'super_admin'
+            """, (email, user_id))
+            existing = cursor.fetchone()
+            if existing:
+                flash(f"❌ The email '{email}' is already registered to another user account.", "error")
+                return redirect(url_for("super_admin.super_admin_settings"))
+
+        cursor.execute("""
+            UPDATE users
+            SET username = %s, full_name = %s, email = %s, contact_number = %s
+            WHERE role = 'super_admin'
+        """, (username, full_name, email or None, contact_number or None))
+        
+        db.commit()
+
+        session["username"] = username
+        session["full_name"] = full_name
+        if email:
+            session["email"] = email
+
+        log_audit_event(
+            cursor, user_id, full_name, "super_admin", None,
+            "SUPER_ADMIN_PROFILE_UPDATE",
+            f"Updated profile details. Username: {username}, Name: {full_name}, Email: {email or 'None'}, Contact: {contact_number or 'None'}",
+            request.remote_addr
+        )
+        db.commit()
+
+        flash("✅ Super Admin Profile updated successfully!", "success")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating super admin profile: {e}")
+        flash(f"❌ Error updating profile: {e}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(url_for("super_admin.super_admin_settings"))
+
+
+@super_admin_bp.route("/super-admin/settings/password", methods=["POST"])
+def super_admin_update_password():
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    current_password = request.form.get("current_password", "").strip()
+    new_password = request.form.get("new_password", "").strip()
+    confirm_password = request.form.get("confirm_password", "").strip()
+
+    if not current_password or not new_password or not confirm_password:
+        flash("❌ All password fields are required.", "error")
+        return redirect(url_for("super_admin.super_admin_settings"))
+
+    if new_password != confirm_password:
+        flash("❌ New Password and Confirm Password do not match.", "error")
+        return redirect(url_for("super_admin.super_admin_settings"))
+
+    if len(new_password) < 8:
+        flash("❌ New Password must be at least 8 characters long.", "error")
+        return redirect(url_for("super_admin.super_admin_settings"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        user_id = session.get("user_id")
+        cursor.execute("SELECT password FROM users WHERE role = 'super_admin' LIMIT 1")
+        user_rec = cursor.fetchone()
+
+        if not user_rec or not verify_password_safe(user_rec.get("password") or "", current_password):
+            flash("❌ Verification failed: Current password is incorrect.", "error")
+            return redirect(url_for("super_admin.super_admin_settings"))
+
+        new_hash = generate_password_hash(new_password)
+        cursor.execute("""
+            UPDATE users
+            SET password = %s, last_password_change = NOW()
+            WHERE role = 'super_admin'
+        """, (new_hash,))
+        db.commit()
+
+        log_audit_event(
+            cursor, user_id, session.get("full_name") or "Super Admin", "super_admin", None,
+            "SUPER_ADMIN_PASSWORD_CHANGE",
+            "Master Super Admin password updated successfully.",
+            request.remote_addr
+        )
+        db.commit()
+
+        flash("✅ Master Password updated successfully! Please use your new password next time you login.", "success")
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error updating super admin password: {e}")
+        flash(f"❌ Error updating password: {e}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect(url_for("super_admin.super_admin_settings"))
+
+
+@super_admin_bp.route("/super-admin/settings/preferences", methods=["POST"])
+def super_admin_update_preferences():
+    if session.get("role") != "super_admin":
+        return redirect(url_for("auth.login"))
+
+    sudo_timeout = request.form.get("sudo_timeout", "900")
+    email_alerts = request.form.get("email_alerts") == "on"
+
+    try:
+        session["sudo_timeout_secs"] = int(sudo_timeout)
+        session["email_alerts_enabled"] = email_alerts
+
+        flash("✅ Preferences updated successfully.", "success")
+    except Exception as e:
+        flash(f"❌ Error saving preferences: {e}", "error")
+
+    return redirect(url_for("super_admin.super_admin_settings"))
+
+
 @super_admin_bp.after_request
 def add_no_cache_headers(response):
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
     response.headers["Pragma"]        = "no-cache"
     response.headers["Expires"]       = "0"
     return response
+

@@ -1,0 +1,737 @@
+{% extends "base.html" %}
+{% block title %}Account & Security Settings | Super Admin{% endblock %}
+
+{% block content %}
+<style>
+    :root {
+        --ma-primary: #1a3a8f;
+        --ma-gold: #facc15;
+        --ma-bg: #f8fafc;
+        --ma-card: #ffffff;
+        --ma-border: rgba(26, 58, 143, 0.1);
+        --ma-text: #0f172a;
+        --ma-muted: #64748b;
+        --ma-accent: #3b82f6;
+    }
+
+    .sa-container {
+        padding: 32px 24px;
+        max-width: 1100px;
+        margin: 0 auto;
+    }
+
+    .hero-banner {
+        background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
+        border-radius: 20px;
+        padding: 32px 40px;
+        margin-bottom: 24px;
+        color: #fff;
+        box-shadow: 0 15px 35px -10px rgba(26, 58, 143, 0.2);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .hero-content h1 {
+        font-size: 2rem;
+        font-weight: 900;
+        letter-spacing: -0.03em;
+        margin-bottom: 8px;
+    }
+
+    .hero-content p {
+        font-size: 0.95rem;
+        color: rgba(255, 255, 255, 0.85);
+        margin: 0;
+    }
+
+    .btn-back-dash {
+        background: rgba(255, 255, 255, 0.15);
+        color: #fff;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 10px 20px;
+        border-radius: 12px;
+        font-weight: 700;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-back-dash:hover {
+        background: #fff;
+        color: var(--ma-primary);
+    }
+
+    /* Tabs Bar */
+    .settings-tabs {
+        display: flex;
+        gap: 12px;
+        margin-bottom: 24px;
+        border-bottom: 2px solid var(--ma-border);
+        padding-bottom: 4px;
+    }
+
+    .tab-btn {
+        background: none;
+        border: none;
+        padding: 12px 20px;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--ma-muted);
+        cursor: pointer;
+        border-bottom: 3px solid transparent;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .tab-btn:hover {
+        color: var(--ma-primary);
+    }
+
+    .tab-btn.active {
+        color: var(--ma-primary);
+        border-bottom-color: var(--ma-primary);
+    }
+
+    /* Card Panels */
+    .settings-panel {
+        display: none;
+        background: var(--ma-card);
+        border-radius: 20px;
+        padding: 32px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        border: 1px solid var(--ma-border);
+    }
+
+    .settings-panel.active {
+        display: block;
+    }
+
+    .panel-title {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: var(--ma-primary);
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .panel-subtitle {
+        font-size: 0.9rem;
+        color: var(--ma-muted);
+        margin-bottom: 24px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-label {
+        display: block;
+        font-weight: 700;
+        font-size: 0.9rem;
+        color: var(--ma-text);
+        margin-bottom: 8px;
+    }
+
+    .form-label .req-asterisk {
+        color: #ef4444;
+        font-weight: 900;
+        margin-left: 2px;
+    }
+
+    .form-input {
+        width: 100%;
+        padding: 12px 16px;
+        border-radius: 12px;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        font-size: 0.95rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        background: #fff;
+    }
+
+    .form-input:focus {
+        outline: none;
+        border-color: var(--ma-primary);
+        box-shadow: 0 0 0 3px rgba(26, 58, 143, 0.15);
+    }
+
+    .form-input[readonly] {
+        background: #f1f5f9;
+        color: var(--ma-muted);
+        cursor: not-allowed;
+    }
+
+    .form-row-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+
+    .badge-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 700;
+    }
+
+    .badge-verified {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    .badge-unverified {
+        background: #fef9c3;
+        color: #a16207;
+    }
+
+    .btn-save {
+        background: var(--ma-primary);
+        color: #fff;
+        border: none;
+        padding: 12px 28px;
+        border-radius: 12px;
+        font-weight: 800;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 12px rgba(26, 58, 143, 0.2);
+    }
+
+    .btn-save:hover:not(:disabled) {
+        background: #0c2461;
+        transform: translateY(-1px);
+    }
+
+    /* Disabled Save Button */
+    .btn-save:disabled,
+    .btn-save.disabled {
+        background: #cbd5e1 !important;
+        color: #64748b !important;
+        cursor: not-allowed !important;
+        box-shadow: none !important;
+        transform: none !important;
+        opacity: 0.65;
+    }
+
+    .btn-unlock-privacy {
+        background: #f1f5f9;
+        color: var(--ma-primary);
+        border: 1px solid var(--ma-border);
+        padding: 8px 16px;
+        border-radius: 10px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        transition: all 0.2s ease;
+        margin-top: 6px;
+    }
+
+    .btn-unlock-privacy:hover {
+        background: var(--ma-primary);
+        color: #fff;
+    }
+
+    .alert-flash {
+        padding: 14px 20px;
+        border-radius: 12px;
+        font-weight: 600;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .alert-flash.success {
+        background: #dcfce7;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+    }
+
+    .alert-flash.error {
+        background: #fee2e2;
+        color: #991b1b;
+        border: 1px solid #fecaca;
+    }
+
+    /* Security Stats Sidebar */
+    .sec-card-grid {
+        display: grid;
+        grid-template-columns: 2fr 1fr;
+        gap: 24px;
+    }
+
+    .sidebar-card {
+        background: #f8fafc;
+        border-radius: 16px;
+        padding: 20px;
+        border: 1px solid var(--ma-border);
+    }
+
+    .sidebar-card h4 {
+        font-size: 0.95rem;
+        font-weight: 800;
+        color: var(--ma-primary);
+        margin-bottom: 12px;
+    }
+
+    .info-list-item {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        padding: 8px 0;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .info-list-item:last-child {
+        border-bottom: none;
+    }
+
+    .info-list-item span:first-child {
+        color: var(--ma-muted);
+    }
+
+    .info-list-item span:last-child {
+        font-weight: 700;
+        color: var(--ma-text);
+    }
+
+    /* Privacy Banner */
+    .privacy-banner {
+        background: #eff6ff;
+        border: 1px solid #bfdbfe;
+        border-radius: 14px;
+        padding: 14px 20px;
+        margin-bottom: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .privacy-banner.unlocked {
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+    }
+
+    .privacy-text {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #1e40af;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .privacy-banner.unlocked .privacy-text {
+        color: #166534;
+    }
+
+    /* Custom Password Verification Modal */
+    .sudo-modal-backdrop {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(6px);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .sudo-modal-backdrop.show {
+        display: flex;
+    }
+
+    .sudo-modal-card {
+        background: #fff;
+        border-radius: 20px;
+        padding: 32px;
+        width: 100%;
+        max-width: 440px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        border: 1px solid var(--ma-border);
+        text-align: center;
+        animation: modalFadeIn 0.25s ease-out;
+    }
+
+    @keyframes modalFadeIn {
+        from { opacity: 0; transform: scale(0.95); }
+        to { opacity: 1; transform: scale(1); }
+    }
+
+    .sudo-modal-icon {
+        width: 64px;
+        height: 64px;
+        background: #eff6ff;
+        color: var(--ma-primary);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 16px;
+    }
+</style>
+
+<div class="sa-container">
+    <!-- Hero Banner -->
+    <div class="hero-banner">
+        <div class="hero-content">
+            <h1>Account & Security Settings</h1>
+            <p>Manage your Super Admin profile, master credentials, and security notification preferences.</p>
+        </div>
+        <div>
+            <a href="{{ url_for('super_admin.super_admin_dashboard') }}" class="btn-back-dash">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert-flash {{ category }}">
+        {{ message }}
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <!-- Tabs Navigation -->
+    <div class="settings-tabs">
+        <button type="button" class="tab-btn active" onclick="switchTab('profileTab', this)">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+            </svg>
+            Personal Profile
+        </button>
+        <button type="button" class="tab-btn" onclick="switchTab('securityTab', this)">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+            </svg>
+            Security & Alerts
+        </button>
+    </div>
+
+    <!-- TAB 1: Profile -->
+    <div id="profileTab" class="settings-panel active">
+        <!-- Privacy & Sudo Protection Banner -->
+        <div class="privacy-banner {% if sudo_active %}unlocked{% endif %}">
+            <div class="privacy-text">
+                {% if sudo_active %}
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z"></path>
+                </svg>
+                <span><strong>Security Unlocked:</strong> Sensitive details (Username, Email & Contact) are unmasked and editable. Sudo session active.</span>
+                {% else %}
+                <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                </svg>
+                <span><strong>Privacy Protection Active:</strong> Sensitive details (Username, Email & Contact) are locked and masked with asterisks.</span>
+                {% endif %}
+            </div>
+            {% if not sudo_active %}
+            <button type="button" class="btn-unlock-privacy" onclick="openSudoModal()">
+                👁️ Click to Reveal (Requires Password)
+            </button>
+            {% endif %}
+        </div>
+
+        <div>
+            <div class="panel-title">
+                <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+                Super Admin Profile Information
+            </div>
+            <div class="panel-subtitle">Fields marked with red asterisks (<span class="req-asterisk">*</span>) are mandatory.</div>
+
+            <form id="profileForm" action="{{ url_for('super_admin.super_admin_update_profile') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="password_verify" id="hiddenPasswordVerify" value="">
+
+                <div class="form-row-2">
+                    <div class="form-group">
+                        <label class="form-label">Username <span class="req-asterisk">*</span></label>
+                        {% if sudo_active %}
+                        <input type="text" name="username" id="inputUsername" class="form-input" value="{{ admin_user.username if admin_user else 'superadmin' }}" required placeholder="e.g. superadmin" oninput="this.value = this.value.replace(/[^A-Za-z0-9_.-]/g, '')">
+                        {% else %}
+                        <input type="text" name="username" id="inputUsername" class="form-input" value="{{ masked_username if masked_username else 'su*****in' }}" readonly onclick="openSudoModal()" style="cursor: pointer;" title="Click to unlock with password">
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Role</label>
+                        <input type="text" class="form-input" value="Super Administrator" readonly>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Full Name <span class="req-asterisk">*</span></label>
+                    <input type="text" name="full_name" id="inputFullName" class="form-input" value="{{ admin_user.full_name if admin_user and admin_user.full_name else 'Super Admin' }}" required placeholder="e.g. Administrator General" oninput="this.value = this.value.replace(/[^A-Za-zñÑ\s.,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ')">
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        Email Address <span class="req-asterisk">*</span>
+                        {% if admin_user and admin_user.email %}
+                        <span class="badge-status badge-verified">✓ Active</span>
+                        {% else %}
+                        <span class="badge-status badge-unverified">⚠️ Email Not Configured</span>
+                        {% endif %}
+                    </label>
+                    
+                    {% if sudo_active %}
+                    <input type="email" name="email" id="inputEmail" class="form-input" value="{{ admin_user.email if admin_user and admin_user.email else '' }}" required placeholder="e.g. admin@liceodefilipinas.edu.ph" oninput="this.value = this.value.replace(/[^a-zA-Z0-9@._-]/g, '').replace(/\.\.+/g, '.').replace(/--+/g, '-').replace(/__+/g, '_').replace(/(@.*)@/g, '$1')">
+                    {% else %}
+                    <input type="text" name="email" id="inputEmail" class="form-input" value="{{ masked_email if masked_email else 'admin@liceodefilipinas.edu.ph' }}" readonly onclick="openSudoModal()" style="cursor: pointer;" title="Click to unlock with password">
+                    {% endif %}
+                    <small style="color: var(--ma-muted); margin-top: 4px; display: block;">This email receives system security alerts, cashier void reports, and password reset instructions.</small>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Mobile / Contact Number</label>
+                    {% if sudo_active %}
+                    <input type="text" name="contact_number" id="inputContact" class="form-input" value="{{ admin_user.contact_number if admin_user and admin_user.contact_number else '' }}" placeholder="e.g. 09171234567" maxlength="11" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                    {% else %}
+                    <input type="text" name="contact_number" id="inputContact" class="form-input" value="{{ masked_contact if masked_contact else '' }}" readonly onclick="openSudoModal()" style="cursor: pointer;" title="Click to unlock with password">
+                    {% endif %}
+                </div>
+
+                <button type="button" id="btnSaveProfile" class="btn-save disabled" disabled onclick="handleProfileSubmit()">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Save Profile Changes
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- TAB 2: Security & Alerts -->
+    <div id="securityTab" class="settings-panel">
+        <div class="panel-title">
+            <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+            </svg>
+            Security & Session Preferences
+        </div>
+        <div class="panel-subtitle">Configure Sudo Mode duration and email notification options.</div>
+
+        <form action="{{ url_for('super_admin.super_admin_update_preferences') }}" method="POST" style="max-width: 650px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label class="form-label">Sudo Mode Security Timeout</label>
+                <select name="sudo_timeout" class="form-input">
+                    <option value="300">5 Minutes</option>
+                    <option value="900" selected>15 Minutes (Recommended)</option>
+                    <option value="1800">30 Minutes</option>
+                    <option value="3600">60 Minutes</option>
+                </select>
+                <small style="color: var(--ma-muted); margin-top: 4px; display: block;">Duration before re-verification is required for high-risk actions (e.g. replacing Branch Admin).</small>
+            </div>
+
+            <div class="form-group" style="margin-top: 24px;">
+                <label class="form-label" style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                    <input type="checkbox" name="email_alerts" checked style="width: 20px; height: 20px; accent-color: var(--ma-primary);">
+                    Enable System Email Alerts & Notifications
+                </label>
+                <small style="color: var(--ma-muted); display: block; margin-left: 30px;">Receive instant alerts when cashier transactions are voided, bulk accounts are created, or failed login limits are exceeded.</small>
+            </div>
+
+            <div style="margin-top: 28px;">
+                <button type="submit" class="btn-save">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Save Preferences
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Password Verification Modal -->
+<div id="sudoModal" class="sudo-modal-backdrop">
+    <div class="sudo-modal-card">
+        <div class="sudo-modal-icon">
+            <svg width="32" height="32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+            </svg>
+        </div>
+        <h3 style="font-size: 1.3rem; font-weight: 800; color: var(--ma-primary); margin-bottom: 8px;">Master Password Required</h3>
+        <p style="font-size: 0.9rem; color: var(--ma-muted); margin-bottom: 20px;">Please enter your Super Admin Master Password to unmask and edit sensitive profile information.</p>
+
+        <div id="modalError" style="display: none; background: #fee2e2; color: #991b1b; padding: 10px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 14px; font-weight: 600;"></div>
+
+        <div class="form-group" style="text-align: left;">
+            <label class="form-label">Super Admin Password <span class="req-asterisk">*</span></label>
+            <input type="password" id="modalPasswordInput" class="form-input" placeholder="Enter password to unlock" onkeyup="if(event.key==='Enter') submitSudoModal();">
+        </div>
+
+        <div style="display: flex; gap: 12px; margin-top: 24px;">
+            <button type="button" class="btn-unlock-privacy" style="flex: 1; justify-content: center; padding: 12px;" onclick="closeSudoModal()">Cancel</button>
+            <button type="button" class="btn-save" style="flex: 1; justify-content: center;" onclick="submitSudoModal()">Verify & Unlock</button>
+        </div>
+    </div>
+</div>
+
+<script>
+const isSudoActive = {{ 'true' if sudo_active else 'false' }};
+const csrfToken = "{{ csrf_token() }}";
+let pendingProfileSubmit = false;
+
+// Store initial profile form values
+let initialUsername = "";
+let initialFullName = "";
+let initialEmail = "";
+let initialContact = "";
+
+document.addEventListener("DOMContentLoaded", function() {
+    const inputUsername = document.getElementById("inputUsername");
+    const inputFullName = document.getElementById("inputFullName");
+    const inputEmail = document.getElementById("inputEmail");
+    const inputContact = document.getElementById("inputContact");
+
+    if (inputUsername && inputFullName && inputEmail && inputContact) {
+        initialUsername = inputUsername.value.trim();
+        initialFullName = inputFullName.value.trim();
+        initialEmail = inputEmail.value.trim();
+        initialContact = inputContact.value.trim();
+
+        [inputUsername, inputFullName, inputEmail, inputContact].forEach(input => {
+            input.addEventListener("input", checkProfileChanges);
+            input.addEventListener("change", checkProfileChanges);
+        });
+    }
+});
+
+function checkProfileChanges() {
+    const inputUsername = document.getElementById("inputUsername");
+    const inputFullName = document.getElementById("inputFullName");
+    const inputEmail = document.getElementById("inputEmail");
+    const inputContact = document.getElementById("inputContact");
+    const btnSaveProfile = document.getElementById("btnSaveProfile");
+
+    if (!inputUsername || !inputFullName || !inputEmail || !inputContact || !btnSaveProfile) return;
+
+    const currentUsername = inputUsername.value.trim();
+    const currentFullName = inputFullName.value.trim();
+    const currentEmail = inputEmail.value.trim();
+    const currentContact = inputContact.value.trim();
+
+    const hasChanged = (currentUsername !== initialUsername) ||
+                       (currentFullName !== initialFullName) ||
+                       (currentEmail !== initialEmail) ||
+                       (currentContact !== initialContact);
+
+    const isFormValid = currentUsername.length > 0 && currentFullName.length > 0 && currentEmail.length > 0;
+
+    const enableButton = hasChanged && isFormValid;
+    btnSaveProfile.disabled = !enableButton;
+
+    if (enableButton) {
+        btnSaveProfile.classList.remove("disabled");
+    } else {
+        btnSaveProfile.classList.add("disabled");
+    }
+}
+
+function switchTab(tabId, btnElement) {
+    document.querySelectorAll('.settings-panel').forEach(panel => {
+        panel.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    document.getElementById(tabId).classList.add('active');
+    btnElement.classList.add('active');
+}
+
+function openSudoModal() {
+    document.getElementById('modalError').style.display = 'none';
+    document.getElementById('modalPasswordInput').value = '';
+    document.getElementById('sudoModal').classList.add('show');
+    setTimeout(() => document.getElementById('modalPasswordInput').focus(), 100);
+}
+
+function closeSudoModal() {
+    document.getElementById('sudoModal').classList.remove('show');
+    pendingProfileSubmit = false;
+}
+
+function submitSudoModal() {
+    const password = document.getElementById('modalPasswordInput').value.trim();
+    if (!password) {
+        document.getElementById('modalError').innerText = 'Please enter your password.';
+        document.getElementById('modalError').style.display = 'block';
+        return;
+    }
+
+    fetch('{{ url_for("super_admin.super_admin_verify_sudo_ajax") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrfToken
+        },
+        body: JSON.stringify({ password: password })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            document.getElementById('hiddenPasswordVerify').value = password;
+            if (pendingProfileSubmit) {
+                closeSudoModal();
+                document.getElementById('profileForm').submit();
+            } else {
+                window.location.reload();
+            }
+        } else {
+            document.getElementById('modalError').innerText = data.error || 'Verification failed.';
+            document.getElementById('modalError').style.display = 'block';
+        }
+    })
+    .catch(err => {
+        document.getElementById('modalError').innerText = 'Server error during verification.';
+        document.getElementById('modalError').style.display = 'block';
+    });
+}
+
+function handleProfileSubmit() {
+    const btnSaveProfile = document.getElementById("btnSaveProfile");
+    if (btnSaveProfile.disabled) return;
+
+    if (isSudoActive) {
+        document.getElementById('profileForm').submit();
+    } else {
+        pendingProfileSubmit = true;
+        openSudoModal();
+    }
+}
+</script>
+{% endblock %}
