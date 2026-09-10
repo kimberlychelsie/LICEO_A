@@ -14,8 +14,15 @@ import pytz
 from werkzeug.utils import secure_filename
 from cloudinary_helper import upload_enrollment_document
 import io
-import openpyxl
-import xlrd
+try:
+    import openpyxl
+except ImportError:
+    openpyxl = None
+
+try:
+    import xlrd
+except ImportError:
+    xlrd = None
 import pandas as pd
 
 # Setup logging
