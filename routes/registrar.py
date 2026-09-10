@@ -13,6 +13,10 @@ from datetime import datetime
 import pytz
 from werkzeug.utils import secure_filename
 from cloudinary_helper import upload_enrollment_document
+import io
+import openpyxl
+import xlrd
+import pandas as pd
 
 # Setup logging
 logging.basicConfig(level=logging.ERROR)
@@ -801,6 +805,547 @@ def registrar_enrollments():
 
 
 # ══════════════════════════════════════════
+# IMPORT DEPED SF1 EXCEL ROUTE
+# ══════════════════════════════════════════
+
+def _parse_deped_name(raw_name):
+    if not raw_name:
+        return "", "", ""
+    raw_name = str(raw_name).strip()
+    if not raw_name:
+        return "", "", ""
+    
+    parts = [p.strip() for p in raw_name.split(",") if p.strip()]
+    if len(parts) >= 3:
+        last_name = parts[0]
+        first_name = parts[1]
+        middle_name = parts[2]
+    elif len(parts) == 2:
+        last_name = parts[0]
+        rest = parts[1].split()
+        if len(rest) > 1:
+            middle_name = rest[-1]
+            first_name = " ".join(rest[:-1])
+        else:
+            first_name = parts[1]
+            middle_name = ""
+    else:
+        words = raw_name.split()
+        if len(words) == 1:
+            first_name = words[0]
+            last_name = ""
+            middle_name = ""
+        elif len(words) == 2:
+            first_name = words[0]
+            last_name = words[1]
+            middle_name = ""
+        else:
+            first_name = words[0]
+            middle_name = " ".join(words[1:-1])
+            last_name = words[-1]
+
+    return first_name[:250], middle_name[:250], last_name[:250]
+
+
+class _CellMock:
+    def __init__(self, value):
+        self.value = value
+
+
+class ExcelSheetAdapter:
+    def __init__(self, sheet_type, obj):
+        self.sheet_type = sheet_type
+        self.obj = obj
+        if sheet_type == 'openpyxl':
+            self.max_row = obj.max_row
+        elif sheet_type == 'xlrd':
+            self.max_row = obj.nrows
+        elif sheet_type == 'pandas':
+            self.max_row = len(obj)
+
+    def cell(self, row, column):
+        if self.sheet_type == 'openpyxl':
+            return self.obj.cell(row=row, column=column)
+        elif self.sheet_type == 'xlrd':
+            r_idx = row - 1
+            c_idx = column - 1
+            if r_idx < self.obj.nrows and c_idx < self.obj.ncols:
+                val = self.obj.cell_value(r_idx, c_idx)
+                ctype = self.obj.cell_type(r_idx, c_idx)
+                if ctype == xlrd.XL_CELL_DATE:
+                    try:
+                        date_tuple = xlrd.xldate_as_tuple(val, self.obj.book.datemode)
+                        val = datetime(*date_tuple[:6])
+                    except Exception:
+                        pass
+                return _CellMock(val)
+            return _CellMock(None)
+        elif self.sheet_type == 'pandas':
+            import pandas as pd
+            r_idx = row - 1
+            c_idx = column - 1
+            if r_idx < len(self.obj) and c_idx < len(self.obj.columns):
+                val = self.obj.iloc[r_idx, c_idx]
+                if pd.isna(val):
+                    val = None
+                return _CellMock(val)
+            return _CellMock(None)
+
+
+@registrar_bp.route("/registrar/import-sf1", methods=["POST"])
+def import_sf1_excel():
+    if session.get("role") != "registrar":
+        return redirect("/")
+
+    branch_id = session.get("branch_id")
+    if not branch_id:
+        flash("Missing branch in session.", "error")
+        return redirect("/registrar/enrollments")
+
+    file = request.files.get("sf1_file")
+    if not file or not file.filename:
+        flash("Please select an SF1 Excel file to upload.", "error")
+        return redirect("/registrar/enrollments")
+
+    import_status = request.form.get("import_status", "enrolled")
+    if import_status not in ("enrolled", "pending"):
+        import_status = "enrolled"
+
+    filename = file.filename.lower()
+    if not (filename.endswith(".xlsx") or filename.endswith(".xls")):
+        flash("Invalid file format. Please upload a DepEd SF1 Excel file (.xlsx or .xls).", "error")
+        return redirect("/registrar/enrollments")
+
+    import io
+    import openpyxl
+    import xlrd
+
+    file_bytes = file.read()
+    sheet = None
+
+    try:
+        wb = openpyxl.load_workbook(io.BytesIO(file_bytes), data_only=True)
+        py_sheet = wb.active
+        for name in wb.sheetnames:
+            if "sf1" in name.lower() or "school_form" in name.lower():
+                py_sheet = wb[name]
+                break
+        sheet = ExcelSheetAdapter('openpyxl', py_sheet)
+    except Exception as openpyxl_err:
+        try:
+            rb = xlrd.open_workbook(file_contents=file_bytes)
+            xl_sheet = rb.sheet_by_index(0)
+            for sname in rb.sheet_names():
+                if "sf1" in sname.lower() or "school_form" in sname.lower():
+                    xl_sheet = rb.sheet_by_name(sname)
+                    break
+            sheet = ExcelSheetAdapter('xlrd', xl_sheet)
+        except Exception as xlrd_err:
+            try:
+                import pandas as pd
+                dfs = pd.read_html(io.BytesIO(file_bytes))
+                if dfs:
+                    sheet = ExcelSheetAdapter('pandas', dfs[0])
+            except Exception as html_err:
+                logger.error(f"Failed to open Excel with openpyxl ({openpyxl_err}), xlrd ({xlrd_err}), and pandas ({html_err})")
+                flash("Failed to read Excel file. Please ensure it is a valid .xlsx or .xls DepEd SF1 file.", "error")
+                return redirect("/registrar/enrollments#enrolled")
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+
+        # 1. Detect Header Info: Grade Level & Section Name
+        detected_grade = ""
+        detected_section = ""
+
+        for r in range(1, 10):
+            for c in range(1, 40):
+                val = sheet.cell(row=r, column=c).value
+                if not val:
+                    continue
+                sval = str(val).strip()
+
+                if "grade" in sval.lower() and not detected_grade:
+                    m_grade = re.search(r"grade\s*(\d+|iv|v|vi|vii|viii|ix|x|xi|xii)", sval, re.IGNORECASE)
+                    if m_grade:
+                        detected_grade = f"Grade {m_grade.group(1).upper() if m_grade.group(1).isalpha() else m_grade.group(1)}"
+                    else:
+                        for offset in range(1, 4):
+                            nxt = sheet.cell(row=r, column=c+offset).value
+                            if nxt and str(nxt).strip():
+                                nstr = str(nxt).strip()
+                                if nstr.lower() not in ("level", "grade level", "grade"):
+                                    m_nxt = re.search(r"(\d+|iv|v|vi|vii|viii|ix|x|xi|xii)", nstr, re.IGNORECASE)
+                                    if m_nxt:
+                                        detected_grade = f"Grade {m_nxt.group(1).upper() if m_nxt.group(1).isalpha() else m_nxt.group(1)}"
+                                    elif len(nstr) < 25:
+                                        detected_grade = nstr.title()
+                                    break
+
+                if ("section" in sval.lower() or "st pedro" in sval.lower() or "calungsod" in sval.lower()) and not detected_section:
+                    if "section" in sval.lower():
+                        cleaned = re.sub(r"(?i)section\s*:\s*", "", sval).strip()
+                        if cleaned and cleaned.lower() not in ("section", "general"):
+                            detected_section = cleaned.title()
+                    elif len(sval) < 30 and not any(kw in sval.lower() for kw in ["school", "form", "grade", "list", "register"]):
+                        detected_section = sval.title()
+
+                    if not detected_section:
+                        for offset in range(1, 4):
+                            nxt = sheet.cell(row=r, column=c+offset).value
+                            if nxt and str(nxt).strip():
+                                nstr = str(nxt).strip()
+                                if len(nstr) < 30 and nstr.lower() not in ("section", "general"):
+                                    detected_section = nstr.title()
+                                    break
+
+        if detected_grade:
+            if detected_grade.lower() in ("grade level", "level", "grade", "grade level:"):
+                detected_grade = "Grade 4"
+            else:
+                m_num = re.search(r"\d+", detected_grade)
+                if m_num:
+                    detected_grade = f"Grade {m_num.group(0)}"
+                elif not detected_grade.lower().startswith("grade"):
+                    detected_grade = f"Grade {detected_grade}"
+        else:
+            detected_grade = "Grade 4"
+        detected_grade = detected_grade[:45]
+
+        if not detected_section or detected_section.lower() in ("section", "general section"):
+            detected_section = "St. Pedro Calungsod"
+        detected_section = detected_section[:30]
+
+        # 2. Dynamic Column Header Detection
+        col_map = {
+            'lrn': 1,
+            'name': 4,
+            'sex': 6,
+            'dob': 7,
+            'street': 12,
+            'brgy': 20,
+            'city': 22,
+            'prov': 26,
+            'father': 31,
+            'mother': 36,
+            'guardian': 37,
+            'contact': 42
+        }
+
+        for r_hdr in range(8, 12):
+            for c_hdr in range(1, 45):
+                hval = str(sheet.cell(row=r_hdr, column=c_hdr).value or "").strip().lower()
+                if not hval:
+                    continue
+                if "lrn" in hval:
+                    col_map['lrn'] = c_hdr
+                elif "learner" in hval or ("last name" in hval and "first" in hval):
+                    col_map['name'] = c_hdr
+                elif hval in ("sex", "gender", "sex (m/f)"):
+                    col_map['sex'] = c_hdr
+                elif "birth" in hval or "dob" in hval:
+                    col_map['dob'] = c_hdr
+                elif "street" in hval or "house" in hval or "sitio" in hval:
+                    col_map['street'] = c_hdr
+                elif "barangay" in hval or "brgy" in hval:
+                    col_map['brgy'] = c_hdr
+                elif "municipality" in hval or "city" in hval:
+                    col_map['city'] = c_hdr
+                elif "province" in hval:
+                    col_map['prov'] = c_hdr
+                elif "father" in hval:
+                    col_map['father'] = c_hdr
+                elif "mother" in hval:
+                    col_map['mother'] = c_hdr
+                elif "guardian" in hval and "contact" not in hval and "relationship" not in hval:
+                    col_map['guardian'] = c_hdr
+                elif ("contact" in hval or "mobile" in hval or "telephone" in hval) and col_map['contact'] == 42:
+                    col_map['contact'] = c_hdr
+
+        # Exclude non-address / non-name / footer keywords
+        EXCLUDE_ADDR_WORDS = {
+            "FILIPINO", "TAGALOG", "ROMAN CATHOLIC", "CATHOLIC", "CHRISTIAN",
+            "CHRISTIANITY", "ISLAM", "PROTESTANT", "BAPTIST", "IGLESIA NI CRISTO",
+            "SEVENTH DAY ADVENTIST", "EVANGELICAL", "NONE", "N/A", "MALE", "FEMALE",
+            "REGISTERED", "GRADE LEVEL", "LEARNER", "SEX", "FACE TO FACE",
+            "FACE-TO-FACE", "MODALITY", "LEARNING MODALITY", "DISTANCE LEARNING",
+            "BLENDED", "ONLINE", "PRINTED", "DIGITAL", "HOMESCHOOL"
+        }
+
+        EXCLUDE_NAME_KEYWORDS = [
+            "TOTAL", "MALE", "FEMALE", "COMBINED", "SCHOOL FORM", "REMARKS",
+            "LEARNING MODALITY", "LIST OF", "PUBLIC", "PRIVATE", "EFFECTIVITY",
+            "REASON", "SIGNATURE", "PREPARED BY", "REGISTERED", "GRADE LEVEL",
+            "LEARNER", "FIRST FRIDAY", "END OF SY", "INDICATOR", "TRACK",
+            "STRAND", "AGE", "SEX", "BIRTH", "ADDRESS", "RELIGION", "MOTHER TONGUE",
+            "IP (ETHNIC GROUP)", "NAME OF", "DATE OF", "EFFECTIVITY DATE",
+            "REQUIRED", "INFORMATION", "STUDENT NAME", "LAST NAME", "CODE",
+            "GENERATED ON", "TRANSFERED", "DROPPED", "LATE ENROLLMENT", "CERTIFIED",
+            "FACE TO FACE", "FACE-TO-FACE", "BOSY", "EOSY", "HOUSE", "STREET",
+            "BARANGAY", "MUNICIPALITY", "PROVINCE", "GUARDIAN", "PARENTS", "CONTACT"
+        ]
+
+        # Fetch Active School Year for Branch
+        cursor.execute("SELECT year_id FROM school_years WHERE branch_id = %s AND is_active = TRUE LIMIT 1", (branch_id,))
+        active_yr = cursor.fetchone()
+        year_id = active_yr["year_id"] if active_yr else None
+        if not year_id:
+            flash("No active school year found.", "error")
+            return redirect("/registrar/enrollments")
+
+        # Find or Create Section in Database
+        cursor.execute("SELECT id FROM grade_levels WHERE branch_id = %s AND LOWER(name) = LOWER(%s) LIMIT 1", (branch_id, detected_grade))
+        gl_row = cursor.fetchone()
+        if gl_row:
+            grade_level_id = gl_row["id"]
+        else:
+            cursor.execute("SELECT id FROM grade_levels WHERE branch_id = %s ORDER BY display_order LIMIT 1", (branch_id,))
+            fallback_gl = cursor.fetchone()
+            grade_level_id = fallback_gl["id"] if fallback_gl else 1
+
+        # Smart Section Matching: Check exact match first, then normalized (e.g. Peter vs Pedro, dots/spaces)
+        cursor.execute("""
+            SELECT section_id, section_name
+            FROM sections
+            WHERE branch_id = %s AND year_id = %s AND grade_level_id = %s
+        """, (branch_id, year_id, grade_level_id))
+        existing_secs = cursor.fetchall()
+
+        sec_norm = re.sub(r"[^a-z0-9]", "", detected_section.lower().replace("peter", "pedro"))
+        section_id = None
+
+        for s in existing_secs:
+            s_name = s["section_name"]
+            s_norm = re.sub(r"[^a-z0-9]", "", s_name.lower().replace("peter", "pedro"))
+            if s_norm == sec_norm or s_name.lower() == detected_section.lower():
+                section_id = s["section_id"]
+                break
+
+        if not section_id and existing_secs:
+            section_id = existing_secs[0]["section_id"]
+
+        if not section_id:
+            cursor.execute("""
+                INSERT INTO sections (section_name, grade_level_id, branch_id, year_id)
+                VALUES (%s, %s, %s, %s)
+                RETURNING section_id
+            """, (detected_section, grade_level_id, branch_id, year_id))
+            section_id = cursor.fetchone()["section_id"]
+            db.commit()
+
+        # Scan Student Rows (starting from row 6)
+        inserted_count = 0
+        updated_count = 0
+
+        max_row = sheet.max_row
+        for r in range(6, max_row + 1):
+            row_text_joined = " ".join(str(sheet.cell(row=r, column=c).value or "") for c in range(1, 15)).upper()
+            if any(stop_kw in row_text_joined for stop_kw in ["TOTAL MALE", "TOTAL FEMALE", "COMBINED", "LIST AND CODE", "PREPARED BY", "CERTIFIED CORRECT", "GENERATED ON"]):
+                # Skip summary / total / footer rows
+                continue
+
+            # 1. LRN: Col 1 (idx 0) or Col 2
+            lrn_raw = None
+            for c in [1, 2]:
+                val = sheet.cell(row=r, column=c).value
+                if val:
+                    digits = re.sub(r"\D", "", str(val).strip())
+                    if len(digits) == 12:
+                        lrn_raw = digits
+                        break
+
+            # 2. Student Name: Col 3 (idx 2) or Col 5
+            name_raw = None
+            for c in [3, 5, 4, 2]:
+                val = sheet.cell(row=r, column=c).value
+                if val:
+                    vstr = str(val).strip()
+                    if "," in vstr and not any(kw in vstr.upper() for kw in EXCLUDE_NAME_KEYWORDS) and len(vstr) >= 4 and len(vstr) <= 70:
+                        name_raw = vstr
+                        break
+
+            if not lrn_raw and not name_raw:
+                continue
+
+            # Must have a valid LRN (12 digits) OR a student name containing a comma ','
+            if not lrn_raw and (not name_raw or "," not in str(name_raw)):
+                continue
+
+            if name_raw:
+                name_str = str(name_raw).strip()
+                name_upper = name_str.upper()
+                if any(kw in name_upper for kw in EXCLUDE_NAME_KEYWORDS):
+                    continue
+
+                first_name, middle_name, last_name = _parse_deped_name(name_str)
+                if not first_name and not last_name:
+                    continue
+                if len(first_name) < 2 and len(last_name) < 2:
+                    continue
+            else:
+                continue
+
+            lrn_clean = lrn_raw[:12] if lrn_raw else ""
+
+            # 3. Sex / Gender (Col 7 / idx 6 or Col 6)
+            sex_raw = str(sheet.cell(row=r, column=7).value or sheet.cell(row=r, column=6).value or "").strip().upper()
+            gender = "Male" if sex_raw.startswith("M") else ("Female" if sex_raw.startswith("F") else None)
+
+            # 4. DOB (Col 8 / idx 7 or Col 7)
+            dob_val = sheet.cell(row=r, column=8).value or sheet.cell(row=r, column=7).value
+            dob = None
+            if dob_val:
+                from datetime import date
+                if isinstance(dob_val, (datetime, date)):
+                    dob = dob_val if isinstance(dob_val, date) else dob_val.date()
+                else:
+                    dstr = str(dob_val).strip()
+                    for fmt in ("%m-%d-%Y", "%m/%d/%Y", "%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y"):
+                        try:
+                            dob = datetime.strptime(dstr, fmt).date()
+                            break
+                        except ValueError:
+                            pass
+
+            # 5. Address (Col 18 = Barangay, Col 21 = Municipality/City, Col 23 = Province, Col 16 = Street)
+            addr_parts = []
+            brgy = str(sheet.cell(row=r, column=18).value or sheet.cell(row=r, column=21).value or sheet.cell(row=r, column=20).value or "").strip()
+            city = str(sheet.cell(row=r, column=21).value or sheet.cell(row=r, column=22).value or sheet.cell(row=r, column=16).value or "").strip()
+            prov = str(sheet.cell(row=r, column=23).value or sheet.cell(row=r, column=26).value or sheet.cell(row=r, column=18).value or "").strip()
+            street = str(sheet.cell(row=r, column=16).value or sheet.cell(row=r, column=12).value or "").strip()
+
+            for part in (street, brgy, city, prov):
+                if part:
+                    pupper = part.upper()
+                    if pupper not in EXCLUDE_ADDR_WORDS and not any(kw in pupper for kw in EXCLUDE_NAME_KEYWORDS) and not part.isdigit():
+                        if part.title() not in addr_parts:
+                            addr_parts.append(part.title())
+
+            address = ", ".join(addr_parts) if addr_parts else None
+
+            # 6. Parents & Guardian:
+            # Father (Col 28 / idx 27 or Col 31)
+            father_raw = str(sheet.cell(row=r, column=28).value or sheet.cell(row=r, column=31).value or sheet.cell(row=r, column=30).value or "").strip()
+            father_first, father_mid, father_last = ("", "", "")
+            if father_raw and father_raw.upper() not in ("FATHER'S NAME", "FATHER NAME", "NONE", "N/A"):
+                if any(ch.isalpha() for ch in father_raw) and len(father_raw) >= 3:
+                    father_first, father_mid, father_last = _parse_deped_name(father_raw)
+
+            # Mother (Col 32 / idx 31 or Col 36)
+            mother_raw = str(sheet.cell(row=r, column=32).value or sheet.cell(row=r, column=36).value or sheet.cell(row=r, column=35).value or "").strip()
+            mother_first, mother_mid, mother_last = ("", "", "")
+            if mother_raw and mother_raw.upper() not in ("MOTHER'S MAIDEN NAME", "MOTHER NAME", "NONE", "N/A"):
+                if any(ch.isalpha() for ch in mother_raw) and len(mother_raw) >= 3:
+                    mother_first, mother_mid, mother_last = _parse_deped_name(mother_raw)
+
+            # Guardian (Col 37 / idx 36 ONLY!)
+            guardian_raw = str(sheet.cell(row=r, column=37).value or sheet.cell(row=r, column=38).value or "").strip()
+            g_first, g_mid, g_last = ("", "", "")
+            if guardian_raw and guardian_raw.upper() not in ("GUARDIAN", "NAME", "NONE", "N/A") and len(guardian_raw) >= 3:
+                gupper = guardian_raw.upper()
+                if "FACE" not in gupper and "MODALITY" not in gupper:
+                    g_first, g_mid, g_last = _parse_deped_name(guardian_raw)
+
+            # 7. Contact Number (Col 41 / 42)
+            contact_raw = str(sheet.cell(row=r, column=41).value or sheet.cell(row=r, column=42).value or "").strip()
+            contact = re.sub(r"\D", "", contact_raw) if contact_raw else None
+            if contact and len(contact) > 11:
+                contact = contact[:11]
+
+            # Check if student exists
+            cursor.execute("""
+                SELECT enrollment_id
+                FROM enrollments
+                WHERE branch_id = %s AND year_id = %s
+                  AND (
+                      (lrn IS NOT NULL AND lrn = %s AND lrn <> '')
+                      OR (LOWER(student_last_name) = LOWER(%s) AND LOWER(student_first_name) = LOWER(%s))
+                  )
+                LIMIT 1
+            """, (branch_id, year_id, lrn_clean, last_name, first_name))
+            ex_row = cursor.fetchone()
+
+            if ex_row:
+                cursor.execute("""
+                    UPDATE enrollments
+                    SET grade_level = %s,
+                        section_id = %s,
+                        status = %s,
+                        lrn = COALESCE(NULLIF(%s, ''), lrn),
+                        gender = COALESCE(%s, gender),
+                        dob = COALESCE(%s, dob),
+                        address = COALESCE(NULLIF(%s, ''), address),
+                        contact_number = COALESCE(NULLIF(%s, ''), contact_number),
+                        father_first_name = COALESCE(NULLIF(%s, ''), father_first_name),
+                        father_middle_name = COALESCE(NULLIF(%s, ''), father_middle_name),
+                        father_last_name = COALESCE(NULLIF(%s, ''), father_last_name),
+                        mother_first_name = COALESCE(NULLIF(%s, ''), mother_first_name),
+                        mother_middle_name = COALESCE(NULLIF(%s, ''), mother_middle_name),
+                        mother_last_name = COALESCE(NULLIF(%s, ''), mother_last_name),
+                        guardian_first_name = COALESCE(NULLIF(%s, ''), guardian_first_name),
+                        guardian_middle_name = COALESCE(NULLIF(%s, ''), guardian_middle_name),
+                        guardian_last_name = COALESCE(NULLIF(%s, ''), guardian_last_name)
+                    WHERE enrollment_id = %s
+                """, (
+                    detected_grade, section_id, import_status, lrn_clean, gender, dob, address, contact,
+                    father_first, father_mid, father_last,
+                    mother_first, mother_mid, mother_last,
+                    g_first, g_mid, g_last,
+                    ex_row["enrollment_id"]
+                ))
+                updated_count += 1
+            else:
+                cursor.execute("SELECT COALESCE(MAX(branch_enrollment_no), 0) + 1 AS next_no FROM enrollments WHERE branch_id = %s", (branch_id,))
+                next_no = cursor.fetchone()["next_no"]
+
+                cursor.execute("""
+                    INSERT INTO enrollments (
+                        branch_id, year_id, branch_enrollment_no, lrn,
+                        student_first_name, student_middle_name, student_last_name,
+                        grade_level, section_id, gender, dob, address, contact_number,
+                        father_first_name, father_middle_name, father_last_name,
+                        mother_first_name, mother_middle_name, mother_last_name,
+                        guardian_first_name, guardian_middle_name, guardian_last_name, guardian_contact,
+                        status
+                    ) VALUES (
+                        %s, %s, %s, %s,
+                        %s, %s, %s,
+                        %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s,
+                        %s, %s, %s,
+                        %s, %s, %s, %s,
+                        %s
+                    )
+                """, (
+                    branch_id, year_id, next_no, lrn_clean,
+                    first_name, middle_name, last_name,
+                    detected_grade, section_id, gender, dob, address, contact,
+                    father_first, father_mid, father_last,
+                    mother_first, mother_mid, mother_last,
+                    g_first, g_mid, g_last, contact,
+                    import_status
+                ))
+                inserted_count += 1
+
+        db.commit()
+        total_proc = inserted_count + updated_count
+        flash(
+            f"Successfully imported {total_proc} students ({inserted_count} new, {updated_count} updated) into {detected_grade} — {detected_section}!",
+            "success"
+        )
+    except Exception as err:
+        db.rollback()
+        logger.error(f"SF1 Import Error: {str(err)}")
+        flash(f"Failed to import SF1 file: {str(err)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+
+    return redirect("/registrar/enrollments#enrolled")
+
+
+# ══════════════════════════════════════════
 # ENROLLMENT DETAIL
 # ══════════════════════════════════════════
 
@@ -861,6 +1406,20 @@ def enrollment_detail(enrollment_id):
                     f"UPDATE enrollments SET {', '.join(sets)} WHERE enrollment_id = %s AND branch_id = %s",
                     vals,
                 )
+                cursor.execute("""
+                    UPDATE users
+                    SET first_name = e.student_first_name,
+                        middle_name = e.student_middle_name,
+                        last_name = e.student_last_name,
+                        full_name = CONCAT_WS(' ', e.student_first_name, e.student_middle_name, e.student_last_name),
+                        email = COALESCE(e.email, users.email),
+                        contact_number = COALESCE(e.contact_number, users.contact_number),
+                        gender = COALESCE(e.gender, users.gender),
+                        dob = COALESCE(e.dob, users.dob)
+                    FROM enrollments e
+                    WHERE users.enrollment_id = e.enrollment_id
+                      AND e.enrollment_id = %s
+                """, (enrollment_id,))
                 sync_student_elective_membership(cursor, enrollment_id)
                 db.commit()
                 flash("Enrollment details updated!", "success")

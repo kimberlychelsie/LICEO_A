@@ -316,6 +316,7 @@ def login():
                     session.clear()
                     session["user_id"] = student_user_id
                     session["student_account_id"] = student["account_id"]
+                    session["username"] = student.get("username") or username
                     session["role"] = "student"
                     session["branch_id"] = branch_id
 

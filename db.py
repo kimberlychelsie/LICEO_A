@@ -601,68 +601,6 @@ def get_db_connection():
                 logger.warning(f"Could not migrate financial tables: {e}")
                 conn.rollback()
 
-            # ONE-TIME STRAND CLEANUP MIGRATION: Merge strands back to generic Grade 11/12
-            try:
-                # 1. Update enrollments grade_level names
-                cur.execute("""
-                    UPDATE enrollments 
-                    SET grade_level = CASE 
-                        WHEN grade_level ILIKE 'Grade 11-%' OR grade_level ILIKE '11-%' THEN 'Grade 11'
-                        WHEN grade_level ILIKE 'Grade 12-%' OR grade_level ILIKE '12-%' THEN 'Grade 12'
-                        ELSE grade_level
-                    END
-                    WHERE grade_level ILIKE '%11-%' OR grade_level ILIKE '%12-%'
-                       OR grade_level IN ('11-GAS', '11-STEM', '11-HUMSS', '12-GAS', '12-STEM', '12-HUMSS')
-                """)
-
-                # 2. Query all strand grade levels in grade_levels table
-                cur.execute("""
-                    SELECT id, name, branch_id 
-                    FROM grade_levels 
-                    WHERE name ILIKE 'Grade 11-%' OR name ILIKE '11-%' 
-                       OR name ILIKE 'Grade 12-%' OR name ILIKE '12-%'
-                """)
-                strand_grades = cur.fetchall()
-                
-                for sg_id, sg_name, sg_branch_id in strand_grades:
-                    target_name = 'Grade 11' if ('11' in sg_name) else 'Grade 12'
-                    target_order = 13 if target_name == 'Grade 11' else 14
-                    
-                    # Find or create a matching 'Grade 11' or 'Grade 12' row for the same branch_id
-                    if sg_branch_id is not None:
-                        cur.execute("SELECT id FROM grade_levels WHERE name = %s AND branch_id = %s", (target_name, sg_branch_id))
-                    else:
-                        cur.execute("SELECT id FROM grade_levels WHERE name = %s AND branch_id IS NULL", (target_name,))
-                    
-                    matching_row = cur.fetchone()
-                    if matching_row:
-                        target_id = matching_row[0]
-                    else:
-                        if sg_branch_id is not None:
-                            cur.execute("INSERT INTO grade_levels (name, display_order, branch_id) VALUES (%s, %s, %s) RETURNING id", (target_name, target_order, sg_branch_id))
-                        else:
-                            cur.execute("INSERT INTO grade_levels (name, display_order) VALUES (%s, %s) RETURNING id", (target_name, target_order))
-                        target_id = cur.fetchone()[0]
-                        
-                    # Update references: sections table
-                    cur.execute("UPDATE sections SET grade_level_id = %s WHERE grade_level_id = %s", (target_id, sg_id))
-                    
-                    # Update references: teacher_grade_levels table
-                    cur.execute("UPDATE teacher_grade_levels SET grade_level_id = %s WHERE grade_level_id = %s", (target_id, sg_id))
-                    
-                    # Delete the old strand grade level row
-                    cur.execute("DELETE FROM grade_levels WHERE id = %s", (sg_id,))
-
-                # 3. Remove duplicate entries in teacher_grade_levels
-                cur.execute("""
-                    DELETE FROM teacher_grade_levels a USING teacher_grade_levels b 
-                    WHERE a.id > b.id AND a.teacher_id = b.teacher_id AND a.grade_level_id = b.grade_level_id
-                """)
-                conn.commit()
-            except Exception as e:
-                conn.rollback()
-                logger.warning(f"Strand cleanup migration failed: {e}")
-
             # SEED GRADE LEVELS: Ensure Grade 11 & Grade 12 exist in grade_levels table
             try:
                 grades_to_add = [
