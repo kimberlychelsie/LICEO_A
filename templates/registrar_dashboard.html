@@ -864,6 +864,7 @@
                                 <form method="post" action="/registrar/enrollment/{{ enrollment.enrollment_id }}"
                                     class="new-details-form">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <input type="hidden" name="redirect_url" value="{{ request.full_path }}">
                                     <div style="display:grid; grid-template-columns: 1.1fr 1.2fr 1fr; gap:16px; align-items:start;">
                                         <!-- Personal & Contact -->
                                         <div
@@ -1210,6 +1211,7 @@
                                         {% if is_branch_active_status and can_modify %}
                                         <form method="post" action="/registrar/enrollments" style="margin:0;">
                                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <input type="hidden" name="redirect_url" value="{{ request.full_path }}">
                                             <input type="hidden" name="enrollment_id"
                                                 value="{{ enrollment.enrollment_id }}">
                                             <input type="hidden" name="year_id" value="{{ selected_year_id }}">
@@ -1351,6 +1353,7 @@
                 <form method="post" action="/registrar/enrollments"
                     onsubmit="return confirm('Reject this enrollment? This will require a reason.');">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="redirect_url" value="{{ request.full_path }}">
                     <input type="hidden" name="enrollment_id" id="rejectEnrollmentId" value="">
                     <input type="hidden" name="year_id" value="{{ selected_year_id }}">
                     <input type="hidden" name="action" value="rejected">
@@ -1881,9 +1884,24 @@
     }
 
     window.addEventListener('DOMContentLoaded', function () {
-        if (window.location.hash === '#enrolled') {
+        const hash = window.location.hash;
+        if (hash === '#enrolled') {
             var btn = document.getElementById('tab-enrolled-btn');
             if (btn) switchTab('enrolled', btn);
+        } else if (hash && hash.startsWith('#new-details-')) {
+            const id = hash.replace('#new-details-', '');
+            const detailsRow = document.getElementById('new-details-' + id);
+            if (detailsRow) {
+                detailsRow.style.display = '';
+                const parentRow = detailsRow.previousElementSibling;
+                if (parentRow) {
+                    const btn = parentRow.querySelector('button[onclick*="toggleNewDetails"]');
+                    if (btn) btn.textContent = 'Hide Details';
+                    setTimeout(function () {
+                        detailsRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }, 150);
+                }
+            }
         }
     });
 

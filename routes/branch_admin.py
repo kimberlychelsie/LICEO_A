@@ -1549,7 +1549,8 @@ def list_and_add_schedules():
         SELECT s.section_id, s.section_name, g.name AS grade_name
         FROM sections s
         JOIN grade_levels g ON g.id = s.grade_level_id
-        WHERE s.branch_id = %s
+        JOIN school_years y ON s.year_id = y.year_id
+        WHERE s.branch_id = %s AND y.is_active = TRUE
         ORDER BY g.id, s.section_name
     """, (branch_id,))
     all_sections_list = cursor.fetchall()
@@ -1557,11 +1558,26 @@ def list_and_add_schedules():
     if request.method == "POST":
         combo = request.form["combo"]
         section_id, subject_id, teacher_id = combo.split('|')
-        day_of_week = request.form["day_of_week"]
+        
+        days_input = request.form.getlist("days")
+        if not days_input:
+            days_input = request.form.getlist("day_of_week")
+        if not days_input and request.form.get("day_of_week"):
+            days_input = [request.form.get("day_of_week")]
+
+        days = []
+        for d in days_input:
+            if d and d not in days:
+                days.append(d)
+
+        if not days:
+            flash("Please select at least one day for the schedule.", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("branch_admin.list_and_add_schedules"))
+
         start_time = request.form["start_time"]
         end_time = request.form["end_time"]
         room = request.form["room"]
-        # Use active year automatically
         year_id = active_year["year_id"] if active_year else None
 
         if not year_id:
@@ -1569,7 +1585,7 @@ def list_and_add_schedules():
             cursor.close(); db.close()
             return redirect(url_for("branch_admin.list_and_add_schedules"))
 
-        # --- TIME VALIDATION: must be within 07:00 and 17:00, and start < end ---
+        # --- TIME VALIDATION ---
         start_t = datetime.strptime(start_time, "%H:%M").time()
         end_t = datetime.strptime(end_time, "%H:%M").time()
         if not (dt_time(7,0) <= start_t <= dt_time(17,0)) or not (dt_time(7,0) <= end_t <= dt_time(17,0)):
@@ -1585,7 +1601,7 @@ def list_and_add_schedules():
             cursor.close(); db.close()
             return redirect(url_for("branch_admin.list_and_add_schedules"))
 
-        # --- ROOM VALIDATION: must be a number between 1 and 30 ---
+        # --- ROOM VALIDATION ---
         try:
             room_val = int(room)
             if not (1 <= room_val <= 30):
@@ -1597,57 +1613,64 @@ def list_and_add_schedules():
             cursor.close(); db.close()
             return redirect(url_for("branch_admin.list_and_add_schedules"))
 
-        # --- DETAILED COLLISION CHECK ---
-        cursor.execute("""
-            SELECT s.*, subj.name AS conflict_subject_name, sec.section_name AS conflict_section_name, 
-                   u.full_name AS conflict_teacher_name, y.label AS conflict_year_label
-            FROM schedules s
-            JOIN subjects subj ON s.subject_id = subj.subject_id
-            JOIN sections sec ON s.section_id = sec.section_id
-            JOIN users u ON s.teacher_id = u.user_id
-            JOIN school_years y ON s.year_id = y.year_id
-            WHERE s.year_id = %s AND s.branch_id = %s
-              AND s.day_of_week = %s
-              AND s.is_archived = FALSE
-              AND (s.start_time < %s AND s.end_time > %s)
-              AND (
-                    s.teacher_id = %s
-                 OR s.section_id = %s
-                 OR s.room = %s
-              )
-            LIMIT 1
-        """, (year_id, branch_id, day_of_week, end_time, start_time, teacher_id, section_id, room))
-        conflict = cursor.fetchone()
-        if conflict:
-            reasons = []
-            if str(conflict["teacher_id"]) == str(teacher_id):
-                reasons.append(f"Teacher {conflict['conflict_teacher_name']}")
-            if str(conflict["section_id"]) == str(section_id):
-                reasons.append(f"Section {conflict['conflict_section_name']}")
-            if str(conflict["room"]) == str(room):
-                reasons.append(f"Room {conflict['room']}")
+        # --- DETAILED COLLISION CHECK & MULTI-DAY INSERT ---
+        added_count = 0
+        conflict_messages = []
 
-            conflict_types = " and ".join(reasons)
-            conflict_slot = f"{conflict['day_of_week']} {conflict['start_time'].strftime('%H:%M')}-{conflict['end_time'].strftime('%H:%M')}"
-            conflict_subj = conflict.get("conflict_subject_name", "")
-            message = (f"Conflict detected: {conflict_types} already has "
-                       f"{conflict_subj} scheduled on {conflict_slot}. "
-                       "Please choose a different time or resource.")
-            flash(message, "danger")
-            cursor.close(); db.close()
-            return redirect(url_for("branch_admin.list_and_add_schedules"))
+        for day_of_week in days:
+            cursor.execute("""
+                SELECT s.*, subj.name AS conflict_subject_name, sec.section_name AS conflict_section_name, 
+                       u.full_name AS conflict_teacher_name, y.label AS conflict_year_label
+                FROM schedules s
+                JOIN subjects subj ON s.subject_id = subj.subject_id
+                JOIN sections sec ON s.section_id = sec.section_id
+                JOIN users u ON s.teacher_id = u.user_id
+                JOIN school_years y ON s.year_id = y.year_id
+                WHERE s.year_id = %s AND s.branch_id = %s
+                  AND s.day_of_week = %s
+                  AND s.is_archived = FALSE
+                  AND (s.start_time < %s AND s.end_time > %s)
+                  AND (
+                        s.teacher_id = %s
+                     OR s.section_id = %s
+                     OR s.room = %s
+                  )
+                LIMIT 1
+            """, (year_id, branch_id, day_of_week, end_time, start_time, teacher_id, section_id, room))
+            conflict = cursor.fetchone()
+            if conflict:
+                reasons = []
+                if str(conflict["teacher_id"]) == str(teacher_id):
+                    reasons.append(f"Teacher {conflict['conflict_teacher_name']}")
+                if str(conflict["section_id"]) == str(section_id):
+                    reasons.append(f"Section {conflict['conflict_section_name']}")
+                if str(conflict["room"]) == str(room):
+                    reasons.append(f"Room {conflict['room']}")
 
-        # --- INSERT IF NO ISSUES ---
-        cursor.execute("""
-            INSERT INTO schedules
-            (subject_id, section_id, teacher_id, day_of_week, start_time, end_time, room, year_id, branch_id)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-        """, (
-            subject_id, section_id, teacher_id,
-            day_of_week, start_time, end_time, room, year_id, branch_id
-        ))
+                conflict_types = " and ".join(reasons)
+                conflict_slot = f"{day_of_week} {conflict['start_time'].strftime('%H:%M')}-{conflict['end_time'].strftime('%H:%M')}"
+                conflict_subj = conflict.get("conflict_subject_name", "")
+                conflict_messages.append(f"{conflict_types} busy on {conflict_slot} ({conflict_subj})")
+            else:
+                cursor.execute("""
+                    INSERT INTO schedules
+                    (subject_id, section_id, teacher_id, day_of_week, start_time, end_time, room, year_id, branch_id)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """, (
+                    subject_id, section_id, teacher_id,
+                    day_of_week, start_time, end_time, room, year_id, branch_id
+                ))
+                added_count += 1
+
         db.commit()
-        flash("Schedule added!", "success")
+        if added_count > 0:
+            msg = f"Successfully scheduled {added_count} class slot(s)!"
+            if conflict_messages:
+                msg += f" (Skipped conflicts: {'; '.join(conflict_messages)})"
+            flash(msg, "success")
+        else:
+            flash(f"Conflict detected: {'; '.join(conflict_messages)}", "danger")
+
         cursor.close(); db.close()
         return redirect(url_for("branch_admin.list_and_add_schedules"))
 

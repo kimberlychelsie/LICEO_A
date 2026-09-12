@@ -3,142 +3,194 @@
 
 {% block styles %}
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
 
     :root {
         --sch-blue: #1e3a8a;
+        --sch-blue-vibrant: #2563eb;
         --sch-blue-light: #eff6ff;
         --sch-blue-soft: #dbeafe;
         --sch-gold: #facc15;
-        --sch-gold-soft: #fef9c3;
         --sch-gold-dark: #ca8a04;
         --sch-text-main: #0f172a;
         --sch-text-muted: #64748b;
-        --sch-border: rgba(226, 232, 240, 0.8);
+        --sch-border: #e2e8f0;
         --sch-surface: #ffffff;
-        --sch-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
-        --sch-radius: 20px;
-        --sch-radius-lg: 28px;
+        --sch-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05), 0 4px 6px -2px rgba(15, 23, 42, 0.02);
+        --sch-radius: 16px;
+        --sch-radius-lg: 24px;
     }
 
     body {
         background-color: #f8fafc;
         font-family: 'Plus Jakarta Sans', sans-serif;
+        color: var(--sch-text-main);
     }
 
     .sch-container {
-        max-width: 1300px;
+        max-width: 1350px;
         margin: 0 auto;
         padding: 32px 24px;
         animation: fadeSlideUp 0.4s ease-out;
     }
 
     @keyframes fadeSlideUp {
-        from { opacity: 0; transform: translateY(15px); }
+        from { opacity: 0; transform: translateY(12px); }
         to { opacity: 1; transform: translateY(0); }
     }
 
-    /* ── Hero Banner ── */
+    /* ── Header Card ── */
     .hero-banner {
-        background: linear-gradient(135deg, #1e3a8a 0%, #0c2461 100%);
-        border-radius: 20px;
-        padding: 40px;
-        margin-bottom: 24px;
+        background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 50%, #0f172a 100%);
+        border-radius: var(--sch-radius-lg);
+        padding: 32px 36px;
+        margin-bottom: 28px;
         position: relative;
-        overflow: hidden;
         color: #fff;
-        box-shadow: 0 15px 35px -10px rgba(26, 58, 143, 0.2);
+        box-shadow: 0 15px 30px -10px rgba(30, 58, 138, 0.25);
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
+        align-items: center;
         flex-wrap: wrap;
         gap: 20px;
     }
     .hero-content h1 {
-        font-size: 2.5rem;
+        font-size: 2.1rem;
         font-weight: 900;
-        letter-spacing: -0.04em;
-        margin-bottom: 12px;
-        line-height: 1;
+        letter-spacing: -0.03em;
+        margin-bottom: 6px;
+        line-height: 1.1;
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 10px;
     }
     .hero-content h1 span {
-        color: #facc15;
-        text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
+        color: var(--sch-gold);
+        text-shadow: 0 2px 10px rgba(250, 204, 21, 0.3);
     }
     .hero-content p {
-        font-size: 1rem;
+        font-size: 0.92rem;
         font-weight: 500;
-        color: rgba(255, 255, 255, 0.9);
-        max-width: 600px;
-        line-height: 1.5;
+        color: rgba(255, 255, 255, 0.85);
         margin: 0;
     }
 
-    /* ── Action Form Card ── */
+    /* ── Main Form Container ── */
     .form-card {
         background: var(--sch-surface);
         border-radius: var(--sch-radius-lg);
-        padding: 32px;
-        margin-bottom: 40px;
+        padding: 30px;
+        margin-bottom: 32px;
         box-shadow: var(--sch-shadow);
         border: 1px solid var(--sch-border);
     }
 
-    .form-title {
-        font-size: 1.15rem;
-        font-weight: 800;
-        color: var(--sch-blue);
-        margin-bottom: 24px;
+    .form-header {
         display: flex;
+        justify-content: space-between;
         align-items: center;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #f1f5f9;
+        flex-wrap: wrap;
         gap: 12px;
     }
 
-    .form-grid {
-        display: grid;
-        grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1.5fr;
-        gap: 16px;
-        align-items: end;
+    .form-title {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: var(--sch-blue);
+        margin: 0;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
 
-    .form-group {
+    .section-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.78rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--sch-blue-vibrant);
+        background: var(--sch-blue-light);
+        padding: 6px 14px;
+        border-radius: 20px;
+        margin-bottom: 14px;
+    }
+
+    .form-group-title {
+        font-size: 0.88rem;
+        font-weight: 800;
+        color: var(--sch-text-main);
+        margin-bottom: 12px;
         display: flex;
-        flex-direction: column;
+        align-items: center;
         gap: 8px;
     }
 
     .form-label {
-        font-size: 0.75rem;
+        font-size: 0.76rem;
         font-weight: 800;
         color: var(--sch-text-muted);
         text-transform: uppercase;
-        letter-spacing: 0.05em;
+        letter-spacing: 0.04em;
+        display: block;
+        margin-bottom: 6px;
     }
 
     .premium-input {
-        padding: 12px 16px;
-        border: 1px solid var(--sch-border);
+        padding: 11px 15px;
+        border: 1.5px solid var(--sch-border);
         border-radius: 12px;
         font-family: inherit;
         font-size: 0.9rem;
         font-weight: 600;
         background: #fcfcfd;
-        transition: all 0.2s;
+        transition: all 0.2s ease;
         width: 100%;
+        color: var(--sch-text-main);
     }
 
     .premium-input:focus {
         outline: none;
-        border-color: var(--sch-blue);
+        border-color: var(--sch-blue-vibrant);
         box-shadow: 0 0 0 4px var(--sch-blue-soft);
         background: #fff;
     }
 
-    .btn-create {
+    .btn-action-pill {
+        background: #ffffff;
+        border: 1.5px solid var(--sch-border);
+        color: var(--sch-text-main);
+        padding: 8px 16px;
+        border-radius: 12px;
+        font-size: 0.82rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .btn-action-pill:hover {
+        border-color: var(--sch-blue-vibrant);
+        color: var(--sch-blue-vibrant);
+        background: var(--sch-blue-light);
+        transform: translateY(-1px);
+    }
+
+    .btn-action-pill.active {
         background: var(--sch-blue);
+        color: #ffffff;
+        border-color: var(--sch-blue);
+    }
+
+    .btn-create {
+        background: var(--sch-blue-vibrant);
         color: white;
         border: none;
         padding: 12px 24px;
@@ -146,18 +198,49 @@
         font-weight: 800;
         font-size: 0.9rem;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: all 0.2s ease;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
-        height: 100%;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
     }
 
     .btn-create:hover {
-        background: #111827;
+        background: var(--sch-blue);
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(30, 58, 138, 0.2);
+        box-shadow: 0 6px 16px rgba(30, 58, 138, 0.3);
+    }
+
+    /* ── Day Selection Chips ── */
+    .day-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.85rem;
+        font-weight: 700;
+        color: #334155;
+        background: #f8fafc;
+        border: 1.5px solid #e2e8f0;
+        padding: 8px 18px;
+        border-radius: 20px;
+        cursor: pointer;
+        user-select: none;
+        transition: all 0.15s ease;
+    }
+
+    .day-chip:has(input:checked) {
+        background: var(--sch-blue-light);
+        border-color: var(--sch-blue-vibrant);
+        color: var(--sch-blue);
+        box-shadow: 0 2px 6px rgba(37, 99, 235, 0.15);
+    }
+
+    .day-chip input[type="checkbox"] {
+        accent-color: var(--sch-blue-vibrant);
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
     }
 
     /* ── Schedule Table ── */
@@ -170,9 +253,9 @@
     }
 
     .table-toolbar {
-        padding: 24px 32px;
-        background: #fcfcfd;
-        border-bottom: 1px solid var(--sch-border);
+        padding: 20px 28px;
+        background: #ffffff;
+        border-bottom: 1px solid #f1f5f9;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -185,224 +268,283 @@
 
     .premium-table th {
         text-align: left;
-        padding: 18px 32px;
-        background: rgba(248, 250, 252, 0.6);
+        padding: 16px 24px;
+        background: #f8fafc;
         color: var(--sch-text-muted);
-        font-size: 0.75rem;
+        font-size: 0.74rem;
         font-weight: 800;
         text-transform: uppercase;
-        letter-spacing: 0.08em;
+        letter-spacing: 0.06em;
         border-bottom: 1px solid var(--sch-border);
     }
 
     .premium-table td {
-        padding: 20px 32px;
+        padding: 16px 24px;
         border-bottom: 1px solid #f1f5f9;
-        vertical-align: middle;
-        font-size: 0.95rem;
-        font-weight: 600;
-        color: var(--sch-text-main);
+        font-size: 0.88rem;
     }
 
-    .premium-table tr:hover {
+    .schedule-row:hover {
         background: #f8fafc;
     }
 
-    .class-info { display: flex; flex-direction: column; gap: 4px; }
-    .class-main { font-weight: 800; color: var(--sch-blue); }
-    .class-sub { font-size: 0.8rem; color: var(--sch-text-muted); }
+    .class-info {
+        display: flex;
+        flex-direction: column;
+    }
+    .class-main {
+        font-weight: 800;
+        color: var(--sch-text-main);
+    }
+    .class-sub {
+        font-size: 0.8rem;
+        color: var(--sch-text-muted);
+        font-weight: 600;
+    }
 
     .time-slot {
-        background: var(--sch-blue-light);
+        font-weight: 800;
         color: var(--sch-blue);
-        padding: 4px 10px;
-        border-radius: 8px;
-        font-weight: 700;
-        font-size: 0.85rem;
+        background: var(--sch-blue-light);
+        padding: 5px 12px;
+        border-radius: 10px;
         display: inline-block;
+        font-size: 0.82rem;
+        border: 1px solid #bfdbfe;
     }
 
     .room-badge {
-        background: var(--sch-gold-soft);
-        color: var(--sch-gold-dark);
-        border: 1px solid rgba(202, 138, 4, 0.2);
-        padding: 6px 14px;
+        font-weight: 700;
+        color: #475569;
+        background: #f1f5f9;
+        padding: 5px 12px;
         border-radius: 10px;
-        font-weight: 800;
         font-size: 0.8rem;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        white-space: nowrap;
+        border: 1px solid #e2e8f0;
     }
 
-    /* ── Action Buttons ── */
     .btn-action {
-        width: 38px; height: 38px;
+        width: 36px;
+        height: 36px;
         border-radius: 10px;
+        border: 1px solid var(--sch-border);
+        background: #fff;
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        border: 1px solid var(--sch-border);
-        background: white;
-        color: var(--sch-text-muted);
-        transition: all 0.2s;
         cursor: pointer;
-        text-decoration: none;
+        transition: all 0.2s;
     }
+    .btn-edit { color: var(--sch-blue-vibrant); }
+    .btn-edit:hover { background: var(--sch-blue-light); border-color: var(--sch-blue-vibrant); }
+    .btn-delete { color: #ef4444; }
+    .btn-delete:hover { background: #fef2f2; border-color: #fca5a5; }
 
-    @media (max-width: 768px) {
-        .sch-container {
-            padding: 16px 12px;
-        }
-        .hero-banner {
-            padding: 24px 20px;
-        }
-        .form-grid {
-            grid-template-columns: 1fr;
-        }
-        .table-toolbar {
-            flex-direction: column;
-            align-items: stretch;
-            padding: 16px;
-        }
-        .header-actions {
-            width: 100%;
-        }
-        .header-actions .btn-create {
-            width: 100%;
-            justify-content: center;
-        }
-    }
-    .btn-edit:hover { background: var(--sch-blue-light); color: var(--sch-blue); border-color: var(--sch-blue); }
-    .btn-delete:hover { background: #fee2e2; color: #dc2626; border-color: #fca5a5; }
-
-    /* ── Glass Modal ── */
+    /* ── Edit & Settings Modal Glass ── */
     .glass-overlay {
-        position: fixed; inset: 0; background: rgba(15, 23, 42, 0.7);
-        backdrop-filter: blur(8px); display: none; align-items: flex-start;
-        justify-content: center; z-index: 1000; opacity: 0; transition: opacity 0.3s ease;
-        overflow-y: auto; padding: 40px 20px;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.65);
+        backdrop-filter: blur(8px);
+        z-index: 1000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        opacity: 0;
+        transition: opacity 0.25s ease;
     }
-    .glass-overlay.visible { display: flex; opacity: 1; }
-    
+    .glass-overlay.visible { opacity: 1; }
+
     .glass-modal {
-        background: var(--sch-surface); width: 100%; max-width: 650px;
-        border-radius: 32px; padding: 40px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        background: #fff;
+        border-radius: 24px;
+        padding: 32px 36px;
+        width: 95%;
+        max-width: 600px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         position: relative;
+        transform: translateY(16px);
+        transition: transform 0.25s ease;
     }
+    .glass-overlay.visible .glass-modal { transform: translateY(0); }
 
     .modal-close {
-        position: absolute; top: 24px; right: 24px;
-        border: none; background: none; font-size: 1.5rem; color: var(--sch-text-muted);
-        cursor: pointer; transition: color 0.2s;
+        position: absolute;
+        top: 24px;
+        right: 24px;
+        background: #f1f5f9;
+        border: none;
+        color: var(--sch-text-muted);
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
     }
-    .modal-close:hover { color: var(--sch-blue); }
+    .modal-close:hover { background: #e2e8f0; color: #0f172a; }
 
     .error-hint {
-        color: #ef4444; font-size: 0.8rem; font-weight: 700; margin-top: 8px; display: none;
+        color: #ef4444;
+        font-size: 0.8rem;
+        font-weight: 700;
+        margin-top: 6px;
+        display: none;
     }
 
-    @media (max-width: 1024px) {
-        .sch-container {
-            padding: 16px 12px 60px;
-        }
-
-        .welcome-header {
-            padding: 24px 20px;
-            border-radius: 20px;
-        }
-
-        .welcome-header h1 {
-            font-size: 1.6rem;
-        }
-
-        .form-grid {
-            grid-template-columns: 1fr;
-            gap: 12px;
-        }
-
-        .btn-create {
-            grid-column: span 1;
-            padding: 14px;
-        }
-
-        .table-toolbar {
-            padding: 16px;
-            flex-direction: column;
-            align-items: stretch;
-        }
-
-        .table-toolbar > div {
-            flex-direction: column;
-            align-items: stretch !important;
-        }
-
-        .premium-table th,
-        .premium-table td {
-            padding: 14px 16px;
-            white-space: nowrap;
-        }
-
-        .table-surface {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .premium-table {
-            min-width: 900px;
-        }
-
-        .glass-modal {
-            padding: 24px;
-            border-radius: 24px;
-            width: 95%;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-
-        .glass-modal > form > div {
-            grid-template-columns: 1fr !important;
-            gap: 12px !important;
-        }
+    /* Matrix Timetable Grid Styles */
+    .matrix-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        margin-top: 8px;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid #cbd5e1;
+    }
+    .matrix-table th {
+        background: #1e3a8a;
+        color: #ffffff;
+        padding: 12px 14px;
+        font-size: 0.82rem;
+        font-weight: 800;
+        text-align: center;
+        border-right: 1px solid #2563eb;
+    }
+    .matrix-table th:last-child {
+        border-right: none;
+    }
+    .matrix-table td {
+        border-bottom: 1px solid #e2e8f0;
+        border-right: 1px solid #e2e8f0;
+        padding: 10px;
+        vertical-align: top;
+        min-height: 55px;
+        background: #ffffff;
+    }
+    .matrix-table td:last-child {
+        border-right: none;
+    }
+    .matrix-table tr:last-child td {
+        border-bottom: none;
+    }
+    .matrix-time-col {
+        background: #f8fafc !important;
+        font-weight: 800;
+        color: #475569;
+        font-size: 0.78rem;
+        text-align: center;
+        width: 120px;
+    }
+    .matrix-card {
+        background: #eff6ff;
+        border-left: 4px solid #2563eb;
+        border-radius: 8px;
+        padding: 8px 10px;
+        margin-bottom: 6px;
+        font-size: 0.78rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .matrix-card-sec {
+        font-weight: 800;
+        color: #1e3a8a;
+    }
+    .matrix-card-subj {
+        font-weight: 700;
+        color: #0f172a;
+    }
+    .matrix-card-meta {
+        font-size: 0.72rem;
+        color: #64748b;
+        margin-top: 3px;
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="sch-container">
-    <!-- Premium Header -->
-    <!-- Premium Header -->
+
+    <!-- ── Top Banner ── -->
     <div class="hero-banner">
         <div class="hero-content">
-            <h1>Class <span>Schedules</span></h1>
-            <p>Manage and organize subject schedules for all sections.</p>
+            <h1><i class="fas fa-calendar-alt"></i> Class <span>Schedules</span></h1>
+            <p>Easily design, manage, and inspect weekly timetables and room assignments for all sections.</p>
         </div>
-        <div class="header-actions" style="display: flex; align-items: center;">
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="button" onclick="openBreakModal()" class="btn-action-pill" style="background: rgba(255,255,255,0.18); color: #fff; border-color: rgba(255,255,255,0.3);">
+                ⚙️ Adjust Prayer & Break Times
+            </button>
             {% if show_archived %}
-            <a href="{{ url_for('registrar.list_and_add_schedules') }}" class="btn-create" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.2); text-decoration: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+            <a href="{{ url_for('branch_admin.list_and_add_schedules') }}" class="btn-action-pill" style="background: rgba(255,255,255,0.25); color: #fff; border-color: rgba(255,255,255,0.4); text-decoration: none;">
                 <i class="fas fa-arrow-left"></i> Back to Active
             </a>
             {% else %}
-            <a href="{{ url_for('registrar.list_and_add_schedules', show_archived='true') }}" class="btn-create" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.2); text-decoration: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;">
+            <a href="{{ url_for('branch_admin.list_and_add_schedules', show_archived='true') }}" class="btn-action-pill" style="background: rgba(255,255,255,0.15); color: #fff; border-color: rgba(255,255,255,0.25); text-decoration: none;">
                 <i class="fas fa-archive"></i> View Archived
             </a>
             {% endif %}
         </div>
     </div>
 
-    <!-- Quick Add Form -->
-    <!-- Add Form: Hidden when viewing archived -->
+    <!-- ── Quick Add Schedule Form ── -->
     {% if not show_archived %}
     <div class="form-card">
-        <h3 class="form-title"><i class="fas fa-plus-circle"></i> Add New Class</h3>
+        <div class="form-header">
+            <h3 class="form-title">
+                <i class="fas fa-plus-circle" style="color: var(--sch-blue-vibrant);"></i> Add New Class Schedule
+            </h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <button type="button" onclick="openBreakModal()" class="btn-action-pill" style="border-color: #fde047; background: #fefce8; color: #a16207;">
+                    ⚙️ Customize Break & Prayer Times
+                </button>
+                <button type="button" onclick="toggleSmartCascade()" id="cascadeToggleBtn" class="btn-action-pill">
+                    ⚡ Single Dropdown View
+                </button>
+            </div>
+        </div>
+
         <form method="post" id="addForm">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div class="form-grid">
-                <div class="form-group">
-                    <label class="form-label">Class Details</label>
-                    <select name="combo" class="premium-input" required>
-                        <option value="">-- Select --</option>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="combo" id="finalComboInput" required>
+
+            <!-- STEP 1: CLASS SELECTION -->
+            <div style="margin-bottom: 24px;">
+                <div class="section-badge">
+                    <i class="fas fa-user-graduate"></i> Step 1: Select Class & Subject
+                </div>
+
+                <!-- 3-STEP SMART CASCADING SELECTION -->
+                <div id="smartCascadeWrapper" style="display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 18px; background: #f8fafc; padding: 20px; border-radius: 16px; border: 1.5px solid var(--sch-border);">
+                    <div>
+                        <label class="form-label">1. Grade Level</label>
+                        <select id="smartGradeSelect" class="premium-input" onchange="onSmartGradeChange()">
+                            <option value="">-- Select Grade --</option>
+                            {% for grade in all_grades %}
+                            <option value="{{ grade }}">{{ grade }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">2. Section</label>
+                        <select id="smartSectionSelect" class="premium-input" disabled onchange="onSmartSectionChange()">
+                            <option value="">-- Select Section --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">3. Subject & Assigned Teacher</label>
+                        <select id="smartSubjectSelect" class="premium-input" disabled onchange="onSmartSubjectChange()">
+                            <option value="">-- Select Subject --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- TRADITIONAL SINGLE DROPDOWN (HIDDEN BY DEFAULT) -->
+                <div id="traditionalComboWrapper" style="display: none; background: #f8fafc; padding: 20px; border-radius: 16px; border: 1.5px solid var(--sch-border);">
+                    <label class="form-label">All Class Combinations</label>
+                    <select id="traditionalComboSelect" class="premium-input" onchange="onTraditionalComboChange()">
+                        <option value="">-- Select Class --</option>
                         {% for grade_name, items in combinations|groupby('grade_name') %}
                         <optgroup label="{{ grade_name }}">
                             {% for c in items %}
@@ -414,66 +556,111 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="form-group" style="display: none;">
-                    <label class="form-label">Academic Year</label>
-                    <input type="hidden" name="year_id" value="{{ active_year.year_id if active_year else '' }}">
+            </div>
+
+            <!-- STEP 2: DAYS, TIME & ROOM -->
+            <div>
+                <div class="section-badge" style="color: #0d9488; background: #ccfbf1;">
+                    <i class="fas fa-clock"></i> Step 2: Set Days, Time & Room
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Day</label>
-                    <select name="day_of_week" class="premium-input" required>
-                        <option value="">Day</option>
-                        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday'] %}
-                        <option value="{{day}}">{{day}}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Start</label>
-                    <input type="time" name="start_time" class="premium-input" required min="07:00" max="17:00" step="900">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">End</label>
-                    <input type="time" name="end_time" class="premium-input" required min="07:00" max="17:00" step="900">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Room (1-30)</label>
-                    <input type="number" name="room" min="1" max="30" class="premium-input" placeholder="e.g. 10" required 
-                           oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2); if(parseInt(this.value) > 30) this.value = 30;"
-                           title="Enter room number between 1 and 30 (max 2 digits)">
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Academic Year</label>
-                    <div style="display: flex; gap: 8px;">
-                        <input type="hidden" name="year_id" value="{{ active_year.year_id if active_year else '' }}">
-                        <div class="premium-input" style="background: #f8fafc; color: var(--sch-text-muted); display: flex; align-items: center; border-color: rgba(0,0,0,0.05); flex: 1;">
-                            {{ active_year.label if active_year else 'No Active Year' }}
+
+                <div style="background: #ffffff; border: 1.5px solid var(--sch-border); border-radius: 16px; padding: 20px;">
+                    
+                    <!-- DAYS MULTI-SELECT -->
+                    <div style="margin-bottom: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                            <label class="form-label" style="margin:0; color:#1e3a8a;">📅 Select Days (Multi-Select Enabled):</label>
+                            <div style="display: flex; gap: 6px;">
+                                <button type="button" onclick="selectDayPreset(['Monday','Wednesday','Friday'])" class="btn-action-pill" style="padding:4px 12px; font-size:0.75rem;">MWF</button>
+                                <button type="button" onclick="selectDayPreset(['Tuesday','Thursday'])" class="btn-action-pill" style="padding:4px 12px; font-size:0.75rem;">TTH</button>
+                                <button type="button" onclick="selectDayPreset(['Monday','Tuesday','Wednesday','Thursday','Friday'])" class="btn-action-pill" style="padding:4px 12px; font-size:0.75rem;">Mon-Fri</button>
+                                <button type="button" onclick="selectDayPreset([])" class="btn-action-pill" style="padding:4px 12px; font-size:0.75rem; background:#f1f5f9; color:#64748b;">Clear</button>
+                            </div>
                         </div>
-                        <button class="btn-create" type="submit"><i class="fas fa-check"></i> Add</button>
+
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
+                            <label class="day-chip">
+                                <input type="checkbox" name="days" value="{{ day }}" class="day-checkbox" onchange="checkRealTimeConflicts()">
+                                {{ day }}
+                            </label>
+                            {% endfor %}
+                        </div>
                     </div>
+
+                    <!-- DYNAMIC TIME SLOT PRESETS -->
+                    <div style="margin-bottom: 20px; padding-top: 16px; border-top: 1px dashed #e2e8f0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+                            <label class="form-label" style="margin:0; color:#1e3a8a;">⏰ Quick Time Slot Presets:</label>
+                            <span style="font-size: 0.74rem; color: #64748b; font-weight: 600;">Click a preset to quickly fill Start & End time</span>
+                        </div>
+                        <div id="quickPresetsContainer" style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <!-- Dynamically populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- TIME & ROOM INPUTS -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1.2fr 1fr; gap: 16px; align-items: flex-end; padding-top: 16px; border-top: 1px dashed #e2e8f0;">
+                        <div>
+                            <label class="form-label">Start Time</label>
+                            <input type="time" name="start_time" id="addStartTime" class="premium-input" required min="07:00" max="17:00" step="900" onchange="checkRealTimeConflicts()">
+                        </div>
+                        <div>
+                            <label class="form-label">End Time</label>
+                            <input type="time" name="end_time" id="addEndTime" class="premium-input" required min="07:00" max="17:00" step="900" onchange="checkRealTimeConflicts()">
+                        </div>
+                        <div>
+                            <label class="form-label">Room Number (1-30)</label>
+                            <input type="number" name="room" id="addRoomInput" min="1" max="30" class="premium-input" placeholder="e.g. 10" required 
+                                   oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2); if(parseInt(this.value) > 30) this.value = 30; checkRealTimeConflicts();"
+                                   title="Enter room number between 1 and 30">
+                        </div>
+                        <div>
+                            <button class="btn-create" type="submit" id="addScheduleBtn" style="width:100%; height:44px;">
+                                <i class="fas fa-plus"></i> Add Schedule
+                            </button>
+                        </div>
+                    </div>
+
                 </div>
+            </div>
+
+            <!-- REAL TIME CONFLICT WARNING BANNER -->
+            <div id="liveConflictBanner" style="display:none; background:#fef2f2; border:1.5px solid #fecaca; border-radius:12px; padding:14px 18px; color:#991b1b; font-size:0.86rem; font-weight:700; margin-top:16px; line-height:1.6;">
+                ⚠️ Conflict Detected!
             </div>
             <div id="add-time-error" class="error-hint">Start time must be before end time.</div>
         </form>
     </div>
     {% endif %}
 
-    <!-- Schedule List -->
+    <!-- ── Schedule List & Matrix View Container ── -->
     <div class="table-surface">
         <div class="table-toolbar" style="flex-wrap: wrap; gap: 16px;">
-            <div style="display: flex; align-items: center; gap: 20px; flex: 1;">
-                <h3 style="margin:0; font-weight:800; color:var(--sch-blue); font-size:1.1rem; white-space: nowrap;">
+            <div style="display: flex; align-items: center; gap: 20px; flex: 1; flex-wrap: wrap;">
+                <h3 style="margin:0; font-weight:800; color:var(--sch-blue); font-size:1.15rem; white-space: nowrap;">
                     {{ 'Scheduled Classes' if not show_archived else 'Archived Schedules' }}
                 </h3>
+
+                <!-- View Mode Switcher -->
+                <div style="display: flex; background: #f1f5f9; border-radius: 20px; padding: 4px; border: 1px solid var(--sch-border);">
+                    <button type="button" id="btnListView" onclick="switchScheduleView('list')" style="padding: 6px 18px; border-radius: 16px; border: none; font-size: 0.8rem; font-weight: 800; cursor: pointer; background: var(--sch-blue); color: #fff; transition: all 0.2s;">
+                        📋 List View
+                    </button>
+                    <button type="button" id="btnMatrixView" onclick="switchScheduleView('matrix')" style="padding: 6px 18px; border-radius: 16px; border: none; font-size: 0.8rem; font-weight: 800; cursor: pointer; background: transparent; color: #475569; transition: all 0.2s;">
+                        📅 Weekly Matrix Grid
+                    </button>
+                </div>
                 
                 <!-- Filters -->
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                    <select id="gradeFilter" class="premium-input" style="padding: 8px 14px; font-size: 0.85rem; width: auto; min-width: 130px; height: 38px;" onchange="updateSectionFilter()">
+                <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                    <select id="gradeFilter" class="premium-input" style="padding: 7px 14px; font-size: 0.84rem; width: auto; min-width: 140px; height: 38px;" onchange="updateSectionFilter(); renderMatrixView();">
                         <option value="">-- All Grades --</option>
                         {% for grade in all_grades %}
                         <option value="{{ grade }}">{{ grade }}</option>
                         {% endfor %}
                     </select>
-                    <select id="sectionFilter" class="premium-input" style="padding: 8px 14px; font-size: 0.85rem; width: auto; min-width: 150px; height: 38px;" onchange="filterTable()">
+                    <select id="sectionFilter" class="premium-input" style="padding: 7px 14px; font-size: 0.84rem; width: auto; min-width: 160px; height: 38px;" onchange="filterTable(); renderMatrixView();">
                         <option value="">-- All Sections --</option>
                         {% for sec in all_sections %}
                         <option value="{{ sec.section_id }}" data-grade="{{ sec.grade_name }}">{{ sec.section_name }}</option>
@@ -482,70 +669,71 @@
                 </div>
             </div>
             
-            <div style="font-weight: 700; color: var(--sch-blue); font-size: 0.9rem; background: var(--sch-blue-soft); padding: 8px 16px; border-radius: 12px; height: fit-content;">
-                <span id="activeCount">{{ schedules | length }}</span> {{ 'Active' if not show_archived else 'Archived' }}
+            <div style="font-weight: 800; color: var(--sch-blue); font-size: 0.85rem; background: var(--sch-blue-light); border: 1px solid #bfdbfe; padding: 6px 16px; border-radius: 20px;">
+                <span id="activeCount">{{ schedules | length }}</span> {{ 'Active Schedules' if not show_archived else 'Archived Items' }}
             </div>
         </div>
 
-        <div style="overflow-x: auto;">
+        <!-- LIST VIEW TABLE -->
+        <div id="listViewContainer" style="overflow-x: auto;">
             <table class="premium-table">
                 <thead>
                     <tr>
                         <th>Year</th>
                         <th>Grade</th>
-                        <th>Class & Info</th>
-                        <th>Teacher</th>
+                        <th>Class & Subject</th>
+                        <th>Assigned Teacher</th>
                         <th>Day</th>
                         <th>Time Slot</th>
                         <th>Room</th>
-                        <th style="width: 100px;">Actions</th>
+                        <th style="width: 100px; text-align: center;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for sched in schedules %}
                     <tr class="schedule-row" data-grade="{{ sched.grade_name }}" data-section-id="{{ sched.section_id }}">
                         <td><span style="color: var(--sch-blue); font-weight: 800;">{{sched.year_label}}</span></td>
-                        <td><span style="background: var(--sch-blue-soft); color: var(--sch-blue); padding: 4px 10px; border-radius: 8px; font-weight: 800; font-size: 0.8rem;">{{sched.grade_name}}</span></td>
+                        <td><span style="background: var(--sch-blue-light); color: var(--sch-blue); padding: 4px 10px; border-radius: 8px; font-weight: 800; font-size: 0.8rem; border: 1px solid #bfdbfe;">{{sched.grade_name}}</span></td>
                         <td>
                             <div class="class-info">
                                 <span class="class-main">{{sched.section_name}}</span>
                                 <span class="class-sub">{{sched.subject_name}}</span>
                             </div>
                         </td>
-                        <td>{{sched.teacher_name}}</td>
-                        <td><span style="font-weight: 700;">{{sched.day_of_week}}</span></td>
+                        <td><span style="font-weight: 600; color: #334155;">{{sched.teacher_name}}</span></td>
+                        <td><span style="font-weight: 800; color: #0f172a;">{{sched.day_of_week}}</span></td>
                         <td>
                             <div class="time-slot">{{ sched.start_time.strftime('%H:%M') }} - {{ sched.end_time.strftime('%H:%M') }}</div>
                         </td>
                         <td><span class="room-badge"><i class="fas fa-door-open"></i> Room {{sched.room}}</span></td>
                         <td>
-                            <div style="display: flex; gap: 8px;">
+                            <div style="display: flex; gap: 8px; justify-content: center;">
                                 {% if not show_archived %}
                                 <button class="btn-action btn-edit" title="Edit" onclick="openEditModal({{sched.schedule_id}})">
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
                                 </button>
-                                <form method="post" action="{{ url_for('registrar.archive_schedule', schedule_id=sched.schedule_id) }}" style="display:inline;" onsubmit="return confirm('Archive this class?');">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <form method="post" action="{{ url_for('branch_admin.archive_schedule', schedule_id=sched.schedule_id) }}" style="display:inline;" onsubmit="return confirm('Archive this class schedule?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn-action btn-delete" title="Archive">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V20.9932C21 21.5501 20.5552 22 20.0066 22H3.9934C3.44476 22 3 21.5552 3 20.9932V8H21ZM2 5.0044C2 4.44971 2.4435 4 3.0031 4H20.9969C21.5509 4 22 4.4435 22 5.0044V7H2V5.0044ZM8 11V13H16V11H8Z"/></svg>
+                                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8V20.9932C21 21.5501 20.5552 22 20.0066 22H3.9934C3.44476 22 3 21.5552 3 20.9932V8H21ZM2 5.0044C2 4.44971 2.4435 4 3.0031 4H20.9969C21.5509 4 22 4.4435 22 5.0044V7H2V5.0044ZM8 11V13H16V11H8Z"/></svg>
                                     </button>
                                 </form>
                                 {% else %}
-                                <form method="post" action="{{ url_for('registrar.unarchive_schedule', schedule_id=sched.schedule_id) }}" style="display:inline;" onsubmit="return confirm('Unarchive this class?');">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <form method="post" action="{{ url_for('branch_admin.unarchive_schedule', schedule_id=sched.schedule_id) }}" style="display:inline;" onsubmit="return confirm('Unarchive this class?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn-action btn-edit" title="Unarchive" style="border-color: #10b981; color: #10b981; background: #ecfdf5;">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10H5V19H19V10H21V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V10Z"/><path d="M12 3L4 9L5.5 10.125L12 5.25L18.5 10.125L20 9L12 3Z"/><path d="M11 11V17H13V11H11Z"/></svg>
+                                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10H5V19H19V10H21V19C21 20.1046 20.1046 21 19 21H5C3.89543 21 3 20.1046 3 19V10Z"/><path d="M12 3L4 9L5.5 10.125L12 5.25L18.5 10.125L20 9L12 3Z"/><path d="M11 11V17H13V11H11Z"/></svg>
                                     </button>
                                 </form>
-                                <form method="post" action="{{ url_for('registrar.delete_schedule_permanent', schedule_id=sched.schedule_id) }}" style="display:inline;" onsubmit="return confirm('PERMANENTLY DELETE this schedule? This action cannot be undone.');">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <form method="post" action="{{ url_for('branch_admin.delete_schedule_permanent', schedule_id=sched.schedule_id) }}" style="display:inline;" onsubmit="return confirm('PERMANENTLY DELETE this schedule? This action cannot be undone.');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                     <button type="submit" class="btn-action btn-delete" title="Permanent Delete">
-                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
                                     </button>
                                 </form>
                                 {% endif %}
                             </div>
-                            <!-- Hidden JSON for Modal -->
+                            <!-- Embedded JSON for Modal -->
                             <script id="sched-data-{{sched.schedule_id}}" type="application/json">
                                 {
                                     "schedule_id": "{{sched.schedule_id}}",
@@ -565,20 +753,94 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- MATRIX TIMETABLE GRID VIEW (HIDDEN BY DEFAULT) -->
+        <div id="matrixViewContainer" style="display: none; padding: 24px; overflow-x: auto;">
+            <div style="font-size:0.85rem; color:#64748b; margin-bottom:14px; font-weight:600; display:flex; align-items:center; gap:8px;">
+                <span>💡 Filter by Grade or Section above to inspect specific weekly class timetables and spot vacant slots!</span>
+            </div>
+            <div id="matrixTableContent"></div>
+        </div>
+
     </div>
 </div>
 
-<!-- Edit Overlay -->
+<!-- ── CUSTOMIZE BREAK & PRAYER TIMES MODAL ── -->
+<div class="glass-overlay" id="breakSettingsOverlay">
+    <div class="glass-modal">
+        <button class="modal-close" onclick="closeBreakModal()">✕</button>
+        <h2 style="font-weight:900; color:var(--sch-blue); margin-bottom:8px; font-size:1.4rem;">⚙️ Break & Prayer Time Settings</h2>
+        <p style="font-size:0.85rem; color:var(--sch-text-muted); margin-bottom:24px; font-weight:500;">
+            Customize the start and end times for Morning Prayer/Rosary, Recess, and Lunch break presets.
+        </p>
+        
+        <form id="breakSettingsForm" onsubmit="saveBreakSettings(event)">
+            <div style="display: grid; gap: 16px; margin-bottom: 24px;">
+                
+                <!-- PRAYER / ROSARY -->
+                <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:16px; border-radius:14px;">
+                    <label class="form-label" style="color:#1e40af; font-size:0.82rem;">🙏 Morning Prayer / Holy Rosary</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px;">
+                        <div>
+                            <label style="font-size:0.72rem; font-weight:700; color:#475569;">Start Time</label>
+                            <input type="time" id="cfgPrayerStart" class="premium-input" required>
+                        </div>
+                        <div>
+                            <label style="font-size:0.72rem; font-weight:700; color:#475569;">End Time</label>
+                            <input type="time" id="cfgPrayerEnd" class="premium-input" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RECESS BREAK -->
+                <div style="background:#fefce8; border:1px solid #fef08a; padding:16px; border-radius:14px;">
+                    <label class="form-label" style="color:#a16207; font-size:0.82rem;">☕ Recess Break</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px;">
+                        <div>
+                            <label style="font-size:0.72rem; font-weight:700; color:#475569;">Start Time</label>
+                            <input type="time" id="cfgRecessStart" class="premium-input" required>
+                        </div>
+                        <div>
+                            <label style="font-size:0.72rem; font-weight:700; color:#475569;">End Time</label>
+                            <input type="time" id="cfgRecessEnd" class="premium-input" required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LUNCH BREAK -->
+                <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:16px; border-radius:14px;">
+                    <label class="form-label" style="color:#166534; font-size:0.82rem;">🍱 Lunch Break</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px;">
+                        <div>
+                            <label style="font-size:0.72rem; font-weight:700; color:#475569;">Start Time</label>
+                            <input type="time" id="cfgLunchStart" class="premium-input" required>
+                        </div>
+                        <div>
+                            <label style="font-size:0.72rem; font-weight:700; color:#475569;">End Time</label>
+                            <input type="time" id="cfgLunchEnd" class="premium-input" required>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div style="display: flex; gap: 12px;">
+                <button type="button" class="btn-action-pill" style="width: 40%; justify-content: center; background:#f1f5f9;" onclick="resetBreakDefaults()">Reset Defaults</button>
+                <button type="submit" class="btn-create" style="width: 60%; justify-content: center;">Save Break Settings</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ── EDIT SCHEDULE MODAL ── -->
 <div class="glass-overlay" id="editOverlay">
     <div class="glass-modal">
-        <button class="modal-close" onclick="closeEditModal()">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-        </button>
-        <h2 style="font-weight:900; color:var(--sch-blue); margin-bottom:24px; font-size:1.5rem;">Edit Class</h2>
+        <button class="modal-close" onclick="closeEditModal()">✕</button>
+        <h2 style="font-weight:900; color:var(--sch-blue); margin-bottom:20px; font-size:1.4rem;">Edit Class Schedule</h2>
         
         <form method="post" id="editForm">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 <div class="form-group" style="grid-column: span 2;">
                     <label class="form-label">Class Details</label>
                     <select name="combo" id="edit_combo" class="premium-input" required>
@@ -598,7 +860,7 @@
                     <label class="form-label">Day</label>
                     <select name="day_of_week" id="edit_day_of_week" class="premium-input" required>
                         <option value="">Day</option>
-                        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday'] %}
+                        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] %}
                         <option value="{{day}}">{{day}}</option>
                         {% endfor %}
                     </select>
@@ -607,37 +869,420 @@
                     <label class="form-label">Room (1-30)</label>
                     <input type="number" name="room" id="edit_room" min="1" max="30" class="premium-input" required 
                            oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2); if(parseInt(this.value) > 30) this.value = 30;"
-                           title="Enter room number between 1 and 30 (max 2 digits)">
+                           title="Enter room number between 1 and 30">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Start</label>
+                    <label class="form-label">Start Time</label>
                     <input type="time" name="start_time" id="edit_start_time" class="premium-input" required min="07:00" max="17:00" step="900">
                 </div>
                 <div class="form-group">
-                    <label class="form-label">End</label>
+                    <label class="form-label">End Time</label>
                     <input type="time" name="end_time" id="edit_end_time" class="premium-input" required min="07:00" max="17:00" step="900">
                 </div>
                 <div class="form-group" style="display: none;">
-                    <label class="form-label">Academic Year</label>
                     <input type="hidden" name="year_id" id="edit_year_id" value="{{ active_year.year_id if active_year else '' }}">
                 </div>
                 <div class="form-group" style="grid-column: span 2;">
-                    <label class="form-label">Academic Year</label>
-                    <div class="premium-input" style="background: #f8fafc; color: var(--sch-text-muted); display: flex; align-items: center; border-color: rgba(0,0,0,0.05);">
+                    <label class="form-label">Academic School Year</label>
+                    <div class="premium-input" style="background: #f8fafc; color: var(--sch-text-muted); display: flex; align-items: center; border-color: rgba(0,0,0,0.06);">
                         {{ active_year.label if active_year else 'No Active Year Found' }}
                     </div>
                 </div>
             </div>
             <div id="edit-time-error" class="error-hint">Start time must be before end time.</div>
-            <div style="display: flex; gap: 12px; margin-top: 32px;">
-                <button type="button" class="premium-input" style="width: 100%; cursor: pointer;" onclick="closeEditModal()">Cancel</button>
-                <button type="submit" class="btn-create" id="editSaveBtn" style="width: 100%; height: auto;">Save Changes</button>
+            <div style="display: flex; gap: 12px; margin-top: 24px;">
+                <button type="button" class="btn-action-pill" style="width: 100%; justify-content: center;" onclick="closeEditModal()">Cancel</button>
+                <button type="submit" class="btn-create" id="editSaveBtn" style="width: 100%; justify-content: center;">Save Changes</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
+    // ── Embedded Data for Smart Cascading & Conflict Engine ──
+    const ALL_SECTIONS_LIST = [
+        {% for sec in all_sections %}
+        {
+            section_id: {{ sec.section_id | tojson }},
+            section_name: {{ sec.section_name | tojson }},
+            grade_name: {{ sec.grade_name | tojson }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    const ALL_COMBINATIONS = [
+        {% for c in combinations %}
+        {
+            grade_name: {{ c.grade_name | tojson }},
+            section_id: {{ c.section_id | tojson }},
+            section_name: {{ c.section_name | tojson }},
+            subject_id: {{ c.subject_id | tojson }},
+            subject_name: {{ c.subject_name | tojson }},
+            teacher_id: {{ c.teacher_id | tojson }},
+            teacher_name: {{ c.teacher_name | tojson }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    const ALL_SCHEDULES = [
+        {% for s in schedules %}
+        {
+            schedule_id: {{ s.schedule_id | tojson }},
+            grade_name: {{ s.grade_name | tojson }},
+            section_id: {{ s.section_id | tojson }},
+            section_name: {{ s.section_name | tojson }},
+            subject_name: {{ s.subject_name | tojson }},
+            teacher_id: {{ s.teacher_id | tojson }},
+            teacher_name: {{ s.teacher_name | tojson }},
+            day_of_week: {{ s.day_of_week | tojson }},
+            start_time: {{ s.start_time.strftime('%H:%M') | tojson }},
+            end_time: {{ s.end_time.strftime('%H:%M') | tojson }},
+            room: {{ s.room | tojson }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    // ── BREAK & PRAYER CONFIGURATION STATE ──
+    const DEFAULT_BREAK_CONFIG = {
+        prayerStart: "07:15",
+        prayerEnd: "07:30",
+        recessStart: "09:30",
+        recessEnd: "10:00",
+        lunchStart: "12:00",
+        lunchEnd: "13:00"
+    };
+
+    function getBreakConfig() {
+        const saved = localStorage.getItem('liceo_break_times_config');
+        return saved ? JSON.parse(saved) : DEFAULT_BREAK_CONFIG;
+    }
+
+    function renderQuickPresets() {
+        const cfg = getBreakConfig();
+        const container = document.getElementById('quickPresetsContainer');
+        if (!container) return;
+
+        const presets = [
+            { label: `🙏 ${cfg.prayerStart} - ${cfg.prayerEnd} (Prayer/Rosary)`, start: cfg.prayerStart, end: cfg.prayerEnd, style: "border:1px solid #bfdbfe; background:#eff6ff; color:#1e40af; font-weight:800;" },
+            { label: "07:30 - 08:30", start: "07:30", end: "08:30" },
+            { label: "08:30 - 09:30", start: "08:30", end: "09:30" },
+            { label: `☕ ${cfg.recessStart} - ${cfg.recessEnd} (Recess)`, start: cfg.recessStart, end: cfg.recessEnd, style: "border:1px solid #fef08a; background:#fefce8; color:#a16207; font-weight:800;" },
+            { label: "10:00 - 11:00", start: "10:00", end: "11:00" },
+            { label: "11:00 - 12:00", start: "11:00", end: "12:00" },
+            { label: `🍱 ${cfg.lunchStart} - ${cfg.lunchEnd} (Lunch)`, start: cfg.lunchStart, end: cfg.lunchEnd, style: "border:1px solid #bbf7d0; background:#f0fdf4; color:#166534; font-weight:800;" },
+            { label: "13:00 - 14:00", start: "13:00", end: "14:00" },
+            { label: "14:00 - 15:00", start: "14:00", end: "15:00" },
+            { label: "15:00 - 16:00", start: "15:00", end: "16:00" }
+        ];
+
+        let html = '';
+        presets.forEach(p => {
+            const extraStyle = p.style || "border:1px solid #e2e8f0; background:#f8fafc; color:#334155; font-weight:700;";
+            html += `<button type="button" onclick="setTimePreset('${p.start}', '${p.end}')" class="btn-action-pill" style="padding:4px 10px; font-size:0.74rem; ${extraStyle}">${p.label}</button>`;
+        });
+        container.innerHTML = html;
+    }
+
+    function openBreakModal() {
+        const cfg = getBreakConfig();
+        document.getElementById('cfgPrayerStart').value = cfg.prayerStart;
+        document.getElementById('cfgPrayerEnd').value = cfg.prayerEnd;
+        document.getElementById('cfgRecessStart').value = cfg.recessStart;
+        document.getElementById('cfgRecessEnd').value = cfg.recessEnd;
+        document.getElementById('cfgLunchStart').value = cfg.lunchStart;
+        document.getElementById('cfgLunchEnd').value = cfg.lunchEnd;
+
+        const overlay = document.getElementById('breakSettingsOverlay');
+        overlay.style.display = 'flex';
+        setTimeout(() => overlay.classList.add('visible'), 10);
+    }
+
+    function closeBreakModal() {
+        const overlay = document.getElementById('breakSettingsOverlay');
+        overlay.classList.remove('visible');
+        setTimeout(() => overlay.style.display = 'none', 250);
+    }
+
+    function saveBreakSettings(e) {
+        e.preventDefault();
+        const newCfg = {
+            prayerStart: document.getElementById('cfgPrayerStart').value,
+            prayerEnd: document.getElementById('cfgPrayerEnd').value,
+            recessStart: document.getElementById('cfgRecessStart').value,
+            recessEnd: document.getElementById('cfgRecessEnd').value,
+            lunchStart: document.getElementById('cfgLunchStart').value,
+            lunchEnd: document.getElementById('cfgLunchEnd').value
+        };
+
+        localStorage.setItem('liceo_break_times_config', JSON.stringify(newCfg));
+        renderQuickPresets();
+        renderMatrixView();
+        closeBreakModal();
+        alert('✅ Break & Prayer Times updated successfully!');
+    }
+
+    function resetBreakDefaults() {
+        localStorage.removeItem('liceo_break_times_config');
+        openBreakModal();
+        renderQuickPresets();
+        renderMatrixView();
+    }
+
+    // ── Smart Cascading Selection Logic ──
+    function onSmartGradeChange() {
+        const grade = document.getElementById('smartGradeSelect').value;
+        const secSelect = document.getElementById('smartSectionSelect');
+        const subjSelect = document.getElementById('smartSubjectSelect');
+        
+        secSelect.innerHTML = '<option value="">-- Select Section --</option>';
+        subjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        subjSelect.disabled = true;
+        document.getElementById('finalComboInput').value = '';
+
+        if (!grade) {
+            secSelect.disabled = true;
+            return;
+        }
+
+        const gradeLower = grade.trim().toLowerCase();
+        const seenNames = new Set();
+        const matchedSections = ALL_SECTIONS_LIST.filter(s => {
+            if (s.grade_name && s.grade_name.trim().toLowerCase() === gradeLower) {
+                const sName = (s.section_name || "").trim();
+                if (sName && !seenNames.has(sName)) {
+                    seenNames.add(sName);
+                    return true;
+                }
+            }
+            return false;
+        });
+
+        if (matchedSections.length === 0) {
+            secSelect.innerHTML = '<option value="">No sections found for ' + grade + '</option>';
+            secSelect.disabled = true;
+        } else {
+            matchedSections.forEach(s => {
+                secSelect.innerHTML += `<option value="${s.section_id}">${s.section_name}</option>`;
+            });
+            secSelect.disabled = false;
+        }
+    }
+
+    function onSmartSectionChange() {
+        const sectionId = document.getElementById('smartSectionSelect').value;
+        const subjSelect = document.getElementById('smartSubjectSelect');
+
+        subjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
+        document.getElementById('finalComboInput').value = '';
+
+        if (!sectionId) {
+            subjSelect.disabled = true;
+            return;
+        }
+
+        const matchedSubjs = ALL_COMBINATIONS.filter(c => String(c.section_id) === String(sectionId));
+        if (matchedSubjs.length === 0) {
+            subjSelect.innerHTML = '<option value="">-- No subjects assigned to this section yet --</option>';
+            subjSelect.disabled = true;
+        } else {
+            matchedSubjs.forEach(c => {
+                const val = `${c.section_id}|${c.subject_id}|${c.teacher_id}`;
+                subjSelect.innerHTML += `<option value="${val}">${c.subject_name} (${c.teacher_name})</option>`;
+            });
+            subjSelect.disabled = false;
+        }
+    }
+
+    function onSmartSubjectChange() {
+        const val = document.getElementById('smartSubjectSelect').value;
+        document.getElementById('finalComboInput').value = val;
+        checkRealTimeConflicts();
+    }
+
+    function onTraditionalComboChange() {
+        const val = document.getElementById('traditionalComboSelect').value;
+        document.getElementById('finalComboInput').value = val;
+        checkRealTimeConflicts();
+    }
+
+    function toggleSmartCascade() {
+        const cascade = document.getElementById('smartCascadeWrapper');
+        const trad = document.getElementById('traditionalComboWrapper');
+        const btn = document.getElementById('cascadeToggleBtn');
+
+        if (cascade.style.display === 'none') {
+            cascade.style.display = 'grid';
+            trad.style.display = 'none';
+            btn.textContent = '⚡ Single Dropdown View';
+            document.getElementById('smartSubjectSelect').dispatchEvent(new Event('change'));
+        } else {
+            cascade.style.display = 'none';
+            trad.style.display = 'block';
+            btn.textContent = '🎯 3-Step Smart Cascade View';
+            document.getElementById('traditionalComboSelect').dispatchEvent(new Event('change'));
+        }
+    }
+
+    // ── Day Presets & Quick Selection ──
+    function selectDayPreset(dayList) {
+        document.querySelectorAll('.day-checkbox').forEach(cb => {
+            cb.checked = dayList.includes(cb.value);
+        });
+        checkRealTimeConflicts();
+    }
+
+    // ── Time Slot Presets ──
+    function setTimePreset(start, end) {
+        document.getElementById('addStartTime').value = start;
+        document.getElementById('addEndTime').value = end;
+        checkRealTimeConflicts();
+    }
+
+    // ── Real-Time Conflict Engine ──
+    function checkRealTimeConflicts() {
+        const banner = document.getElementById('liveConflictBanner');
+        if (!banner) return;
+
+        const comboVal = document.getElementById('finalComboInput').value;
+        const selectedDays = Array.from(document.querySelectorAll('.day-checkbox:checked')).map(cb => cb.value);
+        const startTime = document.getElementById('addStartTime').value;
+        const endTime = document.getElementById('addEndTime').value;
+        const room = document.getElementById('addRoomInput').value.trim();
+
+        if (!comboVal || selectedDays.length === 0 || !startTime || !endTime || startTime >= endTime || !room) {
+            banner.style.display = 'none';
+            return;
+        }
+
+        const [secId, subjId, teachId] = comboVal.split('|');
+        let conflictsFound = [];
+
+        selectedDays.forEach(day => {
+            ALL_SCHEDULES.forEach(s => {
+                if (s.day_of_week === day && (startTime < s.end_time && endTime > s.start_time)) {
+                    let reasons = [];
+                    if (String(s.teacher_id) === String(teachId)) {
+                        reasons.push(`Teacher ${s.teacher_name}`);
+                    }
+                    if (String(s.section_id) === String(secId)) {
+                        reasons.push(`Section ${s.section_name}`);
+                    }
+                    if (String(s.room) === String(room)) {
+                        reasons.push(`Room ${s.room}`);
+                    }
+                    if (reasons.length > 0) {
+                        conflictsFound.push(`${reasons.join(' & ')} busy on ${day} ${s.start_time}-${s.end_time} (${s.subject_name})`);
+                    }
+                }
+            });
+        });
+
+        if (conflictsFound.length > 0) {
+            banner.innerHTML = `⚠️ <strong>Real-Time Schedule Conflict Detected:</strong><br>` + conflictsFound.map(c => `• ${c}`).join('<br>');
+            banner.style.display = 'block';
+        } else {
+            banner.style.display = 'none';
+        }
+    }
+
+    // ── View Switcher (List vs Matrix Grid) ──
+    function switchScheduleView(mode) {
+        const listView = document.getElementById('listViewContainer');
+        const matrixView = document.getElementById('matrixViewContainer');
+        const btnList = document.getElementById('btnListView');
+        const btnMatrix = document.getElementById('btnMatrixView');
+
+        if (mode === 'list') {
+            listView.style.display = 'block';
+            matrixView.style.display = 'none';
+            btnList.style.background = 'var(--sch-blue)';
+            btnList.style.color = '#fff';
+            btnMatrix.style.background = 'transparent';
+            btnMatrix.style.color = '#475569';
+        } else {
+            listView.style.display = 'none';
+            matrixView.style.display = 'block';
+            btnMatrix.style.background = 'var(--sch-blue)';
+            btnMatrix.style.color = '#fff';
+            btnList.style.background = 'transparent';
+            btnList.style.color = '#475569';
+            renderMatrixView();
+        }
+    }
+
+    // ── Dynamic Matrix View Renderer ──
+    function renderMatrixView() {
+        const container = document.getElementById('matrixTableContent');
+        if (!container) return;
+
+        const grade = document.getElementById('gradeFilter').value;
+        const sectionId = document.getElementById('sectionFilter').value;
+
+        let filtered = ALL_SCHEDULES;
+        if (grade) filtered = filtered.filter(s => s.grade_name === grade);
+        if (sectionId) filtered = filtered.filter(s => String(s.section_id) === String(sectionId));
+
+        const cfg = getBreakConfig();
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        
+        const timeSlots = [
+            { label: `${cfg.prayerStart} - ${cfg.prayerEnd}`, start: cfg.prayerStart, end: cfg.prayerEnd, isPrayer: true },
+            { label: '07:30 - 08:30', start: '07:30', end: '08:30' },
+            { label: '08:30 - 09:30', start: '08:30', end: '09:30' },
+            { label: `${cfg.recessStart} - ${cfg.recessEnd}`, start: cfg.recessStart, end: cfg.recessEnd, isRecess: true },
+            { label: '10:00 - 11:00', start: '10:00', end: '11:00' },
+            { label: '11:00 - 12:00', start: '11:00', end: '12:00' },
+            { label: `${cfg.lunchStart} - ${cfg.lunchEnd}`, start: cfg.lunchStart, end: cfg.lunchEnd, isLunch: true },
+            { label: '13:00 - 14:00', start: '13:00', end: '14:00' },
+            { label: '14:00 - 15:00', start: '14:00', end: '15:00' },
+            { label: '15:00 - 16:00', start: '15:00', end: '16:00' },
+        ];
+
+        let html = `<table class="matrix-table"><thead><tr><th class="matrix-time-col">Time Slot</th>`;
+        days.forEach(d => html += `<th>${d}</th>`);
+        html += `</tr></thead><tbody>`;
+
+        timeSlots.forEach(slot => {
+            html += `<tr><td class="matrix-time-col">${slot.label}</td>`;
+            if (slot.isPrayer) {
+                html += `<td colspan="6" style="background:#eff6ff; text-align:center; color:#1e40af; font-weight:800; font-size:0.8rem; border-bottom:1px solid #bfdbfe;">🙏 MORNING PRAYER / HOLY ROSARY / HOMEROOM</td></tr>`;
+                return;
+            }
+            if (slot.isRecess) {
+                html += `<td colspan="6" style="background:#fefce8; text-align:center; color:#a16207; font-weight:800; font-size:0.8rem; border-bottom:1px solid #fef08a;">☕ RECESS BREAK</td></tr>`;
+                return;
+            }
+            if (slot.isLunch) {
+                html += `<td colspan="6" style="background:#f0fdf4; text-align:center; color:#166534; font-weight:800; font-size:0.8rem; border-bottom:1px solid #bbf7d0;">🍱 LUNCH BREAK</td></tr>`;
+                return;
+            }
+
+            days.forEach(d => {
+                const matches = filtered.filter(s => s.day_of_week === d && (slot.start < s.end_time && slot.end > s.start_time));
+                html += `<td>`;
+                if (matches.length > 0) {
+                    matches.forEach(m => {
+                        html += `
+                            <div class="matrix-card">
+                                <div class="matrix-card-sec">${m.section_name} (${m.grade_name})</div>
+                                <div class="matrix-card-subj">${m.subject_name}</div>
+                                <div class="matrix-card-meta">👨‍🏫 ${m.teacher_name} • 🚪 Rm ${m.room}</div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    html += `<span style="font-size:0.7rem; color:#cbd5e1; font-weight:600;">— Vacant —</span>`;
+                }
+                html += `</td>`;
+            });
+            html += `</tr>`;
+        });
+
+        html += `</tbody></table>`;
+        container.innerHTML = html;
+    }
+
+    // ── Validations & Submissions ──
     function isInRange(val) { return val >= "07:00" && val <= "17:00"; }
     
     function validateForm(s, e_, errorEl) {
@@ -654,11 +1299,28 @@
         return true;
     }
 
-    document.getElementById('addForm').addEventListener('submit', function(e) {
-        if (!validateForm(this.start_time.value, this.end_time.value, document.getElementById('add-time-error'))) {
-            e.preventDefault();
-        }
-    });
+    if (document.getElementById('addForm')) {
+        document.getElementById('addForm').addEventListener('submit', function(e) {
+            const combo = document.getElementById('finalComboInput').value;
+            if (!combo) {
+                alert('Please select a Grade Level, Section, and Subject before adding.');
+                e.preventDefault();
+                return false;
+            }
+
+            const checkedDays = document.querySelectorAll('.day-checkbox:checked');
+            if (checkedDays.length === 0) {
+                alert('Please select at least one day (e.g. Mon, Wed, Fri) for the schedule.');
+                e.preventDefault();
+                return false;
+            }
+
+            if (!validateForm(this.start_time.value, this.end_time.value, document.getElementById('add-time-error'))) {
+                e.preventDefault();
+                return false;
+            }
+        });
+    }
 
     document.getElementById('editForm').addEventListener('submit', function(e) {
         if (!validateForm(this.start_time.value, this.end_time.value, document.getElementById('edit-time-error'))) {
@@ -667,7 +1329,6 @@
     });
 
     let initialEditValues = {};
-    const editForm = document.getElementById('editForm');
     const saveBtn = document.getElementById('editSaveBtn');
 
     function checkChanges() {
@@ -710,7 +1371,7 @@
         document.getElementById('edit_end_time').value = sched.end_time;
         document.getElementById('edit_room').value = sched.room;
         document.getElementById('edit_year_id').value = sched.year_id;
-        document.getElementById('editForm').action = '/registrar/schedules/' + sched.schedule_id + '/edit';
+        document.getElementById('editForm').action = '/branch-admin/schedules/' + sched.schedule_id + '/edit';
         
         initialEditValues = {
             combo: comboVal,
@@ -742,7 +1403,6 @@
             }
         });
         
-        // Reset section filter if current is hidden
         if (grade !== "" && sectionSelect.options[sectionSelect.selectedIndex].style.display === 'none') {
             sectionSelect.value = "";
         }
@@ -778,7 +1438,12 @@
     function closeEditModal() {
         const overlay = document.getElementById('editOverlay');
         overlay.classList.remove('visible');
-        setTimeout(() => overlay.style.display = 'none', 300);
+        setTimeout(() => overlay.style.display = 'none', 250);
     }
+
+    // Initialize Page Controls
+    document.addEventListener('DOMContentLoaded', () => {
+        renderQuickPresets();
+    });
 </script>
 {% endblock %}

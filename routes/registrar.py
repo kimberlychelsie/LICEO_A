@@ -63,6 +63,22 @@ def is_valid_lrn(val):
     import re
     return bool(re.match(r"^\d{12}$", val))
 
+def get_safe_redirect(default="/registrar/enrollments"):
+    target = request.form.get("redirect_url") or request.args.get("redirect_url") or request.referrer
+    if target:
+        from urllib.parse import urlparse
+        parsed = urlparse(target)
+        path_and_query = parsed.path
+        if parsed.query:
+            path_and_query += "?" + parsed.query
+        if parsed.fragment:
+            path_and_query += "#" + parsed.fragment
+
+        if path_and_query.startswith("/registrar/"):
+            return path_and_query
+    return default
+
+
 
 def sync_student_elective_membership(cursor, enrollment_id):
     """
@@ -1430,7 +1446,11 @@ def enrollment_detail(enrollment_id):
                 sync_student_elective_membership(cursor, enrollment_id)
                 db.commit()
                 flash("Enrollment details updated!", "success")
-            return redirect("/registrar/enrollments")
+            redirect_target = get_safe_redirect(f"/registrar/enrollments#new-details-{enrollment_id}")
+            if f"#new-details-{enrollment_id}" not in redirect_target:
+                base_target = redirect_target.split('#')[0]
+                redirect_target = f"{base_target}#new-details-{enrollment_id}"
+            return redirect(redirect_target)
 
         cursor.execute("""
             SELECT

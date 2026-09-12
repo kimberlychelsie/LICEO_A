@@ -15,7 +15,7 @@ werkzeug.urls.url_encode = urlencode
 from routes import init_routes
 from db import is_branch_active, get_db_connection
 from routes.teacher import _get_active_school_year
-from flask import send_from_directory, make_response # Liceo LMS Flask Application Entry Point (Left-aligned filter toolbar with top-right Import SF1 button)
+from flask import send_from_directory, make_response # Liceo LMS Flask Application Entry Point (Preserve Grade Level filter on student update)
 import psycopg2.extras
 from extensions import limiter, csrf
 from flask_wtf.csrf import CSRFError
