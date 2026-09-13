@@ -278,7 +278,7 @@
             }
         });
 
-        // 3. Add standard periods if they don't overlap breaks
+        // 3. Add standard periods if they don't overlap any existing break or schedule slot
         const defaultPeriods = [
             ['07:15', '08:15'],
             ['08:15', '09:15'],
@@ -294,16 +294,14 @@
         defaultPeriods.forEach(([s, e]) => {
             const sNorm = normTime(s);
             const eNorm = normTime(e);
-            let overlapsWithBreak = false;
+            let overlapsWithExisting = false;
             for (const slot of slotsMap.values()) {
-                if (slot.isPrayer || slot.isRecess || slot.isLunch) {
-                    if (sNorm < slot.end && eNorm > slot.start) {
-                        overlapsWithBreak = true;
-                        break;
-                    }
+                if (sNorm < slot.end && eNorm > slot.start) {
+                    overlapsWithExisting = true;
+                    break;
                 }
             }
-            if (!overlapsWithBreak) {
+            if (!overlapsWithExisting) {
                 addSlot(s, e);
             }
         });

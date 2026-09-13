@@ -1989,15 +1989,31 @@ def unarchive_schedule(schedule_id):
 
 @branch_admin_bp.route("/branch-admin/schedules/<int:schedule_id>/delete_permanent", methods=["POST"])
 def delete_schedule_permanent(schedule_id):
+    if session.get("role") != "branch_admin":
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json:
+            return jsonify({"success": False, "message": "Unauthorized"}), 403
+        return redirect("/")
+
     db = get_db_connection()
     cursor = db.cursor()
     branch_id = session.get("branch_id")
-    cursor.execute("""
-        DELETE FROM schedules WHERE schedule_id = %s AND branch_id = %s
-    """, (schedule_id, branch_id))
-    db.commit()
-    cursor.close(); db.close()
-    flash("Schedule permanently deleted.", "danger")
+    try:
+        cursor.execute("""
+            DELETE FROM schedules WHERE schedule_id = %s AND branch_id = %s
+        """, (schedule_id, branch_id))
+        db.commit()
+        cursor.close(); db.close()
+
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json:
+            return jsonify({"success": True, "message": "Schedule permanently deleted."})
+
+        flash("Schedule permanently deleted.", "danger")
+    except Exception as e:
+        cursor.close(); db.close()
+        if request.headers.get("X-Requested-With") == "XMLHttpRequest" or request.is_json:
+            return jsonify({"success": False, "message": str(e)}), 500
+        flash(f"Failed to delete schedule: {str(e)}", "danger")
+
     return redirect(url_for("branch_admin.list_and_add_schedules", show_archived="true"))
 @branch_admin_bp.route("/branch-admin/grade-levels", methods=["GET", "POST"])
 def branch_admin_grade_levels():

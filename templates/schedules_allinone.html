@@ -445,13 +445,48 @@
         width: 120px;
     }
     .matrix-card {
+        position: relative;
         background: #eff6ff;
         border-left: 4px solid #2563eb;
         border-radius: 8px;
         padding: 8px 10px;
+        padding-right: 24px;
         margin-bottom: 6px;
         font-size: 0.78rem;
         box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        transition: all 0.2s;
+    }
+    .matrix-card:hover {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+    .matrix-card-del-btn {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        background: rgba(239, 68, 68, 0.1);
+        border: none;
+        color: #ef4444;
+        font-size: 0.75rem;
+        font-weight: 800;
+        cursor: pointer;
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        transition: all 0.2s;
+        opacity: 0.5;
+        z-index: 2;
+    }
+    .matrix-card:hover .matrix-card-del-btn {
+        opacity: 1;
+    }
+    .matrix-card-del-btn:hover {
+        background: #ef4444;
+        color: #ffffff;
+        transform: scale(1.15);
     }
     .matrix-card-sec {
         font-weight: 800;
@@ -952,7 +987,7 @@
         {% endfor %}
     ];
 
-    const ALL_SCHEDULES = [
+    let ALL_SCHEDULES = [
         {% for s in schedules %}
         {
             schedule_id: {{ s.schedule_id | tojson }},
@@ -1604,7 +1639,7 @@
             }
         });
 
-        // Standard default periods (only added if they do NOT overlap with any break)
+        // Standard default periods (only added if they do NOT overlap with any break or existing schedule slot)
         const defaultPeriods = [
             ['07:15', '08:15'],
             ['08:15', '09:15'],
@@ -1620,16 +1655,14 @@
         defaultPeriods.forEach(([s, e]) => {
             const sNorm = normTime(s);
             const eNorm = normTime(e);
-            let overlapsWithBreak = false;
+            let overlapsWithExisting = false;
             for (const slot of slotsMap.values()) {
-                if (slot.isPrayer || slot.isRecess || slot.isLunch) {
-                    if (sNorm < slot.end && eNorm > slot.start) {
-                        overlapsWithBreak = true;
-                        break;
-                    }
+                if (sNorm < slot.end && eNorm > slot.start) {
+                    overlapsWithExisting = true;
+                    break;
                 }
             }
-            if (!overlapsWithBreak) {
+            if (!overlapsWithExisting) {
                 addSlot(s, e);
             }
         });
@@ -1679,10 +1712,17 @@
                              ondrop="handleMatrixDrop(event, '${d}', '${slot.start}', '${slot.end}')">`;
                 if (matches.length > 0) {
                     matches.forEach(m => {
+                        const safeSubj = (m.subject_name || '').replace(/'/g, "\\'");
+                        const safeSec = (m.section_name || '').replace(/'/g, "\\'");
+                        const timeLabel = formatRange12Hour(m.start_time, m.end_time);
                         html += `
                             <div class="matrix-card" draggable="true"
                                  ondragstart="handleMatrixDragStart(event, ${m.schedule_id})"
                                  ondragend="handleMatrixDragEnd(event)">
+                                <button type="button" class="matrix-card-del-btn" title="Delete Schedule"
+                                        onclick="deleteMatrixSchedule(event, ${m.schedule_id}, '${safeSubj}', '${safeSec}', '${d}', '${timeLabel}')">
+                                    &times;
+                                </button>
                                 <div class="matrix-card-sec">${m.section_name} (${m.grade_name})</div>
                                 <div class="matrix-card-subj">${m.subject_name}</div>
                                 <div class="matrix-card-meta">${m.teacher_name} • Rm ${m.room}</div>
@@ -1699,6 +1739,49 @@
 
         html += `</tbody></table>`;
         container.innerHTML = html;
+    }
+
+    // ── Delete Schedule via Matrix View (With Warning) ──
+    async function deleteMatrixSchedule(event, schedId, subject, section, day, timeLabel) {
+        if (event) {
+            event.stopPropagation();
+            event.preventDefault();
+        }
+
+        const confirmMsg = `⚠️ DELETE SCHEDULE WARNING\n\nAre you sure you want to PERMANENTLY DELETE this class schedule?\n\n• Subject: ${subject}\n• Section: ${section}\n• Day & Time: ${day} (${timeLabel})\n\nThis action cannot be undone.`;
+
+        if (!confirm(confirmMsg)) return;
+
+        try {
+            const resp = await fetch(`/branch-admin/schedules/${schedId}/delete_permanent`, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': '{{ csrf_token() }}',
+                    'Content-Type': 'application/json'
+                }
+            });
+            const res = await resp.json();
+            if (res.success) {
+                let idx = -1;
+                for (let i = 0; i < ALL_SCHEDULES.length; i++) {
+                    if (String(ALL_SCHEDULES[i].schedule_id) === String(schedId)) {
+                        idx = i;
+                        break;
+                    }
+                }
+                if (idx !== -1) {
+                    ALL_SCHEDULES.splice(idx, 1);
+                }
+                renderMatrixView();
+                alert(`✅ Schedule permanently deleted.`);
+            } else {
+                alert(`⚠️ Failed to delete schedule: ${res.message || 'Unknown error'}`);
+            }
+        } catch (err) {
+            console.error('Delete schedule error:', err);
+            alert(`⚠️ Failed to delete schedule. Please try again.`);
+        }
     }
 
     // ── Validations & Submissions ──
