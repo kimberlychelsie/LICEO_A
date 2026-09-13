@@ -1112,6 +1112,60 @@
         const lStart = normTime(document.getElementById('cfgLunchStart').value);
         const lEnd = normTime(document.getElementById('cfgLunchEnd').value);
 
+        // ── VALIDATION ──
+        const errors = [];
+
+        // 1. Start must be before End
+        if (pStart && pEnd && pStart >= pEnd)
+            errors.push("⛪ Prayer/Rosary: Start time must be before End time.");
+        if (rStart && rEnd && rStart >= rEnd)
+            errors.push("☕ Recess Break: Start time must be before End time.");
+        if (lStart && lEnd && lStart >= lEnd)
+            errors.push("🍽️ Lunch Break: Start time must be before End time.");
+
+        // 2. Breaks must not overlap each other
+        function overlaps(aStart, aEnd, bStart, bEnd) {
+            return aStart < bEnd && aEnd > bStart;
+        }
+        if (pStart && pEnd && rStart && rEnd && overlaps(pStart, pEnd, rStart, rEnd))
+            errors.push("⚠️ Prayer/Rosary overlaps with Recess Break.");
+        if (pStart && pEnd && lStart && lEnd && overlaps(pStart, pEnd, lStart, lEnd))
+            errors.push("⚠️ Prayer/Rosary overlaps with Lunch Break.");
+        if (rStart && rEnd && lStart && lEnd && overlaps(rStart, rEnd, lStart, lEnd))
+            errors.push("⚠️ Recess Break overlaps with Lunch Break.");
+
+        if (errors.length > 0) {
+            alert("❌ Cannot save — please fix the following:\n\n" + errors.join("\n"));
+            return;
+        }
+
+        // ── Check if new break times conflict with existing scheduled classes ──
+        const schedConflicts = [];
+        function breakOverlapsClass(bStart, bEnd, sStart, sEnd) {
+            return bStart && bEnd && sStart && sEnd && bStart < sEnd && bEnd > sStart;
+        }
+        ALL_SCHEDULES.forEach(s => {
+            const sS = s.start_time, sE = s.end_time;
+            if (breakOverlapsClass(pStart, pEnd, sS, sE))
+                schedConflicts.push(`⛪ Prayer (${pStart}–${pEnd}) overlaps ${s.subject_name} · ${s.section_name} · ${s.day_of_week} (${sS}–${sE})`);
+            else if (breakOverlapsClass(rStart, rEnd, sS, sE))
+                schedConflicts.push(`☕ Recess (${rStart}–${rEnd}) overlaps ${s.subject_name} · ${s.section_name} · ${s.day_of_week} (${sS}–${sE})`);
+            else if (breakOverlapsClass(lStart, lEnd, sS, sE))
+                schedConflicts.push(`🍽️ Lunch (${lStart}–${lEnd}) overlaps ${s.subject_name} · ${s.section_name} · ${s.day_of_week} (${sS}–${sE})`);
+        });
+
+        // Deduplicate conflict messages
+        const uniqueConflicts = [...new Set(schedConflicts)];
+        if (uniqueConflicts.length > 0) {
+            const proceed = confirm(
+                `⚠️ Warning: The new break times conflict with ${uniqueConflicts.length} existing class schedule(s):\n\n` +
+                uniqueConflicts.slice(0, 5).join("\n") +
+                (uniqueConflicts.length > 5 ? `\n...and ${uniqueConflicts.length - 5} more.` : "") +
+                `\n\nThese classes will visually overlap the break slot on the grid.\nSave anyway?`
+            );
+            if (!proceed) return;
+        }
+
         const newCfg = {
             prayerStart: pStart || "06:45",
             prayerEnd: pEnd || "07:15",
@@ -1120,6 +1174,7 @@
             lunchStart: lStart || "12:30",
             lunchEnd: lEnd || "13:00"
         };
+
 
         allCfg[gradeKey] = newCfg;
         allCfg["DEFAULT"] = newCfg;
@@ -1318,6 +1373,17 @@
         const [secId, subjId, teachId] = comboVal.split('|');
         let conflictsFound = [];
 
+        // ── Check against break times (prayer/recess/lunch) ──
+        const cfg = getBreakConfig();
+        function overlapsBreak(s, e, bStart, bEnd) { return s < bEnd && e > bStart; }
+        if (cfg.prayerStart && cfg.prayerEnd && overlapsBreak(startTime, endTime, cfg.prayerStart, cfg.prayerEnd))
+            conflictsFound.push(`⛪ Overlaps with Morning Prayer/Rosary (${cfg.prayerStart}–${cfg.prayerEnd})`);
+        if (cfg.recessStart && cfg.recessEnd && overlapsBreak(startTime, endTime, cfg.recessStart, cfg.recessEnd))
+            conflictsFound.push(`☕ Overlaps with Recess Break (${cfg.recessStart}–${cfg.recessEnd})`);
+        if (cfg.lunchStart && cfg.lunchEnd && overlapsBreak(startTime, endTime, cfg.lunchStart, cfg.lunchEnd))
+            conflictsFound.push(`🍽️ Overlaps with Lunch Break (${cfg.lunchStart}–${cfg.lunchEnd})`);
+
+        // ── Check against existing schedules ──
         selectedDays.forEach(day => {
             ALL_SCHEDULES.forEach(s => {
                 if (s.day_of_week === day && (startTime < s.end_time && endTime > s.start_time)) {
@@ -1345,6 +1411,7 @@
             banner.style.display = 'none';
         }
     }
+
 
     // ── View Switcher (List vs Matrix Grid) ──
     function switchScheduleView(mode) {

@@ -1601,6 +1601,39 @@ def list_and_add_schedules():
             cursor.close(); db.close()
             return redirect(url_for("branch_admin.list_and_add_schedules"))
 
+        # --- BREAK TIME OVERLAP VALIDATION ---
+        brk = get_break_times_config(branch_id) or {}
+        def _parse_t(s):
+            try: return datetime.strptime(s, "%H:%M").time()
+            except: return None
+        def _overlaps(s1, e1, s2, e2):
+            return s1 is not None and e1 is not None and s2 is not None and e2 is not None and s1 < e2 and e1 > s2
+
+        def _get_cfg(d, key1, key2):
+            # check per-grade config or fallback to DEFAULT
+            v = d.get(key1) or d.get("DEFAULT", {}).get(key1) if isinstance(d.get("DEFAULT"), dict) else d.get(key1)
+            return v
+
+        prayer_start = _parse_t(_get_cfg(brk, "prayerStart", None) or brk.get("DEFAULT", {}).get("prayerStart") if isinstance(brk.get("DEFAULT"), dict) else brk.get("prayerStart"))
+        prayer_end   = _parse_t(_get_cfg(brk, "prayerEnd",   None) or brk.get("DEFAULT", {}).get("prayerEnd")   if isinstance(brk.get("DEFAULT"), dict) else brk.get("prayerEnd"))
+        recess_start = _parse_t(brk.get("DEFAULT", {}).get("recessStart") if isinstance(brk.get("DEFAULT"), dict) else brk.get("recessStart"))
+        recess_end   = _parse_t(brk.get("DEFAULT", {}).get("recessEnd")   if isinstance(brk.get("DEFAULT"), dict) else brk.get("recessEnd"))
+        lunch_start  = _parse_t(brk.get("DEFAULT", {}).get("lunchStart")  if isinstance(brk.get("DEFAULT"), dict) else brk.get("lunchStart"))
+        lunch_end    = _parse_t(brk.get("DEFAULT", {}).get("lunchEnd")    if isinstance(brk.get("DEFAULT"), dict) else brk.get("lunchEnd"))
+
+        if _overlaps(start_t, end_t, prayer_start, prayer_end):
+            flash(f"Invalid schedule: Time overlaps with Morning Prayer/Rosary ({prayer_start}–{prayer_end}).", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("branch_admin.list_and_add_schedules"))
+        if _overlaps(start_t, end_t, recess_start, recess_end):
+            flash(f"Invalid schedule: Time overlaps with Recess Break ({recess_start}–{recess_end}).", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("branch_admin.list_and_add_schedules"))
+        if _overlaps(start_t, end_t, lunch_start, lunch_end):
+            flash(f"Invalid schedule: Time overlaps with Lunch Break ({lunch_start}–{lunch_end}).", "danger")
+            cursor.close(); db.close()
+            return redirect(url_for("branch_admin.list_and_add_schedules"))
+
         # --- ROOM VALIDATION ---
         try:
             room_val = int(room)
