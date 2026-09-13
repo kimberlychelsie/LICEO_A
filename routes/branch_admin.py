@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, request, session, redirect, flash, url_for, jsonify
 from datetime import datetime, time as dt_time
 import pytz
-from db import get_db_connection
+from db import get_db_connection, get_break_times_config, save_break_times_config
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 import re
@@ -1699,6 +1699,8 @@ def list_and_add_schedules():
     cursor.close()
     db.close()
 
+    break_config = get_break_times_config(branch_id)
+
     return render_template(
         "schedules_allinone.html",
         schedules=schedules,
@@ -1706,8 +1708,22 @@ def list_and_add_schedules():
         active_year=active_year,
         show_archived=show_archived,
         all_grades=all_grades_list,
-        all_sections=all_sections_list
+        all_sections=all_sections_list,
+        break_times_config=break_config
     )
+
+
+@branch_admin_bp.route("/branch-admin/save-break-times", methods=["POST"])
+def save_break_times_api():
+    if session.get("role") != "branch_admin":
+        return jsonify({"success": False, "error": "Unauthorized"}), 403
+    
+    data = request.get_json() or {}
+    branch_id = session.get("branch_id")
+    
+    if save_break_times_config(data, branch_id):
+        return jsonify({"success": True})
+    return jsonify({"success": False, "error": "Failed to save break times"}), 500
 
 
 @branch_admin_bp.route("/branch-admin/schedules/<int:schedule_id>/edit", methods=["GET", "POST"])
@@ -1855,6 +1871,61 @@ def edit_schedule(schedule_id):
         combinations=combinations,
         active_year=active_year
     )
+
+
+@branch_admin_bp.route("/branch-admin/schedules/<int:schedule_id>/move", methods=["POST"])
+def move_schedule_admin(schedule_id):
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    branch_id = session.get("branch_id")
+
+    data = request.get_json() or {}
+    day_of_week = data.get("day_of_week")
+    start_time = data.get("start_time")
+    end_time = data.get("end_time")
+
+    if not day_of_week or not start_time or not end_time:
+        cursor.close(); db.close()
+        return jsonify({"success": False, "error": "Missing day or time parameters."}), 400
+
+    cursor.execute("SELECT * FROM schedules WHERE schedule_id = %s AND branch_id = %s AND is_archived = FALSE", (schedule_id, branch_id))
+    sch = cursor.fetchone()
+    if not sch:
+        cursor.close(); db.close()
+        return jsonify({"success": False, "error": "Schedule not found."}), 404
+
+    cursor.execute("""
+        SELECT s.*, subj.name AS conflict_subject_name, sec.section_name AS conflict_section_name, u.full_name AS conflict_teacher_name
+        FROM schedules s
+        JOIN subjects subj ON s.subject_id = subj.subject_id
+        JOIN sections sec ON s.section_id = sec.section_id
+        JOIN users u ON s.teacher_id = u.user_id
+        WHERE s.year_id = %s AND s.branch_id = %s
+          AND s.day_of_week = %s
+          AND s.is_archived = FALSE
+          AND (s.start_time < %s AND s.end_time > %s)
+          AND (s.teacher_id = %s OR s.section_id = %s OR s.room = %s)
+          AND s.schedule_id != %s
+        LIMIT 1
+    """, (sch["year_id"], branch_id, day_of_week, end_time, start_time, sch["teacher_id"], sch["section_id"], sch["room"], schedule_id))
+
+    conflict = cursor.fetchone()
+    if conflict:
+        reasons = []
+        if str(conflict["teacher_id"]) == str(sch["teacher_id"]): reasons.append(f"Teacher ({conflict['conflict_teacher_name']})")
+        if str(conflict["section_id"]) == str(sch["section_id"]): reasons.append(f"Section ({conflict['conflict_section_name']})")
+        if str(conflict["room"]) == str(sch["room"]): reasons.append(f"Room ({conflict['room']})")
+        cursor.close(); db.close()
+        return jsonify({"success": False, "error": f"Conflict detected: {' & '.join(reasons)} is already occupied."})
+
+    cursor.execute("""
+        UPDATE schedules
+        SET day_of_week = %s, start_time = %s, end_time = %s
+        WHERE schedule_id = %s AND branch_id = %s
+    """, (day_of_week, start_time, end_time, schedule_id, branch_id))
+    db.commit()
+    cursor.close(); db.close()
+    return jsonify({"success": True, "message": f"Schedule moved to {day_of_week} ({start_time} - {end_time})!"})
 
 
 @branch_admin_bp.route("/branch-admin/schedules/<int:schedule_id>/archive", methods=["POST"])

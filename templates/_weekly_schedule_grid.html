@@ -1,355 +1,395 @@
 {# Shared weekly schedule grid (Student + Teacher) #}
-{% macro render_weekly_schedule(schedules, title="My Schedule", subtitle="Weekly class timetable", show_teacher=false, show_section=false, show_year=false) %}
-  {% set DAYS = [
-    ('Monday','Mon'),
-    ('Tuesday','Tue'),
-    ('Wednesday','Wed'),
-    ('Thursday','Thu'),
-    ('Friday','Fri'),
-    ('Saturday','Sat'),
-    ('Sunday','Sun')
-  ] %}
+{% macro render_weekly_schedule(schedules, title="My Schedule", subtitle="Weekly class timetable", show_teacher=true, show_section=true, show_year=false, break_times_config=none) %}
 
-  {# 30-min steps 7:00 – 17:00, formatted as 7:00-7:30 #}
-  {% set slots = [] %}
-  {% for h in range(7, 18) %}
-    {% for m in [0, 30] %}
-        {% set hour12 = h if h <= 12 else h - 12 %}
-        {% set m_end = m + 30 %}
-        {% set h_end = h if m_end < 60 else h + 1 %}
-        {% set m_end_fmt = m_end if m_end < 60 else 0 %}
-        {% set h_end12 = h_end if h_end <= 12 else h_end - 12 %}
-        {% set label = "%d:%02d-%d:%02d" % (hour12, m, h_end12, m_end_fmt) %}
-        {% set _ = slots.append({'h': h, 'm': m, 'label': label}) %}
-    {% endfor %}
-  {% endfor %}
+{% set container_id = "sch_grid_" ~ range(1000, 9999) | random %}
 
-  <div class="sch-wrap" data-sch>
-    {# ── Hero bar ── #}
-    {% if title or subtitle %}
-    <div class="sch-hero">
-      <div class="sch-hero-left">
-        <div>
-          {% if title %}
-          <div class="sch-hero-title">{{ title }}</div>
-          {% endif %}
-          {% if subtitle %}
-          <div class="sch-hero-sub">
-            {{ subtitle }}
-          </div>
-          {% endif %}
-        </div>
+<div class="sch-wrap" id="{{ container_id }}">
+  {% if title or subtitle %}
+  <div class="sch-hero">
+    <div class="sch-hero-left">
+      <div>
+        {% if title %}<div class="sch-hero-title">{{ title }}</div>{% endif %}
+        {% if subtitle %}<div class="sch-hero-sub">{{ subtitle }}</div>{% endif %}
       </div>
     </div>
-    {% endif %}
-
-    {% if schedules and schedules|length > 0 %}
-      <div class="sch-grid-shell">
-        <div class="sch-grid-scroll" data-scrollwrap>
-          <div class="sch-grid" data-grid>
-
-            {# ── Header row (row 1) ── #}
-            <div class="sch-cell sch-head sch-time"
-                 style="grid-column:1; grid-row:1;">TIME</div>
-            {% for d in DAYS %}
-              <div class="sch-cell sch-head sch-day"
-                   style="grid-column:{{ loop.index + 1 }}; grid-row:1;"
-                   data-daycol="{{ d[0] }}">{{ d[1] }}</div>
-            {% endfor %}
-
-            {# ── Time slot rows (row 2 onwards) — every cell is EXPLICIT ── #}
-            {% for slot in slots %}
-              {% set slot_row = loop.index + 1 %}
-              <div class="sch-cell sch-time"
-                   style="grid-column:1; grid-row:{{ slot_row }};">{{ slot.label }}</div>
-              {% for d in DAYS %}
-                <div class="sch-cell sch-slot"
-                     style="grid-column:{{ loop.index + 1 }}; grid-row:{{ slot_row }};"
-                     data-day="{{ d[0] }}"
-                     data-time="{{ slot.h }}:{{ '%02d' % slot.m }}"></div>
-              {% endfor %}
-            {% endfor %}
-
-            {# ── Build unique subject-section list for consistent colors ── #}
-            {% set unique_subjects = [] %}
-            {% for sched in schedules %}
-              {% set key = sched.subject_name ~ '|' ~ (sched.section_name or '') %}
-              {% if key not in unique_subjects %}
-                {% set _ = unique_subjects.append(key) %}
-              {% endif %}
-            {% endfor %}
-
-            {# ── Schedule blocks ── #}
-            {% for sched in schedules %}
-              {% set day_to_col = {
-                'Monday':1,'Tuesday':2,'Wednesday':3,'Thursday':4,'Friday':5,'Saturday':6,'Sunday':7
-              } %}
-              {% set col       = day_to_col.get(sched.day_of_week, 1) %}
-              {% set row_start = ((sched.start_time.hour - 7) * 2) + (sched.start_time.minute // 30) + 2 %}
-              {% set row_end   = ((sched.end_time.hour   - 7) * 2) + (sched.end_time.minute   // 30) + 2 %}
-
-              {# Calculate color index based on subject and section #}
-              {% set key = sched.subject_name ~ '|' ~ (sched.section_name or '') %}
-              {% set color_idx = (unique_subjects.index(key) % 7) + 1 %}
-
-              {# 12-hr tooltip label #}
-              {% set sh   = sched.start_time.hour %}
-              {% set sm   = sched.start_time.minute %}
-              {% set eh   = sched.end_time.hour %}
-              {% set em   = sched.end_time.minute %}
-              {% set sh12 = sh if sh <= 12 else sh - 12 %}
-              {% set sa   = 'AM' if sh < 12 else 'PM' %}
-              {% set eh12 = eh if eh <= 12 else eh - 12 %}
-              {% set ea   = 'AM' if eh < 12 else 'PM' %}
-              {% set tip  = "%d:%02d %s – %d:%02d %s" % (sh12, sm, sa, eh12, em, ea) %}
-
-              <div class="sch-block sch-c{{ color_idx }}"
-                   style="grid-column:{{ col + 1 }}; grid-row:{{ row_start }} / {{ row_end }};"
-                   title="{{ sched.subject_name }} ({{ sched.day_of_week }}, {{ tip }})">
-                <div class="sch-block-title">{{ sched.subject_name }}</div>
-                <div class="sch-block-meta">
-                  {% if show_teacher and sched.teacher_name %}
-                    <div class="sch-meta-line"><span class="sch-meta-strong">{{ sched.teacher_name }}</span></div>
-                  {% endif %}
-                  {% if show_section and sched.section_name %}
-                    <div class="sch-meta-line">{{ sched.section_name }}</div>
-                  {% endif %}
-                  {% if sched.room %}
-                    <div class="sch-meta-line sch-meta-muted">
-                        {% if sched.room|string|int != 0 or sched.room|string == '0' %}
-                            Room {{ sched.room }}
-                        {% else %}
-                            {{ sched.room }}
-                        {% endif %}
-                    </div>
-                  {% endif %}
-                </div>
-              </div>
-            {% endfor %}
-
-          </div>{# /sch-grid #}
-        </div>{# /sch-grid-scroll #}
-      </div>{# /sch-grid-shell #}
-    {% else %}
-      <div style="text-align: center; padding: 100px 24px; background: white; border-radius: 32px; border: 1px solid var(--sch-border); box-shadow: var(--sch-shadow); margin-top: 20px;">
-        <div style="font-size: 4rem; margin-bottom: 24px; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.1));">🗓️</div>
-        <h3 style="font-weight: 900; color: #1a3a8f; font-size: 1.4rem; margin-bottom: 12px; letter-spacing: -0.02em;">No schedule found</h3>
-        <p style="color: #64748b; font-size: 0.95rem; max-width: 450px; margin: 0 auto; line-height: 1.6; font-weight: 500;">Your weekly timetable hasn't been configured for the current school year yet. Please check again later or contact your branch administrator.</p>
-      </div>
-    {% endif %}
   </div>
+  {% endif %}
 
-  <style>
-    /* ─── Tokens ─── */
-    .sch-wrap {
-      --sch-blue:     #1a3a8f;
-      --sch-blue-dark: #142e75;
-      --sch-gold:     #f59e0b;
-      --sch-border:   rgba(226,232,240,0.8);
-      --sch-text:     #0f172a;
-      --sch-muted:    #64748b;
-      --sch-shadow:   0 10px 30px rgba(2,6,23,0.08);
-      --sch-time-col: 90px;
-      --sch-day-col:  200px;
-      --sch-row:      64px;
-      margin-top: 10px;
-      font-family: 'Inter', sans-serif;
+  <div class="table-surface-shared">
+    <div id="{{ container_id }}_content" style="overflow-x: auto;">
+      <!-- Matrix grid content will be rendered here dynamically -->
+    </div>
+  </div>
+</div>
+
+<style>
+    .table-surface-shared {
+        background: #ffffff;
+        border-radius: 20px;
+        box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.05), 0 4px 6px -2px rgba(15, 23, 42, 0.02);
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        margin-top: 12px;
     }
 
-    /* ─── Hero ─── */
-    .sch-hero {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-      background: transparent;
-      padding: 24px 0 16px;
-      margin-bottom: 24px;
+    .shared-matrix-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+        border-radius: 14px;
+        overflow: hidden;
+        border: 1px solid #cbd5e1;
+        min-width: 800px;
     }
-    .sch-hero-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
-    
-    .sch-hero-title { 
-      font-weight: 900; 
-      font-size: 3rem; 
-      letter-spacing: -0.04em; 
-      line-height: 1.1; 
-      color: var(--sch-blue);
-    }
-
-    .sch-hero-sub { 
-        font-size: 1.1rem; 
-        font-weight: 600; 
-        margin-top: 10px; 
-        color: var(--sch-muted);
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .sch-status-pill {
-        background: #f1f5f9;
-        color: var(--sch-blue);
-        padding: 4px 14px;
-        border-radius: 99px;
-        font-size: 0.85rem;
+    .shared-matrix-table th {
+        background: #1e3a8a;
+        color: #ffffff;
+        padding: 14px;
+        font-size: 0.82rem;
         font-weight: 800;
-        border: 1px solid rgba(26, 58, 143, 0.1);
+        text-align: center;
+        border-right: 1px solid #2563eb;
+        letter-spacing: 0.04em;
     }
-
-    /* ─── Grid shell ─── */
-    .sch-grid-shell {
-      background: #fff;
-      border: 1px solid var(--sch-border);
-      border-radius: 24px;
-      box-shadow: var(--sch-shadow);
-      overflow: hidden;
-      width: 100%;
-      max-width: 100%;
-      box-sizing: border-box;
-      animation: fadeIn 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    .shared-matrix-table th:last-child {
+        border-right: none;
     }
-
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
+    .shared-matrix-table td {
+        border-bottom: 1px solid #e2e8f0;
+        border-right: 1px solid #e2e8f0;
+        padding: 10px;
+        vertical-align: top;
+        min-height: 60px;
+        background: #ffffff;
     }
-
-    .sch-grid-scroll {
-      width: 100%;
-      max-width: 100%;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      scroll-behavior: smooth;
+    .shared-matrix-table td:last-child {
+        border-right: none;
     }
-
-    /* ─── Grid ─── */
-    .sch-grid {
-      display: grid;
-      grid-template-columns: var(--sch-time-col) repeat(7, var(--sch-day-col));
-      grid-auto-rows: var(--sch-row);
-      min-width: calc(var(--sch-time-col) + 7 * var(--sch-day-col));
-      background: #fff;
-      position: relative;
+    .shared-matrix-table tr:last-child td {
+        border-bottom: none;
     }
-
-    /* ─── Cells ─── */
-    .sch-cell {
-      border-bottom: 1px solid rgba(226,232,240,0.5);
-      border-right:  1px solid rgba(226,232,240,0.4);
+    .shared-matrix-time-col {
+        background: #f8fafc !important;
+        font-weight: 800;
+        color: #475569;
+        font-size: 0.78rem;
+        text-align: center;
+        width: 130px;
+        white-space: nowrap;
     }
-
-    .sch-head {
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      background: #f8fafc;
-      border-bottom: 2px solid var(--sch-border);
-      font-weight: 900;
-      color: var(--sch-blue);
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-      font-size: 11px;
-      display: grid;
-      place-items: center;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+    .shared-matrix-card {
+        background: #eff6ff;
+        border-left: 4px solid #2563eb;
+        border-radius: 10px;
+        padding: 9px 12px;
+        margin-bottom: 6px;
+        font-size: 0.8rem;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
     }
-
-    .sch-time {
-      position: sticky;
-      left: 0;
-      z-index: 11;
-      background: #fff;
-      border-right: 2px solid var(--sch-border);
-      font-weight: 700;
-      color: var(--sch-muted);
-      font-size: 10.5px;
-      white-space: nowrap;
-      padding: 0 8px;
-      line-height: var(--sch-row);
-      text-align: right;
-      box-sizing: border-box;
-      box-shadow: 3px 0 8px rgba(0,0,0,0.04);
+    .shared-matrix-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(37,99,235,0.12);
     }
-
-    .sch-head.sch-time {
-      background: #f1f5f9;
-      z-index: 15;
-      line-height: normal;
-    }
-
-    /* ─── Schedule blocks ─── */
-    .sch-block {
-      z-index: 5;
-      margin: 2px 4px;
-      border-radius: 8px;
-      padding: 6px 8px;
-      background: var(--day-bg, #fff);
-      border: 1px solid var(--day-border, rgba(26,58,143,0.1));
-      border-left: 4px solid var(--day-border, var(--sch-blue));
-      box-shadow: 0 2px 8px rgba(2,6,23,0.04);
-      overflow-y: auto;
-      scrollbar-width: none; /* Firefox */
-      align-self: stretch;
-      display: flex;
-      flex-direction: column;
-      justify-content: flex-start;
-      transition: all 0.2s ease;
-      cursor: default;
-    }
-    
-    .sch-block::-webkit-scrollbar {
-        display: none;
-    }
-
-    .sch-block:hover {
-        transform: scale(1.02);
-        box-shadow: 0 8px 20px rgba(2,6,23,0.08);
-        z-index: 15;
-    }
-
-    .sch-block-title { 
-        font-weight: 800; 
-        color: var(--day-text, var(--sch-blue)); 
-        font-size: 13px; 
-        line-height: 1.2; 
+    .shared-matrix-card-sec {
+        font-weight: 800;
+        color: #1e3a8a;
+        font-size: 0.76rem;
         margin-bottom: 2px;
     }
-    
-    .sch-block-meta { display: grid; gap: 2px; }
-    .sch-meta-line { font-size: 10.5px; color: var(--day-text, var(--sch-muted)); opacity: 0.9; font-weight: 600; }
-    .sch-meta-strong { font-weight: 800; opacity: 1; }
-    .sch-meta-muted { opacity: 0.75; }
+    .shared-matrix-card-subj {
+        font-weight: 800;
+        color: #0f172a;
+        font-size: 0.85rem;
+    }
+    .shared-matrix-card-meta {
+        font-size: 0.74rem;
+        color: #64748b;
+        margin-top: 4px;
+        font-weight: 600;
+    }
+</style>
 
-    /* ─── Day-column colors (Harmonious Pastels) ─── */
-    .sch-c1 { --day-bg: #E0F2FE; --day-border: #0284C7; --day-text: #0369A1; } /* Mon - Blue */
-    .sch-c2 { --day-bg: #D1FAE5; --day-border: #059669; --day-text: #047857; } /* Tue - Mint */
-    .sch-c3 { --day-bg: #FEF3C7; --day-border: #D97706; --day-text: #B45309; } /* Wed - Peach */
-    .sch-c4 { --day-bg: #F3E8FF; --day-border: #7C3AED; --day-text: #6D28D9; } /* Thu - Lavender */
-    .sch-c5 { --day-bg: #FFE4E6; --day-border: #E11D48; --day-text: #BE123C; } /* Fri - Rose */
-    .sch-c6 { --day-bg: #CCFBF1; --day-border: #0D9488; --day-text: #0F766E; } /* Sat - Teal */
-    .sch-c7 { --day-bg: #FFEDD5; --day-border: #EA580C; --day-text: #C2410C; } /* Sun - Coral */
+<script>
+(function() {
+    const RAW_SCHEDULES = [
+        {% for s in schedules %}
+        {
+            schedule_id: {{ s.schedule_id | default(loop.index) | tojson }},
+            grade_name: {{ (s.grade_name or '') | tojson }},
+            section_name: {{ (s.section_name or '') | tojson }},
+            subject_name: {{ (s.subject_name or '') | tojson }},
+            teacher_name: {{ (s.teacher_name or '') | tojson }},
+            day_of_week: {{ s.day_of_week | tojson }},
+            start_time: {{ (s.start_time.strftime('%H:%M') if s.start_time and s.start_time.strftime is defined else s.start_time or '') | tojson }},
+            end_time: {{ (s.end_time.strftime('%H:%M') if s.end_time and s.end_time.strftime is defined else s.end_time or '') | tojson }},
+            room: {{ (s.room or '') | tojson }}
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
 
-    @media (max-width: 900px) {
-      .sch-wrap { --sch-day-col: 150px; }
-      .sch-hero-title { font-size: 2.2rem !important; }
-      .sch-hero-sub { font-size: 1rem; }
+    const SHOW_TEACHER = {{ 'true' if show_teacher else 'false' }};
+    const SHOW_SECTION = {{ 'true' if show_section else 'false' }};
+    const CONTAINER_ID = "{{ container_id }}_content";
+
+    function normTime(t) {
+        if (!t) return '';
+        const parts = String(t).trim().split(':');
+        let h = parseInt(parts[0], 10);
+        let m = parseInt(parts[1] || '0', 10);
+        if (isNaN(h)) h = 0;
+        if (isNaN(m)) m = 0;
+        return `${h < 10 ? '0' + h : h}:${m < 10 ? '0' + m : m}`;
     }
 
-    @media (max-width: 768px) {
-      .sch-wrap { 
-        --sch-day-col: 135px; 
-        --sch-row: 54px; 
-        --sch-time-col: 72px;
-      }
-      .sch-hero { text-align: center; justify-content: center; padding: 18px 0 8px; }
-      .sch-hero-title { font-size: 1.6rem !important; }
-      .sch-hero-sub { justify-content: center; font-size: 0.85rem; flex-direction: column; gap: 6px; }
-      .sch-grid-shell { border-radius: 18px; }
-      .sch-block { padding: 4px 6px; border-radius: 8px; margin: 2px 3px; }
-      .sch-block-title { font-size: 11.5px; }
-      .sch-meta-line { font-size: 9.5px; }
-      .sch-time { font-size: 9.5px; padding: 0 6px; }
-      .sch-head { font-size: 10px; }
+    function format12Hour(time24) {
+        if (!time24) return '';
+        const norm = normTime(time24);
+        const parts = norm.split(':');
+        let h = parseInt(parts[0], 10);
+        const m = parts[1] || '00';
+        const ampm = h >= 12 ? 'pm' : 'am';
+        h = h % 12;
+        if (h === 0) h = 12;
+        const hFmt = h < 10 ? '0' + h : h;
+        return `${hFmt}:${m} ${ampm}`;
     }
-  </style>
+
+    function formatRange12Hour(start24, end24) {
+        return `${format12Hour(start24)} – ${format12Hour(end24)}`;
+    }
+
+    const DEFAULT_BREAK_CONFIG = {
+        prayerStart: "06:45",
+        prayerEnd: "07:15",
+        recessStart: "10:15",
+        recessEnd: "10:30",
+        lunchStart: "12:30",
+        lunchEnd: "13:00"
+    };
+
+    {% set active_cfg = break_times_config if break_times_config is not none else (break_config if break_config is defined else none) %}
+    let SERVER_BREAK_CONFIG = {{ active_cfg | tojson if active_cfg else 'null' }};
+
+    function getAllBreakConfigs() {
+        // Always prioritize server config — admin changes must reflect immediately.
+        // localStorage is only used as fallback when server returns null.
+        if (SERVER_BREAK_CONFIG && typeof SERVER_BREAK_CONFIG === 'object') {
+            localStorage.setItem('liceo_break_times_config', JSON.stringify(SERVER_BREAK_CONFIG));
+            let cfg = SERVER_BREAK_CONFIG;
+            if (cfg.prayerStart) cfg = { "DEFAULT": cfg };
+            return cfg;
+        }
+        // Fallback to cached value if server didn't provide config
+        const saved = localStorage.getItem('liceo_break_times_config');
+        if (saved) {
+            try {
+                let parsed = JSON.parse(saved);
+                if (parsed.prayerStart) parsed = { "DEFAULT": parsed };
+                return parsed;
+            } catch (e) {}
+        }
+        return { "DEFAULT": { ...DEFAULT_BREAK_CONFIG } };
+    }
+
+    function getBreakConfig() {
+        let gradeName = null;
+        for (const s of RAW_SCHEDULES) {
+            if (s.grade_name) {
+                gradeName = s.grade_name;
+                break;
+            }
+        }
+        const allCfg = getAllBreakConfigs();
+        let raw = null;
+        if (gradeName) {
+            const gLower = String(gradeName).trim().toLowerCase();
+            for (const k in allCfg) {
+                if (k === "DEFAULT") continue;
+                const kLower = String(k).trim().toLowerCase();
+                if (kLower === gLower || gLower.includes(kLower) || kLower.includes(gLower)) {
+                    raw = allCfg[k];
+                    break;
+                }
+            }
+        }
+        if (!raw) {
+            raw = allCfg["DEFAULT"] || DEFAULT_BREAK_CONFIG;
+        }
+        raw = { ...DEFAULT_BREAK_CONFIG, ...raw };
+        return {
+            prayerStart: normTime(raw.prayerStart || "06:45"),
+            prayerEnd: normTime(raw.prayerEnd || "07:15"),
+            recessStart: normTime(raw.recessStart || "10:15"),
+            recessEnd: normTime(raw.recessEnd || "10:30"),
+            lunchStart: normTime(raw.lunchStart || "12:30"),
+            lunchEnd: normTime(raw.lunchEnd || "13:00")
+        };
+    }
+
+    function renderSharedMatrixGrid() {
+        const container = document.getElementById(CONTAINER_ID);
+        if (!container) return;
+
+        if (!RAW_SCHEDULES || RAW_SCHEDULES.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 24px; background: white; border-radius: 16px;">
+                    <div style="font-size: 3.5rem; margin-bottom: 16px;">🗓️</div>
+                    <h3 style="font-weight: 800; color: #1e3a8a; font-size: 1.25rem; margin-bottom: 8px;">No Schedule Found</h3>
+                    <p style="color: #64748b; font-size: 0.9rem; max-width: 420px; margin: 0 auto; font-weight: 500;">
+                        No class timetable has been assigned for this school year yet.
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
+        const cfg = getBreakConfig();
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        const slotsMap = new Map();
+
+        function addSlot(start, end, extra = {}) {
+            const sNorm = normTime(start);
+            const eNorm = normTime(end);
+            if (!sNorm || !eNorm || sNorm >= eNorm) return;
+            const key = `${sNorm}|${eNorm}`;
+            if (!slotsMap.has(key)) {
+                slotsMap.set(key, {
+                    start: sNorm,
+                    end: eNorm,
+                    label: formatRange12Hour(sNorm, eNorm),
+                    ...extra
+                });
+            } else if (extra.isPrayer || extra.isRecess || extra.isLunch) {
+                const existing = slotsMap.get(key);
+                slotsMap.set(key, { ...existing, ...extra, label: formatRange12Hour(sNorm, eNorm) });
+            }
+        }
+
+        // 1. Add break slots
+        if (cfg.prayerStart && cfg.prayerEnd) addSlot(cfg.prayerStart, cfg.prayerEnd, { isPrayer: true });
+        if (cfg.recessStart && cfg.recessEnd) addSlot(cfg.recessStart, cfg.recessEnd, { isRecess: true });
+        if (cfg.lunchStart && cfg.lunchEnd) addSlot(cfg.lunchStart, cfg.lunchEnd, { isLunch: true });
+
+        // 2. Add actual schedule start & end times
+        RAW_SCHEDULES.forEach(s => {
+            if (s.start_time && s.end_time) {
+                addSlot(s.start_time, s.end_time);
+            }
+        });
+
+        // 3. Add standard periods if they don't overlap breaks
+        const defaultPeriods = [
+            ['07:15', '08:15'],
+            ['08:15', '09:15'],
+            ['09:15', '10:15'],
+            ['10:30', '11:30'],
+            ['11:30', '12:30'],
+            ['13:00', '14:00'],
+            ['14:00', '15:00'],
+            ['15:15', '16:00'],
+            ['16:00', '17:00']
+        ];
+
+        defaultPeriods.forEach(([s, e]) => {
+            const sNorm = normTime(s);
+            const eNorm = normTime(e);
+            let overlapsWithBreak = false;
+            for (const slot of slotsMap.values()) {
+                if (slot.isPrayer || slot.isRecess || slot.isLunch) {
+                    if (sNorm < slot.end && eNorm > slot.start) {
+                        overlapsWithBreak = true;
+                        break;
+                    }
+                }
+            }
+            if (!overlapsWithBreak) {
+                addSlot(s, e);
+            }
+        });
+
+        // 4. Sort and insert gap slots
+        const rawList = Array.from(slotsMap.values()).sort((a, b) => a.start.localeCompare(b.start));
+        const timeSlots = [];
+
+        for (let i = 0; i < rawList.length; i++) {
+            const curr = rawList[i];
+            if (timeSlots.length > 0) {
+                const prevEnd = timeSlots[timeSlots.length - 1].end;
+                if (prevEnd < curr.start) {
+                    timeSlots.push({
+                        start: prevEnd,
+                        end: curr.start,
+                        label: formatRange12Hour(prevEnd, curr.start)
+                    });
+                }
+            }
+            timeSlots.push(curr);
+        }
+
+        // 5. Build html table
+        let html = `<table class="shared-matrix-table"><thead><tr><th class="shared-matrix-time-col">TIME SLOT</th>`;
+        days.forEach(d => html += `<th>${d.toUpperCase()}</th>`);
+        html += `</tr></thead><tbody>`;
+
+        timeSlots.forEach(slot => {
+            html += `<tr><td class="shared-matrix-time-col">${slot.label}</td>`;
+
+            if (slot.isPrayer) {
+                html += `<td colspan="${days.length}" style="background:#eff6ff; text-align:center; color:#1e40af; font-weight:800; font-size:0.8rem; border-bottom:1px solid #bfdbfe;">MORNING PRAYER / HOLY ROSARY / HOMEROOM</td></tr>`;
+                return;
+            }
+            if (slot.isRecess) {
+                html += `<td colspan="${days.length}" style="background:#fefce8; text-align:center; color:#a16207; font-weight:800; font-size:0.8rem; border-bottom:1px solid #fef08a;">RECESS BREAK</td></tr>`;
+                return;
+            }
+            if (slot.isLunch) {
+                html += `<td colspan="${days.length}" style="background:#f0fdf4; text-align:center; color:#166534; font-weight:800; font-size:0.8rem; border-bottom:1px solid #bbf7d0;">LUNCH BREAK</td></tr>`;
+                return;
+            }
+
+            days.forEach(d => {
+                const matches = RAW_SCHEDULES.filter(s => s.day_of_week === d && (slot.start < s.end_time && slot.end > s.start_time));
+                html += `<td>`;
+                if (matches.length > 0) {
+                    matches.forEach(m => {
+                        let secLabel = '';
+                        if (SHOW_SECTION && m.section_name) {
+                            secLabel = m.grade_name ? `${m.section_name} (${m.grade_name})` : m.section_name;
+                        }
+
+                        let metaParts = [];
+                        if (SHOW_TEACHER && m.teacher_name) metaParts.push(m.teacher_name);
+                        if (m.room) metaParts.push(`Rm ${m.room}`);
+
+                        html += `
+                            <div class="shared-matrix-card">
+                                ${secLabel ? `<div class="shared-matrix-card-sec">${secLabel}</div>` : ''}
+                                <div class="shared-matrix-card-subj">${m.subject_name}</div>
+                                ${metaParts.length > 0 ? `<div class="shared-matrix-card-meta">${metaParts.join(' • ')}</div>` : ''}
+                            </div>
+                        `;
+                    });
+                } else {
+                    html += `<span style="font-size:0.7rem; color:#cbd5e1; font-weight:600; text-align:center; display:block;">— Vacant —</span>`;
+                }
+                html += `</td>`;
+            });
+
+            html += `</tr>`;
+        });
+
+        html += `</tbody></table>`;
+        container.innerHTML = html;
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', renderSharedMatrixGrid);
+    } else {
+        renderSharedMatrixGrid();
+    }
+    window.addEventListener('storage', renderSharedMatrixGrid);
+})();
+</script>
 {% endmacro %}
+

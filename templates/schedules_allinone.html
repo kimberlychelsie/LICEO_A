@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Registrar – Class Schedules{% endblock %}
+{% block title %}Branch Admin – Class Schedules{% endblock %}
 
 {% block styles %}
 <style>
@@ -350,17 +350,23 @@
         display: none;
         align-items: center;
         justify-content: center;
+        padding: 20px 12px;
+        box-sizing: border-box;
         opacity: 0;
         transition: opacity 0.25s ease;
+        overflow-y: auto;
     }
     .glass-overlay.visible { opacity: 1; }
 
     .glass-modal {
         background: #fff;
-        border-radius: 24px;
-        padding: 32px 36px;
+        border-radius: 20px;
+        padding: 24px 28px;
         width: 95%;
-        max-width: 600px;
+        max-width: 580px;
+        max-height: 88vh;
+        overflow-y: auto;
+        box-sizing: border-box;
         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
         position: relative;
         transform: translateY(16px);
@@ -370,8 +376,8 @@
 
     .modal-close {
         position: absolute;
-        top: 24px;
-        right: 24px;
+        top: 18px;
+        right: 18px;
         background: #f1f5f9;
         border: none;
         color: var(--sch-text-muted);
@@ -464,7 +470,7 @@
 {% endblock %}
 
 {% block content %}
-<div class="sch-container">
+<div class="schedules-container">
 
     <!-- ── Top Banner ── -->
     <div class="hero-banner">
@@ -473,9 +479,6 @@
             <p>Easily design, manage, and inspect weekly timetables and room assignments for all sections.</p>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button type="button" onclick="openBreakModal()" class="btn-action-pill" style="background: rgba(255,255,255,0.18); color: #fff; border-color: rgba(255,255,255,0.3);">
-                ⚙️ Adjust Prayer & Break Times
-            </button>
             {% if show_archived %}
             <a href="{{ url_for('branch_admin.list_and_add_schedules') }}" class="btn-action-pill" style="background: rgba(255,255,255,0.25); color: #fff; border-color: rgba(255,255,255,0.4); text-decoration: none;">
                 <i class="fas fa-arrow-left"></i> Back to Active
@@ -490,17 +493,17 @@
 
     <!-- ── Quick Add Schedule Form ── -->
     {% if not show_archived %}
-    <div class="form-card">
-        <div class="form-header">
-            <h3 class="form-title">
+    <div class="form-card" style="padding: 24px; background: #ffffff; border-radius: 20px; border: 1px solid #e2e8f0; box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.04);">
+        <div class="form-header" style="margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid #f1f5f9;">
+            <h3 class="form-title" style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--sch-blue); display: flex; align-items: center; gap: 8px;">
                 <i class="fas fa-plus-circle" style="color: var(--sch-blue-vibrant);"></i> Add New Class Schedule
             </h3>
             <div style="display: flex; gap: 10px; align-items: center;">
-                <button type="button" onclick="openBreakModal()" class="btn-action-pill" style="border-color: #fde047; background: #fefce8; color: #a16207;">
-                    ⚙️ Customize Break & Prayer Times
+                <button type="button" onclick="openBreakModal()" class="btn-action-pill" style="border-color: #fde047; background: #fefce8; color: #a16207; font-size: 0.78rem;">
+                    <i class="fas fa-cog"></i> Customize Break & Prayer Times
                 </button>
-                <button type="button" onclick="toggleSmartCascade()" id="cascadeToggleBtn" class="btn-action-pill">
-                    ⚡ Single Dropdown View
+                <button type="button" onclick="toggleSmartCascade()" id="cascadeToggleBtn" class="btn-action-pill" style="font-size: 0.78rem;">
+                    Single Dropdown View
                 </button>
             </div>
         </div>
@@ -509,125 +512,136 @@
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <input type="hidden" name="combo" id="finalComboInput" required>
 
-            <!-- STEP 1: CLASS SELECTION -->
-            <div style="margin-bottom: 24px;">
-                <div class="section-badge">
-                    <i class="fas fa-user-graduate"></i> Step 1: Select Class & Subject
-                </div>
-
-                <!-- 3-STEP SMART CASCADING SELECTION -->
-                <div id="smartCascadeWrapper" style="display: grid; grid-template-columns: 1fr 1fr 1.5fr; gap: 18px; background: #f8fafc; padding: 20px; border-radius: 16px; border: 1.5px solid var(--sch-border);">
+            <!-- 2-COLUMN WIZARD GRID -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: stretch;">
+                
+                <!-- LEFT COLUMN: CLASS & SUBJECT SELECTION -->
+                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between;">
                     <div>
-                        <label class="form-label">1. Grade Level</label>
-                        <select id="smartGradeSelect" class="premium-input" onchange="onSmartGradeChange()">
-                            <option value="">-- Select Grade --</option>
-                            {% for grade in all_grades %}
-                            <option value="{{ grade }}">{{ grade }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div>
-                        <label class="form-label">2. Section</label>
-                        <select id="smartSectionSelect" class="premium-input" disabled onchange="onSmartSectionChange()">
-                            <option value="">-- Select Section --</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="form-label">3. Subject & Assigned Teacher</label>
-                        <select id="smartSubjectSelect" class="premium-input" disabled onchange="onSmartSubjectChange()">
-                            <option value="">-- Select Subject --</option>
-                        </select>
-                    </div>
-                </div>
+                        <div style="font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sch-blue-vibrant); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                            <span style="background: var(--sch-blue-vibrant); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">1</span>
+                            Class & Subject Assignment
+                        </div>
 
-                <!-- TRADITIONAL SINGLE DROPDOWN (HIDDEN BY DEFAULT) -->
-                <div id="traditionalComboWrapper" style="display: none; background: #f8fafc; padding: 20px; border-radius: 16px; border: 1.5px solid var(--sch-border);">
-                    <label class="form-label">All Class Combinations</label>
-                    <select id="traditionalComboSelect" class="premium-input" onchange="onTraditionalComboChange()">
-                        <option value="">-- Select Class --</option>
-                        {% for grade_name, items in combinations|groupby('grade_name') %}
-                        <optgroup label="{{ grade_name }}">
-                            {% for c in items %}
-                            <option value="{{c.section_id}}|{{c.subject_id}}|{{c.teacher_id}}">
-                                {{c.section_name}} — {{c.subject_name}} ({{c.teacher_name}})
-                            </option>
-                            {% endfor %}
-                        </optgroup>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-
-            <!-- STEP 2: DAYS, TIME & ROOM -->
-            <div>
-                <div class="section-badge" style="color: #0d9488; background: #ccfbf1;">
-                    <i class="fas fa-clock"></i> Step 2: Set Days, Time & Room
-                </div>
-
-                <div style="background: #ffffff; border: 1.5px solid var(--sch-border); border-radius: 16px; padding: 20px;">
-                    
-                    <!-- DAYS MULTI-SELECT -->
-                    <div style="margin-bottom: 20px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
-                            <label class="form-label" style="margin:0; color:#1e3a8a;">📅 Select Days (Multi-Select Enabled):</label>
-                            <div style="display: flex; gap: 6px;">
-                                <button type="button" onclick="selectDayPreset(['Monday','Wednesday','Friday'])" class="btn-action-pill" style="padding:4px 12px; font-size:0.75rem;">MWF</button>
-                                <button type="button" onclick="selectDayPreset(['Tuesday','Thursday'])" class="btn-action-pill" style="padding:4px 12px; font-size:0.75rem;">TTH</button>
-                                <button type="button" onclick="selectDayPreset(['Monday','Tuesday','Wednesday','Thursday','Friday'])" class="btn-action-pill" style="padding:4px 12px; font-size:0.75rem;">Mon-Fri</button>
-                                <button type="button" onclick="selectDayPreset([])" class="btn-action-pill" style="padding:4px 12px; font-size:0.75rem; background:#f1f5f9; color:#64748b;">Clear</button>
+                        <!-- 3-STEP SMART CASCADING SELECTION -->
+                        <div id="smartCascadeWrapper" style="display: flex; flex-direction: column; gap: 14px;">
+                            <div>
+                                <label class="form-label">Grade Level</label>
+                                <select id="smartGradeSelect" class="premium-input" onchange="onSmartGradeChange()">
+                                    <option value="">-- Select Grade --</option>
+                                    {% for grade in all_grades %}
+                                    <option value="{{ grade }}">{{ grade }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">Section</label>
+                                <select id="smartSectionSelect" class="premium-input" disabled onchange="onSmartSectionChange()">
+                                    <option value="">-- Select Section --</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="form-label">Subject & Assigned Teacher</label>
+                                <select id="smartSubjectSelect" class="premium-input" disabled onchange="onSmartSubjectChange()">
+                                    <option value="">-- Select Subject --</option>
+                                </select>
                             </div>
                         </div>
 
-                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] %}
-                            <label class="day-chip">
-                                <input type="checkbox" name="days" value="{{ day }}" class="day-checkbox" onchange="checkRealTimeConflicts()">
-                                {{ day }}
-                            </label>
-                            {% endfor %}
+                        <!-- TRADITIONAL SINGLE DROPDOWN (HIDDEN BY DEFAULT) -->
+                        <div id="traditionalComboWrapper" style="display: none;">
+                            <label class="form-label">All Class Combinations</label>
+                            <select id="traditionalComboSelect" class="premium-input" onchange="onTraditionalComboChange()">
+                                <option value="">-- Select Class --</option>
+                                {% for grade_name, items in combinations|groupby('grade_name') %}
+                                <optgroup label="{{ grade_name }}">
+                                    {% for c in items %}
+                                    <option value="{{c.section_id}}|{{c.subject_id}}|{{c.teacher_id}}">
+                                        {{c.section_name}} — {{c.subject_name}} ({{c.teacher_name}})
+                                    </option>
+                                    {% endfor %}
+                                </optgroup>
+                                {% endfor %}
+                            </select>
                         </div>
                     </div>
 
-                    <!-- DYNAMIC TIME SLOT PRESETS -->
-                    <div style="margin-bottom: 20px; padding-top: 16px; border-top: 1px dashed #e2e8f0;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
-                            <label class="form-label" style="margin:0; color:#1e3a8a;">⏰ Quick Time Slot Presets:</label>
-                            <span style="font-size: 0.74rem; color: #64748b; font-weight: 600;">Click a preset to quickly fill Start & End time</span>
+                    <div style="font-size: 0.76rem; color: #64748b; margin-top: 16px; line-height: 1.4; background: #ffffff; padding: 10px 14px; border-radius: 10px; border: 1px solid #e2e8f0; font-weight: 500;">
+                        <strong>Smart Cascade:</strong> Selecting Grade Level automatically loads available Sections and Teacher-Subject assignments.
+                    </div>
+                </div>
+
+                <!-- RIGHT COLUMN: DAYS, TIME & ROOM SELECTION -->
+                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                        <div style="font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #0d9488; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
+                            <span style="background: #0d9488; color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">2</span>
+                            Schedule Days, Time & Room
                         </div>
-                        <div id="quickPresetsContainer" style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <!-- Dynamically populated by JS -->
+
+                        <!-- DAYS MULTI-SELECT -->
+                        <div style="margin-bottom: 16px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px;">
+                                <label class="form-label" style="margin:0;">Select Days:</label>
+                                <div style="display: flex; gap: 4px;">
+                                    <button type="button" onclick="selectDayPreset(['Monday','Wednesday','Friday'])" class="btn-action-pill" style="padding:2px 8px; font-size:0.72rem;">MWF</button>
+                                    <button type="button" onclick="selectDayPreset(['Tuesday','Thursday'])" class="btn-action-pill" style="padding:2px 8px; font-size:0.72rem;">TTH</button>
+                                    <button type="button" onclick="selectDayPreset(['Monday','Tuesday','Wednesday','Thursday','Friday'])" class="btn-action-pill" style="padding:2px 8px; font-size:0.72rem;">Mon-Fri</button>
+                                    <button type="button" onclick="selectDayPreset([])" class="btn-action-pill" style="padding:2px 8px; font-size:0.72rem; background:#f1f5f9; color:#64748b;">Clear</button>
+                                </div>
+                            </div>
+
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                {% for day in ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'] %}
+                                <label class="day-chip" style="padding: 5px 12px; font-size: 0.8rem;">
+                                    <input type="checkbox" name="days" value="{{ day }}" class="day-checkbox" onchange="checkRealTimeConflicts()">
+                                    {{ day[:3] }}
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- QUICK TIME PRESETS -->
+                        <div style="margin-bottom: 16px;">
+                            <label class="form-label" style="margin-bottom: 6px;">Quick Time Presets</label>
+                            <div id="quickPresetsContainer">
+                                <!-- Populated dynamically by JS -->
+                            </div>
+                        </div>
+
+                        <!-- TIME RANGE & ROOM -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                            <div>
+                                <label class="form-label">Start Time</label>
+                                <input type="time" name="start_time" id="addStartTime" class="premium-input" required min="06:00" max="17:00" step="900" onchange="checkRealTimeConflicts()">
+                            </div>
+                            <div>
+                                <label class="form-label">End Time</label>
+                                <input type="time" name="end_time" id="addEndTime" class="premium-input" required min="06:00" max="17:00" step="900" onchange="checkRealTimeConflicts()">
+                            </div>
+                            <div>
+                                <label class="form-label">Room (1-30)</label>
+                                <input type="number" name="room" id="addRoomInput" min="1" max="30" class="premium-input" placeholder="e.g. 10" required 
+                                       oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2); if(parseInt(this.value) > 30) this.value = 30; checkRealTimeConflicts();"
+                                       title="Enter room number between 1 and 30">
+                            </div>
                         </div>
                     </div>
 
-                    <!-- TIME & ROOM INPUTS -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1.2fr 1fr; gap: 16px; align-items: flex-end; padding-top: 16px; border-top: 1px dashed #e2e8f0;">
-                        <div>
-                            <label class="form-label">Start Time</label>
-                            <input type="time" name="start_time" id="addStartTime" class="premium-input" required min="07:00" max="17:00" step="900" onchange="checkRealTimeConflicts()">
-                        </div>
-                        <div>
-                            <label class="form-label">End Time</label>
-                            <input type="time" name="end_time" id="addEndTime" class="premium-input" required min="07:00" max="17:00" step="900" onchange="checkRealTimeConflicts()">
-                        </div>
-                        <div>
-                            <label class="form-label">Room Number (1-30)</label>
-                            <input type="number" name="room" id="addRoomInput" min="1" max="30" class="premium-input" placeholder="e.g. 10" required 
-                                   oninput="if(this.value.length > 2) this.value = this.value.slice(0, 2); if(parseInt(this.value) > 30) this.value = 30; checkRealTimeConflicts();"
-                                   title="Enter room number between 1 and 30">
-                        </div>
-                        <div>
-                            <button class="btn-create" type="submit" id="addScheduleBtn" style="width:100%; height:44px;">
-                                <i class="fas fa-plus"></i> Add Schedule
-                            </button>
-                        </div>
+                    <!-- ADD BUTTON -->
+                    <div>
+                        <button class="btn-create" type="submit" id="addScheduleBtn" style="width:100%; height:44px; justify-content: center; font-size: 0.92rem;">
+                            <i class="fas fa-plus-circle"></i> Add Class Schedule
+                        </button>
                     </div>
 
                 </div>
+
             </div>
 
             <!-- REAL TIME CONFLICT WARNING BANNER -->
             <div id="liveConflictBanner" style="display:none; background:#fef2f2; border:1.5px solid #fecaca; border-radius:12px; padding:14px 18px; color:#991b1b; font-size:0.86rem; font-weight:700; margin-top:16px; line-height:1.6;">
-                ⚠️ Conflict Detected!
+                <i class="fas fa-exclamation-triangle"></i> Conflict Detected!
             </div>
             <div id="add-time-error" class="error-hint">Start time must be before end time.</div>
         </form>
@@ -645,10 +659,10 @@
                 <!-- View Mode Switcher -->
                 <div style="display: flex; background: #f1f5f9; border-radius: 20px; padding: 4px; border: 1px solid var(--sch-border);">
                     <button type="button" id="btnListView" onclick="switchScheduleView('list')" style="padding: 6px 18px; border-radius: 16px; border: none; font-size: 0.8rem; font-weight: 800; cursor: pointer; background: var(--sch-blue); color: #fff; transition: all 0.2s;">
-                        📋 List View
+                        <i class="fas fa-list"></i> List View
                     </button>
                     <button type="button" id="btnMatrixView" onclick="switchScheduleView('matrix')" style="padding: 6px 18px; border-radius: 16px; border: none; font-size: 0.8rem; font-weight: 800; cursor: pointer; background: transparent; color: #475569; transition: all 0.2s;">
-                        📅 Weekly Matrix Grid
+                        <i class="fas fa-calendar-alt"></i> Weekly Matrix Grid
                     </button>
                 </div>
                 
@@ -703,7 +717,7 @@
                         <td><span style="font-weight: 600; color: #334155;">{{sched.teacher_name}}</span></td>
                         <td><span style="font-weight: 800; color: #0f172a;">{{sched.day_of_week}}</span></td>
                         <td>
-                            <div class="time-slot">{{ sched.start_time.strftime('%H:%M') }} - {{ sched.end_time.strftime('%H:%M') }}</div>
+                            <div class="time-slot">{{ sched.start_time.strftime('%I:%M %p').lower() }} – {{ sched.end_time.strftime('%I:%M %p').lower() }}</div>
                         </td>
                         <td><span class="room-badge"><i class="fas fa-door-open"></i> Room {{sched.room}}</span></td>
                         <td>
@@ -755,9 +769,12 @@
         </div>
 
         <!-- MATRIX TIMETABLE GRID VIEW (HIDDEN BY DEFAULT) -->
-        <div id="matrixViewContainer" style="display: none; padding: 24px; overflow-x: auto;">
-            <div style="font-size:0.85rem; color:#64748b; margin-bottom:14px; font-weight:600; display:flex; align-items:center; gap:8px;">
-                <span>💡 Filter by Grade or Section above to inspect specific weekly class timetables and spot vacant slots!</span>
+        <div id="matrixViewContainer" style="display: none; padding: 16px 20px; overflow-x: auto;">
+            <div style="font-size:0.78rem; color:#64748b; margin-bottom:10px; font-weight:600; display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;">
+                <span>Filter by Grade or Section above to inspect timetables.</span>
+                <span style="color: #2563eb; background: #eff6ff; border: 1px solid #bfdbfe; padding: 3px 10px; border-radius: 12px; font-size: 0.74rem; font-weight: 700;">
+                    <i class="fas fa-hand-pointer"></i> Drag & drop schedule cards to move slots
+                </span>
             </div>
             <div id="matrixTableContent"></div>
         </div>
@@ -769,64 +786,75 @@
 <div class="glass-overlay" id="breakSettingsOverlay">
     <div class="glass-modal">
         <button class="modal-close" onclick="closeBreakModal()">✕</button>
-        <h2 style="font-weight:900; color:var(--sch-blue); margin-bottom:8px; font-size:1.4rem;">⚙️ Break & Prayer Time Settings</h2>
-        <p style="font-size:0.85rem; color:var(--sch-text-muted); margin-bottom:24px; font-weight:500;">
-            Customize the start and end times for Morning Prayer/Rosary, Recess, and Lunch break presets.
+        <h2 style="font-weight:900; color:var(--sch-blue); margin-bottom:4px; font-size:1.3rem;">Break & Prayer Time Settings</h2>
+        <p style="font-size:0.8rem; color:var(--sch-text-muted); margin-bottom:14px; font-weight:500;">
+            Customize break and prayer times globally or per specific Grade Level.
         </p>
         
-        <form id="breakSettingsForm" onsubmit="saveBreakSettings(event)">
-            <div style="display: grid; gap: 16px; margin-bottom: 24px;">
+        <form id="breakSettingsForm" onsubmit="return false;">
+            <!-- GRADE SELECTOR -->
+            <div style="background: #f8fafc; border: 1.5px solid var(--sch-border); padding: 10px 14px; border-radius: 12px; margin-bottom: 14px;">
+                <label class="form-label" style="color: var(--sch-blue-vibrant); margin-bottom: 4px; font-size: 0.78rem;">Select Grade Level to Customize:</label>
+                <select id="cfgGradeSelect" class="premium-input" style="padding: 8px 12px; font-size: 0.88rem;" onchange="onBreakGradeChange()">
+                    <option value="DEFAULT">-- Default / All Grades --</option>
+                    {% for grade in all_grades %}
+                    <option value="{{ grade }}">{{ grade }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="display: grid; gap: 10px; margin-bottom: 18px;">
                 
                 <!-- PRAYER / ROSARY -->
-                <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:16px; border-radius:14px;">
-                    <label class="form-label" style="color:#1e40af; font-size:0.82rem;">🙏 Morning Prayer / Holy Rosary</label>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px;">
+                <div style="background:#eff6ff; border:1px solid #bfdbfe; padding:12px 14px; border-radius:12px;">
+                    <label class="form-label" style="color:#1e40af; font-size:0.8rem; font-weight:800; margin-bottom:4px;">Morning Prayer / Holy Rosary</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px;">
                         <div>
-                            <label style="font-size:0.72rem; font-weight:700; color:#475569;">Start Time</label>
-                            <input type="time" id="cfgPrayerStart" class="premium-input" required>
+                            <label style="font-size:0.7rem; font-weight:700; color:#475569;">Start Time</label>
+                            <input type="time" id="cfgPrayerStart" class="premium-input" style="padding:6px 10px; font-size:0.85rem;" required>
                         </div>
                         <div>
-                            <label style="font-size:0.72rem; font-weight:700; color:#475569;">End Time</label>
-                            <input type="time" id="cfgPrayerEnd" class="premium-input" required>
+                            <label style="font-size:0.7rem; font-weight:700; color:#475569;">End Time</label>
+                            <input type="time" id="cfgPrayerEnd" class="premium-input" style="padding:6px 10px; font-size:0.85rem;" required>
                         </div>
                     </div>
                 </div>
 
                 <!-- RECESS BREAK -->
-                <div style="background:#fefce8; border:1px solid #fef08a; padding:16px; border-radius:14px;">
-                    <label class="form-label" style="color:#a16207; font-size:0.82rem;">☕ Recess Break</label>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px;">
+                <div style="background:#fefce8; border:1px solid #fef08a; padding:12px 14px; border-radius:12px;">
+                    <label class="form-label" style="color:#a16207; font-size:0.8rem; font-weight:800; margin-bottom:4px;">Recess Break</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px;">
                         <div>
-                            <label style="font-size:0.72rem; font-weight:700; color:#475569;">Start Time</label>
-                            <input type="time" id="cfgRecessStart" class="premium-input" required>
+                            <label style="font-size:0.7rem; font-weight:700; color:#475569;">Start Time</label>
+                            <input type="time" id="cfgRecessStart" class="premium-input" style="padding:6px 10px; font-size:0.85rem;" required>
                         </div>
                         <div>
-                            <label style="font-size:0.72rem; font-weight:700; color:#475569;">End Time</label>
-                            <input type="time" id="cfgRecessEnd" class="premium-input" required>
+                            <label style="font-size:0.7rem; font-weight:700; color:#475569;">End Time</label>
+                            <input type="time" id="cfgRecessEnd" class="premium-input" style="padding:6px 10px; font-size:0.85rem;" required>
                         </div>
                     </div>
                 </div>
 
                 <!-- LUNCH BREAK -->
-                <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:16px; border-radius:14px;">
-                    <label class="form-label" style="color:#166534; font-size:0.82rem;">🍱 Lunch Break</label>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px;">
+                <div style="background:#f0fdf4; border:1px solid #bbf7d0; padding:12px 14px; border-radius:12px;">
+                    <label class="form-label" style="color:#166534; font-size:0.8rem; font-weight:800; margin-bottom:4px;">Lunch Break</label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px;">
                         <div>
-                            <label style="font-size:0.72rem; font-weight:700; color:#475569;">Start Time</label>
-                            <input type="time" id="cfgLunchStart" class="premium-input" required>
+                            <label style="font-size:0.7rem; font-weight:700; color:#475569;">Start Time</label>
+                            <input type="time" id="cfgLunchStart" class="premium-input" style="padding:6px 10px; font-size:0.85rem;" required>
                         </div>
                         <div>
-                            <label style="font-size:0.72rem; font-weight:700; color:#475569;">End Time</label>
-                            <input type="time" id="cfgLunchEnd" class="premium-input" required>
+                            <label style="font-size:0.7rem; font-weight:700; color:#475569;">End Time</label>
+                            <input type="time" id="cfgLunchEnd" class="premium-input" style="padding:6px 10px; font-size:0.85rem;" required>
                         </div>
                     </div>
                 </div>
 
             </div>
 
-            <div style="display: flex; gap: 12px;">
+            <div style="display: flex; gap: 10px;">
                 <button type="button" class="btn-action-pill" style="width: 40%; justify-content: center; background:#f1f5f9;" onclick="resetBreakDefaults()">Reset Defaults</button>
-                <button type="submit" class="btn-create" style="width: 60%; justify-content: center;">Save Break Settings</button>
+                <button type="button" class="btn-create" style="width: 60%; justify-content: center;" onclick="saveBreakSettings(event)">Save Settings</button>
             </div>
         </form>
     </div>
@@ -860,7 +888,7 @@
                     <label class="form-label">Day</label>
                     <select name="day_of_week" id="edit_day_of_week" class="premium-input" required>
                         <option value="">Day</option>
-                        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'] %}
+                        {% for day in ['Monday','Tuesday','Wednesday','Thursday','Friday'] %}
                         <option value="{{day}}">{{day}}</option>
                         {% endfor %}
                     </select>
@@ -873,11 +901,11 @@
                 </div>
                 <div class="form-group">
                     <label class="form-label">Start Time</label>
-                    <input type="time" name="start_time" id="edit_start_time" class="premium-input" required min="07:00" max="17:00" step="900">
+                    <input type="time" name="start_time" id="edit_start_time" class="premium-input" required min="06:00" max="17:00" step="900">
                 </div>
                 <div class="form-group">
                     <label class="form-label">End Time</label>
-                    <input type="time" name="end_time" id="edit_end_time" class="premium-input" required min="07:00" max="17:00" step="900">
+                    <input type="time" name="end_time" id="edit_end_time" class="premium-input" required min="06:00" max="17:00" step="900">
                 </div>
                 <div class="form-group" style="display: none;">
                     <input type="hidden" name="year_id" id="edit_year_id" value="{{ active_year.year_id if active_year else '' }}">
@@ -942,56 +970,125 @@
         {% endfor %}
     ];
 
+    // ── 12-HOUR AM/PM FORMATTING HELPERS & TIME NORMALIZATION ──
+    function normTime(t) {
+        if (!t) return '';
+        const parts = String(t).trim().split(':');
+        let h = parseInt(parts[0], 10);
+        let m = parseInt(parts[1] || '0', 10);
+        if (isNaN(h)) h = 0;
+        if (isNaN(m)) m = 0;
+        return `${h < 10 ? '0' + h : h}:${m < 10 ? '0' + m : m}`;
+    }
+
+    function format12Hour(time24) {
+        if (!time24) return '';
+        const norm = normTime(time24);
+        const parts = norm.split(':');
+        let h = parseInt(parts[0], 10);
+        const m = parts[1] || '00';
+        const ampm = h >= 12 ? 'pm' : 'am';
+        h = h % 12;
+        if (h === 0) h = 12;
+        const hFmt = h < 10 ? '0' + h : h;
+        return `${hFmt}:${m} ${ampm}`;
+    }
+
+    function formatRange12Hour(start24, end24) {
+        return `${format12Hour(start24)} – ${format12Hour(end24)}`;
+    }
+
     // ── BREAK & PRAYER CONFIGURATION STATE ──
     const DEFAULT_BREAK_CONFIG = {
-        prayerStart: "07:15",
-        prayerEnd: "07:30",
-        recessStart: "09:30",
-        recessEnd: "10:00",
-        lunchStart: "12:00",
+        prayerStart: "06:45",
+        prayerEnd: "07:15",
+        recessStart: "10:15",
+        recessEnd: "10:30",
+        lunchStart: "12:30",
         lunchEnd: "13:00"
     };
 
-    function getBreakConfig() {
+    let SERVER_BREAK_CONFIG = {{ break_times_config | tojson if break_times_config else 'null' }};
+
+    function getAllBreakConfigs() {
+        // Always prioritize server config — admin changes must reflect immediately.
+        // localStorage is only used as fallback when server returns null.
+        if (SERVER_BREAK_CONFIG && typeof SERVER_BREAK_CONFIG === 'object') {
+            localStorage.setItem('liceo_break_times_config', JSON.stringify(SERVER_BREAK_CONFIG));
+            let cfg = SERVER_BREAK_CONFIG;
+            if (cfg.prayerStart) cfg = { "DEFAULT": cfg };
+            return cfg;
+        }
+        // Fallback to cached value if server didn't provide config
         const saved = localStorage.getItem('liceo_break_times_config');
-        return saved ? JSON.parse(saved) : DEFAULT_BREAK_CONFIG;
+        if (saved) {
+            try {
+                let parsed = JSON.parse(saved);
+                if (parsed.prayerStart) parsed = { "DEFAULT": parsed };
+                return parsed;
+            } catch (e) {}
+        }
+        return { "DEFAULT": { ...DEFAULT_BREAK_CONFIG } };
+    }
+
+    function getBreakConfig(gradeName = null) {
+        const allCfg = getAllBreakConfigs();
+        let raw;
+        if (gradeName && allCfg[gradeName]) {
+            raw = { ...DEFAULT_BREAK_CONFIG, ...allCfg[gradeName] };
+        } else {
+            raw = { ...DEFAULT_BREAK_CONFIG, ...(allCfg["DEFAULT"] || {}) };
+        }
+        return {
+            prayerStart: normTime(raw.prayerStart || "06:45"),
+            prayerEnd: normTime(raw.prayerEnd || "07:15"),
+            recessStart: normTime(raw.recessStart || "10:15"),
+            recessEnd: normTime(raw.recessEnd || "10:30"),
+            lunchStart: normTime(raw.lunchStart || "12:30"),
+            lunchEnd: normTime(raw.lunchEnd || "13:00")
+        };
     }
 
     function renderQuickPresets() {
-        const cfg = getBreakConfig();
         const container = document.getElementById('quickPresetsContainer');
         if (!container) return;
 
         const presets = [
-            { label: `🙏 ${cfg.prayerStart} - ${cfg.prayerEnd} (Prayer/Rosary)`, start: cfg.prayerStart, end: cfg.prayerEnd, style: "border:1px solid #bfdbfe; background:#eff6ff; color:#1e40af; font-weight:800;" },
-            { label: "07:30 - 08:30", start: "07:30", end: "08:30" },
-            { label: "08:30 - 09:30", start: "08:30", end: "09:30" },
-            { label: `☕ ${cfg.recessStart} - ${cfg.recessEnd} (Recess)`, start: cfg.recessStart, end: cfg.recessEnd, style: "border:1px solid #fef08a; background:#fefce8; color:#a16207; font-weight:800;" },
-            { label: "10:00 - 11:00", start: "10:00", end: "11:00" },
-            { label: "11:00 - 12:00", start: "11:00", end: "12:00" },
-            { label: `🍱 ${cfg.lunchStart} - ${cfg.lunchEnd} (Lunch)`, start: cfg.lunchStart, end: cfg.lunchEnd, style: "border:1px solid #bbf7d0; background:#f0fdf4; color:#166534; font-weight:800;" },
-            { label: "13:00 - 14:00", start: "13:00", end: "14:00" },
-            { label: "14:00 - 15:00", start: "14:00", end: "15:00" },
-            { label: "15:00 - 16:00", start: "15:00", end: "16:00" }
+            { label: `${formatRange12Hour('07:15', '08:15')} (Period 1)`, start: "07:15", end: "08:15" },
+            { label: `${formatRange12Hour('08:15', '09:15')} (Period 2)`, start: "08:15", end: "09:15" },
+            { label: `${formatRange12Hour('09:15', '10:15')} (Period 3)`, start: "09:15", end: "10:15" },
+            { label: `${formatRange12Hour('10:30', '11:30')} (Period 4)`, start: "10:30", end: "11:30" },
+            { label: `${formatRange12Hour('11:30', '12:30')} (Period 5)`, start: "11:30", end: "12:30" },
+            { label: `${formatRange12Hour('13:00', '14:00')} (Period 6)`, start: "13:00", end: "14:00" },
+            { label: `${formatRange12Hour('14:00', '15:00')} (Period 7)`, start: "14:00", end: "15:00" },
+            { label: `${formatRange12Hour('15:15', '16:00')} (Period 8)`, start: "15:15", end: "16:00" },
+            { label: `${formatRange12Hour('16:00', '17:00')} (Period 9)`, start: "16:00", end: "17:00" }
         ];
 
-        let html = '';
-        presets.forEach(p => {
-            const extraStyle = p.style || "border:1px solid #e2e8f0; background:#f8fafc; color:#334155; font-weight:700;";
-            html += `<button type="button" onclick="setTimePreset('${p.start}', '${p.end}')" class="btn-action-pill" style="padding:4px 10px; font-size:0.74rem; ${extraStyle}">${p.label}</button>`;
-        });
+        let html = `
+            <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                <select id="presetSelect" class="premium-input" style="width: 100%; padding: 8px 12px; font-size: 0.83rem;" onchange="if(this.value){ const [s,e]=this.value.split('|'); setTimePreset(s,e); }">
+                    <option value="">-- Choose Quick Time Slot --</option>
+                    ${presets.map(p => `<option value="${p.start}|${p.end}">${p.label}</option>`).join('')}
+                </select>
+            </div>
+        `;
         container.innerHTML = html;
     }
 
-    function openBreakModal() {
-        const cfg = getBreakConfig();
+    function onBreakGradeChange() {
+        const gradeKey = document.getElementById('cfgGradeSelect').value;
+        const cfg = getBreakConfig(gradeKey === "DEFAULT" ? null : gradeKey);
         document.getElementById('cfgPrayerStart').value = cfg.prayerStart;
         document.getElementById('cfgPrayerEnd').value = cfg.prayerEnd;
         document.getElementById('cfgRecessStart').value = cfg.recessStart;
         document.getElementById('cfgRecessEnd').value = cfg.recessEnd;
         document.getElementById('cfgLunchStart').value = cfg.lunchStart;
         document.getElementById('cfgLunchEnd').value = cfg.lunchEnd;
+    }
 
+    function openBreakModal() {
+        onBreakGradeChange();
         const overlay = document.getElementById('breakSettingsOverlay');
         overlay.style.display = 'flex';
         setTimeout(() => overlay.classList.add('visible'), 10);
@@ -1003,26 +1100,89 @@
         setTimeout(() => overlay.style.display = 'none', 250);
     }
 
-    function saveBreakSettings(e) {
+    async function saveBreakSettings(e) {
         e.preventDefault();
+        const gradeKey = document.getElementById('cfgGradeSelect').value;
+        const allCfg = getAllBreakConfigs();
+
+        const pStart = normTime(document.getElementById('cfgPrayerStart').value);
+        const pEnd = normTime(document.getElementById('cfgPrayerEnd').value);
+        const rStart = normTime(document.getElementById('cfgRecessStart').value);
+        const rEnd = normTime(document.getElementById('cfgRecessEnd').value);
+        const lStart = normTime(document.getElementById('cfgLunchStart').value);
+        const lEnd = normTime(document.getElementById('cfgLunchEnd').value);
+
         const newCfg = {
-            prayerStart: document.getElementById('cfgPrayerStart').value,
-            prayerEnd: document.getElementById('cfgPrayerEnd').value,
-            recessStart: document.getElementById('cfgRecessStart').value,
-            recessEnd: document.getElementById('cfgRecessEnd').value,
-            lunchStart: document.getElementById('cfgLunchStart').value,
-            lunchEnd: document.getElementById('cfgLunchEnd').value
+            prayerStart: pStart || "06:45",
+            prayerEnd: pEnd || "07:15",
+            recessStart: rStart || "10:15",
+            recessEnd: rEnd || "10:30",
+            lunchStart: lStart || "12:30",
+            lunchEnd: lEnd || "13:00"
         };
 
-        localStorage.setItem('liceo_break_times_config', JSON.stringify(newCfg));
+        allCfg[gradeKey] = newCfg;
+        allCfg["DEFAULT"] = newCfg;
+
+        SERVER_BREAK_CONFIG = allCfg;
+        localStorage.setItem('liceo_break_times_config', JSON.stringify(allCfg));
+
+        let dbSaveOk = false;
+        try {
+            const resp = await fetch('/branch-admin/save-break-times', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify(allCfg)
+            });
+            const result = await resp.json();
+            dbSaveOk = result.success === true;
+            if (!dbSaveOk) {
+                console.error('DB save failed:', result);
+            }
+        } catch (err) {
+            console.error('Error saving break times to DB:', err);
+        }
+
+        if (gradeKey !== 'DEFAULT') {
+            const gradeFilter = document.getElementById('gradeFilter');
+            if (gradeFilter) {
+                gradeFilter.value = gradeKey;
+            }
+        }
+
+        try { window.dispatchEvent(new Event('storage')); } catch(err) {}
+
         renderQuickPresets();
         renderMatrixView();
         closeBreakModal();
-        alert('✅ Break & Prayer Times updated successfully!');
+        if (dbSaveOk) {
+            alert(`✅ Break & Prayer Times saved for ${gradeKey === 'DEFAULT' ? 'All Grades' : gradeKey}!`);
+        } else {
+            alert(`⚠️ Break times updated locally but FAILED to save to database! Changes will revert on page reload.\n\nCheck browser console for details.`);
+        }
     }
 
-    function resetBreakDefaults() {
+    async function resetBreakDefaults() {
         localStorage.removeItem('liceo_break_times_config');
+        const defaultObj = { "DEFAULT": { ...DEFAULT_BREAK_CONFIG } };
+        SERVER_BREAK_CONFIG = defaultObj;
+        try {
+            const resp = await fetch('/branch-admin/save-break-times', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify(defaultObj)
+            });
+            const result = await resp.json();
+            if (!result.success) console.error('Reset to defaults failed to save to DB:', result);
+        } catch (err) {
+            console.error('Error resetting break times:', err);
+        }
         openBreakModal();
         renderQuickPresets();
         renderMatrixView();
@@ -1031,6 +1191,7 @@
     // ── Smart Cascading Selection Logic ──
     function onSmartGradeChange() {
         const grade = document.getElementById('smartGradeSelect').value;
+        renderQuickPresets();
         const secSelect = document.getElementById('smartSectionSelect');
         const subjSelect = document.getElementById('smartSubjectSelect');
         
@@ -1113,12 +1274,12 @@
         if (cascade.style.display === 'none') {
             cascade.style.display = 'grid';
             trad.style.display = 'none';
-            btn.textContent = '⚡ Single Dropdown View';
+            btn.textContent = 'Single Dropdown View';
             document.getElementById('smartSubjectSelect').dispatchEvent(new Event('change'));
         } else {
             cascade.style.display = 'none';
             trad.style.display = 'block';
-            btn.textContent = '🎯 3-Step Smart Cascade View';
+            btn.textContent = '3-Step Smart Cascade View';
             document.getElementById('traditionalComboSelect').dispatchEvent(new Event('change'));
         }
     }
@@ -1178,7 +1339,7 @@
         });
 
         if (conflictsFound.length > 0) {
-            banner.innerHTML = `⚠️ <strong>Real-Time Schedule Conflict Detected:</strong><br>` + conflictsFound.map(c => `• ${c}`).join('<br>');
+            banner.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <strong>Real-Time Schedule Conflict Detected:</strong><br>` + conflictsFound.map(c => `• ${c}`).join('<br>');
             banner.style.display = 'block';
         } else {
             banner.style.display = 'none';
@@ -1210,6 +1371,125 @@
         }
     }
 
+    // ── Drag & Drop State & Validation Engine ──
+    let CURRENT_DRAGGED_ID = null;
+
+    function handleMatrixDragStart(e, schedId) {
+        CURRENT_DRAGGED_ID = schedId;
+        e.dataTransfer.setData("text/plain", schedId);
+        e.dataTransfer.effectAllowed = "move";
+        e.currentTarget.classList.add("dragging");
+    }
+
+    function handleMatrixDragEnd(e) {
+        e.currentTarget.classList.remove("dragging");
+        CURRENT_DRAGGED_ID = null;
+        document.querySelectorAll("td.drag-valid, td.drag-conflict").forEach(td => {
+            td.classList.remove("drag-valid", "drag-conflict");
+        });
+    }
+
+    function checkDragConflict(schedId, day, targetStart, targetEnd) {
+        const sched = ALL_SCHEDULES.find(s => String(s.schedule_id) === String(schedId));
+        if (!sched) return { conflict: true, reason: "Schedule not found" };
+
+        const cfg = getBreakConfig(sched.grade_name);
+        const isBreak = (targetStart < cfg.prayerEnd && targetEnd > cfg.prayerStart) ||
+                        (targetStart < cfg.recessEnd && targetEnd > cfg.recessStart) ||
+                        (targetStart < cfg.lunchEnd && targetEnd > cfg.lunchStart);
+
+        if (isBreak) {
+            return { conflict: true, reason: "Break Time" };
+        }
+
+        const conflict = ALL_SCHEDULES.find(s => 
+            String(s.schedule_id) !== String(schedId) &&
+            s.day_of_week === day &&
+            (targetStart < s.end_time && targetEnd > s.start_time) &&
+            (String(s.teacher_id) === String(sched.teacher_id) || 
+             String(s.section_id) === String(sched.section_id) || 
+             String(s.room) === String(sched.room))
+        );
+
+        if (conflict) {
+            let reasons = [];
+            if (String(conflict.teacher_id) === String(sched.teacher_id)) reasons.push(`Teacher (${conflict.teacher_name})`);
+            if (String(conflict.section_id) === String(sched.section_id)) reasons.push(`Section (${conflict.section_name})`);
+            if (String(conflict.room) === String(sched.room)) reasons.push(`Room ${conflict.room}`);
+            return { conflict: true, reason: reasons.join(" & ") + " is already occupied" };
+        }
+
+        return { conflict: false };
+    }
+
+    function handleMatrixDragOver(e, day, start, end) {
+        e.preventDefault();
+        if (!CURRENT_DRAGGED_ID) return;
+
+        const cell = e.currentTarget;
+        const res = checkDragConflict(CURRENT_DRAGGED_ID, day, start, end);
+
+        if (res.conflict) {
+            cell.classList.add("drag-conflict");
+            cell.classList.remove("drag-valid");
+            e.dataTransfer.dropEffect = "none";
+        } else {
+            cell.classList.add("drag-valid");
+            cell.classList.remove("drag-conflict");
+            e.dataTransfer.dropEffect = "move";
+        }
+    }
+
+    function handleMatrixDragLeave(e) {
+        e.currentTarget.classList.remove("drag-valid", "drag-conflict");
+    }
+
+    async function handleMatrixDrop(e, day, start, end) {
+        e.preventDefault();
+        const cell = e.currentTarget;
+        cell.classList.remove("drag-valid", "drag-conflict");
+
+        const schedId = CURRENT_DRAGGED_ID;
+        if (!schedId) return;
+
+        const check = checkDragConflict(schedId, day, start, end);
+        if (check.conflict) {
+            alert(`Cannot move schedule!\nConflict: ${check.reason}`);
+            return;
+        }
+
+        const endpoint = `/branch-admin/schedules/${schedId}/move`;
+        try {
+            const resp = await fetch(endpoint, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "X-CSRFToken": "{{ csrf_token() }}"
+                },
+                body: JSON.stringify({
+                    day_of_week: day,
+                    start_time: start,
+                    end_time: end
+                })
+            });
+            const res = await resp.json();
+            if (res.success) {
+                const sched = ALL_SCHEDULES.find(s => String(s.schedule_id) === String(schedId));
+                if (sched) {
+                    sched.day_of_week = day;
+                    sched.start_time = start;
+                    sched.end_time = end;
+                }
+                renderMatrixView();
+                alert(`Schedule moved successfully to ${day} (${start} - ${end})!`);
+            } else {
+                alert(`Move failed: ${res.error}`);
+            }
+        } catch (err) {
+            alert("Error updating schedule position.");
+        }
+    }
+
     // ── Dynamic Matrix View Renderer ──
     function renderMatrixView() {
         const container = document.getElementById('matrixTableContent');
@@ -1222,21 +1502,88 @@
         if (grade) filtered = filtered.filter(s => s.grade_name === grade);
         if (sectionId) filtered = filtered.filter(s => String(s.section_id) === String(sectionId));
 
-        const cfg = getBreakConfig();
-        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        const cfg = getBreakConfig(grade);
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
         
-        const timeSlots = [
-            { label: `${cfg.prayerStart} - ${cfg.prayerEnd}`, start: cfg.prayerStart, end: cfg.prayerEnd, isPrayer: true },
-            { label: '07:30 - 08:30', start: '07:30', end: '08:30' },
-            { label: '08:30 - 09:30', start: '08:30', end: '09:30' },
-            { label: `${cfg.recessStart} - ${cfg.recessEnd}`, start: cfg.recessStart, end: cfg.recessEnd, isRecess: true },
-            { label: '10:00 - 11:00', start: '10:00', end: '11:00' },
-            { label: '11:00 - 12:00', start: '11:00', end: '12:00' },
-            { label: `${cfg.lunchStart} - ${cfg.lunchEnd}`, start: cfg.lunchStart, end: cfg.lunchEnd, isLunch: true },
-            { label: '13:00 - 14:00', start: '13:00', end: '14:00' },
-            { label: '14:00 - 15:00', start: '14:00', end: '15:00' },
-            { label: '15:00 - 16:00', start: '15:00', end: '16:00' },
+        const slotsMap = new Map();
+
+        function addSlot(start, end, extra = {}) {
+            const sNorm = normTime(start);
+            const eNorm = normTime(end);
+            if (!sNorm || !eNorm || sNorm >= eNorm) return;
+            const key = `${sNorm}|${eNorm}`;
+            if (!slotsMap.has(key)) {
+                slotsMap.set(key, {
+                    start: sNorm,
+                    end: eNorm,
+                    label: formatRange12Hour(sNorm, eNorm),
+                    ...extra
+                });
+            } else if (extra.isPrayer || extra.isRecess || extra.isLunch) {
+                const existing = slotsMap.get(key);
+                slotsMap.set(key, { ...existing, ...extra, label: formatRange12Hour(sNorm, eNorm) });
+            }
+        }
+
+        // Add break slots first
+        if (cfg.prayerStart && cfg.prayerEnd) addSlot(cfg.prayerStart, cfg.prayerEnd, { isPrayer: true });
+        if (cfg.recessStart && cfg.recessEnd) addSlot(cfg.recessStart, cfg.recessEnd, { isRecess: true });
+        if (cfg.lunchStart && cfg.lunchEnd) addSlot(cfg.lunchStart, cfg.lunchEnd, { isLunch: true });
+
+        // Add actual schedules' start & end times
+        filtered.forEach(s => {
+            if (s.start_time && s.end_time) {
+                addSlot(s.start_time, s.end_time);
+            }
+        });
+
+        // Standard default periods (only added if they do NOT overlap with any break)
+        const defaultPeriods = [
+            ['07:15', '08:15'],
+            ['08:15', '09:15'],
+            ['09:15', '10:15'],
+            ['10:30', '11:30'],
+            ['11:30', '12:30'],
+            ['13:00', '14:00'],
+            ['14:00', '15:00'],
+            ['15:15', '16:00'],
+            ['16:00', '17:00']
         ];
+
+        defaultPeriods.forEach(([s, e]) => {
+            const sNorm = normTime(s);
+            const eNorm = normTime(e);
+            let overlapsWithBreak = false;
+            for (const slot of slotsMap.values()) {
+                if (slot.isPrayer || slot.isRecess || slot.isLunch) {
+                    if (sNorm < slot.end && eNorm > slot.start) {
+                        overlapsWithBreak = true;
+                        break;
+                    }
+                }
+            }
+            if (!overlapsWithBreak) {
+                addSlot(s, e);
+            }
+        });
+
+        const rawList = Array.from(slotsMap.values()).sort((a, b) => a.start.localeCompare(b.start));
+        const timeSlots = [];
+
+        for (let i = 0; i < rawList.length; i++) {
+            const curr = rawList[i];
+            if (timeSlots.length > 0) {
+                const prevEnd = timeSlots[timeSlots.length - 1].end;
+                if (prevEnd < curr.start) {
+                    timeSlots.push({
+                        start: prevEnd,
+                        end: curr.start,
+                        label: formatRange12Hour(prevEnd, curr.start)
+                    });
+                }
+            }
+            timeSlots.push(curr);
+        }
 
         let html = `<table class="matrix-table"><thead><tr><th class="matrix-time-col">Time Slot</th>`;
         days.forEach(d => html += `<th>${d}</th>`);
@@ -1245,28 +1592,33 @@
         timeSlots.forEach(slot => {
             html += `<tr><td class="matrix-time-col">${slot.label}</td>`;
             if (slot.isPrayer) {
-                html += `<td colspan="6" style="background:#eff6ff; text-align:center; color:#1e40af; font-weight:800; font-size:0.8rem; border-bottom:1px solid #bfdbfe;">🙏 MORNING PRAYER / HOLY ROSARY / HOMEROOM</td></tr>`;
+                html += `<td colspan="${days.length}" style="background:#eff6ff; text-align:center; color:#1e40af; font-weight:800; font-size:0.8rem; border-bottom:1px solid #bfdbfe;">MORNING PRAYER / HOLY ROSARY / HOMEROOM</td></tr>`;
                 return;
             }
             if (slot.isRecess) {
-                html += `<td colspan="6" style="background:#fefce8; text-align:center; color:#a16207; font-weight:800; font-size:0.8rem; border-bottom:1px solid #fef08a;">☕ RECESS BREAK</td></tr>`;
+                html += `<td colspan="${days.length}" style="background:#fefce8; text-align:center; color:#a16207; font-weight:800; font-size:0.8rem; border-bottom:1px solid #fef08a;">RECESS BREAK</td></tr>`;
                 return;
             }
             if (slot.isLunch) {
-                html += `<td colspan="6" style="background:#f0fdf4; text-align:center; color:#166534; font-weight:800; font-size:0.8rem; border-bottom:1px solid #bbf7d0;">🍱 LUNCH BREAK</td></tr>`;
+                html += `<td colspan="${days.length}" style="background:#f0fdf4; text-align:center; color:#166534; font-weight:800; font-size:0.8rem; border-bottom:1px solid #bbf7d0;">LUNCH BREAK</td></tr>`;
                 return;
             }
 
             days.forEach(d => {
                 const matches = filtered.filter(s => s.day_of_week === d && (slot.start < s.end_time && slot.end > s.start_time));
-                html += `<td>`;
+                html += `<td data-day="${d}" data-start="${slot.start}" data-end="${slot.end}"
+                             ondragover="handleMatrixDragOver(event, '${d}', '${slot.start}', '${slot.end}')"
+                             ondragleave="handleMatrixDragLeave(event)"
+                             ondrop="handleMatrixDrop(event, '${d}', '${slot.start}', '${slot.end}')">`;
                 if (matches.length > 0) {
                     matches.forEach(m => {
                         html += `
-                            <div class="matrix-card">
+                            <div class="matrix-card" draggable="true"
+                                 ondragstart="handleMatrixDragStart(event, ${m.schedule_id})"
+                                 ondragend="handleMatrixDragEnd(event)">
                                 <div class="matrix-card-sec">${m.section_name} (${m.grade_name})</div>
                                 <div class="matrix-card-subj">${m.subject_name}</div>
-                                <div class="matrix-card-meta">👨‍🏫 ${m.teacher_name} • 🚪 Rm ${m.room}</div>
+                                <div class="matrix-card-meta">${m.teacher_name} • Rm ${m.room}</div>
                             </div>
                         `;
                     });

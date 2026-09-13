@@ -1,6 +1,6 @@
 import re
 from flask import Blueprint, render_template, request, session, redirect, url_for, flash, jsonify, send_file
-from db import get_db_connection
+from db import get_db_connection, get_break_times_config
 import psycopg2.extras
 from cloudinary_helper import upload_file
 import os
@@ -7483,10 +7483,11 @@ def teacher_schedules():
         # -- Get teacher's schedules for active years only
         cursor.execute("""
             SELECT s.*, subj.name AS subject_name, sec.section_name AS section_name, 
-                   y.label AS year_label
+                   y.label AS year_label, g.name AS grade_name
             FROM schedules s
             JOIN subjects subj ON s.subject_id = subj.subject_id
             JOIN sections sec ON s.section_id = sec.section_id
+            JOIN grade_levels g ON sec.grade_level_id = g.id
             JOIN school_years y ON s.year_id = y.year_id
             WHERE s.branch_id = %s AND s.teacher_id = %s
               AND s.year_id = ANY(%s)
@@ -7498,7 +7499,9 @@ def teacher_schedules():
 
     cursor.close(); db.close()
 
-    return render_template("teacher_schedules.html", schedules=schedules, active_year_label=active_year_label)
+    break_config = get_break_times_config(branch_id)
+
+    return render_template("teacher_schedules.html", schedules=schedules, active_year_label=active_year_label, break_times_config=break_config)
 
 # =======================
 

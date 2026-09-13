@@ -1,289 +1,193 @@
 {% extends "base.html" %}
+{% from "_weekly_schedule_grid.html" import render_weekly_schedule with context %}
+
 {% block title %}My Schedule{% endblock %}
 
 {% block styles %}
-<!-- FullCalendar CSS -->
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
-
-    .fc-wrap {
-        max-width: 1300px;
+    .sd-container {
+        padding: 16px 32px 40px;
+        max-width: 1500px;
         margin: 0 auto;
-        padding: 40px 24px;
-        font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
-    }
-    
-    .fc-card {
-        background: #fff;
-        border-radius: 24px;
-        padding: 32px 40px;
-        box-shadow: 0 15px 40px rgba(15, 23, 42, 0.06);
-    }
-    
-    /* Toolbar Styling */
-    .fc-toolbar {
-        margin-bottom: 24px !important;
-    }
-    .fc-toolbar-title {
-        font-weight: 900 !important;
-        font-size: 1.75rem !important;
-        color: #1e293b;
-        letter-spacing: -0.03em;
-    }
-    
-    /* Navigation Buttons */
-    .fc .fc-button-primary {
-        background-color: #fff !important;
-        border-color: #e2e8f0 !important;
-        color: #64748b !important;
-        font-weight: 700 !important;
-        text-transform: capitalize !important;
-        box-shadow: none !important;
-        padding: 8px 16px !important;
-        transition: all 0.2s ease;
-    }
-    .fc .fc-button-primary:hover {
-        background-color: #f8fafc !important;
-        color: #0f172a !important;
-    }
-    .fc .fc-button-primary:not(:disabled).fc-button-active, 
-    .fc .fc-button-primary:not(:disabled):active {
-        background-color: #1a3a8f !important;
-        border-color: #1a3a8f !important;
-        color: #fff !important;
-    }
-    
-    /* View Toggle Pills */
-    .fc-toolbar-chunk:nth-child(3) .fc-button-group {
-        background: #f1f5f9;
-        padding: 4px;
-        border-radius: 99px;
-    }
-    .fc-toolbar-chunk:nth-child(3) .fc-button {
-        border: none !important;
-        border-radius: 99px !important;
-        background: transparent !important;
-        color: #64748b !important;
-        margin: 0 2px !important;
-    }
-    .fc-toolbar-chunk:nth-child(3) .fc-button.fc-button-active {
-        background: #1a3a8f !important;
-        color: #fff !important;
-        box-shadow: 0 4px 12px rgba(26, 58, 143, 0.2) !important;
+        font-family: 'Inter', sans-serif;
     }
 
-    /* Grid Styling */
-    .fc-theme-standard th {
-        border: none !important;
-        border-bottom: 2px solid #f1f5f9 !important;
-        padding: 16px 0 !important;
-        font-weight: 800;
-        text-transform: uppercase;
-        font-size: 0.8rem;
-        color: #64748b;
-        letter-spacing: 0.05em;
-    }
-    .fc-theme-standard td, .fc-theme-standard th {
-        border-color: #f1f5f9 !important;
-    }
-    
-    .fc-timegrid-axis-cushion {
-        font-weight: 700;
-        color: #94a3b8;
-        font-size: 0.85rem;
-    }
-
-    /* Remove FullCalendar's yellow "today" highlight */
-    .fc-theme-standard .fc-day-today {
-        background-color: transparent !important;
-    }
-
-    /* Event Blocks */
-    .fc-event {
-        border: none !important;
-        border-radius: 8px !important;
-        padding: 4px 6px !important;
-        margin: 1px 2px !important;
-        font-family: 'Plus Jakarta Sans', sans-serif !important;
-        box-shadow: 0 4px 12px rgba(2,6,23,0.03);
-        cursor: pointer;
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        overflow: hidden;
-    }
-    .fc-event:hover {
-        transform: translateY(-2px) scale(1.02);
-        box-shadow: 0 8px 20px rgba(2,6,23,0.08);
-        z-index: 5 !important;
-    }
-    
-    .custom-event-content {
-        height: 100%;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-start;
-        padding-top: 2px;
-        overflow: hidden;
-    }
-    .fc-event-time {
-        font-weight: 800 !important;
-        font-size: 0.8rem;
-        margin-bottom: 2px;
-        opacity: 0.9;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-        overflow: hidden;
-    }
-    .fc-event-title {
-        font-weight: 700;
-        font-size: 0.9rem;
-        line-height: 1.2;
-        white-space: nowrap;
-        text-overflow: ellipsis;
-        overflow: hidden;
-    }
-    .fc-event-section {
-        font-weight: 600;
-        font-size: 0.75rem;
-        opacity: 0.8;
-        margin-top: 2px;
-        text-overflow: ellipsis;
-        overflow: hidden;
+    @media (max-width: 1024px) {
+        .sd-container { padding: 16px 20px 32px; }
     }
 
     @media (max-width: 768px) {
-        .fc-wrap {
-            padding: 20px 16px;
-        }
-        .fc-card {
-            padding: 20px 16px;
+        .sd-container { padding: 12px 14px 24px; }
+
+        .sd-hero {
+            padding: 18px 16px;
             border-radius: 16px;
+            margin-bottom: 20px;
+            gap: 14px;
         }
-        .fc-toolbar {
+
+        .sd-hero-profile {
             flex-direction: column;
-            gap: 16px;
+            align-items: flex-start;
+            gap: 12px;
         }
-        .fc-toolbar-title {
-            font-size: 1.5rem !important;
-            text-align: center;
+
+        .sd-hero-info h2 {
+            font-size: 1.15rem;
+            margin-bottom: 4px;
         }
-        .fc-card {
-            padding: 20px 16px;
-            border-radius: 16px;
-            overflow-x: auto;
+
+        .sd-hero-meta {
+            font-size: 0.82rem;
+            gap: 6px;
         }
-        #calendar {
-            min-width: 700px;
+
+        .sd-hero-meta svg {
+            width: 14px;
+            height: 14px;
         }
-        .fc-wrap h1 {
-            font-size: 2rem !important;
+
+        .ay-bubble {
+            padding: 6px 14px;
+            font-size: 0.78rem;
+            border-radius: 9999px;
+            gap: 6px;
+        }
+
+        .ay-bubble svg {
+            width: 14px;
+            height: 14px;
         }
     }
+
+    @media (max-width: 480px) {
+        .sd-container {
+            padding: 10px 10px 20px;
+        }
+
+        .sd-hero {
+            padding: 14px 12px;
+            border-radius: 14px;
+            margin-bottom: 16px;
+            gap: 10px;
+        }
+
+        .sd-hero-info h2 {
+            font-size: 1.0rem;
+        }
+
+        .sd-hero-meta {
+            font-size: 0.75rem;
+        }
+
+        .ay-bubble {
+            padding: 5px 12px;
+            font-size: 0.72rem;
+        }
+    }
+
+    /* ── Hero / Command Center ── */
+    .sd-hero {
+        background: linear-gradient(135deg, #1e3a8a 0%, #1a3a8f 50%, #1e40af 100%);
+        border-radius: 24px;
+        padding: 32px;
+        color: #fff;
+        margin-bottom: 32px;
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 24px;
+    }
+
+    .sd-hero::before {
+        content: '';
+        position: absolute;
+        top: -100px;
+        right: -100px;
+        width: 300px;
+        height: 300px;
+        background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 70%);
+        border-radius: 50%;
+    }
+
+    .sd-hero-profile {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        text-align: left;
+        gap: 20px;
+        z-index: 1;
+    }
+
+    .sd-hero-info h2 {
+        font-size: 1.5rem;
+        font-weight: 800;
+        margin-bottom: 4px;
+        letter-spacing: -0.01em;
+    }
+
+    .sd-hero-meta {
+        font-size: 0.9375rem;
+        opacity: 0.9;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .ay-bubble {
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        padding: 10px 24px;
+        border-radius: 9999px;
+        font-weight: 700;
+        font-size: 0.95rem;
+        color: #fff;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        white-space: nowrap;
+    }
 </style>
-<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
 {% endblock %}
 
 {% block content %}
-<div class="fc-wrap">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; background: #1a3a8f; padding: 24px 32px; border-radius: 20px; box-shadow: 0 15px 35px rgba(26, 58, 143, 0.15);">
-        <div style="display: flex; flex-direction: column; gap: 4px;">
-            <h1 style="margin: 0; font-size: 2.2rem; font-weight: 900; color: white; display: flex; align-items: center; gap: 12px; letter-spacing: -0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.1);">My <span style="color: #facc15;">Schedule</span></h1>
-            <p style="margin: 0; font-size: 0.85rem; font-weight: 600; color: rgba(255, 255, 255, 0.9); display: flex; align-items: center; gap: 8px;">
-                <span>Current Term</span>
-                <span style="display: inline-block; width: 4px; height: 4px; border-radius: 50%; background: rgba(255, 255, 255, 0.5);"></span>
-                <span>S.Y. {{ active_year_label }}</span>
-            </p>
+<div class="sd-container">
+    <div class="sd-hero">
+        <div class="sd-hero-profile">
+            <div class="sd-hero-info">
+                <h2>My Class Schedule</h2>
+                <div class="sd-hero-meta">
+                    <span>
+                        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>
+                        Teacher Timetable
+                    </span>
+                </div>
+            </div>
+            
+            <div class="ay-bubble">
+                <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                Academic Year {{ active_year_label or '2032-2033' }}
+            </div>
         </div>
     </div>
 
-    <div class="fc-card">
-        <div id='calendar'></div>
-    </div>
+    {{ render_weekly_schedule(
+        schedules,
+        title="",
+        subtitle="",
+        show_teacher=false,
+        show_section=true,
+        break_times_config=break_times_config
+    ) }}
 </div>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    var calendarEl = document.getElementById('calendar');
-
-    const dayMap = {
-        'Sunday': 0, 'Monday': 1, 'Tuesday': 2, 'Wednesday': 3,
-        'Thursday': 4, 'Friday': 5, 'Saturday': 6
-    };
-
-    const dayColors = {
-        0: { bg: '#FFEDD5', text: '#C2410C', border: '#EA580C' }, // Sun - Coral
-        1: { bg: '#E0F2FE', text: '#0369A1', border: '#0284C7' }, // Mon - Blue
-        2: { bg: '#D1FAE5', text: '#047857', border: '#059669' }, // Tue - Mint
-        3: { bg: '#FEF3C7', text: '#B45309', border: '#D97706' }, // Wed - Peach
-        4: { bg: '#F3E8FF', text: '#6D28D9', border: '#7C3AED' }, // Thu - Lavender
-        5: { bg: '#FFE4E6', text: '#BE123C', border: '#E11D48' }, // Fri - Rose
-        6: { bg: '#CCFBF1', text: '#0F766E', border: '#0D9488' }  // Sat - Teal
-    };
-
-    let events = [];
-    {% set unique_subjects = [] %}
-    {% for sched in schedules %}
-        {% set key = sched.subject_name ~ '|' ~ (sched.section_name or '') %}
-        {% if key not in unique_subjects %}
-            {% set _ = unique_subjects.append(key) %}
-        {% endif %}
-    {% endfor %}
-
-    {% for sched in schedules %}
-        {% set key = sched.subject_name ~ '|' ~ (sched.section_name or '') %}
-        {% set color_idx = unique_subjects.index(key) % 7 %}
-        events.push({
-            title: "{{ sched.subject_name | replace('\"', '\\\"') }}",
-            extendedProps: {
-                section: "{{ sched.section_name | replace('\"', '\\\"') }}",
-                room: "{{ sched.room }}"
-            },
-            daysOfWeek: [dayMap["{{ sched.day_of_week }}"]],
-            startTime: "{{ sched.start_time.strftime('%H:%M:%S') if sched.start_time else '00:00:00' }}",
-            endTime: "{{ sched.end_time.strftime('%H:%M:%S') if sched.end_time else '01:00:00' }}",
-            backgroundColor: dayColors[{{ color_idx }}].bg,
-            textColor: dayColors[{{ color_idx }}].text,
-            borderColor: dayColors[{{ color_idx }}].border
-        });
-    {% endfor %}
-
-    var calendar = new FullCalendar.Calendar(calendarEl, {
-        initialView: 'timeGridWeek',
-        headerToolbar: false,
-        dayHeaderFormat: { weekday: 'short' },
-        buttonText: {
-            today: 'Today'
-        },
-        slotMinTime: '07:00:00',
-        slotMaxTime: '18:00:00',
-        allDaySlot: false,
-        events: events,
-        height: 'auto',
-        eventMinHeight: 65, // Forces short events to be tall enough to show all text
-        eventTimeFormat: {
-            hour: 'numeric',
-            minute: '2-digit',
-            meridiem: 'short',
-            omitZeroMinute: true // e.g. "7am", "1:30pm"
-        },
-        eventContent: function(arg) {
-            let timeText = arg.timeText;
-            let titleHtml = arg.event.title;
-            let sectionHtml = arg.event.extendedProps.section;
-            let borderColor = arg.event.borderColor;
-            
-            return {
-                html: `
-                    <div class="custom-event-content" style="border-left: 4px solid ${borderColor}; padding-left: 6px;">
-                        <div class="fc-event-time">${timeText}</div>
-                        <div class="fc-event-title" title="${titleHtml}">${titleHtml}</div>
-                        <div class="fc-event-section" title="${sectionHtml}">${sectionHtml}</div>
-                    </div>
-                `
-            };
-        }
-    });
-
-    calendar.render();
-});
-</script>
 {% endblock %}

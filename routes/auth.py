@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, redirect, session, flash, url_for
+from flask import Blueprint, render_template, request, redirect, session, flash, url_for, make_response
 from db import get_db_connection
 from werkzeug.security import check_password_hash, generate_password_hash
 import psycopg2.extras
@@ -731,7 +731,13 @@ def reset_password(token):
         db.close()
 
 
-@auth_bp.route("/logout")
+@auth_bp.route("/logout", methods=["GET", "POST"])
 def logout():
     session.clear()
-    return redirect(url_for("auth.login"))
+    flash("You have been logged out successfully.", "info")
+    resp = make_response(redirect(url_for("auth.login")))
+    resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    resp.headers["Pragma"] = "no-cache"
+    resp.headers["Expires"] = "0"
+    resp.delete_cookie("session")
+    return resp

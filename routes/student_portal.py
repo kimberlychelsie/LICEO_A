@@ -1,5 +1,5 @@
 from flask import Blueprint, render_template, request, redirect, session, flash, url_for, jsonify
-from db import get_db_connection
+from db import get_db_connection, get_break_times_config
 from werkzeug.security import generate_password_hash
 import logging
 import psycopg2.extras
@@ -2997,10 +2997,14 @@ def student_my_schedule():
             cur.execute("""
                 SELECT sc.*,
                        sub.name AS subject_name,
-                       u.full_name AS teacher_name
+                       u.full_name AS teacher_name,
+                       sec.section_name AS section_name,
+                       g.name AS grade_name
                 FROM schedules sc
                 LEFT JOIN subjects sub ON sc.subject_id = sub.subject_id
                 LEFT JOIN users u ON sc.teacher_id = u.user_id
+                LEFT JOIN sections sec ON sc.section_id = sec.section_id
+                LEFT JOIN grade_levels g ON sec.grade_level_id = g.id
                 WHERE sc.section_id = %s
                   AND sc.year_id = %s
                   AND sc.is_archived = FALSE
@@ -3035,10 +3039,13 @@ def student_my_schedule():
             """, (section_id, student_year_id, enrollment_id, student_year_id))
             schedules = cur.fetchall() or []
 
+        break_config = get_break_times_config(effective_branch_id)
+
         return render_template("student_my_schedule.html",
                                enrollment=enr,
                                schedules=schedules,
-                               school_year_label=school_year_label)
+                               school_year_label=school_year_label,
+                               break_times_config=break_config)
     finally:
         cur.close()
         db.close()

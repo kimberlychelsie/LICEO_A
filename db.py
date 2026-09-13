@@ -1,4 +1,5 @@
 import os
+import json
 import logging
 import psycopg2
 
@@ -996,6 +997,74 @@ def is_branch_active(branch_id):
     except Exception:
         logger.exception("Failed to check branch status")
         return True
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        conn.close()
+
+
+def get_break_times_config(branch_id=None):
+    """
+    Retrieves customized break and prayer times config from system_settings table.
+    """
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        key = f"break_times_config_{branch_id}" if branch_id else "liceo_break_times_config"
+        cur.execute("SELECT setting_value FROM system_settings WHERE setting_key = %s", (key,))
+        row = cur.fetchone()
+        if not row and branch_id:
+            cur.execute("SELECT setting_value FROM system_settings WHERE setting_key = 'liceo_break_times_config'")
+            row = cur.fetchone()
+        if row and row[0]:
+            return json.loads(row[0])
+    except Exception as e:
+        logger.warning(f"Could not load break_times_config: {e}")
+    finally:
+        try:
+            cur.close()
+        except Exception:
+            pass
+        conn.close()
+    return None
+
+
+def save_break_times_config(config_dict, branch_id=None):
+    """
+    Saves customized break and prayer times config into system_settings table.
+    """
+    if not isinstance(config_dict, dict):
+        return False
+    conn = get_db_connection()
+    cur = conn.cursor()
+    try:
+        key = f"break_times_config_{branch_id}" if branch_id else "liceo_break_times_config"
+        val_str = json.dumps(config_dict)
+        cur.execute("""
+            INSERT INTO system_settings (setting_key, setting_value, updated_at)
+            VALUES (%s, %s, NOW())
+            ON CONFLICT (setting_key) DO UPDATE
+            SET setting_value = EXCLUDED.setting_value,
+                updated_at = NOW()
+        """, (key, val_str))
+        
+        if branch_id:
+            cur.execute("""
+                INSERT INTO system_settings (setting_key, setting_value, updated_at)
+                VALUES ('liceo_break_times_config', %s, NOW())
+                ON CONFLICT (setting_key) DO UPDATE
+                SET setting_value = EXCLUDED.setting_value,
+                    updated_at = NOW()
+            """, (val_str,))
+            
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Error saving break_times_config: {e}")
+        return False
     finally:
         try:
             cur.close()
