@@ -130,6 +130,7 @@ def dashboard():
                 re_enrollment_children.append(child)
 
         active_reservations_count = 0
+        pending_conferences = []
         if enrollment_ids:
             cursor.execute("""
                 SELECT COUNT(DISTINCT r.reservation_id) AS res_count
@@ -140,12 +141,25 @@ def dashboard():
             res_row = cursor.fetchone()
             active_reservations_count = res_row["res_count"] if res_row else 0
 
+            cursor.execute("""
+                SELECT pc.*,
+                       CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name,
+                       e.grade_level, sec.section_name
+                FROM swafo_parent_conferences pc
+                JOIN enrollments e ON pc.enrollment_id = e.enrollment_id
+                LEFT JOIN sections sec ON e.section_id = sec.section_id
+                WHERE pc.enrollment_id = ANY(%s)
+                ORDER BY pc.conference_date DESC, pc.created_at DESC
+            """, (enrollment_ids,))
+            pending_conferences = cursor.fetchall()
+
         return render_template(
             "parent_dashboard.html",
             children=children,
             total_balance=total_balance,
             active_reservations_count=active_reservations_count,
-            re_enrollment_children=re_enrollment_children
+            re_enrollment_children=re_enrollment_children,
+            pending_conferences=pending_conferences
         )
 
     finally:
@@ -1285,6 +1299,142 @@ def parent_reservations_list():
         return render_template("parent_reservations_list.html", rows=rows, children=children)
     finally:
         cursor.close()
+        db.close()
+
+
+@parent_bp.route("/parent/swafo-conferences")
+def swafo_conferences():
+    if not _require_parent():
+        return redirect("/")
+
+    parent_id = session.get("user_id")
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        cur.execute("""
+            SELECT pc.*,
+                   CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name,
+                   e.grade_level, sec.section_name,
+                   u.full_name AS scheduled_by_name,
+                   dl.incident_type, dl.description AS incident_description
+            FROM swafo_parent_conferences pc
+            JOIN parent_student ps ON pc.enrollment_id = ps.student_id
+            JOIN enrollments e ON pc.enrollment_id = e.enrollment_id
+            LEFT JOIN sections sec ON e.section_id = sec.section_id
+            LEFT JOIN users u ON pc.scheduled_by = u.user_id
+            LEFT JOIN swafo_discipline_log dl ON pc.discipline_log_id = dl.log_id
+            WHERE ps.parent_id = %s
+            ORDER BY pc.conference_date DESC, pc.created_at DESC
+        """, (parent_id,))
+        conferences = cur.fetchall()
+
+        return render_template("parent_swafo_conferences.html", conferences=conferences)
+    except Exception as e:
+        db.rollback()
+        flash(f"Error fetching conferences: {str(e)}", "error")
+        return redirect("/parent/dashboard")
+    finally:
+        cur.close()
+        db.close()
+
+
+@parent_bp.route("/parent/swafo-conference/<int:conf_id>/respond", methods=["POST"])
+def swafo_conference_respond(conf_id):
+    if not _require_parent():
+        return redirect("/")
+
+    parent_id = session.get("user_id")
+    response_action = request.form.get("action", "").strip()
+    parent_note = request.form.get("parent_note", "").strip()
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        cur.execute("""
+            SELECT pc.conference_id
+            FROM swafo_parent_conferences pc
+            JOIN parent_student ps ON pc.enrollment_id = ps.student_id
+            WHERE pc.conference_id = %s AND ps.parent_id = %s
+        """, (conf_id, parent_id))
+        conf = cur.fetchone()
+
+        if not conf:
+            flash("Unauthorized or conference not found.", "error")
+            return redirect("/parent/swafo-conferences")
+
+        if response_action == "confirm":
+            new_status = "confirmed_by_parent"
+            msg = "Thank you for confirming your attendance."
+        elif response_action == "reschedule":
+            new_status = "reschedule_requested"
+            msg = "Reschedule request submitted to SWAFO office."
+        else:
+            flash("Invalid action.", "error")
+            return redirect("/parent/swafo-conferences")
+
+        cur.execute("""
+            UPDATE swafo_parent_conferences
+            SET status = %s,
+                parent_notes = %s
+            WHERE conference_id = %s
+        """, (new_status, parent_note, conf_id))
+        db.commit()
+
+        flash(msg, "success")
+        return redirect("/parent/swafo-conferences")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error: {str(e)}", "error")
+        return redirect("/parent/swafo-conferences")
+    finally:
+        cur.close()
+        db.close()
+
+
+@parent_bp.route("/parent/swafo-conference/<int:conf_id>/acknowledge", methods=["POST"])
+def swafo_conference_acknowledge(conf_id):
+    if not _require_parent():
+        return redirect("/")
+
+    parent_id = session.get("user_id")
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        cur.execute("""
+            SELECT pc.conference_id, pc.minutes_of_meeting
+            FROM swafo_parent_conferences pc
+            JOIN parent_student ps ON pc.enrollment_id = ps.student_id
+            WHERE pc.conference_id = %s AND ps.parent_id = %s
+        """, (conf_id, parent_id))
+        conf = cur.fetchone()
+
+        if not conf:
+            flash("Unauthorized or conference not found.", "error")
+            return redirect("/parent/swafo-conferences")
+
+        if not conf.get("minutes_of_meeting"):
+            flash("Minutes of meeting not yet available for acknowledgment.", "error")
+            return redirect("/parent/swafo-conferences")
+
+        cur.execute("""
+            UPDATE swafo_parent_conferences
+            SET parent_acknowledged_at = NOW()
+            WHERE conference_id = %s
+        """, (conf_id,))
+        db.commit()
+
+        flash("Digital acknowledgment recorded successfully.", "success")
+        return redirect("/parent/swafo-conferences")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error: {str(e)}", "error")
+        return redirect("/parent/swafo-conferences")
+    finally:
+        cur.close()
         db.close()
 
 

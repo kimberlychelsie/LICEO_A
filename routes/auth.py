@@ -160,6 +160,10 @@ def login():
 
                     role = user["role"]
 
+                    # ── For teachers: load is_swafo flag into session ──
+                    if role == "teacher":
+                        session["is_swafo"] = bool(user.get("is_swafo", False))
+
                     # ── For students: load enrollment session FIRST (before any redirects)
                     if role == "student":
                         # Ensure users.enrollment_id is in sync with student_accounts.enrollment_id if present

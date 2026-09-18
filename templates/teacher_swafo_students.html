@@ -1,0 +1,399 @@
+{% extends "base.html" %}
+{% block title %}SWAFO Student Records – Liceo LMS{% endblock %}
+
+{% block content %}
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+  :root {
+    --p: #1e3a8a;
+    --p-dark: #0c2461;
+    --p-light: #eff6ff;
+    --p-border: #dbeafe;
+    --a: #f59e0b;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --bd: #e2e8f0;
+    --tx: #0f172a;
+    --mu: #64748b;
+    --ok: #10b981;
+    --warn: #f59e0b;
+    --err: #ef4444;
+  }
+
+  body {
+    background: var(--bg);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  .wrap {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 40px 28px;
+  }
+
+  /* ── Hero Banner ── */
+  .swafo-hero {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #2563eb 100%);
+    border-radius: 24px;
+    padding: 36px 44px;
+    color: #fff;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 20px 40px -10px rgba(30, 58, 138, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .swafo-hero::after {
+    content: '';
+    position: absolute;
+    right: -60px;
+    top: -60px;
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    pointer-events: none;
+  }
+
+  .swafo-hero h1 {
+    font-size: 2.2rem;
+    font-weight: 900;
+    margin: 0 0 6px;
+    letter-spacing: -0.03em;
+  }
+
+  .swafo-hero p {
+    margin: 0;
+    opacity: .88;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .hero-badge {
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 10px 20px;
+    border-radius: 14px;
+    font-weight: 800;
+    font-size: .9rem;
+    letter-spacing: .02em;
+    z-index: 1;
+  }
+
+  /* ── Stats Cards ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    margin-bottom: 28px;
+  }
+
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--bd);
+    border-radius: 20px;
+    padding: 24px;
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+    transition: transform .2s ease, box-shadow .2s ease;
+  }
+
+  .stat-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  }
+
+  .stat-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .stat-val {
+    font-size: 2rem;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--tx);
+    letter-spacing: -0.02em;
+  }
+
+  .stat-lbl {
+    font-size: .76rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--mu);
+    letter-spacing: .05em;
+    margin-top: 5px;
+  }
+
+  /* ── Filter Form ── */
+  .filter-card {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 20px 28px;
+    margin-bottom: 28px;
+    border: 1px solid var(--bd);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  }
+
+  .filter-input {
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: 1.5px solid var(--bd);
+    font-family: inherit;
+    font-size: .9rem;
+    background: #f8fafc;
+    color: var(--tx);
+    transition: all .2s;
+  }
+
+  .filter-input:focus {
+    outline: none;
+    background: #fff;
+    border-color: var(--p);
+    box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.12);
+  }
+
+  .btn-filter {
+    padding: 12px 24px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--p), #2563eb);
+    color: #fff;
+    border: none;
+    font-weight: 800;
+    font-size: .9rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
+    transition: all .18s;
+  }
+
+  .btn-filter:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(30, 58, 138, 0.35);
+  }
+
+  /* ── Main Data Table ── */
+  .table-card {
+    background: var(--card);
+    border-radius: 24px;
+    border: 1px solid var(--bd);
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  }
+
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+  }
+
+  .data-table th {
+    background: #f8fafc;
+    font-size: .76rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--mu);
+    padding: 16px 24px;
+    border-bottom: 1.5px solid var(--bd);
+  }
+
+  .data-table td {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--bd);
+    font-size: .92rem;
+    vertical-align: middle;
+  }
+
+  .data-table tbody tr {
+    transition: background .15s ease;
+  }
+
+  .data-table tbody tr:hover {
+    background: #eff6ff;
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 99px;
+    font-size: .78rem;
+    font-weight: 800;
+    letter-spacing: .03em;
+  }
+
+  .status-submitted { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+  .status-draft { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+  .status-not_started { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+
+  .btn-view {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 9px 18px;
+    border-radius: 10px;
+    background: var(--p-light);
+    color: var(--p);
+    font-weight: 800;
+    font-size: .85rem;
+    text-decoration: none;
+    border: 1px solid var(--p-border);
+    transition: all .18s;
+  }
+
+  .btn-view:hover {
+    background: var(--p);
+    color: #fff;
+    border-color: var(--p);
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
+    transform: translateY(-1px);
+  }
+
+  @media(max-width: 900px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  @media(max-width: 600px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .swafo-hero { flex-direction: column; text-align: center; padding: 28px 20px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <!-- HERO BANNER -->
+  <div class="swafo-hero">
+    <div>
+      <h1>Student Cumulative Records</h1>
+      <p>Student Welfare and Formation Office &bull; Overview & Review Dashboard</p>
+    </div>
+    <div class="hero-badge">
+      SWAFO Portal
+    </div>
+  </div>
+
+  <!-- STATS GRID -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-icon" style="background: #eff6ff; color: #1e3a8a;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div>
+        <div class="stat-val">{{ stats.total if stats else 0 }}</div>
+        <div class="stat-lbl">Total Students</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background: #ecfdf5; color: #059669;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div>
+        <div class="stat-val">{{ stats.submitted if stats else 0 }}</div>
+        <div class="stat-lbl">Submitted Records</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background: #fffbeb; color: #d97706;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </div>
+      <div>
+        <div class="stat-val">{{ stats.draft if stats else 0 }}</div>
+        <div class="stat-lbl">Draft Records</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon" style="background: #f8fafc; color: #64748b;">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <div>
+        <div class="stat-val">{{ stats.not_started if stats else 0 }}</div>
+        <div class="stat-lbl">Not Started</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FILTER & SEARCH -->
+  <form method="GET" action="/teacher/swafo/students" class="filter-card">
+    <input type="text" name="search" value="{{ search }}" placeholder="Maghanap ng mag-aaral sa pamamagitan ng pangalan..." class="filter-input" style="flex: 1; min-width: 240px;">
+    <select name="status" class="filter-input">
+      <option value="all" {% if status_filter == 'all' %}selected{% endif %}>Lahat ng Status</option>
+      <option value="submitted" {% if status_filter == 'submitted' %}selected{% endif %}>Submitted</option>
+      <option value="draft" {% if status_filter == 'draft' %}selected{% endif %}>Draft</option>
+      <option value="not_started" {% if status_filter == 'not_started' %}selected{% endif %}>Not Started</option>
+    </select>
+    <button type="submit" class="btn-filter">Filter</button>
+  </form>
+
+  <!-- DATA TABLE -->
+  <div class="table-card">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Mag-aaral</th>
+          <th>Baitang & Seksyon</th>
+          <th>Status ng Record</th>
+          <th>Huling Na-update</th>
+          <th style="text-align: right;">Aksyon</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if students %}
+          {% for s in students %}
+          <tr>
+            <td>
+              <div style="font-weight: 800; color: var(--tx); font-size: .95rem;">{{ s.student_name }}</div>
+            </td>
+            <td>
+              <span style="font-weight: 700; color: #334155;">{{ s.grade_level or '' }}</span>
+              {% if s.section_name %}<span style="color: var(--mu);"> &bull; {{ s.section_name }}</span>{% endif %}
+            </td>
+            <td>
+              {% if s.record_status == 'submitted' %}
+                <span class="status-badge status-submitted">Submitted</span>
+              {% elif s.record_status == 'draft' %}
+                <span class="status-badge status-draft">Draft</span>
+              {% else %}
+                <span class="status-badge status-not_started">Not Started</span>
+              {% endif %}
+            </td>
+            <td style="color: var(--mu); font-size: .85rem; font-weight: 500;">
+              {{ s.updated_at.strftime('%b %d, %Y') if s.updated_at else '—' }}
+            </td>
+            <td style="text-align: right;">
+              <a href="/teacher/swafo/student/{{ s.enrollment_id }}" class="btn-view">
+                Tingnan / Review
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 48px; color: var(--mu); font-weight: 600;">
+              Walang nahanap na rekord ng mag-aaral.
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+{% endblock %}

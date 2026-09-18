@@ -7505,3 +7505,429 @@ def teacher_schedules():
 
 # =======================
 
+
+
+# ══════════════════════════════════════════
+# SWAFO — Teacher Views
+# ══════════════════════════════════════════
+def _require_swafo_teacher():
+    return session.get("role") == "teacher" and session.get("is_swafo")
+
+
+@teacher_bp.route("/teacher/swafo/students")
+def teacher_swafo_students():
+    if not _require_swafo_teacher():
+        flash("Access restricted to SWAFO officers only.", "error")
+        return redirect("/teacher")
+
+    branch_id = session.get("branch_id")
+    search = request.args.get("search", "").strip()
+    status_filter = request.args.get("status", "all")
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        query = """
+            SELECT
+                e.enrollment_id,
+                CONCAT(e.student_first_name, ' ', COALESCE(e.student_middle_name || ' ', ''), e.student_last_name) AS student_name,
+                e.grade_level, e.section_id,
+                s.section_name,
+                sr.record_id, sr.status AS record_status, sr.submitted_at, sr.updated_at, sr.teacher_notes
+            FROM enrollments e
+            LEFT JOIN sections s ON e.section_id = s.section_id
+            LEFT JOIN swafo_records sr ON sr.enrollment_id = e.enrollment_id
+            WHERE e.branch_id = %s AND e.status = 'enrolled'
+        """
+        params = [branch_id]
+        if search:
+            query += " AND (e.student_first_name ILIKE %s OR e.student_last_name ILIKE %s OR e.student_middle_name ILIKE %s)"
+            params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
+        if status_filter == "submitted":
+            query += " AND sr.status = 'submitted'"
+        elif status_filter == "draft":
+            query += " AND sr.status = 'draft'"
+        elif status_filter == "not_started":
+            query += " AND sr.record_id IS NULL"
+        query += " ORDER BY e.student_last_name, e.student_first_name"
+        cur.execute(query, params)
+        students = cur.fetchall()
+
+        # Count stats
+        cur.execute("""
+            SELECT
+                COUNT(e.enrollment_id) AS total,
+                COUNT(sr.record_id) FILTER (WHERE sr.status='submitted') AS submitted,
+                COUNT(sr.record_id) FILTER (WHERE sr.status='draft') AS draft,
+                COUNT(e.enrollment_id) FILTER (WHERE sr.record_id IS NULL) AS not_started
+            FROM enrollments e
+            LEFT JOIN swafo_records sr ON sr.enrollment_id = e.enrollment_id
+            WHERE e.branch_id = %s AND e.status = 'enrolled'
+        """, (branch_id,))
+        stats = cur.fetchone()
+
+        return render_template(
+            "teacher_swafo_students.html",
+            students=students,
+            stats=stats,
+            search=search,
+            status_filter=status_filter,
+        )
+    except Exception as e:
+        flash(f"Error loading students: {str(e)}", "error")
+        return redirect("/teacher")
+    finally:
+        cur.close()
+        db.close()
+
+
+@teacher_bp.route("/teacher/swafo/student/<int:enrollment_id>", methods=["GET", "POST"])
+def teacher_swafo_record_view(enrollment_id):
+    if not _require_swafo_teacher():
+        flash("Access restricted to SWAFO officers only.", "error")
+        return redirect("/teacher")
+
+    branch_id = session.get("branch_id")
+    teacher_id = session.get("user_id")
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        if request.method == "POST":
+            action = request.form.get("action", "notes")
+            if action == "notes":
+                notes = request.form.get("teacher_notes", "").strip()
+                cur.execute("""
+                    UPDATE swafo_records
+                    SET teacher_notes = %s, reviewed_by = %s, reviewed_at = NOW(), updated_at = NOW()
+                    WHERE enrollment_id = %s
+                """, (notes, teacher_id, enrollment_id))
+                db.commit()
+                flash("Notes saved successfully.", "success")
+            return redirect(f"/teacher/swafo/student/{enrollment_id}")
+
+        cur.execute("""
+            SELECT e.*,
+                CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name,
+                s.section_name, g.name AS grade_level_name
+            FROM enrollments e
+            LEFT JOIN sections s ON e.section_id = s.section_id
+            LEFT JOIN grade_levels g ON s.grade_level_id = g.id
+            WHERE e.enrollment_id = %s AND e.branch_id = %s
+        """, (enrollment_id, branch_id))
+        student = cur.fetchone()
+        if not student:
+            flash("Student not found.", "error")
+            return redirect("/teacher/swafo/students")
+
+        cur.execute("SELECT * FROM swafo_records WHERE enrollment_id = %s", (enrollment_id,))
+        record = cur.fetchone()
+
+        # Discipline log for this student
+        cur.execute("""
+            SELECT dl.*, u.full_name AS logged_by_name
+            FROM swafo_discipline_log dl
+            LEFT JOIN users u ON dl.logged_by = u.user_id
+            WHERE dl.enrollment_id = %s
+            ORDER BY dl.incident_date DESC, dl.created_at DESC
+        """, (enrollment_id,))
+        discipline_logs = cur.fetchall()
+
+        return render_template(
+            "teacher_swafo_record_view.html",
+            student=student,
+            record=record,
+            discipline_logs=discipline_logs,
+        )
+    except Exception as e:
+        flash(f"Error: {str(e)}", "error")
+        return redirect("/teacher/swafo/students")
+    finally:
+        cur.close()
+        db.close()
+
+
+@teacher_bp.route("/teacher/swafo/discipline-log", methods=["GET", "POST"])
+def teacher_swafo_discipline_log():
+    if not _require_swafo_teacher():
+        flash("Access restricted to SWAFO officers only.", "error")
+        return redirect("/teacher")
+
+    branch_id = session.get("branch_id")
+    teacher_id = session.get("user_id")
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        if request.method == "POST":
+            enrollment_id = int(request.form.get("enrollment_id", 0))
+            incident_date = request.form.get("incident_date", "")
+            incident_type = request.form.get("incident_type", "").strip()
+            description = request.form.get("description", "").strip()
+            action_taken = request.form.get("action_taken", "").strip()
+            severity = request.form.get("severity", "minor")
+
+            if not description or not incident_date or not enrollment_id:
+                flash("Please fill in all required fields.", "error")
+                return redirect("/teacher/swafo/discipline-log")
+
+            cur.execute("""
+                INSERT INTO swafo_discipline_log
+                (enrollment_id, branch_id, logged_by, incident_date, incident_type, description, action_taken, severity)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            """, (enrollment_id, branch_id, teacher_id, incident_date, incident_type, description, action_taken, severity))
+            db.commit()
+            flash("Discipline log entry added.", "success")
+            return redirect("/teacher/swafo/discipline-log")
+
+        # GET
+        search = request.args.get("search", "").strip()
+        cur.execute("""
+            SELECT
+                dl.*,
+                u.full_name AS logged_by_name,
+                CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name,
+                e.grade_level, sec.section_name
+            FROM swafo_discipline_log dl
+            JOIN enrollments e ON dl.enrollment_id = e.enrollment_id
+            LEFT JOIN sections sec ON e.section_id = sec.section_id
+            LEFT JOIN users u ON dl.logged_by = u.user_id
+            WHERE dl.branch_id = %s
+            ORDER BY dl.incident_date DESC, dl.created_at DESC
+        """, (branch_id,))
+        logs = cur.fetchall()
+
+        # Enrolled students for dropdown
+        cur.execute("""
+            SELECT e.enrollment_id,
+                CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name,
+                e.grade_level, sec.section_name
+            FROM enrollments e
+            LEFT JOIN sections sec ON e.section_id = sec.section_id
+            WHERE e.branch_id = %s AND e.status = 'enrolled'
+            ORDER BY e.grade_level, e.student_last_name, e.student_first_name
+        """, (branch_id,))
+        students = cur.fetchall()
+
+        # Extract unique grade levels for filter dropdown
+        grade_levels = sorted(list(set(st["grade_level"] for st in students if st.get("grade_level"))))
+
+        return render_template(
+            "teacher_swafo_discipline_log.html",
+            logs=logs,
+            students=students,
+            grade_levels=grade_levels,
+        )
+    except Exception as e:
+        db.rollback()
+        flash(f"Error: {str(e)}", "error")
+        return redirect("/teacher")
+    finally:
+        cur.close()
+        db.close()
+
+
+@teacher_bp.route("/teacher/swafo/conferences", methods=["GET", "POST"])
+def teacher_swafo_conferences():
+    if not _require_swafo_teacher():
+        flash("Access restricted to SWAFO officers only.", "error")
+        return redirect("/teacher")
+
+    branch_id = session.get("branch_id")
+    teacher_id = session.get("user_id")
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        if request.method == "POST":
+            enrollment_id = int(request.form.get("enrollment_id", 0))
+            discipline_log_id_val = request.form.get("discipline_log_id")
+            discipline_log_id = int(discipline_log_id_val) if discipline_log_id_val and discipline_log_id_val.isdigit() else None
+            title = request.form.get("title", "").strip()
+            conference_date = request.form.get("conference_date", "")
+            conference_time = request.form.get("conference_time", "").strip()
+            meeting_type = request.form.get("meeting_type", "in_person")
+            meeting_location = request.form.get("meeting_location", "").strip()
+            agenda = request.form.get("agenda", "").strip()
+
+            if not title or not conference_date or not enrollment_id:
+                flash("Please fill in all required fields (Student, Title, Date).", "error")
+                return redirect("/teacher/swafo/conferences")
+
+            cur.execute("""
+                INSERT INTO swafo_parent_conferences
+                (branch_id, enrollment_id, discipline_log_id, scheduled_by, title, conference_date, conference_time, meeting_type, meeting_location, agenda, status)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'scheduled')
+            """, (branch_id, enrollment_id, discipline_log_id, teacher_id, title, conference_date, conference_time, meeting_type, meeting_location, agenda))
+            
+            # Send notification to linked parents
+            try:
+                cur.execute("SELECT parent_id FROM parent_student WHERE student_id = %s", (enrollment_id,))
+                parent_rows = cur.fetchall()
+                for p in parent_rows:
+                    cur.execute("""
+                        INSERT INTO parent_notifications (parent_id, student_id, title, message, link)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, (
+                        p["parent_id"],
+                        enrollment_id,
+                        "SWAFO Parent Conference Notice",
+                        f"May nakatakdang patawag / parent conference kaugnay ng iyong anak noong {conference_date}.",
+                        "/parent/swafo-conferences"
+                    ))
+            except Exception as ne:
+                logger.warning(f"Could not send parent notification for SWAFO conference: {ne}")
+
+            db.commit()
+            flash("Parent Conference scheduled successfully.", "success")
+            return redirect("/teacher/swafo/conferences")
+
+        # GET
+        cur.execute("""
+            SELECT
+                pc.*,
+                u.full_name AS scheduled_by_name,
+                CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name,
+                e.grade_level, sec.section_name,
+                dl.incident_type
+            FROM swafo_parent_conferences pc
+            JOIN enrollments e ON pc.enrollment_id = e.enrollment_id
+            LEFT JOIN sections sec ON e.section_id = sec.section_id
+            LEFT JOIN users u ON pc.scheduled_by = u.user_id
+            LEFT JOIN swafo_discipline_log dl ON pc.discipline_log_id = dl.log_id
+            WHERE pc.branch_id = %s
+            ORDER BY pc.conference_date DESC, pc.created_at DESC
+        """, (branch_id,))
+        conferences = cur.fetchall()
+
+        # Enrolled students for dropdown
+        cur.execute("""
+            SELECT e.enrollment_id,
+                CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name,
+                e.grade_level, sec.section_name
+            FROM enrollments e
+            LEFT JOIN sections sec ON e.section_id = sec.section_id
+            WHERE e.branch_id = %s AND e.status = 'enrolled'
+            ORDER BY e.grade_level, e.student_last_name, e.student_first_name
+        """, (branch_id,))
+        students = cur.fetchall()
+
+        # Extract unique grade levels for filter dropdown
+        grade_levels = sorted(list(set(st["grade_level"] for st in students if st.get("grade_level"))))
+
+        # Recent discipline logs for optional linking
+        cur.execute("""
+            SELECT dl.log_id, dl.incident_type, dl.incident_date,
+                CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name
+            FROM swafo_discipline_log dl
+            JOIN enrollments e ON dl.enrollment_id = e.enrollment_id
+            WHERE dl.branch_id = %s
+            ORDER BY dl.incident_date DESC
+            LIMIT 50
+        """, (branch_id,))
+        discipline_logs = cur.fetchall()
+
+        return render_template(
+            "teacher_swafo_conferences.html",
+            conferences=conferences,
+            students=students,
+            grade_levels=grade_levels,
+            discipline_logs=discipline_logs,
+        )
+    except Exception as e:
+        db.rollback()
+        flash(f"Error: {str(e)}", "error")
+        return redirect("/teacher")
+    finally:
+        cur.close()
+        db.close()
+
+
+@teacher_bp.route("/teacher/swafo/conference/<int:conf_id>", methods=["GET", "POST"])
+def teacher_swafo_conference_detail(conf_id):
+    if not _require_swafo_teacher():
+        flash("Access restricted to SWAFO officers only.", "error")
+        return redirect("/teacher")
+
+    branch_id = session.get("branch_id")
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        if request.method == "POST":
+            title = request.form.get("title", "").strip()
+            conference_date = request.form.get("conference_date", "").strip()
+            conference_time = request.form.get("conference_time", "").strip()
+            meeting_type = request.form.get("meeting_type", "in_person")
+            meeting_location = request.form.get("meeting_location", "").strip()
+            minutes = request.form.get("minutes_of_meeting", "").strip()
+            agreements = request.form.get("agreements", "").strip()
+            status = request.form.get("status", "scheduled")
+
+            cur.execute("""
+                UPDATE swafo_parent_conferences
+                SET title = COALESCE(NULLIF(%s, ''), title),
+                    conference_date = COALESCE(NULLIF(%s, '')::DATE, conference_date),
+                    conference_time = %s,
+                    meeting_type = %s,
+                    meeting_location = %s,
+                    minutes_of_meeting = %s,
+                    agreements = %s,
+                    status = %s
+                WHERE conference_id = %s AND branch_id = %s
+                RETURNING enrollment_id
+            """, (title, conference_date, conference_time, meeting_type, meeting_location, minutes, agreements, status, conf_id, branch_id))
+            updated_row = cur.fetchone()
+
+            if updated_row:
+                try:
+                    cur.execute("SELECT parent_id FROM parent_student WHERE student_id = %s", (updated_row["enrollment_id"],))
+                    for p in cur.fetchall():
+                        cur.execute("""
+                            INSERT INTO parent_notifications (parent_id, student_id, title, message, link)
+                            VALUES (%s, %s, %s, %s, %s)
+                        """, (
+                            p["parent_id"],
+                            updated_row["enrollment_id"],
+                            "SWAFO Parent Conference Updated",
+                            f"Ang status/schedule ng iyong parent conference ay na-update (Status: {status.replace('_', ' ').title()}).",
+                            "/parent/swafo-conferences"
+                        ))
+                except Exception as ne:
+                    logger.warning(f"Failed sending update parent notif: {ne}")
+
+            db.commit()
+            flash("Conference schedule and details updated successfully.", "success")
+            return redirect(f"/teacher/swafo/conference/{conf_id}")
+
+        cur.execute("""
+            SELECT
+                pc.*,
+                u.full_name AS scheduled_by_name,
+                CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name,
+                e.grade_level, sec.section_name,
+                dl.incident_type, dl.description AS incident_description, dl.incident_date
+            FROM swafo_parent_conferences pc
+            JOIN enrollments e ON pc.enrollment_id = e.enrollment_id
+            LEFT JOIN sections sec ON e.section_id = sec.section_id
+            LEFT JOIN users u ON pc.scheduled_by = u.user_id
+            LEFT JOIN swafo_discipline_log dl ON pc.discipline_log_id = dl.log_id
+            WHERE pc.conference_id = %s AND pc.branch_id = %s
+        """, (conf_id, branch_id))
+        conf = cur.fetchone()
+
+        if not conf:
+            flash("Conference not found.", "error")
+            return redirect("/teacher/swafo/conferences")
+
+        return render_template(
+            "teacher_swafo_conference_detail.html",
+            conf=conf,
+        )
+    except Exception as e:
+        db.rollback()
+        flash(f"Error: {str(e)}", "error")
+        return redirect("/teacher/swafo/conferences")
+    finally:
+        cur.close()
+        db.close()
+

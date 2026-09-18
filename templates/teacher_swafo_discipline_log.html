@@ -1,0 +1,484 @@
+{% extends "base.html" %}
+{% block title %}SWAFO Discipline Log – Liceo LMS{% endblock %}
+
+{% block content %}
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+  :root {
+    --p: #1e3a8a;
+    --p-dark: #0c2461;
+    --p-light: #eff6ff;
+    --p-border: #dbeafe;
+    --a: #f59e0b;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --bd: #e2e8f0;
+    --tx: #0f172a;
+    --mu: #64748b;
+    --ok: #10b981;
+    --warn: #f59e0b;
+    --err: #ef4444;
+  }
+
+  body {
+    background: var(--bg);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  .wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 40px 28px;
+  }
+
+  /* ── Hero Banner ── */
+  .swafo-hero {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #2563eb 100%);
+    border-radius: 24px;
+    padding: 36px 44px;
+    color: #fff;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 20px 40px -10px rgba(30, 58, 138, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .swafo-hero::after {
+    content: '';
+    position: absolute;
+    right: -60px;
+    top: -60px;
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    pointer-events: none;
+  }
+
+  .swafo-hero h1 {
+    font-size: 2.2rem;
+    font-weight: 900;
+    margin: 0 0 6px;
+    letter-spacing: -0.03em;
+  }
+
+  .swafo-hero p {
+    margin: 0;
+    opacity: .88;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .hero-badge {
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    padding: 10px 20px;
+    border-radius: 14px;
+    font-weight: 800;
+    font-size: .9rem;
+    letter-spacing: .02em;
+    z-index: 1;
+  }
+
+  /* ── Vertical Stack Layout ── */
+  .layout-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .card-box {
+    background: var(--card);
+    border-radius: 24px;
+    border: 1px solid var(--bd);
+    padding: 32px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  }
+
+  .card-title {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--p);
+    margin-bottom: 24px;
+    padding-bottom: 14px;
+    border-bottom: 2px solid var(--p-light);
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .form-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .form-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .form-group label {
+    font-size: .78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--mu);
+  }
+
+  .form-control {
+    width: 100%;
+    height: 46px;
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: 1.5px solid var(--bd);
+    font-family: inherit;
+    font-size: .9rem;
+    background: #f8fafc;
+    color: var(--tx);
+    box-sizing: border-box;
+    transition: all .2s ease;
+  }
+
+  .form-control:focus {
+    outline: none;
+    background: #fff;
+    border-color: var(--p);
+    box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.12);
+  }
+
+  textarea.form-control {
+    height: auto;
+    min-height: 90px;
+    resize: vertical;
+  }
+
+  /* ── Search Input Wrap ── */
+  .search-box-wrap {
+    position: relative;
+    width: 100%;
+  }
+
+  .search-box-wrap input {
+    padding-left: 40px;
+  }
+
+  .search-box-wrap svg {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--mu);
+    pointer-events: none;
+  }
+
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 10px;
+  }
+
+  .btn-submit-log {
+    padding: 14px 32px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--p), #2563eb);
+    color: #fff;
+    border: none;
+    font-weight: 800;
+    cursor: pointer;
+    font-size: .95rem;
+    box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
+    transition: all .18s ease;
+  }
+
+  .btn-submit-log:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 22px rgba(30, 58, 138, 0.45);
+  }
+
+  /* ── Log Table ── */
+  .log-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+  }
+
+  .log-table th {
+    background: #f8fafc;
+    font-size: .76rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--mu);
+    padding: 16px 24px;
+    border-bottom: 1.5px solid var(--bd);
+  }
+
+  .log-table td {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--bd);
+    font-size: .92rem;
+    vertical-align: top;
+  }
+
+  .severity-minor {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 800;
+    font-size: .72rem;
+    letter-spacing: .03em;
+  }
+
+  .severity-major {
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-weight: 800;
+    font-size: .72rem;
+    letter-spacing: .03em;
+  }
+
+  @media(max-width: 992px) {
+    .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; }
+    .swafo-hero { flex-direction: column; text-align: center; padding: 28px 20px; }
+    .btn-submit-log { width: 100%; }
+  }
+</style>
+
+<div class="wrap">
+
+  <!-- HERO BANNER -->
+  <div class="swafo-hero">
+    <div>
+      <h1>Discipline Log & Incident Tracking</h1>
+      <p>Student Welfare and Formation Office &bull; Behavior & Action Records</p>
+    </div>
+    <div class="hero-badge">
+      SWAFO Discipline Log
+    </div>
+  </div>
+
+  <div class="layout-stack">
+    
+    <!-- TOP CARD: ADD LOG FORM -->
+    <div class="card-box">
+      <div class="card-title">
+        <span>Log Discipline Incident / Violation</span>
+      </div>
+      
+      <form method="POST" action="/teacher/swafo/discipline-log" id="incidentForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        
+        <!-- STEP 1: STUDENT SELECTION ROW (3 COLUMNS) -->
+        <div class="form-grid-3">
+          <!-- GRADE FILTER -->
+          <div class="form-group">
+            <label>1. Filter Grade Level (Optional)</label>
+            <select id="gradeFilter" class="form-control" style="font-weight: 600;" onchange="filterStudentDropdown()">
+              <option value="all">All Grade Levels</option>
+              {% for gl in grade_levels %}
+              <option value="{{ gl }}">{{ gl }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- SEARCH STUDENT NAME -->
+          <div class="form-group">
+            <label>2. Search Student Name</label>
+            <div class="search-box-wrap">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+              <input type="text" id="studentSearchInput" class="form-control" placeholder="Type student name..." oninput="filterStudentDropdown()">
+            </div>
+          </div>
+
+          <!-- SELECT STUDENT -->
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <label style="margin: 0;">3. Select Student *</label>
+              <span id="studentCountHint" style="font-size: .75rem; color: var(--p); font-weight: 700;">
+                {{ students|length }} students available
+              </span>
+            </div>
+            <select name="enrollment_id" id="studentSelect" class="form-control" style="font-weight: 600;" required>
+              <option value="">— Select Student —</option>
+              {% for st in students %}
+                <option value="{{ st.enrollment_id }}" data-name="{{ st.student_name|lower }}" data-grade="{{ st.grade_level or '' }}">
+                  {{ st.student_name }} ({{ st.grade_level or 'Student' }}{% if st.section_name %} &bull; {{ st.section_name }}{% endif %})
+                </option>
+              {% endfor %}
+            </select>
+          </div>
+        </div>
+
+        <!-- STEP 2: INCIDENT DETAILS ROW (3 COLUMNS) -->
+        <div class="form-grid-3">
+          <!-- INCIDENT DATE -->
+          <div class="form-group">
+            <label>Incident Date *</label>
+            <input type="date" name="incident_date" class="form-control" required>
+          </div>
+
+          <!-- OFFENSE TYPE -->
+          <div class="form-group">
+            <label>Incident / Offense Type *</label>
+            <input type="text" name="incident_type" class="form-control" placeholder="e.g. Tardiness, Uniform violation, Cutting classes..." required>
+          </div>
+
+          <!-- SEVERITY -->
+          <div class="form-group">
+            <label>Violation Severity Level</label>
+            <select name="severity" class="form-control">
+              <option value="minor">Minor Offense</option>
+              <option value="major">Major Offense</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- STEP 3: DESKRIPSYON & AKSYON ROW (2 COLUMNS) -->
+        <div class="form-grid-2">
+          <!-- DESCRIPTION -->
+          <div class="form-group">
+            <label>Incident Description & Details *</label>
+            <textarea name="description" class="form-control" rows="3" placeholder="Write full details of the incident..." required></textarea>
+          </div>
+
+          <!-- ACTION TAKEN -->
+          <div class="form-group">
+            <label>Action Taken / Immediate Response</label>
+            <textarea name="action_taken" class="form-control" rows="3" placeholder="Counseling, Parent notification, Warning, Suspension, etc..."></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-submit-log">Record Discipline Log Entry</button>
+        </div>
+      </form>
+    </div>
+
+    <!-- BOTTOM CARD: LOGS LIST TABLE -->
+    <div class="card-box" style="padding: 0; overflow: hidden;">
+      <div style="padding: 24px 32px; border-bottom: 1.5px solid var(--bd); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+        <h2 style="font-size: 1.15rem; font-weight: 800; color: var(--tx); margin: 0; letter-spacing: -0.02em;">Recorded Discipline Incident Logs</h2>
+        
+        <div class="search-box-wrap" style="width: 320px;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="tableSearchInput" class="form-control" style="height: 42px; font-size: .88rem;" placeholder="Filter logs by student or offense..." oninput="filterLogsTable()">
+        </div>
+      </div>
+      
+      <div style="overflow-x: auto;">
+        <table class="log-table" id="logsTable">
+          <thead>
+            <tr>
+              <th style="width: 140px;">Date</th>
+              <th style="width: 250px;">Student</th>
+              <th>Incident & Details</th>
+              <th style="width: 280px;">Action Taken</th>
+              <th style="width: 180px;">Logged By</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if logs %}
+              {% for l in logs %}
+              <tr class="log-row" data-search="{{ (l.student_name ~ ' ' ~ l.incident_type ~ ' ' ~ l.description)|lower }}">
+                <td style="white-space: nowrap; font-weight: 800; color: #475569;">
+                  {{ l.incident_date }}
+                </td>
+                <td>
+                  <strong style="color: var(--tx); font-size: .95rem;">{{ l.student_name }}</strong><br>
+                  <span style="font-size: .78rem; color: var(--mu); font-weight: 600;">{{ l.grade_level or '' }} {% if l.section_name %}&bull; {{ l.section_name }}{% endif %}</span>
+                </td>
+                <td>
+                  <div style="margin-bottom: 6px;">
+                    <span class="severity-{{ l.severity or 'minor' }}">{{ (l.severity or 'minor')|upper }}</span>
+                    <strong style="color: var(--tx); margin-left: 6px; font-size: .9rem;">{{ l.incident_type }}</strong>
+                  </div>
+                  <div style="color: #334155; font-size: .88rem; font-weight: 500; line-height: 1.5;">{{ l.description }}</div>
+                </td>
+                <td style="color: #334155; font-size: .88rem; font-weight: 500; line-height: 1.5;">
+                  {{ l.action_taken or '—' }}
+                </td>
+                <td style="font-size: .82rem; color: var(--mu); white-space: nowrap; font-weight: 600;">
+                  {{ l.logged_by_name or 'SWAFO Officer' }}
+                </td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              <tr>
+                <td colspan="5" style="text-align: center; padding: 48px; color: var(--mu); font-weight: 600;">
+                  No discipline logs recorded at this time.
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+function filterStudentDropdown() {
+  const gradeVal = document.getElementById('gradeFilter').value;
+  const searchVal = document.getElementById('studentSearchInput').value.toLowerCase().trim();
+  const select = document.getElementById('studentSelect');
+  const options = select.getElementsByTagName('option');
+  
+  let visibleCount = 0;
+  
+  for (let i = 0; i < options.length; i++) {
+    const opt = options[i];
+    if (opt.value === '') continue;
+    
+    const optName = opt.getAttribute('data-name') || '';
+    const optGrade = opt.getAttribute('data-grade') || '';
+    
+    const matchesGrade = (gradeVal === 'all' || optGrade === gradeVal);
+    const matchesSearch = (searchVal === '' || optName.includes(searchVal));
+    
+    if (matchesGrade && matchesSearch) {
+      opt.style.display = '';
+      visibleCount++;
+    } else {
+      opt.style.display = 'none';
+    }
+  }
+  
+  document.getElementById('studentCountHint').textContent = visibleCount + ' students found';
+}
+
+function filterLogsTable() {
+  const q = document.getElementById('tableSearchInput').value.toLowerCase().trim();
+  const rows = document.querySelectorAll('#logsTable tbody .log-row');
+  
+  rows.forEach(row => {
+    const text = row.getAttribute('data-search') || '';
+    if (q === '' || text.includes(q)) {
+      row.style.display = '';
+    } else {
+      row.style.display = 'none';
+    }
+  });
+}
+</script>
+{% endblock %}

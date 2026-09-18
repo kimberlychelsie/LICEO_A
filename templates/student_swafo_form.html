@@ -1,0 +1,821 @@
+{% extends "base.html" %}
+{% block title %}SWAFO Cumulative Record – Liceo LMS{% endblock %}
+
+{% block content %}
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+  :root {
+    --p: #1e3a8a;
+    --p-dark: #0c2461;
+    --p-light: #eff6ff;
+    --p-border: #dbeafe;
+    --a: #f59e0b;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --bd: #e2e8f0;
+    --tx: #0f172a;
+    --mu: #64748b;
+    --ok: #10b981;
+    --warn: #f59e0b;
+    --err: #ef4444;
+  }
+
+  body {
+    background: var(--bg);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  .wrap {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 40px 28px;
+  }
+
+  /* ── Hero Banner (Official LMS Blue Theme) ── */
+  .swafo-hero {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #2563eb 100%);
+    border-radius: 24px;
+    padding: 36px 44px;
+    color: #fff;
+    margin-bottom: 32px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 20px 40px -10px rgba(30, 58, 138, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .swafo-hero::after {
+    content: '';
+    position: absolute;
+    right: -60px;
+    top: -60px;
+    width: 280px;
+    height: 280px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    pointer-events: none;
+  }
+
+  .swafo-hero-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    z-index: 1;
+  }
+
+  .swafo-hero-icon {
+    width: 60px;
+    height: 60px;
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .swafo-hero-title h1 {
+    font-size: 2.2rem;
+    font-weight: 900;
+    margin: 0 0 4px;
+    letter-spacing: -0.03em;
+  }
+
+  .swafo-hero-title p {
+    margin: 0;
+    opacity: .9;
+    font-size: 1rem;
+    font-weight: 500;
+  }
+
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 18px;
+    border-radius: 99px;
+    font-size: .82rem;
+    font-weight: 800;
+    letter-spacing: .03em;
+    backdrop-filter: blur(8px);
+    z-index: 1;
+  }
+
+  .status-submitted { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+  .status-draft { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+  .status-none { background: rgba(255, 255, 255, 0.2); color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); }
+
+  /* ── Alert Box ── */
+  .submitted-banner {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    border: 1.5px solid #a7f3d0;
+    border-radius: 16px;
+    padding: 18px 24px;
+    color: #065f46;
+    font-weight: 700;
+    font-size: .92rem;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.08);
+  }
+
+  /* ── Section Cards ── */
+  .swafo-card {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 32px;
+    margin-bottom: 24px;
+    border: 1px solid var(--bd);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+    transition: box-shadow .2s ease;
+  }
+
+  .swafo-card:hover {
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+  }
+
+  .swafo-card-head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--p-light);
+  }
+
+  .swafo-card-badge {
+    width: 38px;
+    height: 38px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--p), #2563eb);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 1rem;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(30, 58, 138, 0.25);
+  }
+
+  .swafo-card-head h2 {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--tx);
+    margin: 0;
+    letter-spacing: -0.02em;
+  }
+
+  .swafo-card-head p {
+    font-size: .83rem;
+    color: var(--mu);
+    margin: 2px 0 0;
+    font-weight: 500;
+  }
+
+  /* ── Grids & Inputs ── */
+  .fg-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 18px;
+  }
+
+  .fg-grid-full {
+    grid-column: 1 / -1;
+  }
+
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .form-group label {
+    font-size: .78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--mu);
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1.5px solid var(--bd);
+    font-family: inherit;
+    font-size: .9rem;
+    background: #f8fafc;
+    color: var(--tx);
+    transition: all .2s ease;
+    box-sizing: border-box;
+  }
+
+  .form-control:focus {
+    outline: none;
+    background: #fff;
+    border-color: var(--p);
+    box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.12);
+  }
+
+  textarea.form-control {
+    min-height: 80px;
+    resize: vertical;
+  }
+
+  /* ── Custom Radio Group ── */
+  .radio-group {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    padding: 8px 0;
+  }
+
+  .radio-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: .9rem;
+    font-weight: 700;
+    color: var(--tx);
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .radio-label input[type="radio"] {
+    accent-color: var(--p);
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+
+  /* ── Dynamic Tables ── */
+  .table-responsive {
+    overflow-x: auto;
+    border-radius: 14px;
+    border: 1.5px solid var(--bd);
+    margin-bottom: 14px;
+  }
+
+  .custom-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+  }
+
+  .custom-table th {
+    background: var(--p-light);
+    color: var(--p);
+    font-size: .75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1.5px solid var(--p-border);
+  }
+
+  .custom-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--bd);
+    vertical-align: middle;
+  }
+
+  .table-input {
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1.5px solid var(--bd);
+    font-size: .85rem;
+    background: #f8fafc;
+    color: var(--tx);
+    box-sizing: border-box;
+    transition: all .15s;
+  }
+
+  .table-input:focus {
+    outline: none;
+    background: #fff;
+    border-color: var(--p);
+    box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+  }
+
+  .btn-add-row {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 18px;
+    border-radius: 10px;
+    border: 1.5px dashed var(--p);
+    background: var(--p-light);
+    color: var(--p);
+    font-weight: 800;
+    font-size: .85rem;
+    cursor: pointer;
+    transition: all .2s ease;
+  }
+
+  .btn-add-row:hover {
+    background: #dbeafe;
+    transform: translateY(-1px);
+  }
+
+  .btn-del-row {
+    background: none;
+    border: none;
+    color: var(--err);
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: background .15s;
+  }
+
+  .btn-del-row:hover {
+    background: #fee2e2;
+  }
+
+  /* ── Action Bar ── */
+  .action-bar {
+    position: sticky;
+    bottom: 24px;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(12px);
+    border: 1.5px solid var(--bd);
+    border-radius: 20px;
+    padding: 16px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+  }
+
+  .btn-draft {
+    padding: 12px 24px;
+    border-radius: 12px;
+    background: #f1f5f9;
+    color: #334155;
+    border: 1.5px solid #cbd5e1;
+    font-weight: 800;
+    font-size: .9rem;
+    cursor: pointer;
+    transition: all .18s;
+  }
+
+  .btn-draft:hover {
+    background: #e2e8f0;
+    color: #0f172a;
+  }
+
+  .btn-submit {
+    padding: 12px 32px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--p), #2563eb);
+    color: #fff;
+    border: none;
+    font-weight: 800;
+    font-size: .9rem;
+    cursor: pointer;
+    box-shadow: 0 4px 16px rgba(30, 58, 138, 0.35);
+    transition: all .18s;
+  }
+
+  .btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(30, 58, 138, 0.45);
+  }
+
+  @media(max-width: 640px) {
+    .fg-grid { grid-template-columns: 1fr; }
+    .swafo-hero { flex-direction: column; text-align: center; padding: 28px 20px; }
+    .swafo-hero-left { flex-direction: column; }
+    .action-bar { flex-direction: column; gap: 10px; text-align: center; }
+  }
+</style>
+
+<div class="wrap">
+
+  <!-- HERO BANNER -->
+  <div class="swafo-hero">
+    <div class="swafo-hero-left">
+      <div class="swafo-hero-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      </div>
+      <div class="swafo-hero-title">
+        <h1>SWAFO Cumulative Record</h1>
+        <p>Student Welfare and Formation Office &bull; {{ student_info.student_first_name }} {{ student_info.student_last_name }} ({{ student_info.grade_level or 'Student' }})</p>
+      </div>
+    </div>
+    <div>
+      {% if record %}
+        {% if record.status == 'submitted' %}
+          <span class="status-pill status-submitted">Submitted</span>
+        {% else %}
+          <span class="status-pill status-draft">Draft</span>
+        {% endif %}
+      {% else %}
+        <span class="status-pill status-none">Not Started</span>
+      {% endif %}
+    </div>
+  </div>
+
+  {% if record and record.status == 'submitted' %}
+  <div class="submitted-banner">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+    <span>Ang iyong Cumulative Record ay naisumite na. Maaari mo pa itong i-update at i-submit muli kung may pagbabago sa iyong impormasyon.</span>
+  </div>
+  {% endif %}
+
+  <form method="POST" action="/student/swafo-record" id="swafoForm">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="action" id="form_action" value="save">
+
+    <!-- I. PAMILYA / FAMILY BACKGROUND -->
+    <div class="swafo-card">
+      <div class="swafo-card-head">
+        <div class="swafo-card-badge">I</div>
+        <div>
+          <h2>Pamilya / Family Background</h2>
+          <p>Listahan at impormasyon tungkol sa mga miyembro ng pamilya</p>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Pangalan</th>
+              <th>Edad</th>
+              <th>Antas ng Edukasyon</th>
+              <th>Paaralan / Opisina</th>
+              <th>Trabaho / Hanapbuhay</th>
+              <th style="width:40px;"></th>
+            </tr>
+          </thead>
+          <tbody id="familyBody">
+            {% if record and record.family_members %}
+              {% for fm in record.family_members %}
+              <tr>
+                <td><input type="text" name="fm_name[]" value="{{ fm.name }}" class="table-input" placeholder="Pangalan"></td>
+                <td><input type="number" name="fm_edad[]" value="{{ fm.edad }}" class="table-input" style="width:70px;"></td>
+                <td><input type="text" name="fm_estatus[]" value="{{ fm.estatus }}" class="table-input" placeholder="Elem/HS/College"></td>
+                <td><input type="text" name="fm_pinapasukan[]" value="{{ fm.pinapasukan }}" class="table-input"></td>
+                <td><input type="text" name="fm_trabaho[]" value="{{ fm.trabaho }}" class="table-input"></td>
+                <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()">Remove</button></td>
+              </tr>
+              {% endfor %}
+            {% else %}
+              {% for _ in range(4) %}
+              <tr>
+                <td><input type="text" name="fm_name[]" class="table-input" placeholder="Pangalan"></td>
+                <td><input type="number" name="fm_edad[]" class="table-input" style="width:70px;"></td>
+                <td><input type="text" name="fm_estatus[]" class="table-input" placeholder="Elem/HS/College"></td>
+                <td><input type="text" name="fm_pinapasukan[]" class="table-input"></td>
+                <td><input type="text" name="fm_trabaho[]" class="table-input"></td>
+                <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()">Remove</button></td>
+              </tr>
+              {% endfor %}
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <button type="button" class="btn-add-row" onclick="addFamilyRow()">+ Magdagdag ng Miyembro</button>
+
+      <div class="fg-grid" style="margin-top:24px;">
+        <div class="form-group fg-grid-full">
+          <label>Mga kamag-anak na kasama sa bahay na hindi kasama sa itaas</label>
+          <textarea name="kamag_anak" class="form-control" rows="2">{{ record.kamag_anak if record else '' }}</textarea>
+        </div>
+        <div class="form-group">
+          <label>Uri ng Kabuhayan ng Pamilya</label>
+          <select name="uri_ng_kabuhayan" class="form-control">
+            <option value="">— Pumili —</option>
+            {% for opt in ['Mahirap', 'Katamtaman', 'Maunlad'] %}
+            <option value="{{ opt }}" {{ 'selected' if record and record.uri_ng_kabuhayan == opt else '' }}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>May sariling silid-tulugan?</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="may_sariling_silid" value="Opo" {{ 'checked' if record and record.may_sariling_silid == 'Opo' else '' }}> Opo</label>
+            <label class="radio-label"><input type="radio" name="may_sariling_silid" value="Hindi" {{ 'checked' if record and record.may_sariling_silid == 'Hindi' else '' }}> Hindi</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Sino ang kasama sa silid (kung wala)?</label>
+          <input type="text" name="kasama_sa_silid" value="{{ record.kasama_sa_silid if record else '' }}" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Natutulog ba sa bahay palagi?</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="natutulog_sa_bahay" value="Opo" {{ 'checked' if record and record.natutulog_sa_bahay == 'Opo' else '' }}> Opo</label>
+            <label class="radio-label"><input type="radio" name="natutulog_sa_bahay" value="Hindi" {{ 'checked' if record and record.natutulog_sa_bahay == 'Hindi' else '' }}> Hindi</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Naranasan bang maglayas?</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="naranasan_maglayas" value="Opo" {{ 'checked' if record and record.naranasan_maglayas == 'Opo' else '' }}> Opo</label>
+            <label class="radio-label"><input type="radio" name="naranasan_maglayas" value="Hindi" {{ 'checked' if record and record.naranasan_maglayas == 'Hindi' else '' }}> Hindi</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Dahilan ng paglayas (kung oo)</label>
+          <input type="text" name="dahilan_maglayas" value="{{ record.dahilan_maglayas if record else '' }}" class="form-control">
+        </div>
+      </div>
+    </div>
+
+    <!-- II. KALUSUGAN -->
+    <div class="swafo-card">
+      <div class="swafo-card-head">
+        <div class="swafo-card-badge">II</div>
+        <div>
+          <h2>Kalusugan / Health Condition</h2>
+          <p>Impormasyon sa pisikal na kalusugan at karamdaman</p>
+        </div>
+      </div>
+
+      <div class="fg-grid">
+        <div class="form-group">
+          <label>Pisikal na Kapansanan (kung mayroon)</label>
+          <input type="text" name="piskal_na_kapansanan" value="{{ record.piskal_na_kapansanan if record else '' }}" class="form-control" placeholder="Wala / Ilarawan...">
+        </div>
+        <div class="form-group">
+          <label>Karamdamang Madalas Mayroon</label>
+          <input type="text" name="karamdaman" value="{{ record.karamdaman if record else '' }}" class="form-control" placeholder="Ubo, lagnat, atbp...">
+        </div>
+        <div class="form-group">
+          <label>Malinaw ba ang paningin?</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="malinaw_mata" value="Opo" {{ 'checked' if record and record.malinaw_mata == 'Opo' else '' }}> Opo</label>
+            <label class="radio-label"><input type="radio" name="malinaw_mata" value="Hindi" {{ 'checked' if record and record.malinaw_mata == 'Hindi' else '' }}> Hindi</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Maayos ba ang pandinig?</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="maayos_pandinig" value="Opo" {{ 'checked' if record and record.maayos_pandinig == 'Opo' else '' }}> Opo</label>
+            <label class="radio-label"><input type="radio" name="maayos_pandinig" value="Hindi" {{ 'checked' if record and record.maayos_pandinig == 'Hindi' else '' }}> Hindi</label>
+          </div>
+        </div>
+        <div class="form-group fg-grid-full">
+          <label>Nagkaroon ba ng malubhang sakit o operasyon?</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="naiban_sakit" value="Opo" {{ 'checked' if record and record.naiban_sakit == 'Opo' else '' }}> Opo</label>
+            <label class="radio-label"><input type="radio" name="naiban_sakit" value="Hindi" {{ 'checked' if record and record.naiban_sakit == 'Hindi' else '' }}> Hindi</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- III. EDUKASYON -->
+    <div class="swafo-card">
+      <div class="swafo-card-head">
+        <div class="swafo-card-badge">III</div>
+        <div>
+          <h2>Edukasyon / Educational Attainment</h2>
+          <p>Listahan ng mga paaralan na pinasukan at akademikong status</p>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="custom-table">
+          <thead>
+            <tr>
+              <th>Antas</th>
+              <th>Pangalan ng Paaralan</th>
+              <th>Taon ng Pagtatapos</th>
+              <th>Karangalan / Awards</th>
+              <th style="width:40px;"></th>
+            </tr>
+          </thead>
+          <tbody id="edBody">
+            {% set ed_data = record.education_history if record and record.education_history else [{'antas':'Kinder','paaralan':'','taon':'','katamo':''},{'antas':'Elementary','paaralan':'','taon':'','katamo':''},{'antas':'Junior High','paaralan':'','taon':'','katamo':''}] %}
+            {% for ed in ed_data %}
+            <tr>
+              <td><input type="text" name="ed_antas[]" value="{{ ed.antas }}" class="table-input"></td>
+              <td><input type="text" name="ed_paaralan[]" value="{{ ed.paaralan }}" class="table-input"></td>
+              <td><input type="text" name="ed_taon[]" value="{{ ed.taon }}" class="table-input" style="width:90px;"></td>
+              <td><input type="text" name="ed_katamo[]" value="{{ ed.katamo }}" class="table-input"></td>
+              <td><button type="button" class="btn-del-row" onclick="this.closest('tr').remove()">Remove</button></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <button type="button" class="btn-add-row" onclick="addEdRow()">+ Magdagdag ng Antas</button>
+
+      <div class="fg-grid" style="margin-top:24px;">
+        <div class="form-group">
+          <label>Kalagayan ng Pag-aaral sa Pangkalahatan</label>
+          <select name="kalagayan_pag_aaral" class="form-control">
+            <option value="">— Pumili —</option>
+            {% for opt in ['Mahusay', 'Katamtaman', 'Mahirap'] %}
+            <option value="{{ opt }}" {{ 'selected' if record and record.kalagayan_pag_aaral == opt else '' }}>{{ opt }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Napatigil ba sa pag-aaral?</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="umakyat_antas" value="Opo" {{ 'checked' if record and record.umakyat_antas == 'Opo' else '' }}> Opo</label>
+            <label class="radio-label"><input type="radio" name="umakyat_antas" value="Hindi" {{ 'checked' if record and record.umakyat_antas == 'Hindi' else '' }}> Hindi</label>
+          </div>
+        </div>
+        <div class="form-group fg-grid-full">
+          <label>Kung napatigil, anong antas at ano ang dahilan?</label>
+          <input type="text" name="kung_opo_antas" value="{{ record.kung_opo_antas if record else '' }}" class="form-control">
+        </div>
+      </div>
+    </div>
+
+    <!-- IV. RELIHIYON -->
+    <div class="swafo-card">
+      <div class="swafo-card-head">
+        <div class="swafo-card-badge">IV</div>
+        <div>
+          <h2>Relihiyon / Religious Background</h2>
+          <p>Impormasyon sa pananampalataya at mga sakramento</p>
+        </div>
+      </div>
+
+      <div class="fg-grid">
+        <div class="form-group">
+          <label>May Binyag?</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="may_binyag" value="Opo" {{ 'checked' if record and record.may_binyag == 'Opo' else '' }}> Opo</label>
+            <label class="radio-label"><input type="radio" name="may_binyag" value="Hindi" {{ 'checked' if record and record.may_binyag == 'Hindi' else '' }}> Hindi</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Parokya ng Binyag</label>
+          <input type="text" name="parokya_binyag" value="{{ record.parokya_binyag if record else '' }}" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>May Kumpil?</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="may_kumpil" value="Opo" {{ 'checked' if record and record.may_kumpil == 'Opo' else '' }}> Opo</label>
+            <label class="radio-label"><input type="radio" name="may_kumpil" value="Hindi" {{ 'checked' if record and record.may_kumpil == 'Hindi' else '' }}> Hindi</label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Parokya ng Kumpil</label>
+          <input type="text" name="parokya_kumpil" value="{{ record.parokya_kumpil if record else '' }}" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Relihiyon</label>
+          <input type="text" name="relihiyon" value="{{ record.relihiyon if record else '' }}" class="form-control" placeholder="Katoliko, Kristiyano, atbp...">
+        </div>
+        <div class="form-group">
+          <label>Kasali sa samahang pang-relihiyon?</label>
+          <div class="radio-group">
+            <label class="radio-label"><input type="radio" name="kasali_samahan" value="Opo" {{ 'checked' if record and record.kasali_samahan == 'Opo' else '' }}> Opo</label>
+            <label class="radio-label"><input type="radio" name="kasali_samahan" value="Hindi" {{ 'checked' if record and record.kasali_samahan == 'Hindi' else '' }}> Hindi</label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- V. TAG-ARAW & SUBJECT PREFERENCES -->
+    <div class="swafo-card">
+      <div class="swafo-card-head">
+        <div class="swafo-card-badge">V</div>
+        <div>
+          <h2>Asignatura / Subject Preferences & Summer</h2>
+          <p>Mga asignatura sa tag-araw at mga hilig na paksa</p>
+        </div>
+      </div>
+
+      <div id="summerBox">
+        {% if record and record.summer_subjects %}
+          {% for s in record.summer_subjects %}
+          <div class="summer-row" style="display:flex; gap:10px; margin-bottom:10px;">
+            <input type="text" name="sum_asignatura[]" value="{{ s }}" class="form-control" style="flex:1;">
+            <button type="button" class="btn-del-row" onclick="this.parentElement.remove()">Remove</button>
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="summer-row" style="display:flex; gap:10px; margin-bottom:10px;">
+            <input type="text" name="sum_asignatura[]" placeholder="Pangalan ng asignatura sa tag-araw" class="form-control" style="flex:1;">
+            <button type="button" class="btn-del-row" onclick="this.parentElement.remove()">Remove</button>
+          </div>
+        {% endif %}
+      </div>
+
+      <button type="button" class="btn-add-row" onclick="addSummerRow()">+ Magdagdag ng Asignatura sa Tag-araw</button>
+
+      <div class="fg-grid" style="margin-top:24px;">
+        <div class="form-group">
+          <label>Pinakagustong Asignatura</label>
+          <input type="text" name="pinakagusto_subject" value="{{ record.pinakagusto_subject if record else '' }}" class="form-control">
+        </div>
+        <div class="form-group">
+          <label>Asignatura na Pinaka-inaayawan</label>
+          <input type="text" name="inaayawan_subject" value="{{ record.inaayawan_subject if record else '' }}" class="form-control">
+        </div>
+      </div>
+    </div>
+
+    <!-- VI. BOKASYON & SARILI -->
+    <div class="swafo-card">
+      <div class="swafo-card-head">
+        <div class="swafo-card-badge">VI</div>
+        <div>
+          <h2>Bokasyon & Sariling Paglalarawan</h2>
+          <p>Mga pangarap na kurso at paglalarawan sa sarili</p>
+        </div>
+      </div>
+
+      <div class="fg-grid">
+        <div class="form-group fg-grid-full">
+          <label>Bokasyon o Kursong Nais Kunin sa Hinaharap</label>
+          <input type="text" name="bokasyon_kurso" value="{{ record.bokasyon_kurso if record else '' }}" class="form-control" placeholder="Guro, Doktor, Inhinyero, IT, atbp...">
+        </div>
+        <div class="form-group fg-grid-full">
+          <label>Kaninong Kagustuhan Ito?</label>
+          <input type="text" name="kaninong_kagustuhan" value="{{ record.kaninong_kagustuhan if record else '' }}" class="form-control" placeholder="Sarili / Magulang / Kamag-anak...">
+        </div>
+        <div class="form-group fg-grid-full">
+          <label>Maikling Paglalarawan sa Iyong Sarili</label>
+          <textarea name="sarili_description" class="form-control" rows="3" placeholder="Isulat ang ilang pangungusap tungkol sa iyong mga katangian, ugali, at hilig...">{{ record.sarili_description if record else '' }}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- FIXED ACTION BAR -->
+    <div class="action-bar">
+      <div style="font-size: .83rem; color: var(--mu); font-weight: 600;">
+        {% if record and record.updated_at %}
+          Huling na-update: <strong>{{ record.updated_at.strftime('%b %d, %Y %I:%M %p') }}</strong>
+        {% else %}
+          Kumpletuhin ang mga field sa itaas at i-submit.
+        {% endif %}
+      </div>
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <button type="button" class="btn-draft" onclick="submitForm('save')">I-save bilang Draft</button>
+        <button type="button" class="btn-submit" onclick="submitForm('submit')">Isumite ang Record</button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<script>
+function submitForm(action) {
+  document.getElementById('form_action').value = action;
+  if (action === 'submit' && !confirm('Isusumite na ang iyong SWAFO Cumulative Record. Sigurado ka ba?')) {
+    return;
+  }
+  document.getElementById('swafoForm').submit();
+}
+
+function addFamilyRow() {
+  var row = '<tr>' +
+    '<td><input type="text" name="fm_name[]" class="table-input" placeholder="Pangalan"></td>' +
+    '<td><input type="number" name="fm_edad[]" class="table-input" style="width:70px;"></td>' +
+    '<td><input type="text" name="fm_estatus[]" class="table-input" placeholder="Elem/HS/College"></td>' +
+    '<td><input type="text" name="fm_pinapasukan[]" class="table-input"></td>' +
+    '<td><input type="text" name="fm_trabaho[]" class="table-input"></td>' +
+    '<td><button type="button" class="btn-del-row" onclick="this.closest(\'tr\').remove()">Remove</button></td>' +
+    '</tr>';
+  document.getElementById('familyBody').insertAdjacentHTML('beforeend', row);
+}
+
+function addEdRow() {
+  var row = '<tr>' +
+    '<td><input type="text" name="ed_antas[]" class="table-input"></td>' +
+    '<td><input type="text" name="ed_paaralan[]" class="table-input"></td>' +
+    '<td><input type="text" name="ed_taon[]" class="table-input" style="width:90px;"></td>' +
+    '<td><input type="text" name="ed_katamo[]" class="table-input"></td>' +
+    '<td><button type="button" class="btn-del-row" onclick="this.closest(\'tr\').remove()">Remove</button></td>' +
+    '</tr>';
+  document.getElementById('edBody').insertAdjacentHTML('beforeend', row);
+}
+
+function addSummerRow() {
+  var row = '<div class="summer-row" style="display:flex; gap:10px; margin-bottom:10px;">' +
+    '<input type="text" name="sum_asignatura[]" placeholder="Pangalan ng asignatura sa tag-araw" class="form-control" style="flex:1;">' +
+    '<button type="button" class="btn-del-row" onclick="this.parentElement.remove()">Remove</button>' +
+    '</div>';
+  document.getElementById('summerBox').insertAdjacentHTML('beforeend', row);
+}
+</script>
+{% endblock %}

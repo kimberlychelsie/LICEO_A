@@ -1,0 +1,473 @@
+{% extends "base.html" %}
+{% block title %}SWAFO Record – {{ student.student_name }}{% endblock %}
+
+{% block content %}
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+  :root {
+    --p: #1e3a8a;
+    --p-dark: #0c2461;
+    --p-light: #eff6ff;
+    --p-border: #dbeafe;
+    --a: #f59e0b;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --bd: #e2e8f0;
+    --tx: #0f172a;
+    --mu: #64748b;
+    --ok: #10b981;
+    --warn: #f59e0b;
+    --err: #ef4444;
+  }
+
+  body {
+    background: var(--bg);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  .wrap {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 40px 28px;
+  }
+
+  /* ── Header Banner ── */
+  .swafo-header {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #2563eb 100%);
+    border-radius: 24px;
+    padding: 36px 44px;
+    color: #fff;
+    margin-bottom: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 20px 40px -10px rgba(30, 58, 138, 0.35);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .swafo-header::after {
+    content: '';
+    position: absolute;
+    right: -60px;
+    top: -60px;
+    width: 260px;
+    height: 260px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.06);
+    pointer-events: none;
+  }
+
+  .btn-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(8px);
+    color: #fff;
+    font-weight: 700;
+    text-decoration: none;
+    font-size: .85rem;
+    transition: all .2s;
+  }
+
+  .btn-back:hover {
+    background: rgba(255, 255, 255, 0.28);
+  }
+
+  .swafo-header h1 {
+    font-size: 2rem;
+    font-weight: 900;
+    margin: 10px 0 4px;
+    letter-spacing: -0.03em;
+  }
+
+  .swafo-header p {
+    margin: 0;
+    opacity: .9;
+    font-size: .95rem;
+    font-weight: 500;
+  }
+
+  .status-badge {
+    padding: 8px 18px;
+    border-radius: 99px;
+    font-weight: 800;
+    font-size: .82rem;
+    letter-spacing: .03em;
+    z-index: 1;
+  }
+
+  .status-submitted { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+  .status-draft { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+
+  /* ── Main Layout ── */
+  .record-layout {
+    display: grid;
+    grid-template-columns: 2.2fr 1fr;
+    gap: 28px;
+  }
+
+  .record-card {
+    background: var(--card);
+    border-radius: 20px;
+    border: 1px solid var(--bd);
+    padding: 28px;
+    margin-bottom: 24px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+  }
+
+  .record-card-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--p);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--p-light);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    letter-spacing: -0.02em;
+  }
+
+  .card-num-badge {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--p), #2563eb);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: .9rem;
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .info-item {
+    background: #f8fafc;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--bd);
+  }
+
+  .info-item label {
+    display: block;
+    font-size: .75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--mu);
+    margin-bottom: 4px;
+  }
+
+  .info-item span {
+    font-size: .92rem;
+    font-weight: 700;
+    color: var(--tx);
+  }
+
+  /* ── Tables ── */
+  .table-responsive {
+    overflow-x: auto;
+    border-radius: 14px;
+    border: 1.5px solid var(--bd);
+    margin-top: 10px;
+  }
+
+  .table-mini {
+    width: 100%;
+    border-collapse: collapse;
+    background: #fff;
+  }
+
+  .table-mini th {
+    background: var(--p-light);
+    color: var(--p);
+    font-size: .75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1.5px solid var(--p-border);
+  }
+
+  .table-mini td {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--bd);
+    font-size: .88rem;
+    color: var(--tx);
+  }
+
+  /* ── Sidebar Cards ── */
+  .sticky-sidebar {
+    position: sticky;
+    top: 24px;
+  }
+
+  .notes-textarea {
+    width: 100%;
+    padding: 14px;
+    border-radius: 14px;
+    border: 1.5px solid var(--bd);
+    font-family: inherit;
+    font-size: .9rem;
+    min-height: 140px;
+    background: #f8fafc;
+    color: var(--tx);
+    box-sizing: border-box;
+    transition: all .2s;
+  }
+
+  .notes-textarea:focus {
+    outline: none;
+    background: #fff;
+    border-color: var(--p);
+    box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.12);
+  }
+
+  .btn-save-notes {
+    padding: 12px 24px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--p), #2563eb);
+    color: #fff;
+    border: none;
+    font-weight: 800;
+    cursor: pointer;
+    width: 100%;
+    font-size: .9rem;
+    margin-top: 14px;
+    box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
+    transition: all .18s;
+  }
+
+  .btn-save-notes:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 22px rgba(30, 58, 138, 0.4);
+  }
+
+  .disc-card {
+    background: #fff5f5;
+    border: 1.5px solid #fed7d7;
+    padding: 12px 16px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+  }
+
+  @media(max-width: 960px) {
+    .record-layout { grid-template-columns: 1fr; }
+    .sticky-sidebar { position: static; }
+  }
+</style>
+
+<div class="wrap">
+
+  <!-- HEADER BANNER -->
+  <div class="swafo-header">
+    <div>
+      <a href="/teacher/swafo/students" class="btn-back">← Bumalik sa Listahan</a>
+      <h1>Cumulative Record: {{ student.student_name }}</h1>
+      <p>{{ student.grade_level_name or student.grade_level }} &bull; {{ student.section_name or 'Walang Seksyon' }}</p>
+    </div>
+    <div>
+      {% if record and record.status == 'submitted' %}
+        <span class="status-badge status-submitted">SUBMITTED RECORD</span>
+      {% else %}
+        <span class="status-badge status-draft">DRAFT / UNFINISHED</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="record-layout">
+    
+    <!-- LEFT COLUMN: RECORD SECTIONS -->
+    <div>
+      
+      <!-- I. PAMILYA -->
+      <div class="record-card">
+        <div class="record-card-title">
+          <div class="card-num-badge">I</div>
+          <span>Pamilya / Family Background</span>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table-mini">
+            <thead>
+              <tr>
+                <th>Pangalan</th>
+                <th>Edad</th>
+                <th>Edukasyon</th>
+                <th>Paaralan / Opisina</th>
+                <th>Trabaho</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if record and record.family_members %}
+                {% for fm in record.family_members %}
+                  {% if fm.name %}
+                  <tr>
+                    <td><strong>{{ fm.name }}</strong></td>
+                    <td>{{ fm.edad or '—' }}</td>
+                    <td>{{ fm.estatus or '—' }}</td>
+                    <td>{{ fm.pinapasukan or '—' }}</td>
+                    <td>{{ fm.trabaho or '—' }}</td>
+                  </tr>
+                  {% endif %}
+                {% endfor %}
+              {% else %}
+                <tr><td colspan="5" style="color: var(--mu); text-align: center; padding: 20px;">Walang impormasyon sa pamilya.</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="info-grid" style="margin-top: 20px;">
+          <div class="info-item"><label>Uri ng Kabuhayan</label><span>{{ record.uri_ng_kabuhayan if record else '—' }}</span></div>
+          <div class="info-item"><label>May Sariling Silid</label><span>{{ record.may_sariling_silid if record else '—' }}</span></div>
+          <div class="info-item"><label>Natutulog sa Bahay Palagi</label><span>{{ record.natutulog_sa_bahay if record else '—' }}</span></div>
+          <div class="info-item"><label>Naranasan Maglayas</label><span>{{ record.naranasan_maglayas if record else '—' }} {% if record and record.dahilan_maglayas %}({{ record.dahilan_maglayas }}){% endif %}</span></div>
+        </div>
+      </div>
+
+      <!-- II. KALUSUGAN -->
+      <div class="record-card">
+        <div class="record-card-title">
+          <div class="card-num-badge">II</div>
+          <span>Kalusugan / Health Condition</span>
+        </div>
+        <div class="info-grid">
+          <div class="info-item"><label>Pisikal na Kapansanan</label><span>{{ record.piskal_na_kapansanan if record else '—' }}</span></div>
+          <div class="info-item"><label>Madalas na Karamdaman</label><span>{{ record.karamdaman if record else '—' }}</span></div>
+          <div class="info-item"><label>Malinaw ang Paningin</label><span>{{ record.malinaw_mata if record else '—' }}</span></div>
+          <div class="info-item"><label>Maayos ang Pandinig</label><span>{{ record.maayos_pandinig if record else '—' }}</span></div>
+        </div>
+      </div>
+
+      <!-- III. EDUKASYON -->
+      <div class="record-card">
+        <div class="record-card-title">
+          <div class="card-num-badge">III</div>
+          <span>Edukasyon / Educational History</span>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table-mini">
+            <thead>
+              <tr>
+                <th>Antas</th>
+                <th>Paaralan</th>
+                <th>Taon</th>
+                <th>Karangalan / Award</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% if record and record.education_history %}
+                {% for ed in record.education_history %}
+                  {% if ed.paaralan %}
+                  <tr>
+                    <td><strong>{{ ed.antas }}</strong></td>
+                    <td>{{ ed.paaralan }}</td>
+                    <td>{{ ed.taon or '—' }}</td>
+                    <td>{{ ed.katamo or '—' }}</td>
+                  </tr>
+                  {% endif %}
+                {% endfor %}
+              {% else %}
+                <tr><td colspan="4" style="color: var(--mu); text-align: center; padding: 20px;">Walang history ng edukasyon.</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="info-grid" style="margin-top: 20px;">
+          <div class="info-item"><label>Kalagayan ng Pag-aaral</label><span>{{ record.kalagayan_pag_aaral if record else '—' }}</span></div>
+          <div class="info-item"><label>Napatigil sa Pag-aaral</label><span>{{ record.umakyat_antas if record else '—' }}</span></div>
+        </div>
+      </div>
+
+      <!-- IV. RELIHIYON -->
+      <div class="record-card">
+        <div class="record-card-title">
+          <div class="card-num-badge">IV</div>
+          <span>Relihiyon / Religious Info</span>
+        </div>
+        <div class="info-grid">
+          <div class="info-item"><label>May Binyag</label><span>{{ record.may_binyag if record else '—' }} {% if record and record.parokya_binyag %}({{ record.parokya_binyag }}){% endif %}</span></div>
+          <div class="info-item"><label>May Kumpil</label><span>{{ record.may_kumpil if record else '—' }} {% if record and record.parokya_kumpil %}({{ record.parokya_kumpil }}){% endif %}</span></div>
+          <div class="info-item"><label>Relihiyon</label><span>{{ record.relihiyon if record else '—' }}</span></div>
+          <div class="info-item"><label>Kasali sa Samahan</label><span>{{ record.kasali_samahan if record else '—' }}</span></div>
+        </div>
+      </div>
+
+      <!-- V. BOKASYON & SARILI -->
+      <div class="record-card">
+        <div class="record-card-title">
+          <div class="card-num-badge">V</div>
+          <span>Bokasyon & Sariling Paglalarawan</span>
+        </div>
+        <div class="info-grid">
+          <div class="info-item" style="grid-column: 1 / -1;"><label>Bokasyon o Kursong Nais Kunin</label><span>{{ record.bokasyon_kurso if record else '—' }}</span></div>
+          <div class="info-item" style="grid-column: 1 / -1;"><label>Kaninong Kagustuhan</label><span>{{ record.kaninong_kagustuhan if record else '—' }}</span></div>
+          <div class="info-item" style="grid-column: 1 / -1;"><label>Paglalarawan sa Sarili</label><span>{{ record.sarili_description if record else '—' }}</span></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: STICKY SWAFO REVIEW & DISCIPLINE LOGS -->
+    <div class="sticky-sidebar">
+      
+      <div class="record-card">
+        <div class="record-card-title" style="margin-bottom: 14px;">
+          <span>SWAFO Teacher Review & Notes</span>
+        </div>
+        <form method="POST" action="/teacher/swafo/student/{{ student.enrollment_id }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="notes">
+          <label style="font-size: .8rem; font-weight: 800; color: var(--mu); text-transform: uppercase; letter-spacing: .05em; display: block; margin-bottom: 8px;">Private SWAFO Remarks:</label>
+          <textarea name="teacher_notes" class="notes-textarea" placeholder="Isulat dito ang obserbasyon, counseling notes, o remarks para sa mag-aaral na ito...">{{ record.teacher_notes if record else '' }}</textarea>
+          <button type="submit" class="btn-save-notes">I-save ang Notes</button>
+        </form>
+
+        <hr style="margin: 24px 0; border: none; border-top: 1.5px solid var(--bd);">
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <strong style="font-size: .95rem; color: var(--tx); font-weight: 800;">Discipline History</strong>
+          <a href="/teacher/swafo/discipline-log" style="font-size: .82rem; color: var(--p); font-weight: 800; text-decoration: none;">+ Magtala</a>
+        </div>
+
+        {% if discipline_logs %}
+          {% for log in discipline_logs %}
+          <div class="disc-card">
+            <div style="display: flex; justify-content: space-between; font-size: .78rem; font-weight: 800; color: #9b2c2c;">
+              <span>{{ log.incident_type or 'Incident' }}</span>
+              <span>{{ log.incident_date }}</span>
+            </div>
+            <div style="font-size: .85rem; color: #2d3748; margin-top: 6px; font-weight: 600;">{{ log.description }}</div>
+            {% if log.action_taken %}
+            <div style="font-size: .8rem; color: #4a5568; margin-top: 4px; font-style: italic;">Aksyon: {{ log.action_taken }}</div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        {% else %}
+          <div style="font-size: .85rem; color: var(--mu); font-style: italic; text-align: center; padding: 16px 0;">
+            Walang naitalang discipline violation.
+          </div>
+        {% endif %}
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+{% endblock %}

@@ -857,6 +857,41 @@ def branch_admin_toggle_account(user_id):
         db.close()
     
     return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
+
+
+@branch_admin_bp.route("/branch-admin/manage-accounts/<int:user_id>/toggle-swafo", methods=["POST"])
+def branch_admin_toggle_swafo(user_id):
+    """Toggle the SWAFO officer flag for a teacher."""
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute(
+            "UPDATE users SET is_swafo = NOT COALESCE(is_swafo, FALSE) WHERE user_id = %s AND branch_id = %s AND role = 'teacher'",
+            (user_id, session.get("branch_id"))
+        )
+        db.commit()
+        # Fetch updated value to give meaningful flash
+        cursor.execute("SELECT is_swafo, full_name FROM users WHERE user_id = %s", (user_id,))
+        row = cursor.fetchone()
+        if row:
+            name = row["full_name"] or "Teacher"
+            if row["is_swafo"]:
+                flash(f"{name} is now assigned as a SWAFO Officer.", "success")
+            else:
+                flash(f"{name} has been removed from the SWAFO Officer role.", "success")
+        else:
+            flash("SWAFO status updated.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Failed to update SWAFO status: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+    return redirect(request.referrer or "/branch-admin/manage-teachers")
+
+
 @branch_admin_bp.route("/branch-admin/manage-accounts/<int:user_id>/edit", methods=["GET", "POST"])
 def branch_admin_edit_account(user_id):
     if session.get("role") != "branch_admin":
@@ -2952,6 +2987,7 @@ Please log in and change your password immediately.
             SELECT
                 u.user_id, u.username, u.first_name, u.middle_name, u.last_name, u.full_name, u.gender, u.email,
                 COALESCE(u.status, 'active') AS status,
+                COALESCE(u.is_swafo, FALSE) AS is_swafo,
                 adv_sec.section_name AS advisory_section,
                 adv_grade.name AS advisory_grade,
                 (
@@ -2992,10 +3028,15 @@ Please log in and change your password immediately.
         """, (branch_id,))
         stats = cursor.fetchone()
 
+        cursor.execute("SELECT is_active FROM branches WHERE branch_id = %s", (branch_id,))
+        brow = cursor.fetchone()
+        is_branch_active_status = brow["is_active"] if (brow and "is_active" in brow) else True
+
     except Exception as e:
         db.rollback()
         flash(f"Something went wrong: {str(e)}", "error")
         teachers, grades, stats = [], [], None
+        is_branch_active_status = True
     finally:
         cursor.close()
         db.close()
@@ -3007,6 +3048,7 @@ Please log in and change your password immediately.
         stats=stats,
         filter_search=filter_search,
         created_user=created_user,
+        is_branch_active_status=is_branch_active_status,
     )
 
 
@@ -3096,6 +3138,30 @@ def branch_admin_toggle_teacher(user_id):
     finally:
         cursor.close(); db.close()
     return redirect(request.referrer or "/branch-admin/manage-teachers")
+
+
+@branch_admin_bp.route("/branch-admin/manage-teachers/<int:user_id>/toggle-swafo", methods=["POST"])
+def branch_admin_toggle_teacher_swafo(user_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("""
+            UPDATE users
+            SET is_swafo = NOT COALESCE(is_swafo, FALSE)
+            WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+        """, (user_id, session.get("branch_id")))
+        db.commit()
+        flash("SWAFO assignment updated successfully.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Failed to update SWAFO assignment: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+    return redirect(request.referrer or "/branch-admin/manage-teachers")
+
 
 
 @branch_admin_bp.route("/branch-admin/manage-teachers/<int:user_id>/archive", methods=["POST"])

@@ -471,13 +471,53 @@ def inject_parent_notifications():
                     ts = ts.replace(tzinfo=timezone.utc)
                 n["created_at"] = ts.astimezone(ph_tz).replace(tzinfo=None)
             unread_count = sum(1 for n in notifs if not n.get('is_read'))
-            return dict(parent_global_notifs=notifs, parent_unread_count=unread_count)
+            
+            has_pending_swafo = False
+            try:
+                cursor.execute("""
+                    SELECT 1
+                    FROM swafo_parent_conferences pc
+                    JOIN parent_student ps ON pc.enrollment_id = ps.student_id
+                    WHERE ps.parent_id = %s AND (pc.status IN ('scheduled', 'reschedule_requested') OR pc.parent_acknowledged_at IS NULL)
+                    LIMIT 1
+                """, (user_id,))
+                if cursor.fetchone():
+                    has_pending_swafo = True
+            except:
+                pass
+
+            return dict(parent_global_notifs=notifs, parent_unread_count=unread_count, has_pending_swafo_conferences=has_pending_swafo)
         except:
-            return dict(parent_global_notifs=[], parent_unread_count=0)
+            return dict(parent_global_notifs=[], parent_unread_count=0, has_pending_swafo_conferences=False)
         finally:
             cursor.close()
             db.close()
-    return dict(parent_global_notifs=[], parent_unread_count=0)
+    return dict(parent_global_notifs=[], parent_unread_count=0, has_pending_swafo_conferences=False)
+
+
+@app.context_processor
+def inject_swafo_teacher_notifications():
+    if session.get('role') == 'teacher' and session.get('is_swafo'):
+        branch_id = session.get('branch_id')
+        from db import get_db_connection
+        import psycopg2.extras
+        db = get_db_connection()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        try:
+            cursor.execute("""
+                SELECT 1
+                FROM swafo_parent_conferences
+                WHERE branch_id = %s AND status IN ('confirmed_by_parent', 'reschedule_requested')
+                LIMIT 1
+            """, (branch_id,))
+            has_pending = bool(cursor.fetchone())
+            return dict(has_pending_teacher_swafo_conferences=has_pending)
+        except:
+            return dict(has_pending_teacher_swafo_conferences=False)
+        finally:
+            cursor.close()
+            db.close()
+    return dict(has_pending_teacher_swafo_conferences=False)
 
 
 @app.context_processor

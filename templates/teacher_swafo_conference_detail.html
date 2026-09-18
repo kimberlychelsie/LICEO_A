@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+{% block title %}Conference Details – SWAFO Liceo LMS{% endblock %}
+
+{% block content %}
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap');
+
+  :root {
+    --p: #1e3a8a;
+    --p-dark: #0c2461;
+    --p-light: #eff6ff;
+    --p-border: #dbeafe;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --bd: #e2e8f0;
+    --tx: #0f172a;
+    --mu: #64748b;
+    --ok: #10b981;
+    --warn: #f59e0b;
+    --err: #ef4444;
+  }
+
+  body {
+    background: var(--bg);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  .wrap {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 40px 28px;
+  }
+
+  .swafo-hero {
+    background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #2563eb 100%);
+    border-radius: 24px;
+    padding: 32px 40px;
+    color: #fff;
+    margin-bottom: 32px;
+    box-shadow: 0 20px 40px -10px rgba(30, 58, 138, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .swafo-hero h1 {
+    font-size: 2rem;
+    font-weight: 900;
+    margin: 0 0 6px;
+    letter-spacing: -0.03em;
+  }
+
+  .swafo-hero p {
+    margin: 0;
+    opacity: .88;
+    font-size: .95rem;
+  }
+
+  .btn-back {
+    padding: 10px 20px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #fff;
+    font-weight: 800;
+    font-size: .88rem;
+    text-decoration: none;
+    transition: all .2s ease;
+  }
+
+  .btn-back:hover {
+    background: #fff;
+    color: var(--p);
+  }
+
+  .card-box {
+    background: var(--card);
+    border-radius: 24px;
+    border: 1px solid var(--bd);
+    padding: 32px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+    margin-bottom: 28px;
+  }
+
+  .card-title {
+    font-size: 1.18rem;
+    font-weight: 800;
+    color: var(--p);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--p-light);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin-bottom: 20px;
+  }
+
+  .form-grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+
+  .form-grid-2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+
+  .info-item label {
+    font-size: .76rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--mu);
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  .info-item span {
+    font-size: .98rem;
+    font-weight: 700;
+    color: var(--tx);
+  }
+
+  .form-group {
+    margin-bottom: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+  }
+
+  .form-group label {
+    font-size: .78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--mu);
+  }
+
+  .form-control {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1.5px solid var(--bd);
+    font-family: inherit;
+    font-size: .92rem;
+    background: #f8fafc;
+    color: var(--tx);
+    box-sizing: border-box;
+    transition: all .2s ease;
+  }
+
+  .form-control:focus {
+    outline: none;
+    background: #fff;
+    border-color: var(--p);
+    box-shadow: 0 0 0 4px rgba(30, 58, 138, 0.12);
+  }
+
+  textarea.form-control {
+    min-height: 120px;
+    resize: vertical;
+  }
+
+  .btn-submit {
+    padding: 14px 36px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--p), #2563eb);
+    color: #fff;
+    border: none;
+    font-weight: 800;
+    cursor: pointer;
+    font-size: .95rem;
+    box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
+    transition: all .18s ease;
+  }
+
+  .btn-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 22px rgba(30, 58, 138, 0.45);
+  }
+
+  .ack-box {
+    border-radius: 16px;
+    padding: 20px 24px;
+    margin-top: 20px;
+  }
+
+  .ack-success {
+    background: #f0fdf4;
+    border: 1.5px solid #bbf7d0;
+    color: #166534;
+  }
+
+  .ack-pending {
+    background: #fffbeb;
+    border: 1.5px solid #fde68a;
+    color: #92400e;
+  }
+
+  @media(max-width: 768px) {
+    .info-grid, .form-grid-3, .form-grid-2 { grid-template-columns: 1fr; }
+  }
+</style>
+
+<div class="wrap">
+
+  <div class="swafo-hero">
+    <div>
+      <h1>Parent Conference Details</h1>
+      <p>{{ conf.title }} &bull; {{ conf.student_name }}</p>
+    </div>
+    <a href="/teacher/swafo/conferences" class="btn-back">Back to Conferences List</a>
+  </div>
+
+  <!-- SUMMARY CARD -->
+  <div class="card-box">
+    <div class="card-title">
+      <span>Conference Summary & Student Background</span>
+      <span style="font-size: .85rem; font-weight: 800; color: var(--mu);">ID: #{{ conf.conference_id }}</span>
+    </div>
+
+    <div class="info-grid">
+      <div class="info-item">
+        <label>Student Name</label>
+        <span>{{ conf.student_name }} ({{ conf.grade_level or 'Student' }}{% if conf.section_name %} &bull; {{ conf.section_name }}{% endif %})</span>
+      </div>
+
+      <div class="info-item">
+        <label>Current Scheduled Date & Time</label>
+        <span>{{ conf.conference_date }} &bull; {{ conf.conference_time or 'TBD' }}</span>
+      </div>
+
+      <div class="info-item">
+        <label>Mode & Venue</label>
+        <span>
+          {% if conf.meeting_type == 'online' %}Online Meeting{% else %}In-Person Meeting{% endif %}<br>
+          {% if conf.meeting_location and ('http://' in conf.meeting_location or 'https://' in conf.meeting_location or 'meet.google' in conf.meeting_location or 'zoom.us' in conf.meeting_location or 'teams.microsoft' in conf.meeting_location) %}
+            {% set url = conf.meeting_location if (conf.meeting_location.startswith('http://') or conf.meeting_location.startswith('https://')) else 'https://' ~ conf.meeting_location %}
+            <a href="{{ url }}" target="_blank" rel="noopener noreferrer" style="color: #2563eb; font-weight: 700; font-size: .85rem; text-decoration: underline; display: inline-flex; align-items: center; gap: 4px; margin-top: 2px;">
+              Open Online Meeting Link &rarr;
+            </a>
+          {% else %}
+            <span style="font-size: .88rem; color: var(--mu); font-weight: 600;">Venue: {{ conf.meeting_location or 'SWAFO Office' }}</span>
+          {% endif %}
+        </span>
+      </div>
+    </div>
+
+    {% if conf.parent_notes %}
+    <div style="background: #fffbeb; border: 1px solid #fde68a; padding: 18px; border-radius: 14px; margin-top: 10px;">
+      <label style="font-size: .75rem; font-weight: 800; text-transform: uppercase; color: #92400e; display: block; margin-bottom: 6px;">Parent Response / Reschedule Request Note</label>
+      <div style="color: #78350f; font-size: .92rem; line-height: 1.5; font-weight: 600;">{{ conf.parent_notes }}</div>
+    </div>
+    {% endif %}
+
+    {% if conf.incident_type %}
+    <div style="background: #eff6ff; border: 1px solid #dbeafe; padding: 18px; border-radius: 14px; margin-top: 16px;">
+      <label style="font-size: .75rem; font-weight: 800; text-transform: uppercase; color: var(--p); display: block; margin-bottom: 6px;">Linked Discipline Incident</label>
+      <div style="font-weight: 800; color: var(--p); font-size: .95rem;">{{ conf.incident_type }} ({{ conf.incident_date }})</div>
+      <div style="color: #334155; font-size: .88rem; margin-top: 4px;">{{ conf.incident_description }}</div>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- FORM CARD: EDIT SCHEDULE & MINUTES -->
+  <div class="card-box">
+    <div class="card-title">
+      <span>Reschedule & Minutes Management</span>
+    </div>
+
+    <form method="POST" action="/teacher/swafo/conference/{{ conf.conference_id }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <!-- EDIT SCHEDULE FIELDS -->
+      <div style="background: #f8fafc; border: 1px solid var(--bd); padding: 20px; border-radius: 16px; margin-bottom: 24px;">
+        <h4 style="font-size: .95rem; font-weight: 800; color: var(--p); margin: 0 0 16px; text-transform: uppercase; letter-spacing: .04em;">Schedule & Venue Settings</h4>
+
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label>Conference Title</label>
+            <input type="text" name="title" class="form-control" value="{{ conf.title }}" required>
+          </div>
+
+          <div class="form-group">
+            <label>Conference Date</label>
+            <input type="date" name="conference_date" class="form-control" value="{{ conf.conference_date }}" required>
+          </div>
+
+          <div class="form-group">
+            <label>Conference Time</label>
+            <input type="time" name="conference_time" class="form-control" value="{{ conf.conference_time or '' }}">
+          </div>
+        </div>
+
+        <div class="form-grid-3">
+          <div class="form-group">
+            <label>Meeting Mode</label>
+            <select name="meeting_type" class="form-control">
+              <option value="in_person" {% if conf.meeting_type == 'in_person' %}selected{% endif %}>In-Person (SWAFO Office / Campus)</option>
+              <option value="online" {% if conf.meeting_type == 'online' %}selected{% endif %}>Online Meeting (Google Meet / Zoom)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Venue / Online URL Link</label>
+            <input type="text" name="meeting_location" class="form-control" value="{{ conf.meeting_location or '' }}" placeholder="Room number or Google Meet link...">
+          </div>
+
+          <div class="form-group">
+            <label>Conference Status</label>
+            <select name="status" class="form-control" style="font-weight: 700;">
+              <option value="scheduled" {% if conf.status == 'scheduled' %}selected{% endif %}>Scheduled</option>
+              <option value="confirmed_by_parent" {% if conf.status == 'confirmed_by_parent' %}selected{% endif %}>Confirmed by Parent</option>
+              <option value="reschedule_requested" {% if conf.status == 'reschedule_requested' %}selected{% endif %}>Reschedule Requested</option>
+              <option value="completed" {% if conf.status == 'completed' %}selected{% endif %}>Completed</option>
+              <option value="cancelled" {% if conf.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- MINUTES & ACTION PLAN -->
+      <div class="form-group">
+        <label>1. Minutes of Meeting Summary</label>
+        <textarea name="minutes_of_meeting" class="form-control" rows="5" placeholder="Write the summary of discussions held between SWAFO officers, student, and parents...">{{ conf.minutes_of_meeting or '' }}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label>2. Resolution Action Plan & Agreed Terms</label>
+        <textarea name="agreements" class="form-control" rows="4" placeholder="Write agreed resolution terms (e.g. Guidance monitoring period, counseling timeline, behavioral commitments)...">{{ conf.agreements or '' }}</textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+        <button type="submit" class="btn-submit">Save Conference Details & Minutes</button>
+      </div>
+    </form>
+
+    <!-- PARENT ACKNOWLEDGMENT STATUS -->
+    {% if conf.parent_acknowledged_at %}
+    <div class="ack-box ack-success">
+      <strong style="font-size: .95rem; display: block; margin-bottom: 4px;">Digital Parent Acknowledgment Verified</strong>
+      <span style="font-size: .88rem;">The parent electronically signed and confirmed reading the resolution agreement on: <strong>{{ conf.parent_acknowledged_at }}</strong></span>
+    </div>
+    {% else %}
+    <div class="ack-box ack-pending">
+      <strong style="font-size: .95rem; display: block; margin-bottom: 4px;">Pending Parent Digital Acknowledgment</strong>
+      <span style="font-size: .88rem;">Once minutes and resolution terms are saved, parents can review and digitally sign off on their Parent Portal.</span>
+    </div>
+    {% endif %}
+
+  </div>
+
+</div>
+{% endblock %}

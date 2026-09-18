@@ -3475,3 +3475,135 @@ def shs_electives():
     finally:
         cur.close()
         db.close()
+
+
+# ══════════════════════════════════════════
+# SWAFO — Student Cumulative Record
+# ══════════════════════════════════════════
+@student_portal_bp.route("/student/swafo-record", methods=["GET", "POST"])
+def student_swafo_record():
+    if not _require_student():
+        return redirect("/")
+
+    enrollment_id = session.get("enrollment_id")
+    branch_id = session.get("branch_id")
+    if not enrollment_id:
+        flash("No enrollment found for your account.", "error")
+        return redirect("/student/dashboard")
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        if request.method == "POST":
+            action = request.form.get("action", "save")
+
+            family_members = []
+            names = request.form.getlist("fm_name[]")
+            ages  = request.form.getlist("fm_edad[]")
+            edstats = request.form.getlist("fm_estatus[]")
+            pinapas = request.form.getlist("fm_pinapasukan[]")
+            trabaho = request.form.getlist("fm_trabaho[]")
+            for i, nm in enumerate(names):
+                if nm.strip():
+                    family_members.append({
+                        "name": nm.strip(),
+                        "edad": ages[i] if i < len(ages) else "",
+                        "estatus": edstats[i] if i < len(edstats) else "",
+                        "pinapasukan": pinapas[i] if i < len(pinapas) else "",
+                        "trabaho": trabaho[i] if i < len(trabaho) else "",
+                    })
+
+            education_history = []
+            ed_antas = request.form.getlist("ed_antas[]")
+            ed_paaralan = request.form.getlist("ed_paaralan[]")
+            ed_taon = request.form.getlist("ed_taon[]")
+            ed_katamo = request.form.getlist("ed_katamo[]")
+            for i, a in enumerate(ed_antas):
+                education_history.append({
+                    "antas": a,
+                    "paaralan": ed_paaralan[i] if i < len(ed_paaralan) else "",
+                    "taon": ed_taon[i] if i < len(ed_taon) else "",
+                    "katamo": ed_katamo[i] if i < len(ed_katamo) else "",
+                })
+
+            summer_subjects = [s.strip() for s in request.form.getlist("sum_asignatura[]") if s.strip()]
+            new_status = "submitted" if action == "submit" else "draft"
+
+            cur.execute("""
+                INSERT INTO swafo_records (
+                    enrollment_id, branch_id,
+                    family_members, kamag_anak, may_sariling_silid, kasama_sa_silid,
+                    uri_ng_kabuhayan, natutulog_sa_bahay, naranasan_maglayas, dahilan_maglayas,
+                    piskal_na_kapansanan, malinaw_mata, maayos_pandinig, naiban_sakit, karamdaman,
+                    education_history, kalagayan_pag_aaral, kung_napatigil, umakyat_antas, kung_opo_antas,
+                    may_binyag, parokya_binyag, may_kumpil, parokya_kumpil,
+                    relihiyon, kasali_samahan, uri_samahan, nakapag_kumpisal, nakatanggap_komunyon,
+                    summer_subjects, pinakagusto_subject, inaayawan_subject,
+                    bokasyon_kurso, kaninong_kagustuhan, sarili_description,
+                    status, submitted_at, updated_at
+                ) VALUES (
+                    %s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,
+                    CASE WHEN %s='submitted' THEN NOW() ELSE NULL END, NOW()
+                )
+                ON CONFLICT (enrollment_id) DO UPDATE SET
+                    family_members=EXCLUDED.family_members, kamag_anak=EXCLUDED.kamag_anak,
+                    may_sariling_silid=EXCLUDED.may_sariling_silid, kasama_sa_silid=EXCLUDED.kasama_sa_silid,
+                    uri_ng_kabuhayan=EXCLUDED.uri_ng_kabuhayan, natutulog_sa_bahay=EXCLUDED.natutulog_sa_bahay,
+                    naranasan_maglayas=EXCLUDED.naranasan_maglayas, dahilan_maglayas=EXCLUDED.dahilan_maglayas,
+                    piskal_na_kapansanan=EXCLUDED.piskal_na_kapansanan, malinaw_mata=EXCLUDED.malinaw_mata,
+                    maayos_pandinig=EXCLUDED.maayos_pandinig, naiban_sakit=EXCLUDED.naiban_sakit,
+                    karamdaman=EXCLUDED.karamdaman, education_history=EXCLUDED.education_history,
+                    kalagayan_pag_aaral=EXCLUDED.kalagayan_pag_aaral, kung_napatigil=EXCLUDED.kung_napatigil,
+                    umakyat_antas=EXCLUDED.umakyat_antas, kung_opo_antas=EXCLUDED.kung_opo_antas,
+                    may_binyag=EXCLUDED.may_binyag, parokya_binyag=EXCLUDED.parokya_binyag,
+                    may_kumpil=EXCLUDED.may_kumpil, parokya_kumpil=EXCLUDED.parokya_kumpil,
+                    relihiyon=EXCLUDED.relihiyon, kasali_samahan=EXCLUDED.kasali_samahan,
+                    uri_samahan=EXCLUDED.uri_samahan, nakapag_kumpisal=EXCLUDED.nakapag_kumpisal,
+                    nakatanggap_komunyon=EXCLUDED.nakatanggap_komunyon,
+                    summer_subjects=EXCLUDED.summer_subjects, pinakagusto_subject=EXCLUDED.pinakagusto_subject,
+                    inaayawan_subject=EXCLUDED.inaayawan_subject, bokasyon_kurso=EXCLUDED.bokasyon_kurso,
+                    kaninong_kagustuhan=EXCLUDED.kaninong_kagustuhan, sarili_description=EXCLUDED.sarili_description,
+                    status=EXCLUDED.status,
+                    submitted_at=CASE WHEN EXCLUDED.status='submitted' AND swafo_records.submitted_at IS NULL THEN NOW() ELSE swafo_records.submitted_at END,
+                    updated_at=NOW()
+            """, (
+                enrollment_id, branch_id,
+                json.dumps(family_members), request.form.get("kamag_anak",""),
+                request.form.get("may_sariling_silid",""), request.form.get("kasama_sa_silid",""),
+                request.form.get("uri_ng_kabuhayan",""), request.form.get("natutulog_sa_bahay",""),
+                request.form.get("naranasan_maglayas",""), request.form.get("dahilan_maglayas",""),
+                request.form.get("piskal_na_kapansanan",""), request.form.get("malinaw_mata",""),
+                request.form.get("maayos_pandinig",""), request.form.get("naiban_sakit",""),
+                request.form.get("karamdaman",""),
+                json.dumps(education_history),
+                request.form.get("kalagayan_pag_aaral",""), request.form.get("kung_napatigil",""),
+                request.form.get("umakyat_antas",""), request.form.get("kung_opo_antas",""),
+                request.form.get("may_binyag",""), request.form.get("parokya_binyag",""),
+                request.form.get("may_kumpil",""), request.form.get("parokya_kumpil",""),
+                request.form.get("relihiyon",""), request.form.get("kasali_samahan",""),
+                request.form.get("uri_samahan",""), request.form.get("nakapag_kumpisal",""),
+                request.form.get("nakatanggap_komunyon",""),
+                json.dumps(summer_subjects),
+                request.form.get("pinakagusto_subject",""), request.form.get("inaayawan_subject",""),
+                request.form.get("bokasyon_kurso",""), request.form.get("kaninong_kagustuhan",""),
+                request.form.get("sarili_description",""),
+                new_status, new_status,
+            ))
+            db.commit()
+            flash("Naisumite na ang iyong SWAFO Cumulative Record!" if action=="submit" else "Na-save ang iyong record.", "success")
+            return redirect("/student/swafo-record")
+
+        cur.execute("SELECT * FROM swafo_records WHERE enrollment_id = %s", (enrollment_id,))
+        record = cur.fetchone()
+        cur.execute("SELECT student_first_name, student_middle_name, student_last_name, grade_level FROM enrollments WHERE enrollment_id = %s", (enrollment_id,))
+        student_info = cur.fetchone()
+        return render_template("student_swafo_form.html", record=record, student_info=student_info)
+
+    except Exception as e:
+        db.rollback()
+        flash(f"Nagkaroon ng error: {str(e)}", "error")
+        return redirect("/student/dashboard")
+    finally:
+        cur.close()
+        db.close()

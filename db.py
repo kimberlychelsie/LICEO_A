@@ -367,6 +367,89 @@ def get_db_connection():
                 logger.warning(f"Could not migrate individual_extensions table: {e}")
                 conn.rollback()
 
+            # SWAFO migrations
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'users'")
+                u_cols = [r[0] for r in cur.fetchall()]
+                if 'is_swafo' not in u_cols:
+                    cur.execute("ALTER TABLE users ADD COLUMN is_swafo BOOLEAN DEFAULT FALSE")
+                
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS swafo_records (
+                        record_id SERIAL PRIMARY KEY,
+                        enrollment_id INTEGER UNIQUE REFERENCES enrollments(enrollment_id) ON DELETE CASCADE,
+                        student_id INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
+                        family_members JSONB DEFAULT '[]'::jsonb,
+                        health_info JSONB DEFAULT '{}'::jsonb,
+                        education_history JSONB DEFAULT '[]'::jsonb,
+                        summer_subjects JSONB DEFAULT '[]'::jsonb,
+                        religion_info JSONB DEFAULT '{}'::jsonb,
+                        vocation_info JSONB DEFAULT '{}'::jsonb,
+                        general_info JSONB DEFAULT '{}'::jsonb,
+                        status VARCHAR(50) DEFAULT 'Draft',
+                        teacher_notes TEXT,
+                        reviewed_by INTEGER REFERENCES users(user_id),
+                        reviewed_at TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS swafo_discipline_log (
+                        log_id SERIAL PRIMARY KEY,
+                        enrollment_id INTEGER REFERENCES enrollments(enrollment_id) ON DELETE CASCADE,
+                        student_id INTEGER REFERENCES users(user_id) ON DELETE CASCADE,
+                        branch_id INTEGER,
+                        logged_by INTEGER REFERENCES users(user_id),
+                        reported_by INTEGER REFERENCES users(user_id),
+                        incident_date DATE NOT NULL,
+                        incident_type VARCHAR(100),
+                        offense_level VARCHAR(50),
+                        severity VARCHAR(50),
+                        description TEXT,
+                        action_taken TEXT,
+                        status VARCHAR(50) DEFAULT 'Pending',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'swafo_discipline_log'")
+                dl_cols = [r[0] for r in cur.fetchall()]
+                if 'branch_id' not in dl_cols:
+                    cur.execute("ALTER TABLE swafo_discipline_log ADD COLUMN branch_id INTEGER")
+                if 'logged_by' not in dl_cols:
+                    cur.execute("ALTER TABLE swafo_discipline_log ADD COLUMN logged_by INTEGER")
+                if 'incident_type' not in dl_cols:
+                    cur.execute("ALTER TABLE swafo_discipline_log ADD COLUMN incident_type VARCHAR(100)")
+                if 'severity' not in dl_cols:
+                    cur.execute("ALTER TABLE swafo_discipline_log ADD COLUMN severity VARCHAR(50)")
+                
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS swafo_parent_conferences (
+                        conference_id SERIAL PRIMARY KEY,
+                        branch_id INTEGER,
+                        enrollment_id INTEGER REFERENCES enrollments(enrollment_id) ON DELETE CASCADE,
+                        discipline_log_id INTEGER REFERENCES swafo_discipline_log(log_id) ON DELETE SET NULL,
+                        scheduled_by INTEGER REFERENCES users(user_id) ON DELETE SET NULL,
+                        title VARCHAR(255) NOT NULL,
+                        conference_date DATE NOT NULL,
+                        conference_time VARCHAR(50),
+                        meeting_type VARCHAR(50) DEFAULT 'in_person',
+                        meeting_location VARCHAR(255),
+                        agenda TEXT,
+                        status VARCHAR(50) DEFAULT 'scheduled',
+                        parent_notes TEXT,
+                        minutes_of_meeting TEXT,
+                        agreements TEXT,
+                        parent_acknowledged_at TIMESTAMP,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not migrate SWAFO tables: {e}")
+                conn.rollback()
+
             # exam_student_permissions migration
             try:
                 cur.execute("""
@@ -955,6 +1038,104 @@ def get_db_connection():
                 conn.commit()
             except Exception as e:
                 logger.warning(f"Could not update super admin full_name: {e}")
+                conn.rollback()
+
+            # ── SWAFO: is_swafo flag on users ──
+            try:
+                cur.execute("SELECT column_name FROM information_schema.columns WHERE table_name = 'users'")
+                usr_cols = [r[0] for r in cur.fetchall()]
+                if 'is_swafo' not in usr_cols:
+                    cur.execute("ALTER TABLE users ADD COLUMN is_swafo BOOLEAN DEFAULT FALSE")
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not add is_swafo to users: {e}")
+                conn.rollback()
+
+            # ── SWAFO: swafo_records table (student cumulative records) ──
+            try:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS swafo_records (
+                        record_id           SERIAL PRIMARY KEY,
+                        enrollment_id       INTEGER NOT NULL REFERENCES enrollments(enrollment_id) ON DELETE CASCADE,
+                        branch_id           INTEGER NOT NULL,
+                        -- I. Family Background
+                        family_members      JSONB DEFAULT '[]',
+                        kamag_anak          TEXT,
+                        may_sariling_silid  VARCHAR(10),
+                        kasama_sa_silid     TEXT,
+                        uri_ng_kabuhayan    VARCHAR(50),
+                        natutulog_sa_bahay  VARCHAR(10),
+                        naranasan_maglayas  VARCHAR(10),
+                        dahilan_maglayas    TEXT,
+                        -- II. Kalusugan
+                        piskal_na_kapansanan TEXT,
+                        malinaw_mata        VARCHAR(10),
+                        maayos_pandinig     VARCHAR(10),
+                        naiban_sakit        VARCHAR(10),
+                        karamdaman          TEXT,
+                        -- III. Edukasyon
+                        education_history   JSONB DEFAULT '[]',
+                        kalagayan_pag_aaral VARCHAR(50),
+                        kung_napatigil      TEXT,
+                        umakyat_antas       VARCHAR(10),
+                        kung_opo_antas       TEXT,
+                        -- IV. Relihiyon
+                        may_binyag          VARCHAR(10),
+                        parokya_binyag      TEXT,
+                        may_kumpil          VARCHAR(10),
+                        parokya_kumpil      TEXT,
+                        relihiyon           TEXT,
+                        kasali_samahan      VARCHAR(10),
+                        uri_samahan         TEXT,
+                        nakapag_kumpisal    VARCHAR(10),
+                        nakatanggap_komunyon VARCHAR(10),
+                        -- V. Summer Subjects
+                        summer_subjects     JSONB DEFAULT '[]',
+                        pinakagusto_subject TEXT,
+                        inaayawan_subject   TEXT,
+                        -- VI. Bokasyon/Kurso
+                        bokasyon_kurso      TEXT,
+                        kaninong_kagustuhan TEXT,
+                        sarili_description  TEXT,
+                        -- Meta
+                        status              VARCHAR(20) DEFAULT 'draft',
+                        teacher_notes       TEXT,
+                        reviewed_by         INTEGER REFERENCES users(user_id),
+                        reviewed_at         TIMESTAMP,
+                        submitted_at        TIMESTAMP,
+                        created_at          TIMESTAMP DEFAULT NOW(),
+                        updated_at          TIMESTAMP DEFAULT NOW(),
+                        UNIQUE (enrollment_id)
+                    )
+                """)
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_swafo_records_branch ON swafo_records (branch_id)")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_swafo_records_status ON swafo_records (status)")
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not create swafo_records table: {e}")
+                conn.rollback()
+
+            # ── SWAFO: swafo_discipline_log table ──
+            try:
+                cur.execute("""
+                    CREATE TABLE IF NOT EXISTS swafo_discipline_log (
+                        log_id          SERIAL PRIMARY KEY,
+                        enrollment_id   INTEGER NOT NULL REFERENCES enrollments(enrollment_id) ON DELETE CASCADE,
+                        branch_id       INTEGER NOT NULL,
+                        logged_by       INTEGER NOT NULL REFERENCES users(user_id),
+                        incident_date   DATE NOT NULL,
+                        incident_type   VARCHAR(100),
+                        description     TEXT NOT NULL,
+                        action_taken    TEXT,
+                        severity        VARCHAR(20) DEFAULT 'minor',
+                        created_at      TIMESTAMP DEFAULT NOW()
+                    )
+                """)
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_swafo_discipline_enrollment ON swafo_discipline_log (enrollment_id)")
+                cur.execute("CREATE INDEX IF NOT EXISTS idx_swafo_discipline_branch ON swafo_discipline_log (branch_id)")
+                conn.commit()
+            except Exception as e:
+                logger.warning(f"Could not create swafo_discipline_log table: {e}")
                 conn.rollback()
 
             # Commit successful things
