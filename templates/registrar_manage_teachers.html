@@ -924,17 +924,22 @@ function renderModalSubjects() {
     html += '<div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:12px;">';
     grouped[grade].forEach(s => {
       let isSelf = s.is_assigned_to_this_teacher;
-      let disabled = isSelf ? 'disabled checked' : '';
-      let border = isSelf ? 'border-color:var(--a); background:#eff6ff;' : (s.current_teacher_name ? 'border-color:var(--warn); background:#fffbf1;' : 'border-color:var(--bd); background:#fff;');
+      let hasOtherTeacher = s.current_teacher_name && !isSelf;
+      let disabled = hasOtherTeacher ? 'disabled' : '';
+      let checked = isSelf ? 'checked' : '';
+      let border = isSelf ? 'border-color:var(--a); background:#eff6ff;' : (hasOtherTeacher ? 'border-color:var(--warn); background:#fffbf1; opacity:0.6; cursor:not-allowed;' : 'border-color:var(--bd); background:#fff;');
       let badgeHtml = isSelf
         ? '<span style="font-size:.65rem; background:#dbeafe; color:#1e40af; padding:2px 6px; border-radius:6px; font-weight:800;">Already yours</span>'
-        : (s.current_teacher_name
+        : (hasOtherTeacher
             ? `<span style="font-size:.65rem; background:#fef3c7; color:#92400e; padding:2px 6px; border-radius:6px; font-weight:800;">With ${String(s.current_teacher_name).split(' ')[0]}</span>`
             : '<span style="font-size:.65rem; background:#f1f5f9; color:var(--mu); padding:2px 6px; border-radius:6px; font-weight:800;">Open</span>');
 
+      let subNameEsc = String(s.subject_name).replace(/"/g, '&quot;');
+      let secNameEsc = String(s.section_name).replace(/"/g, '&quot;');
+
       html += `
-        <label id="mitem_${s.assignment_id}" style="display:flex; flex-direction:column; padding:14px; border-radius:14px; border:2px solid transparent; ${border} cursor:${isSelf?'default':'pointer'}; transition:all .2s;">
-          <input type="checkbox" class="mod-sub-cb" value="${s.assignment_id}" ${disabled} style="display:none;" onchange="updateModalCount(this)">
+        <label id="mitem_${s.assignment_id}" style="display:flex; flex-direction:column; padding:14px; border-radius:14px; border:2px solid transparent; ${border} cursor:${hasOtherTeacher ? 'not-allowed' : 'pointer'}; transition:all .2s;">
+          <input type="checkbox" class="mod-sub-cb" value="${s.assignment_id}" data-is-self="${isSelf ? 'true' : 'false'}" data-subject-name="${subNameEsc}" data-section-name="${secNameEsc}" ${disabled} ${checked} style="display:none;" onchange="updateModalCount(this)">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
             <span style="font-size:.7rem; font-weight:800; background:#e2e8f0; padding:2px 6px; border-radius:4px; color:var(--tx);">${s.section_name}</span>
             ${badgeHtml}
@@ -948,7 +953,17 @@ function renderModalSubjects() {
 }
 
 function updateModalCount(el) {
-  if (el) {
+  if (el && el.classList && el.classList.contains('mod-sub-cb')) {
+    const isSelf = el.getAttribute('data-is-self') === 'true';
+    if (isSelf && !el.checked) {
+      const subName = el.getAttribute('data-subject-name') || 'this subject';
+      const secName = el.getAttribute('data-section-name') || '';
+      const msg = `Are you sure you want to remove ${subName}${secName ? ' (' + secName + ')' : ''} from this teacher?`;
+      if (!confirm(msg)) {
+        el.checked = true;
+      }
+    }
+
     const parent = document.getElementById('mitem_' + el.value);
     if (parent) {
       if (el.checked) { parent.style.borderColor = 'var(--a)'; parent.style.background = '#eff6ff'; }
@@ -958,15 +973,29 @@ function updateModalCount(el) {
 
   const count = document.querySelectorAll('.mod-sub-cb:checked:not([disabled])').length;
   const badge = document.getElementById('selCountBadge');
-  badge.textContent = count + ' picked';
-  badge.style.display = count > 0 ? 'inline-block' : 'none';
-  document.getElementById('modalSaveBtn').disabled = count === 0;
+  if (badge) {
+    badge.textContent = count + ' picked';
+    badge.style.display = count > 0 ? 'inline-block' : 'none';
+  }
+
+  const initialCheckedIds = allModalSubjects.filter(s => s.is_assigned_to_this_teacher).map(s => s.assignment_id);
+  const currentCheckedIds = Array.from(document.querySelectorAll('.mod-sub-cb:checked:not([disabled])')).map(c => parseInt(c.value, 10));
+  const subjectsChanged = JSON.stringify(initialCheckedIds.sort()) !== JSON.stringify(currentCheckedIds.sort());
+
+  const saveBtn = document.getElementById('modalSaveBtn');
+  if (saveBtn) saveBtn.disabled = !subjectsChanged;
 }
 
 function selectAllSubjects() {
   document.querySelectorAll('.mod-sub-cb:not([disabled])').forEach(cb => { cb.checked = true; updateModalCount(cb); });
 }
 function deselectAllSubjects() {
+  const hasAssigned = Array.from(document.querySelectorAll('.mod-sub-cb:checked:not([disabled])')).some(cb => cb.getAttribute('data-is-self') === 'true');
+  if (hasAssigned) {
+    if (!confirm("Are you sure you want to remove all assigned subject loads from this teacher?")) {
+      return;
+    }
+  }
   document.querySelectorAll('.mod-sub-cb:not([disabled])').forEach(cb => { cb.checked = false; updateModalCount(cb); });
 }
 

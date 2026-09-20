@@ -4028,8 +4028,8 @@ def registrar_assign_teachers_bulk():
     teacher_id = data.get("teacher_id")
     assignment_ids = data.get("assignment_ids", [])
 
-    if not teacher_id or not assignment_ids:
-        return {"success": False, "message": "Missing data"}, 400
+    if not teacher_id:
+        return {"success": False, "message": "Missing teacher ID"}, 400
 
     db = get_db_connection()
     cursor = db.cursor()
@@ -4041,9 +4041,25 @@ def registrar_assign_teachers_bulk():
         )
         if not cursor.fetchone():
             return {"success": False, "message": "That teacher is not available (archived or missing)."}, 400
-        cursor.execute("UPDATE section_teachers SET teacher_id = %s WHERE id = ANY(%s) AND section_id IN (SELECT section_id FROM sections WHERE branch_id = %s)", (teacher_id, assignment_ids, branch_id))
+
+        cursor.execute(
+            """UPDATE section_teachers SET teacher_id = NULL
+               WHERE teacher_id = %s
+                 AND NOT (id = ANY(%s))
+                 AND section_id IN (SELECT section_id FROM sections WHERE branch_id = %s)""",
+            (teacher_id, assignment_ids if assignment_ids else [-1], branch_id),
+        )
+
+        if assignment_ids:
+            cursor.execute(
+                """UPDATE section_teachers SET teacher_id = %s
+                   WHERE id = ANY(%s)
+                     AND section_id IN (SELECT section_id FROM sections WHERE branch_id = %s)""",
+                (teacher_id, assignment_ids, branch_id),
+            )
+
         db.commit()
-        return {"success": True, "count": cursor.rowcount}
+        return {"success": True}
     except Exception as e:
         db.rollback()
         return {"success": False, "message": str(e)}, 500

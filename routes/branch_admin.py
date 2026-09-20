@@ -2882,6 +2882,15 @@ def branch_admin_assign_teachers_bulk():
             )
 
         # ── Subject assignments ──
+        # Clear any previously assigned subjects for this teacher that were unchecked
+        cursor.execute(
+            """UPDATE section_teachers SET teacher_id = NULL
+               WHERE teacher_id = %s
+                 AND NOT (id = ANY(%s))
+                 AND section_id IN (SELECT section_id FROM sections WHERE branch_id = %s)""",
+            (teacher_id, assignment_ids if assignment_ids else [-1], branch_id),
+        )
+
         if assignment_ids:
             cursor.execute(
                 """UPDATE section_teachers SET teacher_id = %s
