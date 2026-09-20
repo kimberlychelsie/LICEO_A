@@ -217,13 +217,155 @@
         font-weight: 600;
     }
     
-    .bottom-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1.5rem;
+    .btn-edit-contact {
+        padding: 10px 20px;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--primary), var(--secondary));
+        color: #fff;
+        font-weight: 800;
+        font-size: 0.9rem;
+        border: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 4px 12px rgba(26, 58, 143, 0.25);
+        transition: all 0.2s ease;
     }
-    @media (max-width: 900px) {
-        .bottom-grid { grid-template-columns: 1fr; }
+
+    .btn-edit-contact:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(26, 58, 143, 0.35);
+    }
+
+    /* Modal Styles */
+    .profile-modal-backdrop {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.6);
+        backdrop-filter: blur(4px);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+
+    .profile-modal-backdrop.open {
+        display: flex;
+    }
+
+    .profile-modal-card {
+        background: #fff;
+        border-radius: 20px;
+        max-width: 540px;
+        width: 100%;
+        padding: 28px;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--border-color);
+        box-sizing: border-box;
+    }
+
+    .modal-title-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 2px solid var(--bg-main);
+    }
+
+    .modal-title {
+        font-size: 1.2rem;
+        font-weight: 800;
+        color: var(--primary);
+        margin: 0;
+    }
+
+    .modal-close-btn {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: var(--text-muted);
+        cursor: pointer;
+        line-height: 1;
+    }
+
+    .form-group-modal {
+        margin-bottom: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .form-group-modal label {
+        font-size: 0.76rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-muted);
+    }
+
+    .form-control-modal {
+        width: 100%;
+        padding: 10px 14px;
+        border-radius: 10px;
+        border: 1.5px solid var(--border-color);
+        font-family: inherit;
+        font-size: 0.9rem;
+        background: #f8fafc;
+        color: var(--text-main);
+        box-sizing: border-box;
+    }
+
+    .form-control-modal:focus {
+        outline: none;
+        background: #fff;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(26, 58, 143, 0.12);
+    }
+
+    .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 12px;
+        margin-top: 24px;
+    }
+
+    .btn-modal-cancel {
+        padding: 10px 20px;
+        border-radius: 10px;
+        background: #f1f5f9;
+        color: var(--text-muted);
+        border: none;
+        font-weight: 700;
+        cursor: pointer;
+    }
+
+    .btn-modal-save {
+        padding: 10px 24px;
+        border-radius: 10px;
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        font-weight: 800;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .btn-modal-save:disabled {
+        background: #94a3b8 !important;
+        cursor: not-allowed !important;
+        opacity: 0.6 !important;
+        box-shadow: none !important;
+    }
+
+    .field-error-msg {
+        color: #ef4444;
+        font-size: 0.78rem;
+        font-weight: 600;
+        margin-top: 4px;
+        display: none;
     }
 </style>
 {% endblock %}
@@ -231,8 +373,15 @@
 {% block content %}
 <div class="container-layout">
 
-    <div class="page-header">
-        <h1 class="page-title">Student Profile Details</h1>
+    <div class="page-header" style="display: flex; flex-direction: row; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+        <div>
+            <h1 class="page-title">Student Profile Details</h1>
+            <p style="margin: 4px 0 0; color: var(--text-muted); font-size: 0.9rem; font-weight: 500;">View your academic records and update your contact information.</p>
+        </div>
+        <button type="button" class="btn-edit-contact" onclick="openContactModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Edit Contact & Guardian Details
+        </button>
     </div>
 
     <!-- Header Card -->
@@ -267,7 +416,7 @@
 
             <div class="profile-notice">
                 <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16"><path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2zm3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2zM5 8h6a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/></svg>
-                To update your profile picture, please contact the Registrar.
+                Official academic records (Name, LRN, Grade/Section) are locked for compliance. To update your profile picture, please contact the Registrar.
             </div>
         </div>
     </div>
@@ -369,4 +518,217 @@
     </div>
 
 </div>
+
+<!-- EDIT CONTACT MODAL -->
+<div class="profile-modal-backdrop" id="editContactModal">
+    <div class="profile-modal-card">
+        <div class="modal-title-row">
+            <h3 class="modal-title">Edit Contact & Guardian Details</h3>
+            <button type="button" class="modal-close-btn" onclick="closeContactModal()">&times;</button>
+        </div>
+
+        <form method="POST" action="{{ url_for('student_portal.student_update_contact') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group-modal">
+                <label>Student Contact Number</label>
+                <input type="text" name="contact_number" class="form-control-modal" value="{{ student.contact_number or '' }}" placeholder="e.g. 09123456789" maxlength="11" inputmode="numeric" pattern="[0-9]*">
+                <small class="field-error-msg" id="err-contact_number"></small>
+            </div>
+
+            <div class="form-group-modal">
+                <label>Student Email Address</label>
+                <input type="email" name="email" class="form-control-modal" value="{{ student.email or '' }}" placeholder="e.g. student@gmail.com" maxlength="100">
+                <small class="field-error-msg" id="err-email"></small>
+            </div>
+
+            <div class="form-group-modal">
+                <label>Home Address</label>
+                <input type="text" name="address" class="form-control-modal" value="{{ student.address or '' }}" placeholder="House No., Street, Barangay, City" maxlength="200">
+                <small class="field-error-msg" id="err-address"></small>
+            </div>
+
+            <!-- Guardian Full Name (First, Middle, Last) -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;" class="guardian-name-grid">
+                <div class="form-group-modal">
+                    <label>Guardian First Name</label>
+                    <input type="text" name="guardian_first_name" class="form-control-modal" value="{{ student.guardian_first_name or '' }}" placeholder="First Name" maxlength="50" oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')">
+                    <small class="field-error-msg" id="err-guardian_first_name"></small>
+                </div>
+                <div class="form-group-modal">
+                    <label>Middle Name</label>
+                    <input type="text" name="guardian_middle_name" class="form-control-modal" value="{{ student.guardian_middle_name or '' }}" placeholder="Middle Name" maxlength="50" oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')">
+                    <small class="field-error-msg" id="err-guardian_middle_name"></small>
+                </div>
+                <div class="form-group-modal">
+                    <label>Last Name</label>
+                    <input type="text" name="guardian_last_name" class="form-control-modal" value="{{ student.guardian_last_name or '' }}" placeholder="Last Name" maxlength="50" oninput="this.value=this.value.replace(/[^A-Za-zñÑ\s-]/g,'').replace(/^\s+/,'').replace(/\s\s+/g,' ')">
+                    <small class="field-error-msg" id="err-guardian_last_name"></small>
+                </div>
+            </div>
+
+            <div class="form-group-modal">
+                <label>Guardian Contact Number</label>
+                <input type="text" name="guardian_contact" class="form-control-modal" value="{{ student.guardian_contact or '' }}" placeholder="e.g. 09187654321" maxlength="11" inputmode="numeric" pattern="[0-9]*">
+                <small class="field-error-msg" id="err-guardian_contact"></small>
+            </div>
+
+            <div class="form-group-modal">
+                <label>Guardian Email Address</label>
+                <input type="email" name="guardian_email" class="form-control-modal" value="{{ student.guardian_email or '' }}" placeholder="e.g. guardian@gmail.com" maxlength="100">
+                <small class="field-error-msg" id="err-guardian_email"></small>
+            </div>
+
+            <div style="background: #eff6ff; border: 1px solid #dbeafe; padding: 12px 14px; border-radius: 10px; font-size: 0.78rem; color: #1e3a8a; font-weight: 600; margin-top: 16px;">
+                Note: Official academic data (Full Name, LRN, Grade/Section) remain locked under Registrar control to ensure compliance with official school records.
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn-modal-cancel" onclick="closeContactModal()">Cancel</button>
+                <button type="submit" class="btn-modal-save">Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let initialContactFormValues = {};
+
+function getContactFormValues() {
+    const form = document.querySelector('#editContactModal form');
+    if (!form) return {};
+    return {
+        contact_number: (form.querySelector('[name="contact_number"]')?.value || '').trim(),
+        email: (form.querySelector('[name="email"]')?.value || '').trim(),
+        address: (form.querySelector('[name="address"]')?.value || '').trim(),
+        guardian_first_name: (form.querySelector('[name="guardian_first_name"]')?.value || '').trim(),
+        guardian_middle_name: (form.querySelector('[name="guardian_middle_name"]')?.value || '').trim(),
+        guardian_last_name: (form.querySelector('[name="guardian_last_name"]')?.value || '').trim(),
+        guardian_contact: (form.querySelector('[name="guardian_contact"]')?.value || '').trim(),
+        guardian_email: (form.querySelector('[name="guardian_email"]')?.value || '').trim()
+    };
+}
+
+function validateContactFormValues(values) {
+    const errors = {};
+    const phMobileRegex = /^09\d{9}$/;
+    const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9-]+\.[a-zA-Z.]{2,}$/;
+
+    if (values.contact_number && !phMobileRegex.test(values.contact_number)) {
+        errors.contact_number = 'Student contact must be an 11-digit PH mobile (09XXXXXXXXX).';
+    }
+
+    if (values.email && !emailRegex.test(values.email)) {
+        errors.email = 'Student email is invalid. Example: name@domain.com';
+    }
+
+    if (values.address) {
+        if (/\.\./.test(values.address)) {
+            errors.address = 'Consecutive dots (..) are not allowed in home address.';
+        } else if (/,{2,}/.test(values.address)) {
+            errors.address = 'Consecutive commas (,,) are not allowed in home address.';
+        } else if (/--/.test(values.address)) {
+            errors.address = 'Consecutive hyphens (--) are not allowed in home address.';
+        } else if (/\/\//.test(values.address)) {
+            errors.address = 'Consecutive slashes (//) are not allowed in home address.';
+        } else if (/[+*$%@!=~^<>?{}\[\];:|\\_]/.test(values.address)) {
+            errors.address = 'Special characters (+, *, $, %, etc.) are not allowed in home address.';
+        } else if (values.address.length < 5) {
+            errors.address = 'Home address must be at least 5 characters long.';
+        } else if (!/[a-zA-Z0-9]/.test(values.address)) {
+            errors.address = 'Home address must contain valid street/barangay text or numbers.';
+        }
+    }
+
+    if (values.guardian_first_name && values.guardian_first_name.length < 2) {
+        errors.guardian_first_name = 'Must be at least 2 letters.';
+    }
+
+    if (values.guardian_last_name && values.guardian_last_name.length < 2) {
+        errors.guardian_last_name = 'Must be at least 2 letters.';
+    }
+
+    if (values.guardian_contact && !phMobileRegex.test(values.guardian_contact)) {
+        errors.guardian_contact = 'Guardian contact must be an 11-digit PH mobile (09XXXXXXXXX).';
+    }
+
+    if (values.guardian_email && !emailRegex.test(values.guardian_email)) {
+        errors.guardian_email = 'Guardian email is invalid. Example: name@domain.com';
+    }
+
+    return errors;
+}
+
+function updateContactModalState() {
+    const currentValues = getContactFormValues();
+    const errors = validateContactFormValues(currentValues);
+    const saveBtn = document.querySelector('#editContactModal .btn-modal-save');
+    const fields = ['contact_number', 'email', 'address', 'guardian_first_name', 'guardian_middle_name', 'guardian_last_name', 'guardian_contact', 'guardian_email'];
+
+    let hasErrors = false;
+    fields.forEach(field => {
+        const inputEl = document.querySelector(`#editContactModal [name="${field}"]`);
+        const errEl = document.querySelector(`#err-${field}`);
+        if (errors[field]) {
+            hasErrors = true;
+            if (inputEl) inputEl.style.borderColor = '#ef4444';
+            if (errEl) {
+                errEl.textContent = errors[field];
+                errEl.style.display = 'block';
+            }
+        } else {
+            if (inputEl) inputEl.style.borderColor = '';
+            if (errEl) {
+                errEl.textContent = '';
+                errEl.style.display = 'none';
+            }
+        }
+    });
+
+    const isChanged = fields.some(key => currentValues[key] !== (initialContactFormValues[key] || ''));
+
+    if (saveBtn) {
+        if (!isChanged || hasErrors) {
+            saveBtn.disabled = true;
+        } else {
+            saveBtn.disabled = false;
+        }
+    }
+}
+
+function openContactModal() {
+    initialContactFormValues = getContactFormValues();
+    document.getElementById('editContactModal').classList.add('open');
+    updateContactModalState();
+}
+
+function closeContactModal() {
+    document.getElementById('editContactModal').classList.remove('open');
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const modalForm = document.querySelector('#editContactModal form');
+    if (modalForm) {
+        modalForm.querySelectorAll('input').forEach(input => {
+            if (input.name === 'contact_number' || input.name === 'guardian_contact') {
+                input.addEventListener('input', function() {
+                    this.value = this.value.replace(/\D/g, '').slice(0, 11);
+                });
+            }
+            input.addEventListener('input', updateContactModalState);
+            input.addEventListener('change', updateContactModalState);
+        });
+    }
+
+    const modalBackdrop = document.getElementById('editContactModal');
+    if (modalBackdrop) {
+        modalBackdrop.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeContactModal();
+            }
+        });
+    }
+});
+</script>
 {% endblock %}
+

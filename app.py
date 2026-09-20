@@ -456,6 +456,30 @@ def inject_parent_notifications():
         db = get_db_connection()
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
+            # Dynamically resolve Guardian Name from linked children enrollments for navbar display
+            parent_full_name = None
+            try:
+                cursor.execute("""
+                    SELECT e.guardian_first_name, e.guardian_middle_name, e.guardian_last_name
+                    FROM parent_student ps
+                    JOIN enrollments e ON ps.student_id = e.enrollment_id
+                    WHERE ps.parent_id = %s 
+                    ORDER BY e.updated_at DESC, e.created_at DESC
+                    LIMIT 1
+                """, (user_id,))
+                g_row = cursor.fetchone()
+                if g_row:
+                    g_full = " ".join(filter(None, [
+                        g_row.get("guardian_first_name"),
+                        g_row.get("guardian_middle_name"),
+                        g_row.get("guardian_last_name")
+                    ])).strip()
+                    if g_full:
+                        parent_full_name = g_full
+                        session["full_name"] = g_full
+            except Exception as g_err:
+                pass
+
             cursor.execute('''
                 SELECT * FROM parent_notifications
                 WHERE parent_id = %s
@@ -486,13 +510,13 @@ def inject_parent_notifications():
             except:
                 pass
 
-            return dict(parent_global_notifs=notifs, parent_unread_count=unread_count, has_pending_swafo_conferences=has_pending_swafo)
+            return dict(parent_global_notifs=notifs, parent_unread_count=unread_count, has_pending_swafo_conferences=has_pending_swafo, live_parent_full_name=parent_full_name)
         except:
-            return dict(parent_global_notifs=[], parent_unread_count=0, has_pending_swafo_conferences=False)
+            return dict(parent_global_notifs=[], parent_unread_count=0, has_pending_swafo_conferences=False, live_parent_full_name=None)
         finally:
             cursor.close()
             db.close()
-    return dict(parent_global_notifs=[], parent_unread_count=0, has_pending_swafo_conferences=False)
+    return dict(parent_global_notifs=[], parent_unread_count=0, has_pending_swafo_conferences=False, live_parent_full_name=None)
 
 
 @app.context_processor

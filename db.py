@@ -124,6 +124,30 @@ def get_db_connection():
                                 (first, middle, last, uid)
                             )
                     conn.commit()
+
+                # Backfill/sync parent user names in users table from linked student enrollments
+                cur.execute("""
+                    UPDATE users u
+                    SET 
+                        first_name = COALESCE(NULLIF(TRIM(u.first_name), ''), NULLIF(TRIM(e.guardian_first_name), '')),
+                        middle_name = COALESCE(NULLIF(TRIM(u.middle_name), ''), NULLIF(TRIM(e.guardian_middle_name), '')),
+                        last_name = COALESCE(NULLIF(TRIM(u.last_name), ''), NULLIF(TRIM(e.guardian_last_name), '')),
+                        full_name = COALESCE(
+                            NULLIF(TRIM(u.full_name), ''),
+                            NULLIF(TRIM(CONCAT_WS(' ', NULLIF(TRIM(e.guardian_first_name), ''), NULLIF(TRIM(e.guardian_middle_name), ''), NULLIF(TRIM(e.guardian_last_name), ''))), '')
+                        )
+                    FROM parent_student ps
+                    JOIN enrollments e ON ps.student_id = e.enrollment_id
+                    WHERE u.user_id = ps.parent_id
+                      AND u.role = 'parent'
+                      AND (
+                          u.full_name IS NULL 
+                          OR TRIM(u.full_name) = '' 
+                          OR u.first_name IS NULL 
+                          OR u.last_name IS NULL
+                      )
+                """)
+                conn.commit()
             except Exception as e:
                 logger.warning(f"Could not migrate users table or backfill names: {e}")
                 conn.rollback()  # Rollback failed transaction block

@@ -2509,18 +2509,31 @@ def branch_admin_subject_toggle_archive(subject_id, section_id):
     return redirect(url_for("branch_admin.branch_admin_subjects", section_id=section_id))
 
 @branch_admin_bp.route("/branch-admin/subjects/<int:subject_id>/delete", methods=["POST"])
-def branch_admin_subject_delete(subject_id):
+@branch_admin_bp.route("/branch-admin/subjects/<int:subject_id>/<int:section_id>/delete", methods=["POST"])
+def branch_admin_subject_delete(subject_id, section_id=None):
     if session.get("role") != "branch_admin":
         return redirect("/")
     branch_id = session.get("branch_id")
+    if not section_id:
+        sec_raw = request.form.get("section_id") or request.args.get("section_id")
+        if sec_raw and str(sec_raw).isdigit():
+            section_id = int(sec_raw)
+
     db = get_db_connection()
     cursor = db.cursor()
     try:
-        cursor.execute("""
-            DELETE FROM section_teachers st
-            USING sections s
-            WHERE st.section_id = s.section_id AND s.branch_id = %s AND st.subject_id = %s
-        """, (branch_id, subject_id))
+        if section_id:
+            cursor.execute("""
+                DELETE FROM section_teachers st
+                USING sections s
+                WHERE st.section_id = s.section_id AND s.branch_id = %s AND st.subject_id = %s AND st.section_id = %s
+            """, (branch_id, subject_id, section_id))
+        else:
+            cursor.execute("""
+                DELETE FROM section_teachers st
+                USING sections s
+                WHERE st.section_id = s.section_id AND s.branch_id = %s AND st.subject_id = %s
+            """, (branch_id, subject_id))
         db.commit()
         flash("Subject removed.", "success")
     except Exception as e:
@@ -2528,7 +2541,47 @@ def branch_admin_subject_delete(subject_id):
         flash(f"Error: {str(e)}", "error")
     finally:
         cursor.close(); db.close()
-    return redirect(url_for("branch_admin.branch_admin_subjects"))
+    return redirect(url_for("branch_admin.branch_admin_subjects", section_id=section_id if section_id else None))
+
+@branch_admin_bp.route("/branch-admin/subjects/bulk-delete", methods=["POST"])
+def branch_admin_subjects_bulk_delete():
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+    branch_id = session.get("branch_id")
+    pairs = request.form.getlist("subject_section_pairs")
+    section_id_ref = request.form.get("section_id")
+
+    if not pairs:
+        flash("No subjects selected for deletion.", "warning")
+        return redirect(url_for("branch_admin.branch_admin_subjects", section_id=section_id_ref if section_id_ref else None))
+
+    db = get_db_connection()
+    cursor = db.cursor()
+    deleted_count = 0
+    try:
+        for pair in pairs:
+            if "|" in pair:
+                sub_id_str, sec_id_str = pair.split("|", 1)
+                if sub_id_str.isdigit() and sec_id_str.isdigit():
+                    sub_id = int(sub_id_str)
+                    sec_id = int(sec_id_str)
+                    if not section_id_ref:
+                        section_id_ref = str(sec_id)
+                    cursor.execute("""
+                        DELETE FROM section_teachers st
+                        USING sections s
+                        WHERE st.section_id = s.section_id AND s.branch_id = %s AND st.subject_id = %s AND st.section_id = %s
+                    """, (branch_id, sub_id, sec_id))
+                    deleted_count += cursor.rowcount
+        db.commit()
+        flash(f"Successfully deleted {deleted_count} subject assignment(s).", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error deleting subjects: {str(e)}", "error")
+    finally:
+        cursor.close(); db.close()
+
+    return redirect(url_for("branch_admin.branch_admin_subjects", section_id=section_id_ref if section_id_ref else None))
 
 @branch_admin_bp.route("/branch-admin/subjects/<int:subject_id>/edit", methods=["POST"])
 def branch_admin_subject_edit(subject_id):
@@ -2536,7 +2589,7 @@ def branch_admin_subject_edit(subject_id):
         return redirect("/")
     branch_id = session.get("branch_id")
     new_name = (request.form.get("name") or "").strip()
-    section_id = request.form.get("section_id")
+    target_section_id_raw = request.form.get("section_id")
     deped_category = request.form.get("deped_category", "language")
     subject_type = request.form.get("subject_type", "CORE")
     track = request.form.get("track")
@@ -2549,23 +2602,82 @@ def branch_admin_subject_edit(subject_id):
         pathway = None
         prereq_id = None
 
-    if not new_name or not section_id:
+    if not new_name or not target_section_id_raw:
         flash("Required fields missing.", "error")
         return redirect(url_for("branch_admin.branch_admin_subjects"))
 
+    target_section_id = int(target_section_id_raw)
+
     db = get_db_connection()
-    cursor = db.cursor()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        cursor.execute("SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s", (section_id, branch_id))
+        cursor.execute("SELECT 1 FROM sections WHERE section_id=%s AND branch_id=%s", (target_section_id, branch_id))
         if not cursor.fetchone():
             flash("Invalid section.", "error")
             return redirect(url_for("branch_admin.branch_admin_subjects"))
 
-        cursor.execute("""
-            UPDATE subjects 
-            SET name = %s, deped_category = %s, subject_type = %s, track = %s, pathway = %s, prerequisite_subject_id = %s 
-            WHERE subject_id = %s
-        """, (new_name, deped_category, subject_type, track, pathway, prereq_id, subject_id))
+        # Check if new_name already exists in subjects catalog
+        cursor.execute("SELECT subject_id FROM subjects WHERE LOWER(name) = LOWER(%s) LIMIT 1", (new_name,))
+        existing = cursor.fetchone()
+
+        if existing:
+            actual_subject_id = existing["subject_id"]
+            # Update target subject metadata
+            cursor.execute("""
+                UPDATE subjects 
+                SET name = %s, deped_category = %s, subject_type = %s, track = %s, pathway = %s, prerequisite_subject_id = %s 
+                WHERE subject_id = %s
+            """, (new_name, deped_category, subject_type, track, pathway, prereq_id, actual_subject_id))
+
+            # Repoint section_teachers row to actual_subject_id
+            cursor.execute("""
+                UPDATE section_teachers
+                SET subject_id = %s, section_id = %s
+                WHERE subject_id = %s AND section_id = %s
+            """, (actual_subject_id, target_section_id, subject_id, target_section_id))
+            if cursor.rowcount == 0:
+                cursor.execute("""
+                    INSERT INTO section_teachers (section_id, subject_id, year_id)
+                    SELECT %s, %s, year_id FROM sections WHERE section_id = %s
+                    ON CONFLICT DO NOTHING
+                """, (target_section_id, actual_subject_id, target_section_id))
+        else:
+            # Check if other sections share the current subject_id
+            cursor.execute("""
+                SELECT COUNT(*) AS cnt FROM section_teachers 
+                WHERE subject_id = %s AND section_id <> %s
+            """, (subject_id, target_section_id))
+            other_usages = (cursor.fetchone() or {}).get("cnt", 0)
+
+            if other_usages > 0:
+                # Create a new subject for new_name so other sections keep their original subject
+                cursor.execute("""
+                    INSERT INTO subjects (name, deped_category, subject_type, track, pathway, prerequisite_subject_id)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING subject_id
+                """, (new_name, deped_category, subject_type, track, pathway, prereq_id))
+                new_sub_row = cursor.fetchone()
+                new_subject_id = new_sub_row["subject_id"]
+
+                cursor.execute("""
+                    UPDATE section_teachers
+                    SET subject_id = %s, section_id = %s
+                    WHERE subject_id = %s AND section_id = %s
+                """, (new_subject_id, target_section_id, subject_id, target_section_id))
+            else:
+                # Update subject_id directly in subjects
+                cursor.execute("""
+                    UPDATE subjects 
+                    SET name = %s, deped_category = %s, subject_type = %s, track = %s, pathway = %s, prerequisite_subject_id = %s 
+                    WHERE subject_id = %s
+                """, (new_name, deped_category, subject_type, track, pathway, prereq_id, subject_id))
+
+                cursor.execute("""
+                    UPDATE section_teachers
+                    SET section_id = %s
+                    WHERE subject_id = %s AND section_id = %s
+                """, (target_section_id, subject_id, target_section_id))
+
         db.commit()
         flash("Subject updated.", "success")
     except Exception as e:
@@ -2573,7 +2685,7 @@ def branch_admin_subject_edit(subject_id):
         flash(f"Error: {str(e)}", "error")
     finally:
         cursor.close(); db.close()
-    return redirect(url_for("branch_admin.branch_admin_subjects"))
+    return redirect(url_for("branch_admin.branch_admin_subjects", section_id=target_section_id))
 
 @branch_admin_bp.route("/branch-admin/assign-teachers", methods=["GET", "POST"])
 def branch_admin_assign_teachers():

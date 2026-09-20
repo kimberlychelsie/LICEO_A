@@ -3126,6 +3126,76 @@ def student_profile():
         db.close()
 
 
+@student_portal_bp.route("/student/profile/update-contact", methods=["POST"])
+def student_update_contact():
+    if not _require_student():
+        return redirect("/")
+
+    enrollment_id = session.get("enrollment_id")
+    user_id = session.get("user_id")
+    if not enrollment_id:
+        flash("Enrollment ID not found.", "error")
+        return redirect(url_for("student_portal.student_profile"))
+
+    contact_number = request.form.get("contact_number", "").strip()
+    email = request.form.get("email", "").strip()
+    address = request.form.get("address", "").strip()
+    guardian_first_name = request.form.get("guardian_first_name", "").strip()
+    guardian_middle_name = request.form.get("guardian_middle_name", "").strip()
+    guardian_last_name = request.form.get("guardian_last_name", "").strip()
+    guardian_contact = request.form.get("guardian_contact", "").strip()
+    guardian_email = request.form.get("guardian_email", "").strip()
+
+    db = get_db_connection()
+    cur = db.cursor()
+
+    try:
+        cur.execute("""
+            UPDATE enrollments
+            SET contact_number = %s,
+                email = %s,
+                address = %s,
+                guardian_first_name = %s,
+                guardian_middle_name = %s,
+                guardian_last_name = %s,
+                guardian_contact = %s,
+                guardian_email = %s
+            WHERE enrollment_id = %s
+        """, (contact_number, email, address, guardian_first_name, guardian_middle_name, guardian_last_name, guardian_contact, guardian_email, enrollment_id))
+
+        if user_id:
+            cur.execute("""
+                UPDATE users
+                SET email = %s
+                WHERE user_id = %s
+            """, (email, user_id))
+
+        # Also update linked parent user account full_name in users table
+        guardian_full = " ".join(filter(None, [guardian_first_name, guardian_middle_name, guardian_last_name])).strip()
+        if guardian_full:
+            cur.execute("""
+                UPDATE users
+                SET first_name = %s,
+                    middle_name = %s,
+                    last_name = %s,
+                    full_name = %s
+                WHERE user_id IN (
+                    SELECT parent_id FROM parent_student WHERE student_id = %s
+                )
+            """, (guardian_first_name, guardian_middle_name, guardian_last_name, guardian_full, enrollment_id))
+
+        db.commit()
+        flash("Contact & guardian information updated successfully.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Could not update profile: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+
+    return redirect(url_for("student_portal.student_profile"))
+
+
 # =======================
 # SHS ELECTIVE SELECTION
 # =======================

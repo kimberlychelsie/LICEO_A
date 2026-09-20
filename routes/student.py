@@ -599,6 +599,31 @@ def enroll(branch_id):
                 flash("You must agree to the Data Privacy Consent.", "error")
                 return redirect(request.url)
 
+            # ── ADDRESS VALIDATION ──
+            if address:
+                import re as _re
+                if ".." in address:
+                    flash("Consecutive dots (..) are not allowed in home address.", "error")
+                    return redirect(request.url)
+                if ",," in address:
+                    flash("Consecutive commas (,,) are not allowed in home address.", "error")
+                    return redirect(request.url)
+                if "--" in address:
+                    flash("Consecutive hyphens (--) are not allowed in home address.", "error")
+                    return redirect(request.url)
+                if "//" in address:
+                    flash("Consecutive slashes (//) are not allowed in home address.", "error")
+                    return redirect(request.url)
+                if _re.search(r'[+*$%@!=~^<>?{}\[\];:|\\_]', address):
+                    flash("Special characters (+, *, $, %, etc.) are not allowed in home address.", "error")
+                    return redirect(request.url)
+                if len(address) < 5:
+                    flash("Home address must be at least 5 characters long.", "error")
+                    return redirect(request.url)
+                if not _re.search(r'[a-zA-Z0-9]', address):
+                    flash("Home address must contain valid street/barangay text or numbers.", "error")
+                    return redirect(request.url)
+
             # ── EMAIL VALIDATION ──
             if email and not is_valid_email(email):
                 flash(f"The student email '{email}' is invalid. Please follow the correct format (e.g., name@domain.com) and avoid special characters like # % &.", "error")

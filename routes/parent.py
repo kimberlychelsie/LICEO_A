@@ -91,6 +91,9 @@ def dashboard():
                    e.student_first_name,
                    e.student_middle_name,
                    e.student_last_name, 
+                   e.guardian_first_name,
+                   e.guardian_middle_name,
+                   e.guardian_last_name,
                    e.grade_level, 
                    e.status,
                    e.branch_enrollment_no,
@@ -124,10 +127,20 @@ def dashboard():
                 child.get("student_middle_name"),
                 child.get("student_last_name"),
             ]))
+            child["guardian_full_name"] = " ".join(filter(None, [
+                child.get("guardian_first_name"),
+                child.get("guardian_middle_name"),
+                child.get("guardian_last_name"),
+            ])).strip()
             child_balance = Decimal(str(child.get("balance") or 0))
             total_balance += child_balance
             if child.get("status") == "open_for_enrollment":
                 re_enrollment_children.append(child)
+
+        if children:
+            first_g_name = children[0].get("guardian_full_name")
+            if first_g_name:
+                session["full_name"] = first_g_name
 
         active_reservations_count = 0
         pending_conferences = []
@@ -216,6 +229,21 @@ def link_child():
                 INSERT INTO parent_student (parent_id, student_id, relationship)
                 VALUES (%s, %s, %s)
             """, (session.get("user_id"), enrollment_id, relationship))
+
+            # Sync guardian name to parent user if user name fields are empty
+            g_first = (enrollment.get("guardian_first_name") or "").strip()
+            g_mid = (enrollment.get("guardian_middle_name") or "").strip()
+            g_last = (enrollment.get("guardian_last_name") or "").strip()
+            g_full = " ".join(filter(None, [g_first, g_mid, g_last])).strip()
+            if g_full:
+                cursor.execute("""
+                    UPDATE users
+                    SET first_name = COALESCE(NULLIF(TRIM(first_name), ''), %s),
+                        middle_name = COALESCE(NULLIF(TRIM(middle_name), ''), %s),
+                        last_name = COALESCE(NULLIF(TRIM(last_name), ''), %s),
+                        full_name = COALESCE(NULLIF(TRIM(full_name), ''), %s)
+                    WHERE user_id = %s
+                """, (g_first or None, g_mid or None, g_last or None, g_full, session.get("user_id")))
 
             db.commit()
             flash(f"Successfully linked {enrollment.get('student_name', 'child')} to your account", "success")

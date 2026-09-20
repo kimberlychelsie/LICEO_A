@@ -709,8 +709,17 @@
 <!-- Existing Subjects -->
 <div class="col-table">
     <div class="modern-card">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-            <h2 style="margin: 0;">List of Subjects</h2>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <h2 style="margin: 0;">List of Subjects</h2>
+                {% if is_branch_active_status %}
+                <button type="button" id="btnBulkDeleteSubjects" class="btn-prem"
+                    style="background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; padding: 6px 14px; font-size: 0.78rem; display: none;"
+                    onclick="confirmBulkSubjectDelete()">
+                    <i class="fas fa-trash-alt"></i> Delete Selected (<span id="selectedSubjectsCount">0</span>)
+                </button>
+                {% endif %}
+            </div>
             <div style="display: flex; align-items: center; gap: 12px;">
                 <label
                     style="font-size: 0.75rem; font-weight: 800; color: var(--ma-muted); text-transform: uppercase;">Filter
@@ -733,6 +742,11 @@
             <table class="vault-table">
                 <thead>
                     <tr>
+                        {% if is_branch_active_status %}
+                        <th style="width: 40px; text-align: center;">
+                            <input type="checkbox" id="selectAllSubjectsCheckbox" onclick="toggleSelectAllSubjects(this)" title="Select All" style="cursor: pointer; width: 16px; height: 16px;">
+                        </th>
+                        {% endif %}
                         <th>Subject</th>
                         <th>Assigned To</th>
                         <th>Status</th>
@@ -742,6 +756,11 @@
                 <tbody>
                     {% for a in assignments %}
                     <tr style="{% if a.is_archived %}opacity: 0.6; background: #f8fafc;{% endif %}">
+                        {% if is_branch_active_status %}
+                        <td style="text-align: center;">
+                            <input type="checkbox" class="subject-row-checkbox" value="{{ a.subject_id }}|{{ a.section_id }}" onchange="updateBulkDeleteState()" style="cursor: pointer; width: 16px; height: 16px;">
+                        </td>
+                        {% endif %}
                         <td data-label="Identity">
                             <div style="font-weight: 700; color: var(--ma-primary);">{{ a.name }}</div>
                             <div style="display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px;">
@@ -822,7 +841,7 @@
                                 </form>
 
                                 <button class="save-row-btn delete"
-                                    onclick="confirmSubjectDelete({{ a.subject_id }}, '{{ a.name|e }}')">
+                                    onclick="confirmSubjectDelete({{ a.subject_id }}, '{{ a.name|e }}', {{ a.section_id }}, '{{ a.grade_level_name|e }} - {{ a.section_name|e }}')">
                                     Delete
                                 </button>
                             </div>
@@ -856,6 +875,24 @@
             <div style="display: flex; gap: 12px; justify-content: center;">
                 <button type="button" onclick="closeDeleteModal()" class="btn-prem btn-secondary">Keep it</button>
                 <button type="submit" class="btn-prem" style="background: #dc2626; color: white;">Yes, Delete</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Bulk Delete Confirmation Modal -->
+<div id="bulkDeleteConfirmOverlay" class="glass-overlay">
+    <div class="glass-modal confirm-modal">
+        <div style="font-size: 3.5rem; margin-bottom: 20px;">🗑️</div>
+        <h2 style="font-size: 1.25rem; font-weight: 900; margin-bottom: 12px; color: #dc2626;">Remove Selected Subjects?</h2>
+        <p id="bulkDeleteConfirmMsg" style="font-size: 0.9rem; color: var(--ma-muted); margin-bottom: 24px; line-height: 1.5;"></p>
+        <form id="bulkDeleteForm" method="POST" action="/branch-admin/subjects/bulk-delete">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="section_id" value="{{ selected_section_id }}">
+            <div id="bulkDeleteInputsContainer"></div>
+            <div style="display: flex; gap: 12px; justify-content: center;">
+                <button type="button" onclick="closeBulkDeleteModal()" class="btn-prem btn-secondary">Keep them</button>
+                <button type="submit" class="btn-prem" style="background: #dc2626; color: white;">Yes, Delete Selected</button>
             </div>
         </form>
     </div>
@@ -1230,18 +1267,79 @@
         document.getElementById('editModal').style.display = 'none';
     }
 
-    function confirmSubjectDelete(id, name) {
+    function confirmSubjectDelete(id, name, sectionId, sectionName) {
         const overlay = document.getElementById('deleteConfirmOverlay');
         const msg = document.getElementById('deleteConfirmMsg');
         const form = document.getElementById('deleteSubjectForm');
 
-        msg.innerText = `Are you sure you want to permanently remove "${name}" from the curriculum? This action cannot be undone.`;
-        form.action = `/branch-admin/subjects/${id}/delete`;
+        if (sectionName) {
+            msg.innerText = `Are you sure you want to remove "${name}" from ${sectionName}? This action cannot be undone.`;
+        } else {
+            msg.innerText = `Are you sure you want to remove "${name}"? This action cannot be undone.`;
+        }
+
+        if (sectionId) {
+            form.action = `/branch-admin/subjects/${id}/${sectionId}/delete`;
+        } else {
+            form.action = `/branch-admin/subjects/${id}/delete`;
+        }
         overlay.style.display = 'flex';
     }
 
     function closeDeleteModal() {
         document.getElementById('deleteConfirmOverlay').style.display = 'none';
+    }
+
+    function toggleSelectAllSubjects(master) {
+        const checkboxes = document.querySelectorAll('.subject-row-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = master.checked;
+        });
+        updateBulkDeleteState();
+    }
+
+    function updateBulkDeleteState() {
+        const checkboxes = document.querySelectorAll('.subject-row-checkbox');
+        const checked = document.querySelectorAll('.subject-row-checkbox:checked');
+        const btn = document.getElementById('btnBulkDeleteSubjects');
+        const countSpan = document.getElementById('selectedSubjectsCount');
+        const master = document.getElementById('selectAllSubjectsCheckbox');
+
+        if (countSpan) countSpan.innerText = checked.length;
+
+        if (btn) {
+            btn.style.display = checked.length > 0 ? 'inline-flex' : 'none';
+        }
+
+        if (master) {
+            master.checked = (checkboxes.length > 0 && checked.length === checkboxes.length);
+            master.indeterminate = (checked.length > 0 && checked.length < checkboxes.length);
+        }
+    }
+
+    function confirmBulkSubjectDelete() {
+        const checked = document.querySelectorAll('.subject-row-checkbox:checked');
+        if (checked.length === 0) return;
+
+        const overlay = document.getElementById('bulkDeleteConfirmOverlay');
+        const msg = document.getElementById('bulkDeleteConfirmMsg');
+        const container = document.getElementById('bulkDeleteInputsContainer');
+
+        container.innerHTML = '';
+        checked.forEach(cb => {
+            const inp = document.createElement('input');
+            inp.type = 'hidden';
+            inp.name = 'subject_section_pairs';
+            inp.value = cb.value;
+            container.appendChild(inp);
+        });
+
+        msg.innerText = `Are you sure you want to remove ${checked.length} selected subject(s) from this section? This action cannot be undone.`;
+        overlay.style.display = 'flex';
+    }
+
+    function closeBulkDeleteModal() {
+        document.getElementById('bulkDeleteConfirmOverlay').style.display = 'none';
     }
 
     // Monitor changes

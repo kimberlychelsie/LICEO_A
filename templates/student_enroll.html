@@ -752,8 +752,8 @@
                                     <label>Address <small class="text-muted" style="font-weight: normal; font-size: 11px;">(Optional)</small></label>
                                     <input type="text" name="address"
                                         placeholder="House No., Street, Barangay, City, Province"
-                                        minlength="10" maxlength="255"
-                                        oninput="this.value = this.value.replace(/[^A-Za-z0-9ñÑ\s,-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/,,+/g, ',').replace(/--+/g, '-')" />
+                                        minlength="5" maxlength="255"
+                                        oninput="this.value = this.value.replace(/[^A-Za-z0-9ñÑ\s,.\/-]/g, '').replace(/^\s+/g, '').replace(/\s\s+/g, ' ').replace(/\.\.+/g, '.').replace(/,,+/g, ',').replace(/--+/g, '-').replace(/\/\/+/g, '/')" />
                                 </div>
                             </div>
                             <div class="c4">
@@ -1421,6 +1421,25 @@
                     var emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9-]+\.[a-zA-Z.]{2,}$/;
                     if (!emailRegex.test(studentEmail)) {
                         errors.push('Student email is invalid. Please follow the format name@domain.com and avoid special characters like # % &.');
+                    }
+                }
+
+                /* Address validation */
+                if (address) {
+                    if (/\.\./.test(address)) {
+                        errors.push('Consecutive dots (..) are not allowed in home address.');
+                    } else if (/,{2,}/.test(address)) {
+                        errors.push('Consecutive commas (,,) are not allowed in home address.');
+                    } else if (/--/.test(address)) {
+                        errors.push('Consecutive hyphens (--) are not allowed in home address.');
+                    } else if (/\/\//.test(address)) {
+                        errors.push('Consecutive slashes (//) are not allowed in home address.');
+                    } else if (/[+*$%@!=~^<>?{}\[\];:|\\_]/.test(address)) {
+                        errors.push('Special characters (+, *, $, %, etc.) are not allowed in home address.');
+                    } else if (address.length < 5) {
+                        errors.push('Home address must be at least 5 characters long.');
+                    } else if (!/[a-zA-Z0-9]/.test(address)) {
+                        errors.push('Home address must contain valid street/barangay text or numbers.');
                     }
                 }
 

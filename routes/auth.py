@@ -242,6 +242,41 @@ def login():
                     elif role == "teacher":
                         return redirect("/teacher")
                     elif role == "parent":
+                        try:
+                            cursor.execute("""
+                                SELECT e.guardian_first_name, e.guardian_middle_name, e.guardian_last_name
+                                FROM parent_student ps
+                                JOIN enrollments e ON ps.student_id = e.enrollment_id
+                                WHERE ps.parent_id = %s
+                                ORDER BY e.updated_at DESC, e.created_at DESC
+                                LIMIT 1
+                            """, (user["user_id"],))
+                            grow = cursor.fetchone()
+                            if grow:
+                                gfull = " ".join(filter(None, [
+                                    grow.get("guardian_first_name"),
+                                    grow.get("guardian_middle_name"),
+                                    grow.get("guardian_last_name")
+                                ])).strip()
+                                if gfull:
+                                    session["full_name"] = gfull
+                                    cursor.execute("""
+                                        UPDATE users 
+                                        SET first_name = COALESCE(NULLIF(TRIM(first_name), ''), %s),
+                                            middle_name = COALESCE(NULLIF(TRIM(middle_name), ''), %s),
+                                            last_name = COALESCE(NULLIF(TRIM(last_name), ''), %s),
+                                            full_name = %s
+                                        WHERE user_id = %s
+                                    """, (
+                                        grow.get("guardian_first_name"),
+                                        grow.get("guardian_middle_name"),
+                                        grow.get("guardian_last_name"),
+                                        gfull,
+                                        user["user_id"]
+                                    ))
+                                    db.commit()
+                        except Exception:
+                            pass
                         return redirect("/parent/dashboard")
                     elif role == "student":
                         if next_url:
