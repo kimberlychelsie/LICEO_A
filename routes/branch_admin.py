@@ -14,6 +14,7 @@ import string
 import time
 from cloudinary_helper import upload_announcement_photo
 from utils.send_email import send_email
+from utils.parent_sync import sync_user_parent_links
 
 branch_admin_bp = Blueprint("branch_admin", __name__)
 
@@ -922,14 +923,7 @@ def branch_admin_edit_account(user_id):
                 WHERE user_id=%s AND branch_id=%s
             """, (first_name, middle_name or None, last_name, full_name, email, gender, grade_level_id or None, user_roles_json, user_id, session.get("branch_id")))
             
-            if assigned_roles and "parent" in assigned_roles and email:
-                cursor.execute("""
-                    INSERT INTO parent_student (parent_id, student_id, relationship)
-                    SELECT %s, enrollment_id, 'guardian'
-                    FROM enrollments
-                    WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s))
-                    ON CONFLICT DO NOTHING
-                """, (user_id, email))
+            sync_user_parent_links(db, cursor, user_id)
 
             db.commit()
             flash("Account updated successfully.", "success")
@@ -3257,14 +3251,7 @@ def branch_admin_edit_teacher(user_id):
             ),
         )
 
-        if assigned_roles and "parent" in assigned_roles and user_email:
-            cursor.execute("""
-                INSERT INTO parent_student (parent_id, student_id, relationship)
-                SELECT %s, enrollment_id, 'guardian'
-                FROM enrollments
-                WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s))
-                ON CONFLICT DO NOTHING
-            """, (user_id, user_email))
+        sync_user_parent_links(db, cursor, user_id)
 
         db.commit()
 

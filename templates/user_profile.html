@@ -1,0 +1,551 @@
+{% extends "base.html" %}
+{% block title %}My Profile{% endblock %}
+
+{% block styles %}
+<style>
+  .profile-wrapper {
+    width: 100%;
+    margin: 0;
+    padding: 0 0 30px;
+  }
+
+  .profile-header-banner {
+    background: linear-gradient(135deg, #1a3a8f 0%, #0c2461 100%);
+    border-radius: 20px;
+    padding: 32px 40px;
+    color: #ffffff;
+    margin-bottom: 24px;
+    box-shadow: 0 10px 30px rgba(26, 58, 143, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+
+  .profile-header-banner h1 {
+    font-size: 2.1rem;
+    font-weight: 800;
+    margin: 0 0 8px 0;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .profile-header-banner p {
+    margin: 0;
+    font-size: 0.95rem;
+    opacity: 0.9;
+    font-weight: 500;
+  }
+
+  .profile-grid {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
+  }
+
+  @media (max-width: 868px) {
+    .profile-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  /* Left Side: Avatar Card */
+  .profile-card {
+    background: var(--card, #ffffff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 16px;
+    padding: 28px 24px;
+    box-shadow: var(--shadow, 0 1px 3px rgba(0, 0, 0, .08));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .avatar-ring {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border: 4px solid #ffffff;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.8rem;
+    font-weight: 800;
+    color: #1a3a8f;
+    margin-bottom: 18px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .avatar-ring img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .avatar-upload-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(15, 23, 42, 0.7);
+    color: #ffffff;
+    padding: 6px 0;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+  }
+
+  .avatar-ring:hover .avatar-upload-overlay {
+    background: rgba(26, 58, 143, 0.9);
+  }
+
+  .user-display-name {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--text, #0f172a);
+    margin-bottom: 4px;
+    line-height: 1.25;
+  }
+
+  .user-handle {
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--muted, #64748b);
+    margin-bottom: 16px;
+  }
+
+  .badge-pills {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 24px;
+    width: 100%;
+  }
+
+  .pill-role {
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #dbeafe;
+    padding: 5px 14px;
+    border-radius: 20px;
+  }
+
+  .pill-branch {
+    font-size: 0.78rem;
+    font-weight: 700;
+    background: #f1f5f9;
+    color: #334155;
+    border: 1px solid #e2e8f0;
+    padding: 5px 14px;
+    border-radius: 20px;
+  }
+
+  .linked-students-box {
+    width: 100%;
+    text-align: left;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 16px;
+    margin-top: 10px;
+  }
+
+  .linked-students-title {
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #475569;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .linked-student-item {
+    padding: 8px 10px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    margin-bottom: 6px;
+    font-size: 0.85rem;
+  }
+
+  .linked-student-item:last-child {
+    margin-bottom: 0;
+  }
+
+  /* Right Side: Edit Form */
+  .profile-form-card {
+    background: var(--card, #ffffff);
+    border: 1px solid var(--border, #e2e8f0);
+    border-radius: 16px;
+    padding: 28px 32px;
+    box-shadow: var(--shadow, 0 1px 3px rgba(0, 0, 0, .08));
+  }
+
+  .form-section-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text, #0f172a);
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 600px) {
+    .form-grid-2 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .form-group-custom {
+    margin-bottom: 18px;
+  }
+
+  .form-group-custom label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #334155;
+    margin-bottom: 6px;
+  }
+
+  .form-control-custom {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 0.92rem;
+    font-weight: 500;
+    border-radius: 8px;
+    border: 1.5px solid #cbd5e1;
+    background: #ffffff;
+    color: #0f172a;
+    transition: all 0.2s ease;
+    box-sizing: border-box;
+  }
+
+  .form-control-custom:focus {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  }
+
+  .form-control-custom[readonly], .form-control-custom:disabled {
+    background: #f8fafc;
+    color: #64748b;
+    border-color: #e2e8f0;
+    cursor: not-allowed;
+  }
+
+  .email-info-callout {
+    background: #eff6ff;
+    border-left: 4px solid #2563eb;
+    padding: 12px 14px;
+    border-radius: 0 8px 8px 0;
+    font-size: 0.82rem;
+    color: #1e40af;
+    line-height: 1.45;
+    margin-top: 8px;
+  }
+
+  .btn-save-profile {
+    background: linear-gradient(135deg, #1a3a8f 0%, #2563eb 100%);
+    color: #ffffff;
+    border: none;
+    padding: 12px 28px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    border-radius: 10px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .btn-save-profile:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35);
+  }
+
+  .btn-save-profile:disabled,
+  .btn-save-profile[disabled] {
+    background: #cbd5e1 !important;
+    color: #94a3b8 !important;
+    box-shadow: none !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+    opacity: 0.7;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-wrapper">
+
+  <div class="profile-header-banner">
+    <div>
+      <h1>
+        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        Account Profile
+      </h1>
+      <p>View and manage your personal account details stored in Liceo LMS.</p>
+    </div>
+  </div>
+
+  <form method="POST" action="/user/profile/update" enctype="multipart/form-data" id="profile_form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="profile-grid">
+      <!-- Left Column: Identity Overview -->
+      <div>
+        <div class="profile-card">
+          <div class="avatar-ring">
+            {% if user.profile_image %}
+            <img src="{% if user.profile_image.startswith('http') or user.profile_image.startswith('/') %}{{ user.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ user.profile_image) }}{% endif %}" id="avatar_preview" alt="Profile Picture">
+            {% else %}
+            <span id="avatar_initials">{{ (user.full_name or user.username)[0]|upper }}</span>
+            <img id="avatar_preview" src="" alt="Profile Picture" style="display: none; width: 100%; height: 100%; object-fit: cover;">
+            {% endif %}
+
+            <label for="profile_image_input" class="avatar-upload-overlay" title="Upload New Profile Picture">
+              <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+              Photo
+            </label>
+            <input type="file" id="profile_image_input" name="profile_image" accept="image/*" style="display: none;">
+          </div>
+
+          <div class="user-display-name">{{ user.full_name or user.username }}</div>
+          <div class="user-handle">@{{ user.username }}</div>
+
+          <div class="badge-pills">
+            <span class="pill-role">{{ role_labels.get(user.role, user.role | title) }}</span>
+            {% if user.branch_name %}
+            <span class="pill-branch"><i class="fas fa-building" style="margin-right: 4px;"></i> {{ user.branch_name }}</span>
+            {% endif %}
+          </div>
+
+          {% if linked_students %}
+          <div class="linked-students-box">
+            <div class="linked-students-title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+              Linked Student(s) in Branch
+            </div>
+            {% for s in linked_students %}
+            <div class="linked-student-item">
+              <div style="font-weight: 700; color: #1e293b;">
+                {{ s.student_first_name }} {{ s.student_last_name }}
+              </div>
+              <div style="font-size: 0.78rem; color: #64748b;">
+                {{ s.grade_level or 'No Grade' }} {% if s.section_name %}• {{ s.section_name }}{% endif %}
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% elif user.role != 'student' %}
+          <div class="linked-students-box" style="background: #fafafa;">
+            <div class="linked-students-title" style="color: #94a3b8;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+              Parent Connection Status
+            </div>
+            <div style="font-size: 0.8rem; color: #64748b;">
+              No linked student records in this branch matching your email.
+            </div>
+          </div>
+          {% endif %}
+
+          {% if teacher_assignments %}
+          <div class="linked-students-box" style="margin-top: 14px;">
+            <div class="linked-students-title">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+              Assigned Subjects
+            </div>
+            {% for a in teacher_assignments %}
+            <div class="linked-student-item">
+              <div style="font-weight: 700; color: #1e293b;">{{ a.subject_name }}</div>
+              <div style="font-size: 0.78rem; color: #64748b;">{{ a.grade_level }} - {{ a.section_name }}</div>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Right Column: Edit Profile Form -->
+      <div>
+        <div class="profile-form-card">
+          <div class="form-section-title">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            Edit Basic Information
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group-custom">
+              <label for="first_name">First Name <span style="color: #dc2626;">*</span></label>
+              <input type="text" id="first_name" name="first_name" class="form-control-custom" value="{{ user.first_name or '' }}" required maxlength="100">
+            </div>
+            <div class="form-group-custom">
+              <label for="middle_name">Middle Name</label>
+              <input type="text" id="middle_name" name="middle_name" class="form-control-custom" value="{{ user.middle_name or '' }}" maxlength="100">
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group-custom">
+              <label for="last_name">Last Name <span style="color: #dc2626;">*</span></label>
+              <input type="text" id="last_name" name="last_name" class="form-control-custom" value="{{ user.last_name or '' }}" required maxlength="100">
+            </div>
+            <div class="form-group-custom">
+              <label for="gender">Gender</label>
+              <select id="gender" name="gender" class="form-control-custom">
+                <option value="" {% if not user.gender %}selected{% endif %}>Select Gender</option>
+                <option value="Male" {% if user.gender == 'Male' %}selected{% endif %}>Male</option>
+                <option value="Female" {% if user.gender == 'Female' %}selected{% endif %}>Female</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group-custom">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" name="email" class="form-control-custom" value="{{ user.email or '' }}" placeholder="username@domain.com" maxlength="150">
+            <div class="email-info-callout">
+              <i class="fas fa-info-circle" style="margin-right: 4px;"></i>
+              <strong>Branch Isolation Rule:</strong> If your email matches a student's guardian email in <em>this branch</em>, Parent Mode will automatically link. If you change your email to one that doesn't match any student in this branch, Parent Mode connection will be automatically removed.
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group-custom">
+              <label for="contact_number">Contact Number</label>
+              <input type="text" id="contact_number" name="contact_number" class="form-control-custom" value="{{ user.contact_number or '' }}" placeholder="e.g. 09123456789" maxlength="30">
+            </div>
+            <div class="form-group-custom">
+              <label>Account Username (Read-Only)</label>
+              <input type="text" class="form-control-custom" value="{{ user.username }}" readonly disabled>
+            </div>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group-custom">
+              <label>Account Role (Read-Only)</label>
+              <input type="text" class="form-control-custom" value="{{ role_labels.get(user.role, user.role | title) }}" readonly disabled>
+            </div>
+            <div class="form-group-custom">
+              <label>Branch Assignment (Read-Only)</label>
+              <input type="text" class="form-control-custom" value="{{ user.branch_name or 'System (Global)' }}" readonly disabled>
+            </div>
+          </div>
+
+          <div style="margin-top: 24px; display: flex; justify-content: flex-end; gap: 12px;">
+            <button type="submit" id="btn_save_profile" class="btn-save-profile" disabled>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+              Save Profile Changes
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('profile_form');
+    const saveBtn = document.getElementById('btn_save_profile');
+    const fileInput = document.getElementById('profile_image_input');
+
+    if (!form || !saveBtn) return;
+
+    // Track initial values of all editable form inputs
+    const editableInputs = form.querySelectorAll('input:not([type="file"]):not([type="hidden"]):not([readonly]):not([disabled]), select:not([disabled])');
+    const initialValues = {};
+
+    editableInputs.forEach(input => {
+      const key = input.name || input.id;
+      initialValues[key] = (input.value || '').trim();
+    });
+
+    function checkForChanges() {
+      let hasChanged = false;
+
+      // Check text / select fields
+      for (const input of editableInputs) {
+        const key = input.name || input.id;
+        const currentVal = (input.value || '').trim();
+        if (currentVal !== (initialValues[key] || '')) {
+          hasChanged = true;
+          break;
+        }
+      }
+
+      // Check file input selection
+      if (!hasChanged && fileInput && fileInput.files && fileInput.files.length > 0) {
+        hasChanged = true;
+      }
+
+      saveBtn.disabled = !hasChanged;
+    }
+
+    // Attach change listeners
+    editableInputs.forEach(input => {
+      input.addEventListener('input', checkForChanges);
+      input.addEventListener('change', checkForChanges);
+      input.addEventListener('keyup', checkForChanges);
+    });
+
+    if (fileInput) {
+      fileInput.addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = function(evt) {
+            const preview = document.getElementById('avatar_preview');
+            const initials = document.getElementById('avatar_initials');
+            if (preview) {
+              preview.src = evt.target.result;
+              preview.style.display = 'block';
+            }
+            if (initials) {
+              initials.style.display = 'none';
+            }
+          }
+          reader.readAsDataURL(file);
+        }
+        checkForChanges();
+      });
+    }
+
+    // Initial check
+    checkForChanges();
+  });
+</script>
+{% endblock %}

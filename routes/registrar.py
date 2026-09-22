@@ -7,6 +7,7 @@ import logging
 import psycopg2.extras
 import json
 from utils.send_email import send_email
+from utils.parent_sync import sync_user_parent_links, sync_all_users_for_enrollment_guardian_email
 from flask import abort
 import re
 from datetime import datetime
@@ -4928,6 +4929,7 @@ def registrar_edit_teacher(user_id):
                     except Exception:
                         pass
 
+        sync_user_parent_links(db, cursor, user_id)
         db.commit()
         flash("Teacher details saved.", "success")
     except Exception as e:

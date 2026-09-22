@@ -14,6 +14,7 @@ from urllib.parse import urlencode
 werkzeug.urls.url_encode = urlencode
 from routes import init_routes
 from db import is_branch_active, get_db_connection
+from utils.parent_sync import sync_user_parent_links
 from routes.teacher import _get_active_school_year
 from flask import send_from_directory, make_response # Liceo LMS Flask Application Entry Point (Preserve Grade Level filter on student update)
 import psycopg2.extras
@@ -200,34 +201,13 @@ def validate_user_session():
                 if user.get("role") and user["role"] not in roles_list:
                     roles_list.insert(0, user["role"])
 
-                # Check parent auto-link by parent_student table or email match for non-student users
-                cursor.execute("SELECT 1 FROM parent_student WHERE parent_id = %s LIMIT 1", (user_id,))
-                if cursor.fetchone():
-                    if "parent" not in roles_list:
-                        roles_list.append("parent")
-                elif user.get("email") and user.get("branch_id"):
-                    cursor.execute("SELECT 1 FROM enrollments WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s)) AND branch_id = %s LIMIT 1", (user["email"], user["branch_id"]))
-                    if cursor.fetchone():
-                        if "parent" not in roles_list:
-                            roles_list.append("parent")
-                        cursor.execute("""
-                            INSERT INTO parent_student (parent_id, student_id, relationship)
-                            SELECT %s, enrollment_id, 'guardian'
-                            FROM enrollments
-                            WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s)) AND branch_id = %s
-                            ON CONFLICT DO NOTHING
-                        """, (user_id, user["email"], user["branch_id"]))
-                        db.commit()
-
-                if "parent" in roles_list and user.get("email") and user.get("branch_id"):
-                    cursor.execute("""
-                        INSERT INTO parent_student (parent_id, student_id, relationship)
-                        SELECT %s, enrollment_id, 'guardian'
-                        FROM enrollments
-                        WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s)) AND branch_id = %s
-                        ON CONFLICT DO NOTHING
-                    """, (user_id, user["email"], user["branch_id"]))
+                # Dynamic parent link & role synchronization with strict branch isolation
+                try:
+                    sync_res = sync_user_parent_links(db, cursor, user_id)
                     db.commit()
+                    roles_list = sync_res.get("user_roles", roles_list)
+                except Exception as ex:
+                    print(f"Error syncing parent roles in session validation: {ex}")
 
                 session["roles"] = roles_list
 

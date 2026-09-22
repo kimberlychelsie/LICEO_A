@@ -12,6 +12,7 @@ import time
 import json
 from extensions import limiter
 from routes.super_admin import log_audit_event
+from utils.parent_sync import sync_user_parent_links
 
 auth_bp = Blueprint("auth", __name__)
 BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:5000")
@@ -148,29 +149,13 @@ def login():
                         if user["role"] not in roles_list:
                             roles_list.insert(0, user["role"])
 
-                        # Check parent auto-link by parent_student table or email match with guardian_email (non-student users only)
-                        if "parent" not in roles_list:
-                            try:
-                                cursor.execute("SELECT 1 FROM parent_student WHERE parent_id = %s LIMIT 1", (user["user_id"],))
-                                if cursor.fetchone():
-                                    roles_list.append("parent")
-                                elif user.get("email"):
-                                    cursor.execute("SELECT 1 FROM enrollments WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s)) LIMIT 1", (user["email"],))
-                                    if cursor.fetchone():
-                                        roles_list.append("parent")
-                                        # Auto create parent_student links
-                                        cursor.execute("""
-                                            INSERT INTO parent_student (parent_id, student_id, relationship)
-                                            SELECT %s, enrollment_id, 'guardian'
-                                            FROM enrollments
-                                            WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s))
-                                            ON CONFLICT DO NOTHING
-                                        """, (user["user_id"], user["email"]))
-                                if "parent" in roles_list:
-                                    cursor.execute("UPDATE users SET user_roles = %s WHERE user_id = %s", (json.dumps(roles_list), user["user_id"]))
-                                    db.commit()
-                            except Exception as ex:
-                                logger.warning(f"Error checking parent role auto-link on login: {ex}")
+                        # Sync parent links and roles dynamically with strict branch matching
+                        try:
+                            sync_res = sync_user_parent_links(db, cursor, user["user_id"])
+                            db.commit()
+                            roles_list = sync_res.get("user_roles", roles_list)
+                        except Exception as ex:
+                            print(f"Error checking parent role auto-link on login: {ex}")
 
                     session["roles"] = roles_list
 
@@ -891,3 +876,191 @@ def switch_role():
         return redirect("/student/dashboard")
     else:
         return redirect("/")
+
+
+@auth_bp.route("/user/profile")
+def user_profile():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    if session.get("role") == "student":
+        return redirect(url_for("student_portal.student_profile"))
+    if session.get("role") == "super_admin":
+        return redirect("/super-admin/settings")
+
+    user_id = session.get("user_id")
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cursor.execute("""
+            SELECT u.*, b.branch_name
+            FROM users u
+            LEFT JOIN branches b ON u.branch_id = b.branch_id
+            WHERE u.user_id = %s
+        """, (user_id,))
+        user = cursor.fetchone()
+
+        if not user:
+            flash("User record not found.", "error")
+            return redirect("/")
+
+        # Fetch linked students if any
+        cursor.execute("""
+            SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name,
+                   COALESCE(g.name, e.grade_level) AS grade_level, s.section_name
+            FROM parent_student ps
+            JOIN enrollments e ON ps.student_id = e.enrollment_id
+            LEFT JOIN sections s ON e.section_id = s.section_id
+            LEFT JOIN grade_levels g ON s.grade_level_id = g.id
+            WHERE ps.parent_id = %s
+        """, (user_id,))
+        linked_students = cursor.fetchall()
+
+        # Fetch teacher assignments if user is teacher
+        teacher_assignments = []
+        if user.get("role") == "teacher" or "teacher" in (user.get("user_roles") or ""):
+            try:
+                from routes.teacher import _get_active_school_year
+                year_id = _get_active_school_year(cursor, user["branch_id"])
+                cursor.execute("""
+                    SELECT sub.name AS subject_name,
+                           g.name AS grade_level,
+                           s.section_name
+                    FROM section_teachers st
+                    JOIN subjects sub ON st.subject_id = sub.subject_id
+                    JOIN sections s ON st.section_id = s.section_id
+                    JOIN grade_levels g ON s.grade_level_id = g.id
+                    WHERE st.teacher_id = %s AND s.year_id = %s
+                    ORDER BY g.name, s.section_name, sub.name
+                """, (user_id, year_id))
+                teacher_assignments = cursor.fetchall()
+            except Exception:
+                pass
+
+        role_labels = {
+            "super_admin": "Super Admin",
+            "branch_admin": "Branch Admin",
+            "registrar": "Registrar",
+            "cashier": "Cashier",
+            "teacher": "Teacher",
+            "parent": "Parent",
+            "student": "Student",
+            "librarian": "Librarian"
+        }
+
+        return render_template(
+            "user_profile.html",
+            user=user,
+            linked_students=linked_students,
+            teacher_assignments=teacher_assignments,
+            role_labels=role_labels
+        )
+    finally:
+        cursor.close()
+        db.close()
+
+
+@auth_bp.route("/user/profile/update", methods=["POST"])
+def user_profile_update():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    if session.get("role") == "student":
+        flash("Student accounts use student profile update.", "error")
+        return redirect(url_for("student_portal.student_profile"))
+    if session.get("role") == "super_admin":
+        return redirect("/super-admin/settings")
+
+    user_id = session.get("user_id")
+    first_name = (request.form.get("first_name") or "").strip()
+    middle_name = (request.form.get("middle_name") or "").strip()
+    last_name = (request.form.get("last_name") or "").strip()
+    email = (request.form.get("email") or "").strip().lower()
+    contact_number = (request.form.get("contact_number") or "").strip()
+    gender = (request.form.get("gender") or "").strip()
+
+    if not first_name or not last_name:
+        flash("First name and Last name are required.", "error")
+        return redirect(url_for("auth.user_profile"))
+
+    if email and not re.match(r"^[^@]+@[^@]+\.[^@]+$", email):
+        flash("Invalid email format.", "error")
+        return redirect(url_for("auth.user_profile"))
+
+    db = get_db_connection()
+    cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        # Check if email is already taken by another user account
+        if email:
+            cursor.execute("SELECT user_id FROM users WHERE LOWER(TRIM(email)) = %s AND user_id != %s LIMIT 1", (email, user_id))
+            if cursor.fetchone():
+                flash("The email address is already in use by another user account.", "error")
+                return redirect(url_for("auth.user_profile"))
+
+        full_name = f"{first_name} {middle_name} {last_name}".strip().replace("  ", " ")
+
+        # Check if a profile image file was uploaded
+        profile_image_file = request.files.get("profile_image")
+        profile_image_url = None
+        if profile_image_file and profile_image_file.filename:
+            try:
+                from cloudinary_helper import upload_file_to_subfolder
+                profile_image_url = upload_file_to_subfolder(profile_image_file, "profiles")
+            except Exception as img_err:
+                print(f"[PROFILE IMAGE UPLOAD ERROR]: {img_err}")
+
+        if profile_image_url:
+            cursor.execute("""
+                UPDATE users
+                SET first_name = %s,
+                    middle_name = %s,
+                    last_name = %s,
+                    full_name = %s,
+                    email = %s,
+                    contact_number = %s,
+                    gender = %s,
+                    profile_image = %s
+                WHERE user_id = %s
+            """, (first_name, middle_name or None, last_name, full_name, email or None, contact_number or None, gender or None, profile_image_url, user_id))
+        else:
+            cursor.execute("""
+                UPDATE users
+                SET first_name = %s,
+                    middle_name = %s,
+                    last_name = %s,
+                    full_name = %s,
+                    email = %s,
+                    contact_number = %s,
+                    gender = %s
+                WHERE user_id = %s
+            """, (first_name, middle_name or None, last_name, full_name, email or None, contact_number or None, gender or None, user_id))
+
+        # Re-sync parent links & roles with strict branch isolation
+        sync_result = sync_user_parent_links(db, cursor, user_id)
+        db.commit()
+
+        # Update session variables
+        session["full_name"] = full_name
+        session["gender"] = gender
+
+        if sync_result.get("switched_role"):
+            flash(
+                "Profile updated successfully. Your new email does not match any student's guardian email in this branch, so Parent Mode access has been disconnected.",
+                "info"
+            )
+        elif sync_result.get("has_parent_role"):
+            flash(
+                "Profile updated successfully. Parent Mode access has been linked for matching student(s) in this branch.",
+                "success"
+            )
+        else:
+            flash("Profile updated successfully.", "success")
+
+        return redirect(url_for("auth.user_profile"))
+    except Exception as e:
+        db.rollback()
+        flash(f"Error updating profile: {str(e)}", "error")
+        return redirect(url_for("auth.user_profile"))
+    finally:
+        cursor.close()
+        db.close()
