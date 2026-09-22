@@ -175,7 +175,7 @@ def validate_user_session():
         db = get_db_connection()
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
-            cursor.execute("SELECT status, branch_id, role FROM users WHERE user_id = %s", (user_id,))
+            cursor.execute("SELECT status, branch_id, role, user_roles, email FROM users WHERE user_id = %s", (user_id,))
             user = cursor.fetchone()
             
             if not user or user['status'] != 'active':
@@ -183,8 +183,57 @@ def validate_user_session():
                 flash("Your account is no longer active or has been retired. Please contact the administrator.", "error")
                 return redirect(url_for('auth.login'))
             
-            # If they are a branch-level user, ensure they are in the correct branch
-            if user['role'] not in ['super_admin'] and user['branch_id'] != session.get('branch_id'):
+            # If account is a student account, restrict roles strictly to ["student"]
+            if user.get("role") == "student" or session.get("role") == "student":
+                session["roles"] = ["student"]
+            else:
+                # Sync live assigned roles from DB into session for staff/parent accounts
+                roles_list = []
+                ur_raw = user.get("user_roles")
+                if ur_raw:
+                    try:
+                        roles_list = json.loads(ur_raw) if isinstance(ur_raw, str) else list(ur_raw)
+                    except Exception:
+                        roles_list = []
+                if not roles_list and user.get("role"):
+                    roles_list = [user["role"]]
+                if user.get("role") and user["role"] not in roles_list:
+                    roles_list.insert(0, user["role"])
+
+                # Check parent auto-link by parent_student table or email match for non-student users
+                cursor.execute("SELECT 1 FROM parent_student WHERE parent_id = %s LIMIT 1", (user_id,))
+                if cursor.fetchone():
+                    if "parent" not in roles_list:
+                        roles_list.append("parent")
+                elif user.get("email"):
+                    cursor.execute("SELECT 1 FROM enrollments WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s)) LIMIT 1", (user["email"],))
+                    if cursor.fetchone():
+                        if "parent" not in roles_list:
+                            roles_list.append("parent")
+                        cursor.execute("""
+                            INSERT INTO parent_student (parent_id, student_id, relationship)
+                            SELECT %s, enrollment_id, 'guardian'
+                            FROM enrollments
+                            WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s))
+                            ON CONFLICT DO NOTHING
+                        """, (user_id, user["email"]))
+                        db.commit()
+
+                if "parent" in roles_list and user.get("email"):
+                    cursor.execute("""
+                        INSERT INTO parent_student (parent_id, student_id, relationship)
+                        SELECT %s, enrollment_id, 'guardian'
+                        FROM enrollments
+                        WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s))
+                        ON CONFLICT DO NOTHING
+                    """, (user_id, user["email"]))
+                    db.commit()
+
+                session["roles"] = roles_list
+
+            # If they are a branch-level user, ensure they are in the correct branch (skip branch mismatch check if operating in parent mode)
+            curr_active_role = session.get("role")
+            if user['role'] not in ['super_admin'] and curr_active_role != 'parent' and user['branch_id'] and session.get('branch_id') and user['branch_id'] != session.get('branch_id'):
                 session.clear()
                 flash("Your account has been moved to another branch. Please login again.", "info")
                 return redirect(url_for('auth.login'))
@@ -192,6 +241,7 @@ def validate_user_session():
         except Exception as e:
             print(f"Session validation error: {str(e)}")
         finally:
+            cursor.close()
             db.close()
 
 @app.before_request

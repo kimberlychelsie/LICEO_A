@@ -142,32 +142,35 @@ def login():
                     if not roles_list:
                         roles_list = [user["role"]]
 
-                    if user["role"] not in roles_list:
-                        roles_list.insert(0, user["role"])
+                    if user["role"] == "student":
+                        roles_list = ["student"]
+                    else:
+                        if user["role"] not in roles_list:
+                            roles_list.insert(0, user["role"])
 
-                    # Check parent auto-link by parent_student table or email match with guardian_email
-                    if "parent" not in roles_list:
-                        try:
-                            cursor.execute("SELECT 1 FROM parent_student WHERE parent_id = %s LIMIT 1", (user["user_id"],))
-                            if cursor.fetchone():
-                                roles_list.append("parent")
-                            elif user.get("email"):
-                                cursor.execute("SELECT 1 FROM enrollments WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s)) LIMIT 1", (user["email"],))
+                        # Check parent auto-link by parent_student table or email match with guardian_email (non-student users only)
+                        if "parent" not in roles_list:
+                            try:
+                                cursor.execute("SELECT 1 FROM parent_student WHERE parent_id = %s LIMIT 1", (user["user_id"],))
                                 if cursor.fetchone():
                                     roles_list.append("parent")
-                                    # Auto create parent_student links
-                                    cursor.execute("""
-                                        INSERT INTO parent_student (parent_id, student_id, relationship)
-                                        SELECT %s, enrollment_id, 'guardian'
-                                        FROM enrollments
-                                        WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s))
-                                        ON CONFLICT DO NOTHING
-                                    """, (user["user_id"], user["email"]))
-                            if "parent" in roles_list:
-                                cursor.execute("UPDATE users SET user_roles = %s WHERE user_id = %s", (json.dumps(roles_list), user["user_id"]))
-                                db.commit()
-                        except Exception as ex:
-                            logger.warning(f"Error checking parent role auto-link on login: {ex}")
+                                elif user.get("email"):
+                                    cursor.execute("SELECT 1 FROM enrollments WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s)) LIMIT 1", (user["email"],))
+                                    if cursor.fetchone():
+                                        roles_list.append("parent")
+                                        # Auto create parent_student links
+                                        cursor.execute("""
+                                            INSERT INTO parent_student (parent_id, student_id, relationship)
+                                            SELECT %s, enrollment_id, 'guardian'
+                                            FROM enrollments
+                                            WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s))
+                                            ON CONFLICT DO NOTHING
+                                        """, (user["user_id"], user["email"]))
+                                if "parent" in roles_list:
+                                    cursor.execute("UPDATE users SET user_roles = %s WHERE user_id = %s", (json.dumps(roles_list), user["user_id"]))
+                                    db.commit()
+                            except Exception as ex:
+                                logger.warning(f"Error checking parent role auto-link on login: {ex}")
 
                     session["roles"] = roles_list
 
@@ -829,6 +832,10 @@ def logout():
 def switch_role():
     if "user_id" not in session:
         return redirect(url_for("auth.login"))
+
+    if session.get("role") == "student":
+        flash("Student accounts cannot switch role modes.", "error")
+        return redirect(request.referrer or "/student/dashboard")
 
     target_role = request.form.get("target_role", "").strip()
     available_roles = session.get("roles", [])
