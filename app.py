@@ -848,7 +848,10 @@ def inject_parent_children():
                 SELECT ps.student_id as enrollment_id, e.student_first_name, e.student_last_name
                 FROM parent_student ps
                 JOIN enrollments e ON ps.student_id = e.enrollment_id
+                JOIN school_years sy ON sy.year_id = e.year_id
                 WHERE ps.parent_id = %s
+                  AND sy.is_active = TRUE
+                  AND e.status IN ('enrolled', 'approved', 'open_for_enrollment', 'completed')
             """, (session['user_id'],))
             children = cursor.fetchall()
             for c in children:
