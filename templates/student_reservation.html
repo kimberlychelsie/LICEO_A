@@ -1447,8 +1447,8 @@
                 <span class="filter-label">Browse Category</span>
                 <select id="categorySelect" class="premium-select" onchange="filterItems()">
                     <option value="ALL">All Items</option>
-                    <option value="BOOK">Books & Materials</option>
-                    <option value="UNIFORM" selected>School Uniforms</option>
+                    <option value="BOOK">📖 Books & Materials</option>
+                    <option value="UNIFORM" selected>👕 School Uniforms</option>
                 </select>
             </div>
 
@@ -1552,7 +1552,7 @@
                         {% if not catalog_groups or catalog_groups|length == 0 %}
                         <div
                             style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: white; border-radius: 20px; border: 1px solid var(--res-border);">
-                            <i class="fas fa-box-open" style="font-size: 3rem; color: var(--res-muted); display: block; margin-bottom: 20px;"></i>
+                            <span style="font-size: 3rem; display: block; margin-bottom: 20px;">📦</span>
                             <h3 style="font-weight: 800; color: var(--res-primary); margin-bottom: 10px;">No items
                                 available</h3>
                             <p style="color: var(--res-muted);">Try selecting a different category or check back later.
@@ -1589,31 +1589,12 @@
 
                                 {% if it.grade_level %}
                                 <div
-                                    style="font-size:0.75rem; color:var(--res-muted); font-weight:700; margin-bottom:8px;">
+                                    style="font-size:0.75rem; color:var(--res-muted); font-weight:700; margin-bottom:12px;">
                                     {{ it.grade_level }}</div>
                                 {% else %}
                                 <div
-                                    style="font-size:0.75rem; color:var(--res-muted); font-weight:700; margin-bottom:8px;">
+                                    style="font-size:0.75rem; color:var(--res-muted); font-weight:700; margin-bottom:12px;">
                                     {{ it.category }}</div>
-                                {% endif %}
-
-                                {% if g.pieces and g.pieces|length > 0 %}
-                                <div class="set-accordion-wrap" style="margin: 0 0 12px 0; width: 100%; box-sizing: border-box;">
-                                    <button type="button" class="set-accordion-toggle" onclick="toggleSetPieces(this)" style="width: 100%; background: #f8fafc; border: 1px solid var(--res-border); border-radius: 10px; padding: 7px 10px; font-size: 0.75rem; font-weight: 800; color: #1e3a8a; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: all 0.2s;">
-                                        <span style="display: flex; align-items: center; gap: 5px;">
-                                            Package Includes ({{ g.pieces|length }} items)
-                                        </span>
-                                        <span class="acc-arrow" style="font-size: 0.7rem; transition: transform 0.2s;">▼</span>
-                                    </button>
-                                    <div class="set-accordion-content" style="display: none; background: #ffffff; border: 1px solid var(--res-border); border-top: none; border-radius: 0 0 10px 10px; padding: 8px 10px; margin-top: -2px;">
-                                        {% for p in g.pieces %}
-                                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #f1f5f9; font-size: 0.75rem;">
-                                            <span style="font-weight: 700; color: #334155;"><i class="fas fa-check" style="color: #16a34a; font-size: 0.7rem; margin-right: 4px;"></i> {{ p.item_name }}</span>
-                                            <span style="font-weight: 800; color: #1e3a8a;">₱{{ "{:,.2f}".format(p.price or 0.0) }}</span>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-                                </div>
                                 {% endif %}
 
                                 <!-- Price displayed in details instead of floating on image -->
@@ -1697,7 +1678,8 @@
                     <!-- Header -->
                     <div
                         style="padding: 18px 20px; border-bottom: 1px dashed var(--res-border); display: flex; justify-content: space-between; align-items: center;">
-                        <h2 style="margin: 0; font-size: 1.15rem; font-weight: 900; color: var(--res-primary); display: flex; align-items: center; gap: 8px;">
+                        <h2
+                            style="margin: 0; font-size: 1.15rem; font-weight: 900; color: var(--res-primary); display: flex; align-items: center; gap: 8px;">
                             <i class="fas fa-shopping-bag"></i> Checkout Summary
                         </h2>
                     </div>
@@ -1718,10 +1700,12 @@
                     <!-- Footer / Checkout Bar -->
                     <div class="checkout-footer-bar">
                         <div class="checkout-footer-total">
-                            <div class="order-total-label" style="font-size: 1rem; color: var(--res-text); font-weight: 700;">
+                            <div class="order-total-label"
+                                style="font-size: 1rem; color: var(--res-text); font-weight: 700;">
                                 Order Total (<span id="checkoutTotalItems">0</span> Item/s):
                             </div>
-                            <div id="sideSumTotal" style="font-size: 1.6rem; font-weight: 900; color: var(--res-primary);">
+                            <div id="sideSumTotal"
+                                style="font-size: 1.6rem; font-weight: 900; color: var(--res-primary);">
                                 ₱0.00
                             </div>
                         </div>
@@ -2181,14 +2165,16 @@
 
             <!-- Total -->
             <div class="res-modal-total-box">
-                <div class="total-label" style="font-weight: 900; color: var(--res-primary); font-size: 1.05rem; letter-spacing: 0.5px;">
+                <div class="total-label"
+                    style="font-weight: 900; color: var(--res-primary); font-size: 1.05rem; letter-spacing: 0.5px;">
                     TOTAL AMOUNT TO PAY</div>
                 <div class="total-val" style="font-weight: 900; color: var(--res-primary); font-size: 1.4rem;">PHP {{
                     "{:,.2f}".format(success_data.total) }}</div>
             </div>
 
             <!-- Notice -->
-            <div class="res-modal-notice" style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; margin-bottom: 20px; border-radius: 6px;">
+            <div class="res-modal-notice"
+                style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; margin-bottom: 20px; border-radius: 6px;">
                 <strong style="color: #b45309; display: block; margin-bottom: 4px; font-size: 0.9rem;">NOTICE:</strong>
                 <p style="margin: 0; color: #92400e; font-size: 0.9rem; line-height: 1.5;">Please present this Receipt
                     ID (<strong>{{ success_data.ref_id or ("#" ~ success_data.reservation.reservation_id if
@@ -2202,20 +2188,6 @@
 {% endif %}
 
 <script>
-    function toggleSetPieces(btn) {
-        if (!btn) return;
-        const wrap = btn.closest('.set-accordion-wrap');
-        if (!wrap) return;
-        const content = wrap.querySelector('.set-accordion-content');
-        const arrow = wrap.querySelector('.acc-arrow');
-        if (content) {
-            const isOpen = content.style.display === 'block';
-            content.style.display = isOpen ? 'none' : 'block';
-            if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
-            btn.style.borderRadius = isOpen ? '10px' : '10px 10px 0 0';
-        }
-    }
-
     function closeSuccessModal() {
         const modal = document.getElementById("successModal");
         if (!modal) return;

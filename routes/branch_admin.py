@@ -951,28 +951,6 @@ def branch_admin_edit_account(user_id):
     finally:
         cursor.close()
         db.close()
-
-
-@branch_admin_bp.route("/branch-admin/manage-accounts/merge", methods=["POST"])
-def branch_admin_merge_accounts():
-    if session.get("role") != "branch_admin":
-        return redirect("/")
-
-    primary_id = request.form.get("primary_user_id", type=int)
-    secondary_id = request.form.get("secondary_user_id", type=int)
-
-    if not primary_id or not secondary_id:
-        flash("Please select both a primary and secondary account to merge.", "error")
-        return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
-
-    success, msg = merge_user_accounts(primary_id, secondary_id)
-    if success:
-        flash(msg, "success")
-    else:
-        flash(msg, "error")
-
-    return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
-
 @branch_admin_bp.route("/branch-admin/manage-accounts/student/<int:account_id>/edit", methods=["GET", "POST"])
 def branch_admin_edit_student_account(account_id):
     if session.get("role") != "branch_admin":
