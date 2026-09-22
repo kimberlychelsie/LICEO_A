@@ -707,6 +707,7 @@ def registrar_enrollments():
                     WHERE e.guardian_email IS NOT NULL
                       AND LOWER(e2.guardian_email) = LOWER(e.guardian_email)
                       AND e2.enrollment_id <> e.enrollment_id
+                      AND e2.branch_id = e.branch_id
                     LIMIT 1) AS existing_parent_user_id,
                    (SELECT u2.username
                     FROM enrollments e2
@@ -715,6 +716,7 @@ def registrar_enrollments():
                     WHERE e.guardian_email IS NOT NULL
                       AND LOWER(e2.guardian_email) = LOWER(e.guardian_email)
                       AND e2.enrollment_id <> e.enrollment_id
+                      AND e2.branch_id = e.branch_id
                     LIMIT 1) AS existing_parent_username
             FROM enrollments e
             LEFT JOIN sections s          ON s.section_id    = e.section_id
@@ -1978,8 +1980,9 @@ def create_parent_account(enrollment_id):
                 JOIN users u               ON u.user_id          = ps_sib.parent_id
                 WHERE LOWER(e_sib.guardian_email) = %s
                   AND e_sib.enrollment_id <> %s
+                  AND e_sib.branch_id = %s
                 LIMIT 1
-            """, (guardian_email, enrollment_id))
+            """, (guardian_email, enrollment_id, branch_id))
             existing_by_email = cursor.fetchone()
             if existing_by_email:
                 cursor.execute("""
@@ -2173,8 +2176,9 @@ def link_parent_account(enrollment_id):
             JOIN users u               ON u.user_id          = ps_sib.parent_id
             WHERE LOWER(e_sib.guardian_email) = %s
               AND e_sib.enrollment_id <> %s
+              AND e_sib.branch_id = %s
             LIMIT 1
-        """, (guardian_email, enrollment_id))
+        """, (guardian_email, enrollment_id, branch_id))
         parent_user = cursor.fetchone()
 
         if not parent_user:

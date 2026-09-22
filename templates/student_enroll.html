@@ -781,7 +781,7 @@
                             <div class="c8">
                                 <div class="field">
                                     <label>Email Address <small class="text-muted" style="font-weight: normal; font-size: 11px;">(Optional)</small></label>
-                                    <input type="email" name="email" placeholder="username@domain.com"
+                                    <input type="email" id="field_email" name="email" placeholder="username@domain.com"
                                         minlength="5" maxlength="60"
                                         oninput="this.value = this.value.replace(/[^a-zA-Z0-9@._-]/g, '').replace(/\.\.+/g, '.').replace(/--+/g, '-').replace(/__+/g, '_').replace(/(@.*)@/g, '$1')"
                                         title="Please enter a valid email address (e.g. username@domain.com)" />
@@ -1066,25 +1066,6 @@
                 <!-- ══ SUBMIT FOOTER ══ -->
                 <div class="form-footer">
 
-                    <!-- Duplicate warning banner (shown by AJAX) -->
-                    <div id="dupWarning" style="display:none; width:100%; background:#fef2f2; border:2px solid #fca5a5;
-                               border-radius:12px; padding:14px 18px; margin-bottom:12px;">
-                        <div style="display:flex; align-items:flex-start; gap:12px;">
-                            <span style="font-size:1.5rem;">🚫</span>
-                            <div>
-                                <strong style="display:block; margin-bottom:3px;">
-                                    Existing student record detected
-                                </strong>
-                                <span id="dupDetail" style="font-size:0.82rem; color:#7f1d1d;"></span>
-                                <br><br>
-                                <span style="font-size:0.82rem;">
-                                    If you are a <strong>returning student</strong>, please use the
-                                    <a href="/branch/{{ branch.branch_id }}"
-                                        style="color:#1d4ed8; font-weight:700;">Continuing Student</a> option instead.
-                                </span>
-                            </div>
-                        </div>
-                    </div>
 
                     <div class="footer-note">
                         By clicking <strong>Submit Enrollment</strong>, you confirm that all information provided
@@ -1106,10 +1087,9 @@
             var lastNameEl = document.getElementById('student_last_name');
             var dobEl = document.getElementById('field_dob');
             var lrnEl = document.getElementById('field_lrn');
+            var emailEl = document.getElementById('field_email');
             var enrollDateEl = document.getElementById('enroll_date');
             var submitBtn = document.getElementById('submitBtn');
-            var dupWarn = document.getElementById('dupWarning');
-            var dupDetail = document.getElementById('dupDetail');
             var topDupWarn = document.getElementById('duplicateWarning');
             var topDupDetail = document.getElementById('duplicateDetail');
             var blocked = false;
@@ -1193,12 +1173,9 @@
                 blocked = val;
                 blockedReason = val ? (detail || '') : '';
                 if (val) {
-                    if (dupWarn) dupWarn.style.display = 'block';
-                    if (dupDetail) dupDetail.textContent = detail || '';
                     if (topDupWarn) topDupWarn.style.display = 'flex';
                     if (topDupDetail) topDupDetail.textContent = detail || '';
                 } else {
-                    if (dupWarn) dupWarn.style.display = 'none';
                     if (topDupWarn) topDupWarn.style.display = 'none';
                 }
             }
@@ -1210,19 +1187,25 @@
                 var name = [fn, mn, ln].filter(Boolean).join(' ');
                 var dob = dobEl ? dobEl.value.trim() : '';
                 var lrn = lrnEl ? lrnEl.value.trim() : '';
-                if (!name && !lrn) { setBlocked(false); return; }
+                var email = emailEl ? emailEl.value.trim() : '';
+                if (!name && !lrn && !email) { setBlocked(false); return; }
 
                 fetch('/api/check-duplicate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ name: name, dob: dob, lrn: lrn, branch_id: branchId })
+                    body: JSON.stringify({ name: name, dob: dob, lrn: lrn, email: email, branch_id: branchId })
                 })
                     .then(function (r) { return r.json(); })
                     .then(function (res) {
                         if (res.status === 'blocked') {
-                            var reasons = (res.reasons || []).join(', ');
-                            var detail = 'Matched because: ' + reasons + '.';
-                            if (res.match_grade) detail += ' Existing grade: ' + res.match_grade + '.';
+                            var detail = '';
+                            if (res.is_other_branch) {
+                                detail = '⚠️ Active enrollment application for ' + (res.match_name || 'this student') + ' already exists at ' + (res.match_branch || 'another campus') + '. A student cannot apply in multiple campuses simultaneously.';
+                            } else {
+                                var reasons = (res.reasons || []).join(', ');
+                                detail = 'Matched because: ' + reasons + '.';
+                                if (res.match_grade) detail += ' Existing grade: ' + res.match_grade + '.';
+                            }
                             setBlocked(true, detail);
                         } else {
                             setBlocked(false);
@@ -1232,6 +1215,7 @@
             }
 
             if (lrnEl) lrnEl.addEventListener('blur', runCheck);
+            if (emailEl) emailEl.addEventListener('blur', runCheck);
             if (dobEl) dobEl.addEventListener('change', runCheck);
             if (firstNameEl) firstNameEl.addEventListener('blur', runCheck);
             if (lastNameEl) lastNameEl.addEventListener('blur', runCheck);

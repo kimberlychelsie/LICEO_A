@@ -205,8 +205,8 @@ def validate_user_session():
                 if cursor.fetchone():
                     if "parent" not in roles_list:
                         roles_list.append("parent")
-                elif user.get("email"):
-                    cursor.execute("SELECT 1 FROM enrollments WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s)) LIMIT 1", (user["email"],))
+                elif user.get("email") and user.get("branch_id"):
+                    cursor.execute("SELECT 1 FROM enrollments WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s)) AND branch_id = %s LIMIT 1", (user["email"], user["branch_id"]))
                     if cursor.fetchone():
                         if "parent" not in roles_list:
                             roles_list.append("parent")
@@ -214,19 +214,19 @@ def validate_user_session():
                             INSERT INTO parent_student (parent_id, student_id, relationship)
                             SELECT %s, enrollment_id, 'guardian'
                             FROM enrollments
-                            WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s))
+                            WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s)) AND branch_id = %s
                             ON CONFLICT DO NOTHING
-                        """, (user_id, user["email"]))
+                        """, (user_id, user["email"], user["branch_id"]))
                         db.commit()
 
-                if "parent" in roles_list and user.get("email"):
+                if "parent" in roles_list and user.get("email") and user.get("branch_id"):
                     cursor.execute("""
                         INSERT INTO parent_student (parent_id, student_id, relationship)
                         SELECT %s, enrollment_id, 'guardian'
                         FROM enrollments
-                        WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s))
+                        WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s)) AND branch_id = %s
                         ON CONFLICT DO NOTHING
-                    """, (user_id, user["email"]))
+                    """, (user_id, user["email"], user["branch_id"]))
                     db.commit()
 
                 session["roles"] = roles_list

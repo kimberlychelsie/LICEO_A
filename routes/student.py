@@ -261,7 +261,7 @@ def get_active_school_year_id(cursor, branch_id):
 # =======================
 # DUPLICATE CHECK HELPER
 # =======================
-def compute_duplicate_score(new_name, new_dob, new_lrn, existing):
+def compute_duplicate_score(new_name, new_dob, new_lrn, existing, new_email=None):
     """
     Returns (score, reasons) for a single existing enrollment row.
     Score thresholds: >= 50 → block, 30-49 → (not used currently, reserved)
@@ -269,10 +269,15 @@ def compute_duplicate_score(new_name, new_dob, new_lrn, existing):
     score = 0
     reasons = []
 
-    # LRN exact match — strongest signal
-    if new_lrn and existing.get("lrn") and new_lrn.strip() == existing["lrn"].strip():
+    # Student Email exact match — strongest signal
+    if new_email and existing.get("email") and new_email.strip().lower() == str(existing["email"]).strip().lower():
         score += 60
-        reasons.append("LRN matches")
+        reasons.append("Email address matches an existing record")
+
+    # LRN exact match — strongest signal
+    if new_lrn and existing.get("lrn") and new_lrn.strip() == str(existing["lrn"]).strip():
+        score += 60
+        reasons.append("LRN matches an existing record")
 
     # Birthday exact match
     dob_match = False
@@ -287,7 +292,7 @@ def compute_duplicate_score(new_name, new_dob, new_lrn, existing):
     if new_name and existing.get("student_name"):
         similarity = fuzz.token_sort_ratio(new_name.lower(), existing["student_name"].lower())
         if similarity >= 90:
-            score += 25
+            score += 35 if dob_match else 25
             reasons.append(f"name is {similarity}% similar")
         elif similarity >= 75:
             score += 15
@@ -306,28 +311,38 @@ def check_duplicate():
     name = (data.get("name") or "").strip()
     dob  = (data.get("dob") or "").strip()
     lrn  = (data.get("lrn") or "").strip()
+    email = (data.get("email") or "").strip()
     branch_id = data.get("branch_id")
+    try:
+        if branch_id is not None:
+            branch_id = int(branch_id)
+    except (ValueError, TypeError):
+        branch_id = None
 
-    if not name and not lrn:
+    if not name and not lrn and not email:
         return jsonify({"status": "ok"})
 
     db = get_db_connection()
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
-        # Fetch existing enrollments from the DB (exclude rejected ones)
+        # Fetch existing enrollments from DB across ALL branches (exclude rejected/cancelled)
         cursor.execute("""
-    SELECT
-        student_first_name,
-        student_middle_name,
-        student_last_name,
-        dob,
-        lrn,
-        enrollment_id,
-        grade_level
-    FROM enrollments
-    WHERE status NOT IN ('rejected')
-    AND branch_id = %s
-""", (branch_id,))
+            SELECT
+                e.student_first_name,
+                e.student_middle_name,
+                e.student_last_name,
+                e.dob,
+                e.lrn,
+                e.email,
+                e.enrollment_id,
+                e.grade_level,
+                e.branch_id,
+                b.branch_name,
+                b.branch_code
+            FROM enrollments e
+            JOIN branches b ON e.branch_id = b.branch_id
+            WHERE e.status NOT IN ('rejected', 'cancelled')
+        """)
         existing_records = cursor.fetchall()
 
         best_score = 0
@@ -345,7 +360,8 @@ def check_duplicate():
                 name,
                 dob or "",
                 lrn or "",
-                rec
+                rec,
+                new_email=email
             )
 
             if score > best_score:
@@ -353,13 +369,16 @@ def check_duplicate():
                 best_reasons = reasons
                 best_match = rec
 
-        if best_score >= 50:
+        if best_score >= 50 and best_match:
+            is_other_branch = (branch_id is not None) and (best_match["branch_id"] != branch_id)
             return jsonify({
                 "status": "blocked",
                 "score": best_score,
                 "reasons": best_reasons,
-                "match_name": best_match["student_name"] if best_match else None,
-                "match_grade": best_match["grade_level"] if best_match else None,
+                "match_name": best_match["student_name"],
+                "match_grade": best_match["grade_level"],
+                "match_branch": best_match["branch_name"],
+                "is_other_branch": is_other_branch
             })
 
         return jsonify({"status": "ok", "score": best_score})
@@ -636,17 +655,20 @@ def enroll(branch_id):
             # ── SERVER-SIDE DUPLICATE CHECK ──
             cursor.execute("""
                 SELECT
-                    student_first_name,
-                    student_middle_name,
-                    student_last_name,
-                    dob,
-                    lrn,
-                    grade_level
-                FROM enrollments
-                WHERE status NOT IN ('rejected')
-                AND branch_id = %s
-                AND year_id = %s
-            """, (branch_id, selected_sy_id))
+                    e.student_first_name,
+                    e.student_middle_name,
+                    e.student_last_name,
+                    e.dob,
+                    e.lrn,
+                    e.email,
+                    e.grade_level,
+                    e.branch_id,
+                    b.branch_name,
+                    b.branch_code
+                FROM enrollments e
+                JOIN branches b ON e.branch_id = b.branch_id
+                WHERE e.status NOT IN ('rejected', 'cancelled')
+            """)
             existing_records = cursor.fetchall()
             
             best_score = 0
@@ -664,7 +686,8 @@ def enroll(branch_id):
                     student_name,
                     dob or "",
                     lrn or "",
-                    rec
+                    rec,
+                    new_email=email
                 )
 
                 if score > best_score:
@@ -672,12 +695,20 @@ def enroll(branch_id):
                     best_reasons = reasons
                     best_match = rec    
 
-            if best_score >= 50:
-                reason_text = ", ".join(best_reasons)
-                if best_match:
+            if best_score >= 50 and best_match:
+                if best_match["branch_id"] != branch_id:
+                    reason_text = (
+                        f"An active enrollment application for <strong>{best_match['student_name']}</strong> "
+                        f"already exists at <strong>{best_match['branch_name']}</strong> "
+                        f"({best_match['grade_level']}).<br><br>"
+                        f"A student cannot be enrolled in multiple campuses simultaneously. "
+                        f"If you wish to transfer campuses, please contact school administration."
+                    )
+                else:
+                    reason_text = ", ".join(best_reasons)
                     reason_text += (
                         f"<br><br>"
-                        f"Existing record:<br>"
+                        f"Existing record in this campus:<br>"
                         f"<strong>{best_match['student_name']}</strong>"
                         f" ({best_match['grade_level']})"
                     )
