@@ -790,22 +790,28 @@
   .loads-container {
     display: flex;
     flex-wrap: wrap;
-    gap: 5px;
+    gap: 4px;
     align-items: center;
-    max-width: 420px;
+    max-width: 270px;
   }
   .load-badge {
     display: inline-flex;
     align-items: center;
-    padding: 3px 9px;
+    padding: 3px 8px;
     border-radius: 6px;
     background: #f1f5f9;
     color: #334155;
-    font-size: .78rem;
+    font-size: .76rem;
     font-weight: 600;
     border: 1px solid #cbd5e1;
     white-space: nowrap;
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
     line-height: 1.35;
+  }
+  .table-scroll-inner {
+    overflow-x: auto !important;
   }
   .load-badge-more {
     position: relative;
@@ -1187,17 +1193,17 @@
               {% if t.assigned_sections %}
                 {% set loads = t.assigned_sections.split(', ') %}
                 <div class="loads-container">
-                  {% for load in loads[:2] %}
-                    <span class="load-badge">{{ load }}</span>
+                  {% for load in loads[:1] %}
+                    <span class="load-badge" title="{{ load }}">{{ load }}</span>
                   {% endfor %}
-                  {% if loads|length > 2 %}
-                    <span class="load-badge-hidden-group" style="display:none;">
-                      {% for load in loads[2:] %}
-                        <span class="load-badge">{{ load }}</span>
+                  {% if loads|length > 1 %}
+                    <span class="load-badge-hidden-group" style="display:none; margin-top: 4px;">
+                      {% for load in loads[1:] %}
+                        <span class="load-badge" title="{{ load }}">{{ load }}</span>
                       {% endfor %}
                     </span>
                     <button type="button" class="load-badge load-badge-more" onclick="toggleTeacherLoads(this, event)">
-                      +{{ loads|length - 2 }} more
+                      +{{ loads|length - 1 }} more
                     </button>
                   {% endif %}
                 </div>
@@ -1801,9 +1807,10 @@
 
     const isHidden = (hiddenGroup.style.display === 'none' || !hiddenGroup.style.display);
     if (isHidden) {
-      hiddenGroup.style.display = 'inline-flex';
-      hiddenGroup.style.flexWrap = 'wrap';
-      hiddenGroup.style.gap = '5px';
+      hiddenGroup.style.display = 'flex';
+      hiddenGroup.style.flexDirection = 'column';
+      hiddenGroup.style.alignItems = 'flex-start';
+      hiddenGroup.style.gap = '4px';
       btn.textContent = 'Show less';
       btn.classList.add('is-expanded');
     } else {
