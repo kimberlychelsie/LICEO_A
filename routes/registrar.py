@@ -696,9 +696,25 @@ def registrar_enrollments():
                     ) AS student_name,
                    e.branch_enrollment_no AS display_no,
                    s.section_name,
-                   CASE WHEN sa.enrollment_id IS NOT NULL THEN TRUE ELSE FALSE END AS has_student_account,
-                   CASE WHEN ps.student_id   IS NOT NULL THEN TRUE ELSE FALSE END AS has_parent_account,
-                   u.username AS parent_username,
+                   (EXISTS (
+                       SELECT 1 FROM student_accounts sa2 
+                       JOIN enrollments e2 ON e2.enrollment_id = sa2.enrollment_id
+                       WHERE e2.branch_enrollment_no = e.branch_enrollment_no 
+                         AND e2.branch_id = e.branch_id
+                   )) AS has_student_account,
+                   (EXISTS (
+                       SELECT 1 FROM parent_student ps2
+                       JOIN enrollments e3 ON e3.enrollment_id = ps2.student_id
+                       WHERE e3.branch_enrollment_no = e.branch_enrollment_no 
+                         AND e3.branch_id = e.branch_id
+                   )) AS has_parent_account,
+                   (SELECT u.username 
+                    FROM parent_student ps2
+                    JOIN enrollments e3 ON e3.enrollment_id = ps2.student_id
+                    JOIN users u ON u.user_id = ps2.parent_id
+                    WHERE e3.branch_enrollment_no = e.branch_enrollment_no 
+                      AND e3.branch_id = e.branch_id
+                    LIMIT 1) AS parent_username,
                    -- Correlated subquery: find existing parent account from a sibling enrollment
                    -- with the same guardian_email (returns at most 1 row — no duplication)
                    (SELECT ps2.parent_id
@@ -720,15 +736,6 @@ def registrar_enrollments():
                     LIMIT 1) AS existing_parent_username
             FROM enrollments e
             LEFT JOIN sections s          ON s.section_id    = e.section_id
-            LEFT JOIN student_accounts sa ON sa.enrollment_id IN (
-                SELECT e2.enrollment_id FROM enrollments e2 
-                WHERE e2.branch_enrollment_no = e.branch_enrollment_no AND e2.branch_id = e.branch_id
-            )
-            LEFT JOIN parent_student ps ON ps.student_id IN (
-                SELECT e3.enrollment_id FROM enrollments e3 
-                WHERE e3.branch_enrollment_no = e.branch_enrollment_no AND e3.branch_id = e.branch_id
-            )
-            LEFT JOIN users u             ON u.user_id        = ps.parent_id
             WHERE {enrolled_where}
            ORDER BY
                 e.grade_level ASC,
