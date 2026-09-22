@@ -786,7 +786,7 @@
     }
   }
 
-  /* Compact Subject Loads Badges */
+    /* Compact Subject Loads Badges & Floating Popover */
   .loads-container {
     display: flex;
     flex-wrap: wrap;
@@ -830,10 +830,73 @@
     color: #1d4ed8;
     border-color: #93c5fd;
   }
-  .load-badge-more.is-expanded {
-    background: #f1f5f9;
-    color: #64748b;
-    border-color: #cbd5e1;
+
+    /* High-Contrast Floating Popover Card */
+  .loads-popover-card {
+    position: fixed;
+    z-index: 999999 !important;
+    width: 310px;
+    background: #ffffff;
+    border: 1px solid #cbd5e1;
+    border-radius: 14px;
+    box-shadow: 0 20px 45px -5px rgba(15, 23, 42, 0.3), 0 0 0 1px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: popoverFadeIn 0.15s ease-out;
+  }
+  @keyframes popoverFadeIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  .loads-popover-card .popover-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: #1e3a8a;
+    color: #ffffff;
+    font-size: .82rem;
+    font-weight: 800;
+    letter-spacing: .02em;
+  }
+  .loads-popover-card .popover-close {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    font-size: 1.1rem;
+    color: #ffffff;
+    cursor: pointer;
+    line-height: 1;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease;
+  }
+  .loads-popover-card .popover-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
+  .loads-popover-card .popover-body {
+    padding: 10px 12px;
+    overflow-y: auto;
+    max-height: 240px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    background: #f8fafc;
+  }
+  .loads-popover-card .popover-item {
+    font-size: .82rem;
+    font-weight: 700;
+    color: #0f172a;
+    background: #ffffff;
+    padding: 7px 12px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    line-height: 1.35;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
   }
 </style>
 {% endblock %}
@@ -1189,20 +1252,13 @@
               <span style="color:var(--mu); font-weight:500;">—</span>
               {% endif %}
             </td>
-            <td style="font-size:.85rem; color:var(--mu);">
+                        <td style="font-size:.85rem; color:var(--mu);">
               {% if t.assigned_sections %}
                 {% set loads = t.assigned_sections.split(', ') %}
                 <div class="loads-container">
-                  {% for load in loads[:1] %}
-                    <span class="load-badge" title="{{ load }}">{{ load }}</span>
-                  {% endfor %}
+                  <span class="load-badge" title="{{ loads[0] }}">{{ loads[0] }}</span>
                   {% if loads|length > 1 %}
-                    <span class="load-badge-hidden-group" style="display:none; margin-top: 4px;">
-                      {% for load in loads[1:] %}
-                        <span class="load-badge" title="{{ load }}">{{ load }}</span>
-                      {% endfor %}
-                    </span>
-                    <button type="button" class="load-badge load-badge-more" onclick="toggleTeacherLoads(this, event)">
+                    <button type="button" class="load-badge load-badge-more" onclick="toggleLoadsPopover(this, event)" data-loads="{{ t.assigned_sections|e }}">
                       +{{ loads|length - 1 }} more
                     </button>
                   {% endif %}
@@ -1794,32 +1850,85 @@
   });
 </script>
 
+
+
+
 <script>
-  function toggleTeacherLoads(btn, ev) {
+  let currentLoadsPopover = null;
+
+  function closeLoadsPopover() {
+    if (currentLoadsPopover) {
+      currentLoadsPopover.remove();
+      currentLoadsPopover = null;
+    }
+  }
+
+  function toggleLoadsPopover(btn, ev) {
     if (ev) {
       ev.stopPropagation();
       ev.preventDefault();
     }
-    const container = btn.closest('.loads-container');
-    if (!container) return;
-    const hiddenGroup = container.querySelector('.load-badge-hidden-group');
-    if (!hiddenGroup) return;
 
-    const isHidden = (hiddenGroup.style.display === 'none' || !hiddenGroup.style.display);
-    if (isHidden) {
-      hiddenGroup.style.display = 'flex';
-      hiddenGroup.style.flexDirection = 'column';
-      hiddenGroup.style.alignItems = 'flex-start';
-      hiddenGroup.style.gap = '4px';
-      btn.textContent = 'Show less';
-      btn.classList.add('is-expanded');
-    } else {
-      hiddenGroup.style.display = 'none';
-      const totalMore = hiddenGroup.querySelectorAll('.load-badge').length;
-      btn.textContent = '+' + totalMore + ' more';
-      btn.classList.remove('is-expanded');
+    const isSelf = currentLoadsPopover && currentLoadsPopover._triggerBtn === btn;
+    closeLoadsPopover();
+    if (isSelf) return;
+
+    const rawLoads = btn.getAttribute('data-loads');
+    if (!rawLoads) return;
+    const loads = rawLoads.split(', ');
+
+    const popover = document.createElement('div');
+    popover.className = 'loads-popover-card';
+    popover._triggerBtn = btn;
+
+    function esc(s) {
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
+
+    let html = '<div class="popover-header">';
+    html += '<span>Subject Loads (' + loads.length + ')</span>';
+    html += '<button type="button" class="popover-close" onclick="closeLoadsPopover()">&times;</button>';
+    html += '</div><div class="popover-body">';
+
+    loads.forEach(load => {
+      html += '<div class="popover-item">' + esc(load) + '</div>';
+    });
+    html += '</div>';
+
+    popover.innerHTML = html;
+    document.body.appendChild(popover);
+
+    // Smart Viewport Fixed Positioning & Auto-Flip
+    const rect = btn.getBoundingClientRect();
+    const popoverWidth = 310;
+    const popoverHeight = Math.min(280, 50 + loads.length * 38);
+
+    let left = rect.left;
+    if (left + popoverWidth > window.innerWidth - 20) {
+      left = window.innerWidth - popoverWidth - 20;
+    }
+    if (left < 10) left = 10;
+
+    let top = rect.bottom + 6;
+    // Auto-flip UP if close to bottom of screen
+    if (rect.bottom + popoverHeight > window.innerHeight - 20) {
+      top = rect.top - popoverHeight - 6;
+    }
+    if (top < 10) top = 10;
+
+    popover.style.left = left + 'px';
+    popover.style.top = top + 'px';
+
+    currentLoadsPopover = popover;
   }
+
+  document.addEventListener('click', function (e) {
+    if (currentLoadsPopover && !currentLoadsPopover.contains(e.target)) {
+      closeLoadsPopover();
+    }
+  });
+
+  window.addEventListener('scroll', closeLoadsPopover, { passive: true });
 </script>
 
 {% endblock %}
