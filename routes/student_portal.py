@@ -8,6 +8,7 @@ from datetime import datetime, timezone, timedelta
 import json
 import pytz
 from utils.uniform_pricing import DEFAULT_SIZE_PRICE_STEP, parse_size_list, size_price_map, price_for_size
+from utils.parent_sync import sync_all_users_for_enrollment_guardian_email
 
 # Setup logging
 logging.basicConfig(level=logging.ERROR)
@@ -3162,6 +3163,12 @@ def student_update_contact():
                 guardian_email = %s
             WHERE enrollment_id = %s
         """, (contact_number, email, address, guardian_first_name, guardian_middle_name, guardian_last_name, guardian_contact, guardian_email, enrollment_id))
+
+        if guardian_email:
+            try:
+                sync_all_users_for_enrollment_guardian_email(db, cur, guardian_email, session.get("branch_id"))
+            except Exception:
+                pass
 
         if user_id:
             cur.execute("""

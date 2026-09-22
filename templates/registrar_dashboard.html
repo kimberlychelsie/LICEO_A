@@ -2209,8 +2209,17 @@
         select.innerHTML = '<option value="">— Skip for now —</option>';
 
         var gradeLower = gradeLevel.trim().toLowerCase();
+        var gradeNum = (gradeLower.match(/\d+/) || [])[0];
+
         var filtered = ALL_SECTIONS.filter(function (s) {
-            return s.grade_level_name === gradeLower || gradeLower.startsWith(s.grade_level_name) || s.grade_level_name.startsWith(gradeLower);
+            var secGradeLower = (s.grade_level_name || "").trim().toLowerCase();
+            var secGradeNum = (secGradeLower.match(/\d+/) || [])[0];
+
+            if (secGradeLower === gradeLower) return true;
+            if (gradeNum && secGradeNum) {
+                return gradeNum === secGradeNum;
+            }
+            return false;
         });
 
         if (filtered.length === 0) {
