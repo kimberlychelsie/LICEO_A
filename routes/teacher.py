@@ -3989,15 +3989,14 @@ def _compute_period_grades(cur, user_id, branch_id, section_id, subject_id, peri
             s.get("student_middle_name"),
             s.get("student_last_name")
         ]))
-        if not s.get("student_number"):
-            br_code = s.get("branch_code") or "LDMAJ"
-            enr_no = s.get("branch_enrollment_no")
-            if enr_no is not None and str(enr_no).isdigit():
-                s["student_number"] = f"{br_code}_{int(enr_no):04d}"
-            elif s.get("lrn"):
-                s["student_number"] = str(s.get("lrn"))
-            else:
-                s["student_number"] = f"{br_code}_{int(s['enrollment_id']):04d}"
+        br_code = s.get("branch_code") or "LDMAJ"
+        enr_no = s.get("branch_enrollment_no")
+        if s.get("lrn"):
+            s["student_number"] = str(s.get("lrn"))
+        elif enr_no is not None and str(enr_no).isdigit():
+            s["student_number"] = f"{br_code}_{int(enr_no):04d}"
+        else:
+            s["student_number"] = f"{br_code}_{int(s['enrollment_id']):04d}"
 
     # Get subject's DepEd category for auto-weights
     cur.execute("SELECT deped_category FROM subjects WHERE subject_id = %s", (subject_id,))
