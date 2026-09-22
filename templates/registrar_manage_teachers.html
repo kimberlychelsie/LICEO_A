@@ -785,6 +785,50 @@
       grid-template-columns: 1fr;
     }
   }
+
+  /* Compact Subject Loads Badges */
+  .loads-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    align-items: center;
+    max-width: 420px;
+  }
+  .load-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 9px;
+    border-radius: 6px;
+    background: #f1f5f9;
+    color: #334155;
+    font-size: .78rem;
+    font-weight: 600;
+    border: 1px solid #cbd5e1;
+    white-space: nowrap;
+    line-height: 1.35;
+  }
+  .load-badge-more {
+    position: relative;
+    z-index: 5;
+    pointer-events: auto !important;
+    background: #eff6ff;
+    color: #2563eb;
+    border-color: #bfdbfe;
+    cursor: pointer;
+    font-weight: 700;
+    font-family: inherit;
+    transition: all .15s ease;
+  }
+  .load-badge-more:hover {
+    background: #dbeafe;
+    color: #1d4ed8;
+    border-color: #93c5fd;
+  }
+  .load-badge-more.is-expanded {
+    background: #f1f5f9;
+    color: #64748b;
+    border-color: #cbd5e1;
+  }
 </style>
 {% endblock %}
 
@@ -1140,7 +1184,26 @@
               {% endif %}
             </td>
             <td style="font-size:.85rem; color:var(--mu);">
-              {{ t.assigned_sections or '—' }}
+              {% if t.assigned_sections %}
+                {% set loads = t.assigned_sections.split(', ') %}
+                <div class="loads-container">
+                  {% for load in loads[:2] %}
+                    <span class="load-badge">{{ load }}</span>
+                  {% endfor %}
+                  {% if loads|length > 2 %}
+                    <span class="load-badge-hidden-group" style="display:none;">
+                      {% for load in loads[2:] %}
+                        <span class="load-badge">{{ load }}</span>
+                      {% endfor %}
+                    </span>
+                    <button type="button" class="load-badge load-badge-more" onclick="toggleTeacherLoads(this, event)">
+                      +{{ loads|length - 2 }} more
+                    </button>
+                  {% endif %}
+                </div>
+              {% else %}
+                <span style="color:var(--mu);">—</span>
+              {% endif %}
             </td>
             <td>
               <span class="badge {{ 'badge-active' if t.status == 'active' else 'badge-inactive' }}">
@@ -1724,4 +1787,32 @@
     });
   });
 </script>
+
+<script>
+  function toggleTeacherLoads(btn, ev) {
+    if (ev) {
+      ev.stopPropagation();
+      ev.preventDefault();
+    }
+    const container = btn.closest('.loads-container');
+    if (!container) return;
+    const hiddenGroup = container.querySelector('.load-badge-hidden-group');
+    if (!hiddenGroup) return;
+
+    const isHidden = (hiddenGroup.style.display === 'none' || !hiddenGroup.style.display);
+    if (isHidden) {
+      hiddenGroup.style.display = 'inline-flex';
+      hiddenGroup.style.flexWrap = 'wrap';
+      hiddenGroup.style.gap = '5px';
+      btn.textContent = 'Show less';
+      btn.classList.add('is-expanded');
+    } else {
+      hiddenGroup.style.display = 'none';
+      const totalMore = hiddenGroup.querySelectorAll('.load-badge').length;
+      btn.textContent = '+' + totalMore + ' more';
+      btn.classList.remove('is-expanded');
+    }
+  }
+</script>
+
 {% endblock %}
