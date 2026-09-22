@@ -80,27 +80,36 @@
     .filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
 
     /* Offering Cards */
-    .offering-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); gap: 20px; }
+    .offering-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(310px, 420px)); gap: 16px; }
     .offering-card {
         background: #fff; border: 1px solid var(--ma-border); border-radius: 16px;
-        padding: 24px; transition: all 0.3s; position: relative;
+        padding: 18px 20px; transition: all 0.25s ease; position: relative;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.03);
     }
-    .offering-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); transform: translateY(-2px); }
-    .offering-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+    .offering-card:hover { box-shadow: 0 8px 20px rgba(0,0,0,0.07); transform: translateY(-2px); border-color: rgba(37, 99, 235, 0.3); }
+    .offering-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
     .offering-code {
-        font-size: 1.3rem; font-weight: 900; color: var(--ma-primary);
-        letter-spacing: -0.02em;
+        font-size: 1.15rem; font-weight: 900; color: var(--ma-primary);
+        letter-spacing: -0.02em; line-height: 1.2;
     }
-    .offering-subject { font-size: 0.95rem; font-weight: 600; color: var(--ma-text); margin-bottom: 4px; }
-    .offering-teacher { font-size: 0.85rem; color: var(--ma-muted); margin-bottom: 4px; }
-    .offering-section { font-size: 0.82rem; font-weight: 700; color: var(--ma-accent); margin-bottom: 12px; }
+    .offering-subject { font-size: 0.9rem; font-weight: 700; color: var(--ma-text); margin-bottom: 3px; }
+    .offering-teacher { font-size: 0.8rem; color: var(--ma-muted); margin-bottom: 3px; }
+    .offering-section { font-size: 0.8rem; font-weight: 700; color: var(--ma-accent); margin-bottom: 8px; }
+    
+    .pathway-badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe;
+        padding: 3px 10px; border-radius: 8px; font-size: 0.78rem; font-weight: 700;
+        margin-bottom: 10px;
+    }
+
     .offering-meta {
-        display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 14px;
+        display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px;
     }
     .meta-chip {
         display: inline-flex; align-items: center; gap: 4px;
-        background: #f1f5f9; padding: 4px 10px; border-radius: 8px;
-        font-size: 0.78rem; font-weight: 600; color: var(--ma-muted);
+        background: #f1f5f9; padding: 3px 9px; border-radius: 6px;
+        font-size: 0.75rem; font-weight: 700; color: var(--ma-muted);
     }
     .capacity-bar {
         height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden;
@@ -109,21 +118,21 @@
     .capacity-fill {
         height: 100%; border-radius: 3px; transition: width 0.5s ease;
     }
-    .capacity-text { font-size: 0.78rem; color: var(--ma-muted); font-weight: 600; }
+    .capacity-text { font-size: 0.75rem; color: var(--ma-muted); font-weight: 600; }
 
-    .schedule-list { margin-top: 12px; }
+    .schedule-list { margin-top: 10px; }
     .schedule-item {
         display: flex; align-items: center; gap: 8px;
-        padding: 6px 10px; background: #f8fafc; border-radius: 8px;
-        font-size: 0.8rem; margin-bottom: 4px; color: var(--ma-text);
+        padding: 5px 8px; background: #f8fafc; border-radius: 6px;
+        font-size: 0.78rem; margin-bottom: 4px; color: var(--ma-text);
     }
-    .schedule-item .day { font-weight: 700; min-width: 90px; }
+    .schedule-item .day { font-weight: 700; min-width: 80px; }
 
-    .offering-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px; padding-top: 14px; border-top: 1px solid #f1f5f9; }
+    .offering-actions { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid #f1f5f9; }
 
     .status-badge {
         display: inline-flex; align-items: center; gap: 5px;
-        padding: 4px 12px; border-radius: 20px; font-size: 0.72rem; font-weight: 700;
+        padding: 3px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 800; letter-spacing: 0.03em;
     }
     .status-active { background: #d1fae5; color: #059669; }
     .status-inactive { background: #fee2e2; color: #dc2626; }
@@ -262,10 +271,15 @@
                 </span>
             </div>
 
+            <!-- Pathway Badge -->
+            <div class="pathway-badge">
+                <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                Pathway: {{ o.subject_pathway or o.shs_track or 'General Pathway' }}
+            </div>
+
             <div class="offering-meta">
-                <span class="meta-chip">{{ o.term_name }} Term</span>
-                <span class="meta-chip">{{ o.shs_track }}</span>
-                <span class="meta-chip">{{ enrolled_counts.get(o.offering_id, 0) }}/{{ o.capacity }}</span>
+                <span class="meta-chip">🗓 {{ o.term_name }} Term</span>
+                <span class="meta-chip">👥 {{ enrolled_counts.get(o.offering_id, 0) }}/{{ o.capacity }} Slots</span>
             </div>
 
             <!-- Capacity Bar -->
@@ -279,7 +293,7 @@
 
             <!-- Schedules (Pulled from schedules table for the underlying section/subject) -->
             <div class="schedule-list">
-                <div style="font-size: 0.78rem; font-weight:700; color: var(--ma-muted); margin-bottom: 6px; border-bottom: 1px solid #f1f5f9; padding-bottom: 2px;">
+                <div style="font-size: 0.75rem; font-weight:700; color: var(--ma-muted); margin-bottom: 6px; border-bottom: 1px solid #f1f5f9; padding-bottom: 2px;">
                     Class Schedule
                 </div>
                 {% if schedules_map.get(o.offering_id) %}
@@ -291,14 +305,23 @@
                     </div>
                     {% endfor %}
                 {% else %}
-                    <div style="font-size: 0.78rem; color: var(--ma-muted); font-style: italic; padding: 4px;">
+                    <div style="font-size: 0.75rem; color: var(--ma-muted); font-style: italic; padding: 4px;">
                         No schedules defined in schedules manager.
                     </div>
                 {% endif %}
             </div>
 
             <div class="offering-actions">
-                <button class="btn-sm btn-edit" onclick="openEditOfferingModal({{ o|tojson }})">Edit Offering</button>
+                <button type="button" class="btn-sm btn-edit"
+                    data-id="{{ o.offering_id }}"
+                    data-term="{{ o.term_name }}"
+                    data-code="{{ o.group_code }}"
+                    data-capacity="{{ o.capacity }}"
+                    data-status="{{ o.status }}"
+                    data-details="{{ o.grade_level_name }} - {{ o.section_name }} • {{ o.subject_name }} ({% if o.teacher_name %}{{ o.teacher_name }}{% else %}Unassigned{% endif %})"
+                    onclick="openEditOfferingModal(this)">
+                    Edit Offering
+                </button>
                 <form method="POST" style="display:inline; margin-left:auto;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <input type="hidden" name="action" value="delete_offering">
@@ -335,11 +358,21 @@
                 <div id="eo_display_details" style="font-size: 0.95rem; font-weight: 600; color: var(--ma-primary); margin-top: 4px;"></div>
             </div>
 
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; margin-bottom:14px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
+                <div class="form-group">
+                    <label>Calendar Term</label>
+                    <select name="term_name" id="eo_term">
+                        {% for t in terms %}
+                        <option value="{{ t }}">{{ t }} Term</option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <div class="form-group">
                     <label>Group Code</label>
                     <input type="text" name="group_code" id="eo_code" required>
                 </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:14px;">
                 <div class="form-group">
                     <label>Capacity</label>
                     <input type="number" name="capacity" id="eo_capacity" min="1" max="200" required>
@@ -354,21 +387,71 @@
             </div>
             <div class="modal-actions">
                 <button type="button" class="btn-ghost" onclick="document.getElementById('editOfferingModal').classList.remove('show')">Cancel</button>
-                <button type="submit" class="btn-primary">Save Changes</button>
+                <button type="submit" id="eo_submit_btn" class="btn-primary">Save Changes</button>
             </div>
         </form>
     </div>
 </div>
 
 <script>
-function openEditOfferingModal(o) {
-    document.getElementById('eo_id').value = o.offering_id;
-    document.getElementById('eo_code').value = o.group_code;
-    document.getElementById('eo_capacity').value = o.capacity;
-    document.getElementById('eo_status').value = o.status;
-    document.getElementById('eo_display_details').innerText = o.grade_level_name + " - " + o.section_name + " • " + o.subject_name + " (" + (o.teacher_name ? o.teacher_name : 'Unassigned') + ")";
+let eoInitialState = {};
+
+function openEditOfferingModal(btn) {
+    if (!btn) return;
+    const term = btn.getAttribute('data-term') || '';
+    const code = btn.getAttribute('data-code') || '';
+    const capacity = btn.getAttribute('data-capacity') || '30';
+    const status = btn.getAttribute('data-status') || 'ACTIVE';
+    const id = btn.getAttribute('data-id') || '';
+    const details = btn.getAttribute('data-details') || '';
+
+    document.getElementById('eo_id').value = id;
+    document.getElementById('eo_term').value = term;
+    document.getElementById('eo_code').value = code;
+    document.getElementById('eo_capacity').value = capacity;
+    document.getElementById('eo_status').value = status;
+    document.getElementById('eo_display_details').innerText = details;
+
+    eoInitialState = {
+        term_name: term,
+        group_code: code,
+        capacity: String(capacity),
+        status: status
+    };
+
+    checkOfferingFormDirty();
     document.getElementById('editOfferingModal').classList.add('show');
 }
+
+function checkOfferingFormDirty() {
+    const curTerm = document.getElementById('eo_term').value;
+    const curCode = document.getElementById('eo_code').value.trim();
+    const curCapacity = String(document.getElementById('eo_capacity').value);
+    const curStatus = document.getElementById('eo_status').value;
+
+    const isDirty = (
+        curTerm !== eoInitialState.term_name ||
+        curCode !== eoInitialState.group_code ||
+        curCapacity !== eoInitialState.capacity ||
+        curStatus !== eoInitialState.status
+    );
+
+    const submitBtn = document.getElementById('eo_submit_btn');
+    if (submitBtn) {
+        submitBtn.disabled = !isDirty;
+        submitBtn.style.opacity = isDirty ? '1' : '0.5';
+        submitBtn.style.cursor = isDirty ? 'pointer' : 'not-allowed';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('editOfferingForm');
+    if (form) {
+        form.addEventListener('input', checkOfferingFormDirty);
+        form.addEventListener('change', checkOfferingFormDirty);
+    }
+});
+
 document.querySelectorAll('.modal-overlay').forEach(m => {
     m.addEventListener('click', function(e) { if (e.target === this) this.classList.remove('show'); });
 });

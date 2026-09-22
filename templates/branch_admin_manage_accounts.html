@@ -692,7 +692,7 @@
     </thead>
     <tbody>
         {% for a in user_list %}
-        <tr class="staff-row" data-role="{{ a.role }}">
+        <tr class="staff-row" data-role="{{ a.role }}" data-user-roles="{{ a.user_roles or '' }}">
             <td>
                 <div class="user-profile-cell">
                     <div class="user-avatar text-white"
@@ -872,6 +872,16 @@
         </div>
     </div>
 
+    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 20px; padding: 20px 24px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+        <div>
+            <h3 style="font-size: 1.1rem; font-weight: 800; color: #1e3a8a; margin: 0 0 4px;">Merge Duplicate User Accounts</h3>
+            <p style="font-size: 0.88rem; color: #64748b; margin: 0; font-weight: 500;">Combine two separate accounts for the same person into a single primary multi-role account.</p>
+        </div>
+        <button type="button" onclick="openMergeModal()" style="background: #1e3a8a; color: #fff; border: none; padding: 12px 22px; border-radius: 12px; font-weight: 800; font-size: 0.9rem; cursor: pointer; white-space: nowrap; transition: background 0.2s;">
+            Merge Accounts
+        </button>
+    </div>
+
     <div class="main-tabs-container"
         style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px;">
         <a href="?role=all_staff" class="main-tab {% if role_filter != 'student' %}active{% endif %}"
@@ -966,7 +976,7 @@
     {% endif %}
 
         <!-- Master Container for Search & Table -->
-        <div class="master-container" style="background: var(--ma-card); border: 1px solid var(--ma-border); border-radius: 24px; box-shadow: var(--ma-shadow); overflow: hidden; margin-bottom: 32px;">
+        <div class="master-container" style="background: var(--ma-card); border: 1px solid var(--ma-border); border-radius: 24px; box-shadow: var(--ma-shadow); overflow: visible !important; margin-bottom: 32px; min-height: 380px;">
 
             <!-- Controls Wrapper: Navigation & Search -->
             <div class="controls-wrapper" style="display: flex; flex-wrap: wrap; gap: 24px; justify-content: space-between; align-items: flex-end; margin: 0; padding: 24px; border: none; background: transparent; border-bottom: 1px solid var(--ma-border); border-radius: 0;">
@@ -1071,7 +1081,7 @@
     <!-- Results Table -->
     <div class="table-mount" style="border: none; background: transparent; box-shadow: none; border-radius: 0; margin: 0;">
         {% if accounts %}
-        <div style="overflow-x: auto;">
+        <div style="overflow-x: auto; overflow-y: visible; min-height: 300px; padding-bottom: 120px;">
             {% if view_mode == 'grouped' %}
             {# --- GROUPED VIEW --- #}
             {% if role_filter == 'student' %}
@@ -1152,9 +1162,11 @@
                     if (formElement && submitBtn) {
                         const getFormData = () => {
                             const data = new FormData(formElement);
-                            const obj = {};
-                            data.forEach((value, key) => { obj[key] = value; });
-                            return JSON.stringify(obj);
+                            const entries = [];
+                            for (let [key, value] of data.entries()) {
+                                entries.push(key + '=' + value);
+                            }
+                            return entries.sort().join('&');
                         };
 
                         const initialData = getFormData();
@@ -1162,14 +1174,17 @@
                         submitBtn.style.opacity = '0.5';
                         submitBtn.style.cursor = 'not-allowed';
 
-                        formElement.addEventListener('input', () => {
+                        const checkChanges = () => {
                             const currentData = getFormData();
                             const hasChanged = currentData !== initialData;
                             
                             submitBtn.disabled = !hasChanged;
                             submitBtn.style.opacity = hasChanged ? '1' : '0.5';
                             submitBtn.style.cursor = hasChanged ? 'pointer' : 'not-allowed';
-                        });
+                        };
+
+                        formElement.addEventListener('input', checkChanges);
+                        formElement.addEventListener('change', checkChanges);
                     }
                 } else {
                     body.innerHTML = '<div style="text-align: center; padding: 40px; color: var(--ma-danger);"><p>Error loading form.</p></div>';
@@ -1184,6 +1199,13 @@
         document.getElementById('editModalOverlay').classList.remove('visible');
     }
 
+    function openMergeModal() {
+        document.getElementById('mergeModalOverlay').style.display = 'flex';
+    }
+    function closeMergeModal() {
+        document.getElementById('mergeModalOverlay').style.display = 'none';
+    }
+
     // Filter staff table based on dropdown
     function filterStaffTable() {
         const filter = document.getElementById('staffRoleFilter');
@@ -1192,7 +1214,9 @@
         const rows = document.querySelectorAll('.staff-row');
         
         rows.forEach(row => {
-            if (selectedRole === 'all' || row.dataset.role === selectedRole) {
+            const primaryRole = row.dataset.role || '';
+            const userRoles = row.dataset.userRoles || '';
+            if (selectedRole === 'all' || selectedRole === 'all_staff' || primaryRole === selectedRole || userRoles.includes(selectedRole)) {
                 row.style.display = '';
             } else {
                 row.style.display = 'none';
@@ -1222,7 +1246,9 @@
 
         if (!isOpen) {
             const rect = wrap.getBoundingClientRect();
-            if (window.innerHeight - rect.bottom < 220) {
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const spaceAbove = rect.top;
+            if (spaceBelow < 220 && spaceAbove > 320) {
                 wrap.classList.add('is-upwards');
             } else {
                 wrap.classList.remove('is-upwards');
@@ -1237,5 +1263,41 @@
         }
     });
 </script>
+
+<div id="mergeModalOverlay" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
+  <div style="background: #ffffff; width: 100%; max-width: 540px; border-radius: 24px; padding: 32px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); border: 1px solid #e2e8f0; position: relative;">
+    <button type="button" onclick="closeMergeModal()" style="position: absolute; top: 20px; right: 20px; background: #f1f5f9; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1.2rem; font-weight: 700; color: #64748b;">&times;</button>
+    <h3 style="font-size: 1.4rem; font-weight: 900; color: #1e3a8a; margin: 0 0 8px;">Merge Duplicate Accounts</h3>
+    <p style="font-size: 0.88rem; color: #64748b; margin-bottom: 24px; line-height: 1.4;">Select the primary account to keep, and the secondary account to merge into it. Linked students, grades, and teacher loads will be merged into the primary account.</p>
+    
+    <form action="/branch-admin/manage-accounts/merge" method="POST">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div style="margin-bottom: 18px;">
+        <label style="display: block; font-size: 0.8rem; font-weight: 800; color: #475569; text-transform: uppercase; margin-bottom: 6px;">Primary Account (Keep & Assign Multi-Roles)</label>
+        <select name="primary_user_id" required style="width: 100%; padding: 12px 16px; border-radius: 12px; border: 2px solid #e2e8f0; font-weight: 600; font-size: 0.92rem;">
+          <option value="">— Select Primary Account —</option>
+          {% for u in users %}
+          <option value="{{ u.user_id }}">{{ u.full_name or u.username }} ({{ u.role|title }} - Username: {{ u.username }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      
+      <div style="margin-bottom: 24px;">
+        <label style="display: block; font-size: 0.8rem; font-weight: 800; color: #ef4444; text-transform: uppercase; margin-bottom: 6px;">Secondary Account (Merge & Delete)</label>
+        <select name="secondary_user_id" required style="width: 100%; padding: 12px 16px; border-radius: 12px; border: 2px solid #e2e8f0; font-weight: 600; font-size: 0.92rem;">
+          <option value="">— Select Secondary Account —</option>
+          {% for u in users %}
+          <option value="{{ u.user_id }}">{{ u.full_name or u.username }} ({{ u.role|title }} - Username: {{ u.username }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: flex; gap: 12px; justify-content: flex-end;">
+        <button type="button" onclick="closeMergeModal()" style="padding: 12px 20px; border-radius: 12px; border: 1px solid #cbd5e1; background: #fff; font-weight: 700; color: #475569; cursor: pointer;">Cancel</button>
+        <button type="submit" onclick="return confirm('Are you sure you want to merge these accounts? This action cannot be undone.')" style="padding: 12px 24px; border-radius: 12px; border: none; background: #1e3a8a; font-weight: 800; color: #fff; cursor: pointer;">Confirm Merge</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 {% endblock %}

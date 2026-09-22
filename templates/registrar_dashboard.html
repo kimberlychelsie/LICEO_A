@@ -1984,7 +1984,14 @@
 
         var gradeLower = gradeLevel.trim().toLowerCase();
         var filtered = ALL_SECTIONS.filter(function (s) {
-            return s.grade_level_name === gradeLower || gradeLower.startsWith(s.grade_level_name) || s.grade_level_name.startsWith(gradeLower);
+            var sg = (s.grade_level_name || "").trim().toLowerCase();
+            if (sg === gradeLower) return true;
+            var sgNum = sg.match(/\d+/);
+            var stgNum = gradeLower.match(/\d+/);
+            if (sgNum && stgNum) {
+                return sgNum[0] === stgNum[0];
+            }
+            return false;
         });
 
         if (filtered.length === 0) {
@@ -1993,7 +2000,7 @@
             filtered.forEach(function (s) {
                 var isSelected = currentSectionId && String(s.section_id) === String(currentSectionId);
                 select.innerHTML += '<option value="' + s.section_id + '"' + (isSelected ? ' selected' : '') + '>'
-                    + gradeLevel + ' - ' + s.section_name + '</option>';
+                    + (s.grade_level_name ? s.grade_level_name.toUpperCase() : gradeLevel) + ' - ' + s.section_name + '</option>';
             });
         }
 

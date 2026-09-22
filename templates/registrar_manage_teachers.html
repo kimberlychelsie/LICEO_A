@@ -623,6 +623,33 @@ body { background: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; }
           <input type="email" class="fc" name="email" id="edit_email" required>
         </div>
       </div>
+
+      <div style="background: #f8fafc; padding: 18px 20px; border-radius: 16px; border: 1px solid #e2e8f0; margin-top: 16px; margin-bottom: 20px;">
+        <label style="color: #1e3a8a; font-weight: 850; font-size: 0.85rem; margin-bottom: 8px; display: block;">Assigned Portal Roles (Multi-Role Support)</label>
+        <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 12px;">Select additional roles for this account. The user will be able to switch between active role modes from the topbar menu.</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px;">
+          <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.85rem; color: #1e293b; cursor: pointer; background: #ffffff; padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1;">
+            <input type="checkbox" name="user_roles" value="teacher" class="edit-registrar-role-cb" style="width: 16px; height: 16px; accent-color: #1e3a8a;">
+            Teacher
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.85rem; color: #1e293b; cursor: pointer; background: #ffffff; padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1;">
+            <input type="checkbox" name="user_roles" value="registrar" class="edit-registrar-role-cb" style="width: 16px; height: 16px; accent-color: #1e3a8a;">
+            Registrar
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.85rem; color: #1e293b; cursor: pointer; background: #ffffff; padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1;">
+            <input type="checkbox" name="user_roles" value="parent" class="edit-registrar-role-cb" style="width: 16px; height: 16px; accent-color: #1e3a8a;">
+            Parent
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.85rem; color: #1e293b; cursor: pointer; background: #ffffff; padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1;">
+            <input type="checkbox" name="user_roles" value="cashier" class="edit-registrar-role-cb" style="width: 16px; height: 16px; accent-color: #1e3a8a;">
+            Cashier
+          </label>
+          <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.85rem; color: #1e293b; cursor: pointer; background: #ffffff; padding: 8px 12px; border-radius: 10px; border: 1px solid #cbd5e1;">
+            <input type="checkbox" name="user_roles" value="librarian" class="edit-registrar-role-cb" style="width: 16px; height: 16px; accent-color: #1e3a8a;">
+            Librarian
+          </label>
+        </div>
+      </div>
       <span class="section-label" style="margin-top:8px;">Role</span>
       <div class="type-tabs" style="display: inline-flex; margin-bottom: 16px;">
         <label class="ttab" id="edit-btn-advisory" onclick="setEditFormType('advisory')" style="cursor:pointer; margin:0;">
@@ -683,6 +710,8 @@ const TEACHER_ROWS = {
     'full_name': t.full_name or '',
     'email': t.email or '',
     'gender': (t.gender or '')|lower,
+    'role': t.role or 'teacher',
+    'user_roles': t.user_roles or '',
     'teacher_type': t.teacher_type or 'advisory',
     'grade_level_id': t.grade_level_id,
     'specialization_subject': t.specialization_subject or '',
@@ -738,6 +767,17 @@ function manageEdit(id) {
   document.getElementById('edit_type_advisory').checked = ttype === 'advisory';
   document.getElementById('edit_type_subject').checked = ttype === 'subject';
   setEditFormType(ttype);
+
+  let userRolesList = [];
+  if (row.user_roles) {
+    try { userRolesList = JSON.parse(row.user_roles); } catch (e) { userRolesList = [row.role]; }
+  } else {
+    userRolesList = [row.role || 'teacher'];
+  }
+  document.querySelectorAll('#edit-teacher-form .edit-registrar-role-cb').forEach(cb => {
+    cb.checked = userRolesList.includes(cb.value);
+  });
+
   document.getElementById('editTeacherOverlay').style.display = 'flex';
 }
 

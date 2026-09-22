@@ -9,6 +9,7 @@ from utils.send_email import send_email
 import os
 
 import time
+import json
 from extensions import limiter
 from routes.super_admin import log_audit_event
 
@@ -128,6 +129,47 @@ def login():
                     session["username"]  = user.get("username")
                     session["full_name"] = user.get("full_name")  # for display in sidebar
                     session["last_activity"] = time.time()
+
+                    # Load multi-roles into session
+                    roles_list = []
+                    ur_raw = user.get("user_roles")
+                    if ur_raw:
+                        try:
+                            roles_list = json.loads(ur_raw) if isinstance(ur_raw, str) else list(ur_raw)
+                        except Exception:
+                            roles_list = []
+
+                    if not roles_list:
+                        roles_list = [user["role"]]
+
+                    if user["role"] not in roles_list:
+                        roles_list.insert(0, user["role"])
+
+                    # Check parent auto-link by parent_student table or email match with guardian_email
+                    if "parent" not in roles_list:
+                        try:
+                            cursor.execute("SELECT 1 FROM parent_student WHERE parent_id = %s LIMIT 1", (user["user_id"],))
+                            if cursor.fetchone():
+                                roles_list.append("parent")
+                            elif user.get("email"):
+                                cursor.execute("SELECT 1 FROM enrollments WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s)) LIMIT 1", (user["email"],))
+                                if cursor.fetchone():
+                                    roles_list.append("parent")
+                                    # Auto create parent_student links
+                                    cursor.execute("""
+                                        INSERT INTO parent_student (parent_id, student_id, relationship)
+                                        SELECT %s, enrollment_id, 'guardian'
+                                        FROM enrollments
+                                        WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s))
+                                        ON CONFLICT DO NOTHING
+                                    """, (user["user_id"], user["email"]))
+                            if "parent" in roles_list:
+                                cursor.execute("UPDATE users SET user_roles = %s WHERE user_id = %s", (json.dumps(roles_list), user["user_id"]))
+                                db.commit()
+                        except Exception as ex:
+                            logger.warning(f"Error checking parent role auto-link on login: {ex}")
+
+                    session["roles"] = roles_list
 
                     try:
                         cursor.execute("DELETE FROM failed_logins WHERE username = %s OR ip_address = %s", (username, client_ip))
@@ -357,6 +399,7 @@ def login():
                     session["student_account_id"] = student["account_id"]
                     session["username"] = student.get("username") or username
                     session["role"] = "student"
+                    session["roles"] = ["student"]
                     session["branch_id"] = branch_id
 
                     # Sidebar branch label for student logins (student_accounts path)
@@ -780,3 +823,64 @@ def logout():
     resp.headers["Expires"] = "0"
     resp.delete_cookie("session")
     return resp
+
+
+@auth_bp.route("/auth/switch-role", methods=["POST"])
+def switch_role():
+    if "user_id" not in session:
+        return redirect(url_for("auth.login"))
+
+    target_role = request.form.get("target_role", "").strip()
+    available_roles = session.get("roles", [])
+
+    if not target_role or target_role not in available_roles:
+        flash("Invalid role selection.", "error")
+        return redirect(request.referrer or "/")
+
+    session["role"] = target_role
+
+    # Audit log entry if needed
+    try:
+        db = get_db_connection()
+        cursor = db.cursor()
+        log_audit_event(
+            cursor, session.get("user_id"), session.get("full_name") or session.get("username"),
+            target_role, session.get("branch_id"), "ROLE_SWITCH",
+            f"User switched active portal role to {target_role}",
+            request.remote_addr or "127.0.0.1"
+        )
+        db.commit()
+    except Exception:
+        pass
+
+    role_labels = {
+        "super_admin": "Super Admin",
+        "branch_admin": "Branch Admin",
+        "registrar": "Registrar",
+        "cashier": "Cashier",
+        "teacher": "Teacher",
+        "parent": "Parent",
+        "student": "Student",
+        "librarian": "Librarian"
+    }
+    label = role_labels.get(target_role, target_role.title())
+    flash(f"Switched to {label} Mode.", "success")
+
+    if target_role == "super_admin":
+        return redirect("/super-admin")
+    elif target_role == "branch_admin":
+        return redirect("/branch-admin")
+    elif target_role == "registrar":
+        return redirect("/registrar")
+    elif target_role == "cashier":
+        return redirect("/cashier")
+    elif target_role == "teacher":
+        return redirect("/teacher")
+    elif target_role == "parent":
+        return redirect("/parent/dashboard")
+    elif target_role == "librarian":
+        return redirect("/librarian")
+    elif target_role == "student":
+        return redirect("/student/dashboard")
+    else:
+        return redirect("/")

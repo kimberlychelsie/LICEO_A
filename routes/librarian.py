@@ -165,7 +165,7 @@ def dashboard():
                         JOIN enrollments e2 ON e2.enrollment_id = ps2.student_id
                         WHERE ps2.parent_id = r.reserved_by_user_id
                         ORDER BY ps2.student_id LIMIT 1
-                    ) svp ON (reserved_by.role = 'parent')
+                    ) svp ON (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%')
                     WHERE r.branch_id = %s
                       AND r.status IN ('PAID', 'RESERVED')
                       AND EXISTS (
@@ -719,13 +719,13 @@ def releases():
                 r.created_at,
                 CASE
                   WHEN r.reserved_by_user_id IS NOT NULL
-                       AND reserved_by.role = 'parent'
+                       AND (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%')
                   THEN 'parent'
                   ELSE 'student'
                 END AS reserved_by_role,
                 CASE
                   WHEN r.reserved_by_user_id IS NOT NULL
-                       AND reserved_by.role = 'parent'
+                       AND (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%')
                   THEN COALESCE(svp.guardian_name, reserved_by.username)
                   ELSE NULL
                 END AS parent_name,
@@ -751,7 +751,7 @@ def releases():
                 WHERE ps2.parent_id = r.reserved_by_user_id
                 ORDER BY ps2.student_id
                 LIMIT 1
-            ) svp ON (reserved_by.role = 'parent')
+            ) svp ON (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%')
             WHERE r.branch_id = %s
               AND EXISTS (
                   SELECT 1 FROM reservation_items ri

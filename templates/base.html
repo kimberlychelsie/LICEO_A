@@ -1316,6 +1316,50 @@
       display: block;
     }
 
+    /* Role Switcher Dropdown */
+    .role-switcher-wrapper {
+      position: relative;
+    }
+
+    .role-switcher-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #ffffff;
+      padding: 6px 14px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 0.82rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .role-switcher-btn:hover {
+      background: rgba(255, 255, 255, 0.25);
+      border-color: rgba(255, 255, 255, 0.5);
+    }
+
+    .role-dropdown {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      width: 220px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+      z-index: 2000;
+      display: none;
+      margin-top: 10px;
+      padding: 8px;
+    }
+
+    .role-dropdown.show {
+      display: block;
+    }
+
     .profile-dropdown a,
     .profile-dropdown-link {
       display: flex;
@@ -2460,6 +2504,47 @@
 
 
 
+      {% if session.get('roles') and session.get('roles')|length > 1 and not required %}
+      <div class="role-switcher-wrapper" style="margin-right: 6px;">
+        <button class="role-switcher-btn" id="roleSwitcherBtn" onclick="toggleRoleMenu()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="16 3 21 3 21 8"></polyline>
+            <line x1="10" y1="14" x2="21" y2="3"></line>
+            <polyline points="8 21 3 21 3 16"></polyline>
+            <line x1="14" y1="10" x2="3" y2="21"></line>
+          </svg>
+          {% set r_map = {'super_admin': 'Super Admin', 'branch_admin': 'Branch Admin', 'registrar': 'Registrar', 'cashier': 'Cashier', 'librarian': 'Librarian', 'parent': 'Parent', 'student': 'Student', 'teacher': 'Teacher'} %}
+          <span>{{ r_map.get(session.get('role'), session.get('role')|title) }} Mode</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+
+        <div class="role-dropdown" id="roleDropdown">
+          <div style="font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 10px 4px; border-bottom: 1px solid #f1f5f9; margin-bottom: 6px;">
+            Switch Role Mode
+          </div>
+          {% for r in session.get('roles') %}
+          {% set is_active = (r == session.get('role')) %}
+          {% set role_title = r_map.get(r, r|title) %}
+          <form action="/auth/switch-role" method="POST" style="margin: 0;" id="roleSwitchForm_{{ r }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="target_role" value="{{ r }}">
+            <button type="button"
+              onclick="confirmRoleSwitch(event, 'roleSwitchForm_{{ r }}', '{{ role_title }}')"
+              style="width: 100%; text-align: left; background: {% if is_active %}#eff6ff{% else %}transparent{% endif %}; border: none; padding: 8px 10px; border-radius: 8px; font-size: 0.85rem; font-weight: {% if is_active %}700{% else %}500{% endif %}; color: {% if is_active %}#1d4ed8{% else %}#334155{% endif %}; cursor: pointer; display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; transition: background 0.15s;"
+              {% if is_active %}disabled style="opacity: 0.8; cursor: default;"{% endif %}>
+              <span>{{ role_title }}</span>
+              {% if is_active %}
+              <span style="font-size: 0.7rem; background: #2563eb; color: #fff; padding: 2px 8px; border-radius: 10px; font-weight: 700;">Active</span>
+              {% endif %}
+            </button>
+          </form>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+
       {% if session.get('role') and not required %}
       <div class="profile-dropdown-wrapper">
         <button class="profile-toggle-btn" id="profileBtn" onclick="toggleProfileMenu()"
@@ -2539,6 +2624,9 @@
               </svg>
               Change Password
             </a>
+
+
+
             <a href="/logout" class="profile-dropdown-link"
               style="color: #ef4444; border-top: 1px solid #f8fafc; margin-top: 4px; padding-top: 8px;">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
@@ -2640,9 +2728,11 @@
       const dropdown = document.getElementById('notifDropdown');
       if (!dropdown) return;
 
-      // Close profile menu if open
+      // Close profile & role menu if open
       const profDropdown = document.getElementById('profileDropdown');
       if (profDropdown) profDropdown.classList.remove('show');
+      const roleDropdown = document.getElementById('roleDropdown');
+      if (roleDropdown) roleDropdown.classList.remove('show');
 
       const wasHidden = !dropdown.classList.contains('show');
       dropdown.classList.toggle('show');
@@ -2682,14 +2772,41 @@
       const dropdown = document.getElementById('profileDropdown');
       if (!dropdown) return;
 
-      // Close notifications if open
+      // Close notifications & role menu if open
       const notifDropdown = document.getElementById('notifDropdown');
       if (notifDropdown) notifDropdown.classList.remove('show');
+      const roleDropdown = document.getElementById('roleDropdown');
+      if (roleDropdown) roleDropdown.classList.remove('show');
 
       dropdown.classList.toggle('show');
 
       const closeHandler = function (e) {
         if (!document.getElementById('profileBtn').contains(e.target) && !dropdown.contains(e.target)) {
+          dropdown.classList.remove('show');
+          document.removeEventListener('click', closeHandler);
+        }
+      };
+
+      if (dropdown.classList.contains('show')) {
+        setTimeout(() => document.addEventListener('click', closeHandler), 1);
+      }
+    }
+
+    function toggleRoleMenu() {
+      const dropdown = document.getElementById('roleDropdown');
+      if (!dropdown) return;
+
+      // Close notifications & profile menu if open
+      const notifDropdown = document.getElementById('notifDropdown');
+      if (notifDropdown) notifDropdown.classList.remove('show');
+      const profDropdown = document.getElementById('profileDropdown');
+      if (profDropdown) profDropdown.classList.remove('show');
+
+      dropdown.classList.toggle('show');
+
+      const closeHandler = function (e) {
+        const btn = document.getElementById('roleSwitcherBtn');
+        if ((!btn || !btn.contains(e.target)) && !dropdown.contains(e.target)) {
           dropdown.classList.remove('show');
           document.removeEventListener('click', closeHandler);
         }
@@ -3193,6 +3310,71 @@
   </script>
 
   {% if session.get('user_id') or session.get('role') %}
+  <!-- Role Switch Confirmation Modal (English) -->
+  <div class="modal-overlay" id="confirmRoleSwitchModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); backdrop-filter:blur(4px); z-index:99999; justify-content:center; align-items:center;">
+    <div style="background:#fff; width:90%; max-width:440px; border-radius:20px; padding:28px 24px; box-shadow:0 20px 40px rgba(0,0,0,0.25); text-align:center; animation: modalIn 0.2s ease;">
+      <div style="width:56px; height:56px; background:#eff6ff; color:#2563eb; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px; font-size:1.6rem; border:2px solid #bfdbfe;">
+        🔄
+      </div>
+      <h3 style="font-size:1.2rem; font-weight:800; color:#0f172a; margin-bottom:8px;">Switch Active Role Mode?</h3>
+      <p style="font-size:0.9rem; color:#64748b; line-height:1.5; margin-bottom:22px;">
+        Are you sure you want to switch your active session mode to <strong id="targetRoleNameDisplay" style="color:#1d4ed8;"></strong> Mode? Any unsaved changes on your current page may be lost.
+      </p>
+      <div style="display:flex; gap:10px; justify-content:center;">
+        <button type="button" onclick="closeRoleSwitchModal()" style="flex:1; padding:10px 16px; border:1.5px solid #cbd5e1; background:#fff; color:#475569; border-radius:10px; font-weight:700; font-size:0.88rem; cursor:pointer; transition:all 0.15s;">Cancel</button>
+        <button type="button" id="confirmSwitchBtn" onclick="executeRoleSwitch()" style="flex:1; padding:10px 16px; border:none; background:#2563eb; color:#fff; border-radius:10px; font-weight:700; font-size:0.88rem; cursor:pointer; transition:all 0.15s;">Switch Mode</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let pendingRoleFormId = null;
+
+    function confirmRoleSwitch(event, formId, roleTitle) {
+      if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      pendingRoleFormId = formId;
+      var labelEl = document.getElementById('targetRoleNameDisplay');
+      if (labelEl) labelEl.textContent = roleTitle || '';
+      
+      var modal = document.getElementById('confirmRoleSwitchModal');
+      if (modal) modal.style.display = 'flex';
+      
+      var dropdown = document.getElementById('roleDropdown');
+      if (dropdown) dropdown.classList.remove('show');
+    }
+
+    function closeRoleSwitchModal() {
+      var modal = document.getElementById('confirmRoleSwitchModal');
+      if (modal) modal.style.display = 'none';
+      pendingRoleFormId = null;
+    }
+
+    function executeRoleSwitch() {
+      if (pendingRoleFormId) {
+        var form = document.getElementById(pendingRoleFormId);
+        var btn = document.getElementById('confirmSwitchBtn');
+        if (btn) {
+          btn.disabled = true;
+          btn.style.opacity = '0.7';
+          btn.textContent = 'Switching Mode...';
+        }
+        if (form) form.submit();
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      var modal = document.getElementById('confirmRoleSwitchModal');
+      if (modal) {
+        modal.addEventListener('click', function(e) {
+          if (e.target === this) closeRoleSwitchModal();
+        });
+      }
+    });
+  </script>
+
   <script>
     // Inactivity Auto-Logout JS Guard (1 hour / 60 minutes policy)
     (function() {

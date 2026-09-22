@@ -1447,8 +1447,8 @@
                 <span class="filter-label">Browse Category</span>
                 <select id="categorySelect" class="premium-select" onchange="filterItems()">
                     <option value="ALL">All Items</option>
-                    <option value="BOOK">📖 Books & Materials</option>
-                    <option value="UNIFORM" selected>👕 School Uniforms</option>
+                    <option value="BOOK">Books & Materials</option>
+                    <option value="UNIFORM" selected>School Uniforms</option>
                 </select>
             </div>
 
@@ -1552,7 +1552,7 @@
                         {% if not catalog_groups or catalog_groups|length == 0 %}
                         <div
                             style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: white; border-radius: 20px; border: 1px solid var(--res-border);">
-                            <span style="font-size: 3rem; display: block; margin-bottom: 20px;">📦</span>
+                            <i class="fas fa-box-open" style="font-size: 3rem; color: var(--res-muted); display: block; margin-bottom: 20px;"></i>
                             <h3 style="font-weight: 800; color: var(--res-primary); margin-bottom: 10px;">No items
                                 available</h3>
                             <p style="color: var(--res-muted);">Try selecting a different category or check back later.
@@ -1589,12 +1589,31 @@
 
                                 {% if it.grade_level %}
                                 <div
-                                    style="font-size:0.75rem; color:var(--res-muted); font-weight:700; margin-bottom:12px;">
+                                    style="font-size:0.75rem; color:var(--res-muted); font-weight:700; margin-bottom:8px;">
                                     {{ it.grade_level }}</div>
                                 {% else %}
                                 <div
-                                    style="font-size:0.75rem; color:var(--res-muted); font-weight:700; margin-bottom:12px;">
+                                    style="font-size:0.75rem; color:var(--res-muted); font-weight:700; margin-bottom:8px;">
                                     {{ it.category }}</div>
+                                {% endif %}
+
+                                {% if g.pieces and g.pieces|length > 0 %}
+                                <div class="set-accordion-wrap" style="margin: 0 0 12px 0; width: 100%; box-sizing: border-box;">
+                                    <button type="button" class="set-accordion-toggle" onclick="toggleSetPieces(this)" style="width: 100%; background: #f8fafc; border: 1px solid var(--res-border); border-radius: 10px; padding: 7px 10px; font-size: 0.75rem; font-weight: 800; color: #1e3a8a; display: flex; align-items: center; justify-content: space-between; cursor: pointer; transition: all 0.2s;">
+                                        <span style="display: flex; align-items: center; gap: 5px;">
+                                            Package Includes ({{ g.pieces|length }} items)
+                                        </span>
+                                        <span class="acc-arrow" style="font-size: 0.7rem; transition: transform 0.2s;">▼</span>
+                                    </button>
+                                    <div class="set-accordion-content" style="display: none; background: #ffffff; border: 1px solid var(--res-border); border-top: none; border-radius: 0 0 10px 10px; padding: 8px 10px; margin-top: -2px;">
+                                        {% for p in g.pieces %}
+                                        <div style="display: flex; align-items: center; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #f1f5f9; font-size: 0.75rem;">
+                                            <span style="font-weight: 700; color: #334155;"><i class="fas fa-check" style="color: #16a34a; font-size: 0.7rem; margin-right: 4px;"></i> {{ p.item_name }}</span>
+                                            <span style="font-weight: 800; color: #1e3a8a;">₱{{ "{:,.2f}".format(p.price or 0.0) }}</span>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
                                 {% endif %}
 
                                 <!-- Price displayed in details instead of floating on image -->
@@ -2183,6 +2202,20 @@
 {% endif %}
 
 <script>
+    function toggleSetPieces(btn) {
+        if (!btn) return;
+        const wrap = btn.closest('.set-accordion-wrap');
+        if (!wrap) return;
+        const content = wrap.querySelector('.set-accordion-content');
+        const arrow = wrap.querySelector('.acc-arrow');
+        if (content) {
+            const isOpen = content.style.display === 'block';
+            content.style.display = isOpen ? 'none' : 'block';
+            if (arrow) arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+            btn.style.borderRadius = isOpen ? '10px' : '10px 10px 0 0';
+        }
+    }
+
     function closeSuccessModal() {
         const modal = document.getElementById("successModal");
         if (!modal) return;

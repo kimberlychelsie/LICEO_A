@@ -1,7 +1,8 @@
 from flask import Blueprint, render_template, request, session, redirect, flash, url_for, jsonify
 from datetime import datetime, time as dt_time
 import pytz
-from db import get_db_connection, get_break_times_config, save_break_times_config
+import json
+from db import get_db_connection, get_break_times_config, save_break_times_config, merge_user_accounts
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
 import re
@@ -249,7 +250,7 @@ def dashboard():
             metrics['terms'] = {}
 
         # Teachers and Staff are not year-bound right now unless requested
-        cursor.execute("SELECT COUNT(*) FROM users WHERE role='teacher' AND COALESCE(status, 'active')='active' AND branch_id=%s", (b_id,))
+        cursor.execute("SELECT COUNT(*) FROM users WHERE (role='teacher' OR user_roles ILIKE '%%teacher%%') AND COALESCE(status, 'active')='active' AND branch_id=%s", (b_id,))
         metrics['total_teachers'] = cursor.fetchone()['count']
         
         cursor.execute("SELECT COUNT(*) FROM users WHERE role IN ('registrar', 'cashier', 'librarian') AND COALESCE(status, 'active')='active' AND branch_id=%s", (b_id,))
@@ -758,7 +759,7 @@ def branch_admin_manage_accounts():
                 JOIN section_teachers st ON u.user_id = st.teacher_id
                 JOIN sections s ON st.section_id = s.section_id
                 JOIN grade_levels g_s ON s.grade_level_id = g_s.id
-                WHERE u.branch_id = %s AND u.role = 'teacher' AND COALESCE(u.is_archived, FALSE) = FALSE
+                WHERE u.branch_id = %s AND (u.role = 'teacher' OR u.user_roles ILIKE '%%teacher%%') AND COALESCE(u.is_archived, FALSE) = FALSE
             """
             params = [branch_id]
             if filter_search:
@@ -766,11 +767,11 @@ def branch_admin_manage_accounts():
                 params.extend([f"%{filter_search}%", f"%{filter_search}%"])
             cursor.execute(query, tuple(params))
         else:
-            query_role_cond = "u.role IN ('registrar', 'cashier', 'librarian', 'teacher')"
+            query_role_cond = "(u.role IN ('registrar', 'cashier', 'librarian', 'teacher') OR u.user_roles ILIKE '%%registrar%%' OR u.user_roles ILIKE '%%cashier%%' OR u.user_roles ILIKE '%%librarian%%' OR u.user_roles ILIKE '%%teacher%%')"
             params = [branch_id]
             query = f"""
                 SELECT
-                    u.user_id, u.username, u.role, u.full_name, u.gender,
+                    u.user_id, u.username, u.role, u.user_roles, u.full_name, u.gender,
                     u.email, COALESCE(g.name, u.grade_level) AS grade_level, u.status,
                     (SELECT STRING_AGG(DISTINCT s2.section_name, ', ') 
                      FROM section_teachers st2 
@@ -868,7 +869,7 @@ def branch_admin_toggle_swafo(user_id):
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         cursor.execute(
-            "UPDATE users SET is_swafo = NOT COALESCE(is_swafo, FALSE) WHERE user_id = %s AND branch_id = %s AND role = 'teacher'",
+            "UPDATE users SET is_swafo = NOT COALESCE(is_swafo, FALSE) WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')",
             (user_id, session.get("branch_id"))
         )
         db.commit()
@@ -912,21 +913,65 @@ def branch_admin_edit_account(user_id):
                 return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
                 
             full_name = f"{first_name} {middle_name} {last_name}".strip().replace("  ", " ")
+            
+            assigned_roles = request.form.getlist("user_roles")
+            user_roles_json = json.dumps(assigned_roles) if assigned_roles else None
+
             cursor.execute("""
-                UPDATE users SET first_name=%s, middle_name=%s, last_name=%s, full_name=%s, email=%s, gender=%s, grade_level_id=%s
+                UPDATE users SET first_name=%s, middle_name=%s, last_name=%s, full_name=%s, email=%s, gender=%s, grade_level_id=%s, user_roles=%s
                 WHERE user_id=%s AND branch_id=%s
-            """, (first_name, middle_name or None, last_name, full_name, email, gender, grade_level_id or None, user_id, session.get("branch_id")))
+            """, (first_name, middle_name or None, last_name, full_name, email, gender, grade_level_id or None, user_roles_json, user_id, session.get("branch_id")))
+            
+            if assigned_roles and "parent" in assigned_roles and email:
+                cursor.execute("""
+                    INSERT INTO parent_student (parent_id, student_id, relationship)
+                    SELECT %s, enrollment_id, 'guardian'
+                    FROM enrollments
+                    WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s))
+                    ON CONFLICT DO NOTHING
+                """, (user_id, email))
+
             db.commit()
             flash("Account updated successfully.", "success")
             return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
         cursor.execute("SELECT * FROM users WHERE user_id=%s AND branch_id=%s", (user_id, session.get("branch_id")))
         user = cursor.fetchone()
+        user_roles_list = []
+        if user and user.get("user_roles"):
+            try:
+                user_roles_list = json.loads(user["user_roles"])
+            except Exception:
+                user_roles_list = [user["role"]] if user.get("role") else []
+        elif user and user.get("role"):
+            user_roles_list = [user["role"]]
+
         cursor.execute("SELECT id, name FROM grade_levels WHERE branch_id=%s ORDER BY display_order", (session.get("branch_id"),))
         grades = cursor.fetchall()
-        return render_template("branch_admin_edit_account.html", user=user, grades=grades)
+        return render_template("branch_admin_edit_account.html", user=user, grades=grades, user_roles_list=user_roles_list)
     finally:
         cursor.close()
         db.close()
+
+
+@branch_admin_bp.route("/branch-admin/manage-accounts/merge", methods=["POST"])
+def branch_admin_merge_accounts():
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+
+    primary_id = request.form.get("primary_user_id", type=int)
+    secondary_id = request.form.get("secondary_user_id", type=int)
+
+    if not primary_id or not secondary_id:
+        flash("Please select both a primary and secondary account to merge.", "error")
+        return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
+
+    success, msg = merge_user_accounts(primary_id, secondary_id)
+    if success:
+        flash(msg, "success")
+    else:
+        flash(msg, "error")
+
+    return redirect(request.referrer or url_for("branch_admin.branch_admin_manage_accounts"))
 
 @branch_admin_bp.route("/branch-admin/manage-accounts/student/<int:account_id>/edit", methods=["GET", "POST"])
 def branch_admin_edit_student_account(account_id):
@@ -2720,9 +2765,13 @@ def branch_admin_assign_teachers():
             grade_filter = str(grade_options[0]['id'])
 
         if request.method == "POST":
-            section_id = int(request.form.get("section_id"))
-            subject_id = int(request.form.get("subject_id"))
-            teacher_id = int(request.form.get("teacher_id")) if request.form.get("teacher_id") else None
+            try:
+                section_id = int(request.form.get("section_id", 0) or 0)
+                subject_id = int(request.form.get("subject_id", 0) or 0)
+                teacher_id = int(request.form.get("teacher_id")) if request.form.get("teacher_id") else None
+            except (ValueError, TypeError):
+                flash("Invalid selection.", "error")
+                return redirect(url_for("branch_admin.branch_admin_assign_teachers"))
 
             cursor.execute("SELECT 1 FROM sections s JOIN school_years y ON y.year_id = s.year_id WHERE s.section_id=%s AND s.branch_id=%s AND y.is_active = TRUE", (section_id, branch_id))
             if not cursor.fetchone():
@@ -2736,7 +2785,7 @@ def branch_admin_assign_teachers():
 
         cursor.execute(
             """SELECT user_id, username, full_name FROM users
-               WHERE branch_id = %s AND role = 'teacher' AND COALESCE(is_archived, FALSE) = FALSE
+               WHERE branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%') AND COALESCE(is_archived, FALSE) = FALSE
                ORDER BY full_name""",
             (branch_id,),
         )
@@ -2790,7 +2839,7 @@ def branch_admin_api_get_all_subjects(teacher_id):
     try:
         cursor.execute(
             """SELECT 1 FROM users
-               WHERE user_id=%s AND branch_id=%s AND role='teacher'
+               WHERE user_id=%s AND branch_id=%s AND (role='teacher' OR user_roles ILIKE '%%teacher%%')
                  AND COALESCE(is_archived, FALSE) = FALSE""",
             (teacher_id, branch_id),
         )
@@ -2859,7 +2908,7 @@ def branch_admin_assign_teachers_bulk():
     cursor = db.cursor()
     try:
         cursor.execute(
-            """SELECT 1 FROM users WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+            """SELECT 1 FROM users WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
                AND COALESCE(is_archived, FALSE) = FALSE""",
             (teacher_id, branch_id),
         )
@@ -3015,7 +3064,7 @@ def branch_admin_manage_teachers():
                 SELECT user_id, username, full_name
                 FROM users
                 WHERE branch_id = %s
-                  AND role = 'teacher'
+                  AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
                   AND LOWER(TRIM(email)) = LOWER(TRIM(%s))
                   AND COALESCE(is_archived, FALSE) = FALSE
                 LIMIT 1
@@ -3107,6 +3156,7 @@ Please log in and change your password immediately.
         query = """
             SELECT
                 u.user_id, u.username, u.first_name, u.middle_name, u.last_name, u.full_name, u.gender, u.email,
+                u.role, u.user_roles,
                 COALESCE(u.status, 'active') AS status,
                 COALESCE(u.is_swafo, FALSE) AS is_swafo,
                 adv_sec.section_name AS advisory_section,
@@ -3122,7 +3172,7 @@ Please log in and change your password immediately.
             FROM users u
             LEFT JOIN sections adv_sec ON adv_sec.teacher_id = u.user_id AND adv_sec.branch_id = u.branch_id
             LEFT JOIN grade_levels adv_grade ON adv_sec.grade_level_id = adv_grade.id
-            WHERE u.branch_id = %s AND u.role = 'teacher' AND COALESCE(u.is_archived, FALSE) = FALSE
+            WHERE u.branch_id = %s AND (u.role = 'teacher' OR u.user_roles ILIKE '%%teacher%%') AND COALESCE(u.is_archived, FALSE) = FALSE
         """
         params = [branch_id]
         if filter_search:
@@ -3144,7 +3194,7 @@ Please log in and change your password immediately.
                     WHERE NOT EXISTS (SELECT 1 FROM sections s WHERE s.teacher_id = users.user_id)
                       AND EXISTS (SELECT 1 FROM section_teachers st WHERE st.teacher_id = users.user_id)
                 ) AS subject_count
-            FROM users WHERE branch_id = %s AND role = 'teacher'
+            FROM users WHERE branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
               AND COALESCE(is_archived, FALSE) = FALSE
         """, (branch_id,))
         stats = cursor.fetchone()
@@ -3198,7 +3248,7 @@ def branch_admin_edit_teacher(user_id):
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         cursor.execute(
-            """SELECT 1 FROM users WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+            """SELECT 1 FROM users WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
                AND COALESCE(is_archived, FALSE) = FALSE""",
             (user_id, branch_id),
         )
@@ -3206,11 +3256,14 @@ def branch_admin_edit_teacher(user_id):
             flash("Teacher not found.", "error")
             return redirect("/branch-admin/manage-teachers")
 
+        assigned_roles = request.form.getlist("user_roles")
+        user_roles_json = json.dumps(assigned_roles) if assigned_roles else None
+
         cursor.execute(
             """
             UPDATE users SET
-                first_name = %s, middle_name = %s, last_name = %s, full_name = %s, email = %s, gender = %s
-            WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+                first_name = %s, middle_name = %s, last_name = %s, full_name = %s, email = %s, gender = %s, user_roles = %s
+            WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
               AND COALESCE(is_archived, FALSE) = FALSE
             """,
             (
@@ -3220,10 +3273,20 @@ def branch_admin_edit_teacher(user_id):
                 full_name,
                 user_email,
                 gender,
+                user_roles_json,
                 user_id,
                 session.get("branch_id"),
             ),
         )
+
+        if assigned_roles and "parent" in assigned_roles and user_email:
+            cursor.execute("""
+                INSERT INTO parent_student (parent_id, student_id, relationship)
+                SELECT %s, enrollment_id, 'guardian'
+                FROM enrollments
+                WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s))
+                ON CONFLICT DO NOTHING
+            """, (user_id, user_email))
 
         db.commit()
 
@@ -3248,7 +3311,7 @@ def branch_admin_toggle_teacher(user_id):
         cursor.execute("""
             UPDATE users
             SET status = CASE WHEN COALESCE(status,'active') = 'active' THEN 'inactive' ELSE 'active' END
-            WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+            WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
               AND COALESCE(is_archived, FALSE) = FALSE
         """, (user_id, session.get("branch_id")))
         db.commit()
@@ -3271,7 +3334,7 @@ def branch_admin_toggle_teacher_swafo(user_id):
         cursor.execute("""
             UPDATE users
             SET is_swafo = NOT COALESCE(is_swafo, FALSE)
-            WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+            WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
         """, (user_id, session.get("branch_id")))
         db.commit()
         flash("SWAFO assignment updated successfully.", "success")
@@ -3296,7 +3359,7 @@ def branch_admin_archive_teacher(user_id):
     try:
         cursor.execute(
             """UPDATE users SET is_archived = TRUE, status = 'inactive'
-               WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+               WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
                  AND COALESCE(is_archived, FALSE) = FALSE""",
             (user_id, branch_id),
         )
@@ -3347,7 +3410,7 @@ def branch_admin_archived_teachers():
                 u.department
             FROM users u
             LEFT JOIN grade_levels g ON u.grade_level_id = g.id
-            WHERE u.branch_id = %s AND u.role = 'teacher' AND COALESCE(u.is_archived, FALSE) = TRUE
+            WHERE u.branch_id = %s AND (u.role = 'teacher' OR u.user_roles ILIKE '%%teacher%%') AND COALESCE(u.is_archived, FALSE) = TRUE
         """
         params = [branch_id]
         if filter_search:
@@ -3380,7 +3443,7 @@ def branch_admin_unarchive_teacher(user_id):
     try:
         cursor.execute(
             """UPDATE users SET is_archived = FALSE, status = 'active'
-               WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+               WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
                  AND COALESCE(is_archived, FALSE) = TRUE""",
             (user_id, branch_id),
         )
@@ -3408,7 +3471,7 @@ def branch_admin_delete_archived_teacher(user_id):
     cursor = db.cursor()
     try:
         cursor.execute(
-            """SELECT 1 FROM users WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+            """SELECT 1 FROM users WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
                AND COALESCE(is_archived, FALSE) = TRUE""",
             (user_id, branch_id),
         )
@@ -3703,23 +3766,31 @@ def shs_offerings():
                 group_code = (request.form.get("group_code") or "").strip()
                 capacity = request.form.get("capacity", 30)
                 status = request.form.get("status", "ACTIVE")
+                term_name = request.form.get("term_name")
                 try:
                     # Auto-resolve track from the subject associated with this offering
                     cur.execute("""
-                        SELECT s.track 
+                        SELECT s.pathway, s.track 
                         FROM shs_elective_offerings o
                         JOIN section_teachers st ON o.section_teacher_id = st.id
                         JOIN subjects s ON st.subject_id = s.subject_id
                         WHERE o.offering_id = %s
                     """, (offering_id,))
                     res = cur.fetchone()
-                    shs_track = res["track"] if (res and res["track"]) else "Academic"
+                    shs_track = (res["pathway"] or res["track"] or "Academic") if res else "Academic"
 
-                    cur.execute("""
-                        UPDATE shs_elective_offerings
-                        SET group_code = %s, shs_track = %s, capacity = %s, status = %s
-                        WHERE offering_id = %s AND branch_id = %s
-                    """, (group_code, shs_track, capacity, status, offering_id, branch_id))
+                    if term_name:
+                        cur.execute("""
+                            UPDATE shs_elective_offerings
+                            SET group_code = %s, shs_track = %s, capacity = %s, status = %s, term_name = %s
+                            WHERE offering_id = %s AND branch_id = %s
+                        """, (group_code, shs_track, capacity, status, term_name, offering_id, branch_id))
+                    else:
+                        cur.execute("""
+                            UPDATE shs_elective_offerings
+                            SET group_code = %s, shs_track = %s, capacity = %s, status = %s
+                            WHERE offering_id = %s AND branch_id = %s
+                        """, (group_code, shs_track, capacity, status, offering_id, branch_id))
                     db.commit()
                     flash("Offering updated.", "success")
                 except Exception as e:
@@ -3771,6 +3842,7 @@ def shs_offerings():
             # Build offerings query
             q = """
                 SELECT o.*, s.name AS subject_name,
+                       s.pathway AS subject_pathway, s.track AS subject_track,
                        sec.section_name,
                        g.name AS grade_level_name,
                        st.section_id, st.subject_id, st.teacher_id,
@@ -3818,6 +3890,7 @@ def shs_offerings():
                 SELECT st.id AS section_teacher_id,
                        s.name AS subject_name,
                        s.track AS subject_track,
+                       s.pathway AS subject_pathway,
                        sec.section_name,
                        g.name AS grade_level_name,
                        COALESCE(u.first_name, '') || ' ' || COALESCE(u.last_name, u.full_name, u.username) AS teacher_name
@@ -3833,17 +3906,17 @@ def shs_offerings():
                   AND s.subject_type = 'ELECTIVE'
                   AND st.is_archived = FALSE
                   AND o.offering_id IS NULL
-                ORDER BY s.track, g.name, sec.section_name, s.name
+                ORDER BY COALESCE(s.pathway, s.track, 'General Electives'), g.name, sec.section_name, s.name
             """, (branch_id, year_id, branch_id, year_id))
             raw_assignments = cur.fetchall()
             
-            # Group by track for optgroup display
+            # Group by pathway for optgroup display
             grouped_assignments = {}
             for ea in raw_assignments:
-                track = ea["subject_track"] or "Other Electives"
-                if track not in grouped_assignments:
-                    grouped_assignments[track] = []
-                grouped_assignments[track].append(ea)
+                pathway = (ea["subject_pathway"] or ea["subject_track"] or "General Electives").strip()
+                if pathway not in grouped_assignments:
+                    grouped_assignments[pathway] = []
+                grouped_assignments[pathway].append(ea)
 
         return render_template("branch_admin_shs_offerings.html",
             terms=terms,

@@ -3000,13 +3000,13 @@ def orders_books():
                 r.created_at,              -- 8
                 CASE
                   WHEN r.reserved_by_user_id IS NOT NULL
-                       AND reserved_by.role = 'parent'
+                       AND (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%')
                   THEN 'parent'
                   ELSE 'student'
                 END AS reserved_by_role,   -- 9
                 CASE
                   WHEN r.reserved_by_user_id IS NOT NULL
-                       AND reserved_by.role = 'parent'
+                       AND (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%')
                   THEN COALESCE(
                     svp.guardian_name,
                     reserved_by.username
@@ -3044,7 +3044,7 @@ def orders_books():
                 WHERE ps2.parent_id = r.reserved_by_user_id
                 ORDER BY ps2.student_id
                 LIMIT 1
-            ) svp ON (reserved_by.role = 'parent')
+            ) svp ON (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%')
             WHERE r.branch_id = %s
             ORDER BY r.created_at ASC
         """, (branch_id,))
@@ -3093,13 +3093,13 @@ def cashier_reservation_view(reservation_id):
                 r.created_at,
                 CASE
                   WHEN r.reserved_by_user_id IS NOT NULL
-                       AND reserved_by.role = 'parent'
+                       AND (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%')
                   THEN 'parent'
                   ELSE 'student'
                 END AS reserved_by_role,
                 CASE
                   WHEN r.reserved_by_user_id IS NOT NULL
-                       AND reserved_by.role = 'parent'
+                       AND (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%')
                   THEN COALESCE(
                     svp.guardian_name,
                     reserved_by.username
@@ -3131,7 +3131,7 @@ def cashier_reservation_view(reservation_id):
                 WHERE ps2.parent_id = r.reserved_by_user_id
                 ORDER BY ps2.student_id
                 LIMIT 1
-            ) svp ON (reserved_by.role = 'parent')
+            ) svp ON (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%')
             WHERE r.reservation_id = %s AND r.branch_id = %s
             LIMIT 1
         """, (reservation_id, branch_id))
@@ -3464,13 +3464,13 @@ def reservation_receipt(reservation_id):
                 b.branch_name,                          -- 6
                 CASE
                   WHEN r.reserved_by_user_id IS NOT NULL
-                       AND reserved_by.role = 'parent'
+                       AND (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%')
                   THEN 'parent'
                   ELSE 'student'
                 END AS reserved_by_role,                -- 7
                 CASE
                   WHEN r.reserved_by_user_id IS NOT NULL
-                       AND reserved_by.role = 'parent'
+                       AND (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%')
                   THEN COALESCE(svp.guardian_name, reserved_by.username)
                   ELSE NULL
                 END AS parent_name,                     -- 8
@@ -3510,7 +3510,7 @@ def reservation_receipt(reservation_id):
                 WHERE ps2.parent_id = r.reserved_by_user_id
                 ORDER BY ps2.student_id
                 LIMIT 1
-            ) svp ON (reserved_by.role = 'parent')
+            ) svp ON (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%')
             WHERE r.reservation_id = %s AND r.branch_id = %s
             LIMIT 1
         """, (reservation_id, branch_id))
@@ -3592,11 +3592,11 @@ def export_reservations_excel():
                 r.status,
                 r.created_at,
                 CASE
-                  WHEN r.reserved_by_user_id IS NOT NULL AND reserved_by.role = 'parent' THEN 'Parent'
+                  WHEN r.reserved_by_user_id IS NOT NULL AND (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%') THEN 'Parent'
                   ELSE 'Student'
                 END AS reserved_by_role,
                 CASE
-                  WHEN r.reserved_by_user_id IS NOT NULL AND reserved_by.role = 'parent' THEN COALESCE(svp.guardian_name, reserved_by.username)
+                  WHEN r.reserved_by_user_id IS NOT NULL AND (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%') THEN COALESCE(svp.guardian_name, reserved_by.username)
                   ELSE NULL
                 END AS parent_name,
                 (
@@ -3633,7 +3633,7 @@ def export_reservations_excel():
                 JOIN enrollments e2 ON e2.enrollment_id = ps2.student_id
                 WHERE ps2.parent_id = r.reserved_by_user_id
                 ORDER BY ps2.student_id LIMIT 1
-            ) svp ON (reserved_by.role = 'parent')
+            ) svp ON (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%')
             WHERE r.branch_id = %s
             ORDER BY r.created_at DESC
         """, (branch_id,))
@@ -3773,11 +3773,11 @@ def export_reservation_detail_excel(reservation_id):
                 r.status,
                 r.created_at,
                 CASE
-                  WHEN r.reserved_by_user_id IS NOT NULL AND reserved_by.role = 'parent' THEN 'Parent'
+                  WHEN r.reserved_by_user_id IS NOT NULL AND (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%') THEN 'Parent'
                   ELSE 'Student'
                 END AS reserved_by_role,
                 CASE
-                  WHEN r.reserved_by_user_id IS NOT NULL AND reserved_by.role = 'parent' THEN COALESCE(svp.guardian_name, reserved_by.username)
+                  WHEN r.reserved_by_user_id IS NOT NULL AND (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%') THEN COALESCE(svp.guardian_name, reserved_by.username)
                   ELSE NULL
                 END AS parent_name,
                 svp.relationship
@@ -3804,7 +3804,7 @@ def export_reservation_detail_excel(reservation_id):
                 JOIN enrollments e2 ON e2.enrollment_id = ps2.student_id
                 WHERE ps2.parent_id = r.reserved_by_user_id
                 ORDER BY ps2.student_id LIMIT 1
-            ) svp ON (reserved_by.role = 'parent')
+            ) svp ON (reserved_by.role = 'parent' OR reserved_by.user_roles ILIKE '%%parent%%')
             WHERE r.reservation_id = %s AND r.branch_id = %s
             LIMIT 1
         """, (reservation_id, branch_id))

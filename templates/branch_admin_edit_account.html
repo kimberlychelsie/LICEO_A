@@ -201,6 +201,20 @@
             </div>
             {% endif %}
 
+            <div class="form-group" style="background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 24px;">
+                <label style="color: #1e3a8a; font-weight: 850; font-size: 0.85rem; margin-bottom: 12px;">Assigned Portal Roles (Multi-Role Support)</label>
+                <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 14px;">Select additional roles for this account. The user will be able to switch between active role modes from the topbar menu.</p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px;">
+                    {% set available_roles = [('teacher', 'Teacher'), ('registrar', 'Registrar'), ('parent', 'Parent'), ('cashier', 'Cashier'), ('librarian', 'Librarian')] %}
+                    {% for r_code, r_label in available_roles %}
+                    <label style="display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 0.88rem; color: #1e293b; cursor: pointer; background: #ffffff; padding: 10px 14px; border-radius: 10px; border: 1px solid #cbd5e1;">
+                        <input type="checkbox" name="user_roles" value="{{ r_code }}" {% if r_code in user_roles_list or r_code == user.role %}checked{% endif %} style="width: 18px; height: 18px; accent-color: #1e3a8a;">
+                        {{ r_label }}
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
             <button type="submit" class="btn-submit" id="submitBtn">Save Changes</button>
         </form>
     </div>

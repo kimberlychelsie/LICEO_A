@@ -100,6 +100,8 @@ def get_db_connection():
                     cur.execute("ALTER TABLE users ADD COLUMN middle_name VARCHAR(255)")
                 if 'last_name' not in user_cols:
                     cur.execute("ALTER TABLE users ADD COLUMN last_name VARCHAR(255)")
+                if 'user_roles' not in user_cols:
+                    cur.execute("ALTER TABLE users ADD COLUMN user_roles TEXT")
                 conn.commit()
 
                 # Backfill split name columns from full_name if first_name is empty
@@ -148,6 +150,61 @@ def get_db_connection():
                       )
                 """)
                 conn.commit()
+
+                # Multi-role migration & Auto-linking by email match
+                try:
+                    # 1. Backfill user_roles for users where user_roles is NULL
+                    cur.execute("SELECT user_id, role, user_roles FROM users WHERE user_roles IS NULL OR TRIM(user_roles) = ''")
+                    rows = cur.fetchall()
+                    for uid, r, ur in rows:
+                        roles = [r] if r else []
+                        cur.execute("UPDATE users SET user_roles = %s WHERE user_id = %s", (json.dumps(roles), uid))
+                    conn.commit()
+
+                    # 2. Auto-link parent role by email match (if user email matches guardian_email)
+                    cur.execute("""
+                        SELECT u.user_id, u.user_roles, e.enrollment_id
+                        FROM users u
+                        JOIN enrollments e ON LOWER(TRIM(u.email)) = LOWER(TRIM(e.guardian_email))
+                        WHERE u.email IS NOT NULL AND TRIM(u.email) <> ''
+                    """)
+                    matches = cur.fetchall()
+                    for uid, ur_json, eid in matches:
+                        cur.execute("""
+                            INSERT INTO parent_student (parent_id, student_id, relationship)
+                            VALUES (%s, %s, 'guardian')
+                            ON CONFLICT DO NOTHING
+                        """, (uid, eid))
+                        
+                        try:
+                            roles_list = json.loads(ur_json) if ur_json else []
+                        except Exception:
+                            roles_list = []
+                        if 'parent' not in roles_list:
+                            roles_list.append('parent')
+                            cur.execute("UPDATE users SET user_roles = %s WHERE user_id = %s", (json.dumps(roles_list), uid))
+                    conn.commit()
+
+                    # 3. Ensure any user who has linked children in parent_student has 'parent' in user_roles
+                    cur.execute("""
+                        SELECT DISTINCT u.user_id, u.user_roles
+                        FROM users u
+                        JOIN parent_student ps ON u.user_id = ps.parent_id
+                    """)
+                    ps_matches = cur.fetchall()
+                    for uid, ur_json in ps_matches:
+                        try:
+                            roles_list = json.loads(ur_json) if ur_json else []
+                        except Exception:
+                            roles_list = []
+                        if 'parent' not in roles_list:
+                            roles_list.append('parent')
+                            cur.execute("UPDATE users SET user_roles = %s WHERE user_id = %s", (json.dumps(roles_list), uid))
+                    conn.commit()
+                except Exception as e:
+                    logger.warning(f"Could not auto-link multi-role parent accounts: {e}")
+                    conn.rollback()
+
             except Exception as e:
                 logger.warning(f"Could not migrate users table or backfill names: {e}")
                 conn.rollback()  # Rollback failed transaction block
@@ -1275,4 +1332,96 @@ def save_break_times_config(config_dict, branch_id=None):
             cur.close()
         except Exception:
             pass
+        conn.close()
+
+
+def merge_user_accounts(primary_id, secondary_id):
+    """
+    Merges a secondary user account into a primary user account.
+    Transfers linked parent students, notifications, teacher assignments, and merges user_roles.
+    Deletes the secondary user account after re-linking child records.
+    Returns (success, message).
+    """
+    if primary_id == secondary_id:
+        return False, "Primary and secondary accounts must be different."
+
+    conn = get_db_connection()
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("SELECT * FROM users WHERE user_id = %s", (primary_id,))
+        p_user = cur.fetchone()
+        cur.execute("SELECT * FROM users WHERE user_id = %s", (secondary_id,))
+        s_user = cur.fetchone()
+
+        if not p_user or not s_user:
+            return False, "One or both user accounts do not exist."
+
+        # Parse primary roles
+        try:
+            p_roles = json.loads(p_user["user_roles"]) if p_user.get("user_roles") else ([p_user["role"]] if p_user.get("role") else [])
+        except Exception:
+            p_roles = [p_user["role"]] if p_user.get("role") else []
+
+        # Parse secondary roles
+        try:
+            s_roles = json.loads(s_user["user_roles"]) if s_user.get("user_roles") else ([s_user["role"]] if s_user.get("role") else [])
+        except Exception:
+            s_roles = [s_user["role"]] if s_user.get("role") else []
+
+        # Merge unique roles
+        merged_roles = list(dict.fromkeys(p_roles + s_roles))
+
+        # Re-link parent_student
+        cur.execute("""
+            UPDATE parent_student 
+            SET parent_id = %s 
+            WHERE parent_id = %s 
+              AND student_id NOT IN (SELECT student_id FROM parent_student WHERE parent_id = %s)
+        """, (primary_id, secondary_id, primary_id))
+        cur.execute("DELETE FROM parent_student WHERE parent_id = %s", (secondary_id,))
+
+        # Re-link parent_notifications if table exists
+        try:
+            cur.execute("UPDATE parent_notifications SET parent_id = %s WHERE parent_id = %s", (primary_id, secondary_id))
+        except Exception:
+            conn.rollback()
+            cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Re-link teacher tables if applicable
+        teacher_tables = [("section_teachers", "teacher_id"), ("teacher_sections", "teacher_id"), ("subject_loads", "teacher_id"), ("attendance_scores", "teacher_id")]
+        for tbl, col in teacher_tables:
+            try:
+                cur.execute(f"UPDATE {tbl} SET {col} = %s WHERE {col} = %s", (primary_id, secondary_id))
+            except Exception:
+                conn.rollback()
+                cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+        # Sync missing email or names if primary user is missing them
+        email_to_set = p_user.get("email") or s_user.get("email")
+        fname_to_set = p_user.get("first_name") or s_user.get("first_name")
+        mname_to_set = p_user.get("middle_name") or s_user.get("middle_name")
+        lname_to_set = p_user.get("last_name") or s_user.get("last_name")
+        fullname_to_set = p_user.get("full_name") or s_user.get("full_name")
+
+        cur.execute("""
+            UPDATE users
+            SET user_roles = %s,
+                email = %s,
+                first_name = %s,
+                middle_name = %s,
+                last_name = %s,
+                full_name = %s
+            WHERE user_id = %s
+        """, (json.dumps(merged_roles), email_to_set, fname_to_set, mname_to_set, lname_to_set, fullname_to_set, primary_id))
+
+        # Delete secondary user account
+        cur.execute("DELETE FROM users WHERE user_id = %s", (secondary_id,))
+
+        conn.commit()
+        return True, f"Successfully merged account '{s_user.get('username')}' into '{p_user.get('username')}'."
+    except Exception as e:
+        conn.rollback()
+        return False, f"Failed to merge user accounts: {str(e)}"
+    finally:
+        cur.close()
         conn.close()

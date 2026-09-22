@@ -7431,7 +7431,7 @@ def teacher_profile():
             SELECT u.*, b.branch_name 
             FROM users u
             LEFT JOIN branches b ON u.branch_id = b.branch_id
-            WHERE u.user_id = %s AND u.role = 'teacher'
+            WHERE u.user_id = %s AND (u.role = 'teacher' OR u.user_roles ILIKE '%%teacher%%')
         """, (user_id,))
         teacher = cur.fetchone()
         

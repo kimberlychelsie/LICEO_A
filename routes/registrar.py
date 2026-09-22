@@ -1998,7 +1998,7 @@ def create_parent_account(enrollment_id):
 
         cursor.execute("""
             SELECT COUNT(*) AS cnt FROM users
-            WHERE role='parent' AND branch_id=%s AND username ILIKE %s
+            WHERE (role='parent' OR user_roles ILIKE '%%parent%%') AND branch_id=%s AND username ILIKE %s
         """, (branch_id, f"{branch_code}_Parent%"))
         prow = cursor.fetchone() or {}
         next_no = (prow.get("cnt") or 0) + 1
@@ -2422,7 +2422,7 @@ def registrar_profile_pictures():
                 FROM users u
                 LEFT JOIN section_teachers st ON u.user_id = st.teacher_id
                 LEFT JOIN subjects sub ON st.subject_id = sub.subject_id
-                WHERE u.branch_id = %s AND u.role = 'teacher'
+                WHERE u.branch_id = %s AND (u.role = 'teacher' OR u.user_roles ILIKE '%%teacher%%')
                   AND COALESCE(u.is_archived, FALSE) = FALSE
                 GROUP BY u.user_id, u.full_name, u.username, u.profile_image
                 ORDER BY u.full_name
@@ -3901,9 +3901,13 @@ def registrar_assign_teachers():
             grade_filter = str(grade_options[0]['id'])
 
         if request.method == "POST":
-            section_id = int(request.form.get("section_id"))
-            subject_id = int(request.form.get("subject_id"))
-            teacher_id = int(request.form.get("teacher_id")) if request.form.get("teacher_id") else None
+            try:
+                section_id = int(request.form.get("section_id", 0) or 0)
+                subject_id = int(request.form.get("subject_id", 0) or 0)
+                teacher_id = int(request.form.get("teacher_id")) if request.form.get("teacher_id") else None
+            except (ValueError, TypeError):
+                flash("Invalid selection.", "error")
+                return redirect(url_for("registrar.registrar_assign_teachers"))
 
             cursor.execute("SELECT 1 FROM sections s JOIN school_years y ON y.year_id = s.year_id WHERE s.section_id=%s AND s.branch_id=%s AND y.is_active = TRUE", (section_id, branch_id))
             if not cursor.fetchone():
@@ -3917,7 +3921,7 @@ def registrar_assign_teachers():
 
         cursor.execute(
             """SELECT user_id, username, full_name FROM users
-               WHERE branch_id = %s AND role = 'teacher' AND COALESCE(is_archived, FALSE) = FALSE
+               WHERE branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%') AND COALESCE(is_archived, FALSE) = FALSE
                ORDER BY full_name""",
             (branch_id,),
         )
@@ -3971,7 +3975,7 @@ def registrar_api_get_all_subjects(teacher_id):
     try:
         cursor.execute(
             """SELECT teacher_type, specialization_subject, department FROM users
-               WHERE user_id=%s AND branch_id=%s AND role='teacher'
+               WHERE user_id=%s AND branch_id=%s AND (role='teacher' OR user_roles ILIKE '%%teacher%%')
                  AND COALESCE(is_archived, FALSE) = FALSE""",
             (teacher_id, branch_id),
         )
@@ -4035,7 +4039,7 @@ def registrar_assign_teachers_bulk():
     cursor = db.cursor()
     try:
         cursor.execute(
-            """SELECT 1 FROM users WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+            """SELECT 1 FROM users WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
                AND COALESCE(is_archived, FALSE) = FALSE""",
             (teacher_id, branch_id),
         )
@@ -4747,7 +4751,7 @@ Please log in and change your password immediately.
         query = """
             SELECT
                 u.user_id, u.username, u.first_name, u.middle_name, u.last_name, u.full_name, u.gender, u.email,
-                u.grade_level_id,
+                u.role, u.user_roles, u.grade_level_id,
                 COALESCE(u.status, 'active') AS status,
                 COALESCE(u.teacher_type, 'advisory') AS teacher_type,
                 COALESCE(g.name, '') AS primary_grade,
@@ -4761,7 +4765,7 @@ Please log in and change your password immediately.
                 ) AS assigned_sections
             FROM users u
             LEFT JOIN grade_levels g ON u.grade_level_id = g.id
-            WHERE u.branch_id = %s AND u.role = 'teacher'
+            WHERE u.branch_id = %s AND (u.role = 'teacher' OR u.user_roles ILIKE '%%teacher%%')
               AND COALESCE(u.is_archived, FALSE) = FALSE
         """
         params = [branch_id]
@@ -4784,7 +4788,7 @@ Please log in and change your password immediately.
                 COUNT(*) FILTER (WHERE COALESCE(teacher_type,'advisory') = 'advisory') AS advisory_count,
                 COUNT(*) FILTER (WHERE teacher_type = 'subject') AS subject_count,
                 COUNT(*) FILTER (WHERE COALESCE(status,'active') = 'active') AS active_count
-            FROM users WHERE branch_id = %s AND role = 'teacher'
+            FROM users WHERE branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
               AND COALESCE(is_archived, FALSE) = FALSE
         """, (branch_id,))
         stats = cursor.fetchone()
@@ -4850,7 +4854,7 @@ def registrar_edit_teacher(user_id):
     cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         cursor.execute(
-            """SELECT 1 FROM users WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+            """SELECT 1 FROM users WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
                AND COALESCE(is_archived, FALSE) = FALSE""",
             (user_id, branch_id),
         )
@@ -4858,12 +4862,15 @@ def registrar_edit_teacher(user_id):
             flash("Teacher not found.", "error")
             return redirect("/registrar/manage-teachers")
 
+        assigned_roles = request.form.getlist("user_roles")
+        user_roles_json = json.dumps(assigned_roles) if assigned_roles else None
+
         cursor.execute(
             """
             UPDATE users SET
                 first_name = %s, middle_name = %s, last_name = %s, full_name = %s, email = %s, gender = %s, teacher_type = %s,
-                grade_level_id = %s, specialization_subject = %s, department = %s
-            WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+                grade_level_id = %s, specialization_subject = %s, department = %s, user_roles = %s
+            WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
               AND COALESCE(is_archived, FALSE) = FALSE
             """,
             (
@@ -4877,10 +4884,20 @@ def registrar_edit_teacher(user_id):
                 primary_grade,
                 spec_subject or None,
                 department or None,
+                user_roles_json,
                 user_id,
                 session.get("branch_id"),
             ),
         )
+
+        if assigned_roles and "parent" in assigned_roles and user_email:
+            cursor.execute("""
+                INSERT INTO parent_student (parent_id, student_id, relationship)
+                SELECT %s, enrollment_id, 'guardian'
+                FROM enrollments
+                WHERE LOWER(TRIM(guardian_email)) = LOWER(TRIM(%s))
+                ON CONFLICT DO NOTHING
+            """, (user_id, user_email))
 
         cursor.execute("DELETE FROM teacher_grade_levels WHERE teacher_id = %s", (user_id,))
         if department:
@@ -4938,7 +4955,7 @@ def registrar_toggle_teacher(user_id):
         cursor.execute("""
             UPDATE users
             SET status = CASE WHEN COALESCE(status,'active') = 'active' THEN 'inactive' ELSE 'active' END
-            WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+            WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
               AND COALESCE(is_archived, FALSE) = FALSE
         """, (user_id, session.get("branch_id")))
         db.commit()
@@ -4962,7 +4979,7 @@ def registrar_archive_teacher(user_id):
     try:
         cursor.execute(
             """UPDATE users SET is_archived = TRUE, status = 'inactive'
-               WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+               WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
                  AND COALESCE(is_archived, FALSE) = FALSE""",
             (user_id, branch_id),
         )
@@ -5013,7 +5030,7 @@ def registrar_archived_teachers():
                 u.department
             FROM users u
             LEFT JOIN grade_levels g ON u.grade_level_id = g.id
-            WHERE u.branch_id = %s AND u.role = 'teacher' AND COALESCE(u.is_archived, FALSE) = TRUE
+            WHERE u.branch_id = %s AND (u.role = 'teacher' OR u.user_roles ILIKE '%%teacher%%') AND COALESCE(u.is_archived, FALSE) = TRUE
         """
         params = [branch_id]
         if filter_search:
@@ -5046,7 +5063,7 @@ def registrar_unarchive_teacher(user_id):
     try:
         cursor.execute(
             """UPDATE users SET is_archived = FALSE, status = 'active'
-               WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+               WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
                  AND COALESCE(is_archived, FALSE) = TRUE""",
             (user_id, branch_id),
         )
@@ -5074,7 +5091,7 @@ def registrar_delete_archived_teacher(user_id):
     cursor = db.cursor()
     try:
         cursor.execute(
-            """SELECT 1 FROM users WHERE user_id = %s AND branch_id = %s AND role = 'teacher'
+            """SELECT 1 FROM users WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
                AND COALESCE(is_archived, FALSE) = TRUE""",
             (user_id, branch_id),
         )
@@ -5083,7 +5100,7 @@ def registrar_delete_archived_teacher(user_id):
             return redirect("/registrar/manage-teachers/archive")
         cursor.execute("DELETE FROM teacher_grade_levels WHERE teacher_id = %s", (user_id,))
         cursor.execute(
-            "DELETE FROM users WHERE user_id = %s AND branch_id = %s AND role = 'teacher' AND COALESCE(is_archived, FALSE) = TRUE",
+            "DELETE FROM users WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%') AND COALESCE(is_archived, FALSE) = TRUE",
             (user_id, branch_id),
         )
         db.commit()
