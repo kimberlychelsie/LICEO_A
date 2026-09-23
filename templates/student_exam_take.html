@@ -199,6 +199,24 @@
   }
 </style>
 
+<style>
+  /* ── Fullscreen layout fix (mobile + desktop) ── */
+  :fullscreen body,
+  :-webkit-full-screen body {
+    overflow-y: auto;
+  }
+  :fullscreen .exam-container,
+  :-webkit-full-screen .exam-container {
+    margin-top: 60px;
+  }
+  /* Hide browser default scrollbar decorations in fullscreen on mobile */
+  :fullscreen, :-webkit-full-screen {
+    background: #f8fafc;
+    width: 100%;
+    height: 100%;
+  }
+</style>
+
 <!-- Custom Blue Topbar -->
 <header class="custom-topbar" style="display:flex; justify-content:space-between; align-items:center;">
   <div class="topbar-brand">
@@ -941,8 +959,6 @@ showMatch(0);
         if (document.visibilityState === "visible") {
             isCurrentlyUnfocused = false;
             ignorePollerUntil = Date.now() + 1500;
-            // Auto-retry fullscreen when student returns
-            setTimeout(tryReEnterFullscreen, 600);
         } else if (document.visibilityState === "hidden") {
             recordSwitch('page_hidden');
         }
@@ -975,8 +991,6 @@ showMatch(0);
         leaveEventSent = false;
         isCurrentlyUnfocused = false;
         ignorePollerUntil = Date.now() + 800;
-        // Auto-retry fullscreen when window regains focus
-        setTimeout(tryReEnterFullscreen, 400);
     });
 
     // Split-screen / floating resized window check
@@ -1033,39 +1047,91 @@ showMatch(0);
         return !!(document.fullscreenElement || document.webkitFullscreenElement);
     }
 
-    // Persistent fullscreen warning banner (shown when not in fullscreen)
-    const fsWarning = document.createElement('div');
-    fsWarning.id = 'fsWarning';
-    fsWarning.style.cssText = [
-        'position:fixed', 'bottom:0', 'left:0', 'right:0',
-        'background:#b91c1c', 'color:#fff', 'text-align:center',
-        'padding:12px 20px', 'font-weight:700', 'font-size:0.95rem',
-        'z-index:999999', 'display:none',
-        'display:flex', 'align-items:center', 'justify-content:center', 'gap:16px'
-    ].join(';');
-    fsWarning.innerHTML = [
-        '<span>⚠️ Fullscreen is required during the exam. Please tap the button to continue.</span>',
-        '<button id="fsEnterBtn" style="background:#fff;color:#b91c1c;border:none;padding:8px 20px;border-radius:8px;font-weight:800;cursor:pointer;">Enter Fullscreen</button>'
-    ].join('');
-    document.body.appendChild(fsWarning);
-
-    function showFsWarning(show) {
-        fsWarning.style.display = show ? 'flex' : 'none';
-    }
-
-    document.getElementById('fsEnterBtn').addEventListener('click', function() {
-        enterFullscreen().then(() => showFsWarning(false)).catch(() => {});
+    // ── Fullscreen exit overlay modal ──
+    // Shown whenever fullscreen is exited. Student MUST tap 'Return to Fullscreen' to continue.
+    // Not a thin banner — it's a full overlay so it's impossible to miss on mobile.
+    const fsModal = document.createElement('div');
+    fsModal.id = 'fsExitModal';
+    Object.assign(fsModal.style, {
+        position: 'fixed', inset: '0', zIndex: '9999998',
+        background: 'rgba(15,23,42,0.88)',
+        display: 'none',
+        alignItems: 'center', justifyContent: 'center',
+        padding: '20px',
+        backdropFilter: 'blur(4px)'
     });
+    fsModal.innerHTML = `
+        <div style="
+            background:#fff; border-radius:24px;
+            padding:36px 28px; max-width:420px; width:100%;
+            box-shadow:0 25px 50px rgba(0,0,0,0.5);
+            text-align:center; animation:fadeInDown 0.3s ease;
+        ">
+            <div style="font-size:3rem;margin-bottom:12px">⚠️</div>
+            <h2 style="font-size:1.25rem;font-weight:900;color:#0f172a;margin:0 0 10px">
+                Fullscreen Exited
+            </h2>
+            <p style="color:#64748b;font-size:0.9rem;margin:0 0 8px;line-height:1.6">
+                Leaving fullscreen has been recorded as a <strong style="color:#b91c1c">violation</strong>.
+            </p>
+            <p style="color:#64748b;font-size:0.9rem;margin:0 0 24px;line-height:1.6">
+                You must return to fullscreen to continue the exam.
+            </p>
+            <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;padding:12px 16px;margin-bottom:24px">
+                <span id="fsMiniTimer" style="font-size:1.1rem;font-weight:800;color:#b91c1c">⏱ --:--</span>
+                <span style="color:#b91c1c;font-size:0.85rem;font-weight:600"> remaining</span>
+            </div>
+            <button id="fsReturnBtn" style="
+                width:100%;padding:16px;
+                background:linear-gradient(135deg,#1e3a8a,#1e40af);
+                color:#fff;border:none;border-radius:14px;
+                font-size:1rem;font-weight:800;cursor:pointer;
+                box-shadow:0 4px 15px rgba(30,58,138,0.4);
+            ">🔒 Return to Fullscreen</button>
+        </div>
+    `;
+    document.body.appendChild(fsModal);
+
+    function showFsModal(show) {
+        fsModal.style.display = show ? 'flex' : 'none';
+        if (show) {
+            // Keep the mini timer updated while modal is open
+            document.getElementById('fsMiniTimer').textContent =
+                '\u23f1 ' + formatTime(remaining);
+        }
+    }
+    // Alias for backward compatibility
+    function showFsWarning(show) { showFsModal(show); }
+
+    document.getElementById('fsReturnBtn').addEventListener('click', function() {
+        enterFullscreen()
+            .then(() => {
+                showFsModal(false);
+                // Grace period after re-entering fullscreen
+                ignoreAntiCheatUntil = Date.now() + 1000;
+                ignorePollerUntil = Date.now() + 1500;
+            })
+            .catch(() => {
+                // Fullscreen failed (e.g. browser blocked it) — keep modal open
+            });
+    });
+
+    // Update the mini timer in the modal every second while it's visible
+    setInterval(function() {
+        const miniTimer = document.getElementById('fsMiniTimer');
+        if (miniTimer && fsModal.style.display !== 'none') {
+            miniTimer.textContent = '\u23f1 ' + formatTime(remaining);
+        }
+    }, 1000);
 
     document.addEventListener('fullscreenchange', function() {
         if (!isInFullscreen()) {
-            // Record violation (chat head tap / swipe-down notification panel / exit fullscreen)
             if (trackingActive) {
                 recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'fullscreen_exit');
             }
-            showFsWarning(true);
+            showFsModal(true);
         } else {
-            showFsWarning(false);
+            showFsModal(false);
         }
     });
     document.addEventListener('webkitfullscreenchange', function() {
@@ -1073,20 +1139,12 @@ showMatch(0);
             if (trackingActive) {
                 recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'fullscreen_exit');
             }
-            showFsWarning(true);
+            showFsModal(true);
         } else {
-            showFsWarning(false);
+            showFsModal(false);
         }
     });
 
-    // Auto-retry fullscreen when student returns to exam page
-    function tryReEnterFullscreen() {
-        if (!isInFullscreen()) {
-            enterFullscreen()
-                .then(() => showFsWarning(false))
-                .catch(() => showFsWarning(true));
-        }
-    }
 
     // ══════════════════════════════════════════════════
     // FIX 2 & 3: Submit Validation + Confirmation
