@@ -136,8 +136,73 @@ if os.getenv("FLASK_ENV") == "production" or os.getenv("RAILWAY_ENVIRONMENT"):
 # Max upload size: 100MB total
 app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024
 
+import threading
+
+# ── Background Automatic Exam Finalizer ──
+_last_auto_finalize_ts = 0
+
+def run_auto_finalize_expired_exams():
+    global _last_auto_finalize_ts
+    now_ts = time.time()
+    if now_ts - _last_auto_finalize_ts < 15:
+        return
+    _last_auto_finalize_ts = now_ts
+
+    try:
+        db = get_db_connection()
+        with db.cursor() as cur:
+            cur.execute("""
+                SELECT r.result_id, r.exam_id
+                FROM exam_results r
+                JOIN exams e ON e.exam_id = r.exam_id
+                WHERE r.status = 'in_progress'
+                  AND (NOW() > r.started_at + (e.duration_mins * INTERVAL '1 minute'))
+            """)
+            expired = cur.fetchall() or []
+
+            for row in expired:
+                res_id = row[0] if isinstance(row, (list, tuple)) else row['result_id']
+                ex_id = row[1] if isinstance(row, (list, tuple)) else row['exam_id']
+
+                cur.execute("""
+                    SELECT
+                        COALESCE(SUM(CASE WHEN ea.is_correct THEN q.points ELSE 0 END), 0) AS final_score,
+                        COALESCE(SUM(q.points), 0) AS total_points
+                    FROM exam_questions q
+                    LEFT JOIN exam_answers ea ON q.question_id = ea.question_id AND ea.result_id = %s
+                    WHERE q.exam_id = %s
+                """, (res_id, ex_id))
+
+                calc = cur.fetchone()
+                score = int(calc[0] if isinstance(calc, (list, tuple)) else calc['final_score']) if calc else 0
+                total_pts = int(calc[1] if isinstance(calc, (list, tuple)) else calc['total_points']) if calc else 0
+
+                cur.execute("""
+                    UPDATE exam_results
+                    SET score = %s,
+                        total_points = %s,
+                        status = 'auto_submitted',
+                        submitted_at = NOW()
+                    WHERE result_id = %s
+                      AND status = 'in_progress'
+                """, (score, total_pts, res_id))
+
+            if expired:
+                db.commit()
+        db.close()
+    except Exception as e:
+        pass
+
+def _background_exam_worker():
+    while True:
+        time.sleep(20)
+        run_auto_finalize_expired_exams()
+
+threading.Thread(target=_background_exam_worker, daemon=True).start()
+
 @app.before_request
 def check_maintenance_and_session_timeout():
+    run_auto_finalize_expired_exams()
     now = time.time()
     
     # 1. Session Inactivity Timeout (1 hour = 3600s)
