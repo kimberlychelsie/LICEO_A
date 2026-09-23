@@ -764,12 +764,33 @@ showMatch(0);
 
     let lastScreenOrientation = (window.screen && window.screen.orientation) ? window.screen.orientation.type : (window.orientation || 0);
 
+    function isSplitScreenActive() {
+        const activeEl = document.activeElement;
+        const isTyping = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.tagName === 'SELECT');
+
+        const currentWidth = window.innerWidth;
+        const currentHeight = window.innerHeight;
+
+        const screenWidth = (window.screen && window.screen.availWidth) ? window.screen.availWidth : window.innerWidth;
+        const screenHeight = (window.screen && window.screen.availHeight) ? window.screen.availHeight : window.innerHeight;
+
+        const widthRatio = currentWidth / screenWidth;
+        const heightRatio = currentHeight / screenHeight;
+
+        // Desktop/landscape split screen or floating resized window
+        if (widthRatio < 0.78) return true;
+
+        // Mobile portrait split screen (top/bottom split) when NOT typing on virtual keyboard
+        if (!isTyping && heightRatio < 0.70) return true;
+
+        return false;
+    }
+
     // Wait 2s before tracking to prevent false positives on page load
     setTimeout(() => { 
         trackingActive = true; 
         // Initial split-screen check on exam start
-        const screenRatio = (window.screen && window.screen.availWidth) ? (window.innerWidth / window.screen.availWidth) : 1.0;
-        if (screenRatio < 0.75) {
+        if (isSplitScreenActive()) {
             recordSwitch('possible_split_screen');
         }
     }, 2000);
@@ -780,6 +801,11 @@ showMatch(0);
         if (isConfirmOpen) return;
 
         if (Date.now() < ignoreAntiCheatUntil) return;
+
+        // Upgrade window_blur or page_hidden to possible_split_screen if window is currently in split-screen dimensions
+        if ((reason === 'window_blur' || reason === 'page_hidden') && isSplitScreenActive()) {
+            reason = 'possible_split_screen';
+        }
 
         const now = Date.now();
 
@@ -861,8 +887,18 @@ showMatch(0);
 
     // Method 2: Window loses focus (e.g. Chat Heads, floating apps, alt-tab)
     window.addEventListener("blur", function() {
-        recordSwitch('window_blur');
+        recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
     });
+
+    // Poller to catch Android Chat Heads / Overlays that take touch focus without firing window.onblur
+    setInterval(function() {
+        if (!trackingActive || isPageUnloading || isConfirmOpen) return;
+        if (Date.now() < ignoreAntiCheatUntil) return;
+
+        if (!document.hasFocus()) {
+            recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
+        }
+    }, 500);
 
     window.addEventListener(
         "focus",
@@ -880,14 +916,10 @@ showMatch(0);
         clearTimeout(resizeTimer);
 
         resizeTimer = setTimeout(function() {
-            const currentWidth = window.innerWidth;
-            const widthRatio = currentWidth / initialViewportWidth;
-            const screenRatio = (window.screen && window.screen.availWidth) ? (currentWidth / window.screen.availWidth) : 1.0;
-
-            if (widthRatio < 0.75 || screenRatio < 0.75) {
+            if (isSplitScreenActive()) {
                 recordSwitch('possible_split_screen');
             }
-        }, 800);
+        }, 600);
     }
 
     function handleResizeOrOrientation() {
@@ -922,7 +954,7 @@ showMatch(0);
             if (!trackingActive) return;
 
             if (!document.fullscreenElement) {
-                recordSwitch('fullscreen_exit');
+                recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'fullscreen_exit');
             }
         }
     );
