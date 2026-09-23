@@ -1016,6 +1016,10 @@ def subject_view(subject_id):
         student_branch_id  = enr['branch_id']
         student_year_id = enr.get('year_id')
 
+        # Auto-finalize any expired exam attempts for this student before rendering
+        auto_finalize_expired_exams(cur, enrollment_id)
+        db.commit()
+
         # Get subject details and teacher
         cur.execute("""
             SELECT sub.subject_id, sub.name as subject_name, u.full_name as teacher_name, u.gender as teacher_gender,
@@ -1783,6 +1787,8 @@ def student_quizzes():
     db  = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
+        auto_finalize_expired_exams(cur, enrollment_id)
+        db.commit()
         cur.execute("SELECT section_id, year_id FROM enrollments WHERE enrollment_id=%s", (enrollment_id,))
         enr = cur.fetchone()
         if not enr:
@@ -2266,6 +2272,57 @@ def student_exam_take(exam_id):
         cur.close()
         db.close()
 
+def auto_finalize_expired_exams(cur, enrollment_id=None):
+    """Finds all 'in_progress' exam attempts whose duration has expired,
+    calculates their score, and updates status = 'auto_submitted'.
+    """
+    try:
+        query = """
+            SELECT r.result_id, r.exam_id, r.enrollment_id
+            FROM exam_results r
+            JOIN exams e ON e.exam_id = r.exam_id
+            WHERE r.status = 'in_progress'
+              AND (NOW() > r.started_at + (e.duration_mins * INTERVAL '1 minute'))
+        """
+        params = []
+        if enrollment_id:
+            query += " AND r.enrollment_id = %s"
+            params.append(enrollment_id)
+
+        cur.execute(query, params)
+        expired = cur.fetchall() or []
+
+        for row in expired:
+            res_id = row["result_id"] if isinstance(row, dict) else row[0]
+            ex_id = row["exam_id"] if isinstance(row, dict) else row[1]
+            en_id = row["enrollment_id"] if isinstance(row, dict) else row[2]
+
+            cur.execute("""
+                SELECT
+                    COALESCE(SUM(CASE WHEN ea.is_correct THEN q.points ELSE 0 END), 0) AS final_score,
+                    COALESCE(SUM(q.points), 0) AS total_points
+                FROM exam_questions q
+                LEFT JOIN exam_answers ea ON q.question_id = ea.question_id AND ea.result_id = %s
+                WHERE q.exam_id = %s
+            """, (res_id, ex_id))
+
+            calc = cur.fetchone()
+            score = int(calc["final_score"]) if calc else 0
+            total_pts = int(calc["total_points"]) if calc else 0
+
+            cur.execute("""
+                UPDATE exam_results
+                SET score = %s,
+                    total_points = %s,
+                    status = 'auto_submitted',
+                    submitted_at = NOW()
+                WHERE result_id = %s
+                  AND status = 'in_progress'
+            """, (score, total_pts, res_id))
+    except Exception as e:
+        print(f"Error auto-finalizing expired exams: {e}")
+
+
 @student_portal_bp.route(
     "/student/exams/check-status",
     methods=["GET"]
@@ -2292,6 +2349,9 @@ def check_exam_status():
     )
 
     try:
+        auto_finalize_expired_exams(cur, enrollment_id)
+        db.commit()
+
         cur.execute("""
             SELECT
                 r.result_id,

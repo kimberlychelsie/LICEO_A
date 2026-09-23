@@ -123,6 +123,7 @@ def login():
                 if password_valid:
                     next_url = session.get("next_url")
                     session.clear()
+                    session.permanent = True
 
                     session["user_id"]   = user["user_id"]
                     session["role"]      = user["role"]

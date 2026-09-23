@@ -21,8 +21,15 @@ import psycopg2.extras
 from extensions import limiter, csrf
 from flask_wtf.csrf import CSRFError
 
+from datetime import timedelta
+
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY", "liceo_secret_key_dev")
+
+app.config["SESSION_PERMANENT"] = True
+app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(hours=24)
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
 #Allow long forms such as student enrollment to stay open longer
 app.config["WTF_CSRF_TIME_LIMIT"] = 14400

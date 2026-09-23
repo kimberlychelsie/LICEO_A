@@ -763,6 +763,7 @@ showMatch(0);
     document.getElementById('tabSwitchInput').value = tabSwitchCount;
 
     let lastScreenOrientation = (window.screen && window.screen.orientation) ? window.screen.orientation.type : (window.orientation || 0);
+    let isCurrentlySplitScreen = false;
 
     function isSplitScreenActive() {
         const activeEl = document.activeElement;
@@ -791,6 +792,7 @@ showMatch(0);
         trackingActive = true; 
         // Initial split-screen check on exam start
         if (isSplitScreenActive()) {
+            isCurrentlySplitScreen = true;
             recordSwitch('possible_split_screen');
         }
     }, 2000);
@@ -802,9 +804,16 @@ showMatch(0);
 
         if (Date.now() < ignoreAntiCheatUntil) return;
 
-        // Upgrade window_blur or page_hidden to possible_split_screen if window is currently in split-screen dimensions
-        if ((reason === 'window_blur' || reason === 'page_hidden') && isSplitScreenActive()) {
+        // If split screen active:
+        if (isSplitScreenActive()) {
+            // Ignore repetitive passive resize ticks while already in split screen
+            if (reason === 'resize_check' && isCurrentlySplitScreen) {
+                return;
+            }
+            isCurrentlySplitScreen = true;
             reason = 'possible_split_screen';
+        } else {
+            isCurrentlySplitScreen = false;
         }
 
         const now = Date.now();
@@ -885,31 +894,12 @@ showMatch(0);
         }
     });
 
-    // Method 2: Window loses focus (e.g. Chat Heads, floating apps, alt-tab)
+    // Method 2: Window loses focus (e.g. Chat Heads, floating apps, alt-tab, tapping other app in split screen)
     window.addEventListener("blur", function() {
         recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
     });
 
-    // Touch & Pointer cancellation listeners — Android Chrome fires these when floating Chat Head overlays steal touch input
-    window.addEventListener("touchcancel", function() {
-        if (!trackingActive || isPageUnloading || isConfirmOpen) return;
-        if (Date.now() < ignoreAntiCheatUntil) return;
-        recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
-    });
-
-    window.addEventListener("pointercancel", function() {
-        if (!trackingActive || isPageUnloading || isConfirmOpen) return;
-        if (Date.now() < ignoreAntiCheatUntil) return;
-        recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
-    });
-
-    document.addEventListener("mouseleave", function() {
-        if (!trackingActive || isPageUnloading || isConfirmOpen) return;
-        if (Date.now() < ignoreAntiCheatUntil) return;
-        recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
-    });
-
-    // Fast 300ms Poller to catch Android Chat Heads / Overlays that steal focus without firing window.onblur
+    // Poller to catch focus loss when tapping Chat Heads or other apps that steal window focus
     setInterval(function() {
         if (!trackingActive || isPageUnloading || isConfirmOpen) return;
         if (Date.now() < ignoreAntiCheatUntil) return;
@@ -917,7 +907,29 @@ showMatch(0);
         if (!document.hasFocus()) {
             recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
         }
-    }, 300);
+    }, 400);
+
+    window.addEventListener(
+        "focus",
+        function() {
+            isPageUnloading = false;
+            // Student returned/stayed on exam page
+            leaveEventSent = false;
+        }
+    );
+
+    // Method 3: Split-screen / floating resized window
+    function checkSuspiciousViewport() {
+        if (!trackingActive) return;
+
+        clearTimeout(resizeTimer);
+
+        resizeTimer = setTimeout(function() {
+            if (isSplitScreenActive()) {
+                recordSwitch('resize_check');
+            }
+        }, 600);
+    }
 
     window.addEventListener(
         "focus",

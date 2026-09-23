@@ -3065,6 +3065,41 @@ def teacher_exam_results(exam_id):
             flash("Exam not found.", "error")
             return redirect(url_for("teacher.teacher_exams"))
 
+        # Auto-finalize any expired in_progress attempts for this exam
+        cur.execute("""
+            SELECT r.result_id, r.exam_id
+            FROM exam_results r
+            JOIN exams e ON e.exam_id = r.exam_id
+            WHERE r.exam_id = %s
+              AND r.status = 'in_progress'
+              AND (NOW() > r.started_at + (e.duration_mins * INTERVAL '1 minute'))
+        """, (exam_id,))
+        expired_attempts = cur.fetchall() or []
+
+        for exp in expired_attempts:
+            r_id = exp["result_id"]
+            cur.execute("""
+                SELECT
+                    COALESCE(SUM(CASE WHEN ea.is_correct THEN q.points ELSE 0 END), 0) AS final_score,
+                    COALESCE(SUM(q.points), 0) AS total_points
+                FROM exam_questions q
+                LEFT JOIN exam_answers ea ON q.question_id = ea.question_id AND ea.result_id = %s
+                WHERE q.exam_id = %s
+            """, (r_id, exam_id))
+            c_row = cur.fetchone()
+            f_score = int(c_row["final_score"]) if c_row else 0
+            t_pts = int(c_row["total_points"]) if c_row else 0
+
+            cur.execute("""
+                UPDATE exam_results
+                SET score = %s,
+                    total_points = %s,
+                    status = 'auto_submitted',
+                    submitted_at = NOW()
+                WHERE result_id = %s AND status = 'in_progress'
+            """, (f_score, t_pts, r_id))
+        db.commit()
+
         cur.execute("SELECT subject_type FROM subjects WHERE subject_id = %s", (exam['subject_id'],))
         sub_row = cur.fetchone()
         is_elective = (sub_row and sub_row["subject_type"] == "ELECTIVE")
