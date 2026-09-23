@@ -764,6 +764,7 @@ showMatch(0);
 
     let lastScreenOrientation = (window.screen && window.screen.orientation) ? window.screen.orientation.type : (window.orientation || 0);
     let isCurrentlySplitScreen = false;
+    let isCurrentlyUnfocused = false;
 
     function isSplitScreenActive() {
         const activeEl = document.activeElement;
@@ -793,7 +794,7 @@ showMatch(0);
         // Initial split-screen check on exam start
         if (isSplitScreenActive()) {
             isCurrentlySplitScreen = true;
-            recordSwitch('possible_split_screen');
+            recordSwitch('resize_check');
         }
     }, 2000);
 
@@ -804,21 +805,36 @@ showMatch(0);
 
         if (Date.now() < ignoreAntiCheatUntil) return;
 
-        // If split screen active:
-        if (isSplitScreenActive()) {
-            // Ignore repetitive passive resize ticks while already in split screen
-            if (reason === 'resize_check' && isCurrentlySplitScreen) {
-                return;
+        const currentlySplit = isSplitScreenActive();
+
+        // 1. Handling Split-Screen Window Resizing / Entry
+        if (reason === 'resize_check') {
+            if (currentlySplit && !isCurrentlySplitScreen) {
+                isCurrentlySplitScreen = true;
+                triggerViolation('possible_split_screen');
+            } else if (!currentlySplit) {
+                isCurrentlySplitScreen = false;
             }
-            isCurrentlySplitScreen = true;
-            reason = 'possible_split_screen';
-        } else {
-            isCurrentlySplitScreen = false;
+            return;
         }
 
+        // 2. Handling Focus Loss (blur, page_hidden, chathead tap, tap other app in split screen)
+        // ONLY increment count by +1 when transitioning from focused (false) -> unfocused (true)
+        if (!isCurrentlyUnfocused) {
+            isCurrentlyUnfocused = true;
+
+            if (currentlySplit) {
+                reason = 'possible_split_screen';
+            }
+
+            triggerViolation(reason);
+        }
+    }
+
+    function triggerViolation(reason) {
         const now = Date.now();
 
-        if (now - lastSwitchTime < 1500) return;
+        if (now - lastSwitchTime < 1000) return;
 
         lastSwitchTime = now;
 
@@ -889,7 +905,9 @@ showMatch(0);
 
     // Method 1: Tab / app switch
     document.addEventListener("visibilitychange", function() {
-        if (document.visibilityState === "hidden") {
+        if (document.visibilityState === "visible") {
+            isCurrentlyUnfocused = false;
+        } else if (document.visibilityState === "hidden") {
             recordSwitch('page_hidden');
         }
     });
@@ -909,16 +927,17 @@ showMatch(0);
         }
     }, 400);
 
+    // Method 3: Focus returned to exam page — reset unfocused state so next tap away adds +1
     window.addEventListener(
         "focus",
         function() {
             isPageUnloading = false;
-            // Student returned/stayed on exam page
             leaveEventSent = false;
+            isCurrentlyUnfocused = false;
         }
     );
 
-    // Method 3: Split-screen / floating resized window
+    // Method 4: Split-screen / floating resized window
     function checkSuspiciousViewport() {
         if (!trackingActive) return;
 
@@ -930,15 +949,6 @@ showMatch(0);
             }
         }, 600);
     }
-
-    window.addEventListener(
-        "focus",
-        function() {
-            isPageUnloading = false;
-            // Student returned/stayed on exam page
-            leaveEventSent = false;
-        }
-    );
 
     // Method 3: Split-screen / floating resized window
     function checkSuspiciousViewport() {
