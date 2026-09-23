@@ -762,44 +762,63 @@ showMatch(0);
 
     document.getElementById('tabSwitchInput').value = tabSwitchCount;
 
+    let lastScreenOrientation = (window.screen && window.screen.orientation) ? window.screen.orientation.type : (window.orientation || 0);
+
     // Wait 2s before tracking to prevent false positives on page load
-    setTimeout(() => { trackingActive = true; }, 2000);
+    setTimeout(() => { 
+        trackingActive = true; 
+        // Initial split-screen check on exam start
+        const screenRatio = (window.screen && window.screen.availWidth) ? (window.innerWidth / window.screen.availWidth) : 1.0;
+        if (screenRatio < 0.75) {
+            recordSwitch('possible_split_screen');
+        }
+    }, 2000);
 
     function recordSwitch(reason = 'tab_switch') {
-    if (!trackingActive) return;
-    if (isPageUnloading) return;
-    if (isConfirmOpen) return;
+        if (!trackingActive) return;
+        if (isPageUnloading) return;
+        if (isConfirmOpen) return;
 
-    if (Date.now() < ignoreAntiCheatUntil) return;
+        if (Date.now() < ignoreAntiCheatUntil) return;
 
+        const now = Date.now();
 
-    const now = Date.now();
+        if (now - lastSwitchTime < 1500) return;
 
-    if (now - lastSwitchTime < 1500) return;
+        lastSwitchTime = now;
 
-    lastSwitchTime = now;
+        tabSwitchCount++;
+        document.getElementById('tabSwitchInput').value = tabSwitchCount;
 
-    tabSwitchCount++;
-    document.getElementById('tabSwitchInput').value = tabSwitchCount;
+        fetch('/student/exams/tab-switch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                result_id: resultId,
+                reason: reason
+            })
+        }).catch(() => {});
 
-    fetch('/student/exams/tab-switch', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-            result_id: resultId,
-            reason: reason
-        })
-    }).catch(() => {});
+        showTabSwitchToast(tabSwitchCount, reason);
+    }
 
-    showTabSwitchToast(tabSwitchCount);
-}
-
-    function showTabSwitchToast(count) {
+    function showTabSwitchToast(count, reason = '') {
         const toastId = 'tabSwitchToast';
         let toast = document.getElementById(toastId);
         if (toast) toast.remove(); 
+
+        let message = `⚠️ Suspicious activity detected! (Count: ${count})`;
+        if (reason === 'window_blur') {
+            message = `⚠️ Exam window lost focus (Floating app / tap outside)! (Count: ${count})`;
+        } else if (reason === 'possible_split_screen') {
+            message = `⚠️ Split screen or resized window detected! (Count: ${count})`;
+        } else if (reason === 'fullscreen_exit') {
+            message = `⚠️ Exited Fullscreen mode! (Count: ${count})`;
+        } else if (reason === 'page_hidden') {
+            message = `⚠️ Tab switched or app minimized! (Count: ${count})`;
+        }
 
         toast = document.createElement('div');
         toast.id = toastId;
@@ -811,13 +830,13 @@ showMatch(0);
         toast.style.padding = '16px 24px';
         toast.style.borderRadius = '12px';
         toast.style.border = '1px solid #fecaca';
-        toast.style.boxShadow = '0 10px 25px rgba(0,0,0,0.1)';
+        toast.style.boxShadow = '0 10px 25px rgba(0,0,0,0.15)';
         toast.style.fontWeight = '700';
         toast.style.zIndex = '999999';
         toast.style.transition = 'opacity 0.3s, transform 0.3s';
         toast.style.opacity = '0';
         toast.style.transform = 'translateY(-20px)';
-        toast.innerHTML = `⚠️ Suspicious activity detected! (Count: ${count})`;
+        toast.innerHTML = message;
         
         document.body.appendChild(toast);
         
@@ -833,37 +852,28 @@ showMatch(0);
         }, 4000);
     }
 
-        // Method 1: Tab / app switch
-        document.addEventListener("visibilitychange", function() {
+    // Method 1: Tab / app switch
+    document.addEventListener("visibilitychange", function() {
         if (document.visibilityState === "hidden") {
             recordSwitch('page_hidden');
         }
     });
 
-    // Method 2: Window loses focus
+    // Method 2: Window loses focus (e.g. Chat Heads, floating apps, alt-tab)
     window.addEventListener("blur", function() {
         recordSwitch('window_blur');
     });
 
     window.addEventListener(
-    "focus",
-    function() {
-
-        isPageUnloading = false;
-
-        // Student returned/stayed on exam page
-        // Allow a future real leave to be recorded.
-        leaveEventSent = false;
-
-        if (tabSwitchCount > 0) {
-            showTabSwitchToast(
-                tabSwitchCount
-            );
+        "focus",
+        function() {
+            isPageUnloading = false;
+            // Student returned/stayed on exam page
+            leaveEventSent = false;
         }
-    }
-);
+    );
 
-    // Method 3: Possible split-screen / floating resized window
+    // Method 3: Split-screen / floating resized window
     function checkSuspiciousViewport() {
         if (!trackingActive) return;
 
@@ -871,29 +881,37 @@ showMatch(0);
 
         resizeTimer = setTimeout(function() {
             const currentWidth = window.innerWidth;
+            const widthRatio = currentWidth / initialViewportWidth;
+            const screenRatio = (window.screen && window.screen.availWidth) ? (currentWidth / window.screen.availWidth) : 1.0;
 
-            const widthRatio =
-                currentWidth / initialViewportWidth;
-
-            /*
-             * We mainly check WIDTH because mobile keyboard
-             * normally changes height, not width.
-             */
-            if (widthRatio < 0.72) {
+            if (widthRatio < 0.75 || screenRatio < 0.75) {
                 recordSwitch('possible_split_screen');
             }
         }, 800);
     }
 
-    window.addEventListener(
-        'resize',
-        checkSuspiciousViewport
-    );
+    function handleResizeOrOrientation() {
+        const currentOrientation = (window.screen && window.screen.orientation) ? window.screen.orientation.type : (window.orientation || 0);
+        if (currentOrientation !== lastScreenOrientation) {
+            // Screen orientation changed (device rotated) — update base reference, don't penalize
+            lastScreenOrientation = currentOrientation;
+            return;
+        }
+        checkSuspiciousViewport();
+    }
+
+    window.addEventListener('resize', handleResizeOrOrientation);
+
+    if (window.screen && window.screen.orientation) {
+        window.screen.orientation.addEventListener('change', function() {
+            lastScreenOrientation = window.screen.orientation.type;
+        });
+    }
 
     if (window.visualViewport) {
         window.visualViewport.addEventListener(
             'resize',
-            checkSuspiciousViewport
+            handleResizeOrOrientation
         );
     }
 
