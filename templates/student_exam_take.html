@@ -2,8 +2,9 @@
 {% block title %}{{ exam.title }}{% endblock %}
 {% block content %}
 <style>
-  /* ── Reset system UI ── */
-  .sidebar, .topbar, .sb-overlay, .chatbot-container, #chatbot-widget {
+  /* ── Reset system UI (hide sidebar, topbar, chatbot during exam) ── */
+  .sidebar, .topbar, .sb-overlay, .chatbot-container,
+  #chatbot-widget, #chatbot-toggle, #chatbot-box {
     display: none !important;
   }
   .main-wrap {
@@ -201,19 +202,46 @@
 
 <style>
   /* ── Fullscreen layout fix (mobile + desktop) ── */
-  :fullscreen body,
-  :-webkit-full-screen body {
-    overflow-y: auto;
+
+  /* Allow scrolling inside fullscreen on all browsers */
+  :fullscreen html, :-webkit-full-screen html,
+  :fullscreen body, :-webkit-full-screen body {
+    overflow-y: auto !important;
+    height: 100% !important;
   }
-  :fullscreen .exam-container,
-  :-webkit-full-screen .exam-container {
+
+  /* Use dvh (dynamic viewport height) on browsers that support it
+     to account for Android navigation bar in fullscreen */
+  :fullscreen .exam-container, :-webkit-full-screen .exam-container {
     margin-top: 60px;
+    min-height: calc(100dvh - 60px);
+    padding-bottom: 40px; /* extra space above nav bar */
   }
-  /* Hide browser default scrollbar decorations in fullscreen on mobile */
+
+  /* Fallback for browsers without dvh */
+  @supports not (height: 100dvh) {
+    :fullscreen .exam-container, :-webkit-full-screen .exam-container {
+      min-height: calc(100vh - 60px);
+    }
+  }
+
+  /* Ensure the fullscreen root takes full space */
   :fullscreen, :-webkit-full-screen {
-    background: #f8fafc;
-    width: 100%;
-    height: 100%;
+    background: #f8fafc !important;
+    width: 100% !important;
+    height: 100% !important;
+    overflow-y: auto !important;
+  }
+
+  /* Mobile: extra bottom padding so Next/Submit button isn't hidden
+     behind the Android navigation bar in fullscreen */
+  @media (max-width: 768px) {
+    :fullscreen .q-footer, :-webkit-full-screen .q-footer {
+      padding-bottom: 24px;
+    }
+    :fullscreen .exam-container, :-webkit-full-screen .exam-container {
+      padding-bottom: 80px;
+    }
   }
 </style>
 
@@ -461,17 +489,65 @@ let ignorePollerUntil = 0;    // Blocks POLLER only (used during focus restorati
 let isSubmittingExam = false;
 let leaveEventSent = false;
 
-function safeAlert(message) {
+// ── Custom in-page dialogs (replaces browser alert/confirm which exit fullscreen on Android) ──
 
-isConfirmOpen = true;
-
-alert(message);
-
-isConfirmOpen = false;
-
-ignoreAntiCheatUntil =
-    Date.now() + 1200;
+function showCustomAlert(message, onOk) {
+    isConfirmOpen = true;
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999999;background:rgba(15,23,42,0.7);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px);';
+    overlay.innerHTML = `
+        <div style="background:#fff;border-radius:20px;padding:28px 24px;max-width:360px;width:100%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,0.4);animation:fadeInDown 0.25s ease;">
+            <div style="font-size:2rem;margin-bottom:10px">⚠️</div>
+            <p style="font-size:0.95rem;font-weight:600;color:#0f172a;margin:0 0 20px;line-height:1.6">${message}</p>
+            <button id="customAlertOkBtn" style="background:#1e3a8a;color:#fff;border:none;padding:12px 36px;border-radius:10px;font-weight:700;cursor:pointer;font-size:0.95rem;">OK</button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    document.getElementById('customAlertOkBtn').addEventListener('click', function() {
+        overlay.remove();
+        isConfirmOpen = false;
+        ignoreAntiCheatUntil = Date.now() + 500;
+        ignorePollerUntil = Date.now() + 500;
+        if (onOk) onOk();
+    });
 }
+
+function showCustomConfirm(message, onConfirm, onCancel) {
+    isConfirmOpen = true;
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999999;background:rgba(15,23,42,0.7);display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px);';
+    overlay.innerHTML = `
+        <div style="background:#fff;border-radius:20px;padding:28px 24px;max-width:380px;width:100%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,0.4);animation:fadeInDown 0.25s ease;">
+            <div style="font-size:2rem;margin-bottom:10px">📋</div>
+            <p style="font-size:0.9rem;font-weight:600;color:#0f172a;margin:0 0 20px;line-height:1.7;white-space:pre-line">${message}</p>
+            <div style="display:flex;gap:12px;justify-content:center;">
+                <button id="customCancelBtn" style="flex:1;background:#f1f5f9;color:#475569;border:none;padding:12px;border-radius:10px;font-weight:700;cursor:pointer;font-size:0.9rem;">Cancel</button>
+                <button id="customConfirmBtn" style="flex:1;background:linear-gradient(135deg,#1e3a8a,#1e40af);color:#fff;border:none;padding:12px;border-radius:10px;font-weight:700;cursor:pointer;font-size:0.9rem;">Submit ✓</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+    document.getElementById('customConfirmBtn').addEventListener('click', function() {
+        overlay.remove();
+        isConfirmOpen = false;
+        ignoreAntiCheatUntil = Date.now() + 500;
+        ignorePollerUntil = Date.now() + 500;
+        if (onConfirm) onConfirm();
+    });
+    document.getElementById('customCancelBtn').addEventListener('click', function() {
+        overlay.remove();
+        isConfirmOpen = false;
+        ignoreAntiCheatUntil = Date.now() + 500;
+        ignorePollerUntil = Date.now() + 500;
+        if (onCancel) onCancel();
+    });
+}
+
+// safeAlert now uses custom modal (doesn't exit fullscreen)
+function safeAlert(message, onOk) {
+    showCustomAlert(message, onOk);
+}
+
 
 let resizeTimer = null;
 
@@ -1147,92 +1223,69 @@ showMatch(0);
 
 
     // ══════════════════════════════════════════════════
-    // FIX 2 & 3: Submit Validation + Confirmation
-    // Prevents submitting without answering the current
-    // question and shows a confirmation dialog
+    // Submit Validation + Confirmation (custom modals)
     // ══════════════════════════════════════════════════
     document.getElementById('examForm').addEventListener('submit', function(e) {
-    // Skip validation for auto-submit
-    if (document.getElementById('submitType').value === 'auto') {
-        return true;
-    }
+        // Skip validation for auto-submit
+        if (document.getElementById('submitType').value === 'auto') {
+            return true;
+        }
 
-    // Check current visible question
-    const visibleCard = document.querySelector(
-        '.q-card[style*="display: block"], .q-card[style*="display:block"]'
-    );
+        // Always prevent default — we'll submit manually after custom confirm
+        e.preventDefault();
 
-    if (visibleCard) {
-        const radio = visibleCard.querySelector('input[type="radio"]:checked');
-        const select = visibleCard.querySelector('select');
-        const hasSelectAnswer =
-            select && select.value && select.value !== '';
+        // Check current visible question has been answered
+        const visibleCard = document.querySelector(
+            '.q-card[style*="display: block"], .q-card[style*="display:block"]'
+        );
+
+        if (visibleCard) {
+            const radio = visibleCard.querySelector('input[type="radio"]:checked');
+            const select = visibleCard.querySelector('select');
+            const hasSelectAnswer = select && select.value && select.value !== '';
 
             if (!radio && !hasSelectAnswer) {
-    e.preventDefault();
+                showCustomAlert('⚠️ Please answer the current question before submitting.');
+                return false;
+            }
 
-    safeAlert(
-        '⚠️ Please answer the current question '
-        + 'before submitting.'
-    );
-
-    return false;
-}
-
-        // Save last answer
-        if (radio) {
-            saveAnswer(radio.name, radio.value);
-        } else if (hasSelectAnswer) {
-            saveAnswer(select.name, select.value);
+            // Save last answer
+            if (radio) saveAnswer(radio.name, radio.value);
+            else if (hasSelectAnswer) saveAnswer(select.name, select.value);
         }
-    }
 
-    // Confirmation message
-    const unanswered = total - answeredCount;
+        // Build confirmation message
+        const unanswered = total - answeredCount;
+        let msg = `Are you sure you want to submit?\n\n✅ Answered: ${answeredCount} of ${total}`;
+        if (unanswered > 0) {
+            msg += `\n⚠️ Unanswered: ${unanswered}\n\nUnanswered questions will be marked as incorrect.`;
+        }
 
-    let msg = `Are you sure you want to submit?\n\n`;
-    msg += `✅ Answered: ${answeredCount} of ${total}\n`;
+        const form = this;
+        showCustomConfirm(msg,
+            function() {
+                // Confirmed — submit
+                trackingActive = false;
+                isPageUnloading = true;
+                isSubmittingExam = true;
+                form.submit();
+            },
+            function() {
+                // Cancelled — keep tracking
+                trackingActive = true;
+            }
+        );
 
-    if (unanswered > 0) {
-        msg += `⚠️ Unanswered: ${unanswered}\n\n`;
-        msg += `Unanswered questions will be marked as incorrect.`;
-    }
-
-    // Temporarily ignore blur caused by confirm dialog
-   // Temporarily ignore events caused by browser confirmation dialog
-isConfirmOpen = true;
-
-const confirmed = confirm(msg);
-
-isConfirmOpen = false;
-
-// Firefox/mobile browsers may fire blur AFTER confirm() closes
-ignoreAntiCheatUntil = Date.now() + 1200;
-
-if (!confirmed) {
-    e.preventDefault();
-
-    // Student cancelled — continue tracking
-    trackingActive = true;
-
-    return false;
-}
-
-// Actual submission
-trackingActive = false;
-isPageUnloading = true;
-isSubmittingExam = true;
-
-return true;
-});
+        return false;
+    });
 
     // ══════════════════════════════════════════════════
     // Security & Anti-cheat  
     // ══════════════════════════════════════════════════
     document.addEventListener('contextmenu', e => e.preventDefault());
     
-    document.addEventListener('copy', e => { e.preventDefault(); alert("Copying is disabled!"); });
-    document.addEventListener('paste', e => { e.preventDefault(); alert("Pasting is disabled!"); });
+    document.addEventListener('copy', e => { e.preventDefault(); showCustomAlert('Copying is disabled!'); });
+    document.addEventListener('paste', e => { e.preventDefault(); showCustomAlert('Pasting is disabled!'); });
     document.addEventListener('cut', e => { e.preventDefault(); });
     document.addEventListener('selectstart', e => e.preventDefault());
 
