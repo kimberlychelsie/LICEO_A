@@ -890,7 +890,26 @@ showMatch(0);
         recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
     });
 
-    // Poller to catch Android Chat Heads / Overlays that take touch focus without firing window.onblur
+    // Touch & Pointer cancellation listeners — Android Chrome fires these when floating Chat Head overlays steal touch input
+    window.addEventListener("touchcancel", function() {
+        if (!trackingActive || isPageUnloading || isConfirmOpen) return;
+        if (Date.now() < ignoreAntiCheatUntil) return;
+        recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
+    });
+
+    window.addEventListener("pointercancel", function() {
+        if (!trackingActive || isPageUnloading || isConfirmOpen) return;
+        if (Date.now() < ignoreAntiCheatUntil) return;
+        recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
+    });
+
+    document.addEventListener("mouseleave", function() {
+        if (!trackingActive || isPageUnloading || isConfirmOpen) return;
+        if (Date.now() < ignoreAntiCheatUntil) return;
+        recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
+    });
+
+    // Fast 300ms Poller to catch Android Chat Heads / Overlays that steal focus without firing window.onblur
     setInterval(function() {
         if (!trackingActive || isPageUnloading || isConfirmOpen) return;
         if (Date.now() < ignoreAntiCheatUntil) return;
@@ -898,7 +917,7 @@ showMatch(0);
         if (!document.hasFocus()) {
             recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
         }
-    }, 500);
+    }, 300);
 
     window.addEventListener(
         "focus",
