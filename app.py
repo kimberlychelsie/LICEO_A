@@ -176,8 +176,11 @@ def validate_user_session():
         db = get_db_connection()
         cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
-            cursor.execute("SELECT status, branch_id, role, user_roles, email FROM users WHERE user_id = %s", (user_id,))
+            cursor.execute("SELECT status, branch_id, role, user_roles, email, is_swafo, is_dc FROM users WHERE user_id = %s", (user_id,))
             user = cursor.fetchone()
+            if user:
+                session["is_swafo"] = bool(user.get("is_swafo", False))
+                session["is_dc"] = bool(user.get("is_dc", False))
             
             if not user or user['status'] != 'active':
                 session.clear()

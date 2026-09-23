@@ -223,9 +223,15 @@
     background: #fff;
     border: 1px solid var(--bd);
     border-radius: 12px;
-    box-shadow: 0 12px 32px rgba(15, 23, 42, .12);
-    z-index: 60;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, .18);
+    z-index: 1000;
     padding: 6px;
+  }
+
+  .manage-wrap.is-upwards .manage-menu {
+    top: auto;
+    bottom: calc(100% + 6px);
+    box-shadow: 0 -12px 32px rgba(15, 23, 42, .18);
   }
 
   .manage-menu button,
@@ -811,7 +817,7 @@
     line-height: 1.35;
   }
   .table-scroll-inner {
-    overflow-x: auto !important;
+    overflow: visible !important;
   }
   .load-badge-more {
     position: relative;
@@ -1523,6 +1529,14 @@
     const open = wrap.classList.contains('is-open');
     closeAllManage();
     if (!open) {
+      const rect = wrap.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      if (spaceBelow < 400 && spaceAbove > 200) {
+        wrap.classList.add('is-upwards');
+      } else {
+        wrap.classList.remove('is-upwards');
+      }
       wrap.classList.add('is-open');
       wrap.querySelector('.btn-manage').setAttribute('aria-expanded', 'true');
     }

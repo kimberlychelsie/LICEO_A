@@ -454,6 +454,8 @@ def get_db_connection():
                 u_cols = [r[0] for r in cur.fetchall()]
                 if 'is_swafo' not in u_cols:
                     cur.execute("ALTER TABLE users ADD COLUMN is_swafo BOOLEAN DEFAULT FALSE")
+                if 'is_dc' not in u_cols:
+                    cur.execute("ALTER TABLE users ADD COLUMN is_dc BOOLEAN DEFAULT FALSE")
                 
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS swafo_records (
@@ -504,6 +506,10 @@ def get_db_connection():
                     cur.execute("ALTER TABLE swafo_discipline_log ADD COLUMN incident_type VARCHAR(100)")
                 if 'severity' not in dl_cols:
                     cur.execute("ALTER TABLE swafo_discipline_log ADD COLUMN severity VARCHAR(50)")
+                if 'referred_to_swafo' not in dl_cols:
+                    cur.execute("ALTER TABLE swafo_discipline_log ADD COLUMN referred_to_swafo BOOLEAN DEFAULT FALSE")
+                if 'referral_reason' not in dl_cols:
+                    cur.execute("ALTER TABLE swafo_discipline_log ADD COLUMN referral_reason TEXT")
                 
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS swafo_parent_conferences (
@@ -1127,6 +1133,8 @@ def get_db_connection():
                 usr_cols = [r[0] for r in cur.fetchall()]
                 if 'is_swafo' not in usr_cols:
                     cur.execute("ALTER TABLE users ADD COLUMN is_swafo BOOLEAN DEFAULT FALSE")
+                if 'is_dc' not in usr_cols:
+                    cur.execute("ALTER TABLE users ADD COLUMN is_dc BOOLEAN DEFAULT FALSE")
                 conn.commit()
             except Exception as e:
                 logger.warning(f"Could not add is_swafo to users: {e}")

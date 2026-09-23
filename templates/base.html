@@ -1778,7 +1778,7 @@
       </div>
 
       {% if session.get('is_swafo') %}
-      {% set swafo_active = '/teacher/swafo' in request.path %}
+      {% set swafo_active = request.path == '/teacher/swafo/students' or request.path.startswith('/teacher/swafo/conference') %}
       <div class="sb-section-label">SWAFO</div>
       <button class="sb-dropdown-btn {% if swafo_active %}open{% endif %}"
         onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
@@ -1806,15 +1806,6 @@
           </svg>
           Student Records
         </a>
-        <a class="sb-link {% if request.path == '/teacher/swafo/discipline-log' %}active{% endif %}"
-          href="/teacher/swafo/discipline-log">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-            style="vertical-align:middle; margin-right:6px;">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-          </svg>
-          Discipline Log
-        </a>
         <a class="sb-link {% if request.path.startswith('/teacher/swafo/conference') %}active{% endif %}"
           href="/teacher/swafo/conferences">
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -1829,6 +1820,32 @@
           {% if has_pending_teacher_swafo_conferences %}
           <span style="width: 9px; height: 9px; background-color: #ef4444; border-radius: 50%; display: inline-block; margin-left: auto; box-shadow: 0 0 0 2px #fff;"></span>
           {% endif %}
+        </a>
+      </div>
+      {% endif %}
+
+      {% if session.get('is_dc') %}
+      {% set dc_active = request.path == '/teacher/swafo/discipline-log' %}
+      <div class="sb-section-label">DISCIPLINE COMMITTEE</div>
+      <button class="sb-dropdown-btn {% if dc_active %}open{% endif %}"
+        onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
+        <div class="sb-left">
+          <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+            </svg></span> <strong>Discipline (DC)</strong>
+        </div>
+        <span class="sb-dropdown-arrow">▼</span>
+      </button>
+      <div class="sb-dropdown-content {% if dc_active %}show{% endif %}">
+        <a class="sb-link {% if request.path == '/teacher/swafo/discipline-log' %}active{% endif %}"
+          href="/teacher/swafo/discipline-log">
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+            style="vertical-align:middle; margin-right:6px;">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+          Discipline Log
         </a>
       </div>
       {% endif %}

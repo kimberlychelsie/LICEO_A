@@ -285,8 +285,40 @@
 
   <div class="layout-stack">
 
+    {% if referred_discipline_logs %}
+    <!-- REFERRED FROM DISCIPLINE COMMITTEE (DC) -->
+    <div class="card-box" style="border: 2px solid #3b82f6; background: #eff6ff;">
+      <div class="card-title" style="color: #1e40af; border-bottom-color: #bfdbfe;">
+        <span style="display: flex; align-items: center; gap: 8px;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Referred Cases from Discipline Officer (DC) for Guidance Conference
+        </span>
+        <span style="font-size: .8rem; background: #1e40af; color: #fff; padding: 4px 12px; border-radius: 20px; font-weight: 800;">
+          {{ referred_discipline_logs|length }} Referred
+        </span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px;">
+        {% for r in referred_discipline_logs %}
+        <div style="background: #fff; border-radius: 14px; border: 1px solid #cbd5e1; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 14px;">
+          <div>
+            <div style="font-size: .78rem; color: #64748b; font-weight: 700; text-transform: uppercase;">{{ r.grade_level or '' }} {% if r.section_name %}&bull; {{ r.section_name }}{% endif %} &bull; {{ r.incident_date }}</div>
+            <strong style="font-size: 1rem; color: #0f172a;">{{ r.student_name }}</strong>
+            <span style="font-size: .75rem; background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 6px; font-weight: 800; margin-left: 8px;">{{ r.incident_type }} ({{ (r.severity or 'minor')|upper }})</span>
+            {% if r.referral_reason %}
+            <div style="font-size: .85rem; color: #1e40af; margin-top: 4px; font-weight: 600;">Reason: {{ r.referral_reason }}</div>
+            {% endif %}
+          </div>
+          <button type="button" class="btn-submit-log" style="padding: 8px 18px; font-size: .82rem;" onclick="selectReferredStudent('{{ r.enrollment_id }}', '{{ r.log_id }}', '{{ r.incident_type|e }}')">
+            Schedule Conference
+          </button>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    {% endif %}
+
     <!-- TOP CARD: SCHEDULE FORM -->
-    <div class="card-box">
+    <div class="card-box" id="scheduleFormCard">
       <div class="card-title">
         <span>Schedule New Parent Conference</span>
       </div>
@@ -529,6 +561,25 @@ function filterConferencesTable() {
       row.style.display = 'none';
     }
   });
+}
+
+function selectReferredStudent(enrollmentId, logId, incidentType) {
+  const studentSelect = document.getElementById('studentSelect');
+  if (studentSelect) {
+    studentSelect.value = enrollmentId;
+  }
+  const titleInput = document.querySelector('input[name="title"]');
+  if (titleInput) {
+    titleInput.value = 'SWAFO Guidance Conference - ' + incidentType;
+  }
+  const logSelect = document.querySelector('select[name="discipline_log_id"]');
+  if (logSelect) {
+    logSelect.value = logId;
+  }
+  const card = document.getElementById('scheduleFormCard');
+  if (card) {
+    card.scrollIntoView({ behavior: 'smooth' });
+  }
 }
 </script>
 {% endblock %}

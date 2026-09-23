@@ -1,6 +1,7 @@
 import re
 from flask import Blueprint, render_template, request, session, redirect, url_for, flash, jsonify, send_file
 from db import get_db_connection, get_break_times_config
+from utils.send_email import send_email
 import psycopg2.extras
 from cloudinary_helper import upload_file
 import os
@@ -7513,6 +7514,10 @@ def _require_swafo_teacher():
     return session.get("role") == "teacher" and session.get("is_swafo")
 
 
+def _require_dc_teacher():
+    return session.get("role") == "teacher" and (session.get("is_dc") or session.get("is_swafo"))
+
+
 @teacher_bp.route("/teacher/swafo/students")
 def teacher_swafo_students():
     if not _require_swafo_teacher():
@@ -7528,52 +7533,41 @@ def teacher_swafo_students():
     try:
         query = """
             SELECT
-                e.enrollment_id,
-                CONCAT(e.student_first_name, ' ', COALESCE(e.student_middle_name || ' ', ''), e.student_last_name) AS student_name,
-                e.grade_level, e.section_id,
-                s.section_name,
-                sr.record_id, sr.status AS record_status, sr.submitted_at, sr.updated_at, sr.teacher_notes
+                e.enrollment_id, e.lrn, e.grade_level, e.status, e.created_at,
+                CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name,
+                sec.section_name,
+                sr.record_id AS swafo_record_id, sr.updated_at AS last_updated_at,
+                (SELECT COUNT(*) FROM swafo_discipline_log dl WHERE dl.enrollment_id = e.enrollment_id) AS discipline_count,
+                (SELECT COUNT(*) FROM swafo_parent_conferences pc WHERE pc.enrollment_id = e.enrollment_id) AS conference_count
             FROM enrollments e
-            LEFT JOIN sections s ON e.section_id = s.section_id
+            LEFT JOIN sections sec ON e.section_id = sec.section_id
             LEFT JOIN swafo_records sr ON sr.enrollment_id = e.enrollment_id
-            WHERE e.branch_id = %s AND e.status = 'enrolled'
+            WHERE e.branch_id = %s
         """
         params = [branch_id]
+
+        if status_filter == "enrolled":
+            query += " AND e.status = 'enrolled'"
+        elif status_filter == "pending":
+            query += " AND e.status = 'pending'"
+
         if search:
-            query += " AND (e.student_first_name ILIKE %s OR e.student_last_name ILIKE %s OR e.student_middle_name ILIKE %s)"
+            query += " AND (e.student_first_name ILIKE %s OR e.student_last_name ILIKE %s OR e.lrn ILIKE %s)"
             params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
-        if status_filter == "submitted":
-            query += " AND sr.status = 'submitted'"
-        elif status_filter == "draft":
-            query += " AND sr.status = 'draft'"
-        elif status_filter == "not_started":
-            query += " AND sr.record_id IS NULL"
-        query += " ORDER BY e.student_last_name, e.student_first_name"
+
+        query += " ORDER BY e.grade_level, e.student_last_name, e.student_first_name"
+
         cur.execute(query, params)
         students = cur.fetchall()
-
-        # Count stats
-        cur.execute("""
-            SELECT
-                COUNT(e.enrollment_id) AS total,
-                COUNT(sr.record_id) FILTER (WHERE sr.status='submitted') AS submitted,
-                COUNT(sr.record_id) FILTER (WHERE sr.status='draft') AS draft,
-                COUNT(e.enrollment_id) FILTER (WHERE sr.record_id IS NULL) AS not_started
-            FROM enrollments e
-            LEFT JOIN swafo_records sr ON sr.enrollment_id = e.enrollment_id
-            WHERE e.branch_id = %s AND e.status = 'enrolled'
-        """, (branch_id,))
-        stats = cur.fetchone()
 
         return render_template(
             "teacher_swafo_students.html",
             students=students,
-            stats=stats,
             search=search,
             status_filter=status_filter,
         )
     except Exception as e:
-        flash(f"Error loading students: {str(e)}", "error")
+        flash(f"Error fetching student records: {str(e)}", "error")
         return redirect("/teacher")
     finally:
         cur.close()
@@ -7586,43 +7580,50 @@ def teacher_swafo_record_view(enrollment_id):
         flash("Access restricted to SWAFO officers only.", "error")
         return redirect("/teacher")
 
-    branch_id = session.get("branch_id")
-    teacher_id = session.get("user_id")
-
     db = get_db_connection()
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         if request.method == "POST":
-            action = request.form.get("action", "notes")
-            if action == "notes":
-                notes = request.form.get("teacher_notes", "").strip()
+            background_notes = request.form.get("background_notes", "").strip()
+            medical_alerts = request.form.get("medical_alerts", "").strip()
+            behavioral_notes = request.form.get("behavioral_notes", "").strip()
+            counseling_notes = request.form.get("counseling_notes", "").strip()
+
+            cur.execute("SELECT record_id FROM swafo_records WHERE enrollment_id = %s", (enrollment_id,))
+            rec = cur.fetchone()
+
+            if rec:
                 cur.execute("""
                     UPDATE swafo_records
-                    SET teacher_notes = %s, reviewed_by = %s, reviewed_at = NOW(), updated_at = NOW()
+                    SET background_notes = %s, medical_alerts = %s, behavioral_notes = %s, counseling_notes = %s, updated_at = NOW()
                     WHERE enrollment_id = %s
-                """, (notes, teacher_id, enrollment_id))
-                db.commit()
-                flash("Notes saved successfully.", "success")
+                """, (background_notes, medical_alerts, behavioral_notes, counseling_notes, enrollment_id))
+            else:
+                cur.execute("""
+                    INSERT INTO swafo_records (enrollment_id, branch_id, background_notes, medical_alerts, behavioral_notes, counseling_notes)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (enrollment_id, session.get("branch_id"), background_notes, medical_alerts, behavioral_notes, counseling_notes))
+
+            db.commit()
+            flash("SWAFO cumulative record updated.", "success")
             return redirect(f"/teacher/swafo/student/{enrollment_id}")
 
         cur.execute("""
-            SELECT e.*,
-                CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name,
-                s.section_name, g.name AS grade_level_name
+            SELECT e.*, sec.section_name,
+                CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name
             FROM enrollments e
-            LEFT JOIN sections s ON e.section_id = s.section_id
-            LEFT JOIN grade_levels g ON s.grade_level_id = g.id
+            LEFT JOIN sections sec ON e.section_id = sec.section_id
             WHERE e.enrollment_id = %s AND e.branch_id = %s
-        """, (enrollment_id, branch_id))
+        """, (enrollment_id, session.get("branch_id")))
         student = cur.fetchone()
+
         if not student:
-            flash("Student not found.", "error")
+            flash("Student record not found.", "error")
             return redirect("/teacher/swafo/students")
 
         cur.execute("SELECT * FROM swafo_records WHERE enrollment_id = %s", (enrollment_id,))
         record = cur.fetchone()
 
-        # Discipline log for this student
         cur.execute("""
             SELECT dl.*, u.full_name AS logged_by_name
             FROM swafo_discipline_log dl
@@ -7632,14 +7633,25 @@ def teacher_swafo_record_view(enrollment_id):
         """, (enrollment_id,))
         discipline_logs = cur.fetchall()
 
+        cur.execute("""
+            SELECT pc.*, u.full_name AS scheduled_by_name
+            FROM swafo_parent_conferences pc
+            LEFT JOIN users u ON pc.scheduled_by = u.user_id
+            WHERE pc.enrollment_id = %s
+            ORDER BY pc.conference_date DESC, pc.created_at DESC
+        """, (enrollment_id,))
+        conferences = cur.fetchall()
+
         return render_template(
             "teacher_swafo_record_view.html",
             student=student,
             record=record,
             discipline_logs=discipline_logs,
+            conferences=conferences,
         )
     except Exception as e:
-        flash(f"Error: {str(e)}", "error")
+        db.rollback()
+        flash(f"Error loading student SWAFO record: {str(e)}", "error")
         return redirect("/teacher/swafo/students")
     finally:
         cur.close()
@@ -7648,8 +7660,8 @@ def teacher_swafo_record_view(enrollment_id):
 
 @teacher_bp.route("/teacher/swafo/discipline-log", methods=["GET", "POST"])
 def teacher_swafo_discipline_log():
-    if not _require_swafo_teacher():
-        flash("Access restricted to SWAFO officers only.", "error")
+    if not _require_dc_teacher():
+        flash("Access restricted to Discipline Officers (DC) and SWAFO officers.", "error")
         return redirect("/teacher")
 
     branch_id = session.get("branch_id")
@@ -7665,6 +7677,8 @@ def teacher_swafo_discipline_log():
             description = request.form.get("description", "").strip()
             action_taken = request.form.get("action_taken", "").strip()
             severity = request.form.get("severity", "minor")
+            referred_to_swafo = (request.form.get("referred_to_swafo") in ("on", "true", "1"))
+            referral_reason = request.form.get("referral_reason", "").strip()
 
             if not description or not incident_date or not enrollment_id:
                 flash("Please fill in all required fields.", "error")
@@ -7672,11 +7686,11 @@ def teacher_swafo_discipline_log():
 
             cur.execute("""
                 INSERT INTO swafo_discipline_log
-                (enrollment_id, branch_id, logged_by, incident_date, incident_type, description, action_taken, severity)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            """, (enrollment_id, branch_id, teacher_id, incident_date, incident_type, description, action_taken, severity))
+                (enrollment_id, branch_id, logged_by, incident_date, incident_type, description, action_taken, severity, referred_to_swafo, referral_reason)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, (enrollment_id, branch_id, teacher_id, incident_date, incident_type, description, action_taken, severity, referred_to_swafo, referral_reason))
             db.commit()
-            flash("Discipline log entry added.", "success")
+            flash("Discipline log entry added." + (" Referred to SWAFO for Guidance Conference." if referred_to_swafo else ""), "success")
             return redirect("/teacher/swafo/discipline-log")
 
         # GET
@@ -7726,6 +7740,144 @@ def teacher_swafo_discipline_log():
         db.close()
 
 
+def _send_swafo_conference_email(cur, enrollment_id, title, conference_date, conference_time, meeting_type, meeting_location, agenda, status_label="Scheduled"):
+    try:
+        cur.execute("""
+            SELECT e.student_first_name, e.student_middle_name, e.student_last_name, e.guardian_email, e.grade_level, sec.section_name, b.branch_name
+            FROM enrollments e
+            LEFT JOIN sections sec ON e.section_id = sec.section_id
+            LEFT JOIN branches b ON e.branch_id = b.branch_id
+            WHERE e.enrollment_id = %s
+        """, (enrollment_id,))
+        st = cur.fetchone()
+        if not st:
+            return
+
+        student_name = f"{st['student_first_name']} {st['student_last_name']}".strip()
+        grade_sec = f"{st.get('grade_level') or ''}" + (f" - {st['section_name']}" if st.get('section_name') else "")
+        branch_name = st.get('branch_name') or "Liceo LMS"
+
+        emails = set()
+        if st.get("guardian_email"):
+            emails.add(st["guardian_email"].strip().lower())
+
+        cur.execute("""
+            SELECT u.email FROM parent_student ps
+            JOIN users u ON ps.parent_id = u.user_id
+            WHERE ps.student_id = %s AND u.email IS NOT NULL AND TRIM(u.email) != ''
+        """, (enrollment_id,))
+        for p in cur.fetchall():
+            emails.add(p["email"].strip().lower())
+
+        if not emails:
+            return
+
+        mode_display = "In-Person (SWAFO Office / School Campus)" if meeting_type == "in_person" else "Online Meeting (Google Meet / Zoom)"
+        
+        meeting_link_html = ""
+        clean_url = ""
+        if meeting_location:
+            loc_str = meeting_location.strip()
+            if loc_str.startswith("http://") or loc_str.startswith("https://") or "meet.google" in loc_str or "zoom.us" in loc_str or "teams.microsoft" in loc_str:
+                clean_url = loc_str if loc_str.startswith("http") else f"https://{loc_str}"
+                meeting_link_html = f"""
+                <div style="margin: 20px 0; text-align: center;">
+                  <a href="{clean_url}" target="_blank" style="background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #ffffff; padding: 14px 28px; text-decoration: none; font-weight: 800; border-radius: 10px; display: inline-block; font-size: 15px; box-shadow: 0 4px 12px rgba(30,58,138,0.25);">
+                    📹 Join Online Meeting
+                  </a>
+                  <div style="font-size: 12px; color: #64748b; margin-top: 6px;">Meeting URL: {clean_url}</div>
+                </div>
+                """
+            else:
+                meeting_link_html = f"<div style='font-size: 14px; color: #1e3a8a; font-weight: 700; margin-top: 8px;'>Venue / Location: {loc_str}</div>"
+
+        subject = f"[{branch_name}] SWAFO Parent Conference Notice: {title} ({student_name})"
+
+        plain_body = f"""Hello Parent / Guardian,
+
+May nakatakdang SWAFO Guidance & Parent Conference kaugnay ng inyong anak na si {student_name} ({grade_sec}).
+
+Conference Title: {title}
+Status: {status_label}
+Date: {conference_date}
+Time: {conference_time or 'TBA'}
+Meeting Mode: {mode_display}
+Location / Link: {meeting_location or 'TBA'}
+
+Agenda / Details:
+{agenda or 'N/A'}
+
+Maaari kayong mag-log in sa Liceo LMS Parent Portal para kumpirmahin ang inyong pagdalo o mag-request ng reschedule:
+https://www.liceo-lms.com/parent/swafo-conferences
+
+Salamat,
+SWAFO - Student Welfare and Formation Office
+{branch_name}
+"""
+
+        html_body = f"""
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"></head>
+        <body style="font-family: 'Segoe UI', Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 24px;">
+          <div style="max-width: 620px; margin: 0 auto; background-color: #ffffff; border-radius: 20px; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.06);">
+            <div style="background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 60%, #2563eb 100%); color: #ffffff; padding: 32px 36px; text-align: left;">
+              <div style="font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.85;">{branch_name} &bull; SWAFO</div>
+              <h1 style="margin: 8px 0 0; font-size: 24px; font-weight: 900; letter-spacing: -0.02em;">SWAFO Parent Conference Notice</h1>
+            </div>
+            
+            <div style="padding: 36px; color: #0f172a;">
+              <p style="font-size: 16px; font-weight: 700; margin-top: 0; color: #1e3a8a;">Dear Parent / Guardian of {student_name},</p>
+              <p style="font-size: 14px; color: #475569; line-height: 1.6; margin-bottom: 24px;">
+                May nakatakdang patawag / guidance conference ang Student Welfare and Formation Office (SWAFO) kaugnay ng inyong anak (<strong>{student_name}</strong> &bull; {grade_sec}).
+              </p>
+              
+              <div style="background-color: #eff6ff; border: 1.5px solid #dbeafe; border-radius: 16px; padding: 24px; margin-bottom: 24px;">
+                <div style="display: inline-block; background-color: #1e3a8a; color: #ffffff; font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase; margin-bottom: 12px;">{status_label}</div>
+                <h2 style="margin: 0 0 16px; color: #1e3a8a; font-size: 18px; font-weight: 800;">{title}</h2>
+                
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; color: #334155;">
+                  <tr>
+                    <td style="padding: 6px 0; font-weight: 700; color: #64748b; width: 130px;">📅 Date:</td>
+                    <td style="padding: 6px 0; font-weight: 800; color: #0f172a;">{conference_date}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; font-weight: 700; color: #64748b;">⏰ Time:</td>
+                    <td style="padding: 6px 0; font-weight: 800; color: #0f172a;">{conference_time or 'TBA'}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 6px 0; font-weight: 700; color: #64748b;">📍 Mode:</td>
+                    <td style="padding: 6px 0; font-weight: 800; color: #0f172a;">{mode_display}</td>
+                  </tr>
+                </table>
+                
+                {meeting_link_html}
+                
+                {f'<div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #cbd5e1; font-size: 13.5px; color: #334155;"><strong style="color: #1e3a8a;">Agenda / Notes:</strong><br>{agenda}</div>' if agenda else ''}
+              </div>
+
+              <div style="text-align: center; margin-top: 32px;">
+                <a href="https://www.liceo-lms.com/parent/swafo-conferences" style="background: linear-gradient(135deg, #1e3a8a, #2563eb); color: #ffffff; padding: 14px 32px; text-decoration: none; font-weight: 800; border-radius: 12px; display: inline-block; font-size: 15px; box-shadow: 0 4px 16px rgba(30,58,138,0.3);">
+                  Open Parent Portal to Confirm Attendance
+                </a>
+              </div>
+            </div>
+            
+            <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b; font-weight: 600;">
+              Liceo LMS &bull; Automated SWAFO Notification System
+            </div>
+          </div>
+        </body>
+        </html>
+        """
+
+        for email_to in emails:
+            send_email(email_to, subject, plain_body, html_body=html_body)
+
+    except Exception as ex:
+        logger.warning(f"Could not send SWAFO conference email: {ex}")
+
+
 @teacher_bp.route("/teacher/swafo/conferences", methods=["GET", "POST"])
 def teacher_swafo_conferences():
     if not _require_swafo_teacher():
@@ -7759,7 +7911,7 @@ def teacher_swafo_conferences():
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'scheduled')
             """, (branch_id, enrollment_id, discipline_log_id, teacher_id, title, conference_date, conference_time, meeting_type, meeting_location, agenda))
             
-            # Send notification to linked parents
+            # Send in-app notification & email to parents
             try:
                 cur.execute("SELECT parent_id FROM parent_student WHERE student_id = %s", (enrollment_id,))
                 parent_rows = cur.fetchall()
@@ -7771,14 +7923,19 @@ def teacher_swafo_conferences():
                         p["parent_id"],
                         enrollment_id,
                         "SWAFO Parent Conference Notice",
-                        f"May nakatakdang patawag / parent conference kaugnay ng iyong anak noong {conference_date}.",
+                        f"May nakatakdang patawag / parent conference kaugnay ng iyong anak (Petsa: {conference_date}).",
                         "/parent/swafo-conferences"
                     ))
             except Exception as ne:
                 logger.warning(f"Could not send parent notification for SWAFO conference: {ne}")
 
+            try:
+                _send_swafo_conference_email(cur, enrollment_id, title, conference_date, conference_time, meeting_type, meeting_location, agenda, status_label="Scheduled")
+            except Exception as mail_err:
+                logger.warning(f"Could not send SWAFO conference email: {mail_err}")
+
             db.commit()
-            flash("Parent Conference scheduled successfully.", "success")
+            flash("Parent Conference scheduled successfully. Notifications and email notices sent to parent.", "success")
             return redirect("/teacher/swafo/conferences")
 
         # GET
@@ -7826,12 +7983,26 @@ def teacher_swafo_conferences():
         """, (branch_id,))
         discipline_logs = cur.fetchall()
 
+        # Logs referred from Discipline Committee for SWAFO Guidance Conference
+        cur.execute("""
+            SELECT dl.log_id, dl.enrollment_id, dl.incident_type, dl.incident_date, dl.severity, dl.description, dl.referral_reason,
+                CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name,
+                e.grade_level, sec.section_name
+            FROM swafo_discipline_log dl
+            JOIN enrollments e ON dl.enrollment_id = e.enrollment_id
+            LEFT JOIN sections sec ON e.section_id = sec.section_id
+            WHERE dl.branch_id = %s AND dl.referred_to_swafo = TRUE
+            ORDER BY dl.created_at DESC
+        """, (branch_id,))
+        referred_discipline_logs = cur.fetchall()
+
         return render_template(
             "teacher_swafo_conferences.html",
             conferences=conferences,
             students=students,
             grade_levels=grade_levels,
             discipline_logs=discipline_logs,
+            referred_discipline_logs=referred_discipline_logs,
         )
     except Exception as e:
         db.rollback()
@@ -7893,6 +8064,11 @@ def teacher_swafo_conference_detail(conf_id):
                         ))
                 except Exception as ne:
                     logger.warning(f"Failed sending update parent notif: {ne}")
+
+                try:
+                    _send_swafo_conference_email(cur, updated_row["enrollment_id"], title, conference_date, conference_time, meeting_type, meeting_location, minutes, status_label=status.replace('_', ' ').title())
+                except Exception as mail_err:
+                    logger.warning(f"Could not send SWAFO conference update email: {mail_err}")
 
             db.commit()
             flash("Conference schedule and details updated successfully.", "success")

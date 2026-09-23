@@ -3131,6 +3131,7 @@ Please log in and change your password immediately.
                 u.role, u.user_roles,
                 COALESCE(u.status, 'active') AS status,
                 COALESCE(u.is_swafo, FALSE) AS is_swafo,
+                COALESCE(u.is_dc, FALSE) AS is_dc,
                 adv_sec.section_name AS advisory_section,
                 adv_grade.name AS advisory_grade,
                 (
@@ -3310,6 +3311,30 @@ def branch_admin_toggle_teacher_swafo(user_id):
         cursor.close()
         db.close()
     return redirect(request.referrer or "/branch-admin/manage-teachers")
+
+
+@branch_admin_bp.route("/branch-admin/manage-teachers/<int:user_id>/toggle-dc", methods=["POST"])
+def branch_admin_toggle_teacher_dc(user_id):
+    if session.get("role") != "branch_admin":
+        return redirect("/")
+    db = get_db_connection()
+    cursor = db.cursor()
+    try:
+        cursor.execute("""
+            UPDATE users
+            SET is_dc = NOT COALESCE(is_dc, FALSE)
+            WHERE user_id = %s AND branch_id = %s AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
+        """, (user_id, session.get("branch_id")))
+        db.commit()
+        flash("Discipline Officer (DC) assignment updated successfully.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Failed to update Discipline Officer assignment: {str(e)}", "error")
+    finally:
+        cursor.close()
+        db.close()
+    return redirect(request.referrer or "/branch-admin/manage-teachers")
+
 
 
 

@@ -258,8 +258,8 @@
     background: #fff;
     border: 1px solid var(--bd);
     border-radius: 12px;
-    box-shadow: 0 12px 32px rgba(15, 23, 42, .12);
-    z-index: 60;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, .18);
+    z-index: 1000;
     padding: 6px;
   }
 
@@ -436,7 +436,8 @@
   .table-scroll-inner {
     flex: 1;
     min-height: 0;
-    padding-bottom: 20px;
+    padding-bottom: 60px;
+    overflow: visible !important;
   }
 
   .teacher-list-tip {
@@ -1352,7 +1353,7 @@
     line-height: 1.35;
   }
   .table-scroll-inner {
-    overflow-x: auto !important;
+    overflow: visible !important;
   }
   .load-badge-more {
     position: relative;
@@ -1665,6 +1666,10 @@
                 <span
                   style="font-size:.65rem; background:linear-gradient(135deg,#7c3aed,#6d28d9); color:#fff; padding:2px 8px; border-radius:8px; font-weight:800; letter-spacing:.03em;">SWAFO</span>
                 {% endif %}
+                {% if t.is_dc %}
+                <span
+                  style="font-size:.65rem; background:linear-gradient(135deg,#e11d48,#be123c); color:#fff; padding:2px 8px; border-radius:8px; font-weight:800; letter-spacing:.03em;">DC</span>
+                {% endif %}
               </div>
             </td>
             <td style="font-size:.88rem; color:var(--tx); font-weight:600;">
@@ -1705,7 +1710,7 @@
                     teacher</button>
                   <button type="button" role="menuitem" onclick="manageEdit({{ t.user_id }})">Edit teacher</button>
                   <hr>
-                  <span class="muted">SWAFO</span>
+                  <span class="muted">Special Roles</span>
                   <form method="POST" action="/branch-admin/manage-teachers/{{ t.user_id }}/toggle-swafo"
                     style="margin:0;"
                     onsubmit="return confirm('{% if t.is_swafo %}Remove {{ t.full_name or t.username }} from SWAFO Officer role?{% else %}Assign {{ t.full_name or t.username }} as SWAFO Officer?{% endif %}');">
@@ -1713,6 +1718,14 @@
                     <button type="submit" class="manage-menu-form-btn" role="menuitem"
                       style="{% if t.is_swafo %}color:#7c3aed; font-weight:800;{% endif %}">{% if t.is_swafo %}Remove
                       SWAFO Role{% else %} Assign as SWAFO Officer{% endif %}</button>
+                  </form>
+                  <form method="POST" action="/branch-admin/manage-teachers/{{ t.user_id }}/toggle-dc"
+                    style="margin:0;"
+                    onsubmit="return confirm('{% if t.is_dc %}Remove {{ t.full_name or t.username }} from Discipline Officer (DC) role?{% else %}Assign {{ t.full_name or t.username }} as Discipline Officer (DC)?{% endif %}');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="manage-menu-form-btn" role="menuitem"
+                      style="{% if t.is_dc %}color:#e11d48; font-weight:800;{% endif %}">{% if t.is_dc %}Remove
+                      DC Role{% else %} Assign as DC Officer{% endif %}</button>
                   </form>
                   <hr>
                   <span class="muted">Account</span>
@@ -1955,9 +1968,11 @@
     const open = wrap.classList.contains('is-open');
     closeAllManage();
     if (!open) {
-      // Check if close to bottom
+      // Check if space below is less than menu height (~400px)
       const rect = wrap.getBoundingClientRect();
-      if (window.innerHeight - rect.bottom < 200) {
+      const spaceBelow = window.innerHeight - rect.bottom;
+      const spaceAbove = rect.top;
+      if (spaceBelow < 400 && spaceAbove > 200) {
         wrap.classList.add('is-upwards');
       } else {
         wrap.classList.remove('is-upwards');

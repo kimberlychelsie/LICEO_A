@@ -163,9 +163,9 @@
   }
 
   textarea.form-control {
-    height: auto;
-    min-height: 90px;
-    resize: vertical;
+    height: 100px;
+    resize: none;
+    overflow-y: auto;
   }
 
   /* ── Search Input Wrap ── */
@@ -269,10 +269,10 @@
   <div class="swafo-hero">
     <div>
       <h1>Discipline Log & Incident Tracking</h1>
-      <p>Student Welfare and Formation Office &bull; Behavior & Action Records</p>
+      <p>Discipline Committee (DC) &bull; Behavior & Action Records</p>
     </div>
     <div class="hero-badge">
-      SWAFO Discipline Log
+      DC Discipline Log
     </div>
   </div>
 
@@ -367,6 +367,18 @@
           </div>
         </div>
 
+        <!-- STEP 4: SWAFO REFERRAL OPTIONS -->
+        <div style="background: #eff6ff; border: 1.5px solid #dbeafe; border-radius: 16px; padding: 18px 24px; margin-bottom: 20px;">
+          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 800; color: #1e3a8a; font-size: .92rem;">
+            <input type="checkbox" name="referred_to_swafo" id="referralCheckbox" style="width: 18px; height: 18px; accent-color: #1e3a8a;" onchange="document.getElementById('referralReasonWrap').style.display = this.checked ? 'block' : 'none';">
+            <span>Refer to SWAFO (Guidance Counselor) for Guidance Conference</span>
+          </label>
+          <div id="referralReasonWrap" style="display: none; margin-top: 14px;">
+            <label style="font-size: .78rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: #1e3a8a;">Reason / Recommendation for SWAFO Conference</label>
+            <input type="text" name="referral_reason" class="form-control" style="background: #fff; margin-top: 4px;" placeholder="e.g. Needs student-parent conference for behavioral guidance after sanction...">
+          </div>
+        </div>
+
         <div class="form-actions">
           <button type="submit" class="btn-submit-log">Record Discipline Log Entry</button>
         </div>
@@ -412,6 +424,17 @@
                     <strong style="color: var(--tx); margin-left: 6px; font-size: .9rem;">{{ l.incident_type }}</strong>
                   </div>
                   <div style="color: #334155; font-size: .88rem; font-weight: 500; line-height: 1.5;">{{ l.description }}</div>
+                  {% if l.referred_to_swafo %}
+                  <div style="margin-top: 8px;">
+                    <span style="font-size: .72rem; background: #dbeafe; color: #1e40af; padding: 3px 8px; border-radius: 6px; font-weight: 800; letter-spacing: .02em; display: inline-flex; align-items: center; gap: 4px;">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                      Referred to SWAFO for Conference
+                    </span>
+                    {% if l.referral_reason %}
+                    <div style="font-size: .8rem; color: #1e40af; font-style: italic; margin-top: 3px;">Reason: {{ l.referral_reason }}</div>
+                    {% endif %}
+                  </div>
+                  {% endif %}
                 </td>
                 <td style="color: #334155; font-size: .88rem; font-weight: 500; line-height: 1.5;">
                   {{ l.action_taken or '—' }}
