@@ -917,15 +917,22 @@ showMatch(0);
         recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
     });
 
-    // Poller to catch focus loss when tapping Chat Heads or other apps that steal window focus
+    // Poller to catch focus loss when tapping Chat Heads or other apps that steal window focus.
+    // Also resets isCurrentlyUnfocused when focus returns, so every new tap counts as +1.
     setInterval(function() {
         if (!trackingActive || isPageUnloading || isConfirmOpen) return;
         if (Date.now() < ignoreAntiCheatUntil) return;
 
-        if (!document.hasFocus()) {
+        if (document.hasFocus()) {
+            // Focus is back — reset unfocused flag so the NEXT tap away counts as a new violation
+            if (isCurrentlyUnfocused) {
+                isCurrentlyUnfocused = false;
+            }
+        } else {
+            // Focus lost (chat head tapped, floating app, etc.) — record exactly once per loss
             recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
         }
-    }, 400);
+    }, 300);
 
     // Method 3: Focus returned to exam page — reset unfocused state so next tap away adds +1
     window.addEventListener(
@@ -937,7 +944,7 @@ showMatch(0);
         }
     );
 
-    // Method 4: Split-screen / floating resized window
+    // Split-screen / floating resized window check
     function checkSuspiciousViewport() {
         if (!trackingActive) return;
 
@@ -946,19 +953,6 @@ showMatch(0);
         resizeTimer = setTimeout(function() {
             if (isSplitScreenActive()) {
                 recordSwitch('resize_check');
-            }
-        }, 600);
-    }
-
-    // Method 3: Split-screen / floating resized window
-    function checkSuspiciousViewport() {
-        if (!trackingActive) return;
-
-        clearTimeout(resizeTimer);
-
-        resizeTimer = setTimeout(function() {
-            if (isSplitScreenActive()) {
-                recordSwitch('possible_split_screen');
             }
         }, 600);
     }
