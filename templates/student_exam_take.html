@@ -213,7 +213,45 @@
   </div>
 </header>
 
-<div class="exam-container">
+<!-- Pre-Exam Fullscreen Modal -->
+<div id="preExamModal" style="
+    position: fixed; inset: 0; z-index: 9999999;
+    background: rgba(15,23,42,0.92);
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+">
+  <div style="
+      background: #fff; border-radius: 24px;
+      padding: 40px 36px; max-width: 480px; width: 100%;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.4);
+      text-align: center;
+  ">
+    <div style="font-size: 3rem; margin-bottom: 12px;">📋</div>
+    <h2 style="font-size: 1.4rem; font-weight: 900; color: #0f172a; margin: 0 0 8px;">Before You Begin</h2>
+    <p style="color: #64748b; font-size: 0.95rem; margin: 0 0 24px; line-height: 1.6;">
+      Please read the exam rules carefully.
+    </p>
+    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px; padding: 18px 20px; text-align: left; margin-bottom: 28px;">
+      <ul style="margin: 0; padding: 0 0 0 18px; color: #334155; font-size: 0.9rem; line-height: 2;">
+        <li>The exam will run in <strong>fullscreen mode</strong>.</li>
+        <li>Exiting fullscreen will be recorded as a <strong>violation</strong>.</li>
+        <li>Switching apps or tabs will be recorded.</li>
+        <li>Chat heads and notifications are monitored.</li>
+        <li>The exam will <strong>auto-submit</strong> when time runs out.</li>
+      </ul>
+    </div>
+    <button id="beginExamBtn" style="
+        width: 100%; padding: 16px;
+        background: linear-gradient(135deg, #1e3a8a, #1e40af);
+        color: #fff; border: none; border-radius: 14px;
+        font-size: 1.1rem; font-weight: 800; cursor: pointer;
+        box-shadow: 0 4px 15px rgba(30,58,138,0.4);
+        transition: transform 0.15s;
+    ">🔒 I Understand — Begin Exam</button>
+  </div>
+</div>
+
+
   <!-- Exam Content -->
   <main class="exam-content">
     <!-- Exam Title & Timer Header -->
@@ -400,7 +438,8 @@ let trackingActive = false;
 let lastSwitchTime = 0;
 let isPageUnloading = false;
 let isConfirmOpen = false;
-let ignoreAntiCheatUntil = 0;
+let ignoreAntiCheatUntil = 0; // Blocks ALL recording (used during alert/confirm dialogs)
+let ignorePollerUntil = 0;    // Blocks POLLER only (used during focus restoration after return)
 let isSubmittingExam = false;
 let leaveEventSent = false;
 
@@ -492,9 +531,8 @@ const initialViewportWidth = window.innerWidth;
             form.submit();
         }
     }
-    updateTimer();
-
-    
+    // Timer is started by the 'Begin Exam' button click, not here.
+    // updateTimer() will be called from the modal button handler.
 
     // ── Answered counter ──
     let answeredCount = 0;
@@ -788,15 +826,10 @@ showMatch(0);
         return false;
     }
 
-    // Wait 2s before tracking to prevent false positives on page load
-    setTimeout(() => { 
-        trackingActive = true; 
-        // Initial split-screen check on exam start
-        if (isSplitScreenActive()) {
-            isCurrentlySplitScreen = true;
-            recordSwitch('resize_check');
-        }
-    }, 2000);
+
+    // Tracking starts when the student taps 'Begin Exam' in the pre-exam modal.
+    // Initial split-screen check will run from the beginExamBtn click handler.
+
 
     function recordSwitch(reason = 'tab_switch') {
         if (!trackingActive) return;
@@ -907,6 +940,9 @@ showMatch(0);
     document.addEventListener("visibilitychange", function() {
         if (document.visibilityState === "visible") {
             isCurrentlyUnfocused = false;
+            ignorePollerUntil = Date.now() + 1500;
+            // Auto-retry fullscreen when student returns
+            setTimeout(tryReEnterFullscreen, 600);
         } else if (document.visibilityState === "hidden") {
             recordSwitch('page_hidden');
         }
@@ -917,32 +953,31 @@ showMatch(0);
         recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
     });
 
-    // Poller to catch focus loss when tapping Chat Heads or other apps that steal window focus.
-    // Also resets isCurrentlyUnfocused when focus returns, so every new tap counts as +1.
+    // Poller: catch focus loss from Chat Heads / floating apps that don't fire blur events.
+    // Runs every 300ms. Uses ignorePollerUntil (not ignoreAntiCheatUntil) so that
+    // event-based triggers (e.g. visibilitychange=hidden) still work during grace period.
     setInterval(function() {
         if (!trackingActive || isPageUnloading || isConfirmOpen) return;
-        if (Date.now() < ignoreAntiCheatUntil) return;
+        if (Date.now() < ignorePollerUntil) return;  // grace period after returning from bg
+        if (Date.now() < ignoreAntiCheatUntil) return; // dialog suppression
+        if (document.visibilityState !== 'visible') return;
 
-        if (document.hasFocus()) {
-            // Focus is back — reset unfocused flag so the NEXT tap away counts as a new violation
-            if (isCurrentlyUnfocused) {
-                isCurrentlyUnfocused = false;
-            }
-        } else {
-            // Focus lost (chat head tapped, floating app, etc.) — record exactly once per loss
+        if (!document.hasFocus()) {
             recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'window_blur');
+        } else if (isCurrentlyUnfocused) {
+            isCurrentlyUnfocused = false;
         }
     }, 300);
 
-    // Method 3: Focus returned to exam page — reset unfocused state so next tap away adds +1
-    window.addEventListener(
-        "focus",
-        function() {
-            isPageUnloading = false;
-            leaveEventSent = false;
-            isCurrentlyUnfocused = false;
-        }
-    );
+    // Focus returned to exam window — reset state + add grace period (poller only)
+    window.addEventListener("focus", function() {
+        isPageUnloading = false;
+        leaveEventSent = false;
+        isCurrentlyUnfocused = false;
+        ignorePollerUntil = Date.now() + 800;
+        // Auto-retry fullscreen when window regains focus
+        setTimeout(tryReEnterFullscreen, 400);
+    });
 
     // Split-screen / floating resized window check
     function checkSuspiciousViewport() {
@@ -982,17 +1017,76 @@ showMatch(0);
         );
     }
 
-    // Method 4: Fullscreen exit
-    document.addEventListener(
-        'fullscreenchange',
-        function() {
-            if (!trackingActive) return;
+    // ── Fullscreen enforcement ──
+    // On Android Chrome: tapping a chat head or notification forces Chrome OUT of fullscreen.
+    // This fullscreenchange event reliably catches those taps.
+    // We also auto-retry fullscreen when the student returns to the exam.
 
-            if (!document.fullscreenElement) {
+    function enterFullscreen() {
+        const el = document.documentElement;
+        if (el.requestFullscreen) return el.requestFullscreen().catch(() => {});
+        if (el.webkitRequestFullscreen) return el.webkitRequestFullscreen();
+        return Promise.resolve();
+    }
+
+    function isInFullscreen() {
+        return !!(document.fullscreenElement || document.webkitFullscreenElement);
+    }
+
+    // Persistent fullscreen warning banner (shown when not in fullscreen)
+    const fsWarning = document.createElement('div');
+    fsWarning.id = 'fsWarning';
+    fsWarning.style.cssText = [
+        'position:fixed', 'bottom:0', 'left:0', 'right:0',
+        'background:#b91c1c', 'color:#fff', 'text-align:center',
+        'padding:12px 20px', 'font-weight:700', 'font-size:0.95rem',
+        'z-index:999999', 'display:none',
+        'display:flex', 'align-items:center', 'justify-content:center', 'gap:16px'
+    ].join(';');
+    fsWarning.innerHTML = [
+        '<span>⚠️ Fullscreen is required during the exam. Please tap the button to continue.</span>',
+        '<button id="fsEnterBtn" style="background:#fff;color:#b91c1c;border:none;padding:8px 20px;border-radius:8px;font-weight:800;cursor:pointer;">Enter Fullscreen</button>'
+    ].join('');
+    document.body.appendChild(fsWarning);
+
+    function showFsWarning(show) {
+        fsWarning.style.display = show ? 'flex' : 'none';
+    }
+
+    document.getElementById('fsEnterBtn').addEventListener('click', function() {
+        enterFullscreen().then(() => showFsWarning(false)).catch(() => {});
+    });
+
+    document.addEventListener('fullscreenchange', function() {
+        if (!isInFullscreen()) {
+            // Record violation (chat head tap / swipe-down notification panel / exit fullscreen)
+            if (trackingActive) {
                 recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'fullscreen_exit');
             }
+            showFsWarning(true);
+        } else {
+            showFsWarning(false);
         }
-    );
+    });
+    document.addEventListener('webkitfullscreenchange', function() {
+        if (!isInFullscreen()) {
+            if (trackingActive) {
+                recordSwitch(isSplitScreenActive() ? 'possible_split_screen' : 'fullscreen_exit');
+            }
+            showFsWarning(true);
+        } else {
+            showFsWarning(false);
+        }
+    });
+
+    // Auto-retry fullscreen when student returns to exam page
+    function tryReEnterFullscreen() {
+        if (!isInFullscreen()) {
+            enterFullscreen()
+                .then(() => showFsWarning(false))
+                .catch(() => showFsWarning(true));
+        }
+    }
 
     // ══════════════════════════════════════════════════
     // FIX 2 & 3: Submit Validation + Confirmation
@@ -1185,24 +1279,30 @@ window.addEventListener(
     }
 );
 
-    // Fullscreen suggestion on exam start
-    if (!lsGet('fullscreenPrompted') && document.documentElement.requestFullscreen) {
-    lsSet('fullscreenPrompted', 'true');
+    // ── Pre-exam modal: forces user gesture before fullscreen (required by mobile browsers) ──
+    document.getElementById('beginExamBtn').addEventListener('click', function() {
+        // 1. Enter fullscreen (must be inside a user gesture handler on mobile)
+        enterFullscreen()
+            .then(() => showFsWarning(false))
+            .catch(() => showFsWarning(true));
 
-    isConfirmOpen = true;
+        // 2. Hide the modal
+        document.getElementById('preExamModal').style.display = 'none';
 
-    const wantsFullscreen = confirm(
-        '📺 For the best exam experience, would you like to go fullscreen?\n\n' +
-        'This helps prevent accidental tab switches.'
-    );
+        // 3. Start the timer and anti-cheat tracking
+        trackingActive = true;
+        updateTimer();
 
-    isConfirmOpen = false;
-    ignoreAntiCheatUntil = Date.now() + 1200;
+        // 4. Initial split-screen check (in case student opened exam already in split-screen)
+        if (isSplitScreenActive()) {
+            isCurrentlySplitScreen = true;
+            recordSwitch('resize_check');
+        }
 
-    if (wantsFullscreen) {
-        document.documentElement.requestFullscreen().catch(() => {});
-    }
-} // ← ITO ANG KULANG
+        // 5. Grace period so focus events from modal close don't trigger violations
+        ignoreAntiCheatUntil = Date.now() + 1200;
+        ignorePollerUntil = Date.now() + 1500;
+    });
 
 })();
 </script>
