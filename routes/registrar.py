@@ -2955,10 +2955,20 @@ def list_and_add_schedules():
             subject_id, section_id, teacher_id,
             day_of_week, start_time, end_time, room, year_id, branch_id
         ))
-        db.commit()
-        flash("Schedule added!", "success")
+        added_grade = ""
+        if section_id:
+            cursor.execute("""
+                SELECT g.name AS grade_name 
+                FROM sections sec 
+                JOIN grade_levels g ON g.id = sec.grade_level_id 
+                WHERE sec.section_id = %s
+            """, (section_id,))
+            row_g = cursor.fetchone()
+            if row_g:
+                added_grade = row_g["grade_name"]
+
         cursor.close(); db.close()
-        return redirect(url_for("registrar.list_and_add_schedules"))
+        return redirect(url_for("registrar.list_and_add_schedules", grade=added_grade, section_id=section_id))
 
     # Filter by Archive Status
     show_archived = request.args.get("show_archived") == "true"

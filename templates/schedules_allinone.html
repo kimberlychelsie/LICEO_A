@@ -1280,7 +1280,7 @@
     }
 
     // ── Smart Cascading Selection Logic ──
-    function onSmartGradeChange() {
+    function onSmartGradeChange(skipSync = false) {
         const grade = document.getElementById('smartGradeSelect').value;
         renderQuickPresets();
         const secSelect = document.getElementById('smartSectionSelect');
@@ -1290,6 +1290,18 @@
         subjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
         subjSelect.disabled = true;
         document.getElementById('finalComboInput').value = '';
+
+        if (!skipSync && grade) {
+            const gradeFilter = document.getElementById('gradeFilter');
+            if (gradeFilter) {
+                const hasOpt = Array.from(gradeFilter.options).some(o => o.value === grade);
+                if (hasOpt && gradeFilter.value !== grade) {
+                    gradeFilter.value = grade;
+                    updateSectionFilter();
+                    renderMatrixView();
+                }
+            }
+        }
 
         if (!grade) {
             secSelect.disabled = true;
@@ -1320,12 +1332,24 @@
         }
     }
 
-    function onSmartSectionChange() {
+    function onSmartSectionChange(skipSync = false) {
         const sectionId = document.getElementById('smartSectionSelect').value;
         const subjSelect = document.getElementById('smartSubjectSelect');
 
         subjSelect.innerHTML = '<option value="">-- Select Subject --</option>';
         document.getElementById('finalComboInput').value = '';
+
+        if (!skipSync && sectionId) {
+            const sectionFilter = document.getElementById('sectionFilter');
+            if (sectionFilter) {
+                const hasOpt = Array.from(sectionFilter.options).some(o => String(o.value) === String(sectionId));
+                if (hasOpt && String(sectionFilter.value) !== String(sectionId)) {
+                    sectionFilter.value = sectionId;
+                    filterTable();
+                    renderMatrixView();
+                }
+            }
+        }
 
         if (!sectionId) {
             subjSelect.disabled = true;
@@ -1608,82 +1632,51 @@
         const cfg = getBreakConfig(grade);
         const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
         
-        const slotsMap = new Map();
+        // Collect all boundary points in time
+        const pointsSet = new Set();
 
-        function addSlot(start, end, extra = {}) {
-            const sNorm = normTime(start);
-            const eNorm = normTime(end);
-            if (!sNorm || !eNorm || sNorm >= eNorm) return;
-            const key = `${sNorm}|${eNorm}`;
-            if (!slotsMap.has(key)) {
-                slotsMap.set(key, {
-                    start: sNorm,
-                    end: eNorm,
-                    label: formatRange12Hour(sNorm, eNorm),
-                    ...extra
-                });
-            } else if (extra.isPrayer || extra.isRecess || extra.isLunch) {
-                const existing = slotsMap.get(key);
-                slotsMap.set(key, { ...existing, ...extra, label: formatRange12Hour(sNorm, eNorm) });
-            }
-        }
+        // 1. Add break boundaries
+        if (cfg.prayerStart && cfg.prayerEnd) { pointsSet.add(normTime(cfg.prayerStart)); pointsSet.add(normTime(cfg.prayerEnd)); }
+        if (cfg.recessStart && cfg.recessEnd) { pointsSet.add(normTime(cfg.recessStart)); pointsSet.add(normTime(cfg.recessEnd)); }
+        if (cfg.lunchStart && cfg.lunchEnd) { pointsSet.add(normTime(cfg.lunchStart)); pointsSet.add(normTime(cfg.lunchEnd)); }
 
-        // Add break slots first
-        if (cfg.prayerStart && cfg.prayerEnd) addSlot(cfg.prayerStart, cfg.prayerEnd, { isPrayer: true });
-        if (cfg.recessStart && cfg.recessEnd) addSlot(cfg.recessStart, cfg.recessEnd, { isRecess: true });
-        if (cfg.lunchStart && cfg.lunchEnd) addSlot(cfg.lunchStart, cfg.lunchEnd, { isLunch: true });
+        // 2. Add standard period cutoffs
+        const defaultCutoffs = ['07:15', '08:05', '08:15', '08:55', '09:05', '09:55', '10:15', '10:30', '10:45', '11:30', '12:00', '12:30', '13:00', '14:00', '15:00', '15:15', '16:00', '17:00'];
+        defaultCutoffs.forEach(pt => pointsSet.add(normTime(pt)));
 
-        // Add actual schedules' start & end times
+        // 3. Add schedule start & end times
         filtered.forEach(s => {
-            if (s.start_time && s.end_time) {
-                addSlot(s.start_time, s.end_time);
-            }
+            if (s.start_time) pointsSet.add(normTime(s.start_time));
+            if (s.end_time) pointsSet.add(normTime(s.end_time));
         });
 
-        // Standard default periods (only added if they do NOT overlap with any break or existing schedule slot)
-        const defaultPeriods = [
-            ['07:15', '08:15'],
-            ['08:15', '09:15'],
-            ['09:15', '10:15'],
-            ['10:30', '11:30'],
-            ['11:30', '12:30'],
-            ['13:00', '14:00'],
-            ['14:00', '15:00'],
-            ['15:15', '16:00'],
-            ['16:00', '17:00']
-        ];
+        // Sort unique boundary points
+        const sortedPoints = Array.from(pointsSet).filter(Boolean).sort((a, b) => a.localeCompare(b));
 
-        defaultPeriods.forEach(([s, e]) => {
-            const sNorm = normTime(s);
-            const eNorm = normTime(e);
-            let overlapsWithExisting = false;
-            for (const slot of slotsMap.values()) {
-                if (sNorm < slot.end && eNorm > slot.start) {
-                    overlapsWithExisting = true;
-                    break;
-                }
-            }
-            if (!overlapsWithExisting) {
-                addSlot(s, e);
-            }
-        });
-
-        const rawList = Array.from(slotsMap.values()).sort((a, b) => a.start.localeCompare(b.start));
+        // Form atomic time slots for matrix rows
         const timeSlots = [];
+        for (let i = 0; i < sortedPoints.length - 1; i++) {
+            const start = sortedPoints[i];
+            const end = sortedPoints[i + 1];
+            if (start >= end) continue;
 
-        for (let i = 0; i < rawList.length; i++) {
-            const curr = rawList[i];
-            if (timeSlots.length > 0) {
-                const prevEnd = timeSlots[timeSlots.length - 1].end;
-                if (prevEnd < curr.start) {
-                    timeSlots.push({
-                        start: prevEnd,
-                        end: curr.start,
-                        label: formatRange12Hour(prevEnd, curr.start)
-                    });
-                }
+            const isPrayer = (start === normTime(cfg.prayerStart) && end === normTime(cfg.prayerEnd));
+            const isRecess = (start === normTime(cfg.recessStart) && end === normTime(cfg.recessEnd));
+            const isLunch = (start === normTime(cfg.lunchStart) && end === normTime(cfg.lunchEnd));
+
+            const hasActivity = isPrayer || isRecess || isLunch || filtered.some(s => s.start_time < end && s.end_time > start);
+            
+            // Include slot if active or within normal school day
+            if (hasActivity || (start >= '07:15' && end <= '17:00')) {
+                timeSlots.push({
+                    start,
+                    end,
+                    label: formatRange12Hour(start, end),
+                    isPrayer,
+                    isRecess,
+                    isLunch
+                });
             }
-            timeSlots.push(curr);
         }
 
         let html = `<table class="matrix-table"><thead><tr><th class="matrix-time-col">Time Slot</th>`;
@@ -1706,16 +1699,21 @@
             }
 
             days.forEach(d => {
-                const matches = filtered.filter(s => s.day_of_week === d && (slot.start < s.end_time && slot.end > s.start_time));
+                const startingMatches = filtered.filter(s => s.day_of_week === d && s.start_time >= slot.start && s.start_time < slot.end);
+                const ongoingMatches = filtered.filter(s => s.day_of_week === d && s.start_time < slot.start && s.end_time > slot.start);
+
                 html += `<td data-day="${d}" data-start="${slot.start}" data-end="${slot.end}"
                              ondragover="handleMatrixDragOver(event, '${d}', '${slot.start}', '${slot.end}')"
                              ondragleave="handleMatrixDragLeave(event)"
                              ondrop="handleMatrixDrop(event, '${d}', '${slot.start}', '${slot.end}')">`;
-                if (matches.length > 0) {
-                    matches.forEach(m => {
+                
+                if (startingMatches.length > 0) {
+                    startingMatches.forEach(m => {
                         const safeSubj = (m.subject_name || '').replace(/'/g, "\\'");
                         const safeSec = (m.section_name || '').replace(/'/g, "\\'");
                         const timeLabel = formatRange12Hour(m.start_time, m.end_time);
+                        const isMultiSlot = (m.end_time > slot.end);
+
                         html += `
                             <div class="matrix-card" draggable="true"
                                  ondragstart="handleMatrixDragStart(event, ${m.schedule_id})"
@@ -1724,12 +1722,20 @@
                                         onclick="deleteMatrixSchedule(event, ${m.schedule_id}, '${safeSubj}', '${safeSec}', '${d}', '${timeLabel}')">
                                     &times;
                                 </button>
-                                <div class="matrix-card-sec">${m.section_name} (${m.grade_name})</div>
+                                <div class="matrix-card-sec">${m.section_name} (${m.grade_name || ''})</div>
                                 <div class="matrix-card-subj">${m.subject_name}</div>
                                 <div class="matrix-card-meta">${m.teacher_name} • Rm ${m.room}</div>
+                                ${isMultiSlot ? `<div style="margin-top:4px; font-size:0.68rem; font-weight:700; color:#0284c7; background:#e0f2fe; padding:2px 6px; border-radius:6px; display:inline-block;">⏱️ ${timeLabel}</div>` : ''}
                             </div>
                         `;
                     });
+                } else if (ongoingMatches.length > 0) {
+                    const m = ongoingMatches[0];
+                    html += `
+                        <div style="font-size:0.75rem; color:#64748b; font-weight:600; background:#f8fafc; padding:8px 10px; border-radius:8px; border:1px dashed #cbd5e1; text-align:center;">
+                            ↳ ${m.subject_name} <span style="font-weight:400; font-size:0.7rem; color:#94a3b8;">(until ${format12Hour(m.end_time)})</span>
+                        </div>
+                    `;
                 } else {
                     html += `<span style="font-size:0.7rem; color:#cbd5e1; font-weight:600;">— Vacant —</span>`;
                 }
@@ -1893,7 +1899,11 @@
     }
 
     function updateSectionFilter() {
-        const grade = document.getElementById('gradeFilter').value;
+        const gradeSelect = document.getElementById('gradeFilter');
+        if (!gradeSelect) return;
+        const grade = gradeSelect.value;
+        if (grade) localStorage.setItem('sch_active_grade_filter', grade);
+
         const sectionSelect = document.getElementById('sectionFilter');
         const options = sectionSelect.querySelectorAll('option');
         
@@ -1910,12 +1920,26 @@
             sectionSelect.value = "";
         }
         
+        localStorage.setItem('sch_active_section_filter', sectionSelect.value);
         filterTable();
+
+        // Also sync Add Form smart grade dropdown if not already set to this grade
+        const smartGrade = document.getElementById('smartGradeSelect');
+        if (smartGrade && grade && smartGrade.value !== grade) {
+            const hasOpt = Array.from(smartGrade.options).some(o => o.value === grade);
+            if (hasOpt) {
+                smartGrade.value = grade;
+                onSmartGradeChange(true);
+            }
+        }
     }
 
     function filterTable() {
         const grade = document.getElementById('gradeFilter').value;
         const sectionId = document.getElementById('sectionFilter').value;
+        if (grade) localStorage.setItem('sch_active_grade_filter', grade);
+        localStorage.setItem('sch_active_section_filter', sectionId);
+
         const rows = document.querySelectorAll('.schedule-row');
         let visibleCount = 0;
         
@@ -1944,10 +1968,36 @@
         setTimeout(() => overlay.style.display = 'none', 250);
     }
 
-    // Initialize Page Controls
+    // Initialize Page Controls & Filter Persistence
     document.addEventListener('DOMContentLoaded', () => {
         renderQuickPresets();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlGrade = urlParams.get('grade');
+        const urlSectionId = urlParams.get('section_id');
+
+        let savedGrade = urlGrade || localStorage.getItem('sch_active_grade_filter');
+        let savedSectionId = urlSectionId || localStorage.getItem('sch_active_section_filter');
+
+        const gradeFilter = document.getElementById('gradeFilter');
+        if (savedGrade && gradeFilter) {
+            const hasOpt = Array.from(gradeFilter.options).some(o => o.value === savedGrade);
+            if (hasOpt) {
+                gradeFilter.value = savedGrade;
+            }
+        }
+
         updateSectionFilter();
+
+        const sectionFilter = document.getElementById('sectionFilter');
+        if (savedSectionId && sectionFilter) {
+            const hasSecOpt = Array.from(sectionFilter.options).some(o => String(o.value) === String(savedSectionId));
+            if (hasSecOpt) {
+                sectionFilter.value = savedSectionId;
+            }
+        }
+
+        filterTable();
         renderMatrixView();
     });
 </script>
