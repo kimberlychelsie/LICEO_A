@@ -1668,16 +1668,12 @@ def list_and_add_schedules():
         # --- TIME VALIDATION ---
         start_t = datetime.strptime(start_time, "%H:%M").time()
         end_t = datetime.strptime(end_time, "%H:%M").time()
-        if not (dt_time(7,0) <= start_t <= dt_time(17,0)) or not (dt_time(7,0) <= end_t <= dt_time(17,0)):
-            flash("Invalid schedule: Times must be between 07:00 and 17:00.", "danger")
+        if not (dt_time(6,0) <= start_t <= dt_time(18,0)) or not (dt_time(6,0) <= end_t <= dt_time(18,0)):
+            flash("Invalid schedule: Times must be between 06:00 and 18:00.", "danger")
             cursor.close(); db.close()
             return redirect(url_for("branch_admin.list_and_add_schedules"))
         if start_t >= end_t:
             flash("Invalid schedule: Start time must be before end time.", "danger")
-            cursor.close(); db.close()
-            return redirect(url_for("branch_admin.list_and_add_schedules"))
-        if (start_t.minute % 15) != 0 or (end_t.minute % 15) != 0:
-            flash("Invalid schedule: Times must be in 15-minute increments.", "danger")
             cursor.close(); db.close()
             return redirect(url_for("branch_admin.list_and_add_schedules"))
 
@@ -1899,16 +1895,12 @@ def edit_schedule(schedule_id):
         # --- TIME VALIDATION: must be within 07:00 and 17:00, and start < end ---
         start_t = datetime.strptime(start_time, "%H:%M").time()
         end_t = datetime.strptime(end_time, "%H:%M").time()
-        if not (dt_time(7,0) <= start_t <= dt_time(17,0)) or not (dt_time(7,0) <= end_t <= dt_time(17,0)):
-            flash("Invalid schedule: Times must be between 07:00 and 17:00.", "danger")
+        if not (dt_time(6,0) <= start_t <= dt_time(18,0)) or not (dt_time(6,0) <= end_t <= dt_time(18,0)):
+            flash("Invalid schedule: Times must be between 06:00 and 18:00.", "danger")
             cursor.close(); db.close()
             return redirect(url_for("branch_admin.list_and_add_schedules"))
         if start_t >= end_t:
             flash("Invalid schedule: Start time must be before end time.", "danger")
-            cursor.close(); db.close()
-            return redirect(url_for("branch_admin.list_and_add_schedules"))
-        if (start_t.minute % 15) != 0 or (end_t.minute % 15) != 0:
-            flash("Invalid schedule: Times must be in 15-minute increments.", "danger")
             cursor.close(); db.close()
             return redirect(url_for("branch_admin.list_and_add_schedules"))
 
