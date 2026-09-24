@@ -4521,18 +4521,30 @@ def registrar_assign_students():
         if grade_filter:
             cursor.execute("SELECT name FROM grade_levels WHERE id = %s AND branch_id = %s", (grade_filter, branch_id))
             grade_row = cursor.fetchone()
-            grade_name = grade_row['name'] if grade_row else ""
+            grade_name = grade_row['name'].strip() if grade_row and grade_row['name'] else ""
 
-        cursor.execute("""
-            SELECT e.enrollment_id, e.student_first_name,
-    e.student_middle_name,
-    e.student_last_name, e.grade_level, e.branch_enrollment_no, e.section_id, s.section_name
+        short_grade = grade_name.replace("Grade ", "").strip()
+
+        if "-" in grade_name:
+            query_where = "(LOWER(TRIM(e.grade_level)) = LOWER(%s) OR LOWER(TRIM(e.grade_level)) = LOWER(%s))"
+            query_params = [branch_id, active_year_id, grade_name, short_grade]
+        elif grade_name.lower().startswith("grade 11") or grade_name.lower().startswith("grade 12") or short_grade.startswith("11") or short_grade.startswith("12"):
+            query_where = "(LOWER(TRIM(e.grade_level)) = LOWER(%s) OR LOWER(TRIM(e.grade_level)) = LOWER(%s) OR LOWER(TRIM(e.grade_level)) LIKE LOWER(%s) OR LOWER(TRIM(e.grade_level)) LIKE LOWER(%s))"
+            query_params = [branch_id, active_year_id, grade_name, short_grade, f"{grade_name}-%", f"{short_grade}-%"]
+        else:
+            query_where = "(LOWER(TRIM(e.grade_level)) = LOWER(%s) OR LOWER(TRIM(e.grade_level)) = LOWER(%s))"
+            query_params = [branch_id, active_year_id, grade_name, short_grade]
+
+        sql = f"""
+            SELECT e.enrollment_id, e.student_first_name, e.student_middle_name, e.student_last_name,
+                   e.grade_level, e.branch_enrollment_no, e.section_id, s.section_name
             FROM enrollments e LEFT JOIN sections s ON e.section_id = s.section_id
-            WHERE e.branch_id = %s AND e.year_id = %s AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed') AND (e.grade_level ILIKE %s OR e.grade_level ILIKE %s)
-            ORDER BY e.student_last_name,
-    e.student_first_name,
-    e.student_middle_name
-        """, (branch_id, active_year_id, f"{grade_name}%", f"{grade_name.replace('Grade ', '')}%"))
+            WHERE e.branch_id = %s AND e.year_id = %s 
+              AND e.status IN ('approved', 'enrolled', 'open_for_enrollment', 'completed') 
+              AND {query_where}
+            ORDER BY e.student_last_name, e.student_first_name, e.student_middle_name
+        """
+        cursor.execute(sql, query_params)
         students = cursor.fetchall() or []
         for s in students:
             s["student_name"] = " ".join(filter(None, [
