@@ -524,8 +524,44 @@
       .topbar-title {
         font-size: 0.92rem;
       }
+
       .top-brand-name {
         font-size: 0.85rem;
+      }
+    }
+
+    @media (max-width: 576px) {
+      .topbar {
+        padding: 0 8px !important;
+      }
+
+      .topbar .hamburger {
+        margin-right: 4px !important;
+        padding: 4px !important;
+        width: 34px !important;
+        height: 34px !important;
+      }
+
+      .top-brand {
+        gap: 6px !important;
+      }
+
+      .top-brand-name {
+        font-size: 0.76rem !important;
+      }
+
+      .topbar-right {
+        gap: 4px !important;
+      }
+
+      .notif-wrapper {
+        margin-right: 2px !important;
+      }
+
+
+
+      .profile-dropdown-wrapper {
+        flex-shrink: 0 !important;
       }
     }
 
@@ -533,10 +569,12 @@
       .topbar-title {
         font-size: 0.82rem;
       }
+
       .top-brand-name {
-        font-size: 0.78rem;
+        font-size: 0.75rem;
       }
     }
+
 
     .topbar-right {
       display: flex;
@@ -1316,51 +1354,9 @@
       display: block;
     }
 
-    /* Role Switcher Dropdown */
-    .role-switcher-wrapper {
-      position: relative;
-    }
-
-    .role-switcher-btn {
-      background: rgba(255, 255, 255, 0.15);
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      color: #ffffff;
-      padding: 6px 14px;
-      border-radius: 20px;
-      cursor: pointer;
-      font-size: 0.82rem;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.2s ease;
-    }
-
-    .role-switcher-btn:hover {
-      background: rgba(255, 255, 255, 0.25);
-      border-color: rgba(255, 255, 255, 0.5);
-    }
-
-    .role-dropdown {
-      position: absolute;
-      top: 100%;
-      right: 0;
-      width: 220px;
-      background: #ffffff;
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-      z-index: 2000;
-      display: none;
-      margin-top: 10px;
-      padding: 8px;
-    }
-
-    .role-dropdown.show {
-      display: block;
-    }
 
     .profile-dropdown a,
+    .profile-dropdown button,
     .profile-dropdown-link {
       display: flex;
       align-items: center;
@@ -1372,9 +1368,12 @@
       font-weight: 500;
       border-radius: 8px;
       transition: all 0.2s ease;
+      font-family: inherit;
+      box-sizing: border-box;
     }
 
     .profile-dropdown a:hover,
+    .profile-dropdown button:hover,
     .profile-dropdown-link:hover {
       background: #eef2ff;
       color: #1a3a8f;
@@ -1538,8 +1537,7 @@
       </a>
       {% endif %}
 
-      <a class="sb-link {% if request.path == '/student/swafo-record' %}active{% endif %}"
-        href="/student/swafo-record">
+      <a class="sb-link {% if request.path == '/student/swafo-record' %}active{% endif %}" href="/student/swafo-record">
         <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
@@ -1561,7 +1559,8 @@
       </a>
 
       {% if parent_global_children %}
-      <button class="sb-dropdown-btn {% if '/parent/child/' in request.path and '/bills' not in request.path and '/reserve' not in request.path %}open{% endif %}"
+      <button
+        class="sb-dropdown-btn {% if '/parent/child/' in request.path and '/bills' not in request.path and '/reserve' not in request.path %}open{% endif %}"
         onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
         <div class="sb-left">
           <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
@@ -1574,7 +1573,8 @@
         </div>
         <span class="sb-dropdown-arrow">▼</span>
       </button>
-      <div class="sb-dropdown-content {% if '/parent/child/' in request.path and '/bills' not in request.path and '/reserve' not in request.path %}show{% endif %}">
+      <div
+        class="sb-dropdown-content {% if '/parent/child/' in request.path and '/bills' not in request.path and '/reserve' not in request.path %}show{% endif %}">
         {% for child in parent_global_children %}
         <a class="sb-link {% if request.path == '/parent/child/' ~ child.enrollment_id %}active{% endif %}"
           href="{{ url_for('parent.child_detail', enrollment_id=child.enrollment_id) }}">
@@ -1585,7 +1585,8 @@
       {% endif %}
 
       {% if parent_global_children and parent_global_children|length > 1 %}
-      <button class="sb-dropdown-btn {% if request.path == '/reservation' or request.path.startswith('/parent/reserve') %}open{% endif %}"
+      <button
+        class="sb-dropdown-btn {% if request.path == '/reservation' or request.path.startswith('/parent/reserve') %}open{% endif %}"
         onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
         <div class="sb-left">
           <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
@@ -1597,7 +1598,8 @@
         </div>
         <span class="sb-dropdown-arrow">▼</span>
       </button>
-      <div class="sb-dropdown-content {% if request.path == '/reservation' or request.path.startswith('/parent/reserve') %}show{% endif %}">
+      <div
+        class="sb-dropdown-content {% if request.path == '/reservation' or request.path.startswith('/parent/reserve') %}show{% endif %}">
         {% for child in parent_global_children %}
         <a class="sb-link {% if request.path == '/reservation' and request.args.get('enrollment_id') == child.enrollment_id|string %}active{% endif %}"
           href="{{ url_for('student.student_reservation', enrollment_id=child.enrollment_id) }}">
@@ -1656,8 +1658,7 @@
           </svg></span> Billing
       </a>
       {% else %}
-      <a class="sb-link {% if '/bills' in request.path %}active{% endif %}"
-        href="/parent/bills">
+      <a class="sb-link {% if '/bills' in request.path %}active{% endif %}" href="/parent/bills">
         <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
             fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <rect x="2" y="5" width="20" height="14" rx="2"></rect>
@@ -1687,7 +1688,8 @@
             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
           </svg></span> SWAFO Conferences
         {% if has_pending_swafo_conferences %}
-        <span style="width: 9px; height: 9px; background-color: #ef4444; border-radius: 50%; display: inline-block; margin-left: auto; box-shadow: 0 0 0 2px #fff;"></span>
+        <span
+          style="width: 9px; height: 9px; background-color: #ef4444; border-radius: 50%; display: inline-block; margin-left: auto; box-shadow: 0 0 0 2px #fff;"></span>
         {% endif %}
       </a>
 
@@ -1787,7 +1789,8 @@
       </div>
 
       {% if session.get('is_swafo') %}
-      {% set swafo_active = request.path == '/teacher/swafo/students' or request.path.startswith('/teacher/swafo/conference') %}
+      {% set swafo_active = request.path == '/teacher/swafo/students' or
+      request.path.startswith('/teacher/swafo/conference') %}
       <div class="sb-section-label">SWAFO</div>
       <button class="sb-dropdown-btn {% if swafo_active %}open{% endif %}"
         onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
@@ -1827,7 +1830,8 @@
           </svg>
           Parent Conferences
           {% if has_pending_teacher_swafo_conferences %}
-          <span style="width: 9px; height: 9px; background-color: #ef4444; border-radius: 50%; display: inline-block; margin-left: auto; box-shadow: 0 0 0 2px #fff;"></span>
+          <span
+            style="width: 9px; height: 9px; background-color: #ef4444; border-radius: 50%; display: inline-block; margin-left: auto; box-shadow: 0 0 0 2px #fff;"></span>
           {% endif %}
         </a>
       </div>
@@ -2262,13 +2266,14 @@
       </a>
 
       <!-- System & Security Dropdown -->
-      {% set sys_sec_active = request.path.startswith('/super-admin/security') or request.path.startswith('/super-admin/audit-logs') or request.path.startswith('/super-admin/backup-database') %}
+      {% set sys_sec_active = request.path.startswith('/super-admin/security') or
+      request.path.startswith('/super-admin/audit-logs') or request.path.startswith('/super-admin/backup-database') %}
       <button class="sb-dropdown-btn {% if sys_sec_active %}open{% endif %}"
         onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('show');">
         <div class="sb-left">
           <span class="sb-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
             </svg></span> System & Security
         </div>
         <span class="sb-dropdown-arrow">▼</span>
@@ -2279,7 +2284,7 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
             style="vertical-align: middle; margin-right: 6px;">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
           </svg> Security Center
         </a>
         <a class="sb-link {% if request.path.startswith('/super-admin/audit-logs') %}active{% endif %}"
@@ -2287,11 +2292,11 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
             style="vertical-align: middle; margin-right: 6px;">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <line x1="16" y1="13" x2="8" y2="13"/>
-            <line x1="16" y1="17" x2="8" y2="17"/>
-            <polyline points="10 9 9 9 8 9"/>
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
           </svg> Audit Logs
         </a>
         <a class="sb-link {% if request.path.startswith('/super-admin/backup-database') %}active{% endif %}"
@@ -2299,9 +2304,9 @@
           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
             style="vertical-align: middle; margin-right: 6px;">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
           </svg> Database Backup
         </a>
       </div>
@@ -2529,52 +2534,10 @@
       {% endif %}
 
 
-
-      {% if session.get('roles') and session.get('roles')|length > 1 and session.get('role') != 'student' and not required %}
-      <div class="role-switcher-wrapper" style="margin-right: 6px;">
-        <button class="role-switcher-btn" id="roleSwitcherBtn" onclick="toggleRoleMenu()">
-          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="16 3 21 3 21 8"></polyline>
-            <line x1="10" y1="14" x2="21" y2="3"></line>
-            <polyline points="8 21 3 21 3 16"></polyline>
-            <line x1="14" y1="10" x2="3" y2="21"></line>
-          </svg>
-          {% set r_map = {'super_admin': 'Super Admin', 'branch_admin': 'Branch Admin', 'registrar': 'Registrar', 'cashier': 'Cashier', 'librarian': 'Librarian', 'parent': 'Parent', 'student': 'Student', 'teacher': 'Teacher'} %}
-          <span>{{ r_map.get(session.get('role'), session.get('role')|title) }} Mode</span>
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </button>
-
-        <div class="role-dropdown" id="roleDropdown">
-          <div style="font-size: 0.72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; padding: 6px 10px 4px; border-bottom: 1px solid #f1f5f9; margin-bottom: 6px;">
-            Switch Role Mode
-          </div>
-          {% for r in session.get('roles') %}
-          {% set is_active = (r == session.get('role')) %}
-          {% set role_title = r_map.get(r, r|title) %}
-          <form action="/auth/switch-role" method="POST" style="margin: 0;" id="roleSwitchForm_{{ r }}">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <input type="hidden" name="target_role" value="{{ r }}">
-            <button type="button"
-              onclick="confirmRoleSwitch(event, 'roleSwitchForm_{{ r }}', '{{ role_title }}')"
-              style="width: 100%; text-align: left; background: {% if is_active %}#eff6ff{% else %}transparent{% endif %}; border: none; padding: 8px 10px; border-radius: 8px; font-size: 0.85rem; font-weight: {% if is_active %}700{% else %}500{% endif %}; color: {% if is_active %}#1d4ed8{% else %}#334155{% endif %}; cursor: pointer; display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; transition: background 0.15s;"
-              {% if is_active %}disabled style="opacity: 0.8; cursor: default;"{% endif %}>
-              <span>{{ role_title }}</span>
-              {% if is_active %}
-              <span style="font-size: 0.7rem; background: #2563eb; color: #fff; padding: 2px 8px; border-radius: 10px; font-weight: 700;">Active</span>
-              {% endif %}
-            </button>
-          </form>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-
       {% if session.get('role') and not required %}
       <div class="profile-dropdown-wrapper">
         <button class="profile-toggle-btn" id="profileBtn" onclick="toggleProfileMenu()"
-          style="background:none; border:none; cursor:pointer; padding:2px;">
+          style="background:none; border:none; cursor:pointer; padding:2px; position:relative; display:inline-block;">
           {% if live_profile_image %}
           <img
             src="{% if live_profile_image.startswith('http') %}{{ live_profile_image }}{% elif live_profile_image.startswith('/') %}{{ live_profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ live_profile_image) }}{% endif %}"
@@ -2584,6 +2547,18 @@
           <div class="sb-avatar"
             style="width: 36px; height: 36px; border-radius: 50%; background: #ffffff; color: #1a3a8f; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; border: 2px solid rgba(255,255,255,0.4);">
             {{ (session.get('full_name') or session.get('student_name') or session.get('username') or 'U')[0] | upper }}
+          </div>
+          {% endif %}
+
+          {% if session.get('roles') and session.get('roles')|length > 1 and session.get('role') != 'student' %}
+          <div class="avatar-role-switch-badge" title="Switch Role Mode"
+            style="position: absolute; top: -1px; right: -1px; width: 17px; height: 17px; background: #2563eb; color: #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid #ffffff; box-shadow: 0 2px 5px rgba(0,0,0,0.25);">
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 11V9a2 2 0 0 1 2-2h12"/>
+              <polyline points="17 3 21 7 17 11"/>
+              <path d="M17 13v2a2 2 0 0 1-2 2H3"/>
+              <polyline points="7 21 3 17 7 13"/>
+            </svg>
           </div>
           {% endif %}
         </button>
@@ -2600,7 +2575,8 @@
           {% if session.get('gender') == 'Male' %}{% set honorific = "Mr. " %}{% elif session.get('gender') == 'Female'
           %}{% set honorific = "Ms. " %}{% endif %}
           {% endif %}
-          {% set disp = honorific ~ (live_parent_full_name or session.get('full_name') or session.get('student_name') or session.get('username')
+          {% set disp = honorific ~ (live_parent_full_name or session.get('full_name') or session.get('student_name') or
+          session.get('username')
           or 'System User') %}
 
           <div
@@ -2651,7 +2627,45 @@
               Change Password
             </a>
 
-
+            {% if session.get('roles') and session.get('roles')|length > 1 and session.get('role') != 'student' %}
+            {% set r_map = {'super_admin': 'Super Admin', 'branch_admin': 'Branch Admin', 'registrar': 'Registrar', 'cashier': 'Cashier', 'librarian': 'Librarian', 'parent': 'Parent', 'student': 'Student', 'teacher': 'Teacher'} %}
+            {% for r in session.get('roles') %}
+            {% if r != session.get('role') %}
+            {% set target_title = r_map.get(r, r|title) %}
+            <form action="/auth/switch-role" method="POST" style="margin: 0;" id="roleSwitchForm_profile_{{ r }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="target_role" value="{{ r }}">
+              <button type="button" onclick="confirmRoleSwitch(event, 'roleSwitchForm_profile_{{ r }}', '{{ target_title }}')"
+                class="profile-dropdown-link"
+                style="width: 100%; border: none; background: transparent; cursor: pointer; justify-content: space-between;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="16 3 21 3 21 8"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                    <polyline points="8 21 3 21 3 16"></polyline>
+                    <line x1="14" y1="10" x2="3" y2="21"></line>
+                  </svg>
+                  <span>Switch Account</span>
+                </div>
+                <div style="position: relative; width: 24px; height: 24px; flex-shrink: 0;">
+                  <div style="width: 24px; height: 24px; border-radius: 50%; background: #1a3a8f; color: #ffffff; font-size: 11px; font-weight: 800; display: flex; align-items: center; justify-content: center; box-shadow: 0 1px 3px rgba(0,0,0,0.15);">
+                    {{ target_title[0] }}
+                  </div>
+                  <div style="position: absolute; top: -2px; right: -2px; width: 12px; height: 12px; background: #2563eb; border: 1.5px solid #ffffff; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #ffffff;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="7" height="7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M7 11V9a2 2 0 0 1 2-2h12"/>
+                      <polyline points="17 3 21 7 17 11"/>
+                      <path d="M17 13v2a2 2 0 0 1-2 2H3"/>
+                      <polyline points="7 21 3 17 7 13"/>
+                    </svg>
+                  </div>
+                </div>
+              </button>
+            </form>
+            {% endif %}
+            {% endfor %}
+            {% endif %}
 
             <a href="/logout" class="profile-dropdown-link"
               style="color: #ef4444; border-top: 1px solid #f8fafc; margin-top: 4px; padding-top: 8px;">
@@ -3337,64 +3351,150 @@
 
   {% if session.get('user_id') or session.get('role') %}
   <!-- Role Switch Confirmation Modal (English) -->
-  <div class="modal-overlay" id="confirmRoleSwitchModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); backdrop-filter:blur(4px); z-index:99999; justify-content:center; align-items:center;">
-    <div style="background:#fff; width:90%; max-width:440px; border-radius:20px; padding:28px 24px; box-shadow:0 20px 40px rgba(0,0,0,0.25); text-align:center; animation: modalIn 0.2s ease;">
-      <div style="width:56px; height:56px; background:#eff6ff; color:#2563eb; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px; font-size:1.6rem; border:2px solid #bfdbfe;">
-        🔄
+  <div class="modal-overlay" id="confirmRoleSwitchModal"
+    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); backdrop-filter:blur(4px); z-index:99999; justify-content:center; align-items:center;">
+    <div
+      style="background:#fff; width:90%; max-width:440px; border-radius:20px; padding:28px 24px; box-shadow:0 20px 40px rgba(0,0,0,0.25); text-align:center; animation: modalIn 0.2s ease;">
+      <div
+        style="width:56px; height:56px; background:#eff6ff; color:#2563eb; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto 16px; border:2px solid #bfdbfe;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M7 11V9a2 2 0 0 1 2-2h12"/>
+          <polyline points="17 3 21 7 17 11"/>
+          <path d="M17 13v2a2 2 0 0 1-2 2H3"/>
+          <polyline points="7 21 3 17 7 13"/>
+        </svg>
       </div>
       <h3 style="font-size:1.2rem; font-weight:800; color:#0f172a; margin-bottom:8px;">Switch Active Role Mode?</h3>
       <p style="font-size:0.9rem; color:#64748b; line-height:1.5; margin-bottom:22px;">
-        Are you sure you want to switch your active session mode to <strong id="targetRoleNameDisplay" style="color:#1d4ed8;"></strong> Mode? Any unsaved changes on your current page may be lost.
+        Are you sure you want to switch your active session mode to <strong id="targetRoleNameDisplay"
+          style="color:#1d4ed8;"></strong> Mode? Any unsaved changes on your current page may be lost.
       </p>
       <div style="display:flex; gap:10px; justify-content:center;">
-        <button type="button" onclick="closeRoleSwitchModal()" style="flex:1; padding:10px 16px; border:1.5px solid #cbd5e1; background:#fff; color:#475569; border-radius:10px; font-weight:700; font-size:0.88rem; cursor:pointer; transition:all 0.15s;">Cancel</button>
-        <button type="button" id="confirmSwitchBtn" onclick="executeRoleSwitch()" style="flex:1; padding:10px 16px; border:none; background:#2563eb; color:#fff; border-radius:10px; font-weight:700; font-size:0.88rem; cursor:pointer; transition:all 0.15s;">Switch Mode</button>
+        <button type="button" onclick="closeRoleSwitchModal()"
+          style="flex:1; padding:10px 16px; border:1.5px solid #cbd5e1; background:#fff; color:#475569; border-radius:10px; font-weight:700; font-size:0.88rem; cursor:pointer; transition:all 0.15s;">Cancel</button>
+        <button type="button" id="confirmSwitchBtn" onclick="executeRoleSwitch()"
+          style="flex:1; padding:10px 16px; border:none; background:#2563eb; color:#fff; border-radius:10px; font-weight:700; font-size:0.88rem; cursor:pointer; transition:all 0.15s;">Switch
+          Mode</button>
       </div>
     </div>
   </div>
 
   <script>
     let pendingRoleFormId = null;
+    let pendingTargetRole = null;
 
-    function confirmRoleSwitch(event, formId, roleTitle) {
+    function confirmRoleSwitch(event, formIdOrRole, roleTitle) {
+      console.log('[confirmRoleSwitch] CALLED with:', formIdOrRole, roleTitle);
       if (event) {
         event.preventDefault();
         event.stopPropagation();
       }
-      pendingRoleFormId = formId;
+
+      if (formIdOrRole && formIdOrRole.includes('roleSwitchForm')) {
+        pendingRoleFormId = formIdOrRole;
+        // Extract target role from the form's hidden input for accuracy with compound roles
+        var formEl = document.getElementById(formIdOrRole);
+        console.log('[confirmRoleSwitch] Form element found:', !!formEl);
+        if (formEl) {
+          var roleInput = formEl.querySelector('input[name="target_role"]');
+          pendingTargetRole = roleInput ? roleInput.value : null;
+        }
+        if (!pendingTargetRole) {
+          // Fallback: extract after 'roleSwitchForm_profile_' or 'roleSwitchForm_'
+          var match = formIdOrRole.match(/^roleSwitchForm_(?:profile_)?(.+)$/);
+          pendingTargetRole = match ? match[1] : formIdOrRole;
+        }
+      } else {
+        pendingTargetRole = formIdOrRole;
+        pendingRoleFormId = 'roleSwitchForm_profile_' + formIdOrRole;
+      }
+      console.log('[confirmRoleSwitch] pendingRoleFormId:', pendingRoleFormId, 'pendingTargetRole:', pendingTargetRole);
+
       var labelEl = document.getElementById('targetRoleNameDisplay');
-      if (labelEl) labelEl.textContent = roleTitle || '';
-      
+      if (labelEl) labelEl.textContent = roleTitle || pendingTargetRole || '';
+
       var modal = document.getElementById('confirmRoleSwitchModal');
-      if (modal) modal.style.display = 'flex';
-      
+      console.log('[confirmRoleSwitch] Modal element found:', !!modal);
+      if (modal) {
+        // Force all visual properties inline to override any child template's .modal-overlay CSS
+        modal.style.display = 'flex';
+        modal.style.opacity = '1';
+        modal.style.zIndex = '99999';
+        modal.style.visibility = 'visible';
+        console.log('[confirmRoleSwitch] Modal display set to flex, opacity forced to 1');
+      } else {
+        console.error('[confirmRoleSwitch] ERROR: Modal element #confirmRoleSwitchModal not found in DOM!');
+        // Fallback: just submit the form directly if modal can't be found
+        var fallbackForm = document.getElementById(pendingRoleFormId);
+        if (fallbackForm) {
+          if (confirm('Switch to ' + (roleTitle || pendingTargetRole) + ' Mode?')) {
+            HTMLFormElement.prototype.submit.call(fallbackForm);
+          }
+        }
+        return;
+      }
+
       var dropdown = document.getElementById('roleDropdown');
       if (dropdown) dropdown.classList.remove('show');
+      var profDropdown = document.getElementById('profileDropdown');
+      if (profDropdown) profDropdown.classList.remove('show');
     }
 
     function closeRoleSwitchModal() {
       var modal = document.getElementById('confirmRoleSwitchModal');
-      if (modal) modal.style.display = 'none';
+      if (modal) {
+        modal.style.display = 'none';
+        modal.style.opacity = '0';
+      }
       pendingRoleFormId = null;
+      pendingTargetRole = null;
     }
 
     function executeRoleSwitch() {
-      if (pendingRoleFormId) {
-        var form = document.getElementById(pendingRoleFormId);
-        var btn = document.getElementById('confirmSwitchBtn');
-        if (btn) {
-          btn.disabled = true;
-          btn.style.opacity = '0.7';
-          btn.textContent = 'Switching Mode...';
-        }
-        if (form) form.submit();
+      var btn = document.getElementById('confirmSwitchBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.style.opacity = '0.7';
+        btn.textContent = 'Switching Mode...';
+      }
+
+      // 1. Try submitting existing form if present
+      var form = pendingRoleFormId ? document.getElementById(pendingRoleFormId) : null;
+      if (form) {
+        try {
+          HTMLFormElement.prototype.submit.call(form);
+          return;
+        } catch (e) { }
+      }
+
+      // 2. Dynamic form fallback: submit directly to /auth/switch-role
+      if (pendingTargetRole) {
+        var dynForm = document.createElement('form');
+        dynForm.method = 'POST';
+        dynForm.action = '/auth/switch-role';
+        dynForm.style.display = 'none';
+
+        var csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = '{{ csrf_token() }}';
+        dynForm.appendChild(csrfInput);
+
+        var roleInput = document.createElement('input');
+        roleInput.type = 'hidden';
+        roleInput.name = 'target_role';
+        roleInput.value = pendingTargetRole;
+        dynForm.appendChild(roleInput);
+
+        document.body.appendChild(dynForm);
+        HTMLFormElement.prototype.submit.call(dynForm);
       }
     }
 
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
       var modal = document.getElementById('confirmRoleSwitchModal');
       if (modal) {
-        modal.addEventListener('click', function(e) {
+        modal.addEventListener('click', function (e) {
           if (e.target === this) closeRoleSwitchModal();
         });
       }
@@ -3403,7 +3503,7 @@
 
   <script>
     // Inactivity Auto-Logout JS Guard (1 hour / 60 minutes policy)
-    (function() {
+    (function () {
       var idleSeconds = 0;
       var maxIdleSeconds = 3600; // 60 mins (1 hour)
       var warningSeconds = 3300; // 55 mins (5-min warning)
@@ -3426,9 +3526,9 @@
       window.addEventListener('keypress', resetIdle);
       window.addEventListener('scroll', resetIdle);
 
-      setInterval(function() {
+      setInterval(function () {
         idleSeconds++;
-        
+
         // Show 5-min warning
         if (idleSeconds >= warningSeconds && idleSeconds < maxIdleSeconds && !warningShown) {
           warningShown = true;
