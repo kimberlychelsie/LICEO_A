@@ -1805,12 +1805,17 @@ def create_student_account(enrollment_id):
 
         if not enrollment:
             flash("Enrollment not found or not approved", "error")
-            return redirect("/registrar/enrollments")
+            return redirect("/registrar/enrollments#enrolled")
+
+        student_email = (enrollment.get("email") or "").strip()
+        if not student_email:
+            flash(f"Cannot create Student Account for {student_name}: No student email address on record. Please update student information with a valid email first.", "error")
+            return redirect("/registrar/enrollments#enrolled")
 
         cursor.execute("SELECT 1 FROM student_accounts WHERE enrollment_id=%s", (enrollment_id,))
         if cursor.fetchone():
             flash("Student account already exists for this enrollment", "warning")
-            return redirect("/registrar/enrollments")
+            return redirect("/registrar/enrollments#enrolled")
 
         cursor.execute("SELECT branch_code FROM branches WHERE branch_id=%s", (branch_id,))
         brow = cursor.fetchone()
@@ -1961,7 +1966,12 @@ def create_parent_account(enrollment_id):
 
         if not enrollment:
             flash("Enrollment not found or not approved", "error")
-            return redirect("/registrar/enrollments")
+            return redirect("/registrar/enrollments#enrolled")
+
+        guardian_email = (enrollment.get("guardian_email") or enrollment.get("email") or "").strip().lower()
+        if not guardian_email:
+            flash("Cannot create Parent Account: No guardian email address on record. Please update student information with a valid guardian email address first.", "error")
+            return redirect("/registrar/enrollments#enrolled")
 
         cursor.execute("""
             SELECT ps.*, u.username FROM parent_student ps
