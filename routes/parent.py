@@ -1452,7 +1452,24 @@ def swafo_conference_acknowledge(conf_id):
             UPDATE swafo_parent_conferences
             SET parent_acknowledged_at = NOW()
             WHERE conference_id = %s
+            RETURNING discipline_log_id, enrollment_id
         """, (conf_id,))
+        updated_conf = cur.fetchone()
+
+        if updated_conf:
+            if updated_conf.get("discipline_log_id"):
+                cur.execute("""
+                    UPDATE swafo_discipline_log
+                    SET status = 'Settled'
+                    WHERE log_id = %s
+                """, (updated_conf["discipline_log_id"],))
+            else:
+                cur.execute("""
+                    UPDATE swafo_discipline_log
+                    SET status = 'Settled'
+                    WHERE enrollment_id = %s AND referred_to_swafo = TRUE AND status != 'Settled'
+                """, (updated_conf["enrollment_id"],))
+
         db.commit()
 
         flash("Digital acknowledgment recorded successfully.", "success")

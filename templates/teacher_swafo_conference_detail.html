@@ -182,6 +182,8 @@
     font-size: .95rem;
     box-shadow: 0 4px 16px rgba(30, 58, 138, 0.3);
     transition: all .18s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .btn-submit:hover {
@@ -275,37 +277,44 @@
   <!-- FORM CARD: EDIT SCHEDULE & MINUTES -->
   <div class="card-box">
     <div class="card-title">
-      <span>Reschedule & Minutes Management</span>
+      <span>Manage Parent Conference & Minutes</span>
     </div>
 
     <form method="POST" action="/teacher/swafo/conference/{{ conf.conference_id }}">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
 
-      <!-- EDIT SCHEDULE FIELDS -->
-      <div style="background: #f8fafc; border: 1px solid var(--bd); padding: 20px; border-radius: 16px; margin-bottom: 24px;">
-        <h4 style="font-size: .95rem; font-weight: 800; color: var(--p); margin: 0 0 16px; text-transform: uppercase; letter-spacing: .04em;">Schedule & Venue Settings</h4>
+      <!-- SECTION 1: EDIT SCHEDULE & VENUE -->
+      <div style="background: #ffffff; border: 1.5px solid #dbeafe; border-radius: 18px; padding: 24px; margin-bottom: 28px; box-shadow: 0 2px 8px rgba(30, 58, 138, 0.04);">
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #eff6ff; padding-bottom: 14px; margin-bottom: 20px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 36px; height: 36px; border-radius: 10px; background: #eff6ff; color: #1e3a8a; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div>
+              <h4 style="font-size: 1rem; font-weight: 800; color: #1e3a8a; margin: 0; text-transform: uppercase; letter-spacing: 0.03em;">1. Schedule & Venue Settings</h4>
+              <span style="font-size: 0.78rem; color: #64748b; font-weight: 600;">Update conference title, date & time, mode, venue/URL link, and status</span>
+            </div>
+          </div>
+        </div>
 
-        <div class="form-grid-3">
+        {% set default_time = (conf.conference_time or '09:00') %}
+        {% set clean_time = default_time[:5] if default_time|length >= 5 else '09:00' %}
+        <div class="form-grid-2">
           <div class="form-group">
-            <label>Conference Title</label>
-            <input type="text" name="title" class="form-control" value="{{ conf.title }}" required>
+            <label>Conference Title *</label>
+            <input type="text" name="title" class="form-control" value="{{ conf.title }}" style="font-weight: 600;" required>
           </div>
 
           <div class="form-group">
-            <label>Conference Date</label>
-            <input type="date" name="conference_date" class="form-control" value="{{ conf.conference_date }}" required>
-          </div>
-
-          <div class="form-group">
-            <label>Conference Time</label>
-            <input type="time" name="conference_time" class="form-control" value="{{ conf.conference_time or '' }}">
+            <label>Scheduled Date & Time * (Future Date & Time Only)</label>
+            <input type="datetime-local" name="conference_datetime" class="form-control" value="{{ conf.conference_date ~ 'T' ~ clean_time }}" style="font-weight: 600;" required>
           </div>
         </div>
 
         <div class="form-grid-3">
           <div class="form-group">
             <label>Meeting Mode</label>
-            <select name="meeting_type" class="form-control">
+            <select name="meeting_type" class="form-control" style="font-weight: 600;">
               <option value="in_person" {% if conf.meeting_type == 'in_person' %}selected{% endif %}>In-Person (SWAFO Office / Campus)</option>
               <option value="online" {% if conf.meeting_type == 'online' %}selected{% endif %}>Online Meeting (Google Meet / Zoom)</option>
             </select>
@@ -317,7 +326,7 @@
           </div>
 
           <div class="form-group">
-            <label>Conference Status</label>
+            <label>Conference Status *</label>
             <select name="status" class="form-control" style="font-weight: 700;">
               <option value="scheduled" {% if conf.status == 'scheduled' %}selected{% endif %}>Scheduled</option>
               <option value="confirmed_by_parent" {% if conf.status == 'confirmed_by_parent' %}selected{% endif %}>Confirmed by Parent</option>
@@ -329,35 +338,47 @@
         </div>
       </div>
 
-      <!-- MINUTES & ACTION PLAN -->
-      <div class="form-group">
-        <label>1. Minutes of Meeting Summary</label>
-        <textarea name="minutes_of_meeting" class="form-control" rows="5" placeholder="Write the summary of discussions held between SWAFO officers, student, and parents...">{{ conf.minutes_of_meeting or '' }}</textarea>
+      <!-- SECTION 2: MINUTES OF MEETING & AGREEMENT TERMS FOR PARENT SIGNATURE -->
+      <div style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 18px; padding: 24px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);">
+        <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1.5px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px;">
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <div style="width: 36px; height: 36px; border-radius: 10px; background: #fef3c7; color: #b45309; display: flex; align-items: center; justify-content: center; font-weight: 800; flex-shrink: 0;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <div>
+              <h4 style="font-size: 1rem; font-weight: 800; color: #0f172a; margin: 0; text-transform: uppercase; letter-spacing: 0.03em;">2. Minutes of Meeting & Parent Agreement Contract</h4>
+              <span style="font-size: 0.78rem; color: #64748b; font-weight: 600;">Official meeting summary & agreed terms required for parent digital signature</span>
+            </div>
+          </div>
+
+          <!-- PARENT ACKNOWLEDGMENT STATUS -->
+          {% if conf.parent_acknowledged_at %}
+          <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 0.78rem; background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; padding: 6px 14px; border-radius: 10px; font-weight: 800;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            Parent Signed ({{ conf.parent_acknowledged_at }})
+          </span>
+          {% else %}
+          <span style="display: inline-block; font-size: 0.78rem; background: #fffbeb; color: #92400e; border: 1px solid #fde68a; padding: 6px 14px; border-radius: 10px; font-weight: 700;">
+            Pending Parent Digital Signature
+          </span>
+          {% endif %}
+        </div>
+
+        <div class="form-group">
+          <label style="color: #0f172a; font-weight: 800;">1. Minutes of Meeting Summary</label>
+          <textarea name="minutes_of_meeting" class="form-control" rows="5" placeholder="Write comprehensive summary of discussions held between SWAFO officers, student, and parents...">{{ conf.minutes_of_meeting or '' }}</textarea>
+        </div>
+
+        <div class="form-group">
+          <label style="color: #0f172a; font-weight: 800;">2. Resolution Action Plan & Agreed Terms (Required for Parent Signature)</label>
+          <textarea name="agreements" class="form-control" rows="4" placeholder="Write agreed resolution terms (e.g. Guidance monitoring period, counseling timeline, behavioral commitments)...">{{ conf.agreements or '' }}</textarea>
+        </div>
       </div>
 
-      <div class="form-group">
-        <label>2. Resolution Action Plan & Agreed Terms</label>
-        <textarea name="agreements" class="form-control" rows="4" placeholder="Write agreed resolution terms (e.g. Guidance monitoring period, counseling timeline, behavioral commitments)...">{{ conf.agreements or '' }}</textarea>
-      </div>
-
-      <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+      <div style="display: flex; justify-content: flex-end; margin-top: 24px;">
         <button type="submit" class="btn-submit">Save Conference Details & Minutes</button>
       </div>
     </form>
-
-    <!-- PARENT ACKNOWLEDGMENT STATUS -->
-    {% if conf.parent_acknowledged_at %}
-    <div class="ack-box ack-success">
-      <strong style="font-size: .95rem; display: block; margin-bottom: 4px;">Digital Parent Acknowledgment Verified</strong>
-      <span style="font-size: .88rem;">The parent electronically signed and confirmed reading the resolution agreement on: <strong>{{ conf.parent_acknowledged_at }}</strong></span>
-    </div>
-    {% else %}
-    <div class="ack-box ack-pending">
-      <strong style="font-size: .95rem; display: block; margin-bottom: 4px;">Pending Parent Digital Acknowledgment</strong>
-      <span style="font-size: .88rem;">Once minutes and resolution terms are saved, parents can review and digitally sign off on their Parent Portal.</span>
-    </div>
-    {% endif %}
-
   </div>
 
 </div>

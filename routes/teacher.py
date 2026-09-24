@@ -7735,7 +7735,19 @@ def teacher_swafo_discipline_log():
                 dl.*,
                 u.full_name AS logged_by_name,
                 CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name,
-                e.grade_level, sec.section_name
+                e.grade_level, sec.section_name,
+                (
+                    SELECT pc.status FROM swafo_parent_conferences pc
+                    WHERE pc.discipline_log_id = dl.log_id OR pc.enrollment_id = dl.enrollment_id
+                    ORDER BY (pc.parent_acknowledged_at IS NOT NULL) DESC, pc.conference_date DESC, pc.created_at DESC
+                    LIMIT 1
+                ) AS conference_status,
+                (
+                    SELECT pc.parent_acknowledged_at FROM swafo_parent_conferences pc
+                    WHERE pc.discipline_log_id = dl.log_id OR pc.enrollment_id = dl.enrollment_id
+                    ORDER BY (pc.parent_acknowledged_at IS NOT NULL) DESC, pc.conference_date DESC, pc.created_at DESC
+                    LIMIT 1
+                ) AS conference_parent_ack
             FROM swafo_discipline_log dl
             JOIN enrollments e ON dl.enrollment_id = e.enrollment_id
             LEFT JOIN sections sec ON e.section_id = sec.section_id
@@ -7773,6 +7785,57 @@ def teacher_swafo_discipline_log():
     finally:
         cur.close()
         db.close()
+
+
+@teacher_bp.route("/teacher/swafo/discipline-log/<int:log_id>/update-status", methods=["POST"])
+def update_discipline_log_status(log_id):
+    if not _require_teacher():
+        flash("Access denied.", "error")
+        return redirect("/teacher")
+
+    status = request.form.get("status", "Settled")
+    action_taken = request.form.get("action_taken", "")
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    try:
+        cur.execute("SELECT * FROM swafo_discipline_log WHERE log_id = %s", (log_id,))
+        log_entry = cur.fetchone()
+
+        if not log_entry:
+            flash("Discipline log entry not found.", "error")
+            return redirect("/teacher/swafo/discipline-log")
+
+        # STRICT WORKFLOW: If referred to SWAFO, require a COMPLETED or PARENT SIGNED parent conference first!
+        if log_entry.get("referred_to_swafo"):
+            cur.execute("""
+                SELECT status, parent_acknowledged_at FROM swafo_parent_conferences
+                WHERE (discipline_log_id = %s OR enrollment_id = %s)
+                  AND (LOWER(status) = 'completed' OR parent_acknowledged_at IS NOT NULL)
+                LIMIT 1
+            """, (log_id, log_entry["enrollment_id"]))
+            conf = cur.fetchone()
+
+            if not conf:
+                flash("Cannot mark as Settled. The SWAFO Guidance Parent Conference must be completed or signed by parent first.", "error")
+                return redirect("/teacher/swafo/discipline-log")
+
+        cur.execute("""
+            UPDATE swafo_discipline_log
+            SET status = %s,
+                action_taken = CASE WHEN %s != '' THEN %s ELSE action_taken END
+            WHERE log_id = %s
+        """, (status, action_taken, action_taken, log_id))
+        db.commit()
+        flash(f"Violation status updated to '{status}'. Student clearance updated.", "success")
+    except Exception as e:
+        db.rollback()
+        flash(f"Error updating status: {str(e)}", "error")
+    finally:
+        cur.close()
+        db.close()
+
+    return redirect("/teacher/swafo/discipline-log")
 
 
 def _send_swafo_conference_email(cur, enrollment_id, title, conference_date, conference_time, meeting_type, meeting_location, agenda, status_label="Scheduled"):
@@ -7930,14 +7993,41 @@ def teacher_swafo_conferences():
             discipline_log_id_val = request.form.get("discipline_log_id")
             discipline_log_id = int(discipline_log_id_val) if discipline_log_id_val and discipline_log_id_val.isdigit() else None
             title = request.form.get("title", "").strip()
-            conference_date = request.form.get("conference_date", "")
+            conference_datetime = request.form.get("conference_datetime", "").strip()
+            conference_date = request.form.get("conference_date", "").strip()
             conference_time = request.form.get("conference_time", "").strip()
             meeting_type = request.form.get("meeting_type", "in_person")
             meeting_location = request.form.get("meeting_location", "").strip()
             agenda = request.form.get("agenda", "").strip()
 
+            if conference_datetime:
+                parts = conference_datetime.split("T")
+                conference_date = parts[0]
+                if len(parts) > 1 and parts[1]:
+                    try:
+                        from datetime import datetime, timedelta
+                        dt_obj = datetime.strptime(conference_datetime, "%Y-%m-%dT%H:%M")
+                        now = datetime.now()
+                        if dt_obj < now - timedelta(minutes=1):
+                            flash("Cannot schedule a conference in the past. Please select a future date and time.", "error")
+                            return redirect("/teacher/swafo/conferences")
+                        conference_date = dt_obj.strftime("%Y-%m-%d")
+                        conference_time = dt_obj.strftime("%I:%M %p")
+                    except Exception:
+                        conference_date = parts[0]
+                        conference_time = parts[1]
+            elif conference_date:
+                try:
+                    from datetime import datetime
+                    dt_val = datetime.strptime(conference_date, "%Y-%m-%d").date()
+                    if dt_val < datetime.now().date():
+                        flash("Cannot schedule a conference in the past. Please select a future date.", "error")
+                        return redirect("/teacher/swafo/conferences")
+                except Exception:
+                    pass
+
             if not title or not conference_date or not enrollment_id:
-                flash("Please fill in all required fields (Student, Title, Date).", "error")
+                flash("Please fill in all required fields (Student, Title, Scheduled Date & Time).", "error")
                 return redirect("/teacher/swafo/conferences")
 
             cur.execute("""
@@ -8006,19 +8096,20 @@ def teacher_swafo_conferences():
         # Extract unique grade levels for filter dropdown
         grade_levels = sorted(list(set(st["grade_level"] for st in students if st.get("grade_level"))))
 
-        # Recent discipline logs for optional linking
+        # Unsettled discipline logs for optional linking dropdown
         cur.execute("""
             SELECT dl.log_id, dl.incident_type, dl.incident_date,
                 CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name
             FROM swafo_discipline_log dl
             JOIN enrollments e ON dl.enrollment_id = e.enrollment_id
             WHERE dl.branch_id = %s
+              AND (dl.status IS NULL OR LOWER(dl.status) NOT IN ('settled', 'resolved', 'dismissed', 'cleared'))
             ORDER BY dl.incident_date DESC
             LIMIT 50
         """, (branch_id,))
         discipline_logs = cur.fetchall()
 
-        # Logs referred from Discipline Committee for SWAFO Guidance Conference
+        # Unsettled logs referred from Discipline Committee for SWAFO Guidance Conference
         cur.execute("""
             SELECT dl.log_id, dl.enrollment_id, dl.incident_type, dl.incident_date, dl.severity, dl.description, dl.referral_reason,
                 CONCAT(e.student_first_name,' ',COALESCE(e.student_middle_name||' ',''),e.student_last_name) AS student_name,
@@ -8026,7 +8117,9 @@ def teacher_swafo_conferences():
             FROM swafo_discipline_log dl
             JOIN enrollments e ON dl.enrollment_id = e.enrollment_id
             LEFT JOIN sections sec ON e.section_id = sec.section_id
-            WHERE dl.branch_id = %s AND dl.referred_to_swafo = TRUE
+            WHERE dl.branch_id = %s 
+              AND dl.referred_to_swafo = TRUE
+              AND (dl.status IS NULL OR LOWER(dl.status) NOT IN ('settled', 'resolved', 'dismissed', 'cleared'))
             ORDER BY dl.created_at DESC
         """, (branch_id,))
         referred_discipline_logs = cur.fetchall()
@@ -8059,9 +8152,14 @@ def teacher_swafo_conference_detail(conf_id):
     cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     try:
         if request.method == "POST":
-            title = request.form.get("title", "").strip()
-            conference_date = request.form.get("conference_date", "").strip()
-            conference_time = request.form.get("conference_time", "").strip()
+            conf_dt_str = request.form.get("conference_datetime", "").strip()
+            if conf_dt_str and "T" in conf_dt_str:
+                parts = conf_dt_str.split("T")
+                conference_date = parts[0]
+                conference_time = parts[1][:5]
+            else:
+                conference_date = request.form.get("conference_date", "").strip()
+                conference_time = request.form.get("conference_time", "").strip()
             meeting_type = request.form.get("meeting_type", "in_person")
             meeting_location = request.form.get("meeting_location", "").strip()
             minutes = request.form.get("minutes_of_meeting", "").strip()

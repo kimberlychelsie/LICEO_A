@@ -506,10 +506,14 @@ def get_db_connection():
                     cur.execute("ALTER TABLE swafo_discipline_log ADD COLUMN incident_type VARCHAR(100)")
                 if 'severity' not in dl_cols:
                     cur.execute("ALTER TABLE swafo_discipline_log ADD COLUMN severity VARCHAR(50)")
+                if 'offense_level' not in dl_cols:
+                    cur.execute("ALTER TABLE swafo_discipline_log ADD COLUMN offense_level VARCHAR(50)")
                 if 'referred_to_swafo' not in dl_cols:
                     cur.execute("ALTER TABLE swafo_discipline_log ADD COLUMN referred_to_swafo BOOLEAN DEFAULT FALSE")
                 if 'referral_reason' not in dl_cols:
                     cur.execute("ALTER TABLE swafo_discipline_log ADD COLUMN referral_reason TEXT")
+                if 'status' not in dl_cols:
+                    cur.execute("ALTER TABLE swafo_discipline_log ADD COLUMN status VARCHAR(50) DEFAULT 'Pending'")
                 
                 cur.execute("""
                     CREATE TABLE IF NOT EXISTS swafo_parent_conferences (

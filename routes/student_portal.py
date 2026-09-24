@@ -3746,3 +3746,134 @@ def student_swafo_record():
     finally:
         cur.close()
         db.close()
+
+
+# ══════════════════════════════════════════
+# STUDENT CLEARANCE PAGE (Registrar, Cashier, SWAFO, DC Violations)
+# ══════════════════════════════════════════
+@student_portal_bp.route("/student/clearance", methods=["GET"])
+def student_clearance():
+    if not _require_student():
+        return redirect("/")
+
+    enrollment_id = session.get("enrollment_id")
+    user_id = session.get("user_id")
+
+    if not enrollment_id:
+        flash("No enrollment found for your account.", "error")
+        return redirect("/student/dashboard")
+
+    db = get_db_connection()
+    cur = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+
+    try:
+        # 1. Student Enrollment Info
+        cur.execute("""
+            SELECT e.*, s.section_name, sy.label AS year_name, b.branch_name
+            FROM enrollments e
+            LEFT JOIN sections s ON e.section_id = s.section_id
+            LEFT JOIN school_years sy ON e.year_id = sy.year_id
+            LEFT JOIN branches b ON e.branch_id = b.branch_id
+            WHERE e.enrollment_id = %s
+        """, (enrollment_id,))
+        student = cur.fetchone()
+
+        if student:
+            student["student_name"] = " ".join(filter(None, [
+                student.get("student_first_name"),
+                student.get("student_middle_name"),
+                student.get("student_last_name")
+            ]))
+
+        # 2. Registrar Office Requirements Check
+        cur.execute("""
+            SELECT DISTINCT LOWER(TRIM(doc_type)) AS doc_type, file_name, file_path
+            FROM enrollment_documents
+            WHERE enrollment_id = %s
+        """, (enrollment_id,))
+        uploaded_docs = cur.fetchall() or []
+        uploaded_types = set([d["doc_type"] for d in uploaded_docs if d.get("doc_type")])
+
+        def is_doc_present(keywords):
+            for u_type in uploaded_types:
+                if any(kw in u_type for kw in keywords):
+                    return True
+            return False
+
+        has_psa        = is_doc_present(["psa", "birth"])
+        has_baptismal  = is_doc_present(["baptismal", "binyag"])
+        has_form_138   = is_doc_present(["form 138", "form138", "138", "card / form 138", "report card", "card"])
+        has_good_moral = is_doc_present(["good moral", "good_moral", "moral"])
+        has_form_137   = is_doc_present(["form 137", "form137", "137", "cumulative"])
+
+        doc_checklist = [
+            {"doc_name": "PSA Birth Certificate", "status": "Submitted" if has_psa else "Missing"},
+            {"doc_name": "Baptismal Certificate", "status": "Submitted" if has_baptismal else "Missing"},
+            {"doc_name": "Card / Form 138", "status": "Submitted" if has_form_138 else "Missing"},
+            {"doc_name": "Good Moral Certificate", "status": "Submitted" if has_good_moral else "Missing"},
+            {"doc_name": "Form 137", "status": "Submitted" if has_form_137 else "Missing"}
+        ]
+        req_complete = all(item["status"] == "Submitted" for item in doc_checklist)
+        req_status_label = "Complete" if req_complete else "Pending"
+
+        # 3. Cashier Office Balance Check
+        cur.execute("SELECT * FROM billing WHERE enrollment_id = %s", (enrollment_id,))
+        bill = cur.fetchone()
+
+        total_amount = float(bill["total_amount"]) if bill and bill.get("total_amount") else 0.0
+        amount_paid  = float(bill["amount_paid"]) if bill and bill.get("amount_paid") else 0.0
+        balance      = float(bill["balance"]) if bill and bill.get("balance") else max(0.0, total_amount - amount_paid)
+
+        balance_cleared = (balance <= 0)
+        balance_status_label = "Cleared" if balance_cleared else "Has Balance"
+
+        # 4. Guidance & SWAFO Personal Information Form (SWAFO Record)
+        cur.execute("SELECT status, submitted_at, updated_at FROM swafo_records WHERE enrollment_id = %s", (enrollment_id,))
+        swafo_rec = cur.fetchone()
+        
+        swafo_accomplished = True if (swafo_rec and swafo_rec.get("status") == "submitted") else False
+        swafo_status_label = "Accomplished" if swafo_accomplished else "Unaccomplished"
+
+        # 5. Dean of Discipline / DC Student Violations Log
+        cur.execute("""
+            SELECT *
+            FROM swafo_discipline_log
+            WHERE enrollment_id = %s
+            ORDER BY incident_date DESC, log_id DESC
+        """, (enrollment_id,))
+        discipline_logs = cur.fetchall() or []
+
+        active_violations = [l for l in discipline_logs if str(l.get("status", "")).lower() not in ["settled", "resolved", "dismissed"]]
+        violations_settled = (len(active_violations) == 0)
+        violations_status_label = "Settled" if violations_settled else "Active Violation"
+
+        # Overall Clearance Status
+        overall_cleared = req_complete and balance_cleared and swafo_accomplished and violations_settled
+
+        return render_template(
+            "student_clearance.html",
+            student=student,
+            doc_checklist=doc_checklist,
+            req_complete=req_complete,
+            req_status_label=req_status_label,
+            total_amount=total_amount,
+            amount_paid=amount_paid,
+            balance=balance,
+            balance_cleared=balance_cleared,
+            balance_status_label=balance_status_label,
+            swafo_rec=swafo_rec,
+            swafo_accomplished=swafo_accomplished,
+            swafo_status_label=swafo_status_label,
+            discipline_logs=discipline_logs,
+            active_violations=active_violations,
+            violations_settled=violations_settled,
+            violations_status_label=violations_status_label,
+            overall_cleared=overall_cleared
+        )
+    except Exception as e:
+        flash(f"Error loading clearance: {str(e)}", "error")
+        return redirect("/student/dashboard")
+    finally:
+        cur.close()
+        db.close()
+
