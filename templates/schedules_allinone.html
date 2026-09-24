@@ -428,6 +428,7 @@
         padding: 10px;
         vertical-align: top;
         min-height: 55px;
+        height: 1px;
         background: #ffffff;
     }
     .matrix-table td:last-child {
@@ -1641,7 +1642,7 @@
         if (cfg.lunchStart && cfg.lunchEnd) { pointsSet.add(normTime(cfg.lunchStart)); pointsSet.add(normTime(cfg.lunchEnd)); }
 
         // 2. Add standard period cutoffs
-        const defaultCutoffs = ['07:15', '08:05', '08:15', '08:55', '09:05', '09:55', '10:15', '10:30', '10:45', '11:30', '12:00', '12:30', '13:00', '14:00', '15:00', '15:15', '16:00', '17:00'];
+        const defaultCutoffs = ['07:15', '08:05', '08:55', '09:05', '09:55', '10:45', '11:30', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
         defaultCutoffs.forEach(pt => pointsSet.add(normTime(pt)));
 
         // 3. Add schedule start & end times
@@ -1654,21 +1655,21 @@
         const sortedPoints = Array.from(pointsSet).filter(Boolean).sort((a, b) => a.localeCompare(b));
 
         // Form atomic time slots for matrix rows
-        const timeSlots = [];
+        const rawTimeSlots = [];
         for (let i = 0; i < sortedPoints.length - 1; i++) {
             const start = sortedPoints[i];
             const end = sortedPoints[i + 1];
             if (start >= end) continue;
 
-            const isPrayer = (start === normTime(cfg.prayerStart) && end === normTime(cfg.prayerEnd));
-            const isRecess = (start === normTime(cfg.recessStart) && end === normTime(cfg.recessEnd));
-            const isLunch = (start === normTime(cfg.lunchStart) && end === normTime(cfg.lunchEnd));
+            const isPrayer = (cfg.prayerStart && cfg.prayerEnd && start >= normTime(cfg.prayerStart) && end <= normTime(cfg.prayerEnd));
+            const isRecess = (cfg.recessStart && cfg.recessEnd && start >= normTime(cfg.recessStart) && end <= normTime(cfg.recessEnd));
+            const isLunch = (cfg.lunchStart && cfg.lunchEnd && start >= normTime(cfg.lunchStart) && end <= normTime(cfg.lunchEnd));
 
-            const hasActivity = isPrayer || isRecess || isLunch || filtered.some(s => s.start_time < end && s.end_time > start);
+            const hasActivity = isPrayer || isRecess || isLunch || filtered.some(s => normTime(s.start_time) < end && normTime(s.end_time) > start);
             
             // Include slot if active or within normal school day
             if (hasActivity || (start >= '07:15' && end <= '17:00')) {
-                timeSlots.push({
+                rawTimeSlots.push({
                     start,
                     end,
                     label: formatRange12Hour(start, end),
@@ -1679,11 +1680,31 @@
             }
         }
 
+        // Collapse adjacent identical break slots (e.g., 12:30-13:00 and 13:00-13:30 lunch into one 12:30-13:30 slot)
+        const timeSlots = [];
+        rawTimeSlots.forEach(slot => {
+            const prev = timeSlots[timeSlots.length - 1];
+            if (prev && (
+                (slot.isPrayer && prev.isPrayer) ||
+                (slot.isRecess && prev.isRecess) ||
+                (slot.isLunch && prev.isLunch)
+            )) {
+                prev.end = slot.end;
+                prev.label = formatRange12Hour(prev.start, prev.end);
+            } else {
+                timeSlots.push(slot);
+            }
+        });
+
+        // 2D matrix tracking skipped cells due to rowspan
+        const skipMap = {};
+        days.forEach(d => { skipMap[d] = {}; });
+
         let html = `<table class="matrix-table"><thead><tr><th class="matrix-time-col">Time Slot</th>`;
         days.forEach(d => html += `<th>${d}</th>`);
         html += `</tr></thead><tbody>`;
 
-        timeSlots.forEach(slot => {
+        timeSlots.forEach((slot, slotIdx) => {
             html += `<tr><td class="matrix-time-col">${slot.label}</td>`;
             if (slot.isPrayer) {
                 html += `<td colspan="${days.length}" style="background:#eff6ff; text-align:center; color:#1e40af; font-weight:800; font-size:0.8rem; border-bottom:1px solid #bfdbfe;">MORNING PRAYER / HOLY ROSARY / HOMEROOM</td></tr>`;
@@ -1699,43 +1720,75 @@
             }
 
             days.forEach(d => {
-                const startingMatches = filtered.filter(s => s.day_of_week === d && s.start_time >= slot.start && s.start_time < slot.end);
-                const ongoingMatches = filtered.filter(s => s.day_of_week === d && s.start_time < slot.start && s.end_time > slot.start);
+                if (skipMap[d][slotIdx]) {
+                    // Spanned by an earlier cell's rowspan -> skip rendering <td>
+                    return;
+                }
 
-                html += `<td data-day="${d}" data-start="${slot.start}" data-end="${slot.end}"
+                // Schedules for day d that start in this slot (or started before grid if slot 0)
+                const startingMatches = filtered.filter(s => {
+                    if (s.day_of_week !== d) return false;
+                    const st = normTime(s.start_time);
+                    const et = normTime(s.end_time);
+                    if (st >= slot.start && st < slot.end) return true;
+                    if (slotIdx === 0 && st < slot.start && et > slot.start) return true;
+                    return false;
+                });
+
+                let rowSpan = 1;
+                if (startingMatches.length > 0) {
+                    let maxEndTime = slot.end;
+                    startingMatches.forEach(m => {
+                        const et = normTime(m.end_time);
+                        if (et > maxEndTime) maxEndTime = et;
+                    });
+
+                    // Count consecutive non-break slots covered
+                    let k = slotIdx + 1;
+                    while (k < timeSlots.length) {
+                        const nextSlot = timeSlots[k];
+                        if (nextSlot.isPrayer || nextSlot.isRecess || nextSlot.isLunch) break;
+                        if (nextSlot.start < maxEndTime) {
+                            rowSpan++;
+                            skipMap[d][k] = true;
+                            k++;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+
+                html += `<td ${rowSpan > 1 ? `rowspan="${rowSpan}"` : ''} data-day="${d}" data-start="${slot.start}" data-end="${slot.end}"
                              ondragover="handleMatrixDragOver(event, '${d}', '${slot.start}', '${slot.end}')"
                              ondragleave="handleMatrixDragLeave(event)"
-                             ondrop="handleMatrixDrop(event, '${d}', '${slot.start}', '${slot.end}')">`;
+                             ondrop="handleMatrixDrop(event, '${d}', '${slot.start}', '${slot.end}')"
+                             style="${rowSpan > 1 ? 'vertical-align: top; height: 1px;' : ''}">`;
                 
                 if (startingMatches.length > 0) {
                     startingMatches.forEach(m => {
                         const safeSubj = (m.subject_name || '').replace(/'/g, "\\'");
                         const safeSec = (m.section_name || '').replace(/'/g, "\\'");
                         const timeLabel = formatRange12Hour(m.start_time, m.end_time);
-                        const isMultiSlot = (m.end_time > slot.end);
+                        const isMultiSlot = (normTime(m.end_time) > slot.end);
 
                         html += `
                             <div class="matrix-card" draggable="true"
                                  ondragstart="handleMatrixDragStart(event, ${m.schedule_id})"
-                                 ondragend="handleMatrixDragEnd(event)">
-                                <button type="button" class="matrix-card-del-btn" title="Delete Schedule"
-                                        onclick="deleteMatrixSchedule(event, ${m.schedule_id}, '${safeSubj}', '${safeSec}', '${d}', '${timeLabel}')">
-                                    &times;
-                                </button>
-                                <div class="matrix-card-sec">${m.section_name} (${m.grade_name || ''})</div>
-                                <div class="matrix-card-subj">${m.subject_name}</div>
-                                <div class="matrix-card-meta">${m.teacher_name} • Rm ${m.room}</div>
-                                ${isMultiSlot ? `<div style="margin-top:4px; font-size:0.68rem; font-weight:700; color:#0284c7; background:#e0f2fe; padding:2px 6px; border-radius:6px; display:inline-block;">⏱️ ${timeLabel}</div>` : ''}
+                                 ondragend="handleMatrixDragEnd(event)"
+                                 style="${rowSpan > 1 ? 'height: calc(100% - 6px); display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;' : ''}">
+                                <div>
+                                    <button type="button" class="matrix-card-del-btn" title="Delete Schedule"
+                                            onclick="deleteMatrixSchedule(event, ${m.schedule_id}, '${safeSubj}', '${safeSec}', '${d}', '${timeLabel}')">
+                                        &times;
+                                    </button>
+                                    <div class="matrix-card-sec">${m.section_name} (${m.grade_name || ''})</div>
+                                    <div class="matrix-card-subj">${m.subject_name}</div>
+                                    <div class="matrix-card-meta">${m.teacher_name} • Rm ${m.room}</div>
+                                </div>
+                                ${isMultiSlot ? `<div style="margin-top:4px; font-size:0.68rem; font-weight:700; color:#0284c7; background:#e0f2fe; padding:2px 6px; border-radius:6px; display:inline-block; align-self: flex-start;">⏱️ ${timeLabel}</div>` : ''}
                             </div>
                         `;
                     });
-                } else if (ongoingMatches.length > 0) {
-                    const m = ongoingMatches[0];
-                    html += `
-                        <div style="font-size:0.75rem; color:#64748b; font-weight:600; background:#f8fafc; padding:8px 10px; border-radius:8px; border:1px dashed #cbd5e1; text-align:center;">
-                            ↳ ${m.subject_name} <span style="font-weight:400; font-size:0.7rem; color:#94a3b8;">(until ${format12Hour(m.end_time)})</span>
-                        </div>
-                    `;
                 } else {
                     html += `<span style="font-size:0.7rem; color:#cbd5e1; font-weight:600;">— Vacant —</span>`;
                 }

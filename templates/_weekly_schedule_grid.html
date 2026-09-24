@@ -60,6 +60,7 @@
         padding: 10px;
         vertical-align: top;
         min-height: 60px;
+        height: 1px;
         background: #ffffff;
     }
     .shared-matrix-table td:last-child {
@@ -172,15 +173,12 @@
     let SERVER_BREAK_CONFIG = {{ active_cfg | tojson if active_cfg else 'null' }};
 
     function getAllBreakConfigs() {
-        // Always prioritize server config — admin changes must reflect immediately.
-        // localStorage is only used as fallback when server returns null.
         if (SERVER_BREAK_CONFIG && typeof SERVER_BREAK_CONFIG === 'object') {
             localStorage.setItem('liceo_break_times_config', JSON.stringify(SERVER_BREAK_CONFIG));
             let cfg = SERVER_BREAK_CONFIG;
             if (cfg.prayerStart) cfg = { "DEFAULT": cfg };
             return cfg;
         }
-        // Fallback to cached value if server didn't provide config
         const saved = localStorage.getItem('liceo_break_times_config');
         if (saved) {
             try {
@@ -246,91 +244,77 @@
 
         const cfg = getBreakConfig();
         const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-        const slotsMap = new Map();
+        
+        const pointsSet = new Set();
 
-        function addSlot(start, end, extra = {}) {
-            const sNorm = normTime(start);
-            const eNorm = normTime(end);
-            if (!sNorm || !eNorm || sNorm >= eNorm) return;
-            const key = `${sNorm}|${eNorm}`;
-            if (!slotsMap.has(key)) {
-                slotsMap.set(key, {
-                    start: sNorm,
-                    end: eNorm,
-                    label: formatRange12Hour(sNorm, eNorm),
-                    ...extra
-                });
-            } else if (extra.isPrayer || extra.isRecess || extra.isLunch) {
-                const existing = slotsMap.get(key);
-                slotsMap.set(key, { ...existing, ...extra, label: formatRange12Hour(sNorm, eNorm) });
-            }
-        }
+        // 1. Add break boundaries
+        if (cfg.prayerStart && cfg.prayerEnd) { pointsSet.add(normTime(cfg.prayerStart)); pointsSet.add(normTime(cfg.prayerEnd)); }
+        if (cfg.recessStart && cfg.recessEnd) { pointsSet.add(normTime(cfg.recessStart)); pointsSet.add(normTime(cfg.recessEnd)); }
+        if (cfg.lunchStart && cfg.lunchEnd) { pointsSet.add(normTime(cfg.lunchStart)); pointsSet.add(normTime(cfg.lunchEnd)); }
 
-        // 1. Add break slots
-        if (cfg.prayerStart && cfg.prayerEnd) addSlot(cfg.prayerStart, cfg.prayerEnd, { isPrayer: true });
-        if (cfg.recessStart && cfg.recessEnd) addSlot(cfg.recessStart, cfg.recessEnd, { isRecess: true });
-        if (cfg.lunchStart && cfg.lunchEnd) addSlot(cfg.lunchStart, cfg.lunchEnd, { isLunch: true });
+        // 2. Add standard period cutoffs
+        const defaultCutoffs = ['07:15', '08:05', '08:55', '09:05', '09:55', '10:45', '11:30', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00'];
+        defaultCutoffs.forEach(pt => pointsSet.add(normTime(pt)));
 
-        // 2. Add actual schedule start & end times
+        // 3. Add schedule start & end times
         RAW_SCHEDULES.forEach(s => {
-            if (s.start_time && s.end_time) {
-                addSlot(s.start_time, s.end_time);
-            }
+            if (s.start_time) pointsSet.add(normTime(s.start_time));
+            if (s.end_time) pointsSet.add(normTime(s.end_time));
         });
 
-        // 3. Add standard periods if they don't overlap any existing break or schedule slot
-        const defaultPeriods = [
-            ['07:15', '08:15'],
-            ['08:15', '09:15'],
-            ['09:15', '10:15'],
-            ['10:30', '11:30'],
-            ['11:30', '12:30'],
-            ['13:00', '14:00'],
-            ['14:00', '15:00'],
-            ['15:15', '16:00'],
-            ['16:00', '17:00']
-        ];
+        // Sort unique boundary points
+        const sortedPoints = Array.from(pointsSet).filter(Boolean).sort((a, b) => a.localeCompare(b));
 
-        defaultPeriods.forEach(([s, e]) => {
-            const sNorm = normTime(s);
-            const eNorm = normTime(e);
-            let overlapsWithExisting = false;
-            for (const slot of slotsMap.values()) {
-                if (sNorm < slot.end && eNorm > slot.start) {
-                    overlapsWithExisting = true;
-                    break;
-                }
-            }
-            if (!overlapsWithExisting) {
-                addSlot(s, e);
-            }
-        });
+        // Form atomic time slots for matrix rows
+        const rawTimeSlots = [];
+        for (let i = 0; i < sortedPoints.length - 1; i++) {
+            const start = sortedPoints[i];
+            const end = sortedPoints[i + 1];
+            if (start >= end) continue;
 
-        // 4. Sort and insert gap slots
-        const rawList = Array.from(slotsMap.values()).sort((a, b) => a.start.localeCompare(b.start));
-        const timeSlots = [];
+            const isPrayer = (cfg.prayerStart && cfg.prayerEnd && start >= normTime(cfg.prayerStart) && end <= normTime(cfg.prayerEnd));
+            const isRecess = (cfg.recessStart && cfg.recessEnd && start >= normTime(cfg.recessStart) && end <= normTime(cfg.recessEnd));
+            const isLunch = (cfg.lunchStart && cfg.lunchEnd && start >= normTime(cfg.lunchStart) && end <= normTime(cfg.lunchEnd));
 
-        for (let i = 0; i < rawList.length; i++) {
-            const curr = rawList[i];
-            if (timeSlots.length > 0) {
-                const prevEnd = timeSlots[timeSlots.length - 1].end;
-                if (prevEnd < curr.start) {
-                    timeSlots.push({
-                        start: prevEnd,
-                        end: curr.start,
-                        label: formatRange12Hour(prevEnd, curr.start)
-                    });
-                }
+            const hasActivity = isPrayer || isRecess || isLunch || RAW_SCHEDULES.some(s => normTime(s.start_time) < end && normTime(s.end_time) > start);
+            
+            if (hasActivity || (start >= '07:15' && end <= '17:00')) {
+                rawTimeSlots.push({
+                    start,
+                    end,
+                    label: formatRange12Hour(start, end),
+                    isPrayer,
+                    isRecess,
+                    isLunch
+                });
             }
-            timeSlots.push(curr);
         }
 
-        // 5. Build html table
+        // Collapse adjacent identical break slots
+        const timeSlots = [];
+        rawTimeSlots.forEach(slot => {
+            const prev = timeSlots[timeSlots.length - 1];
+            if (prev && (
+                (slot.isPrayer && prev.isPrayer) ||
+                (slot.isRecess && prev.isRecess) ||
+                (slot.isLunch && prev.isLunch)
+            )) {
+                prev.end = slot.end;
+                prev.label = formatRange12Hour(prev.start, prev.end);
+            } else {
+                timeSlots.push(slot);
+            }
+        });
+
+        // 2D matrix tracking skipped cells due to rowspan
+        const skipMap = {};
+        days.forEach(d => { skipMap[d] = {}; });
+
         let html = `<table class="shared-matrix-table"><thead><tr><th class="shared-matrix-time-col">TIME SLOT</th>`;
         days.forEach(d => html += `<th>${d.toUpperCase()}</th>`);
         html += `</tr></thead><tbody>`;
 
-        timeSlots.forEach(slot => {
+        timeSlots.forEach((slot, slotIdx) => {
             html += `<tr><td class="shared-matrix-time-col">${slot.label}</td>`;
 
             if (slot.isPrayer) {
@@ -347,10 +331,45 @@
             }
 
             days.forEach(d => {
-                const matches = RAW_SCHEDULES.filter(s => s.day_of_week === d && (slot.start < s.end_time && slot.end > s.start_time));
-                html += `<td>`;
-                if (matches.length > 0) {
-                    matches.forEach(m => {
+                if (skipMap[d][slotIdx]) {
+                    return;
+                }
+
+                const startingMatches = RAW_SCHEDULES.filter(s => {
+                    if (s.day_of_week !== d) return false;
+                    const st = normTime(s.start_time);
+                    const et = normTime(s.end_time);
+                    if (st >= slot.start && st < slot.end) return true;
+                    if (slotIdx === 0 && st < slot.start && et > slot.start) return true;
+                    return false;
+                });
+
+                let rowSpan = 1;
+                if (startingMatches.length > 0) {
+                    let maxEndTime = slot.end;
+                    startingMatches.forEach(m => {
+                        const et = normTime(m.end_time);
+                        if (et > maxEndTime) maxEndTime = et;
+                    });
+
+                    let k = slotIdx + 1;
+                    while (k < timeSlots.length) {
+                        const nextSlot = timeSlots[k];
+                        if (nextSlot.isPrayer || nextSlot.isRecess || nextSlot.isLunch) break;
+                        if (nextSlot.start < maxEndTime) {
+                            rowSpan++;
+                            skipMap[d][k] = true;
+                            k++;
+                        } else {
+                            break;
+                        }
+                    }
+                }
+
+                html += `<td ${rowSpan > 1 ? `rowspan="${rowSpan}"` : ''} style="${rowSpan > 1 ? 'vertical-align: top; height: 1px;' : ''}">`;
+
+                if (startingMatches.length > 0) {
+                    startingMatches.forEach(m => {
                         let secLabel = '';
                         if (SHOW_SECTION && m.section_name) {
                             secLabel = m.grade_name ? `${m.section_name} (${m.grade_name})` : m.section_name;
@@ -360,11 +379,17 @@
                         if (SHOW_TEACHER && m.teacher_name) metaParts.push(m.teacher_name);
                         if (m.room) metaParts.push(`Rm ${m.room}`);
 
+                        const timeLabel = formatRange12Hour(m.start_time, m.end_time);
+                        const isMultiSlot = (normTime(m.end_time) > slot.end);
+
                         html += `
-                            <div class="shared-matrix-card">
-                                ${secLabel ? `<div class="shared-matrix-card-sec">${secLabel}</div>` : ''}
-                                <div class="shared-matrix-card-subj">${m.subject_name}</div>
-                                ${metaParts.length > 0 ? `<div class="shared-matrix-card-meta">${metaParts.join(' • ')}</div>` : ''}
+                            <div class="shared-matrix-card" style="${rowSpan > 1 ? 'height: calc(100% - 6px); display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;' : ''}">
+                                <div>
+                                    ${secLabel ? `<div class="shared-matrix-card-sec">${secLabel}</div>` : ''}
+                                    <div class="shared-matrix-card-subj">${m.subject_name}</div>
+                                    ${metaParts.length > 0 ? `<div class="shared-matrix-card-meta">${metaParts.join(' • ')}</div>` : ''}
+                                </div>
+                                ${isMultiSlot ? `<div style="margin-top:4px; font-size:0.68rem; font-weight:700; color:#0284c7; background:#e0f2fe; padding:2px 6px; border-radius:6px; display:inline-block; align-self: flex-start;">⏱️ ${timeLabel}</div>` : ''}
                             </div>
                         `;
                     });
