@@ -4654,6 +4654,39 @@ def registrar_manage_teachers():
                 flash("Please pick their school level (Elementary, JHS, or SHS).", "error")
                 return redirect("/registrar/manage-teachers")
 
+            # ✅ Global Email & Details Duplicate Validation across ALL branches
+            if user_email:
+                cursor.execute("""
+                    SELECT user_id, username, full_name, branch_id
+                    FROM users
+                    WHERE LOWER(TRIM(email)) = LOWER(TRIM(%s))
+                      AND COALESCE(is_archived, FALSE) = FALSE
+                    LIMIT 1
+                """, (user_email,))
+                existing_teacher = cursor.fetchone()
+
+                if existing_teacher:
+                    flash(
+                        f"Teacher account creation failed: Email '{user_email}' is already registered to another user ({existing_teacher['full_name']} - {existing_teacher['username']}). Cannot use duplicate emails across branches.",
+                        "error"
+                    )
+                    return redirect("/registrar/manage-teachers")
+
+            if first_name and last_name:
+                full_name_temp = f"{first_name} {middle_name} {last_name}".strip().replace("  ", " ")
+                cursor.execute("""
+                    SELECT user_id, username, full_name, email
+                    FROM users
+                    WHERE LOWER(TRIM(first_name)) = LOWER(TRIM(%s))
+                      AND LOWER(TRIM(last_name)) = LOWER(TRIM(%s))
+                      AND COALESCE(is_archived, FALSE) = FALSE
+                    LIMIT 1
+                """, (first_name, last_name))
+                existing_by_name = cursor.fetchone()
+                if existing_by_name:
+                    flash(f"Teacher account creation failed: A user with the name '{full_name_temp}' already exists in the system ({existing_by_name['username']}).", "error")
+                    return redirect("/registrar/manage-teachers")
+
             cursor.execute("SELECT branch_code FROM branches WHERE branch_id=%s", (branch_id,))
             b_row = cursor.fetchone()
             branch_code = ((b_row['branch_code'] or "") if b_row else "").strip().upper()

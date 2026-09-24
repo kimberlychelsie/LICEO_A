@@ -41,9 +41,15 @@ def sync_user_parent_links(db, cursor, user_id):
     if primary_role not in user_roles_list:
         user_roles_list.insert(0, primary_role)
 
+    # Define generic system/admin email prefixes that should NEVER be auto-linked to student accounts
+    BLOCKED_SYSTEM_EMAIL_PREFIXES = (
+        'admin@', 'superadmin@', 'registrar@', 'info@', 'system@', 'support@', 'test@', 'demo@'
+    )
+    is_blocked_system_email = email.startswith(BLOCKED_SYSTEM_EMAIL_PREFIXES)
+
     # 1. Clean up invalid parent_student links for this user:
-    # A link is invalid if guardian_email doesn't match OR branch doesn't match.
-    if email:
+    # A link is invalid if guardian_email doesn't match OR branch doesn't match OR if email is a blocked system email.
+    if email and not is_blocked_system_email:
         if user_branch_id is not None:
             cursor.execute("""
                 DELETE FROM parent_student
@@ -64,11 +70,11 @@ def sync_user_parent_links(db, cursor, user_id):
                   )
             """, (user_id, email))
     else:
-        # User has no email -> remove all parent_student links
+        # User has no email or is a system/admin email -> remove all auto parent_student links
         cursor.execute("DELETE FROM parent_student WHERE parent_id = %s", (user_id,))
 
-    # 2. Insert new parent_student links if email matches student(s) in the SAME branch
-    if email:
+    # 2. Insert new parent_student links ONLY IF email matches student(s) in the SAME branch and NOT a blocked system email
+    if email and not is_blocked_system_email:
         if user_branch_id is not None:
             cursor.execute("""
                 INSERT INTO parent_student (parent_id, student_id, relationship)
@@ -78,14 +84,6 @@ def sync_user_parent_links(db, cursor, user_id):
                   AND branch_id = %s
                 ON CONFLICT DO NOTHING
             """, (user_id, email, user_branch_id))
-        else:
-            cursor.execute("""
-                INSERT INTO parent_student (parent_id, student_id, relationship)
-                SELECT %s, enrollment_id, 'guardian'
-                FROM enrollments
-                WHERE LOWER(TRIM(guardian_email)) = %s
-                ON CONFLICT DO NOTHING
-            """, (user_id, email))
 
     # 3. Count valid links left for this user
     cursor.execute("SELECT COUNT(*) AS cnt FROM parent_student WHERE parent_id = %s", (user_id,))

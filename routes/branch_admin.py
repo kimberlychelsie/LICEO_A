@@ -623,6 +623,34 @@ def branch_admin_manage_accounts():
                 flash("Username can only contain letters, numbers, and underscores.", "error")
                 return redirect("/branch-admin/manage-accounts")
 
+            # ✅ Global Email & Details Duplicate Validation across ALL branches
+            if user_email:
+                cursor.execute("""
+                    SELECT user_id, username, full_name, branch_id
+                    FROM users
+                    WHERE LOWER(TRIM(email)) = LOWER(TRIM(%s))
+                      AND COALESCE(is_archived, FALSE) = FALSE
+                    LIMIT 1
+                """, (user_email,))
+                existing_by_email = cursor.fetchone()
+                if existing_by_email:
+                    flash(f"Account creation failed: Email '{user_email}' is already registered to another user ({existing_by_email['full_name']} - {existing_by_email['username']}). Cannot use duplicate emails across branches.", "error")
+                    return redirect("/branch-admin/manage-accounts")
+
+            if first_name and last_name:
+                cursor.execute("""
+                    SELECT user_id, username, full_name, email
+                    FROM users
+                    WHERE LOWER(TRIM(first_name)) = LOWER(TRIM(%s))
+                      AND LOWER(TRIM(last_name)) = LOWER(TRIM(%s))
+                      AND COALESCE(is_archived, FALSE) = FALSE
+                    LIMIT 1
+                """, (first_name, last_name))
+                existing_by_name = cursor.fetchone()
+                if existing_by_name:
+                    flash(f"Account creation failed: A user with the name '{full_name}' already exists in the system ({existing_by_name['username']}).", "error")
+                    return redirect("/branch-admin/manage-accounts")
+
             cursor.execute("SELECT branch_code FROM branches WHERE branch_id=%s", (branch_id,))
             row = cursor.fetchone()
 # ✅ guard against both missing row AND NULL column value
@@ -3031,28 +3059,39 @@ def branch_admin_manage_teachers():
                 flash("This branch has no short code yet. Ask admin to set branch code first.", "error")
                 return redirect("/branch-admin/manage-teachers")
 
-            # Prevent duplicate teacher account using the same email in this branch
-            cursor.execute("""
-                SELECT user_id, username, full_name
-                FROM users
-                WHERE branch_id = %s
-                  AND (role = 'teacher' OR user_roles ILIKE '%%teacher%%')
-                  AND LOWER(TRIM(email)) = LOWER(TRIM(%s))
-                  AND COALESCE(is_archived, FALSE) = FALSE
-                LIMIT 1
-            """, (branch_id, user_email))
+            # ✅ Global Email & Details Duplicate Validation across ALL branches
+            if user_email:
+                cursor.execute("""
+                    SELECT user_id, username, full_name, branch_id
+                    FROM users
+                    WHERE LOWER(TRIM(email)) = LOWER(TRIM(%s))
+                      AND COALESCE(is_archived, FALSE) = FALSE
+                    LIMIT 1
+                """, (user_email,))
+                existing_teacher = cursor.fetchone()
 
-            existing_teacher = cursor.fetchone()
-
-            if existing_teacher:
-                flash(
-                    f"Teacher account already exists for this email: "
-                    f"{existing_teacher['full_name']} ({existing_teacher['username']}).",
-                    "error"
-                )
-                return redirect("/branch-admin/manage-teachers")
+                if existing_teacher:
+                    flash(
+                        f"Teacher account creation failed: Email '{user_email}' is already registered to another user ({existing_teacher['full_name']} - {existing_teacher['username']}). Cannot use duplicate emails across branches.",
+                        "error"
+                    )
+                    return redirect("/branch-admin/manage-teachers")
 
             full_name = f"{first_name} {middle_name} {last_name}".strip().replace("  ", " ")
+
+            if first_name and last_name:
+                cursor.execute("""
+                    SELECT user_id, username, full_name, email
+                    FROM users
+                    WHERE LOWER(TRIM(first_name)) = LOWER(TRIM(%s))
+                      AND LOWER(TRIM(last_name)) = LOWER(TRIM(%s))
+                      AND COALESCE(is_archived, FALSE) = FALSE
+                    LIMIT 1
+                """, (first_name, last_name))
+                existing_by_name = cursor.fetchone()
+                if existing_by_name:
+                    flash(f"Teacher account creation failed: A user with the name '{full_name}' already exists in the system ({existing_by_name['username']}).", "error")
+                    return redirect("/branch-admin/manage-teachers")
             base_username = f"{branch_code}_Teacher"
 
             username = base_username
