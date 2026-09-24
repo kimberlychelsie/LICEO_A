@@ -1888,11 +1888,13 @@ def student_exam_take(exam_id):
     try:
         cur.execute("""
             SELECT e.*, sub.name AS subject_name, s.section_name,
+                   COALESCE(u.full_name, CONCAT(u.first_name, ' ', u.last_name)) AS teacher_name,
                    ext.new_due_date AS individual_extension
             FROM exams e
             JOIN subjects sub ON e.subject_id = sub.subject_id
             JOIN sections s   ON e.section_id  = s.section_id
             JOIN enrollments en ON en.section_id = e.section_id
+            LEFT JOIN users u ON e.teacher_id = u.user_id
             LEFT JOIN individual_extensions ext
                 ON ext.item_id = e.exam_id AND ext.enrollment_id = %s AND ext.item_type IN ('exam', 'quiz')
             WHERE e.exam_id = %s

@@ -34,31 +34,65 @@
     color: #ffffff;
     display: flex;
     align-items: center;
-    padding: 0 30px;
+    justify-content: space-between;
+    padding: 0 24px;
+    padding-top: env(safe-area-inset-top, 0px);
     z-index: 1000;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
   }
 
   .topbar-brand {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     font-weight: 900;
     letter-spacing: 0.5px;
     display: flex;
     align-items: center;
     gap: 10px;
+    flex-shrink: 0;
+  }
+
+  /* Profile avatar in topbar matching base.html */
+  .topbar-avatar-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: default;
+    user-select: none;
+  }
+  .topbar-avatar-img {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid rgba(255,255,255,0.4);
+    flex-shrink: 0;
+  }
+  .topbar-avatar-initial {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: #ffffff;
+    color: #1a3a8f;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 14px;
+    border: 2px solid rgba(255,255,255,0.4);
+    flex-shrink: 0;
   }
 
   .exam-container {
     display: flex;
-    margin-top: 60px;
-    min-height: calc(100vh - 60px);
+    margin-top: 80px !important;
+    min-height: calc(100vh - 80px);
     gap: 24px;
     padding: 24px;
+    padding-top: 24px !important;
     max-width: 1300px;
     margin-left: auto;
     margin-right: auto;
   }
-
 
   /* Main Content Area */
   .exam-content {
@@ -71,16 +105,16 @@
   /* ── Hero Header ── */
   .exam-hero {
     background: linear-gradient(135deg, #1e3a8a 0%, #1a3a8f 50%, #1e40af 100%);
-    border-radius: 24px;
-    padding: 32px;
+    border-radius: 20px;
+    padding: 44px 36px 32px 36px;
     color: #fff;
     margin-bottom: 24px;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -4px rgba(0,0,0,0.1);
+    box-shadow: 0 10px 25px -5px rgba(30, 58, 138, 0.25);
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
     gap: 20px;
     flex-wrap: wrap;
     animation: fadeInDown 0.6s ease-out;
@@ -97,29 +131,57 @@
     border-radius: 50%;
   }
 
-  .exam-hero-content h1 {
-    font-size: 1.5rem;
-    font-weight: 800;
-    margin: 0;
-    letter-spacing: -0.01em;
+  .exam-hero-content {
     z-index: 1;
     position: relative;
+    flex: 1;
+    min-width: 220px;
+  }
+
+  .exam-hero-content h1 {
+    font-size: 1.8rem;
+    font-weight: 900;
+    margin: 0 0 12px 0;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+    color: #ffffff;
+  }
+
+  .exam-hero-subinfo {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .hero-info-line {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.92);
+  }
+
+  .hero-info-icon {
+    font-size: 1.05rem;
+    line-height: 1;
   }
 
   .ay-bubble {
     background: rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(12px);
-    padding: 8px 20px;
+    padding: 10px 22px;
     border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.25);
     font-weight: 800;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
     white-space: nowrap;
     z-index: 1;
     position: relative;
     color: #ffffff;
+    align-self: flex-start;
   }
 
   /* Progress bar styles */
@@ -169,11 +231,16 @@
   @media (max-width: 768px) {
     .exam-container {
       flex-direction: column;
-      padding: 16px 12px;
-      margin-top: 60px;
+      padding: 20px 14px;
+      padding-top: 20px !important;
+      margin-top: 80px !important;
       gap: 16px;
       box-sizing: border-box;
       width: 100%;
+    }
+
+    .exam-hero {
+      padding: 36px 20px 24px 20px;
     }
 
     .exam-content {
@@ -213,15 +280,18 @@
   /* Use dvh (dynamic viewport height) on browsers that support it
      to account for Android navigation bar in fullscreen */
   :fullscreen .exam-container, :-webkit-full-screen .exam-container {
-    margin-top: 60px;
-    min-height: calc(100dvh - 60px);
+    margin-top: 80px !important;
+    padding-top: 24px !important;
+    min-height: calc(100dvh - 80px);
     padding-bottom: 40px; /* extra space above nav bar */
   }
 
   /* Fallback for browsers without dvh */
   @supports not (height: 100dvh) {
     :fullscreen .exam-container, :-webkit-full-screen .exam-container {
-      min-height: calc(100vh - 60px);
+      margin-top: 80px !important;
+      padding-top: 24px !important;
+      min-height: calc(100vh - 80px);
     }
   }
 
@@ -246,16 +316,20 @@
 </style>
 
 <!-- Custom Blue Topbar -->
-<header class="custom-topbar" style="display:flex; justify-content:space-between; align-items:center;">
+<header class="custom-topbar">
   <div class="topbar-brand">
-    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
-    LICEO LMS
+    <svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c3 3 9 3 12 0v-5"></path></svg>
+    <span>LICEO LMS</span>
   </div>
-  <div style="display:flex; align-items:center; gap:20px;">
-    <a href="{{ url_for('student_portal.student_profile') }}" style="color: #fff; text-decoration: none; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.1); padding: 6px 16px; border-radius: 999px;">
-      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-      Profile
-    </a>
+  <div class="topbar-avatar-btn" title="{{ session.get('full_name') or session.get('student_name') or 'Student' }}">
+    {% set profile_img = session.get('profile_image') or live_profile_image %}
+    {% if profile_img %}
+      <img src="{% if profile_img.startswith('http') or profile_img.startswith('/') %}{{ profile_img }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ profile_img) }}{% endif %}" class="topbar-avatar-img" alt="Profile">
+    {% else %}
+      <div class="topbar-avatar-initial">
+        {{ (session.get('full_name') or session.get('student_name') or session.get('username') or 'S')[0] | upper }}
+      </div>
+    {% endif %}
   </div>
 </header>
 
@@ -299,14 +373,30 @@
 
 
   <!-- Exam Content -->
-  <main class="exam-content">
+  <div class="exam-container">
+    <main class="exam-content">
     <!-- Exam Title & Timer Header -->
     <div class="exam-hero">
       <div class="exam-hero-content">
         <h1>{{ exam.title }}</h1>
+        <div class="exam-hero-subinfo">
+          <div class="hero-info-line">
+            <span class="hero-info-text">{{ exam.subject_name or 'General Subject' }}</span>
+          </div>
+          {% if exam.teacher_name %}
+          <div class="hero-info-line">
+            <span class="hero-info-text">{{ exam.teacher_name }}</span>
+          </div>
+          {% endif %}
+          {% if exam.section_name %}
+          <div class="hero-info-line">
+            <span class="hero-info-text">{{ exam.section_name }}</span>
+          </div>
+          {% endif %}
+        </div>
       </div>
       <div id="timerBox" class="ay-bubble">
-        🕒 Time Left: --:--
+        TIME LEFT: --:--
       </div>
     </div>
 
@@ -467,6 +557,7 @@
       {% endfor %}
     </div>
   </form>
+  </main>
 </div>
 
 
@@ -565,10 +656,10 @@ const initialViewportWidth = window.innerWidth;
     }
 
     function updateTimer() {
-        timerEl.textContent = '🕒 Time Left: ' + formatTime(remaining);
+        timerEl.textContent = 'TIME LEFT: ' + formatTime(remaining);
         if (remaining <= 0) {
             timerEl.style.color = '#fca5a5'; // Light red on blue background
-            timerEl.textContent = '🕒 Time Left: 00:00';
+            timerEl.textContent = 'TIME LEFT: 00:00';
             autoSubmit(); return;
         }
         timerEl.style.color = remaining <= 120 ? '#fca5a5' : remaining <= 300 ? '#fde047' : '#ffffff';
@@ -613,7 +704,7 @@ const initialViewportWidth = window.innerWidth;
         const timerEl = document.getElementById('timerBox');
 
         if (timerEl) {
-            timerEl.textContent = '⏱ Submitting...';
+            timerEl.textContent = 'Submitting...';
             timerEl.style.color = '#dc2626';
         }
 
