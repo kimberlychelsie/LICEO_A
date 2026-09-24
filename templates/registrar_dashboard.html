@@ -2196,7 +2196,8 @@
     const ALL_SECTIONS = __rawSections.map(s => ({
         section_id: s.section_id,
         section_name: s.section_name,
-        grade_level_name: (s.grade_level_name || "").toLowerCase()
+        grade_level_name: (s.grade_level_name || "").toLowerCase(),
+        raw_grade_name: s.grade_level_name || ""
     }));
 
     function openCreateModal(enrollmentId, studentName, gradeLevel, currentSectionId) {
@@ -2208,16 +2209,32 @@
         var select = document.getElementById('modalSectionSelect');
         select.innerHTML = '<option value="">— Skip for now —</option>';
 
-        var gradeLower = gradeLevel.trim().toLowerCase();
+        var gradeLower = (gradeLevel || "").trim().toLowerCase();
         var gradeNum = (gradeLower.match(/\d+/) || [])[0];
+
+        // Known strands list for Senior High School
+        var strands = ['stem', 'humss', 'abm', 'gas', 'tvl', 'arts', 'sports'];
+        var targetStrand = strands.find(function (st) { return gradeLower.includes(st); });
 
         var filtered = ALL_SECTIONS.filter(function (s) {
             var secGradeLower = (s.grade_level_name || "").trim().toLowerCase();
             var secGradeNum = (secGradeLower.match(/\d+/) || [])[0];
 
+            // 1. Exact grade string match
             if (secGradeLower === gradeLower) return true;
-            if (gradeNum && secGradeNum) {
-                return gradeNum === secGradeNum;
+
+            // 2. Matching grade number (e.g. 12 and 12)
+            if (gradeNum && secGradeNum && gradeNum === secGradeNum) {
+                // If student has a specific strand (e.g. HUMSS), section MUST match that strand
+                if (targetStrand) {
+                    return secGradeLower.includes(targetStrand);
+                }
+                // If section has a strand but student has no strand specified
+                var secStrand = strands.find(function (st) { return secGradeLower.includes(st); });
+                if (secStrand && targetStrand && secStrand !== targetStrand) {
+                    return false;
+                }
+                return true;
             }
             return false;
         });
@@ -2227,8 +2244,9 @@
         } else {
             filtered.forEach(function (s) {
                 var isSelected = currentSectionId && String(s.section_id) === String(currentSectionId);
+                var displayGrade = s.raw_grade_name || gradeLevel;
                 select.innerHTML += '<option value="' + s.section_id + '"' + (isSelected ? ' selected' : '') + '>'
-                    + gradeLevel + ' - ' + s.section_name + '</option>';
+                    + displayGrade + ' - ' + s.section_name + '</option>';
             });
         }
 
