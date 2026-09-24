@@ -3,17 +3,19 @@
 
 {% block styles %}
 <style>
-    .cr-wrap { max-width: 1200px; margin: 0 auto; padding: 24px 20px 64px; }
+    .cr-wrap { max-width: 1200px; margin: 0 auto; padding: 24px 20px 64px; width: 100%; box-sizing: border-box; }
 
     /* ── Hero ── */
     .cr-hero {
         background: linear-gradient(135deg, #0f2a6b 0%, #1a3a8f 50%, #1e50d0 100%);
         border-radius: 20px;
-        padding: 28px 32px;
+        padding: 24px 32px;
         margin-bottom: 24px;
         position: relative;
         overflow: hidden;
-        box-shadow: 0 8px 32px rgba(26,58,143,0.28);
+        box-shadow: 0 15px 35px rgba(26,58,143,0.15);
+        box-sizing: border-box;
+        width: 100%;
     }
 
     .cr-hero::before {
@@ -30,17 +32,23 @@
         z-index: 1;
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
+        align-items: center;
         flex-wrap: wrap;
-        gap: 16px;
+        gap: 20px;
+        width: 100%;
+        box-sizing: border-box;
     }
 
     .cr-hero-title {
-        font-size: 1.6rem;
+        font-size: 1.8rem;
         font-weight: 900;
         color: #fff;
         margin: 0 0 5px;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.1);
     }
 
     .cr-hero-sub {
@@ -55,14 +63,14 @@
 
     .cr-hero-actions {
         display: flex;
-        gap: 8px;
+        gap: 10px;
         flex-wrap: wrap;
         align-items: center;
     }
     
     .cr-hero-actions > * {
-        flex: 1 1 calc(50% - 12px);
-        min-width: 140px;
+        flex: 1 1 auto;
+        min-width: 130px;
     }
 
     .cr-btn {
@@ -1006,13 +1014,149 @@
         box-shadow: 0 0 0 3px rgba(37,99,235,0.15);
     }
 
+    /* ── Category View Headers & Controls ── */
+    .cview-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 14px;
+        flex-wrap: wrap;
+        gap: 12px;
+        width: 100%;
+        box-sizing: border-box;
+    }
+
+    .cview-title {
+        margin: 0;
+        font-size: 1.1rem;
+        font-weight: 800;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .cview-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+
     @media (max-width: 768px) {
-        .cr-wrap { padding: 20px 16px; }
-        .cr-hero { padding: 24px 20px; border-radius: 16px; flex-direction: column; align-items: flex-start; gap: 16px; }
-        .cr-hero-title { font-size: 1.5rem !important; word-break: break-word; white-space: normal; }
-        .cr-hero-actions { width: 100%; flex-direction: column; gap: 12px; }
-        .cr-btn { font-size: 0.85rem; padding: 10px 14px; width: 100%; justify-content: center; }
-        
+        .cr-wrap {
+            padding: 12px 0 40px !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            box-sizing: border-box;
+        }
+
+        .cr-hero {
+            padding: 20px 16px !important;
+            border-radius: 16px !important;
+            margin-bottom: 20px !important;
+            box-sizing: border-box;
+        }
+        .cr-hero-inner {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 16px !important;
+            width: 100% !important;
+        }
+        .cr-hero-title {
+            font-size: 1.35rem !important;
+            word-break: break-word;
+            white-space: normal;
+            flex-wrap: wrap;
+        }
+        .cr-hero-actions {
+            width: 100% !important;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+            grid-template-columns: none !important;
+        }
+        .cr-hero-actions > * {
+            width: 100% !important;
+            min-width: 0 !important;
+            flex: 1 1 100% !important;
+        }
+        .cr-btn {
+            font-size: 0.85rem;
+            padding: 10px 14px;
+            width: 100% !important;
+            justify-content: center !important;
+            box-sizing: border-box;
+        }
+
+        /* Responsive Horizontal Scroll Tabs */
+        .period-tabs, .category-tabs {
+            display: flex !important;
+            flex-wrap: nowrap !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+            padding-bottom: 8px;
+            margin-bottom: 16px !important;
+            width: 100% !important;
+            box-sizing: border-box;
+            gap: 6px !important;
+        }
+        .period-tabs::-webkit-scrollbar, .category-tabs::-webkit-scrollbar {
+            height: 4px;
+        }
+        .period-tabs::-webkit-scrollbar-thumb, .category-tabs::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .ptab, .ctab {
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+            padding: 8px 14px !important;
+            font-size: 0.8rem !important;
+        }
+
+        /* View Headers on Mobile */
+        .cview-header {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 10px !important;
+            width: 100% !important;
+        }
+        .cview-title {
+            font-size: 1rem !important;
+            word-break: break-word;
+        }
+        .cview-actions {
+            width: 100% !important;
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 8px !important;
+        }
+        .cview-actions .cr-btn {
+            width: 100% !important;
+            justify-content: center !important;
+            box-sizing: border-box;
+        }
+
+        /* DepEd Strip */
+        .deped-strip {
+            padding: 10px 12px !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 8px !important;
+            border-radius: 12px !important;
+            width: 100% !important;
+            box-sizing: border-box;
+        }
+        .deped-strip-badges {
+            width: 100% !important;
+            flex-wrap: wrap !important;
+            gap: 6px !important;
+        }
+        .deped-badge {
+            font-size: 0.73rem !important;
+            padding: 4px 8px !important;
+        }
+
         .cr-filters { padding: 16px; border-radius: 16px; flex-direction: column; align-items: flex-start; gap: 12px; }
         .filter-select { width: 100%; }
         
@@ -1024,12 +1168,53 @@
         
         .vault-wrapper, .cr-table-wrap {
             overflow-x: auto;
-            width: 100%;
+            width: 100% !important;
+            max-width: 100% !important;
             -webkit-overflow-scrolling: touch;
+            box-sizing: border-box;
+            border-radius: 12px !important;
         }
         .cr-table {
             display: table !important;
             white-space: nowrap;
+        }
+
+        /* Modals */
+        .batch-modal-overlay, .sd-overlay {
+            padding: 12px !important;
+        }
+        .batch-modal-card, .sd-modal {
+            max-width: 100% !important;
+            padding: 16px !important;
+            border-radius: 14px !important;
+            width: 100% !important;
+            box-sizing: border-box;
+        }
+        .sd-header {
+            padding: 14px 16px !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 10px !important;
+        }
+        .sd-grade-bar {
+            flex-wrap: wrap !important;
+        }
+        .sd-grade-cell {
+            min-width: 50% !important;
+            flex: 1 1 50% !important;
+            box-sizing: border-box;
+            padding: 8px 10px !important;
+        }
+        .sd-score-row {
+            padding: 10px 12px !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            gap: 8px !important;
+        }
+        .sd-score-actions {
+            width: 100% !important;
+            justify-content: space-between !important;
+            flex-wrap: wrap !important;
         }
     }
 </style>
@@ -1039,10 +1224,10 @@
 <div class="cr-wrap">
 
     <!-- ── Hero ── -->
-    <div class="cr-hero" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; margin-bottom: 40px; background: #1a3a8f; padding: 24px 32px; border-radius: 20px; box-shadow: 0 15px 35px rgba(26, 58, 143, 0.15);">
-        <div class="cr-hero-inner" style="display: flex; flex-direction: row; justify-content: space-between; align-items: center; gap: 24px; width: 100%; flex-wrap: wrap;">
+    <div class="cr-hero">
+        <div class="cr-hero-inner">
             <div style="display: flex; flex-direction: column; gap: 4px;">
-                <h1 class="cr-hero-title" style="margin: 0; font-size: 2.2rem; font-weight: 900; color: white; display: flex; align-items: center; gap: 12px; letter-spacing: -0.01em; text-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+                <h1 class="cr-hero-title">
                     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
                     Class <span style="color: #facc15;">Record</span>
                 </h1>
@@ -1070,7 +1255,7 @@
                     <span>{{ context.grade_level_name }} / {{ context.section_name }}</span>
                 </p>
             </div>
-            <div class="cr-hero-actions" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%;">
+            <div class="cr-hero-actions">
                 <a href="{{ url_for('teacher.participation_input', section_id=section_id, subject_id=subject_id, period=period) }}" class="cr-btn cr-btn-ghost" style="justify-content: center;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M19 8v2"></path><path d="M19 12h.01"></path></svg>
                     Participation
@@ -1379,12 +1564,12 @@
             <input type="hidden" name="period" value="{{ period }}">
             <input type="hidden" name="active_tab" value="pt">
 
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
-                <h3 style="margin:0; font-size:1.1rem; font-weight:800; color:#15803d; display:flex; align-items:center; gap:8px;">
+            <div class="cview-header">
+                <h3 class="cview-title" style="color:#15803d;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="6"></circle><circle cx="12" cy="12" r="2"></circle></svg>
                     Performance Tasks (PT) — Activities Breakdown
                 </h3>
-                <div style="display:flex; gap:10px;">
+                <div class="cview-actions">
                     <button type="button" onclick="openBatchModal(); switchBatchMode('new_activity');" class="cr-btn" style="background:#16a34a; color:#fff; font-weight:800; border:none; box-shadow:0 4px 12px rgba(22,163,74,0.25);">
                         + Add Activity
                     </button>
@@ -1475,12 +1660,12 @@
             <input type="hidden" name="period" value="{{ period }}">
             <input type="hidden" name="active_tab" value="ww">
 
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
-                <h3 style="margin:0; font-size:1.1rem; font-weight:800; color:#1d4ed8; display:flex; align-items:center; gap:8px;">
+            <div class="cview-header">
+                <h3 class="cview-title" style="color:#1d4ed8;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                     Written Works (WW) — Quizzes & Exams Breakdown
                 </h3>
-                <div style="display:flex; gap:10px;">
+                <div class="cview-actions">
                     <button type="button" onclick="openBatchModal(); switchBatchMode('quiz');" class="cr-btn" style="background:#2563eb; color:#fff; font-weight:800; border:none; box-shadow:0 4px 12px rgba(37,99,235,0.25);">
                         + Add Quiz
                     </button>
@@ -1560,12 +1745,12 @@
             <input type="hidden" name="period" value="{{ period }}">
             <input type="hidden" name="active_tab" value="qa">
 
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:10px;">
-                <h3 style="margin:0; font-size:1.1rem; font-weight:800; color:#b45309; display:flex; align-items:center; gap:8px;">
+            <div class="cview-header">
+                <h3 class="cview-title" style="color:#b45309;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
                     Term Assessment (QA) — Periodical Exam Breakdown
                 </h3>
-                <div style="display:flex; gap:10px;">
+                <div class="cview-actions">
                     <button type="button" onclick="openBatchModal(); switchBatchMode('term_exam');" class="cr-btn" style="background:#d97706; color:#fff; font-weight:800; border:none; box-shadow:0 4px 12px rgba(217,119,6,0.25);">
                         + Add Periodical Exam
                     </button>
