@@ -2,47 +2,152 @@
 {% block title %}My Quizzes{% endblock %}
 {% block content %}
 <style>
-    .container { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
-    .header-row { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; margin-bottom:24px; }
-    .header-row h1 { margin:0; font-size:24px; font-weight:900; color:#1a3a8f; letter-spacing:-0.02em; }
-    .card { background:#fff; border-radius:16px; padding:24px; border:1px solid #e2e8f0; box-shadow:0 4px 12px rgba(0,0,0,0.03); margin-bottom:20px; }
-    
-    .btn { 
-        display:inline-flex; 
-        align-items:center; 
-        justify-content:center;
-        gap:7px; 
-        padding:8px 16px; 
-        border-radius:10px; 
-        cursor:pointer; 
-        font-size:13px; 
-        font-weight:700; 
-        text-decoration:none; 
-        transition:all 0.2s; 
-        font-family:'Inter', sans-serif;
+    .container {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 24px 20px;
+    }
+
+    .header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .header-row h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 900;
+        color: #1a3a8f;
+        letter-spacing: -0.02em;
+    }
+
+    .card {
+        background: #fff;
+        border-radius: 16px;
+        padding: 24px;
+        border: 1px solid #e2e8f0;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        margin-bottom: 20px;
+    }
+
+    .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        padding: 8px 16px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 700;
+        text-decoration: none;
+        transition: all 0.2s;
+        font-family: 'Inter', sans-serif;
         border: 1px solid transparent;
     }
-    .btn-primary { background:#1a3a8f; color:#fff; border-color:#1a3a8f; } 
-    .btn-primary:hover { background:#0f2a6b; transform:translateY(-1px); box-shadow:0 4px 10px rgba(26,58,143,0.2); }
-    
-    .btn-success { background:#10b981; color:#fff; border-color:#10b981; } 
-    .btn-success:hover { background:#059669; transform:translateY(-1px); box-shadow:0 4px 10px rgba(16,185,129,0.2); }
-    
-    .btn-secondary { background:#f8fafc; color:#475569; border-color:#e2e8f0; } 
-    .btn-secondary:hover { background:#f1f5f9; border-color:#cbd5e1; color:#1e293b; }
 
-    .btn-danger { background:#fee2e2; color:#b91c1c; border-color:#fecaca; }
-    .btn-danger:hover { background:#fecaca; transform:translateY(-1px); }
+    .btn-primary {
+        background: #1a3a8f;
+        color: #fff;
+        border-color: #1a3a8f;
+    }
 
-    .exam-table { width:100%; border-collapse:collapse; font-size:13px; }
-    .exam-table th { background:#f8fafc; padding:12px 14px; text-align:left; border-bottom:2px solid #e2e8f0; font-weight:800; color:#475569; text-transform:uppercase; font-size:11px; letter-spacing:0.05em; }
-    .exam-table td { padding:12px 14px; border-bottom:1px solid #f1f5f9; vertical-align:middle; color:#1e293b; }
-    .exam-table tr:hover td { background:#f8fafc; }
-    
-    .badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:11px; font-weight:700; }
-    .badge-draft { background:#f1f5f9; color:#64748b; }
-    .badge-published { background:#dcfce7; color:#15803d; }
-    .badge-closed { background:#fee2e2; color:#b91c1c; }
+    .btn-primary:hover {
+        background: #0f2a6b;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(26, 58, 143, 0.2);
+    }
+
+    .btn-success {
+        background: #10b981;
+        color: #fff;
+        border-color: #10b981;
+    }
+
+    .btn-success:hover {
+        background: #059669;
+        transform: translateY(-1px);
+        box-shadow: 0 4px 10px rgba(16, 185, 129, 0.2);
+    }
+
+    .btn-secondary {
+        background: #f8fafc;
+        color: #475569;
+        border-color: #e2e8f0;
+    }
+
+    .btn-secondary:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        color: #1e293b;
+    }
+
+    .btn-danger {
+        background: #fee2e2;
+        color: #b91c1c;
+        border-color: #fecaca;
+    }
+
+    .btn-danger:hover {
+        background: #fecaca;
+        transform: translateY(-1px);
+    }
+
+    .exam-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .exam-table th {
+        background: #f8fafc;
+        padding: 12px 14px;
+        text-align: left;
+        border-bottom: 2px solid #e2e8f0;
+        font-weight: 800;
+        color: #475569;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 0.05em;
+    }
+
+    .exam-table td {
+        padding: 12px 14px;
+        border-bottom: 1px solid #f1f5f9;
+        vertical-align: middle;
+        color: #1e293b;
+    }
+
+    .exam-table tr:hover td {
+        background: #f8fafc;
+    }
+
+    .badge {
+        display: inline-block;
+        padding: 4px 10px;
+        border-radius: 999px;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .badge-draft {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .badge-published {
+        background: #dcfce7;
+        color: #15803d;
+    }
+
+    .badge-closed {
+        background: #fee2e2;
+        color: #b91c1c;
+    }
 </style>
 <div class="container">
     <div class="header-row">
@@ -51,10 +156,36 @@
 
     <!-- Filter Tabs -->
     <style>
-        .filter-tabs { display: flex; gap: 8px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 8px; }
-        .filter-tab { padding: 8px 16px; background: #fff; border: 1px solid #e9d5ff; border-radius: 20px; cursor: pointer; font-size: 0.9rem; font-weight: 600; white-space: nowrap; transition: all 0.2s; }
-        .filter-tab:hover { border-color: #7c3aed; color: #7c3aed; }
-        .filter-tab.active { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+        }
+
+        .filter-tab {
+            padding: 8px 16px;
+            background: #fff;
+            border: 1px solid #e9d5ff;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+
+        .filter-tab:hover {
+            border-color: #7c3aed;
+            color: #7c3aed;
+        }
+
+        .filter-tab.active {
+            background: #7c3aed;
+            color: #fff;
+            border-color: #7c3aed;
+        }
     </style>
     <div class="filter-tabs">
         <div class="filter-tab active" onclick="filterQuizzes('1st', this)">1st Term</div>
@@ -75,87 +206,119 @@
         <table class="exam-table" id="quizTable">
             <thead>
                 <tr>
-                    <th>Title</th><th>Subject</th><th>Section</th>
-                    <th>Period</th><th>Duration</th><th>Scheduled</th><th>Questions</th>
-                    <th>Status</th><th>Actions</th>
+                    <th>Title</th>
+                    <th>Subject</th>
+                    <th>Section</th>
+                    <th>Period</th>
+                    <th>Duration</th>
+                    <th>Scheduled</th>
+                    <th>Questions</th>
+                    <th>Status</th>
+                    <th>Actions</th>
                 </tr>
             </thead>
             <tbody>
-            {% for q in quizzes %}
-            <tr class="quiz-row" data-period="{{ q.grading_period or 'none' }}">
-                <td><strong>{{ q.title }}</strong></td>
-                <td>{{ q.subject_name }}</td>
-                <td>{{ q.grade_level_name }} - {{ q.section_name }}</td>
-                <td><span class="badge" style="background:#f3f0ff; color:#7c3aed;">{{ PERIOD_LABELS.get(q.grading_period, q.grading_period) }}</span></td>
-                <td>{{ q.duration_mins }} min</td>
-                <td>
-                    {% if q.scheduled_start %}
+                {% for q in quizzes %}
+                <tr class="quiz-row" data-period="{{ q.grading_period or 'none' }}">
+                    <td><strong>{{ q.title }}</strong></td>
+                    <td>{{ q.subject_name }}</td>
+                    <td>{{ q.grade_level_name }} - {{ q.section_name }}</td>
+                    <td><span class="badge" style="background:#f3f0ff; color:#7c3aed;">{{
+                            PERIOD_LABELS.get(q.grading_period, q.grading_period) }}</span></td>
+                    <td>{{ q.duration_mins }} min</td>
+                    <td>
+                        {% if q.scheduled_start %}
                         {{ q.scheduled_start.strftime('%b %d, %I:%M %p') }}
-                    {% else %}
+                        {% else %}
                         <span style="color:#94a3b8; font-style:italic;">Not Set</span>
-                    {% endif %}
-                </td>
-                <td>{{ q.question_count }}</td>
-                <td>
-                    <span class="badge badge-{{ q.status }}">{{ q.status|capitalize }}</span>
-                </td>
-                <td style="white-space:nowrap;">
-                    <form method="POST" action="{{ url_for('teacher.toggle_exam_visibility', exam_id=q.exam_id) }}" style="display:inline;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-secondary" style="padding:5px 10px; font-size:12px; background: {{ '#f3f0ff' if q.is_visible else '#fff' }}; border: 1px solid #e9d5ff; color: #5b21b6;" title="{{ 'Hide from Students' if q.is_visible else 'Show to Students' }}">
-                            {% if q.is_visible %}
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-                            {% else %}
-                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
-                            {% endif %}
-                        </button>
-                    </form>
-                    <a href="{{ url_for('teacher.teacher_exam_edit_settings', exam_id=q.exam_id) }}"
-                       class="btn btn-primary" style="padding:5px 10px; font-size:11px;">Edit</a>
-                    <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=q.exam_id) }}"
-                       class="btn btn-secondary" style="padding:5px 10px; font-size:11px;">Questions</a>
-                    <a href="{{ url_for('teacher.teacher_exam_results', exam_id=q.exam_id) }}"
-                       class="btn btn-success" style="padding:5px 10px; font-size:11px;">Results</a>
-                    {% if q.is_archived %}
-                    <!-- Unarchive -->
-                    <form method="POST" action="/teacher/exams/{{ q.exam_id }}/unarchive" style="display:inline;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-secondary" style="padding:5px 10px; font-size:11px;" title="Unarchive">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="23 4 23 10 17 10"></polyline>
-                                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
-                            </svg>
-                        </button>
-                    </form>
-                    <!-- Delete -->
-                    <form method="POST" action="{{ url_for('teacher.delete_exam', exam_id=q.exam_id) }}"
-                          onsubmit="return confirm('Delete this quiz permanently?');"
-                          style="display:inline;">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-danger" style="padding:5px 10px; font-size:11px;" title="Delete">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            </svg>
-                        </button>
-                    </form>
-                    {% else %}
-                    <!-- Archive -->
-                    <form method="POST" action="/teacher/exams/{{ q.exam_id }}/archive" style="display:inline;"
-                          onsubmit="return confirm('Are you sure you want to archive this quiz?');">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                        <button type="submit" class="btn btn-secondary" style="padding:5px 10px; font-size:11px;" title="Archive">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M21 8V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"></path>
-                                <rect x="1" y="3" width="22" height="5" rx="2" ry="2"></rect>
-                                <line x1="10" y1="12" x2="14" y2="12"></line>
-                            </svg>
-                        </button>
-                    </form>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
+                        {% endif %}
+                    </td>
+                    <td>{{ q.question_count }}</td>
+                    <td>
+                        <span class="badge badge-{{ q.status }}">{{ q.status|capitalize }}</span>
+                    </td>
+                    <td style="white-space:nowrap;">
+                        <form method="POST" action="{{ url_for('teacher.toggle_exam_visibility', exam_id=q.exam_id) }}"
+                            style="display:inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-secondary"
+                                style="padding:5px 10px; font-size:12px; background: {{ '#f3f0ff' if q.is_visible else '#fff' }}; border: 1px solid #e9d5ff; color: #5b21b6;"
+                                title="{{ 'Hide from Students' if q.is_visible else 'Show to Students' }}">
+                                {% if q.is_visible %}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                    <circle cx="12" cy="12" r="3"></circle>
+                                </svg>
+                                {% else %}
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path
+                                        d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24">
+                                    </path>
+                                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                                </svg>
+                                {% endif %}
+                            </button>
+                        </form>
+                        <a href="{{ url_for('teacher.teacher_exam_edit_settings', exam_id=q.exam_id) }}"
+                            class="btn btn-primary" style="padding:5px 10px; font-size:11px;">Edit</a>
+                        <a href="{{ url_for('teacher.teacher_exam_questions', exam_id=q.exam_id) }}"
+                            class="btn btn-secondary" style="padding:5px 10px; font-size:11px;">Questions</a>
+                        <a href="{{ url_for('teacher.teacher_exam_results', exam_id=q.exam_id) }}"
+                            class="btn btn-success" style="padding:5px 10px; font-size:11px;">Results</a>
+                        {% if q.is_archived %}
+                        <!-- Unarchive -->
+                        <form method="POST" action="/teacher/exams/{{ q.exam_id }}/unarchive" style="display:inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-secondary" style="padding:5px 10px; font-size:11px;"
+                                title="Unarchive">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                            </button>
+                        </form>
+                        <!-- Delete -->
+                        <form method="POST" action="{{ url_for('teacher.delete_exam', exam_id=q.exam_id) }}"
+                            onsubmit="return confirm('Delete this quiz permanently?');" style="display:inline;">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-danger" style="padding:5px 10px; font-size:11px;"
+                                title="Delete">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path
+                                        d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                    </path>
+                                </svg>
+                            </button>
+                        </form>
+                        {% else %}
+                        <!-- Archive -->
+                        <form method="POST" action="/teacher/exams/{{ q.exam_id }}/archive" style="display:inline;"
+                            onsubmit="return confirm('Are you sure you want to archive this quiz?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-secondary" style="padding:5px 10px; font-size:11px;"
+                                title="Archive">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <path d="M21 8V20a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8"></path>
+                                    <rect x="1" y="3" width="22" height="5" rx="2" ry="2"></rect>
+                                    <line x1="10" y1="12" x2="14" y2="12"></line>
+                                </svg>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
             </tbody>
         </table>
         {% else %}
@@ -167,25 +330,25 @@
 </div>
 
 <script>
-function filterQuizzes(period, el) {
-    document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
-    if (el) el.classList.add('active');
+    function filterQuizzes(period, el) {
+        document.querySelectorAll('.filter-tab').forEach(tab => tab.classList.remove('active'));
+        if (el) el.classList.add('active');
 
-    const rows = document.querySelectorAll('.quiz-row');
-    rows.forEach(row => {
-        if (period === 'all' || row.dataset.period === period) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
+        const rows = document.querySelectorAll('.quiz-row');
+        rows.forEach(row => {
+            if (period === 'all' || row.dataset.period === period) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        const activeTab = document.querySelector('.filter-tab.active');
+        if (activeTab) {
+            filterQuizzes('1st', activeTab);
         }
     });
-}
-
-document.addEventListener("DOMContentLoaded", function() {
-    const activeTab = document.querySelector('.filter-tab.active');
-    if (activeTab) {
-        filterQuizzes('1st', activeTab);
-    }
-});
 </script>
 {% endblock %}

@@ -673,29 +673,38 @@ def teacher_dashboard():
                 ORDER BY created_at DESC LIMIT 15
             """, (user_id,))
             for row in cur.fetchall():
+                if row.get('subject_id') and row.get('section_id'):
+                    url = f"/teacher/subject/{row['subject_id']}?section={row['section_id']}&tab=activities"
+                else:
+                    url = "/teacher/dashboard"
                 recent_activities.append({
                     'title': row['title'],
                     'type': (row['type'] or 'Activity').capitalize(),
                     'created_at': row['created_at'],
-                    'url': f"/teacher/subject/{row['subject_id']}?section={row['section_id']}",
+                    'url': url,
                     'icon': 'fas fa-edit',
                     'color_class': 'status-action'
                 })
                 
             # 2. Exams/Quizzes
             cur.execute("""
-                SELECT exam_id AS id, title, exam_type AS type, created_at
+                SELECT exam_id AS id, title, exam_type AS type, created_at, subject_id, section_id
                 FROM exams
                 WHERE teacher_id = %s
                 ORDER BY created_at DESC LIMIT 15
             """, (user_id,))
             for row in cur.fetchall():
                 is_quiz = (str(row['type']).lower() == 'quiz')
+                tab_name = "quizzes" if is_quiz else "exams"
+                if row.get('subject_id') and row.get('section_id'):
+                    url = f"/teacher/subject/{row['subject_id']}?section={row['section_id']}&tab={tab_name}"
+                else:
+                    url = f"/teacher/{tab_name}"
                 recent_activities.append({
                     'title': row['title'],
                     'type': (row['type'] or 'Exam').capitalize(),
                     'created_at': row['created_at'],
-                    'url': f"/teacher/quizzes" if is_quiz else f"/teacher/exams",
+                    'url': url,
                     'icon': 'fas fa-question-circle',
                     'color_class': 'status-pending'
                 })
