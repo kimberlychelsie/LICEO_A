@@ -5638,3 +5638,4 @@ def shs_requests():
     finally:
         cur.close()
         db.close()
+        
