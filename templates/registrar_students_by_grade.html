@@ -34,7 +34,7 @@
 
     @media (max-width: 1024px) {
         .reg-container {
-            padding: 16px 12px 48px !important;
+            padding: calc(16px + env(safe-area-inset-top)) 12px 48px !important;
         }
 
         .welcome-header {
@@ -329,7 +329,7 @@
 
     @media (max-width: 1024px) {
         .reg-container {
-            padding: 16px 12px 60px !important;
+            padding: calc(16px + env(safe-area-inset-top)) 12px 60px !important;
         }
 
         .welcome-header {
@@ -350,6 +350,31 @@
 
         .filter-group {
             min-width: 100% !important;
+        }
+
+        .filter-form-wrap {
+            flex-direction: column !important;
+            align-items: stretch !important;
+        }
+
+        .filter-item-wrap {
+            width: 100% !important;
+            margin-left: 0 !important;
+            justify-content: space-between !important;
+        }
+
+        .filter-item-wrap select {
+            flex: 1 !important;
+            min-width: 0 !important;
+        }
+
+        .search-item-wrap {
+            width: 100% !important;
+            margin-left: 0 !important;
+        }
+
+        #searchInput {
+            width: 100% !important;
         }
 
         .export-strip {
@@ -460,8 +485,8 @@
             </div>
 
             <!-- Bottom Row: Filters -->
-            <form method="GET" action="/registrar/students-by-grade" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-weight: 500; width: 100%; justify-content: flex-start;">
-                <div style="display: flex; align-items: center; gap: 8px;">
+            <form method="GET" action="/registrar/students-by-grade" class="filter-form-wrap" style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center; font-weight: 500; width: 100%; justify-content: flex-start;">
+                <div class="filter-item-wrap" style="display: flex; align-items: center; gap: 8px;">
                     <label style="font-size: 0.8rem; color: #64748b; margin: 0;">School Year:</label>
                     <select name="year_id" onchange="this.form.submit()" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; background: #fff; cursor: pointer; min-width: 130px;">
                         {% for sy in school_years %}
@@ -472,7 +497,7 @@
                     </select>
                 </div>
 
-                <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="filter-item-wrap" style="display: flex; align-items: center; gap: 8px;">
                     <label style="font-size: 0.8rem; color: #64748b; margin: 0;">Grade:</label>
                     <select name="grade" onchange="this.form.submit()" style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; background: #fff; cursor: pointer; min-width: 100px;">
                         <option value="all" {% if grade_filter == 'all' %}selected{% endif %}>All Students</option>
@@ -482,7 +507,7 @@
                     </select>
                 </div>
 
-                <div style="display: flex; align-items: center; gap: 8px;">
+                <div class="filter-item-wrap" style="display: flex; align-items: center; gap: 8px;">
                     <label style="font-size: 0.8rem; color: #64748b; margin: 0;">Section:</label>
                     <select name="section_id" id="sectionSelect" onchange="this.form.submit()" {% if not grade_filter or grade_filter == 'all' %}disabled{% endif %} style="padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; background: #fff; cursor: pointer; min-width: 130px;">
                         <option value="">— All Sections —</option>
@@ -496,7 +521,7 @@
                     </select>
                 </div>
                 
-                <div style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
+                <div class="search-item-wrap" style="display: flex; align-items: center; gap: 6px; margin-left: auto;">
                     <input type="text" id="searchInput" placeholder="Search students..." onkeyup="filterTable()" style="padding: 8px 16px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.9rem; width: 280px; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                 </div>
             </form>

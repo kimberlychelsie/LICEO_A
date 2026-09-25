@@ -27,7 +27,7 @@
         color: var(--sch-text-main);
     }
 
-    .sch-container {
+    .sch-container, .schedules-container {
         max-width: 1350px;
         margin: 0 auto;
         padding: 32px 24px;
@@ -502,6 +502,71 @@
         color: #64748b;
         margin-top: 3px;
     }
+
+    /* ── Mobile View Responsive Styles ── */
+    @media (max-width: 768px) {
+        .sch-container, .schedules-container {
+            padding: calc(16px + env(safe-area-inset-top)) 16px calc(80px + env(safe-area-inset-bottom)) 16px;
+        }
+
+        .hero-banner {
+            padding: 20px 16px;
+            border-radius: 16px;
+            margin-bottom: 16px;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .hero-content h1 {
+            font-size: 1.5rem;
+        }
+
+        .form-card {
+            padding: 16px !important;
+            border-radius: 16px !important;
+            margin-bottom: 20px !important;
+        }
+
+        .form-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .wizard-grid {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+        }
+
+        .wizard-col {
+            padding: 16px !important;
+            border-radius: 14px !important;
+        }
+
+        .time-room-grid {
+            grid-template-columns: 1fr !important;
+            gap: 10px !important;
+        }
+
+        .table-toolbar {
+            padding: 14px 16px !important;
+            flex-direction: column;
+            align-items: stretch !important;
+            gap: 12px !important;
+        }
+
+        .table-surface {
+            overflow-x: auto;
+            border-radius: 16px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .matrix-table {
+            display: block;
+            overflow-x: auto;
+            white-space: nowrap;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -534,7 +599,7 @@
             <h3 class="form-title" style="margin: 0; font-size: 1.15rem; font-weight: 800; color: var(--sch-blue); display: flex; align-items: center; gap: 8px;">
                 <i class="fas fa-plus-circle" style="color: var(--sch-blue-vibrant);"></i> Add New Class Schedule
             </h3>
-            <div style="display: flex; gap: 10px; align-items: center;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <button type="button" onclick="openBreakModal()" class="btn-action-pill" style="border-color: #fde047; background: #fefce8; color: #a16207; font-size: 0.78rem;">
                     <i class="fas fa-cog"></i> Customize Break & Prayer Times
                 </button>
@@ -549,10 +614,10 @@
             <input type="hidden" name="combo" id="finalComboInput" required>
 
             <!-- 2-COLUMN WIZARD GRID -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: stretch;">
+            <div class="wizard-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: stretch;">
                 
                 <!-- LEFT COLUMN: CLASS & SUBJECT SELECTION -->
-                <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div class="wizard-col" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 16px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between;">
                     <div>
                         <div style="font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--sch-blue-vibrant); margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
                             <span style="background: var(--sch-blue-vibrant); color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">1</span>
@@ -608,7 +673,7 @@
                 </div>
 
                 <!-- RIGHT COLUMN: DAYS, TIME & ROOM SELECTION -->
-                <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div class="wizard-col" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; padding: 22px; display: flex; flex-direction: column; justify-content: space-between;">
                     <div>
                         <div style="font-size: 0.82rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: #0d9488; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">
                             <span style="background: #0d9488; color: #fff; width: 22px; height: 22px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 0.75rem;">2</span>
@@ -646,7 +711,7 @@
                         </div>
 
                         <!-- TIME RANGE & ROOM -->
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                        <div class="time-room-grid" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
                             <div>
                                 <label class="form-label">Start Time</label>
                                 <input type="time" name="start_time" id="addStartTime" class="premium-input" required min="06:00" max="17:00" step="60" onchange="checkRealTimeConflicts()">

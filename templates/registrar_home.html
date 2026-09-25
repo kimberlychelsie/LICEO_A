@@ -245,9 +245,16 @@
     .center-num { font-size: 2rem; font-weight: 900; color: var(--reg-primary); line-height: 1; }
     .center-txt { font-size: 0.75rem; color: var(--reg-muted); text-transform: uppercase; margin-top: 6px; font-weight: 800; }
 
+    .dash-bottom-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+        gap: 24px;
+        margin-top: 24px;
+    }
+
     @media (max-width: 1024px) {
         .reg-container {
-            padding: 16px 12px 48px !important;
+            padding: calc(16px + env(safe-area-inset-top)) 12px 48px !important;
         }
         .welcome-header {
             padding: 24px 20px !important;
@@ -277,6 +284,15 @@
         }
         .qa-grid {
             grid-template-columns: repeat(2, 1fr) !important;
+            gap: 10px !important;
+        }
+        .dash-bottom-grid {
+            grid-template-columns: 1fr !important;
+            gap: 16px !important;
+        }
+        .card {
+            padding: 16px !important;
+            border-radius: 16px !important;
         }
     }
 </style>
@@ -324,13 +340,13 @@
     </div>
 
     <!-- Bottom Tables Container -->
-    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px; margin-top: 24px;">
+    <div class="dash-bottom-grid">
         <div class="card" style="padding: 24px; background: #fff; border-radius: var(--reg-radius); box-shadow: 0 10px 25px rgba(12, 36, 97, 0.05); border: 1px solid #f1f5f9; display: flex; flex-direction: column;">
-            <div style="padding-bottom: 16px; border-bottom: 2px solid #f8fafc; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; font-size: 1.1rem; color: #0c2461; font-weight: 900;">
+            <div style="padding-bottom: 16px; border-bottom: 2px solid #f8fafc; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                <h3 style="margin: 0; font-size: 1.1rem; color: #0c2461; font-weight: 900; display: flex; align-items: center;">
                     <i class="fas fa-file-alt" style="color: #facc15; margin-right: 8px;"></i>Recent Applications
                 </h3>
-                <a href="/registrar/enrollments" style="font-size: 0.8rem; color: #0c2461; text-decoration: none; font-weight: 800; background: #facc15; padding: 6px 14px; border-radius: 99px; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 10px rgba(250, 204, 21, 0.3);" onmouseover="this.style.transform='translateY(-2px)';" onmouseout="this.style.transform='none';">View All</a>
+                <a href="/registrar/enrollments" style="font-size: 0.8rem; color: #0c2461; text-decoration: none; font-weight: 800; background: #facc15; padding: 6px 14px; border-radius: 99px; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 10px rgba(250, 204, 21, 0.3); white-space: nowrap; flex-shrink: 0;" onmouseover="this.style.transform='translateY(-2px)';" onmouseout="this.style.transform='none';">View All</a>
             </div>
             <div style="overflow-x: auto; flex: 1;">
                 <table style="width: 100%; border-collapse: separate; border-spacing: 0;">
@@ -346,7 +362,7 @@
                             <td style="padding: 16px; border-bottom: 1px solid #f1f5f9;">
                                 <div style="font-size: 0.95rem; color: #0f172a; font-weight: 700; margin-bottom: 4px;">{{ pending.student_name }}</div>
                                 <div style="font-size: 0.75rem; color: #64748b; font-weight: 600;">
-                                    <span style="background: #e2e8f0; padding: 3px 8px; border-radius: 6px;">Grade {{ pending.grade_level }}</span>
+                                    <span style="background: #e2e8f0; padding: 3px 8px; border-radius: 6px;">{% if pending.grade_level %}{% if pending.grade_level.lower().startswith('grade') %}{{ pending.grade_level }}{% else %}Grade {{ pending.grade_level }}{% endif %}{% else %}Unassigned{% endif %}</span>
                                 </div>
                             </td>
                             <td style="padding: 16px; border-bottom: 1px solid #f1f5f9; vertical-align: middle;">
