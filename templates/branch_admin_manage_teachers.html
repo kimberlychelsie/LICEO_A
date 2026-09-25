@@ -443,15 +443,15 @@
     box-shadow: 0 10px 25px -5px rgba(0, 0, 0, .05);
     display: flex;
     flex-direction: column;
-    /* override base.html overflow-x for the table wrapper so menus don't get clipped horizontally */
-    overflow: visible !important;
+    overflow: hidden;
   }
 
   .table-scroll-inner {
     flex: 1;
     min-height: 0;
-    padding-bottom: 60px;
-    overflow: visible !important;
+    padding-bottom: 80px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .teacher-list-tip {
@@ -467,7 +467,7 @@
   }
 
   .mt th {
-    padding: 18px 22px;
+    padding: 14px 16px;
     background: #f8fafc;
     font-size: .75rem;
     font-weight: 800;
@@ -476,6 +476,7 @@
     letter-spacing: .05em;
     border-bottom: 2px solid var(--bd);
     text-align: left;
+    white-space: nowrap;
   }
 
   .mt th:first-child {
@@ -487,7 +488,7 @@
   }
 
   .mt td {
-    padding: 18px 22px;
+    padding: 14px 16px;
     border-bottom: 1px solid var(--bd);
     vertical-align: middle;
     background: #fff;
@@ -1348,7 +1349,7 @@
     flex-wrap: wrap;
     gap: 4px;
     align-items: center;
-    max-width: 270px;
+    max-width: 210px;
   }
   .load-badge {
     display: inline-flex;
@@ -1361,7 +1362,7 @@
     font-weight: 600;
     border: 1px solid #cbd5e1;
     white-space: nowrap;
-    max-width: 250px;
+    max-width: 190px;
     overflow: hidden;
     text-overflow: ellipsis;
     line-height: 1.35;
@@ -1643,11 +1644,12 @@
     <div class="table-scroll-inner">
       <table class="mt">
         <thead>
-          <th>Teacher</th>
-          <th>Role</th>
-          <th>Advisory Class</th>
-          <th>Subject Loads</th>
-          <th style="text-align:right;">Action</th>
+          <tr>
+            <th>Teacher</th>
+            <th>Role</th>
+            <th>Advisory Class</th>
+            <th>Subject Loads</th>
+            <th style="text-align:right; width:110px; min-width:110px;">Action</th>
           </tr>
         </thead>
         <tbody>
@@ -1713,7 +1715,7 @@
                 <span style="color:var(--mu);">—</span>
               {% endif %}
             </td>
-            <td style="text-align:right;">
+            <td style="text-align:right; width:110px; min-width:110px; white-space:nowrap;">
               {% if is_branch_active_status is not defined or is_branch_active_status %}
               <div class="manage-wrap" data-mw-id="{{ t.user_id }}">
                 <button type="button" class="btn-manage" onclick="toggleManage(event, {{ t.user_id }})"
