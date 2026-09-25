@@ -3249,6 +3249,7 @@ Please log in and change your password immediately.
 def branch_admin_edit_teacher(user_id):
     if session.get("role") != "branch_admin":
         return redirect("/")
+    branch_id = session.get("branch_id")
     first_name  = (request.form.get("first_name") or "").strip()
     middle_name = (request.form.get("middle_name") or "").strip()
     last_name   = (request.form.get("last_name") or "").strip()
@@ -3297,13 +3298,11 @@ def branch_admin_edit_teacher(user_id):
                 gender,
                 user_roles_json,
                 user_id,
-                session.get("branch_id"),
+                branch_id,
             ),
         )
 
         sync_user_parent_links(db, cursor, user_id)
-
-        db.commit()
 
         db.commit()
         flash("Teacher details saved.", "success")
