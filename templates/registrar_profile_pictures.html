@@ -366,7 +366,7 @@
             min-width: 100%;
         }
 
-        .modern-table th, 
+        .modern-table th,
         .modern-table td {
             padding: 12px 16px;
             white-space: nowrap;
@@ -377,9 +377,10 @@
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
         }
-        
+
         .modern-table {
-            min-width: 800px; /* Force minimum width to enable scrolling instead of squishing */
+            min-width: 800px;
+            /* Force minimum width to enable scrolling instead of squishing */
         }
 
         .upload-form {
@@ -395,7 +396,7 @@
     <!-- Premium Header -->
     <div class="welcome-header">
         <h1>Profile <span style="color: #facc15; text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);">Pictures</span></h1>
-        <p>Managing community profile imagery for student and faculty registries.</p>
+        <p>Manage and Upload Profile Pictures.</p>
     </div>
 
     <!-- Results Container -->
@@ -433,15 +434,17 @@
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
                     </span>
-                    <input type="text" id="searchInput" class="search-input" placeholder="Search by name or identifier..."
-                        oninput="applyFilters()">
+                    <input type="text" id="searchInput" class="search-input"
+                        placeholder="Search by name or identifier..." oninput="applyFilters()">
                 </div>
                 {% if tab == 'students' or not tab %}
                 <div class="filter-wrap">
                     <select onchange="window.location.href=this.value" class="sort-select">
-                        <option value="?tab=students" {% if not grade_filter %}selected{% endif %}>All Enrollment</option>
+                        <option value="?tab=students" {% if not grade_filter %}selected{% endif %}>All Enrollment
+                        </option>
                         {% for g in all_grades %}
-                        <option value="?tab=students&grade={{ g }}" {% if grade_filter == g|string %}selected{% endif %}>{{ g }}</option>
+                        <option value="?tab=students&grade={{ g }}" {% if grade_filter==g|string %}selected{% endif %}>
+                            {{ g }}</option>
                         {% endfor %}
                     </select>
                 </div>
@@ -450,116 +453,120 @@
         </div>
         <div style="overflow-x: auto;">
             <table class="modern-table">
-            <thead>
-                <tr>
-                    <th style="width: 80px;">Visual</th>
-                    <th>Full Identity</th>
-                    <th>Classification</th>
-                    <th>Status</th>
-                    <th style="width: 340px;">Action Archive</th>
-                </tr>
-            </thead>
-            <tbody id="memberTbody">
-                {% if tab == 'students' or not tab %}
-                {% for s in students %}
-                <tr class="member-row" data-name="{{ s.student_name | lower }}">
-                    <td>
-                        <div class="avatar-modern">
-                            {% if s.student_pic %}
-                            <img src="{% if s.student_pic.startswith('http') %}{{ s.student_pic }}{% elif s.student_pic.startswith('/') %}{{ s.student_pic }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ s.student_pic) }}{% endif %}"
-                                alt="">
-                            {% else %}
-                            {{ s.student_name[0]|upper }}
-                            {% endif %}
-                        </div>
-                    </td>
-                    <td>
-                        <div style="font-weight: 800; color: var(--reg-primary);">{{ s.student_name }}</div>
-                        <div style="font-size: 0.75rem; font-weight: 700; color: var(--reg-muted);">
-                            ID #{{ s.branch_enrollment_no or s.enrollment_id }}
-                        </div>
-                    </td>
-                    <td>
-                        <div style="display: flex; gap: 4px;">
-                            <span class="badge badge-primary">{{ s.grade_level }}</span>
-                            {% if s.section_name %}
-                            <span class="badge badge-success">{{ s.section_name }}</span>
-                            {% endif %}
-                        </div>
-                    </td>
-                    <td>
-                        <span
-                            class="badge {% if s.status == 'enrolled' %}badge-success{% else %}badge-primary{% endif %}">{{
-                            s.status | title }}</span>
-                    </td>
-                    <td>
-                        <form method="POST" action="{{ url_for('registrar.registrar_profile_pictures') }}"
-                            enctype="multipart/form-data" class="upload-form">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="user_type" value="student">
-                            <input type="hidden" name="target_id" value="{{ s.enrollment_id }}">
-                            <label class="file-btn">
-                                <span class="file-label-text">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                                        stroke-linejoin="round" style="vertical-align: middle; margin-right: 4px;">
-                                        <path
-                                            d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z">
-                                        </path>
-                                    </svg>
-                                    Select Photo
-                                </span>
-                                <input type="file" name="profile_image" accept="image/*" required
-                                    onchange="handleFile(this)">
-                            </label>
-                            <button type="submit" class="btn-submit">{% if s.profile_image %}Update{% else %}Upload{%
-                                endif %}</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-                {% else %}
-                {% for t in teachers %}
-                <tr class="member-row" data-name="{{ t.full_name | lower or t.username | lower }}">
-                    <td>
-                        <div class="avatar-modern">
-                            {% if t.profile_image %}
-                            <img src="{% if t.profile_image.startswith('http') %}{{ t.profile_image }}{% elif t.profile_image.startswith('/') %}{{ t.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ t.profile_image) }}{% endif %}"
-                                alt="">
-                            {% else %}
-                            {{ (t.full_name or t.username)[0]|upper }}
-                            {% endif %}
-                        </div>
-                    </td>
-                    <td>
-                        <div style="font-weight: 800; color: var(--reg-primary);">{{ t.full_name or t.username }}</div>
-                        <div style="font-size: 0.75rem; font-weight: 700; color: var(--reg-muted);">FACULTY @{{
-                            t.username }}</div>
-                    </td>
-                    <td><span class="badge">Instructor</span></td>
-                    <td><span class="badge badge-success">Active</span></td>
-                    <td>
-                        <form method="POST" action="{{ url_for('registrar.registrar_profile_pictures') }}"
-                            enctype="multipart/form-data" class="upload-form">
-    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                            <input type="hidden" name="user_type" value="teacher">
-                            <input type="hidden" name="target_id" value="{{ t.user_id }}">
-                            <label class="file-btn">
-                                <span class="file-label-text">📁 Select Photo</span>
-                                <input type="file" name="profile_image" accept="image/*" required
-                                    onchange="handleFile(this)">
-                            </label>
-                            <button type="submit" class="btn-submit">{% if t.profile_image %}Update{% else %}Upload{%
-                                endif %}</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-                {% endif %}
-            </tbody>
-        </table>
+                <thead>
+                    <tr>
+                        <th style="width: 80px;">Visual</th>
+                        <th>Full Identity</th>
+                        <th>Classification</th>
+                        <th>Status</th>
+                        <th style="width: 340px;">Action Archive</th>
+                    </tr>
+                </thead>
+                <tbody id="memberTbody">
+                    {% if tab == 'students' or not tab %}
+                    {% for s in students %}
+                    <tr class="member-row" data-name="{{ s.student_name | lower }}">
+                        <td>
+                            <div class="avatar-modern">
+                                {% if s.student_pic %}
+                                <img src="{% if s.student_pic.startswith('http') %}{{ s.student_pic }}{% elif s.student_pic.startswith('/') %}{{ s.student_pic }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ s.student_pic) }}{% endif %}"
+                                    alt="">
+                                {% else %}
+                                {{ s.student_name[0]|upper }}
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-weight: 800; color: var(--reg-primary);">{{ s.student_name }}</div>
+                            <div style="font-size: 0.75rem; font-weight: 700; color: var(--reg-muted);">
+                                ID #{{ s.branch_enrollment_no or s.enrollment_id }}
+                            </div>
+                        </td>
+                        <td>
+                            <div style="display: flex; gap: 4px;">
+                                <span class="badge badge-primary">{{ s.grade_level }}</span>
+                                {% if s.section_name %}
+                                <span class="badge badge-success">{{ s.section_name }}</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <span
+                                class="badge {% if s.status == 'enrolled' %}badge-success{% else %}badge-primary{% endif %}">{{
+                                s.status | title }}</span>
+                        </td>
+                        <td>
+                            <form method="POST" action="{{ url_for('registrar.registrar_profile_pictures') }}"
+                                enctype="multipart/form-data" class="upload-form">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="user_type" value="student">
+                                <input type="hidden" name="target_id" value="{{ s.enrollment_id }}">
+                                <label class="file-btn">
+                                    <span class="file-label-text">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                            stroke-linecap="round" stroke-linejoin="round"
+                                            style="vertical-align: middle; margin-right: 4px;">
+                                            <path
+                                                d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z">
+                                            </path>
+                                        </svg>
+                                        Select Photo
+                                    </span>
+                                    <input type="file" name="profile_image" accept="image/*" required
+                                        onchange="handleFile(this)">
+                                </label>
+                                <button type="submit" class="btn-submit">{% if s.profile_image %}Update{% else
+                                    %}Upload{%
+                                    endif %}</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    {% for t in teachers %}
+                    <tr class="member-row" data-name="{{ t.full_name | lower or t.username | lower }}">
+                        <td>
+                            <div class="avatar-modern">
+                                {% if t.profile_image %}
+                                <img src="{% if t.profile_image.startswith('http') %}{{ t.profile_image }}{% elif t.profile_image.startswith('/') %}{{ t.profile_image }}{% else %}{{ url_for('static', filename='uploads/profiles/' ~ t.profile_image) }}{% endif %}"
+                                    alt="">
+                                {% else %}
+                                {{ (t.full_name or t.username)[0]|upper }}
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <div style="font-weight: 800; color: var(--reg-primary);">{{ t.full_name or t.username }}
+                            </div>
+                            <div style="font-size: 0.75rem; font-weight: 700; color: var(--reg-muted);">FACULTY @{{
+                                t.username }}</div>
+                        </td>
+                        <td><span class="badge">Instructor</span></td>
+                        <td><span class="badge badge-success">Active</span></td>
+                        <td>
+                            <form method="POST" action="{{ url_for('registrar.registrar_profile_pictures') }}"
+                                enctype="multipart/form-data" class="upload-form">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <input type="hidden" name="user_type" value="teacher">
+                                <input type="hidden" name="target_id" value="{{ t.user_id }}">
+                                <label class="file-btn">
+                                    <span class="file-label-text">📁 Select Photo</span>
+                                    <input type="file" name="profile_image" accept="image/*" required
+                                        onchange="handleFile(this)">
+                                </label>
+                                <button type="submit" class="btn-submit">{% if t.profile_image %}Update{% else
+                                    %}Upload{%
+                                    endif %}</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
     </div>
-</div>
 
 </div>
 

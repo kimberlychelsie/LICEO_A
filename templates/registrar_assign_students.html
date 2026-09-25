@@ -58,14 +58,12 @@
 
     @media (max-width: 1024px) {
         .ba-container {
-            padding: 16px 12px 48px !important;
+            padding: calc(16px + env(safe-area-inset-top)) 16px 48px !important;
         }
-
 
         .premium-welcome {
             padding: 24px 20px !important;
         }
-
 
         .premium-welcome h1 {
             font-size: 1.6rem !important;
@@ -380,52 +378,51 @@
 
 
     /* ── Responsive Refinements ── */
+    /* ── Responsive Refinements ── */
     @media (max-width: 1024px) {
         .ba-container {
-            padding: 32px 20px;
+            padding: calc(16px + env(safe-area-inset-top)) 16px 48px !important;
         }
-
 
         .premium-welcome h1 {
             font-size: 1.8rem;
         }
-    }
 
+        .main-layout-grid {
+            grid-template-columns: 1fr;
+            gap: 24px;
+        }
+    }
 
     @media (max-width: 768px) {
         .ba-container {
-            padding: 12px 8px;
+            padding: calc(12px + env(safe-area-inset-top)) 14px 48px !important;
         }
-
 
         .premium-welcome {
-            padding: 16px;
-            border-radius: 16px;
-            margin-bottom: 20px;
+            padding: 20px 16px !important;
+            border-radius: 18px !important;
+            margin-bottom: 16px;
         }
-
 
         .premium-welcome h1 {
-            font-size: 1.3rem;
+            font-size: 1.4rem !important;
         }
 
-
         .status-line {
-            font-size: 0.7rem;
+            font-size: 0.75rem;
             flex-direction: column;
             align-items: flex-start;
             gap: 4px;
         }
 
-
         .guide-card {
-            padding: 12px;
-            border-radius: 12px;
+            padding: 14px;
+            border-radius: 14px;
             flex-direction: column;
             align-items: flex-start;
             gap: 8px;
         }
-
 
         .guide-icon {
             width: 36px;
@@ -433,47 +430,48 @@
             font-size: 1rem;
         }
 
-
         .modern-card {
-            padding: 16px;
-            border-radius: 16px;
-            background: transparent;
-            border: none;
-            box-shadow: none;
+            padding: 0 !important;
+            border-radius: 0;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
         }
-
 
         .modern-card h2 {
             font-size: 1rem;
         }
 
-
         .filter-section {
             flex-direction: column;
             align-items: stretch;
-            padding: 12px;
-            gap: 10px;
+            padding: 14px !important;
+            gap: 12px !important;
+            border-radius: 18px !important;
+            margin-bottom: 16px;
         }
-
 
         .search-wrapper {
             width: 100%;
         }
 
-
         .toggle-unassigned {
             width: 100%;
             justify-content: center;
-            padding: 10px;
-            font-size: 0.75rem;
+            padding: 10px 14px;
+            font-size: 0.8rem;
         }
 
+        #visibleCount {
+            margin-left: 0 !important;
+            text-align: center;
+            width: 100%;
+        }
 
         /* ── Table-to-Card Transformation ── */
         .vault-table thead {
             display: none;
         }
-
 
         .vault-table tbody {
             display: flex;
@@ -481,76 +479,86 @@
             gap: 12px;
         }
 
-
         .vault-table tr {
             display: block;
             background: #fff;
-            border-radius: 20px;
-            padding: 16px;
+            border-radius: 18px;
+            padding: 14px 16px;
             border: 1px solid var(--ma-border);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
         }
-
 
         .vault-table td {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 0;
-            border: none;
+            padding: 10px 0;
+            border-bottom: 1px dashed #e2e8f0;
             font-size: 0.85rem;
         }
 
+        .vault-table td:last-child {
+            border-bottom: none;
+        }
 
         .vault-table td::before {
             content: attr(data-label);
             font-weight: 800;
             color: var(--ma-muted);
-            font-size: 0.65rem;
+            font-size: 0.7rem;
             text-transform: uppercase;
+            letter-spacing: 0.03em;
         }
-
 
         .vault-table td:first-child {
             background: #f8fafc;
-            margin: -16px -16px 12px -16px;
+            margin: -14px -16px 10px -16px;
             padding: 12px 16px;
-            border-radius: 20px 20px 0 0;
+            border-radius: 18px 18px 0 0;
             justify-content: flex-start;
+            border-bottom: 1px solid var(--ma-border);
         }
-
 
         .vault-table td:first-child::before {
             display: none;
         }
 
-
-        .filter-section {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 12px;
-        }
-
-
         .grade-select-wrapper {
             width: 100%;
         }
 
-
         .sidebar-column {
-            order: -1;
+            order: 0;
+            margin-top: 8px;
         }
 
+        .capacity-card {
+            padding: 14px;
+            border-radius: 14px;
+            margin-bottom: 10px;
+        }
 
         .table-responsive {
             overflow: visible;
         }
     }
 
-
     @media (max-width: 480px) {
+        .ba-container {
+            padding: calc(10px + env(safe-area-inset-top)) 10px 48px !important;
+        }
+
         .premium-welcome h1 {
-            font-size: 1.1rem;
+            font-size: 1.25rem !important;
+        }
+
+        .vault-table tr {
+            padding: 12px 14px;
+        }
+
+        .vault-table td:first-child {
+            margin: -12px -14px 10px -14px;
+            padding: 10px 14px;
         }
     }
 
@@ -572,7 +580,7 @@
     <div class="premium-welcome">
         <h1>Assign Students to <span
                 style="color: #facc15; text-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);">Sections</span></h1>
-        <p>Sectioning & Capacity Management • Academic Year Deployment</p>
+        <p>Manage Students and Assign Them to Sections</p>
     </div>
 
 
