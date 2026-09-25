@@ -2906,55 +2906,74 @@ def list_and_add_schedules():
             cursor.close(); db.close()
             return redirect(url_for("registrar.list_and_add_schedules"))
 
-        # --- DETAILED COLLISION CHECK ---
-        cursor.execute("""
-            SELECT s.*, subj.name AS conflict_subject_name, sec.section_name AS conflict_section_name, 
-                   u.full_name AS conflict_teacher_name, y.label AS conflict_year_label
-            FROM schedules s
-            JOIN subjects subj ON s.subject_id = subj.subject_id
-            JOIN sections sec ON s.section_id = sec.section_id
-            JOIN users u ON s.teacher_id = u.user_id
-            JOIN school_years y ON s.year_id = y.year_id
-            WHERE s.year_id = %s AND s.branch_id = %s
-              AND s.day_of_week = %s
-              AND s.is_archived = FALSE
-              AND (s.start_time < %s AND s.end_time > %s)
-              AND (
-                    s.teacher_id = %s
-                 OR s.section_id = %s
-                 OR s.room = %s
-              )
-            LIMIT 1
-        """, (year_id, branch_id, day_of_week, end_time, start_time, teacher_id, section_id, room))
-        conflict = cursor.fetchone()
-        if conflict:
-            reasons = []
-            if str(conflict["teacher_id"]) == str(teacher_id):
-                reasons.append(f"Teacher {conflict['conflict_teacher_name']}")
-            if str(conflict["section_id"]) == str(section_id):
-                reasons.append(f"Section {conflict['conflict_section_name']}")
-            if str(conflict["room"]) == str(room):
-                reasons.append(f"Room {conflict['room']}")
+        # --- DETAILED COLLISION CHECK & MULTI-DAY INSERT ---
+        force_save = (request.form.get("force_save") == "true")
+        days = request.form.getlist("days")
+        if not days and request.form.get("day_of_week"):
+            days = [request.form.get("day_of_week")]
+        if not days:
+            days = ["Mon"]
 
-            conflict_types = " and ".join(reasons)
-            conflict_slot = f"{conflict['day_of_week']} {conflict['start_time'].strftime('%H:%M')}-{conflict['end_time'].strftime('%H:%M')}"
-            conflict_subj = conflict.get("conflict_subject_name", "")
-            message = (f"Conflict detected: {conflict_types} already has "
-                       f"{conflict_subj} scheduled on {conflict_slot}. "
-                       "Please choose a different time or resource.")
-            flash(message, "danger")
-            cursor.close(); db.close()
-            return redirect(url_for("registrar.list_and_add_schedules"))
+        added_count = 0
+        conflict_messages = []
 
-        # --- INSERT IF NO ISSUES ---
-        cursor.execute("""
-            INSERT INTO schedules
-            (subject_id, section_id, teacher_id, day_of_week, start_time, end_time, room, year_id, branch_id)
-            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-        """, (
-            subject_id, section_id, teacher_id,
-            day_of_week, start_time, end_time, room, year_id, branch_id
-        ))
+        for day_of_week in days:
+            conflict = None
+            if not force_save:
+                cursor.execute("""
+                    SELECT s.*, subj.name AS conflict_subject_name, sec.section_name AS conflict_section_name, 
+                           u.full_name AS conflict_teacher_name, y.label AS conflict_year_label
+                    FROM schedules s
+                    JOIN subjects subj ON s.subject_id = subj.subject_id
+                    JOIN sections sec ON s.section_id = sec.section_id
+                    JOIN users u ON s.teacher_id = u.user_id
+                    JOIN school_years y ON s.year_id = y.year_id
+                    WHERE s.year_id = %s AND s.branch_id = %s
+                      AND s.day_of_week = %s
+                      AND s.is_archived = FALSE
+                      AND (s.start_time < %s AND s.end_time > %s)
+                      AND (
+                            s.teacher_id = %s
+                         OR s.section_id = %s
+                         OR s.room = %s
+                      )
+                    LIMIT 1
+                """, (year_id, branch_id, day_of_week, end_time, start_time, teacher_id, section_id, room))
+                conflict = cursor.fetchone()
+
+            if conflict:
+                reasons = []
+                if str(conflict["teacher_id"]) == str(teacher_id):
+                    reasons.append(f"Teacher {conflict['conflict_teacher_name']}")
+                if str(conflict["section_id"]) == str(section_id):
+                    reasons.append(f"Section {conflict['conflict_section_name']}")
+                if str(conflict["room"]) == str(room):
+                    reasons.append(f"Room {conflict['room']}")
+
+                conflict_types = " and ".join(reasons)
+                conflict_slot = f"{day_of_week} {conflict['start_time'].strftime('%H:%M')}-{conflict['end_time'].strftime('%H:%M')}"
+                conflict_subj = conflict.get("conflict_subject_name", "")
+                conflict_messages.append(f"{conflict_types} busy on {conflict_slot} ({conflict_subj})")
+            else:
+                cursor.execute("""
+                    INSERT INTO schedules
+                    (subject_id, section_id, teacher_id, day_of_week, start_time, end_time, room, year_id, branch_id)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                """, (
+                    subject_id, section_id, teacher_id,
+                    day_of_week, start_time, end_time, room, year_id, branch_id
+                ))
+                added_count += 1
+
+        db.commit()
+        if added_count > 0:
+            msg = f"Successfully scheduled {added_count} class slot(s)!"
+            if conflict_messages:
+                msg += f" (Skipped conflicts: {'; '.join(conflict_messages)})"
+            flash(msg, "success")
+        elif conflict_messages:
+            flash(f"Could not add schedule due to conflicts: {'; '.join(conflict_messages)}", "danger")
+
         added_grade = ""
         if section_id:
             cursor.execute("""

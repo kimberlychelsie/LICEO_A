@@ -1723,30 +1723,34 @@ def list_and_add_schedules():
             return redirect(url_for("branch_admin.list_and_add_schedules"))
 
         # --- DETAILED COLLISION CHECK & MULTI-DAY INSERT ---
+        force_save = (request.form.get("force_save") == "true")
         added_count = 0
         conflict_messages = []
 
         for day_of_week in days:
-            cursor.execute("""
-                SELECT s.*, subj.name AS conflict_subject_name, sec.section_name AS conflict_section_name, 
-                       u.full_name AS conflict_teacher_name, y.label AS conflict_year_label
-                FROM schedules s
-                JOIN subjects subj ON s.subject_id = subj.subject_id
-                JOIN sections sec ON s.section_id = sec.section_id
-                JOIN users u ON s.teacher_id = u.user_id
-                JOIN school_years y ON s.year_id = y.year_id
-                WHERE s.year_id = %s AND s.branch_id = %s
-                  AND s.day_of_week = %s
-                  AND s.is_archived = FALSE
-                  AND (s.start_time < %s AND s.end_time > %s)
-                  AND (
-                        s.teacher_id = %s
-                     OR s.section_id = %s
-                     OR s.room = %s
-                  )
-                LIMIT 1
-            """, (year_id, branch_id, day_of_week, end_time, start_time, teacher_id, section_id, room))
-            conflict = cursor.fetchone()
+            conflict = None
+            if not force_save:
+                cursor.execute("""
+                    SELECT s.*, subj.name AS conflict_subject_name, sec.section_name AS conflict_section_name, 
+                           u.full_name AS conflict_teacher_name, y.label AS conflict_year_label
+                    FROM schedules s
+                    JOIN subjects subj ON s.subject_id = subj.subject_id
+                    JOIN sections sec ON s.section_id = sec.section_id
+                    JOIN users u ON s.teacher_id = u.user_id
+                    JOIN school_years y ON s.year_id = y.year_id
+                    WHERE s.year_id = %s AND s.branch_id = %s
+                      AND s.day_of_week = %s
+                      AND s.is_archived = FALSE
+                      AND (s.start_time < %s AND s.end_time > %s)
+                      AND (
+                            s.teacher_id = %s
+                         OR s.section_id = %s
+                         OR s.room = %s
+                      )
+                    LIMIT 1
+                """, (year_id, branch_id, day_of_week, end_time, start_time, teacher_id, section_id, room))
+                conflict = cursor.fetchone()
+
             if conflict:
                 reasons = []
                 if str(conflict["teacher_id"]) == str(teacher_id):
