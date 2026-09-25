@@ -2900,7 +2900,12 @@ def branch_admin_assign_teachers_bulk():
     data = request.get_json()
     teacher_id = data.get("teacher_id")
     assignment_ids = data.get("assignment_ids", [])
-    advisory_section_id = data.get("advisory_section_id")  # can be None
+    advisory_section_ids = data.get("advisory_section_ids")
+    if advisory_section_ids is None:
+        single_adv = data.get("advisory_section_id")
+        advisory_section_ids = [single_adv] if single_adv else []
+    else:
+        advisory_section_ids = [int(x) for x in advisory_section_ids if x is not None and str(x).isdigit()]
 
     if not teacher_id:
         return {"success": False, "message": "Missing teacher ID"}, 400
@@ -2923,12 +2928,12 @@ def branch_admin_assign_teachers_bulk():
                WHERE teacher_id = %s AND branch_id = %s""",
             (teacher_id, branch_id),
         )
-        # Then assign new advisory section if one was picked
-        if advisory_section_id:
+        # Then assign new advisory sections if picked
+        if advisory_section_ids:
             cursor.execute(
                 """UPDATE sections SET teacher_id = %s
-                   WHERE section_id = %s AND branch_id = %s""",
-                (teacher_id, advisory_section_id, branch_id),
+                   WHERE section_id = ANY(%s) AND branch_id = %s""",
+                (teacher_id, advisory_section_ids, branch_id),
             )
 
         # ── Subject assignments ──
@@ -3172,8 +3177,14 @@ Please log in and change your password immediately.
                 COALESCE(u.status, 'active') AS status,
                 COALESCE(u.is_swafo, FALSE) AS is_swafo,
                 COALESCE(u.is_dc, FALSE) AS is_dc,
-                adv_sec.section_name AS advisory_section,
-                adv_grade.name AS advisory_grade,
+                (
+                    SELECT STRING_AGG(DISTINCT g.name || ' - ' || s.section_name, ', ')
+                    FROM sections s
+                    JOIN grade_levels g ON s.grade_level_id = g.id
+                    JOIN school_years y ON s.year_id = y.year_id
+                    WHERE s.teacher_id = u.user_id AND s.branch_id = u.branch_id AND y.is_active = TRUE
+                ) AS advisory_section,
+                NULL AS advisory_grade,
                 (
                     SELECT STRING_AGG(DISTINCT g.name || ' - ' || s.section_name || ' (' || sub.name || ')', ', ')
                     FROM section_teachers st
@@ -3183,8 +3194,6 @@ Please log in and change your password immediately.
                     WHERE st.teacher_id = u.user_id
                 ) AS assigned_sections
             FROM users u
-            LEFT JOIN sections adv_sec ON adv_sec.teacher_id = u.user_id AND adv_sec.branch_id = u.branch_id
-            LEFT JOIN grade_levels adv_grade ON adv_sec.grade_level_id = adv_grade.id
             WHERE u.branch_id = %s AND (u.role = 'teacher' OR u.user_roles ILIKE '%%teacher%%') AND COALESCE(u.is_archived, FALSE) = FALSE
         """
         params = [branch_id]
