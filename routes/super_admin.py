@@ -132,6 +132,7 @@ def super_admin_dashboard():
                 b.branch_name,
                 b.is_active,
                 b.branch_code,
+                COALESCE(b.location, '') AS location,
                 u.full_name AS admin_name,
                 {login_col} AS last_active,
                 COALESCE(e_all.cnt, 0)     AS total_students,
@@ -161,7 +162,7 @@ def super_admin_dashboard():
                 FROM daily_attendance
                 GROUP BY branch_id
             ) att ON att.branch_id = b.branch_id
-            ORDER BY total_students DESC
+            ORDER BY total_students DESC, b.branch_name ASC
         """)
         branch_health = cursor.fetchall() or []
         
@@ -180,7 +181,10 @@ def super_admin_dashboard():
         # ── Branch Enrollment Distribution ──
         cursor.execute("""
             SELECT 
+                b.branch_id,
                 b.branch_name,
+                b.branch_code,
+                COALESCE(b.location, '') AS location,
                 SUM(CASE WHEN e.grade_level ILIKE '%pre%' OR e.grade_level ILIKE '%nursery%' OR e.grade_level ILIKE '%kinder%' THEN 1 ELSE 0 END) as pre_elem,
                 SUM(CASE WHEN e.grade_level ILIKE '%grade 1 %' OR e.grade_level ILIKE '%grade 2%' OR e.grade_level ILIKE '%grade 3%' OR e.grade_level ILIKE '%grade 4%' OR e.grade_level ILIKE '%grade 5%' OR e.grade_level ILIKE '%grade 6%' OR e.grade_level ILIKE '%grade 1' OR e.grade_level ILIKE '%elementary%' THEN 1 ELSE 0 END) as elem,
                 SUM(CASE WHEN e.grade_level ILIKE '%grade 7%' OR e.grade_level ILIKE '%grade 8%' OR e.grade_level ILIKE '%grade 9%' OR e.grade_level ILIKE '%grade 10%' OR e.grade_level ILIKE '%jhs%' OR e.grade_level ILIKE '%junior%' THEN 1 ELSE 0 END) as jhs,
@@ -188,8 +192,8 @@ def super_admin_dashboard():
                 COUNT(e.enrollment_id) as total_enrollees
             FROM branches b
             LEFT JOIN enrollments e ON e.branch_id = b.branch_id 
-            GROUP BY b.branch_id, b.branch_name
-            ORDER BY total_enrollees DESC
+            GROUP BY b.branch_id, b.branch_name, b.branch_code, b.location
+            ORDER BY total_enrollees DESC, b.branch_name ASC
         """)
         enrollment_dist = cursor.fetchall() or []
 

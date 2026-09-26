@@ -1,6 +1,31 @@
 {% extends "base.html" %}
 {% block title %}Super Admin Dashboard{% endblock %}
+
 {% block content %}
+<!-- External Dependencies: Tailwind CSS, Font Awesome 6, Chart.js -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+    tailwind.config = {
+        theme: {
+            extend: {
+                colors: {
+                    navy: {
+                        800: '#0f2a6b',
+                        900: '#0c2461',
+                        950: '#081738',
+                    },
+                    emerald: {
+                        500: '#10b981',
+                        600: '#059669',
+                    }
+                }
+            }
+        }
+    }
+</script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
     :root {
         --ma-primary: #1a3a8f;
@@ -11,15 +36,10 @@
         --ma-text: #0f172a;
         --ma-muted: #64748b;
         --ma-accent: #3b82f6;
+        --ma-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
     }
 
-    .sa-container {
-        padding: 32px 24px;
-        max-width: 1500px;
-        margin: 0 auto;
-    }
-
-    /* ── Hero Banner ── */
+    /* ── Hero Banner (Matching superadmin_branches header design) ── */
     .hero-banner {
         background: linear-gradient(135deg, var(--ma-primary) 0%, #0c2461 100%);
         border-radius: 20px;
@@ -53,1007 +73,514 @@
         color: rgba(255, 255, 255, 0.9);
         max-width: 600px;
         line-height: 1.5;
-    }
-
-    /* ── Quick Actions Grid ── */
-    .qa-grid-4 {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 16px;
-        margin-bottom: 24px;
-    }
-
-    .action-tile {
-        background: var(--ma-card);
-        border: none;
-        border-radius: 20px;
-        padding: 24px;
-        text-align: center;
-        text-decoration: none;
-        color: var(--ma-primary);
-        font-weight: 800;
-        font-size: 0.95rem;
-        transition: all 0.3s ease;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 12px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-    }
-
-    .action-tile .tile-icon {
-        font-size: 2rem;
-        width: 56px;
-        height: 56px;
-        background: #f8fafc;
-        color: var(--ma-primary);
-        border-radius: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: transform 0.3s ease;
-    }
-
-    .action-tile:hover {
-        background: var(--ma-primary);
-        color: #fff;
-        transform: scale(1.03);
-    }
-
-    .action-tile:hover .tile-icon {
-        transform: rotate(10deg);
-        background: rgba(255, 255, 255, 0.15);
-        color: #fff;
-    }
-
-    .action-tile svg {
-        width: 24px;
-        height: 24px;
-    }
-
-    /* ── Main Dashboard Grid ── */
-    .main-dash-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 20px;
-        margin-bottom: 20px;
-    }
-
-    .content-card {
-        background: var(--ma-card);
-        border: 1px solid var(--ma-border);
-        border-radius: 24px;
-        padding: 22px 24px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
-    }
-
-    /* ── Branch Status List ── */
-    /* ── Premium Branch Status List ── */
-    .bsl-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 20px;
-        border-bottom: 1px solid #f1f5f9;
-        padding-bottom: 16px;
-    }
-
-    .bsl-icon-wrapper {
-        width: 38px;
-        height: 38px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: white;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        flex-shrink: 0;
-    }
-    .icon-blue { background: linear-gradient(135deg, #2563eb, #1e40af); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
-    .icon-gold { background: linear-gradient(135deg, var(--ma-gold), #d97706); box-shadow: 0 4px 12px rgba(250, 204, 21, 0.3); }
-
-    .bsl-expand-btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 34px;
-        height: 34px;
-        border-radius: 10px;
-        border: 1px solid #e2e8f0;
-        background: #f8fafc;
-        cursor: pointer;
-        color: #64748b;
-        transition: all 0.2s ease;
-        flex-shrink: 0;
-    }
-
-    .bsl-expand-btn:hover {
-        background: var(--ma-primary);
-        color: #fff;
-        border-color: var(--ma-primary);
-        transform: translateY(-2px);
-    }
-
-    .bsl-list {
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-    }
-
-    .bsl-item {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        padding: 14px 16px;
-        border-radius: 14px;
-        background: #f8fafc;
-        border: 1px solid transparent;
-        transition: all 0.2s ease;
-    }
-
-    .bsl-item:hover {
-        background: #ffffff;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-        transform: translateX(4px);
-    }
-
-    .bsl-dot {
-        width: 44px;
-        height: 44px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        font-weight: 800;
-        font-size: 1rem;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-    }
-
-    .bsl-green { background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0; }
-    .bsl-amber { background: #fef3c7; color: #d97706; border: 1px solid #fde68a; }
-    .bsl-red { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; }
-    .bsl-blue { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
-
-    .bsl-info {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .bsl-name {
-        font-size: 0.95rem;
-        font-weight: 800;
-        color: var(--ma-primary);
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .bsl-code {
-        font-size: 0.7rem;
-        font-weight: 800;
-        color: #475569;
-        background: #e2e8f0;
-        padding: 2px 8px;
-        border-radius: 6px;
-        letter-spacing: 0.05em;
-    }
-
-    .bsl-status {
-        font-size: 0.75rem;
-        font-weight: 700;
-        margin-top: 6px;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 10px;
-        border-radius: 99px;
-    }
-
-    .bsl-status-ok { background: #dcfce7; color: #16a34a; }
-    .bsl-status-warn { background: #fef3c7; color: #d97706; }
-    .bsl-status-err { background: #fee2e2; color: #dc2626; }
-    
-    .enrollment-pills {
-        display: flex;
-        gap: 6px;
-        margin-top: 8px;
-        flex-wrap: wrap;
-    }
-    
-    .epill {
-        font-size: 0.7rem;
-        font-weight: 700;
-        padding: 3px 8px;
-        border-radius: 6px;
-        background: #e2e8f0;
-        color: #64748b;
-    }
-    .epill-active {
-        background: #eff6ff;
-        color: #2563eb;
-        border: 1px solid #bfdbfe;
-    }
-        color: #dc2626;
-    }
-
-    /* ── Quick Actions ── */
-    .qa-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        gap: 10px;
-    }
-
-    .qa-btn {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        padding: 14px 8px;
-        border-radius: 14px;
-        text-decoration: none;
-        background: #f8fafc;
-        border: 1px solid var(--ma-border);
-        transition: all 0.2s ease;
-        text-align: center;
-    }
-
-    .qa-btn:hover {
-        background: #eff6ff;
-        border-color: #93c5fd;
-        transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(37, 99, 235, 0.1);
-    }
-
-    .qa-icon {
-        width: 44px;
-        height: 44px;
-        border-radius: 12px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-    }
-
-    .qa-btn span {
-        font-size: 0.7rem;
-        font-weight: 700;
-        color: var(--ma-muted);
-        line-height: 1.2;
-    }
-
-    .qa-btn:hover span {
-        color: var(--ma-primary);
-    }
-
-    /* ── Below-fold grid ── */
-    .dashboard-grid {
-        display: grid;
-        grid-template-columns: 1fr 340px;
-        gap: 20px;
-    }
-
-    /* ── Simplified Table ── */
-    .status-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-
-    .status-table th {
-        text-align: left;
-        padding: 10px 12px;
-        font-size: 0.65rem;
-        font-weight: 700;
-        color: var(--ma-muted);
-        text-transform: uppercase;
-        border-bottom: 1px solid var(--ma-border);
-    }
-
-    .status-table td {
-        padding: 12px;
-        border-bottom: 1px solid #f1f5f9;
-        font-size: 0.85rem;
-    }
-
-    .status-table tr:last-child td {
-        border-bottom: none;
-    }
-
-    .table-container {
-        max-height: 480px;
-        overflow-y: auto;
-        overflow-x: auto;
-        padding-right: 4px;
-        -webkit-overflow-scrolling: touch;
-    }
-
-    .table-container::-webkit-scrollbar {
-        width: 6px;
-    }
-
-    .table-container::-webkit-scrollbar-thumb {
-        background: #e2e8f0;
-        border-radius: 10px;
-    }
-
-    /* ── Graph ── */
-    .donut-container {
-        position: relative;
-        width: 160px;
-        height: 160px;
-        margin: 0 auto 24px;
-    }
-
-    .dc-center {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        text-align: center;
-    }
-
-    .dc-count {
-        font-size: 2rem;
-        font-weight: 800;
-        color: var(--ma-primary);
-        line-height: 1;
-    }
-
-    .dc-text {
-        font-size: 0.7rem;
-        color: var(--ma-muted);
-        text-transform: uppercase;
-        margin-top: 4px;
-    }
-
-    .chart-legend {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-        width: 100%;
-    }
-
-    .legend-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 0.8rem;
-        font-weight: 600;
-        color: var(--ma-muted);
-    }
-
-    .legend-box {
-        width: 10px;
-        height: 10px;
-        border-radius: 3px;
-    }
-
-    .badge-pill {
-        padding: 4px 10px;
-        border-radius: 20px;
-        font-size: 0.7rem;
-        font-weight: 700;
-    }
-
-    .bg-light-green {
-        background: #dcfce7;
-        color: #166534;
-    }
-
-    .bg-light-amber {
-        background: #fef3c7;
-        color: #92400e;
-    }
-
-    .bg-light-blue {
-        background: #dbeafe;
-        color: #1e40af;
-    }
-
-    .bg-light-rose {
-        background: #ffe4e6;
-        color: #9f1239;
-    }
-
-    /* ── Full Branch List Modal (slide in from right) ── */
-    .branch-modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(15, 23, 42, 0.55);
-        z-index: 9000;
-        opacity: 0;
-        visibility: hidden;
-        transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-            visibility 0.3s;
-        backdrop-filter: blur(4px);
-    }
-
-    .branch-modal-overlay.open {
-        opacity: 1;
-        visibility: visible;
-    }
-
-    .branch-modal-panel {
-        position: fixed;
-        top: 0;
-        right: 0;
-        width: min(92vw, 1100px);
-        height: 100vh;
-        background: #fff;
-        box-shadow: -8px 0 40px rgba(0, 0, 0, 0.15);
-        display: flex;
-        flex-direction: column;
-        transform: translateX(100%);
-        transition: transform 0.38s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: 9001;
-    }
-
-    .branch-modal-overlay.open .branch-modal-panel {
-        transform: translateX(0);
-    }
-
-    .branch-modal-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 20px 28px;
-        border-bottom: 1px solid #e2e8f0;
-        background: #fff;
-        flex-shrink: 0;
-    }
-
-    .branch-modal-header h2 {
-        font-size: 1.2rem;
-        font-weight: 800;
-        color: var(--ma-primary);
-        display: flex;
-        align-items: center;
-        gap: 10px;
         margin: 0;
     }
 
-    .branch-modal-close {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        border: none;
-        background: #f1f5f9;
-        color: #64748b;
-        font-size: 1.4rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.15s;
-    }
-
-    .branch-modal-close:hover {
-        background: #fee2e2;
-        color: #ef4444;
-    }
-
-    .branch-modal-body {
-        flex: 1;
-        overflow-y: auto;
-        padding: 20px 28px 28px;
-    }
-
-    .branch-modal-search {
-        margin-bottom: 16px;
-        position: relative;
-    }
-
-    .branch-modal-search input {
-        width: 100%;
-        padding: 10px 14px 10px 40px;
-        border: 1px solid #e2e8f0;
+    .btn-prem {
+        padding: 12px 24px;
         border-radius: 12px;
         font-size: 0.9rem;
-        outline: none;
-        transition: border-color 0.15s;
-        font-family: inherit;
+        font-weight: 800;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        cursor: pointer;
+        border: none;
+        text-decoration: none;
     }
 
-    .branch-modal-search input:focus {
-        border-color: var(--ma-primary);
-        box-shadow: 0 0 0 3px rgba(26, 58, 143, 0.08);
+    .btn-gold {
+        background: var(--ma-gold);
+        color: var(--ma-primary);
+        box-shadow: 0 4px 12px rgba(250, 204, 21, 0.3);
     }
 
-    .branch-modal-search svg {
-        position: absolute;
-        left: 13px;
-        top: 50%;
-        transform: translateY(-50%);
-        color: #94a3b8;
+    .btn-gold:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 16px rgba(250, 204, 21, 0.4);
     }
 
-    @media (max-width: 1000px) {
-        .main-dash-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .dashboard-grid {
-            grid-template-columns: 1fr;
-        }
+    .btn-ghost {
+        background: rgba(255, 255, 255, 0.15);
+        color: #fff;
+        border: 1.5px solid rgba(255, 255, 255, 0.25);
+        backdrop-filter: blur(6px);
     }
 
-    @media (max-width: 600px) {
-        .qa-grid {
-            grid-template-columns: repeat(2, 1fr);
-        }
-        .qa-grid-4 {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-        }
-    }
-
-    @media (max-width: 768px) {
-        .sa-container {
-            padding: 16px 12px;
-        }
-        .hero-banner {
-            padding: 24px 16px;
-        }
-        .hero-content h1 {
-            font-size: 1.5rem;
-            flex-wrap: wrap;
-            white-space: normal;
-            word-break: break-word;
-        }
-        .hero-content p {
-            font-size: 0.9rem;
-        }
-        .qa-grid-4 {
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
-        }
+    .btn-ghost:hover {
+        background: rgba(255, 255, 255, 0.25);
+        transform: translateY(-2px);
     }
 </style>
 
-<div class="sa-container">
-    <!-- Header -->
+<div id="saDashboardApp" class="min-h-screen bg-slate-50 text-slate-800 p-4 md:p-8 font-sans">
+
+    <!-- Toast Notification Container (Bottom Right White Pill Toast) -->
+    <div id="toastContainer"
+        style="position: fixed; bottom: 24px; right: 24px; z-index: 999999; pointer-events: none; display: flex; flex-direction: column; align-items: flex-end; gap: 10px;">
+    </div>
+
+    <!-- 1. HEADER & TOP BAR -->
     <div class="hero-banner">
-        <div class="hero-content">
-            <h1>
-                <div style="display: flex; gap: 8px;">Super Admin <span>Dashboard</span></div>
-                <span
-                    style="font-size: 1rem; font-weight: 600; color: #fff; background: rgba(255,255,255,0.2); padding: 6px 16px; border-radius: 20px; text-shadow: none;">SY:
-                    {{ active_school_year }}</span>
-            </h1>
-            <p>Track and monitor all branch operations.</p>
+        <div class="hero-content"
+            style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 20px;">
+            <div>
+                <h1 style="margin-bottom: 8px;">
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        Super Admin <span>Dashboard</span>
+                        <span
+                            style="font-size: 0.85rem; font-weight: 600; color: #fff; background: rgba(255,255,255,0.2); padding: 5px 14px; border-radius: 20px; text-shadow: none;">
+                            SY: {{ active_school_year if active_school_year and active_school_year != 'No Active SY'
+                            else '2026-2027' }}
+                        </span>
+                    </div>
+                </h1>
+                <p style="margin: 0;">Monitor all branches in real time.</p>
+            </div>
+
+            <!-- Quick Action Buttons -->
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <!-- Refresh Button -->
+                <button onclick="refreshDashboardData()" id="refreshBtn" type="button" class="btn-prem btn-ghost">
+                    <i id="refreshIcon" class="fas fa-sync-alt"></i>
+                    <span>Refresh</span>
+                </button>
+
+                <!-- Primary System Backup Button -->
+                <a href="{{ url_for('super_admin.super_admin_backup_database') }}" onclick="triggerBackupAction(event)"
+                    class="btn-prem btn-gold">
+                    <i class="fas fa-database"></i>
+                    <span>System Backup</span>
+                </a>
+            </div>
         </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="qa-grid-4">
-        <a href="{{ url_for('super_admin.super_admin_branches') }}" class="action-tile">
-            <div class="tile-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect width="16" height="20" x="4" y="2" rx="2" />
-                    <path d="M9 22v-4h6v4" />
-                    <path d="M8 6h.01" />
-                    <path d="M16 6h.01" />
-                    <path d="M8 10h.01" />
-                    <path d="M16 10h.01" />
-                    <path d="M8 14h.01" />
-                    <path d="M16 14h.01" />
-                </svg>
+    <!-- SIDEBAR & NAVIGATION QUICK LINKS -->
+    <div class="mb-8 grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
+        <a href="{{ url_for('super_admin.super_admin_dashboard') }}"
+            class="p-3 rounded-xl bg-white border border-indigo-500 text-indigo-600 font-bold text-xs flex flex-col items-center gap-2 shadow-sm transition-all hover:-translate-y-0.5">
+            <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <i class="fas fa-chart-line text-sm"></i>
+            </div>
+            <span>Dashboard</span>
+        </a>
+        <a href="{{ url_for('super_admin.super_admin_branches') }}"
+            class="p-3 rounded-xl bg-white border border-slate-200 hover:border-indigo-500 text-slate-700 hover:text-indigo-600 font-semibold text-xs flex flex-col items-center gap-2 shadow-sm transition-all hover:-translate-y-0.5">
+            <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <i class="fas fa-code-branch text-sm"></i>
             </div>
             <span>Manage Branches</span>
         </a>
-        <a href="{{ url_for('super_admin.superadmin_school_years') }}" class="action-tile">
-            <div class="tile-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-                    <line x1="16" y1="2" x2="16" y2="6" />
-                    <line x1="8" y1="2" x2="8" y2="6" />
-                    <line x1="3" y1="10" x2="21" y2="10" />
-                </svg>
+        <a href="{{ url_for('super_admin.superadmin_school_years') }}"
+            class="p-3 rounded-xl bg-white border border-slate-200 hover:border-indigo-500 text-slate-700 hover:text-indigo-600 font-semibold text-xs flex flex-col items-center gap-2 shadow-sm transition-all hover:-translate-y-0.5">
+            <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                <i class="fas fa-calendar-check text-sm"></i>
             </div>
-            <span>School Years</span>
+            <span>SY 2026-2027</span>
         </a>
-        <a href="{{ url_for('super_admin.superadmin_faqs') }}" class="action-tile">
-            <div class="tile-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z" />
-                </svg>
+        <a href="{{ url_for('super_admin.superadmin_faqs') }}"
+            class="p-3 rounded-xl bg-white border border-slate-200 hover:border-indigo-500 text-slate-700 hover:text-indigo-600 font-semibold text-xs flex flex-col items-center gap-2 shadow-sm transition-all hover:-translate-y-0.5">
+            <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+                <i class="fas fa-question-circle text-sm"></i>
             </div>
             <span>Manage FAQs</span>
         </a>
-        <a href="{{ url_for('super_admin.super_admin_security') }}" class="action-tile">
-            <div class="tile-icon" style="color: #2563eb; background: #dbeafe;">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                </svg>
+        <a href="{{ url_for('super_admin.super_admin_security') }}"
+            class="p-3 rounded-xl bg-white border border-slate-200 hover:border-indigo-500 text-slate-700 hover:text-indigo-600 font-semibold text-xs flex flex-col items-center gap-2 shadow-sm transition-all hover:-translate-y-0.5">
+            <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center">
+                <i class="fas fa-shield-alt text-sm"></i>
             </div>
             <span>Security Center</span>
         </a>
-        <a href="{{ url_for('super_admin.super_admin_audit_logs') }}" class="action-tile">
-            <div class="tile-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                    <path d="m9 12 2 2 4-4"/>
-                </svg>
+        <a href="{{ url_for('super_admin.super_admin_audit_logs') }}"
+            class="p-3 rounded-xl bg-white border border-slate-200 hover:border-indigo-500 text-slate-700 hover:text-indigo-600 font-semibold text-xs flex flex-col items-center gap-2 shadow-sm transition-all hover:-translate-y-0.5">
+            <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                <i class="fas fa-history text-sm"></i>
             </div>
             <span>Audit Logs</span>
         </a>
-        <a href="{{ url_for('super_admin.super_admin_backup_database') }}" class="action-tile">
-            <div class="tile-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                    <polyline points="7 10 12 15 17 10"/>
-                    <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
+        <a href="{{ url_for('super_admin.super_admin_backup_database') }}"
+            class="p-3 rounded-xl bg-white border border-slate-200 hover:border-indigo-500 text-slate-700 hover:text-indigo-600 font-semibold text-xs flex flex-col items-center gap-2 shadow-sm transition-all hover:-translate-y-0.5">
+            <div class="w-8 h-8 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center">
+                <i class="fas fa-database text-sm"></i>
             </div>
             <span>Database Backup</span>
         </a>
-        <a href="{{ url_for('super_admin.super_admin_settings') }}" class="action-tile">
-            <div class="tile-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="12" cy="12" r="3" />
-                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
-                </svg>
+        <a href="{{ url_for('super_admin.super_admin_settings') }}"
+            class="p-3 rounded-xl bg-white border border-slate-200 hover:border-indigo-500 text-slate-700 hover:text-indigo-600 font-semibold text-xs flex flex-col items-center gap-2 shadow-sm transition-all hover:-translate-y-0.5">
+            <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center">
+                <i class="fas fa-user-cog text-sm"></i>
             </div>
             <span>Account Settings</span>
         </a>
     </div>
 
-    <!-- ═══ MAIN: Branch Status List & Enrollment By Branch ═══ -->
-    <div class="main-dash-grid">
+    <!-- MAIN TWO-COLUMN SECTION -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-8">
 
-        <!-- LEFT COLUMN: Branch Status List -->
-        <div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;">
-
-            <!-- Compact Branch Status List -->
-            <div class="content-card" style="padding: 24px;">
-                <div class="bsl-header">
-                    <h2
-                        style="margin:0; font-size:1.15rem; font-weight:900; color:var(--ma-primary); display:flex; align-items:center; gap:12px;">
-                        <div class="bsl-icon-wrapper icon-blue">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <line x1="8" y1="6" x2="21" y2="6" />
-                                <line x1="8" y1="12" x2="21" y2="12" />
-                                <line x1="8" y1="18" x2="21" y2="18" />
-                                <line x1="3" y1="6" x2="3.01" y2="6" />
-                                <line x1="3" y1="12" x2="3.01" y2="12" />
-                                <line x1="3" y1="18" x2="3.01" y2="18" />
-                            </svg>
-                        </div>
-                        Branch Status List
-                    </h2>
-                    <button class="bsl-expand-btn" onclick="openBranchModal()" title="View all branches">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M9 18l6-6-6-6" />
-                        </svg>
-                    </button>
+        <!-- 3. BRANCH STATUS LIST SECTION (Dynamic DB) -->
+        <div
+            class="lg:col-span-6 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div>
+                <!-- Header -->
+                <div class="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+                    <div>
+                        <h2 class="text-base md:text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fas fa-network-wired text-indigo-600"></i>
+                            Branch Status List
+                        </h2>
+                        <p class="text-xs text-slate-500">Live operational & LMS indicators ({{ branch_health | length
+                            }} Branches)</p>
+                    </div>
+                    <a href="{{ url_for('super_admin.super_admin_branches') }}"
+                        class="text-xs font-bold text-indigo-600 hover:text-indigo-700 hover:underline flex items-center gap-1">
+                        View all <i class="fas fa-chevron-right text-[10px]"></i>
+                    </a>
                 </div>
 
-                <div class="bsl-list">
-                    {% for b in branch_health[:5] %}
-                    <div class="bsl-item">
-                        <div class="bsl-dot
-                            {%- if b.is_active and b.pending_count == 0 %} bsl-green
-                            {%- elif b.is_active %} bsl-amber
-                            {%- else %} bsl-red{%- endif %}">
-                            <i class="fas fa-building" style="font-size: 1.1rem;"></i>
-                        </div>
-
-                        <div class="bsl-info">
-                            <div class="bsl-name">
-                                {{ b.branch_name }}
-                                {% if b.branch_code %}<span class="bsl-code">{{ b.branch_code }}</span>{% endif %}
+                <!-- Dynamic Branch Cards / Item List (Showing top 3 preview) -->
+                <div class="space-y-2.5">
+                    {% for b in branch_health[:3] %}
+                    <div
+                        class="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between hover:bg-slate-100 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div
+                                class="w-9 h-9 rounded-lg {% if b.is_active and b.pending_count > 0 %}bg-amber-100 text-amber-600 border-amber-200{% elif b.is_active %}bg-emerald-100 text-emerald-600 border-emerald-200{% else %}bg-rose-100 text-rose-600 border-rose-200{% endif %} font-extrabold text-xs flex items-center justify-center border">
+                                {{ b.branch_code or 'BR' }}
                             </div>
-                            <div class="bsl-status
-                            {%- if b.is_active and b.pending_count == 0 %} bsl-status-ok
-                            {%- elif b.is_active %} bsl-status-warn
-                            {%- else %} bsl-status-err{%- endif %}">
-                                {% if b.is_active and b.pending_count == 0 %}
-                                <i class="fas fa-check-circle"></i> LMS Status: OK
-                                {% elif b.is_active %}
-                                <i class="fas fa-exclamation-circle"></i> {{ b.pending_count }} Pending Review
-                                {% else %}
-                                <i class="fas fa-times-circle"></i> Inactive Branch
-                                {% endif %}
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-900">{{ b.branch_name }}</h3>
+                                <p class="text-xs text-slate-500 flex items-center gap-1">
+                                    <i class="fas fa-map-marker-alt text-[10px] text-slate-400"></i> {{ b.location or
+                                    'Laguna' }}
+                                </p>
                             </div>
-                        </div>
-                    </div>
-                    {% else %}
-                    <div style="padding: 24px; text-align: center; color: var(--ma-muted); font-size: 0.88rem;">
-                        No branches found.
-                    </div>
-                    {% endfor %}
-
-                    {% if branch_health | length > 5 %}
-                    <div style="padding: 10px 14px; text-align: center;">
-                        <button onclick="openBranchModal()"
-                            style="background: none; border: none; color: var(--ma-primary); font-weight: 700; font-size: 0.82rem; cursor: pointer; text-decoration: underline; font-family: inherit;">
-                            View all branches
-                        </button>
-                    </div>
-                    {% endif %}
-                </div>
-            </div>
-
-            <!-- Branch Enrollment Distribution -->
-        </div> <!-- End LEFT COLUMN wrapper -->
-
-        <!-- RIGHT COLUMN: Enrollment By Branch -->
-        <div style="display: flex; flex-direction: column; gap: 12px; min-width: 0;">
-            <div class="content-card" style="padding: 24px;">
-                <div class="bsl-header">
-                    <h2
-                        style="margin:0; font-size:1.15rem; font-weight:900; color:var(--ma-primary); display:flex; align-items:center; gap:12px;">
-                        <div class="bsl-icon-wrapper icon-gold">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                                stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                                <circle cx="9" cy="7" r="4" />
-                                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                            </svg>
                         </div>
                         <div>
-                            Enrollment By Branch
-                            <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-top: 2px;">SY: {{ active_school_year }}</div>
-                        </div>
-                    </h2>
-                    <button class="bsl-expand-btn" onclick="openEnrollmentModal()" title="View all distribution">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M9 18l6-6-6-6" />
-                        </svg>
-                    </button>
-                </div>
-                <div class="bsl-list">
-                    {% for e in enrollment_dist[:5] %}
-                    <div class="bsl-item">
-                        <div class="bsl-dot bsl-blue">
-                            <i class="fas fa-users" style="font-size: 1.1rem;"></i>
-                        </div>
-                        <div class="bsl-info">
-                            <div class="bsl-name">
-                                {{ e.branch_name }}
-                                <span class="bsl-code">Total: {{ e.total_enrollees }}</span>
-                            </div>
-                            <div class="enrollment-pills">
-                                <span class="epill {% if e.pre_elem > 0 %}epill-active{% endif %}">Pre: {{ e.pre_elem }}</span>
-                                <span class="epill {% if e.elem > 0 %}epill-active{% endif %}">Elem: {{ e.elem }}</span>
-                                <span class="epill {% if e.jhs > 0 %}epill-active{% endif %}">JHS: {{ e.jhs }}</span>
-                                <span class="epill {% if e.shs > 0 %}epill-active{% endif %}">SHS: {{ e.shs }}</span>
-                            </div>
+                            {% if b.is_active and b.pending_count > 0 %}
+                            <span
+                                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                <i class="fas fa-exclamation-circle text-xs"></i> {{ b.pending_count }} Pending
+                            </span>
+                            {% elif b.is_active %}
+                            <span
+                                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <i class="fas fa-check-circle text-xs"></i> LMS: OK
+                            </span>
+                            {% else %}
+                            <span
+                                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                                <i class="fas fa-times-circle text-xs"></i> Inactive
+                            </span>
+                            {% endif %}
                         </div>
                     </div>
                     {% else %}
-                    <div style="padding: 24px; text-align: center; color: var(--ma-muted); font-size: 0.88rem;">
-                        No enrollment data found.
-                    </div>
+                    <div class="p-4 text-center text-xs text-slate-400">No branches found.</div>
                     {% endfor %}
-
-                    {% if enrollment_dist | length > 5 %}
-                    <div style="padding: 10px 14px; text-align: center;">
-                        <button onclick="openEnrollmentModal()"
-                            style="background: none; border: none; color: var(--ma-primary); font-weight: 700; font-size: 0.82rem; cursor: pointer; text-decoration: underline; font-family: inherit;">
-                            View all
-                        </button>
-                    </div>
-                    {% endif %}
                 </div>
             </div>
 
-        </div> <!-- End RIGHT COLUMN wrapper -->
+            <!-- Bottom Action Button -->
+            <div class="pt-3 mt-3 border-t border-slate-100">
+                <a href="{{ url_for('super_admin.super_admin_branches') }}"
+                    class="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-indigo-600 hover:text-white text-slate-700 font-bold text-xs md:text-sm transition-all duration-200 flex items-center justify-center gap-2 group">
+                    <span>View all branches ({{ branch_health | length }})</span>
+                    <i class="fas fa-arrow-right text-xs group-hover:translate-x-1 transition-transform"></i>
+                </a>
+            </div>
+        </div>
+
+        <!-- 4. ENROLLMENT ANALYTICS & VISUALIZATION (Dynamic Chart.js) -->
+        <div
+            class="lg:col-span-6 bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div>
+                <!-- Header & View Controls -->
+                <div
+                    class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 mb-2 border-b border-slate-100">
+                    <div>
+                        <h2 class="text-base md:text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fas fa-chart-pie text-emerald-600"></i>
+                            Enrollment Analytics
+                        </h2>
+                        <p class="text-xs text-slate-500">SY: {{ active_school_year if active_school_year and
+                            active_school_year != 'No Active SY' else '2026-2027' }} Grade Level Breakdown</p>
+                    </div>
+
+                    <!-- Doughnut Chart Indicator -->
+                    <span
+                        class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200 text-xs font-bold self-start sm:self-auto">
+                        <i class="fas fa-chart-pie"></i> Doughnut Chart
+                    </span>
+                </div>
+
+                <!-- Dynamic Chart Canvas (Slightly larger balanced height) -->
+                <div class="relative w-full h-[250px] flex items-center justify-center p-1">
+                    <canvas id="enrollmentChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Chart Footer Summary (Real-time DB totals) -->
+            <div
+                class="mt-3 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+                <span class="flex items-center gap-1.5 font-semibold">
+                    <span class="w-3 h-3 rounded-full bg-emerald-500"></span> Total System Enrolled: <strong
+                        class="text-slate-800 font-extrabold">{{ total_students }}</strong>
+                </span>
+                <span class="flex items-center gap-1.5">
+                    <i class="fas fa-info-circle text-indigo-500"></i> Breakdown:
+                    Pre ({{ enrollment_dist | sum(attribute='pre_elem') }}) ·
+                    Elem ({{ enrollment_dist | sum(attribute='elem') }}) ·
+                    JHS ({{ enrollment_dist | sum(attribute='jhs') }}) ·
+                    SHS ({{ enrollment_dist | sum(attribute='shs') }})
+                </span>
+            </div>
+        </div>
+
     </div>
 
+    <!-- 5. ENROLLMENT BY BRANCH GRID / DATA CARDS (Dynamic DB) -->
+    <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm mb-8">
+
+        <!-- Header -->
+        <div
+            class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-6 border-b border-slate-100">
+            <div>
+                <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fas fa-school text-indigo-600"></i>
+                    Enrollment By Branch (SY: {{ active_school_year if active_school_year and active_school_year != 'No
+                    Active SY' else '2026-2027' }})
+                </h2>
+                <p class="text-xs md:text-sm text-slate-500">Detailed break-down across Academic Tracks (Preschool,
+                    Elementary, JHS, SHS)</p>
+            </div>
+            <a href="{{ url_for('super_admin.super_admin_branches') }}"
+                class="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs md:text-sm transition-all shadow-md shadow-indigo-600/20 flex items-center gap-2 self-start sm:self-auto">
+                <i class="fas fa-sliders-h"></i>
+                <span>Manage Branches</span>
+            </a>
+        </div>
+
+        <!-- Dynamic Branch Data Cards Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {% for e in enrollment_dist %}
+            <div
+                class="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between hover:border-indigo-500/50 transition-all shadow-xs">
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <span
+                            class="px-2.5 py-0.5 rounded-md bg-indigo-100 text-indigo-700 font-extrabold text-[11px]">{{
+                            e.branch_code or 'BR' }}</span>
+                        <span
+                            class="text-xs font-extrabold {% if e.total_enrollees > 0 %}text-emerald-600 bg-emerald-50 border-emerald-200{% else %}text-slate-500 bg-slate-100 border-slate-200{% endif %} px-2 py-0.5 rounded-md border">
+                            Total: {{ e.total_enrollees }}
+                        </span>
+                    </div>
+                    <h3 class="text-sm font-bold text-slate-900 mb-3">{{ e.branch_name }}</h3>
+
+                    <div class="grid grid-cols-2 gap-2 mb-3">
+                        <div class="p-2 rounded-lg bg-white border border-slate-200 text-center">
+                            <span class="block text-[10px] font-bold uppercase text-slate-400">Pre</span>
+                            <span
+                                class="text-sm font-extrabold {% if e.pre_elem > 0 %}text-indigo-600{% else %}text-slate-400{% endif %}">{{
+                                e.pre_elem }}</span>
+                        </div>
+                        <div class="p-2 rounded-lg bg-white border border-slate-200 text-center">
+                            <span class="block text-[10px] font-bold uppercase text-slate-400">Elem</span>
+                            <span
+                                class="text-sm font-extrabold {% if e.elem > 0 %}text-blue-600{% else %}text-slate-400{% endif %}">{{
+                                e.elem }}</span>
+                        </div>
+                        <div class="p-2 rounded-lg bg-white border border-slate-200 text-center">
+                            <span class="block text-[10px] font-bold uppercase text-slate-400">JHS</span>
+                            <span
+                                class="text-sm font-extrabold {% if e.jhs > 0 %}text-purple-600{% else %}text-slate-400{% endif %}">{{
+                                e.jhs }}</span>
+                        </div>
+                        <div class="p-2 rounded-lg bg-white border border-slate-200 text-center">
+                            <span class="block text-[10px] font-bold uppercase text-slate-400">SHS</span>
+                            <span
+                                class="text-sm font-extrabold {% if e.shs > 0 %}text-amber-600{% else %}text-slate-400{% endif %}">{{
+                                e.shs }}</span>
+                        </div>
+                    </div>
+                </div>
+                <div
+                    class="pt-2 border-t border-slate-200/60 text-[11px] text-slate-500 flex items-center justify-between">
+                    <span>{{ e.location or 'Laguna' }}</span>
+                    <i class="fas fa-check-circle text-emerald-500" title="Operational"></i>
+                </div>
+            </div>
+            {% else %}
+            <div class="p-4 text-center text-xs text-slate-400 col-span-full">No branch enrollment data.</div>
+            {% endfor %}
+        </div>
+    </div>
 
 </div>
 
-<!-- ═══ FULL BRANCH LIST PANEL (slides in from right) ═══ -->
-<div class="branch-modal-overlay" id="branchModalOverlay" onclick="closeBranchModal(event)">
-    <div class="branch-modal-panel" onclick="event.stopPropagation()">
-        <div class="branch-modal-header">
-            <h2>
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="8" y1="6" x2="21" y2="6" />
-                    <line x1="8" y1="12" x2="21" y2="12" />
-                    <line x1="8" y1="18" x2="21" y2="18" />
-                    <line x1="3" y1="6" x2="3.01" y2="6" />
-                    <line x1="3" y1="12" x2="3.01" y2="12" />
-                    <line x1="3" y1="18" x2="3.01" y2="18" />
-                </svg>
-                All branches
-                <span style="font-size: 0.8rem; font-weight: 500; color: var(--ma-muted); margin-left: 4px;">({{
-                    branch_health | length }} branches)</span>
-            </h2>
-            <button class="branch-modal-close" onclick="closeBranchModalDirect()" title="Close">&times;</button>
-        </div>
-        <div class="branch-modal-body">
-            <div class="branch-modal-search">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8" />
-                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                </svg>
-                <input type="text" id="modalBranchSearch" placeholder="Search branch name or code..."
-                    oninput="filterModalBranches(this.value)">
-            </div>
-            <div class="table-container" style="max-height: calc(100vh - 185px);">
-                <table class="status-table" id="modalBranchTable">
-                    <thead>
-                        <tr>
-                            <th>Branch Name</th>
-                            <th>Admin Name</th>
-                            <th>Total Students</th>
-                            <th>Pending Enrollees</th>
-                            <th>Total Faculty</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for b in branch_health %}
-                        <tr>
-                            <td>
-                                <div style="font-weight: 700; color: var(--ma-primary);">{{ b.branch_name }}</div>
-                                <code
-                                    style="font-size: 0.7rem; color: var(--ma-muted);">{{ b.branch_code or 'NO CODE' }}</code>
-                            </td>
-                            <td>
-                                <div style="font-weight: 600; font-size: 0.85rem;">{{ b.admin_name or 'No Admin Assign'
-                                    }}</div>
-                            </td>
-                            <td>{{ b.total_students }}</td>
-                            <td>
-                                {% if b.pending_count > 0 %}
-                                <span class="badge-pill bg-light-amber">{{ b.pending_count }} PENDING</span>
-                                {% else %}<span style="color: #aaa;">None</span>{% endif %}
-                            </td>
-                            <td>{{ b.total_faculty }}</td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- ═══ FULL ENROLLMENT DISTRIBUTION PANEL (slides in from right) ═══ -->
-<div class="branch-modal-overlay" id="enrollmentModalOverlay" onclick="closeEnrollmentModal(event)">
-    <div class="branch-modal-panel" onclick="event.stopPropagation()">
-        <div class="branch-modal-header">
-            <h2>
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="9" cy="7" r="4" />
-                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-                </svg>
-                Branch Enrollment Distribution
-                <span style="font-size: 0.8rem; font-weight: 500; color: var(--ma-muted); margin-left: 4px;">(SY: {{
-                    active_school_year }})</span>
-            </h2>
-            <button class="branch-modal-close" onclick="closeEnrollmentModalDirect()" title="Close">&times;</button>
-        </div>
-        <div class="branch-modal-body">
-            <div class="branch-modal-search">
-                <i class="fas fa-search"
-                    style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: var(--ma-muted); font-size: 0.9rem;"></i>
-                <input type="text" id="modalEnrollmentSearch" placeholder="Search branch..."
-                    onkeyup="filterModalEnrollments(this.value)">
-            </div>
-            <div class="table-container">
-                <table class="status-table" id="modalEnrollmentTable">
-                    <thead>
-                        <tr>
-                            <th>Branch Name</th>
-                            <th>Total Enrollees</th>
-                            <th>Pre-Elem</th>
-                            <th>Elementary</th>
-                            <th>Junior HS</th>
-                            <th>Senior HS</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for e in enrollment_dist %}
-                        <tr>
-                            <td>
-                                <div style="font-weight: 700; color: var(--ma-primary);">{{ e.branch_name }}</div>
-                            </td>
-                            <td>
-                                <div style="font-weight: 800; font-size: 1rem; color: var(--ma-primary);">{{
-                                    e.total_enrollees }}</div>
-                            </td>
-                            <td><span class="badge-pill" style="background:#eff6ff; color:#2563eb;">{{ e.pre_elem
-                                    }}</span></td>
-                            <td><span class="badge-pill" style="background:#eff6ff; color:#2563eb;">{{ e.elem }}</span>
-                            </td>
-                            <td><span class="badge-pill" style="background:#fdf4ff; color:#9333ea;">{{ e.jhs }}</span>
-                            </td>
-                            <td><span class="badge-pill" style="background:#fefce8; color:#ca8a04;">{{ e.shs }}</span>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- INTERACTIVE SCRIPTS: Toast System & Real-Time Dynamic Chart.js Initialization -->
 <script>
-    // ── Branch Modal ──
-    function openBranchModal() {
-        document.getElementById('branchModalOverlay').classList.add('open');
-        document.body.style.overflow = 'hidden';
-        setTimeout(() => {
-            const inp = document.getElementById('modalBranchSearch');
-            if (inp) inp.focus();
-        }, 380);
-    }
+    // --- TOAST NOTIFICATION SYSTEM (White Background Bottom-Right Pill Toast) ---
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toastContainer');
+        if (!container) return;
 
-    function closeBranchModal(e) {
-        if (e.target === document.getElementById('branchModalOverlay')) closeBranchModalDirect();
-    }
+        container.innerHTML = '';
 
-    function closeBranchModalDirect() {
-        document.getElementById('branchModalOverlay').classList.remove('open');
-        document.body.style.overflow = '';
-    }
+        const toast = document.createElement('div');
+        toast.className = 'toast-popup-pill';
+        toast.style.cssText = `
+            pointer-events: auto;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 24px;
+            border-radius: 999px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.15);
+            color: #0f172a;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 700;
+            opacity: 0;
+            transform: translateY(20px) scale(0.95);
+            transition: all 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        `;
 
-    function filterModalBranches(query) {
-        const q = query.toLowerCase();
-        document.querySelectorAll('#modalBranchTable tbody tr').forEach(row => {
-            row.style.display = row.innerText.toLowerCase().includes(q) ? '' : 'none';
+        const iconBgMap = {
+            success: 'background: #10b981; color: #ffffff;',
+            warning: 'background: #f59e0b; color: #ffffff;',
+            info: 'background: #6366f1; color: #ffffff;',
+            error: 'background: #ef4444; color: #ffffff;'
+        };
+
+        const iconClassMap = {
+            success: 'fa-check',
+            warning: 'fa-exclamation',
+            info: 'fa-info',
+            error: 'fa-times'
+        };
+
+        const bgStyle = iconBgMap[type] || iconBgMap.info;
+        const iconClass = iconClassMap[type] || iconClassMap.info;
+
+        toast.innerHTML = `
+            <div style="width: 24px; height: 24px; border-radius: 50%; ${bgStyle} font-size: 11px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-weight: 900;">
+                <i class="fas ${iconClass}"></i>
+            </div>
+            <span style="letter-spacing: -0.01em; color: #1e293b;">${message}</span>
+        `;
+
+        container.appendChild(toast);
+
+        requestAnimationFrame(() => {
+            toast.style.opacity = '1';
+            toast.style.transform = 'translateY(0) scale(1)';
         });
+
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(20px) scale(0.95)';
+            setTimeout(() => toast.remove(), 350);
+        }, 3200);
     }
 
-    document.addEventListener('keydown', e => {
-        if (e.key === 'Escape') {
-            closeBranchModalDirect();
-            closeEnrollmentModalDirect();
+    // --- REFRESH & BACKUP BUTTON HANDLERS ---
+    function refreshDashboardData() {
+        const icon = document.getElementById('refreshIcon');
+        if (icon) icon.classList.add('animate-spin');
+        showToast('Refreshing real-time operational indicators...', 'info');
+
+        setTimeout(() => {
+            window.location.reload();
+        }, 600);
+    }
+
+    function triggerBackupAction(e) {
+        showToast('Initiating database backup task...', 'warning');
+    }
+
+    // --- REAL-TIME DYNAMIC DOUGHNUT CHART.JS INTEGRATION ---
+    window.myEnrollmentChart = null;
+
+    // Real database JSON payload from Flask
+    const rawEnrollmentDist = {{ enrollment_dist | tojson }};
+
+    const branchLabels = rawEnrollmentDist.map(item => item.branch_name);
+    const totalData = rawEnrollmentDist.map(item => Number(item.total_enrollees || 0));
+
+    function renderEnrollmentChart() {
+        const ctx = document.getElementById('enrollmentChart');
+        if (!ctx) return;
+
+        if (window.myEnrollmentChart) {
+            window.myEnrollmentChart.destroy();
         }
-    });
 
-    // ── Enrollment Modal ──
-    function openEnrollmentModal() {
-        document.getElementById('enrollmentModalOverlay').classList.add('open');
-        document.body.style.overflow = 'hidden';
-        setTimeout(() => {
-            const inp = document.getElementById('modalEnrollmentSearch');
-            if (inp) inp.focus();
-        }, 380);
-    }
+        const textColor = '#475569';
+        const palette = [
+            'rgba(99, 102, 241, 0.85)',
+            'rgba(16, 185, 129, 0.85)',
+            'rgba(245, 158, 11, 0.85)',
+            'rgba(236, 72, 153, 0.85)',
+            'rgba(14, 165, 233, 0.85)',
+            'rgba(168, 85, 247, 0.85)',
+            'rgba(59, 130, 246, 0.85)'
+        ];
 
-    function closeEnrollmentModal(e) {
-        if (e.target === document.getElementById('enrollmentModalOverlay')) closeEnrollmentModalDirect();
-    }
-
-    function closeEnrollmentModalDirect() {
-        document.getElementById('enrollmentModalOverlay').classList.remove('open');
-        document.body.style.overflow = '';
-    }
-
-    function filterModalEnrollments(query) {
-        const q = query.toLowerCase();
-        document.querySelectorAll('#modalEnrollmentTable tbody tr').forEach(row => {
-            row.style.display = row.innerText.toLowerCase().includes(q) ? '' : 'none';
+        window.myEnrollmentChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: branchLabels,
+                datasets: [{
+                    label: 'Total Enrollment',
+                    data: totalData,
+                    backgroundColor: palette.slice(0, branchLabels.length),
+                    borderColor: '#ffffff',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '65%',
+                layout: {
+                    padding: {
+                        top: 2,
+                        bottom: 2,
+                        left: 4,
+                        right: 4
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: textColor,
+                            padding: 8,
+                            boxWidth: 10,
+                            boxHeight: 10,
+                            font: { family: 'Inter', weight: 600, size: 10.5 }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return ` ${context.label}: ${context.raw} Students`;
+                            }
+                        }
+                    }
+                }
+            }
         });
     }
 
-
+    document.addEventListener('DOMContentLoaded', () => {
+        renderEnrollmentChart();
+    });
 </script>
 {% endblock %}
